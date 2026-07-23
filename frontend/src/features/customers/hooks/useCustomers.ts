@@ -40,7 +40,7 @@ export const useUpdateCustomer = () => {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: Parameters<typeof customersApi.updateCustomer>[1] }) => 
       customersApi.updateCustomer(id, data),
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, variables) => {
       toast.success('Customer updated successfully');
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       queryClient.invalidateQueries({ queryKey: ['customer', variables.id] });

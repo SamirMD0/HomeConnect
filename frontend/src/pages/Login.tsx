@@ -72,7 +72,7 @@ export const Login: React.FC = () => {
             <div className="h-16 w-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-blue-500/25">
               <Home className="text-white w-8 h-8" />
             </div>
-            <h1 className="text-3xl font-bold text-white tracking-tight">Home Connect</h1>
+            <h1 className="text-3xl font-bold text-white tracking-tight">Home Connects</h1>
             <p className="text-slate-400 mt-2 text-sm">Sign in to your dashboard</p>
           </div>
 
@@ -156,7 +156,7 @@ export const Login: React.FC = () => {
         </div>
         
         <p className="text-center text-slate-500 text-sm mt-8">
-          &copy; {new Date().getFullYear()} Home Connect. All rights reserved.
+          &copy; {new Date().getFullYear()} Home Connects. All rights reserved.
         </p>
       </motion.div>
     </div>

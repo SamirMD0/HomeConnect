@@ -1,4 +1,4 @@
-# Home Connect
+# Home Connects
 
 Business Management System built with React, Electron, Express, Prisma, and PostgreSQL.
 

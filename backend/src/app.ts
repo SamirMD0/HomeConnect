@@ -9,20 +9,14 @@ import { prisma } from './lib/prisma';
 import { authRoutes } from './routes/auth.routes';
 import { usersRoutes } from './routes/users.routes';
 import customersRoutes from './routes/customers.routes';
+import transactionsRoutes from './routes/transactions.routes';
 
 export const app = express();
 
 // Middleware
 app.use(helmet());
 app.use(cors({
-  origin: (origin, callback) => {
-    // Allow any localhost origin for development
-    if (!origin || origin.startsWith('http://localhost:')) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+  origin: ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:3002', 'http://localhost:3003'],
   credentials: true,
 }));
 app.use(compression());
@@ -45,10 +39,15 @@ app.get('/api/v1/health', async (_req, res, next) => {
   }
 });
 
+import { dashboardRoutes } from './routes/dashboard.routes';
+import { requireAuth } from './middleware/auth.middleware';
+
 // API Routes
 app.use('/api/v1/auth', authRoutes);
-app.use('/api/v1/users', usersRoutes);
-app.use('/api/v1/customers', customersRoutes);
+app.use('/api/v1/users', requireAuth, usersRoutes);
+app.use('/api/v1/customers', requireAuth, customersRoutes);
+app.use('/api/v1/transactions', requireAuth, transactionsRoutes);
+app.use('/api/v1/dashboard', requireAuth, dashboardRoutes);
 
 // Global Error Handler
 app.use(errorHandler);

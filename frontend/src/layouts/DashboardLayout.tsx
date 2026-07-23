@@ -1,7 +1,7 @@
 import React from 'react';
 import { Outlet, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { LayoutDashboard, Users, LogOut, FileText, Menu, X, Settings } from 'lucide-react';
+import { LayoutDashboard, Users, LogOut, FileText, Menu, X, Settings, BookOpen } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export const DashboardLayout: React.FC = () => {
@@ -18,6 +18,7 @@ export const DashboardLayout: React.FC = () => {
   const navItems = [
     { name: 'Dashboard', path: '/', icon: LayoutDashboard },
     { name: 'Customers', path: '/customers', icon: Users },
+    { name: 'Ledger', path: '/ledger', icon: BookOpen },
     { name: 'Reports', path: '/reports', icon: FileText },
     ...(user?.role === 'ADMIN' ? [{ name: 'Settings', path: '/settings', icon: Settings }] : []),
   ];
@@ -38,7 +39,7 @@ export const DashboardLayout: React.FC = () => {
               <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center mr-3 shadow-md">
                 <span className="font-bold text-lg leading-none">H</span>
               </div>
-              <span className="font-bold text-xl tracking-tight whitespace-nowrap">Home Connect</span>
+              <span className="font-bold text-xl tracking-tight whitespace-nowrap">Home Connects</span>
             </div>
 
             <div className="flex-1 py-6 px-4 space-y-1 overflow-y-auto">

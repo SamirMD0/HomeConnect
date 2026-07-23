@@ -6,7 +6,7 @@ export class CustomersController {
     try {
       const customer = await CustomersService.createCustomer({
         ...req.body,
-        createdBy: req.user!.id,
+        createdBy: req.user!.userId,
       });
       res.status(201).json({
         success: true,
@@ -20,12 +20,14 @@ export class CustomersController {
 
   static async listCustomers(req: Request, res: Response, next: NextFunction) {
     try {
-      const { page, limit, search, sortBy, sortOrder } = req.query as any;
-      const skip = (page - 1) * limit;
+      const { search, sortBy, sortOrder } = req.query as any;
+      const pageNum = Number(req.query.page) || 1;
+      const limitNum = Number(req.query.limit) || 10;
+      const skip = (pageNum - 1) * limitNum;
       
       const { customers, total } = await CustomersService.listCustomers({
         skip,
-        take: limit,
+        take: limitNum,
         search,
         sortBy,
         sortOrder,
@@ -36,10 +38,10 @@ export class CustomersController {
         data: customers,
         meta: {
           pagination: {
-            page,
-            pageSize: limit,
+            page: pageNum,
+            pageSize: limitNum,
             totalItems: total,
-            totalPages: Math.ceil(total / limit),
+            totalPages: Math.ceil(total / limitNum),
           },
           timestamp: new Date().toISOString()
         }
@@ -51,7 +53,7 @@ export class CustomersController {
 
   static async getCustomer(req: Request, res: Response, next: NextFunction) {
     try {
-      const customer = await CustomersService.getCustomer(req.params.id);
+      const customer = await CustomersService.getCustomer(req.params.id as string);
       res.status(200).json({
         success: true,
         data: customer,
@@ -64,7 +66,7 @@ export class CustomersController {
 
   static async updateCustomer(req: Request, res: Response, next: NextFunction) {
     try {
-      const customer = await CustomersService.updateCustomer(req.params.id, req.body);
+      const customer = await CustomersService.updateCustomer(req.params.id as string, req.body);
       res.status(200).json({
         success: true,
         data: customer,
@@ -77,10 +79,38 @@ export class CustomersController {
 
   static async deleteCustomer(req: Request, res: Response, next: NextFunction) {
     try {
-      await CustomersService.deleteCustomer(req.params.id);
+      await CustomersService.deleteCustomer(req.params.id as string);
       res.status(200).json({
         success: true,
         data: { message: 'Customer successfully deleted' },
+        meta: { timestamp: new Date().toISOString() }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getCustomerTransactions(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { TransactionsService } = require('../services/transactions.service');
+      const transactions = await TransactionsService.getCustomerTransactionsWithBalance(req.params.id as string);
+      res.status(200).json({
+        success: true,
+        data: transactions,
+        meta: { timestamp: new Date().toISOString() }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getCustomerBalance(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { TransactionsService } = require('../services/transactions.service');
+      const balance = await TransactionsService.getCustomerBalance(req.params.id as string);
+      res.status(200).json({
+        success: true,
+        data: { balance },
         meta: { timestamp: new Date().toISOString() }
       });
     } catch (error) {

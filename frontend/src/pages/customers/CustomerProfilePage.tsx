@@ -5,6 +5,9 @@ import { useCustomer, useUpdateCustomer, useDeleteCustomer } from '../../feature
 import { Modal } from '../../components/ui/Modal';
 import { CustomerForm } from '../../features/customers/components/CustomerForm';
 import { CustomerDeleteModal } from '../../features/customers/components/CustomerDeleteModal';
+import { TransactionList } from '../../features/transactions/components/TransactionList';
+import { TransactionForm } from '../../features/transactions/components/TransactionForm';
+import { CustomerBalanceCell } from './components/CustomerBalanceCell';
 
 export const CustomerProfilePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -13,6 +16,9 @@ export const CustomerProfilePage: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'info' | 'transactions'>('info');
+  const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
+  const [transactionModalType, setTransactionModalType] = useState<'SALE' | 'PAYMENT' | undefined>(undefined);
+  const [transactionParentId, setTransactionParentId] = useState<string | undefined>(undefined);
 
   const { data: customer, isLoading, isError } = useCustomer(id || '');
   const updateCustomer = useUpdateCustomer();
@@ -68,7 +74,10 @@ export const CustomerProfilePage: React.FC = () => {
               <UserIcon className="w-8 h-8" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-slate-900">{customer.name}</h2>
+              <div className="flex items-center gap-3">
+                <h2 className="text-2xl font-bold text-slate-900">{customer.name}</h2>
+                <CustomerBalanceCell customerId={customer.id} />
+              </div>
               <div className="flex items-center text-slate-500 mt-1 space-x-4 text-sm">
                 <span className="flex items-center"><Phone className="w-4 h-4 mr-1.5" /> {customer.phone}</span>
                 {customer.address && <span className="flex items-center"><MapPin className="w-4 h-4 mr-1.5" /> {customer.address}</span>}
@@ -76,7 +85,27 @@ export const CustomerProfilePage: React.FC = () => {
             </div>
           </div>
           
-          <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto mt-4 sm:mt-0">
+            <button
+              onClick={() => {
+                setTransactionModalType('SALE');
+                setTransactionParentId(undefined);
+                setIsTransactionModalOpen(true);
+              }}
+              className="flex-1 sm:flex-none inline-flex items-center justify-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors focus:ring-2 focus:ring-red-500/20 font-medium"
+            >
+              Add Debt
+            </button>
+            <button
+              onClick={() => {
+                setTransactionModalType('PAYMENT');
+                setTransactionParentId(undefined);
+                setIsTransactionModalOpen(true);
+              }}
+              className="flex-1 sm:flex-none inline-flex items-center justify-center px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors focus:ring-2 focus:ring-emerald-500/20 font-medium"
+            >
+              Receive Payment
+            </button>
             <button 
               onClick={() => setIsEditModalOpen(true)}
               className="flex-1 sm:flex-none inline-flex items-center justify-center px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors focus:ring-2 focus:ring-emerald-500/20 font-medium"
@@ -168,10 +197,14 @@ export const CustomerProfilePage: React.FC = () => {
         )}
 
         {activeTab === 'transactions' && (
-          <div className="text-center py-12">
-            <h3 className="text-lg font-medium text-slate-900 mb-2">Transactions</h3>
-            <p className="text-slate-500">The ledger system will be implemented in Phase 4.</p>
-          </div>
+          <TransactionList 
+            customerId={customer.id} 
+            onPayDebt={(parentId) => {
+              setTransactionModalType('PAYMENT');
+              setTransactionParentId(parentId);
+              setIsTransactionModalOpen(true);
+            }}
+          />
         )}
       </div>
 
@@ -182,6 +215,16 @@ export const CustomerProfilePage: React.FC = () => {
           onSubmit={handleEdit}
           onCancel={() => setIsEditModalOpen(false)}
           isSubmitting={updateCustomer.isPending}
+        />
+      </Modal>
+
+      <Modal isOpen={isTransactionModalOpen} onClose={() => setIsTransactionModalOpen(false)} title={transactionModalType === 'SALE' ? 'Add Debt' : transactionModalType === 'PAYMENT' ? 'Receive Payment' : 'Record Transaction'}>
+        <TransactionForm
+          customerId={customer.id}
+          defaultType={transactionModalType}
+          parentId={transactionParentId}
+          onSuccess={() => setIsTransactionModalOpen(false)}
+          onCancel={() => setIsTransactionModalOpen(false)}
         />
       </Modal>
 

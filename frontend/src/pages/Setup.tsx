@@ -77,7 +77,7 @@ export const Setup: React.FC = () => {
             </div>
             <h1 className="text-3xl font-bold text-white tracking-tight">System Setup</h1>
             <p className="text-slate-400 mt-2 text-sm leading-relaxed">
-              Welcome to Home Connect. Please create the master administrator account to initialize the system.
+              Welcome to Home Connects. Please create the master administrator account to initialize the system.
             </p>
           </div>
 

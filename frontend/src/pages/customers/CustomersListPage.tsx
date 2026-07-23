@@ -7,6 +7,7 @@ import { Pagination } from '../../components/ui/Pagination';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Modal } from '../../components/ui/Modal';
 import { CustomerForm } from '../../features/customers/components/CustomerForm';
+import { CustomerBalanceCell } from './components/CustomerBalanceCell';
 
 export const CustomersListPage: React.FC = () => {
   const navigate = useNavigate();
@@ -53,6 +54,10 @@ export const CustomersListPage: React.FC = () => {
           {customer.isActive ? 'Active' : 'Inactive'}
         </span>
       )
+    },
+    {
+      header: 'Balance',
+      accessor: (customer: any) => <CustomerBalanceCell customerId={customer.id} />
     }
   ];
 

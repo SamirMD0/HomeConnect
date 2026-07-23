@@ -1,13 +1,13 @@
 import { Router } from 'express';
 import { CustomersController } from '../controllers/customers.controller';
-import { authenticate } from '../middleware/auth.middleware';
+import { requireAuth } from '../middleware/auth.middleware';
 import { validate } from '../middleware/validate.middleware';
 import { createCustomerSchema, updateCustomerSchema, customerQuerySchema } from '../validators/customers.validator';
 
 const router = Router();
 
 // All customer routes require authentication
-router.use(authenticate);
+router.use(requireAuth);
 
 // List customers
 router.get('/', validate(customerQuerySchema, 'query'), CustomersController.listCustomers);
@@ -20,6 +20,12 @@ router.post('/', validate(createCustomerSchema), CustomersController.createCusto
 
 // Get customer by ID
 router.get('/:id', CustomersController.getCustomer);
+
+// Get customer transactions
+router.get('/:id/transactions', CustomersController.getCustomerTransactions);
+
+// Get customer balance
+router.get('/:id/balance', CustomersController.getCustomerBalance);
 
 // Update customer
 router.put('/:id', validate(updateCustomerSchema), CustomersController.updateCustomer);
