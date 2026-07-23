@@ -21,13 +21,12 @@
     "noFallthroughCasesInSwitch": true,
 
     /* Path Aliases */
-    "baseUrl": ".",
     "paths": {
-      "@renderer/*": ["src/renderer/*"],
-      "@server/*": ["src/server/*"],
-      "@shared/*": ["src/shared/*"]
+      "@frontend/*": ["./frontend/src/*"],
+      "@backend/*": ["./backend/src/*"],
+      "@desktop/*": ["./desktop/src/*"]
     }
   },
-  "include": ["src/renderer"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "include": ["frontend/src"],
+  "references": [{ "path": "./tsconfig.server.json" }, { "path": "./tsconfig.node.json" }]
 }

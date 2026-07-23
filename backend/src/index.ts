@@ -1,3 +1,7 @@
+import dotenv from 'dotenv';
+import path from 'path';
+dotenv.config({ path: path.resolve(__dirname, '../../backend/.env') });
+
 import { app } from './app';
 import { logger } from './lib/logger';
 

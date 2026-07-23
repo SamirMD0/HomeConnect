@@ -1,19 +1,19 @@
 {
   "compilerOptions": {
+    "composite": true,
     "target": "ES2022",
-    "module": "CommonJS",
-    "moduleResolution": "node",
+    "module": "Node16",
+    "moduleResolution": "Node16",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "outDir": "./dist/server",
     "rootDir": ".",
-    "baseUrl": ".",
     "paths": {
-      "@server/*": ["src/server/*"],
-      "@shared/*": ["src/shared/*"]
+      "@backend/*": ["./backend/src/*"],
+      "@desktop/*": ["./desktop/src/*"]
     }
   },
-  "include": ["src/server", "src/main"]
+  "include": ["backend/src", "desktop/src"]
 }
