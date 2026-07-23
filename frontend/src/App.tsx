@@ -1,10 +1,14 @@
 import React from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { DashboardLayout } from './layouts/DashboardLayout';
 import { Login } from './pages/Login';
 import { Setup } from './pages/Setup';
+import { CustomersListPage } from './pages/customers/CustomersListPage';
+import { CustomerProfilePage } from './pages/customers/CustomerProfilePage';
 
 // Temporary placeholder for dashboard content
 const DashboardHome = () => (
@@ -14,10 +18,14 @@ const DashboardHome = () => (
   </div>
 );
 
+const queryClient = new QueryClient();
+
 const App: React.FC = () => {
   return (
-    <Router>
-      <AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <Toaster position="top-right" />
+      <Router>
+        <AuthProvider>
         <Routes>
           {/* Public/Auth Routes */}
           <Route path="/login" element={<Login />} />
@@ -33,14 +41,17 @@ const App: React.FC = () => {
             }
           >
             <Route index element={<DashboardHome />} />
-            {/* We will add /customers, /reports, etc. here later */}
+            <Route path="customers" element={<CustomersListPage />} />
+            <Route path="customers/:id" element={<CustomerProfilePage />} />
+            {/* We will add /reports, etc. here later */}
           </Route>
           
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-      </AuthProvider>
-    </Router>
+        </AuthProvider>
+      </Router>
+    </QueryClientProvider>
   );
 };
 

@@ -8,6 +8,7 @@ import { requestLogger } from './middleware/logger.middleware';
 import { prisma } from './lib/prisma';
 import { authRoutes } from './routes/auth.routes';
 import { usersRoutes } from './routes/users.routes';
+import customersRoutes from './routes/customers.routes';
 
 export const app = express();
 
@@ -47,6 +48,7 @@ app.get('/api/v1/health', async (_req, res, next) => {
 // API Routes
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', usersRoutes);
+app.use('/api/v1/customers', customersRoutes);
 
 // Global Error Handler
 app.use(errorHandler);
