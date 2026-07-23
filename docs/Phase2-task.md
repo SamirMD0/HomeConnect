@@ -130,25 +130,25 @@
 ---
 
 ## Task 10: Integration Testing & Git
-- [ ] Test first-run setup creates admin account
-- [ ] Test login returns valid JWT tokens
-- [ ] Test invalid credentials return 401
-- [ ] Test expired tokens are rejected
-- [ ] Test token refresh works correctly
-- [ ] Test role middleware blocks unauthorized access
-- [ ] Test password change works
-- [ ] Test account lockout after 5 failed attempts
-- [ ] Test protected routes redirect to login when unauthenticated
-- [ ] Test bcrypt hashing works (verify password on login)
-- [ ] Git commit on `feature/phase-2-auth` branch
-- [ ] Merge into `develop`
+- [x] Test first-run setup creates admin account
+- [x] Test login returns valid JWT tokens
+- [x] Test invalid credentials return 401
+- [x] Test expired tokens are rejected
+- [x] Test token refresh works correctly
+- [x] Test role middleware blocks unauthorized access
+- [x] Test password change works
+- [x] Test account lockout after 5 failed attempts
+- [x] Test protected routes redirect to login when unauthenticated
+- [x] Test bcrypt hashing works (verify password on login)
+- [x] Git commit on `feature/phase-2-auth` branch
+- [x] Merge into `develop`
 
 ---
 
 ## Verification (Phase 2 Complete When)
-- [ ] User can create admin account on first launch
-- [ ] User can log in and access protected routes
-- [ ] JWT tokens are issued and refreshed correctly
-- [ ] Role-based access control works (admin vs. employee)
-- [ ] All auth-related errors are handled gracefully
-- [ ] `npm run dev` runs frontend + backend with auth working end-to-end
+- [x] User can create admin account on first launch
+- [x] User can log in and access protected routes
+- [x] JWT tokens are issued and refreshed correctly
+- [x] Role-based access control works (admin vs. employee)
+- [x] All auth-related errors are handled gracefully
+- [x] `npm run dev` runs frontend + backend with auth working end-to-end
