@@ -46,10 +46,11 @@ export const Login: React.FC = () => {
         navigate('/');
       }
     } catch (err: any) {
-      if (err.response?.data?.message) {
-        setErrorMsg(err.response.data.message);
+      const apiError = err.response?.data?.error?.message || err.response?.data?.message;
+      if (apiError) {
+        setErrorMsg(apiError);
       } else {
-        setErrorMsg('An unexpected error occurred. Please try again.');
+        setErrorMsg('Invalid username or password. Please try again.');
       }
     }
   };

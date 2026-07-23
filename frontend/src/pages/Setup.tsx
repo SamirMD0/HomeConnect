@@ -49,8 +49,9 @@ export const Setup: React.FC = () => {
         navigate('/');
       }
     } catch (err: any) {
-      if (err.response?.data?.message) {
-        setErrorMsg(err.response.data.message);
+      const apiError = err.response?.data?.error?.message || err.response?.data?.message;
+      if (apiError) {
+        setErrorMsg(apiError);
       } else {
         setErrorMsg('An unexpected error occurred during setup. Please try again.');
       }
