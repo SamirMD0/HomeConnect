@@ -1,0 +1,240 @@
+export type DebtStatus = 'UNPAID' | 'PARTIALLY_PAID' | 'OVERDUE' | 'PAID' | 'CANCELLED';
+export type InstallmentPlanStatus = 'ACTIVE' | 'OVERDUE' | 'COMPLETED' | 'CANCELLED';
+export type InstallmentStatus = 'PENDING' | 'PARTIALLY_PAID' | 'OVERDUE' | 'PAID' | 'CANCELLED';
+export type PaymentMethod = 'CASH' | 'CARD' | 'BANK_TRANSFER' | 'CHECK' | 'OTHER';
+export type FinancialItemType = 'DEBT' | 'INSTALLMENT';
+export type PaymentAllocationTargetType = FinancialItemType | 'UNKNOWN';
+
+export interface ApiEnvelope<T> {
+  success: boolean;
+  data: T;
+  meta?: {
+    timestamp?: string;
+  };
+}
+
+export type CustomerFinancialSummaryResponse = ApiEnvelope<CustomerFinancialSummary>;
+
+export interface CustomerFinancialSummary {
+  customer: FinancialSummaryCustomer;
+  summary: FinancialSummaryTotals;
+  debts: DebtSummaryItem[];
+  installmentPlans: InstallmentPlanSummaryItem[];
+  overdueItems: OverdueFinancialItem[];
+  nextDue: NextDueSummary | null;
+  recentPayments: RecentFinancialPayment[];
+}
+
+export interface FinancialSummaryCustomer {
+  id: string;
+  name: string;
+  phone: string;
+  address: string | null;
+  notes: string | null;
+  isActive: boolean;
+}
+
+export interface FinancialSummaryTotals {
+  totalOutstanding: string;
+  singleDebtOutstanding: string;
+  installmentPlanOutstanding: string;
+  totalPaid: string;
+  activeDebtCount: number;
+  activePlanCount: number;
+  overdueDebtCount: number;
+  overdueInstallmentCount: number;
+  nextDueDate: string | null;
+  nextDueAmount: string;
+}
+
+export interface FinancialUserSummary {
+  id: string;
+  name: string;
+  username: string;
+}
+
+export interface FinancialCancellationSummary {
+  cancelledAt: string;
+  reason: string | null;
+  cancelledBy: FinancialUserSummary | null;
+}
+
+export interface DebtSummaryItem {
+  id: string;
+  description: string;
+  originalAmount: string;
+  totalPaid: string;
+  remainingBalance: string;
+  dueDate: string;
+  status: DebtStatus;
+  calculatedStatus: DebtStatus;
+  storedStatus: DebtStatus;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: FinancialUserSummary;
+  cancellation: FinancialCancellationSummary | null;
+}
+
+export interface InstallmentPlanSummaryItem {
+  id: string;
+  description: string;
+  totalAmount: string;
+  totalPaid: string;
+  remainingBalance: string;
+  startDate: string;
+  installmentCount: number;
+  frequency: 'MONTHLY';
+  completedInstallmentCount: number;
+  overdueInstallmentCount: number;
+  nextDueDate: string | null;
+  status: InstallmentPlanStatus;
+  calculatedStatus: InstallmentPlanStatus;
+  storedStatus: InstallmentPlanStatus;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: FinancialUserSummary;
+  cancellation: FinancialCancellationSummary | null;
+  scheduleSummary: {
+    totalInstallments: number;
+    completedInstallments: number;
+    remainingInstallments: number;
+    nextInstallment: {
+      id: string;
+      installmentNumber: number;
+      dueDate: string;
+      remainingAmount: string;
+      status: InstallmentStatus;
+    } | null;
+  };
+}
+
+export interface OverdueFinancialItem {
+  type: FinancialItemType;
+  obligationId: string;
+  planId: string | null;
+  description: string;
+  dueDate: string;
+  originalDueAmount: string;
+  paidAmount: string;
+  remainingAmount: string;
+  daysOverdue: number;
+  calculatedStatus: DebtStatus | InstallmentStatus;
+}
+
+export interface NextDueSummary {
+  date: string;
+  totalAmount: string;
+  items: Array<{
+    type: FinancialItemType;
+    id: string;
+    planId: string | null;
+    description: string;
+    remainingAmount: string;
+  }>;
+}
+
+export interface RecentFinancialPayment {
+  id: string;
+  totalAmount: string;
+  paymentDate: string;
+  paymentMethod: PaymentMethod;
+  reference: string | null;
+  notes: string | null;
+  idempotencyKey: string | null;
+  createdAt: string;
+  createdBy: FinancialUserSummary;
+  voidedAt: string | null;
+  voidReason: string | null;
+  voidedBy: FinancialUserSummary | null;
+  allocations: PaymentAllocationSummary[];
+}
+
+export interface PaymentAllocationSummary {
+  id: string;
+  targetType: PaymentAllocationTargetType;
+  debtId: string | null;
+  installmentId: string | null;
+  planId: string | null;
+  description: string | null;
+  amount: string;
+  createdAt: string;
+}
+
+export interface CustomerFinancialSummaryOptions {
+  includeCancelled?: boolean;
+  includePayments?: boolean;
+  paymentLimit?: number;
+  debtLimit?: number;
+  planLimit?: number;
+}
+
+export interface DebtDetail extends DebtSummaryItem {
+  customer: {
+    id: string;
+    name: string;
+    phone: string;
+  };
+  payments: RecentFinancialPayment[];
+}
+
+export interface InstallmentDetail {
+  id: string;
+  installmentNumber: number;
+  dueDate: string;
+  amountDue: string;
+  totalPaid: string;
+  remainingAmount: string;
+  status: InstallmentStatus;
+  storedStatus: InstallmentStatus;
+  paidDate: string | null;
+}
+
+export interface InstallmentPlanDetail extends Omit<InstallmentPlanSummaryItem, 'scheduleSummary'> {
+  customer: {
+    id: string;
+    name: string;
+    phone: string;
+  };
+  schedule: InstallmentDetail[];
+  payments: RecentFinancialPayment[];
+}
+
+export interface CreateDebtRequest {
+  amount: string;
+  description: string;
+  dueDate: string;
+  notes?: string | null;
+}
+
+export interface RecordDebtPaymentRequest {
+  amount: string;
+  paymentDate: string;
+  paymentMethod: PaymentMethod;
+  reference?: string | null;
+  notes?: string | null;
+  idempotencyKey: string;
+}
+
+export interface CancelFinancialRecordRequest {
+  reason: string;
+}
+
+export interface CreateInstallmentPlanRequest {
+  totalAmount: string;
+  description: string;
+  startDate: string;
+  installmentCount: number;
+  frequency: 'MONTHLY';
+  notes?: string | null;
+}
+
+export interface RecordInstallmentPlanPaymentRequest {
+  amount: string;
+  paymentDate: string;
+  paymentMethod: PaymentMethod;
+  reference?: string | null;
+  notes?: string | null;
+  idempotencyKey: string;
+}

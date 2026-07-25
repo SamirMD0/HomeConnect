@@ -1,4 +1,4 @@
-export type TransactionType = 'SALE' | 'PAYMENT' | 'ADJUSTMENT';
+export type TransactionType = 'ONE_TIME' | 'INSTALLMENT' | 'PAYMENT' | 'ADJUSTMENT';
 
 export interface Transaction {
   id: string;
@@ -25,6 +25,7 @@ export interface Transaction {
     fullName: string;
     username: string;
   };
+  payments?: Transaction[];
 }
 
 export interface CreateTransactionDto {
@@ -38,6 +39,7 @@ export interface CreateTransactionDto {
   dueDate?: string | null;
   referenceNumber?: string;
   metadata?: Record<string, any>;
+  parentId?: string;
 }
 
 export interface UpdateTransactionDto {

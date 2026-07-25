@@ -9,6 +9,9 @@ release/
 .env.production.local
 logs/
 backups/
+.tmp-asar-check/
+crash.log
+db-test.js
 prisma/*.db
 prisma/*.db-journal
 .vscode/

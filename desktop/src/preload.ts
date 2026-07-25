@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  // Define IPC methods here as needed
   ping: () => ipcRenderer.invoke('ping'),
+  openLogsFolder: () => ipcRenderer.invoke('diagnostics:openLogsFolder'),
+  copyDiagnostics: (data: string) => ipcRenderer.invoke('diagnostics:copyDiagnostics', data),
 });

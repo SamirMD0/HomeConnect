@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { TransactionsService } from '../services/transactions.service';
+import { TransactionParamsInput } from '../validators/transactions.validator';
 
 export class TransactionsController {
   static async createTransaction(req: Request, res: Response, next: NextFunction) {
@@ -44,9 +45,9 @@ export class TransactionsController {
     }
   }
 
-  static async getTransaction(req: Request, res: Response, next: NextFunction) {
+  static async getTransaction(req: Request<TransactionParamsInput>, res: Response, next: NextFunction) {
     try {
-      const transaction = await TransactionsService.getTransaction(req.params.id as string);
+      const transaction = await TransactionsService.getTransaction(req.params.id);
       if (!transaction) {
         res.status(404).json({ success: false, error: { message: 'Transaction not found' } });
         return;
@@ -61,7 +62,7 @@ export class TransactionsController {
     }
   }
 
-  static async updateTransaction(req: Request, res: Response, next: NextFunction) {
+  static async updateTransaction(req: Request<TransactionParamsInput>, res: Response, next: NextFunction) {
     try {
       const transaction = await TransactionsService.updateTransaction(
         req.params.id,
@@ -79,7 +80,7 @@ export class TransactionsController {
     }
   }
 
-  static async deleteTransaction(req: Request, res: Response, next: NextFunction) {
+  static async deleteTransaction(req: Request<TransactionParamsInput>, res: Response, next: NextFunction) {
     try {
       await TransactionsService.deleteTransaction(
         req.params.id,

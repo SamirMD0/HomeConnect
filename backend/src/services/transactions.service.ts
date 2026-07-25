@@ -1,7 +1,7 @@
+import { randomUUID } from 'crypto';
 import { TransactionsRepository } from '../repositories/transactions.repository';
 import { CreateTransactionInput, TransactionQueryInput, UpdateTransactionInput } from '../validators/transactions.validator';
 import { ValidationError, AuthorizationError, NotFoundError } from '../lib/errors';
-import { User, Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 
 export class TransactionsService {
@@ -31,13 +31,13 @@ export class TransactionsService {
       customerId = newCustomer.id;
     }
 
-    const transactionId = require('crypto').randomUUID();
+    const transactionId = randomUUID();
 
     const transaction = await TransactionsRepository.create(
       {
         id: transactionId,
         customerId: customerId as string,
-        type: data.type,
+        type: data.type as any,
         amount: data.amount,
         description: data.description,
         date: data.date ? new Date(data.date) : undefined,
@@ -56,6 +56,45 @@ export class TransactionsService {
         ipAddress,
       }
     );
+
+    if (data.type === 'INSTALLMENT' && !data.parentId) {
+      const installmentAmount = Number((data.amount / 6).toFixed(2));
+      let remainingAmount = data.amount;
+      
+      const startDate = data.date ? new Date(data.date) : new Date();
+
+      for (let i = 1; i <= 6; i++) {
+        const dueDate = new Date(startDate);
+        dueDate.setMonth(startDate.getMonth() + i);
+        
+        // Handle rounding for the last installment
+        const currentAmount = i === 6 ? remainingAmount : installmentAmount;
+        remainingAmount = Number((remainingAmount - currentAmount).toFixed(2));
+
+        const childId = randomUUID();
+        await TransactionsRepository.create(
+          {
+            id: childId,
+            customerId: customerId as string,
+            type: 'INSTALLMENT',
+            amount: currentAmount,
+            description: `${data.description} (Month ${i}/6)`,
+            date: startDate,
+            dueDate: dueDate,
+            createdBy: user.userId,
+            parentId: transactionId,
+          },
+          {
+            userId: user.userId,
+            action: `TRANSACTION_CREATED`,
+            entityType: 'transaction',
+            entityId: childId,
+            details: { type: 'INSTALLMENT', amount: currentAmount, description: `Installment ${i}/6` },
+            ipAddress,
+          }
+        );
+      }
+    }
 
     return transaction;
   }
@@ -106,7 +145,7 @@ export class TransactionsService {
 
   static async listTransactions(query: TransactionQueryInput) {
     const pageNum = Number(query.page) || 1;
-    const limitNum = Number(query.limit) || 15;
+    const limitNum = Number(query.limit); // Controller sets default
     
     return TransactionsRepository.findAll({
       skip: (pageNum - 1) * limitNum,
@@ -128,9 +167,15 @@ export class TransactionsService {
     let runningBalance = 0;
     const withRunningBalance = transactions.map((t: any) => {
       const amount = Number(t.amount);
-      if (t.type === 'SALE') runningBalance += amount;
+      if (t.type === 'ONE_TIME' || t.type === 'INSTALLMENT') runningBalance += amount;
       else if (t.type === 'PAYMENT') runningBalance -= amount;
       else if (t.type === 'ADJUSTMENT') runningBalance += amount;
+      
+      // Subtract child payments
+      if (t.payments && t.payments.length > 0) {
+        const childPaymentsSum = t.payments.reduce((sum: number, p: any) => sum + Number(p.amount), 0);
+        runningBalance -= childPaymentsSum;
+      }
       
       return {
         ...t,

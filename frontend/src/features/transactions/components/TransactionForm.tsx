@@ -6,7 +6,7 @@ import { useCreateTransaction } from '../hooks/useTransactions';
 import { useAuth } from '../../../hooks/useAuth';
 
 const transactionSchema = z.object({
-  type: z.enum(['SALE', 'PAYMENT', 'ADJUSTMENT']),
+  type: z.enum(['ONE_TIME', 'INSTALLMENT', 'PAYMENT', 'ADJUSTMENT']),
   amount: z.number().positive('Amount must be positive'),
   description: z.string().min(1, 'Description is required'),
   date: z.string().optional().nullable(),
@@ -16,7 +16,7 @@ type TransactionFormData = z.infer<typeof transactionSchema>;
 
 interface TransactionFormProps {
   customerId: string;
-  defaultType?: 'SALE' | 'PAYMENT' | 'ADJUSTMENT';
+  defaultType?: 'ONE_TIME' | 'INSTALLMENT' | 'PAYMENT' | 'ADJUSTMENT';
   parentId?: string;
   onSuccess: () => void;
   onCancel: () => void;
@@ -35,9 +35,10 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ customerId, de
   } = useForm<TransactionFormData>({
     resolver: zodResolver(transactionSchema),
     defaultValues: {
-      type: defaultType || 'SALE',
+      type: defaultType || 'ONE_TIME',
       amount: undefined,
       description: '',
+      date: new Date().toISOString().split('T')[0],
     },
   });
 
@@ -72,7 +73,8 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ customerId, de
               {...register('type')}
               className="block w-full rounded-md border-0 py-1.5 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
             >
-              <option value="SALE">Sale (Increase Debt)</option>
+              <option value="ONE_TIME">One-Time Debt (Increase Debt)</option>
+              <option value="INSTALLMENT">6-Month Installment (Increase Debt)</option>
               <option value="PAYMENT">Payment (Decrease Debt)</option>
               {isAdmin && <option value="ADJUSTMENT">Adjustment (Admin Only)</option>}
             </select>
@@ -112,7 +114,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ customerId, de
             {...register('description')}
             className="block w-full rounded-md border-0 py-1.5 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
             placeholder={
-              selectedType === 'SALE' ? 'e.g., Cement and tools' :
+              selectedType === 'ONE_TIME' || selectedType === 'INSTALLMENT' ? 'e.g., Cement and tools' :
               selectedType === 'PAYMENT' ? 'e.g., Cash payment' :
               'e.g., Correction for previous error'
             }

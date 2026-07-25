@@ -8,6 +8,7 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, DollarSign, FileText } from 'lucide-react';
 
 const debtSchema = z.object({
+  type: z.enum(['ONE_TIME', 'INSTALLMENT']),
   amount: z.number().positive('Amount must be positive'),
   description: z.string().min(1, 'Description is required'),
 });
@@ -27,14 +28,18 @@ export const DebtForm: React.FC<DebtFormProps> = ({ customer, onSuccess, onBack 
     register,
     handleSubmit,
     setFocus,
+    watch,
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(debtSchema),
     defaultValues: {
+      type: 'ONE_TIME',
       amount: undefined,
       description: '',
     },
   });
+
+  const selectedType = watch('type');
 
   useEffect(() => {
     setFocus('amount');
@@ -44,7 +49,7 @@ export const DebtForm: React.FC<DebtFormProps> = ({ customer, onSuccess, onBack 
     createTransaction.mutate(
       {
         customerId: customer.id,
-        type: 'SALE', // Recording debt = SALE
+        type: data.type,
         amount: data.amount,
         description: data.description,
       },
@@ -89,6 +94,25 @@ export const DebtForm: React.FC<DebtFormProps> = ({ customer, onSuccess, onBack 
 
       <div className="flex-1 overflow-y-auto p-6">
         <form id="debt-form" onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">Debt Type</label>
+            <div className="flex gap-4">
+              <label className={`flex-1 flex flex-col items-center justify-center p-3 rounded-xl border-2 cursor-pointer transition-colors ${selectedType === 'ONE_TIME' ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-slate-200 hover:border-indigo-200 text-slate-600'}`}>
+                <input type="radio" value="ONE_TIME" {...register('type')} className="sr-only" />
+                <span className="font-semibold text-sm">One-Time Debt</span>
+              </label>
+              <label className={`flex-1 flex flex-col items-center justify-center p-3 rounded-xl border-2 cursor-pointer transition-colors ${selectedType === 'INSTALLMENT' ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-slate-200 hover:border-indigo-200 text-slate-600'}`}>
+                <input type="radio" value="INSTALLMENT" {...register('type')} className="sr-only" />
+                <span className="font-semibold text-sm text-center">6-Month Installment</span>
+              </label>
+            </div>
+            {selectedType === 'INSTALLMENT' && (
+              <p className="mt-2 text-xs text-indigo-600 font-medium">
+                This will automatically create 6 scheduled monthly payments.
+              </p>
+            )}
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Debt Amount *</label>
             <div className="relative">

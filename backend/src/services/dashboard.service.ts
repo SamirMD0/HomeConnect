@@ -8,16 +8,16 @@ export class DashboardService {
     });
 
     // Customers with debt and Total Debt using raw SQL
-    // Balance = SUM(SALE) - SUM(PAYMENT) + SUM(ADJUSTMENT)
+    // Balance = SUM(ONE_TIME) + SUM(INSTALLMENT) - SUM(PAYMENT) + SUM(ADJUSTMENT)
     const debtStats: any[] = await prisma.$queryRaw`
       WITH CustomerBalances AS (
         SELECT
           "customerId",
-          COALESCE(SUM(CASE WHEN type = 'SALE' THEN amount ELSE 0 END), 0) -
+          COALESCE(SUM(CASE WHEN type IN ('ONE_TIME', 'INSTALLMENT') THEN amount ELSE 0 END), 0) -
           COALESCE(SUM(CASE WHEN type = 'PAYMENT' THEN amount ELSE 0 END), 0) +
           COALESCE(SUM(CASE WHEN type = 'ADJUSTMENT' THEN amount ELSE 0 END), 0) AS balance
         FROM transactions
-        WHERE "deletedAt" IS NULL
+        WHERE "deletedAt" IS NULL AND "parentId" IS NULL
         GROUP BY "customerId"
       )
       SELECT
@@ -32,18 +32,18 @@ export class DashboardService {
 
     // Payments and Sales today/month
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    today.setUTCHours(0, 0, 0, 0);
     
-    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const startOfMonth = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
 
     const periodStats: any[] = await prisma.$queryRaw`
       SELECT
         COALESCE(SUM(CASE WHEN type = 'PAYMENT' AND date >= ${today} THEN amount ELSE 0 END), 0)::numeric as payments_today,
         COALESCE(SUM(CASE WHEN type = 'PAYMENT' AND date >= ${startOfMonth} THEN amount ELSE 0 END), 0)::numeric as payments_month,
-        COALESCE(SUM(CASE WHEN type = 'SALE' AND date >= ${today} THEN amount ELSE 0 END), 0)::numeric as sales_today,
-        COALESCE(SUM(CASE WHEN type = 'SALE' AND date >= ${startOfMonth} THEN amount ELSE 0 END), 0)::numeric as sales_month
+        COALESCE(SUM(CASE WHEN type IN ('ONE_TIME', 'INSTALLMENT') AND date >= ${today} THEN amount ELSE 0 END), 0)::numeric as sales_today,
+        COALESCE(SUM(CASE WHEN type IN ('ONE_TIME', 'INSTALLMENT') AND date >= ${startOfMonth} THEN amount ELSE 0 END), 0)::numeric as sales_month
       FROM transactions
-      WHERE "deletedAt" IS NULL
+      WHERE "deletedAt" IS NULL AND "parentId" IS NULL
     `;
 
     return {

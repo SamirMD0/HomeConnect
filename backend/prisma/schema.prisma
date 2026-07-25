@@ -16,9 +16,50 @@ enum Role {
 }
 
 enum TransactionType {
-  SALE
+  ONE_TIME
+  INSTALLMENT
   PAYMENT
   ADJUSTMENT
+}
+
+enum TransactionStatus {
+  PENDING
+  PARTIAL
+  PAID
+}
+
+enum DebtStatus {
+  UNPAID
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum InstallmentPlanFrequency {
+  MONTHLY
+}
+
+enum InstallmentPlanStatus {
+  ACTIVE
+  COMPLETED
+  OVERDUE
+  CANCELLED
+}
+
+enum InstallmentStatus {
+  PENDING
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  BANK_TRANSFER
+  OTHER
 }
 
 model User {
@@ -35,8 +76,14 @@ model User {
   deletedAt           DateTime?
   branchId            String?   @db.Uuid
 
-  transactions        Transaction[]
-  activityLogs        ActivityLog[]
+  transactions              Transaction[]
+  activityLogs              ActivityLog[]
+  debtsCreated              Debt[]            @relation("DebtCreatedBy")
+  debtsCancelled            Debt[]            @relation("DebtCancelledBy")
+  installmentPlansCreated   InstallmentPlan[] @relation("InstallmentPlanCreatedBy")
+  installmentPlansCancelled InstallmentPlan[] @relation("InstallmentPlanCancelledBy")
+  paymentsCreated           Payment[]         @relation("PaymentCreatedBy")
+  paymentsVoided            Payment[]         @relation("PaymentVoidedBy")
 
   @@map("users")
 }
@@ -54,7 +101,10 @@ model Customer {
   createdBy String    @db.Uuid
   branchId  String?   @db.Uuid
 
-  transactions Transaction[]
+  transactions     Transaction[]
+  debts            Debt[]
+  installmentPlans InstallmentPlan[]
+  payments         Payment[]
 
   @@index([name])
   @@index([phone])
@@ -63,25 +113,26 @@ model Customer {
 }
 
 model Transaction {
-  id              String          @id @default(uuid()) @db.Uuid
-  customerId      String          @db.Uuid
-  customer        Customer        @relation(fields: [customerId], references: [id])
+  id              String            @id @default(uuid()) @db.Uuid
+  customerId      String            @db.Uuid
+  customer        Customer          @relation(fields: [customerId], references: [id])
   type            TransactionType
-  amount          Decimal         @db.Decimal(12, 2)
+  status          TransactionStatus @default(PENDING)
+  amount          Decimal           @db.Decimal(12, 2)
   description     String
-  date            DateTime        @default(now())
+  date            DateTime          @default(now())
   dueDate         DateTime?
   referenceNumber String?
   metadata        Json?
-  createdBy       String          @db.Uuid
-  user            User            @relation(fields: [createdBy], references: [id])
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @default(now()) @updatedAt
+  createdBy       String            @db.Uuid
+  user            User              @relation(fields: [createdBy], references: [id])
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @default(now()) @updatedAt
   deletedAt       DateTime?
-  branchId        String?         @db.Uuid
-  parentId        String?         @db.Uuid
-  parent          Transaction?    @relation("TransactionToTransaction", fields: [parentId], references: [id])
-  payments        Transaction[]   @relation("TransactionToTransaction")
+  branchId        String?           @db.Uuid
+  parentId        String?           @db.Uuid
+  parent          Transaction?      @relation("TransactionToTransaction", fields: [parentId], references: [id])
+  payments        Transaction[]     @relation("TransactionToTransaction")
 
   @@index([customerId])
   @@index([date])
@@ -92,18 +143,138 @@ model Transaction {
 }
 
 model ActivityLog {
-  id          String    @id @default(uuid()) @db.Uuid
-  userId      String    @db.Uuid
-  user        User      @relation(fields: [userId], references: [id])
-  action      String
-  entityType  String
-  entityId    String    @db.Uuid
-  details     Json
-  ipAddress   String?
-  createdAt   DateTime  @default(now())
-  branchId    String?   @db.Uuid
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @db.Uuid
+  user       User     @relation(fields: [userId], references: [id])
+  action     String
+  entityType String
+  entityId   String   @db.Uuid
+  details    Json
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+  branchId   String?  @db.Uuid
 
   @@index([entityType, entityId])
   @@index([createdAt])
   @@map("activity_logs")
+}
+
+model Debt {
+  id             String     @id @default(uuid()) @db.Uuid
+  customerId     String     @db.Uuid
+  customer       Customer   @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  description    String
+  originalAmount Decimal    @db.Decimal(12, 2)
+  dueDate        DateTime   @db.Date
+  status         DebtStatus @default(UNPAID)
+  notes          String?    @db.Text
+  createdById    String     @db.Uuid
+  createdBy      User       @relation("DebtCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  cancelledAt    DateTime?
+  cancelledById  String?    @db.Uuid
+  cancelledBy    User?      @relation("DebtCancelledBy", fields: [cancelledById], references: [id], onDelete: Restrict)
+  cancelReason   String?    @db.Text
+
+  paymentAllocations PaymentAllocation[]
+
+  @@index([customerId])
+  @@index([dueDate])
+  @@index([status])
+  @@index([customerId, status])
+  @@map("debts")
+}
+
+model InstallmentPlan {
+  id               String                   @id @default(uuid()) @db.Uuid
+  customerId       String                   @db.Uuid
+  customer         Customer                 @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  description      String
+  totalAmount      Decimal                  @db.Decimal(12, 2)
+  startDate        DateTime                 @db.Date
+  installmentCount Int
+  frequency        InstallmentPlanFrequency @default(MONTHLY)
+  status           InstallmentPlanStatus    @default(ACTIVE)
+  notes            String?                  @db.Text
+  createdById      String                   @db.Uuid
+  createdBy        User                     @relation("InstallmentPlanCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
+  cancelledAt      DateTime?
+  cancelledById    String?                  @db.Uuid
+  cancelledBy      User?                    @relation("InstallmentPlanCancelledBy", fields: [cancelledById], references: [id], onDelete: Restrict)
+  cancelReason     String?                  @db.Text
+
+  installments Installment[]
+
+  @@index([customerId])
+  @@index([status])
+  @@index([startDate])
+  @@map("installment_plans")
+}
+
+model Installment {
+  id                String            @id @default(uuid()) @db.Uuid
+  installmentPlanId String            @db.Uuid
+  installmentPlan   InstallmentPlan   @relation(fields: [installmentPlanId], references: [id], onDelete: Restrict)
+  installmentNumber Int
+  dueDate           DateTime          @db.Date
+  amountDue         Decimal           @db.Decimal(12, 2)
+  status            InstallmentStatus @default(PENDING)
+  paidDate          DateTime?         @db.Date
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  paymentAllocations PaymentAllocation[]
+
+  @@unique([installmentPlanId, installmentNumber])
+  @@index([installmentPlanId])
+  @@index([dueDate])
+  @@index([status])
+  @@index([installmentPlanId, status])
+  @@map("installments")
+}
+
+model Payment {
+  id             String        @id @default(uuid()) @db.Uuid
+  customerId     String        @db.Uuid
+  customer       Customer      @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  totalAmount    Decimal       @db.Decimal(12, 2)
+  paymentDate    DateTime      @db.Date
+  paymentMethod  PaymentMethod @default(CASH)
+  reference      String?
+  notes          String?       @db.Text
+  idempotencyKey String?       @unique
+  createdById    String        @db.Uuid
+  createdBy      User          @relation("PaymentCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt      DateTime      @default(now())
+  voidedAt       DateTime?
+  voidedById     String?       @db.Uuid
+  voidedBy       User?         @relation("PaymentVoidedBy", fields: [voidedById], references: [id], onDelete: Restrict)
+  voidReason     String?       @db.Text
+
+  allocations PaymentAllocation[]
+
+  @@index([customerId])
+  @@index([paymentDate])
+  @@index([createdById])
+  @@map("payments")
+}
+
+model PaymentAllocation {
+  id            String       @id @default(uuid()) @db.Uuid
+  paymentId     String       @db.Uuid
+  payment       Payment      @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  debtId        String?      @db.Uuid
+  debt          Debt?        @relation(fields: [debtId], references: [id], onDelete: Restrict)
+  installmentId String?      @db.Uuid
+  installment   Installment? @relation(fields: [installmentId], references: [id], onDelete: Restrict)
+  amount        Decimal      @db.Decimal(12, 2)
+  createdAt     DateTime     @default(now())
+
+  @@index([paymentId])
+  @@index([debtId])
+  @@index([installmentId])
+  @@map("payment_allocations")
 }

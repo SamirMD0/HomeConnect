@@ -32,7 +32,7 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({ logs, isLoading 
     const author = <span className="font-medium text-gray-900">{user.fullName}</span>;
 
     if (action === 'TRANSACTION_CREATED') {
-      const type = details.type === 'SALE' ? 'a sale' : details.type === 'PAYMENT' ? 'a payment' : 'an adjustment';
+      const type = (details.type === 'ONE_TIME' || details.type === 'INSTALLMENT') ? 'a debt' : details.type === 'PAYMENT' ? 'a payment' : 'an adjustment';
       return <>{author} recorded {type} of <span className="font-medium text-gray-900">${Number(details.amount).toFixed(2)}</span></>;
     }
     
@@ -45,7 +45,7 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({ logs, isLoading 
 
   const getActionIcon = (action: string, details: any) => {
     if (action === 'TRANSACTION_CREATED') {
-      if (details.type === 'SALE') {
+      if (details.type === 'ONE_TIME' || details.type === 'INSTALLMENT') {
         return (
           <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-red-600">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { TransactionsController } from '../controllers/transactions.controller';
 import { requireAuth } from '../middleware/auth.middleware';
 import { validate } from '../middleware/validate.middleware';
-import { createTransactionSchema, transactionQuerySchema, updateTransactionSchema } from '../validators/transactions.validator';
+import { createTransactionSchema, transactionParamsSchema, transactionQuerySchema, updateTransactionSchema } from '../validators/transactions.validator';
 
 const router = Router();
 
@@ -16,12 +16,12 @@ router.get('/', validate(transactionQuerySchema, 'query'), TransactionsControlle
 router.post('/', validate(createTransactionSchema), TransactionsController.createTransaction);
 
 // Get transaction by ID
-router.get('/:id', TransactionsController.getTransaction);
+router.get('/:id', validate(transactionParamsSchema, 'params'), TransactionsController.getTransaction);
 
 // Update transaction
-router.put('/:id', validate(updateTransactionSchema), TransactionsController.updateTransaction);
+router.put('/:id', validate(transactionParamsSchema, 'params'), validate(updateTransactionSchema), TransactionsController.updateTransaction);
 
 // Delete transaction
-router.delete('/:id', TransactionsController.deleteTransaction);
+router.delete('/:id', validate(transactionParamsSchema, 'params'), TransactionsController.deleteTransaction);
 
 export default router;

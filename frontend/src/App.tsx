@@ -11,6 +11,9 @@ import { CustomersListPage } from './pages/customers/CustomersListPage';
 import { CustomerProfilePage } from './pages/customers/CustomerProfilePage';
 import { DashboardPage } from './features/dashboard/pages/DashboardPage';
 import { LedgerPage } from './pages/LedgerPage';
+import { ReportsPage } from './pages/ReportsPage';
+import { SettingsPage } from './pages/settings/SettingsPage';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 const queryClient = new QueryClient();
 
@@ -20,30 +23,33 @@ const App: React.FC = () => {
       <Toaster position="top-right" />
       <Router>
         <AuthProvider>
-        <Routes>
-          {/* Public/Auth Routes */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/setup" element={<Setup />} />
+          <Routes>
+            {/* Public/Auth Routes */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/setup" element={<Setup />} />
 
-          {/* Protected Dashboard Routes */}
-          <Route 
-            path="/" 
-            element={
-              <ProtectedRoute>
-                <DashboardLayout />
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<DashboardPage />} />
-            <Route path="customers" element={<CustomersListPage />} />
-            <Route path="customers/:id" element={<CustomerProfilePage />} />
-            <Route path="ledger" element={<LedgerPage />} />
-            {/* We will add /reports, etc. here later */}
-          </Route>
-          
-          {/* Fallback */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+            {/* Protected Dashboard Routes */}
+            <Route 
+              path="/" 
+              element={
+                <ProtectedRoute>
+                  <ErrorBoundary>
+                    <DashboardLayout />
+                  </ErrorBoundary>
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<DashboardPage />} />
+              <Route path="customers" element={<CustomersListPage />} />
+              <Route path="customers/:id" element={<CustomerProfilePage />} />
+              <Route path="ledger" element={<LedgerPage />} />
+              <Route path="reports" element={<ReportsPage />} />
+              <Route path="settings" element={<SettingsPage />} />
+            </Route>
+            
+            {/* Fallback */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
         </AuthProvider>
       </Router>
     </QueryClientProvider>

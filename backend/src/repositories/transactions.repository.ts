@@ -23,7 +23,7 @@ export class TransactionsRepository {
     skip?: number;
     take?: number;
     customerId?: string;
-    type?: 'SALE' | 'PAYMENT' | 'ADJUSTMENT';
+    type?: 'ONE_TIME' | 'INSTALLMENT' | 'PAYMENT' | 'ADJUSTMENT';
     startDate?: Date;
     endDate?: Date;
   }) {
@@ -87,7 +87,8 @@ export class TransactionsRepository {
       },
       where: {
         customerId,
-        deletedAt: null
+        deletedAt: null,
+        parentId: null
       }
     });
 
@@ -95,7 +96,7 @@ export class TransactionsRepository {
 
     for (const agg of aggregations) {
       const amount = Number(agg._sum.amount || 0);
-      if (agg.type === 'SALE') {
+      if (agg.type === 'ONE_TIME' || agg.type === 'INSTALLMENT') {
         balance += amount;
       } else if (agg.type === 'PAYMENT') {
         balance -= amount;
@@ -110,7 +111,7 @@ export class TransactionsRepository {
   static async create(data: {
     id?: string;
     customerId: string;
-    type: 'SALE' | 'PAYMENT' | 'ADJUSTMENT';
+    type: 'ONE_TIME' | 'INSTALLMENT' | 'PAYMENT' | 'ADJUSTMENT';
     amount: number | string;
     description: string;
     date?: Date;
@@ -181,6 +182,11 @@ export class TransactionsRepository {
       const p = tx as any;
       const txRecord = await p.transaction.update({
         where: { id },
+        data: { deletedAt: new Date() }
+      });
+      // Cascade to children
+      await p.transaction.updateMany({
+        where: { parentId: id, deletedAt: null },
         data: { deletedAt: new Date() }
       });
       await p.activityLog.create({ data: activityLogData });

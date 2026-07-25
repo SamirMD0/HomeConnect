@@ -1,0 +1,8 @@
+{
+  "extends": "./tsconfig.server.json",
+  "compilerOptions": {
+    "outDir": "./dist/electron"
+  },
+  "include": ["desktop/src"],
+  "exclude": ["desktop/src/**/*.test.ts", "desktop/scripts/**/*.test.ts"]
+}

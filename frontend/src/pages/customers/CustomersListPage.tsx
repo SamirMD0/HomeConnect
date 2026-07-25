@@ -44,7 +44,7 @@ export const CustomersListPage: React.FC = () => {
   const columns = [
     { header: 'Name', accessor: 'name' as const, className: 'font-medium text-slate-900' },
     { header: 'Phone', accessor: 'phone' as const },
-    { header: 'Added', accessor: (customer: any) => new Date(customer.createdAt).toLocaleDateString() },
+    { header: 'Added', accessor: (customer: any) => new Date(customer.createdAt).toLocaleDateString('en-GB') },
     { 
       header: 'Status', 
       accessor: (customer: any) => (

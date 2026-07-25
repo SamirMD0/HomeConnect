@@ -2,7 +2,7 @@ import axios from 'axios';
 
 
 // Base API URL
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:3001/api/v1';
 
 // Create Axios instance
 export const api = axios.create({
@@ -64,6 +64,44 @@ api.interceptors.response.use(
         window.dispatchEvent(new Event('auth_logout'));
         return Promise.reject(refreshError);
       }
+    }
+
+    // Log the API failure securely before rejecting
+    try {
+      const isExpected401 = error.response?.status === 401 && 
+        (originalRequest.url?.includes('/auth/me') || originalRequest.url?.includes('/auth/login'));
+      const isReportEndpoint = originalRequest.url?.includes('/admin/diagnostics/report-error');
+
+      if (!isExpected401 && !isReportEndpoint && currentAccessToken) {
+        // Use a generic axios instance to avoid infinite interceptor loops if report fails
+        const endpoint = originalRequest.url;
+        const status = error.response?.status;
+        const errorCode = error.response?.data?.error?.code || 'UNKNOWN_API_ERROR';
+        const message = `API Call Failed: ${originalRequest.method?.toUpperCase()} ${endpoint}`;
+
+        const reportData = {
+          route: window.location.pathname + window.location.hash,
+          message: `${message} (Status: ${status})`,
+          stack: `Backend Code: ${errorCode}\nEndpoint: ${endpoint}`,
+          timestamp: new Date().toISOString(),
+          errorCode: 'API_FAILURE'
+        };
+
+        // Attach auth token if available, but bypass main `api` interceptors
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (currentAccessToken) {
+          headers['Authorization'] = `Bearer ${currentAccessToken}`;
+        }
+        
+        axios.post(`${API_URL}/admin/diagnostics/report-error`, reportData, {
+          headers,
+          withCredentials: true
+        }).catch(() => {
+          // Silently ignore report failure to prevent feedback loops
+        });
+      }
+    } catch (e) {
+      // Ignore errors in error reporter
     }
 
     return Promise.reject(error);

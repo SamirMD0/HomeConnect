@@ -5,7 +5,16 @@ import { ValidationError } from '../lib/errors';
 export const validate = (schema: ZodSchema, source: 'body' | 'query' | 'params' = 'body') => {
   return (req: Request, res: Response, next: NextFunction) => {
     try {
-      req[source] = schema.parse(req[source]);
+      const parsed = schema.parse(req[source]);
+      if (source === 'query') {
+        Object.defineProperty(req, 'query', {
+          value: parsed,
+          writable: true,
+          configurable: true,
+        });
+      } else {
+        req[source] = parsed;
+      }
       next();
     } catch (error) {
       if (error instanceof ZodError) {
