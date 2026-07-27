@@ -1,8 +1,17 @@
-import { InstallmentPlanFrequency, InstallmentPlanStatus, InstallmentStatus, PaymentMethod } from '@prisma/client';
+import {
+  FinancialCorrectionAction,
+  FinancialCorrectionRecordType,
+  FinancialCorrectionSourceScreen,
+  InstallmentPlanFrequency,
+  InstallmentPlanStatus,
+  InstallmentStatus,
+  PaymentMethod,
+} from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NotFoundError } from '../../../lib/errors';
 import {
+  FinancialInvariantError,
   FinancialRecordAlreadyPaidError,
   FinancialRecordCancelledError,
   OverpaymentError,
@@ -13,9 +22,15 @@ import {
 } from './installment-plans.repository';
 import { InstallmentPlansService } from './installment-plans.service';
 
-const tx = { id: 'tx' };
+const tx = {
+  id: 'tx',
+  user: {
+    findUnique: vi.fn(),
+  },
+};
 
-const { repositoryMock } = vi.hoisted(() => ({
+const { correctionAuditMock, repositoryMock, verifyAccountPasswordMock, verifyAdminPasswordMock } = vi.hoisted(() => ({
+  correctionAuditMock: vi.fn(),
   repositoryMock: {
     findActiveCustomerById: vi.fn(),
     createPlanWithInstallments: vi.fn(),
@@ -24,14 +39,27 @@ const { repositoryMock } = vi.hoisted(() => ({
     createPayment: vi.fn(),
     createPaymentAllocations: vi.fn(),
     updateInstallmentStatus: vi.fn(),
+    updateInstallmentScheduleRows: vi.fn(),
+    updatePlanDetails: vi.fn(),
     updatePlanStatus: vi.fn(),
     cancelPlan: vi.fn(),
     findPaymentByIdempotencyKey: vi.fn(),
   },
+  verifyAccountPasswordMock: vi.fn(),
+  verifyAdminPasswordMock: vi.fn(),
 }));
 
 vi.mock('./installment-plans.repository', () => ({
   InstallmentPlansRepository: repositoryMock,
+}));
+
+vi.mock('../authorization/account-password', () => ({
+  verifyAccountPassword: verifyAccountPasswordMock,
+  verifyAdminPasswordForCorrection: verifyAdminPasswordMock,
+}));
+
+vi.mock('../corrections/correction-audit', () => ({
+  writeFinancialCorrectionAudit: correctionAuditMock,
 }));
 
 vi.mock('../index', async (importOriginal) => {
@@ -163,6 +191,14 @@ function makePlan(overrides: Record<string, unknown> = {}): InstallmentPlanWithD
 describe('InstallmentPlansService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    verifyAccountPasswordMock.mockResolvedValue(undefined);
+    verifyAdminPasswordMock.mockResolvedValue(undefined);
+    correctionAuditMock.mockResolvedValue({ id: '77777777-7777-4777-8777-777777777777' });
+    tx.user.findUnique.mockResolvedValue({
+      id: adminUser.userId,
+      fullName: 'Admin User',
+      username: 'admin',
+    });
   });
 
   it('creates a valid monthly plan with exact generated schedule', async () => {
@@ -224,7 +260,7 @@ describe('InstallmentPlansService', () => {
     expect(result.remainingBalance).toBe('300.00');
   });
 
-  it('generates exact rounding and month-end schedules through Phase 3 generator', async () => {
+  it('generates whole-dollar schedules and month-end schedules through Phase 3 generator', async () => {
     repositoryMock.findActiveCustomerById.mockResolvedValue(customer);
     const createdSchedules: Array<Array<Record<string, unknown>>> = [];
     repositoryMock.createPlanWithInstallments.mockImplementation(
@@ -263,9 +299,9 @@ describe('InstallmentPlansService', () => {
     );
 
     expect(createdSchedules[0].map((installment) => (installment.amountDue as Decimal).toFixed(2))).toEqual([
-      '33.33',
-      '33.33',
-      '33.34',
+      '34.00',
+      '33.00',
+      '33.00',
     ]);
     expect(createdSchedules[0].map((installment) => (installment.dueDate as Date).toISOString().slice(0, 10))).toEqual([
       '2026-01-31',
@@ -291,6 +327,68 @@ describe('InstallmentPlansService', () => {
         adminUser
       )
     ).rejects.toThrow(NotFoundError);
+  });
+
+  it('creates plans with a validated manual schedule', async () => {
+    repositoryMock.findActiveCustomerById.mockResolvedValue(customer);
+    repositoryMock.createPlanWithInstallments.mockImplementation(
+      async (
+        _transactionClient: unknown,
+        planData: Record<string, unknown>,
+        installments: Array<Record<string, unknown>>
+      ) =>
+        makePlan({
+          totalAmount: planData.totalAmount,
+          startDate: planData.startDate,
+          installmentCount: planData.installmentCount,
+          installments: installments.map((installment, index) =>
+            makeInstallment(
+              index + 1,
+              ['2026-08-01', '2026-09-01', '2026-10-01'][index],
+              installment.amountDue instanceof Decimal ? installment.amountDue.toFixed(2) : '0.00',
+              {
+                status: installment.status,
+              }
+            )
+          ),
+        })
+    );
+
+    const result = await InstallmentPlansService.createPlan(
+      customer.id,
+      {
+        totalAmount: '320.00',
+        description: 'Manual plan',
+        startDate: '2026-08-01',
+        installmentCount: 3,
+        frequency: InstallmentPlanFrequency.MONTHLY,
+        notes: null,
+        schedule: [{ amountDue: '120.00' }, { amountDue: '110.00' }, { amountDue: '90.00' }],
+      },
+      adminUser
+    );
+
+    expect(result.schedule.map((installment) => installment.amountDue)).toEqual([
+      '120.00',
+      '110.00',
+      '90.00',
+    ]);
+
+    await expect(
+      InstallmentPlansService.createPlan(
+        customer.id,
+        {
+          totalAmount: '320.00',
+          description: 'Invalid manual plan',
+          startDate: '2026-08-01',
+          installmentCount: 3,
+          frequency: InstallmentPlanFrequency.MONTHLY,
+          notes: null,
+          schedule: [{ amountDue: '120.00' }, { amountDue: '110.00' }, { amountDue: '80.00' }],
+        },
+        adminUser
+      )
+    ).rejects.toThrow(FinancialInvariantError);
   });
 
   it('records a payment across multiple installments oldest first and updates statuses', async () => {
@@ -482,7 +580,229 @@ describe('InstallmentPlansService', () => {
     ).rejects.toThrow(PaymentIdempotencyConflictError);
   });
 
-  it('cancels eligible unpaid plans and rejects cancellation after payment', async () => {
+  it('corrects plan details after admin account-password verification', async () => {
+    repositoryMock.findPlanById.mockResolvedValue(makePlan());
+    repositoryMock.updatePlanDetails.mockResolvedValue(
+      makePlan({
+        description: 'Updated refrigerator',
+        notes: 'Updated notes',
+      })
+    );
+
+    const updated = await InstallmentPlansService.updatePlan(
+      planId,
+      {
+        description: 'Updated refrigerator',
+        notes: 'Updated notes',
+        reason: 'Corrected description typo',
+        sourceScreen: FinancialCorrectionSourceScreen.PLAN_DETAILS,
+        accountPassword: 'admin-password',
+      },
+      adminUser
+    );
+
+    expect(verifyAdminPasswordMock).toHaveBeenCalledWith(adminUser.userId, 'admin-password', {
+      action: 'CORRECT_INSTALLMENT_PLAN',
+      recordType: FinancialCorrectionRecordType.INSTALLMENT_PLAN,
+      recordId: planId,
+    });
+    expect(repositoryMock.updatePlanDetails).toHaveBeenCalledWith(
+      tx,
+      planId,
+      expect.objectContaining({
+        description: 'Updated refrigerator',
+        notes: 'Updated notes',
+      })
+    );
+    expect(correctionAuditMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recordType: FinancialCorrectionRecordType.INSTALLMENT_PLAN,
+        recordId: planId,
+        action: FinancialCorrectionAction.CORRECT_DETAILS,
+        reason: 'Corrected description typo',
+        sourceScreen: FinancialCorrectionSourceScreen.PLAN_DETAILS,
+      }),
+      tx
+    );
+    expect(updated.description).toBe('Updated refrigerator');
+    expect(updated.notes).toBe('Updated notes');
+  });
+
+  it('corrects amount and schedule when the plan has no non-voided payments', async () => {
+    const initialPlan = makePlan();
+    const afterPlanDetails = makePlan({
+      totalAmount: new Decimal('320.00'),
+      startDate: businessDate('2026-08-05'),
+    });
+    const refreshedPlan = makePlan({
+      totalAmount: new Decimal('320.00'),
+      startDate: businessDate('2026-08-05'),
+      installments: [
+        makeInstallment(1, '2026-08-05', '120.00'),
+        makeInstallment(2, '2026-09-05', '110.00'),
+        makeInstallment(3, '2026-10-05', '90.00'),
+      ],
+    });
+    repositoryMock.findPlanById
+      .mockResolvedValueOnce(initialPlan)
+      .mockResolvedValueOnce(refreshedPlan);
+    repositoryMock.updatePlanDetails.mockResolvedValue(afterPlanDetails);
+
+    const updated = await InstallmentPlansService.correctPlan(
+      planId,
+      {
+        totalAmount: '320.00',
+        description: 'Updated refrigerator',
+        startDate: '2026-08-05',
+        installmentCount: 3,
+        notes: null,
+        schedule: [{ amountDue: '120.00' }, { amountDue: '110.00' }, { amountDue: '90.00' }],
+        reason: 'Corrected agreement schedule',
+        sourceScreen: FinancialCorrectionSourceScreen.PLAN_DETAILS,
+        accountPassword: 'admin-password',
+      },
+      adminUser
+    );
+
+    expect(repositoryMock.updateInstallmentScheduleRows).toHaveBeenCalledWith(
+      tx,
+      [
+        expect.objectContaining({ id: '66666666-6666-4666-8666-666666666661', amountDue: expect.any(Decimal) }),
+        expect.objectContaining({ id: '66666666-6666-4666-8666-666666666662', amountDue: expect.any(Decimal) }),
+        expect.objectContaining({ id: '66666666-6666-4666-8666-666666666663', amountDue: expect.any(Decimal) }),
+      ]
+    );
+    expect(correctionAuditMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: FinancialCorrectionAction.CORRECT_AMOUNT,
+        reason: 'Corrected agreement schedule',
+      }),
+      tx
+    );
+    expect(updated.totalAmount).toBe('320.00');
+    expect(updated.schedule.map((installment) => installment.amountDue)).toEqual([
+      '120.00',
+      '110.00',
+      '90.00',
+    ]);
+  });
+
+  it('corrects amount on paid plans when existing payment allocations remain valid', async () => {
+    const paidAllocation = makeAllocation('66666666-6666-4666-8666-666666666661', '100.00');
+    const initialPlan = makePlan({
+      installments: [
+        makeInstallment(1, '2026-08-01', '100.00', {
+          status: InstallmentStatus.PAID,
+          paidDate: businessDate('2026-08-15'),
+          paymentAllocations: [paidAllocation],
+        }),
+        makeInstallment(2, '2026-09-01'),
+        makeInstallment(3, '2026-10-01'),
+      ],
+    });
+    const afterPlanDetails = makePlan({ totalAmount: new Decimal('320.00') });
+    const refreshedPlan = makePlan({
+      totalAmount: new Decimal('320.00'),
+      installments: [
+        makeInstallment(1, '2026-08-01', '100.00', {
+          status: InstallmentStatus.PAID,
+          paidDate: businessDate('2026-08-15'),
+          paymentAllocations: [paidAllocation],
+        }),
+        makeInstallment(2, '2026-09-01', '110.00'),
+        makeInstallment(3, '2026-10-01', '110.00'),
+      ],
+    });
+    repositoryMock.findPlanById
+      .mockResolvedValueOnce(initialPlan)
+      .mockResolvedValueOnce(refreshedPlan);
+    repositoryMock.updatePlanDetails.mockResolvedValue(afterPlanDetails);
+
+    const updated = await InstallmentPlansService.correctPlan(
+      planId,
+      {
+        totalAmount: '320.00',
+        description: 'Updated refrigerator',
+        startDate: '2026-08-01',
+        installmentCount: 3,
+        notes: null,
+        reason: 'Corrected agreement amount',
+        sourceScreen: FinancialCorrectionSourceScreen.PLAN_DETAILS,
+        accountPassword: 'admin-password',
+      },
+      adminUser
+    );
+
+    expect(repositoryMock.updateInstallmentScheduleRows).toHaveBeenCalledWith(
+      tx,
+      [
+        expect.objectContaining({
+          id: '66666666-6666-4666-8666-666666666661',
+          amountDue: expect.any(Decimal),
+          status: InstallmentStatus.PAID,
+          paidDate: businessDate('2026-08-15'),
+        }),
+        expect.objectContaining({
+          id: '66666666-6666-4666-8666-666666666662',
+          amountDue: expect.any(Decimal),
+          status: InstallmentStatus.PENDING,
+          paidDate: null,
+        }),
+        expect.objectContaining({
+          id: '66666666-6666-4666-8666-666666666663',
+          amountDue: expect.any(Decimal),
+          status: InstallmentStatus.PENDING,
+          paidDate: null,
+        }),
+      ]
+    );
+    expect(updated.totalAmount).toBe('320.00');
+    expect(updated.schedule.map((installment) => installment.amountDue)).toEqual([
+      '100.00',
+      '110.00',
+      '110.00',
+    ]);
+  });
+
+  it('rejects paid plan amount corrections that cannot keep positive unpaid installments', async () => {
+    repositoryMock.findPlanById.mockResolvedValue(
+      makePlan({
+        installments: [
+          makeInstallment(1, '2026-08-01', '100.00', {
+            status: InstallmentStatus.PAID,
+            paidDate: businessDate('2026-08-15'),
+            paymentAllocations: [
+              makeAllocation('66666666-6666-4666-8666-666666666661', '100.00'),
+            ],
+          }),
+          makeInstallment(2, '2026-09-01'),
+          makeInstallment(3, '2026-10-01'),
+        ],
+      })
+    );
+
+    await expect(
+      InstallmentPlansService.correctPlan(
+        planId,
+        {
+          totalAmount: '100.00',
+          description: 'Updated refrigerator',
+          startDate: '2026-08-01',
+          installmentCount: 3,
+          notes: null,
+          reason: 'Corrected agreement amount',
+          sourceScreen: FinancialCorrectionSourceScreen.PLAN_DETAILS,
+          accountPassword: 'admin-password',
+        },
+        adminUser
+      )
+    ).rejects.toThrow('Total amount is too low for the installments that already have payments');
+
+    expect(repositoryMock.updatePlanDetails).not.toHaveBeenCalled();
+    expect(correctionAuditMock).not.toHaveBeenCalled();
+  });
+
+  it('cancels unpaid plans after account-password verification and rejects plans with payments', async () => {
     repositoryMock.findPlanById.mockResolvedValue(makePlan());
     repositoryMock.cancelPlan.mockResolvedValue(
       makePlan({
@@ -504,27 +824,34 @@ describe('InstallmentPlansService', () => {
 
     const cancelled = await InstallmentPlansService.cancelPlan(
       planId,
-      { reason: 'Agreement cancelled' },
+      { reason: 'Agreement cancelled', accountPassword: 'admin-password' },
       adminUser
     );
 
     expect(cancelled.status).toBe(InstallmentPlanStatus.CANCELLED);
     expect(cancelled.schedule.every((installment) => installment.status === InstallmentStatus.CANCELLED)).toBe(true);
 
+    expect(verifyAccountPasswordMock).toHaveBeenCalledWith(adminUser.userId, 'admin-password');
+
     repositoryMock.findPlanById.mockResolvedValue(
       makePlan({
         installments: [
           makeInstallment(1, '2026-08-01', '100.00', {
-            paymentAllocations: [makeAllocation('66666666-6666-4666-8666-666666666661', '1.00')],
+            paymentAllocations: [
+              makeAllocation('66666666-6666-4666-8666-666666666661', '1.00'),
+            ],
           }),
           makeInstallment(2, '2026-09-01'),
           makeInstallment(3, '2026-10-01'),
         ],
       })
     );
-
     await expect(
-      InstallmentPlansService.cancelPlan(planId, { reason: 'Agreement cancelled' }, adminUser)
-    ).rejects.toThrow(FinancialRecordAlreadyPaidError);
+      InstallmentPlansService.cancelPlan(
+        planId,
+        { reason: 'Agreement cancelled', accountPassword: 'admin-password' },
+        adminUser
+      )
+    ).rejects.toThrow('Installment plan with payments requires a dedicated reversal workflow');
   });
 });

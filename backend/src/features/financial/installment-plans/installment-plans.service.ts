@@ -1,13 +1,22 @@
-import { InstallmentPlanFrequency, InstallmentPlanStatus, InstallmentStatus, PaymentMethod } from '@prisma/client';
+import {
+  FinancialCorrectionAction,
+  FinancialCorrectionRecordType,
+  InstallmentPlanFrequency,
+  InstallmentPlanStatus,
+  InstallmentStatus,
+  PaymentMethod,
+} from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
-import { NotFoundError } from '../../../lib/errors';
+import { NotFoundError, ValidationError } from '../../../lib/errors';
 import {
   assertCanCancelInstallmentPlan,
   assertIdempotentReplay,
   assertPositiveMoney,
+  addMonthsToBusinessDate,
   businessDateToPrisma,
   calculateInstallmentBalance,
   calculateInstallmentPlanSummary,
+  centsToMoney,
   createIdempotencyFingerprint,
   determineInstallmentPlanStatus,
   determineInstallmentStatus,
@@ -15,7 +24,9 @@ import {
   FinancialRecordAlreadyPaidError,
   FinancialRecordCancelledError,
   generateMonthlyInstallmentSchedule,
+  isPaymentAllocationVoided,
   moneyToApiString,
+  moneyToCents,
   normalizeIdempotencyKey,
   parseBusinessDate,
   planInstallmentPaymentAllocations,
@@ -29,11 +40,14 @@ import {
   CreateInstallmentPlanInput,
   CreateInstallmentPlanPaymentInput,
   ListCustomerInstallmentPlansQueryInput,
+  UpdateInstallmentPlanInput,
 } from './installment-plans.validator';
 import {
   InstallmentPlanWithDetails,
   InstallmentPlansRepository,
 } from './installment-plans.repository';
+import { verifyAccountPassword, verifyAdminPasswordForCorrection } from '../authorization/account-password';
+import { writeFinancialCorrectionAudit } from '../corrections/correction-audit';
 
 interface AuthenticatedUser {
   userId: string;
@@ -137,12 +151,14 @@ export class InstallmentPlansService {
   ): Promise<InstallmentPlanView> {
     const totalAmount = assertPositiveMoney(input.totalAmount);
     const startDate = parseBusinessDate(input.startDate);
-    const schedule = generateMonthlyInstallmentSchedule({
-      totalAmount,
-      startDate,
-      installmentCount: input.installmentCount,
-      frequency: input.frequency,
-    });
+    const schedule = input.schedule
+      ? this.createManualMonthlySchedule(input, totalAmount, startDate)
+      : generateMonthlyInstallmentSchedule({
+          totalAmount,
+          startDate,
+          installmentCount: input.installmentCount,
+          frequency: input.frequency,
+        });
 
     const generatedTotal = sumMoney(schedule.map((installment) => installment.amountDue));
     if (!generatedTotal.equals(totalAmount)) {
@@ -234,6 +250,151 @@ export class InstallmentPlansService {
       throw new NotFoundError('Installment plan not found');
     }
     return this.toPaymentHistory(plan);
+  }
+
+  static async updatePlan(
+    planId: string,
+    input: UpdateInstallmentPlanInput,
+    user: AuthenticatedUser
+  ): Promise<InstallmentPlanView> {
+    return this.correctPlan(planId, input, user);
+  }
+
+  static async correctPlan(
+    planId: string,
+    input: UpdateInstallmentPlanInput,
+    user: AuthenticatedUser
+  ): Promise<InstallmentPlanView> {
+    await verifyAdminPasswordForCorrection(user.userId, input.accountPassword, {
+      action: 'CORRECT_INSTALLMENT_PLAN',
+      recordType: FinancialCorrectionRecordType.INSTALLMENT_PLAN,
+      recordId: planId,
+    });
+
+    return runFinancialTransaction(async (tx) => {
+      const plan = await InstallmentPlansRepository.findPlanById(planId, tx);
+      if (!plan) {
+        throw new NotFoundError('Installment plan not found');
+      }
+
+      const correctingUser = await tx.user.findUnique({
+        where: { id: user.userId },
+        select: {
+          id: true,
+          fullName: true,
+          username: true,
+        },
+      });
+      if (!correctingUser) {
+        throw new NotFoundError('Correcting user not found');
+      }
+
+      const correctedTotal = input.totalAmount ? assertPositiveMoney(input.totalAmount) : plan.totalAmount;
+      const correctedStartDate = input.startDate
+        ? parseBusinessDate(input.startDate)
+        : prismaDateToBusinessDate(plan.startDate);
+      const correctedInstallmentCount = input.installmentCount ?? plan.installmentCount;
+      const scheduleAffectingChange =
+        !correctedTotal.equals(plan.totalAmount) ||
+        correctedStartDate !== prismaDateToBusinessDate(plan.startDate) ||
+        correctedInstallmentCount !== plan.installmentCount ||
+        Boolean(input.schedule);
+
+      if (correctedInstallmentCount !== plan.installmentCount) {
+        throw new ValidationError('Changing installment count requires a dedicated replacement-plan workflow');
+      }
+      const planHasPayments = this.hasNonVoidedAllocations(plan);
+
+      const beforeValues = this.toPlanAuditValues(plan);
+      const schedule = scheduleAffectingChange
+        ? this.createCorrectedSchedule({
+            totalAmount: correctedTotal,
+            startDate: correctedStartDate,
+            installmentCount: correctedInstallmentCount,
+            frequency: plan.frequency,
+            schedule: input.schedule,
+            existingPlan: planHasPayments ? plan : undefined,
+          })
+        : null;
+      if (schedule && planHasPayments) {
+        this.assertCorrectedScheduleSupportsExistingPayments(plan, schedule);
+      }
+
+      const businessDate = todayInBusinessTimezone();
+      const installmentStatuses =
+        schedule?.map((installment, index) =>
+          determineInstallmentStatus({
+            isCancelled: false,
+            dueDate: installment.dueDate,
+            businessDate,
+            balance: calculateInstallmentBalance({
+              amountDue: installment.amountDue,
+              allocations: plan.installments[index].paymentAllocations.map((allocation) => ({
+                amount: allocation.amount,
+                isVoided: isPaymentAllocationVoided(allocation),
+              })),
+            }),
+          })
+        ) ?? plan.installments.map((installment) => installment.status);
+      const planStatus = determineInstallmentPlanStatus({
+        isCancelled: plan.status === InstallmentPlanStatus.CANCELLED || Boolean(plan.cancelledAt),
+        installments: installmentStatuses.map((status) => ({ status })),
+      });
+
+      const updatedPlan = await InstallmentPlansRepository.updatePlanDetails(tx, planId, {
+        description: input.description,
+        totalAmount: correctedTotal,
+        startDate: businessDateToPrisma(correctedStartDate),
+        installmentCount: correctedInstallmentCount,
+        status: planStatus,
+        notes: input.notes ?? null,
+        ...(plan.cancelledAt ? { cancelReason: input.cancelReason ?? plan.cancelReason } : {}),
+      });
+
+      if (schedule) {
+        await InstallmentPlansRepository.updateInstallmentScheduleRows(
+          tx,
+          plan.installments.map((installment, index) => ({
+            id: installment.id,
+            dueDate: businessDateToPrisma(schedule[index].dueDate),
+            amountDue: schedule[index].amountDue,
+            status: installmentStatuses[index],
+            paidDate:
+              installmentStatuses[index] === InstallmentStatus.PAID
+                ? installment.paidDate ?? businessDateToPrisma(businessDate)
+                : null,
+          }))
+        );
+      }
+
+      const refreshedPlan = await InstallmentPlansRepository.findPlanById(planId, tx);
+      if (!refreshedPlan) {
+        throw new NotFoundError('Installment plan not found');
+      }
+
+      await writeFinancialCorrectionAudit(
+        {
+          recordType: FinancialCorrectionRecordType.INSTALLMENT_PLAN,
+          recordId: planId,
+          customerId: plan.customerId,
+          action: this.getPlanCorrectionAction({ before: plan, after: refreshedPlan, scheduleChanged: Boolean(schedule) }),
+          correctedById: correctingUser.id,
+          correctedByName: correctingUser.fullName,
+          correctedByUsername: correctingUser.username,
+          reason: input.reason,
+          beforeValues,
+          afterValues: this.toPlanAuditValues(refreshedPlan),
+          affectedTotals: {
+            remainingBefore: moneyToApiString(this.calculatePlanSummary(plan).remainingBalance),
+            remainingAfter: moneyToApiString(this.calculatePlanSummary(refreshedPlan).remainingBalance),
+          },
+          sourceScreen: input.sourceScreen,
+        },
+        tx
+      );
+
+      return this.toPlanView(schedule ? refreshedPlan : updatedPlan);
+    });
   }
 
   static async recordPlanPayment(
@@ -372,6 +533,8 @@ export class InstallmentPlansService {
     input: CancelInstallmentPlanInput,
     user: AuthenticatedUser
   ): Promise<InstallmentPlanView> {
+    await verifyAccountPassword(user.userId, input.accountPassword);
+
     return runFinancialTransaction(async (tx) => {
       const plan = await InstallmentPlansRepository.findPlanById(planId, tx);
       if (!plan) {
@@ -379,15 +542,10 @@ export class InstallmentPlansService {
       }
 
       const summary = this.calculatePlanSummary(plan);
-      if (summary.totalPaid.greaterThan(new Decimal('0.00'))) {
-        throw new FinancialRecordAlreadyPaidError(
-          'Installment plan with payments cannot be cancelled; use a reversal or void workflow'
-        );
-      }
 
       assertCanCancelInstallmentPlan({
         status: plan.status,
-        hasPayments: false,
+        hasPayments: summary.totalPaid.greaterThan(new Decimal('0.00')),
         reason: input.reason,
         cancelledById: user.userId,
       });
@@ -404,6 +562,214 @@ export class InstallmentPlansService {
 
       return this.toPlanView(cancelledPlan);
     });
+  }
+
+  private static createManualMonthlySchedule(
+    input: CreateInstallmentPlanInput,
+    totalAmount: Decimal,
+    startDate: string
+  ) {
+    if (!input.schedule || input.schedule.length !== input.installmentCount) {
+      throw new FinancialInvariantError('Manual schedule must have one amount for each installment');
+    }
+
+    const amounts = input.schedule.map((installment) => assertPositiveMoney(installment.amountDue));
+    const manualTotal = sumMoney(amounts);
+    if (!manualTotal.equals(totalAmount)) {
+      throw new FinancialInvariantError('Manual installment schedule total must match plan total');
+    }
+
+    return amounts.map((amountDue, index) => ({
+      installmentNumber: index + 1,
+      dueDate: addMonthsToBusinessDate(startDate, index),
+      amountDue,
+    }));
+  }
+
+  private static createCorrectedSchedule(input: {
+    totalAmount: Decimal;
+    startDate: string;
+    installmentCount: number;
+    frequency: InstallmentPlanFrequency;
+    schedule?: Array<{ amountDue: string }>;
+    existingPlan?: InstallmentPlanWithDetails;
+  }) {
+    if (!input.schedule && input.existingPlan) {
+      return this.createPaymentAwareCorrectedSchedule({
+        ...input,
+        existingPlan: input.existingPlan,
+      });
+    }
+
+    if (!input.schedule) {
+      return generateMonthlyInstallmentSchedule({
+        totalAmount: input.totalAmount,
+        startDate: input.startDate,
+        installmentCount: input.installmentCount,
+        frequency: input.frequency,
+      });
+    }
+
+    if (input.schedule.length !== input.installmentCount) {
+      throw new FinancialInvariantError('Manual schedule must have one amount for each installment');
+    }
+
+    const amounts = input.schedule.map((installment) => assertPositiveMoney(installment.amountDue));
+    const manualTotal = sumMoney(amounts);
+    if (!manualTotal.equals(input.totalAmount)) {
+      throw new FinancialInvariantError('Manual installment schedule total must match plan total');
+    }
+
+    return amounts.map((amountDue, index) => ({
+      installmentNumber: index + 1,
+      dueDate: addMonthsToBusinessDate(input.startDate, index),
+      amountDue,
+    }));
+  }
+
+  private static createPaymentAwareCorrectedSchedule(input: {
+    totalAmount: Decimal;
+    startDate: string;
+    installmentCount: number;
+    frequency: InstallmentPlanFrequency;
+    existingPlan: InstallmentPlanWithDetails;
+  }) {
+    if (input.frequency !== InstallmentPlanFrequency.MONTHLY) {
+      throw new FinancialInvariantError('Only monthly installment schedules are supported');
+    }
+
+    const fixedAmounts = input.existingPlan.installments.map((installment) => {
+      const paidAmount = this.installmentNonVoidedPaymentTotal(installment);
+      return paidAmount.greaterThan(new Decimal('0.00')) ? installment.amountDue : new Decimal('0.00');
+    });
+    const adjustableIndexes = fixedAmounts
+      .map((amount, index) => (amount.equals(new Decimal('0.00')) ? index : null))
+      .filter((index): index is number => index !== null);
+
+    if (adjustableIndexes.length === 0) {
+      return generateMonthlyInstallmentSchedule({
+        totalAmount: input.totalAmount,
+        startDate: input.startDate,
+        installmentCount: input.installmentCount,
+        frequency: input.frequency,
+      });
+    }
+
+    const fixedTotalCents = fixedAmounts.reduce(
+      (total, amount) => total + moneyToCents(amount),
+      0n
+    );
+    const totalCents = moneyToCents(input.totalAmount);
+    const minimumAdjustableCents = BigInt(adjustableIndexes.length);
+    if (totalCents < fixedTotalCents + minimumAdjustableCents) {
+      throw new ValidationError(
+        'Total amount is too low for the installments that already have payments'
+      );
+    }
+
+    const distributedAmounts = this.distributeCentsAcrossInstallments(
+      totalCents - fixedTotalCents,
+      adjustableIndexes.length
+    );
+    const amounts = [...fixedAmounts];
+    adjustableIndexes.forEach((installmentIndex, distributedIndex) => {
+      amounts[installmentIndex] = distributedAmounts[distributedIndex];
+    });
+
+    return amounts.map((amountDue, index) => ({
+      installmentNumber: index + 1,
+      dueDate: addMonthsToBusinessDate(input.startDate, index),
+      amountDue,
+    }));
+  }
+
+  private static distributeCentsAcrossInstallments(totalCents: bigint, installmentCount: number): Decimal[] {
+    const count = BigInt(installmentCount);
+    const useWholeDollarSplit = totalCents % 100n === 0n && totalCents / 100n >= count;
+    const baseCents = useWholeDollarSplit ? (totalCents / 100n / count) * 100n : totalCents / count;
+    const remainderCents = useWholeDollarSplit ? (totalCents / 100n) % count : 0n;
+    const amounts: Decimal[] = [];
+    let allocatedCents = 0n;
+
+    for (let index = 0; index < installmentCount; index += 1) {
+      const amountCents = useWholeDollarSplit
+        ? baseCents + (BigInt(index) < remainderCents ? 100n : 0n)
+        : index === installmentCount - 1
+          ? totalCents - allocatedCents
+          : baseCents;
+
+      if (amountCents <= 0n) {
+        throw new ValidationError('Installment amount must be greater than zero');
+      }
+
+      amounts.push(centsToMoney(amountCents));
+      allocatedCents += amountCents;
+    }
+
+    return amounts;
+  }
+
+  private static assertCorrectedScheduleSupportsExistingPayments(
+    plan: InstallmentPlanWithDetails,
+    schedule: Array<{ amountDue: Decimal }>
+  ) {
+    for (const [index, installment] of plan.installments.entries()) {
+      const paidAmount = this.installmentNonVoidedPaymentTotal(installment);
+      if (schedule[index].amountDue.lessThan(paidAmount)) {
+        throw new ValidationError(
+          `Installment ${installment.installmentNumber} cannot be less than its existing paid amount`
+        );
+      }
+    }
+  }
+
+  private static installmentNonVoidedPaymentTotal(
+    installment: InstallmentPlanWithDetails['installments'][number]
+  ): Decimal {
+    return sumMoney(
+      installment.paymentAllocations
+        .filter((allocation) => !isPaymentAllocationVoided(allocation))
+        .map((allocation) => allocation.amount)
+    );
+  }
+
+  private static hasNonVoidedAllocations(plan: InstallmentPlanWithDetails): boolean {
+    return this.calculatePlanSummary(plan).totalPaid.greaterThan(new Decimal('0.00'));
+  }
+
+  private static getPlanCorrectionAction(input: {
+    before: InstallmentPlanWithDetails;
+    after: InstallmentPlanWithDetails;
+    scheduleChanged: boolean;
+  }): FinancialCorrectionAction {
+    if (!input.before.totalAmount.equals(input.after.totalAmount) || input.scheduleChanged) {
+      return FinancialCorrectionAction.CORRECT_AMOUNT;
+    }
+    if (prismaDateToBusinessDate(input.before.startDate) !== prismaDateToBusinessDate(input.after.startDate)) {
+      return FinancialCorrectionAction.CORRECT_DATE;
+    }
+    return FinancialCorrectionAction.CORRECT_DETAILS;
+  }
+
+  private static toPlanAuditValues(plan: InstallmentPlanWithDetails) {
+    return {
+      description: plan.description,
+      totalAmount: moneyToApiString(plan.totalAmount),
+      startDate: prismaDateToBusinessDate(plan.startDate),
+      installmentCount: plan.installmentCount,
+      frequency: plan.frequency,
+      notes: plan.notes,
+      status: plan.status,
+      cancelReason: plan.cancelReason,
+      schedule: plan.installments.map((installment) => ({
+        id: installment.id,
+        installmentNumber: installment.installmentNumber,
+        dueDate: prismaDateToBusinessDate(installment.dueDate),
+        amountDue: moneyToApiString(installment.amountDue),
+        status: installment.status,
+        paidDate: installment.paidDate ? prismaDateToBusinessDate(installment.paidDate) : null,
+      })),
+    };
   }
 
   private static toPlanView(plan: InstallmentPlanWithDetails): InstallmentPlanView {
@@ -541,7 +907,7 @@ export class InstallmentPlansService {
           status: installment.status,
           allocations: installment.paymentAllocations.map((allocation) => ({
             amount: allocation.amount,
-            isVoided: Boolean(allocation.payment.voidedAt),
+            isVoided: isPaymentAllocationVoided(allocation),
           })),
         })),
       },
@@ -556,7 +922,7 @@ export class InstallmentPlansService {
       amountDue: installment.amountDue,
       allocations: installment.paymentAllocations.map((allocation) => ({
         amount: allocation.amount,
-        isVoided: Boolean(allocation.payment.voidedAt),
+        isVoided: isPaymentAllocationVoided(allocation),
       })),
     });
   }

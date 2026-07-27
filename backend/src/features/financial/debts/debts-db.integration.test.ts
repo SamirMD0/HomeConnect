@@ -1,4 +1,5 @@
 import { DebtStatus, PaymentMethod, Role } from '@prisma/client';
+import bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
 import { describe, expect, it } from 'vitest';
 import { prisma } from '../../../lib/prisma';
@@ -15,6 +16,7 @@ const databaseUrl = process.env.DATABASE_URL ?? '';
 const databaseName = databaseUrl.split('/').pop()?.split('?')[0] ?? '';
 const isIsolatedPhase4Database = databaseName.includes('phase4');
 const describeDebtDb = runDebtDbTests && isIsolatedPhase4Database ? describe : describe.skip;
+const accountPassword = 'admin-password';
 
 describeDebtDb('single debt database flow', () => {
   it('creates debt, records payments transactionally, enforces idempotency, and cancels eligible debt', async () => {
@@ -28,7 +30,7 @@ describeDebtDb('single debt database flow', () => {
         data: {
           id: adminId,
           username: `phase4_admin_${adminId}`,
-          password: 'test-password',
+          password: await bcrypt.hash(accountPassword, 12),
           fullName: 'Phase 4 Admin',
           role: Role.ADMIN,
         },
@@ -173,7 +175,7 @@ describeDebtDb('single debt database flow', () => {
 
       const cancelled = await DebtsService.cancelDebt(
         cancelDebt.id,
-        { reason: 'Customer returned product' },
+        { reason: 'Customer returned product', accountPassword },
         { userId: adminId, role: Role.ADMIN }
       );
 

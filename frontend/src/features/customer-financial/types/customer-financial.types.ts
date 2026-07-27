@@ -4,6 +4,12 @@ export type InstallmentStatus = 'PENDING' | 'PARTIALLY_PAID' | 'OVERDUE' | 'PAID
 export type PaymentMethod = 'CASH' | 'CARD' | 'BANK_TRANSFER' | 'CHECK' | 'OTHER';
 export type FinancialItemType = 'DEBT' | 'INSTALLMENT';
 export type PaymentAllocationTargetType = FinancialItemType | 'UNKNOWN';
+export type FinancialCorrectionSourceScreen =
+  | 'CUSTOMER_PROFILE'
+  | 'LEDGER'
+  | 'PLAN_DETAILS'
+  | 'REPORTS'
+  | 'API';
 
 export interface ApiEnvelope<T> {
   success: boolean;
@@ -217,8 +223,35 @@ export interface RecordDebtPaymentRequest {
   idempotencyKey: string;
 }
 
+export interface UpdateDebtRequest {
+  originalAmount?: string;
+  description: string;
+  dueDate: string;
+  notes?: string | null;
+  reason: string;
+  sourceScreen: FinancialCorrectionSourceScreen;
+  accountPassword: string;
+}
+
 export interface CancelFinancialRecordRequest {
   reason: string;
+  accountPassword: string;
+}
+
+export interface VoidPaymentRequest {
+  reason: string;
+  sourceScreen: FinancialCorrectionSourceScreen;
+  accountPassword: string;
+}
+
+export interface ReallocatePaymentRequest {
+  allocations: Array<{
+    installmentId: string;
+    amount: string;
+  }>;
+  reason: string;
+  sourceScreen: FinancialCorrectionSourceScreen;
+  accountPassword: string;
 }
 
 export interface CreateInstallmentPlanRequest {
@@ -228,6 +261,20 @@ export interface CreateInstallmentPlanRequest {
   installmentCount: number;
   frequency: 'MONTHLY';
   notes?: string | null;
+  schedule?: Array<{
+    amountDue: string;
+  }>;
+}
+
+export interface UpdateInstallmentPlanRequest {
+  totalAmount?: string;
+  description: string;
+  startDate?: string;
+  installmentCount?: number;
+  notes?: string | null;
+  reason: string;
+  sourceScreen: FinancialCorrectionSourceScreen;
+  accountPassword: string;
 }
 
 export interface RecordInstallmentPlanPaymentRequest {

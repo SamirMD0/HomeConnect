@@ -2,11 +2,11 @@ import { ChildProcess, SpawnOptions, spawn } from 'child_process';
 import path from 'path';
 import { BACKEND_PORT, ELECTRON_HOST, FRONTEND_ORIGIN } from './runtime-config';
 
-export function startCompiledBackend(backendEntryPath: string, userDataPath?: string, resourcesPath?: string) {
+export function startCompiledBackend(backendEntryPath: string, userDataPath?: string, resourcesPath?: string, onOutput?: (log: string) => void) {
   const config = buildBackendSpawnConfig(backendEntryPath, userDataPath, resourcesPath);
   const child = spawn(config.command, config.args, config.options);
 
-  pipeChildOutput(child);
+  pipeChildOutput(child, onOutput);
   return child;
 }
 
@@ -56,12 +56,16 @@ export function buildBackendEnvironment(userDataPath?: string, resourcesPath?: s
   };
 }
 
-function pipeChildOutput(child: ChildProcess) {
+export function pipeChildOutput(child: ChildProcess, onOutput?: (log: string) => void) {
   child.stdout?.on('data', (chunk) => {
-    process.stdout.write(`[backend] ${redactLogChunk(String(chunk))}`);
+    const redacted = redactLogChunk(String(chunk));
+    process.stdout.write(`[backend] ${redacted}`);
+    if (onOutput) onOutput(`[backend] ${redacted}`);
   });
   child.stderr?.on('data', (chunk) => {
-    process.stderr.write(`[backend] ${redactLogChunk(String(chunk))}`);
+    const redacted = redactLogChunk(String(chunk));
+    process.stderr.write(`[backend] ${redacted}`);
+    if (onOutput) onOutput(`[backend] ${redacted}`);
   });
 }
 

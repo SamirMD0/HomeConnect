@@ -9,6 +9,7 @@ import {
 } from '../schemas/financial-mutation.schemas';
 import { normalizeFinancialError } from '../utils/financial-form-errors';
 import { formatMoney } from '../utils/financial-format';
+import { canCancelDebt } from '../utils/financial-auth';
 import { inputClass, SubmitButton, TextField } from './CreateDebtForm';
 import { DebtPaymentTarget } from './RecordDebtPaymentDialog';
 
@@ -25,6 +26,7 @@ export const CancelDebtDialog: React.FC<CancelDebtDialogProps> = ({
 }) => {
   const cancelDebt = useCancelDebt(customerId, debt.id);
   const [serverError, setServerError] = useState<string | null>(null);
+  const canCancel = canCancelDebt(debt.calculatedStatus ?? debt.status ?? '', debt.totalPaid);
   const {
     register,
     handleSubmit,
@@ -32,18 +34,24 @@ export const CancelDebtDialog: React.FC<CancelDebtDialogProps> = ({
     formState: { errors },
   } = useForm<CancelFinancialRecordFormValues>({
     resolver: zodResolver(cancelFinancialRecordSchema),
-    defaultValues: { reason: '' },
+    defaultValues: { reason: '', accountPassword: '' },
   });
 
   const onSubmit = async (values: CancelFinancialRecordFormValues) => {
     setServerError(null);
     try {
-      await cancelDebt.mutateAsync({ reason: values.reason.trim() });
+      await cancelDebt.mutateAsync({
+        reason: values.reason.trim(),
+        accountPassword: values.accountPassword,
+      });
       onSuccess();
     } catch (error) {
       const normalized = normalizeFinancialError(error);
       setServerError(normalized.message);
       if (normalized.fieldErrors.reason) setError('reason', { message: normalized.fieldErrors.reason });
+      if (normalized.fieldErrors.accountPassword) {
+        setError('accountPassword', { message: normalized.fieldErrors.accountPassword });
+      }
     }
   };
 
@@ -64,10 +72,26 @@ export const CancelDebtDialog: React.FC<CancelDebtDialogProps> = ({
           {serverError}
         </div>
       )}
+      {!canCancel ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          This debt has payment history. Void or reverse the related payments first, then cancel the debt if it still needs to be removed.
+        </div>
+      ) : (
+        <>
       <TextField label="Cancellation reason" error={errors.reason?.message}>
         <textarea {...register('reason')} rows={4} className={inputClass(Boolean(errors.reason))} />
       </TextField>
+      <TextField label="Account password" error={errors.accountPassword?.message}>
+        <input
+          {...register('accountPassword')}
+          type="password"
+          autoComplete="current-password"
+          className={inputClass(Boolean(errors.accountPassword))}
+        />
+      </TextField>
       <SubmitButton isPending={cancelDebt.isPending} label="Cancel debt" pendingLabel="Cancelling debt..." />
+        </>
+      )}
     </form>
   );
 };

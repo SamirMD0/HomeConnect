@@ -25,13 +25,23 @@ export function generateMonthlyInstallmentSchedule(
     throw new InstallmentScheduleError('Total amount is too small to create positive installments');
   }
 
-  const baseCents = totalCents / count;
+  const useWholeDollarSplit = totalCents % 100n === 0n && totalCents / 100n >= count;
+  const baseCents = useWholeDollarSplit
+    ? (totalCents / 100n / count) * 100n
+    : totalCents / count;
+  const remainderCents = useWholeDollarSplit
+    ? (totalCents / 100n) % count
+    : 0n;
   const installments: GeneratedInstallment[] = [];
   let allocatedCents = 0n;
 
   for (let index = 0; index < input.installmentCount; index += 1) {
     const isFinalInstallment = index === input.installmentCount - 1;
-    const amountCents = isFinalInstallment ? totalCents - allocatedCents : baseCents;
+    const amountCents = useWholeDollarSplit
+      ? baseCents + (BigInt(index) < remainderCents ? 100n : 0n)
+      : isFinalInstallment
+        ? totalCents - allocatedCents
+        : baseCents;
 
     if (amountCents <= 0n) {
       throw new InstallmentScheduleError('Installment amount must be greater than zero');

@@ -1,4 +1,5 @@
 import { InstallmentPlanFrequency, InstallmentPlanStatus, InstallmentStatus, PaymentMethod, Role } from '@prisma/client';
+import bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
 import { describe, expect, it } from 'vitest';
 import { prisma } from '../../../lib/prisma';
@@ -15,6 +16,7 @@ const databaseUrl = process.env.DATABASE_URL ?? '';
 const databaseName = databaseUrl.split('/').pop()?.split('?')[0] ?? '';
 const isIsolatedPhase5Database = databaseName.includes('phase5');
 const describePlanDb = runPlanDbTests && isIsolatedPhase5Database ? describe : describe.skip;
+const accountPassword = 'admin-password';
 
 describePlanDb('installment plan database flow', () => {
   it('creates a plan, allocates payments oldest-first, enforces idempotency, and cancels eligible plans', async () => {
@@ -28,7 +30,7 @@ describePlanDb('installment plan database flow', () => {
         data: {
           id: adminId,
           username: `phase5_admin_${adminId}`,
-          password: 'test-password',
+          password: await bcrypt.hash(accountPassword, 12),
           fullName: 'Phase 5 Admin',
           role: Role.ADMIN,
         },
@@ -183,7 +185,7 @@ describePlanDb('installment plan database flow', () => {
 
       const cancelled = await InstallmentPlansService.cancelPlan(
         cancellable.id,
-        { reason: 'Agreement cancelled' },
+        { reason: 'Agreement cancelled', accountPassword },
         { userId: adminId, role: Role.ADMIN }
       );
       expect(cancelled.status).toBe(InstallmentPlanStatus.CANCELLED);

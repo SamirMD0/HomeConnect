@@ -8,6 +8,7 @@ import {
   determineDebtStatus,
   determineInstallmentPlanStatus,
   determineInstallmentStatus,
+  isPaymentAllocationVoided,
   moneyToApiString,
   parseBusinessDate,
   prismaDateToBusinessDate,
@@ -18,6 +19,7 @@ import {
 } from '../index';
 import {
   FinancialLedgerDebtRecord,
+  FinancialLedgerCorrectionMarker,
   FinancialLedgerPaymentRecord,
   FinancialLedgerPlanRecord,
   FinancialLedgerRepository,
@@ -27,6 +29,7 @@ import {
   FinancialLedgerItem,
   FinancialLedgerPaymentItem,
   FinancialLedgerPlanItem,
+  FinancialLedgerCorrectionView,
   FinancialLedgerView,
 } from './financial-ledger.types';
 import { FinancialLedgerQueryInput } from './financial-ledger.validator';
@@ -44,6 +47,12 @@ interface PlanComputation {
   totalPaid: Decimal;
   status: InstallmentPlanStatus;
   overdueInstallmentCount: number;
+  installments: Array<{
+    dueDate: string;
+    totalPaid: Decimal;
+    remainingAmount: Decimal;
+    isCancelled: boolean;
+  }>;
 }
 
 export class FinancialLedgerService {
@@ -69,13 +78,51 @@ export class FinancialLedgerService {
     });
 
     const businessDate = todayInBusinessTimezone();
-    const debtComputations = records.debts.map((debt) => this.computeDebt(debt, businessDate));
-    const planComputations = records.plans.map((plan) => this.computePlan(plan, businessDate));
-    const paymentItems = records.payments.map((payment) => this.toPaymentItem(payment));
+    const correctionMarkers = await FinancialLedgerRepository.loadCorrectionMarkers({
+      debtIds: records.debts.map((debt) => debt.id),
+      planIds: records.plans.map((plan) => plan.id),
+      paymentIds: records.payments.map((payment) => payment.id),
+    });
+    const debtComputations = records.debts.map((debt) =>
+      this.computeDebt(debt, businessDate, correctionMarkers.debts.get(debt.id))
+    );
+    const planComputations = records.plans.map((plan) =>
+      this.computePlan(plan, businessDate, correctionMarkers.plans.get(plan.id), query)
+    );
+    const paymentItems = records.payments.map((payment) =>
+      this.toPaymentItem(payment, correctionMarkers.payments.get(payment.id))
+    );
 
     const filteredDebts = debtComputations.filter((debt) => this.matchesDebtFilters(debt, query));
     const filteredPlans = planComputations.filter((plan) => this.matchesPlanFilters(plan, query));
     const filteredPayments = paymentItems.filter((payment) => this.matchesPaymentFilters(payment, query));
+    const summaryDebts = filteredDebts;
+    const summaryPlans = filteredPlans;
+    const activeDebts = summaryDebts.filter(
+      (debt) => debt.item.status !== DebtStatus.PAID && debt.item.status !== DebtStatus.CANCELLED
+    );
+    const activePlans = summaryPlans.filter(
+      (plan) =>
+        plan.status !== InstallmentPlanStatus.COMPLETED &&
+        plan.status !== InstallmentPlanStatus.CANCELLED
+    );
+    const hasDueDateFilter = Boolean(query.dueFrom || query.dueTo);
+    const hasPaymentDateFilter = Boolean(query.paymentFrom || query.paymentTo);
+    const summaryPayments = paymentItems.filter((payment) => this.matchesPaymentSummaryFilters(payment, query));
+    const summaryTotalPaid =
+      hasDueDateFilter
+        ? sumMoney([
+            ...summaryDebts.map((debt) => debt.totalPaid),
+            ...summaryPlans.map((plan) => this.planPaidForSummary(plan, query)),
+          ])
+        : hasPaymentDateFilter
+        ? sumMoney(summaryPayments.map((payment) => this.paymentAllocationTotal(payment)))
+        : summaryDebts.length > 0 || summaryPlans.length > 0
+        ? sumMoney([
+            ...summaryDebts.map((debt) => debt.totalPaid),
+            ...summaryPlans.map((plan) => plan.totalPaid),
+          ])
+        : sumMoney(filteredPayments.map((payment) => this.paymentAllocationTotal(payment)));
 
     const allItems: FinancialLedgerItem[] = [
       ...filteredDebts.map((debt) => debt.item),
@@ -90,28 +137,27 @@ export class FinancialLedgerService {
 
     return {
       summary: {
+        basis: 'filtered',
         totalOutstanding: moneyToApiString(
           sumMoney([
-            ...debtComputations
+            ...summaryDebts
               .filter((debt) => debt.item.status !== DebtStatus.CANCELLED)
               .map((debt) => debt.remainingBalance),
-            ...planComputations
+            ...summaryPlans
               .filter((plan) => plan.status !== InstallmentPlanStatus.CANCELLED)
-              .map((plan) => plan.remainingBalance),
+              .map((plan) => this.planOutstandingForSummary(plan, query)),
           ])
         ),
-        totalPaid: moneyToApiString(records.totalPaid),
-        activeDebtCount: debtComputations.filter(
-          (debt) => debt.item.status !== DebtStatus.PAID && debt.item.status !== DebtStatus.CANCELLED
-        ).length,
-        activePlanCount: planComputations.filter(
-          (plan) =>
-            plan.status !== InstallmentPlanStatus.COMPLETED &&
-            plan.status !== InstallmentPlanStatus.CANCELLED
-        ).length,
-        overdueDebtCount: debtComputations.filter((debt) => debt.item.status === DebtStatus.OVERDUE)
+        totalPaid: moneyToApiString(summaryTotalPaid),
+        activeDebtCount: activeDebts.length,
+        activePlanCount: activePlans.length,
+        activeCustomerCount: new Set([
+          ...activeDebts.map((debt) => debt.item.customer.id),
+          ...activePlans.map((plan) => plan.item.customer.id),
+        ]).size,
+        overdueDebtCount: summaryDebts.filter((debt) => debt.item.status === DebtStatus.OVERDUE)
           .length,
-        overdueInstallmentCount: planComputations.reduce(
+        overdueInstallmentCount: summaryPlans.reduce(
           (totalOverdue, plan) => totalOverdue + plan.overdueInstallmentCount,
           0
         ),
@@ -126,12 +172,16 @@ export class FinancialLedgerService {
     };
   }
 
-  private static computeDebt(debt: FinancialLedgerDebtRecord, businessDate: string): DebtComputation {
+  private static computeDebt(
+    debt: FinancialLedgerDebtRecord,
+    businessDate: string,
+    correctionMarker?: FinancialLedgerCorrectionMarker
+  ): DebtComputation {
     const balance = calculateDebtBalance({
       originalAmount: debt.originalAmount,
       allocations: debt.paymentAllocations.map((allocation) => ({
         amount: allocation.amount,
-        isVoided: Boolean(allocation.payment.voidedAt),
+        isVoided: isPaymentAllocationVoided(allocation),
       })),
     });
     const dueDate = prismaDateToBusinessDate(debt.dueDate);
@@ -163,6 +213,7 @@ export class FinancialLedgerService {
               reason: debt.cancelReason,
             }
           : null,
+        correction: this.toCorrectionView(correctionMarker),
       },
       totalPaid: balance.totalPaid,
       remainingBalance: balance.remainingBalance,
@@ -170,14 +221,19 @@ export class FinancialLedgerService {
     };
   }
 
-  private static computePlan(plan: FinancialLedgerPlanRecord, businessDate: string): PlanComputation {
+  private static computePlan(
+    plan: FinancialLedgerPlanRecord,
+    businessDate: string,
+    correctionMarker: FinancialLedgerCorrectionMarker | undefined,
+    query: FinancialLedgerQueryInput
+  ): PlanComputation {
     const planIsCancelled = plan.status === InstallmentPlanStatus.CANCELLED || Boolean(plan.cancelledAt);
     const installments = plan.installments.map((installment) => {
       const balance = calculateInstallmentBalance({
         amountDue: installment.amountDue,
         allocations: installment.paymentAllocations.map((allocation) => ({
           amount: allocation.amount,
-          isVoided: Boolean(allocation.payment.voidedAt),
+          isVoided: isPaymentAllocationVoided(allocation),
         })),
       });
       const dueDate = prismaDateToBusinessDate(installment.dueDate);
@@ -266,15 +322,26 @@ export class FinancialLedgerService {
               }
             : null,
         },
+        periodSummary: this.toPlanPeriodSummary(activeInstallments, query),
+        correction: this.toCorrectionView(correctionMarker),
       },
       totalPaid,
       remainingBalance,
       status,
       overdueInstallmentCount,
+      installments: activeInstallments.map((installment) => ({
+        dueDate: installment.dueDate,
+        totalPaid: installment.totalPaid,
+        remainingAmount: installment.remainingAmount,
+        isCancelled: installment.isCancelled,
+      })),
     };
   }
 
-  private static toPaymentItem(payment: FinancialLedgerPaymentRecord): FinancialLedgerPaymentItem {
+  private static toPaymentItem(
+    payment: FinancialLedgerPaymentRecord,
+    correctionMarker?: FinancialLedgerCorrectionMarker
+  ): FinancialLedgerPaymentItem {
     return {
       type: 'PAYMENT',
       id: payment.id,
@@ -307,6 +374,7 @@ export class FinancialLedgerService {
           createdAt: allocation.createdAt.toISOString(),
         };
       }),
+      correction: this.toCorrectionView(correctionMarker),
     };
   }
 
@@ -314,8 +382,10 @@ export class FinancialLedgerService {
     debt: DebtComputation,
     query: FinancialLedgerQueryInput
   ): boolean {
+    if (query.correctedOnly && !debt.item.correction.hasCorrections) return false;
     if (query.type === 'OVERDUE' && debt.item.status !== DebtStatus.OVERDUE) return false;
     if (!query.includeCancelled && debt.item.status === DebtStatus.CANCELLED) return false;
+    if (this.shouldHideCompleted(query) && debt.item.status === DebtStatus.PAID) return false;
     return this.matchesStatusFilter(debt.item.status, query.status);
   }
 
@@ -323,8 +393,10 @@ export class FinancialLedgerService {
     plan: PlanComputation,
     query: FinancialLedgerQueryInput
   ): boolean {
+    if (query.correctedOnly && !plan.item.correction.hasCorrections) return false;
     if (query.type === 'OVERDUE' && plan.status !== InstallmentPlanStatus.OVERDUE) return false;
     if (!query.includeCancelled && plan.status === InstallmentPlanStatus.CANCELLED) return false;
+    if (this.shouldHideCompleted(query) && plan.status === InstallmentPlanStatus.COMPLETED) return false;
     return this.matchesStatusFilter(plan.status, query.status);
   }
 
@@ -332,6 +404,20 @@ export class FinancialLedgerService {
     payment: FinancialLedgerPaymentItem,
     query: FinancialLedgerQueryInput
   ): boolean {
+    if (query.correctedOnly && !payment.correction.hasCorrections) return false;
+    if (!query.includeCancelled && payment.status === 'VOIDED') return false;
+    if (this.shouldHideCompleted(query) && payment.status === 'COMPLETED') return false;
+    if (!query.status) return true;
+    if (query.status === 'CANCELLED') return payment.status === 'VOIDED';
+    if (query.status === 'PAID_COMPLETED') return payment.status === 'COMPLETED';
+    return false;
+  }
+
+  private static matchesPaymentSummaryFilters(
+    payment: FinancialLedgerPaymentItem,
+    query: FinancialLedgerQueryInput
+  ): boolean {
+    if (query.correctedOnly && !payment.correction.hasCorrections) return false;
     if (!query.includeCancelled && payment.status === 'VOIDED') return false;
     if (!query.status) return true;
     if (query.status === 'CANCELLED') return payment.status === 'VOIDED';
@@ -363,6 +449,8 @@ export class FinancialLedgerService {
   ): number {
     const direction = sortOrder === 'asc' ? 1 : -1;
     let comparison = 0;
+    const stateComparison = this.itemStateRank(left) - this.itemStateRank(right);
+    if (stateComparison !== 0) return stateComparison;
 
     if (sortBy === 'customer') {
       comparison = left.customer.name.localeCompare(right.customer.name);
@@ -388,5 +476,112 @@ export class FinancialLedgerService {
     if (item.type === 'DEBT') return new Decimal(item.originalAmount);
     if (item.type === 'INSTALLMENT_PLAN') return new Decimal(item.totalAmount);
     return new Decimal(item.amount);
+  }
+
+  private static itemStateRank(item: FinancialLedgerItem): number {
+    if (item.type === 'DEBT') {
+      if (item.status === DebtStatus.CANCELLED) return 2;
+      if (item.status === DebtStatus.PAID) return 1;
+      return 0;
+    }
+    if (item.type === 'INSTALLMENT_PLAN') {
+      if (item.status === InstallmentPlanStatus.CANCELLED) return 2;
+      if (item.status === InstallmentPlanStatus.COMPLETED) return 1;
+      return 0;
+    }
+    if (item.status === 'VOIDED') return 2;
+    return 1;
+  }
+
+  private static shouldHideCompleted(query: FinancialLedgerQueryInput): boolean {
+    return !query.includeCompleted && query.status !== 'PAID_COMPLETED' && query.type !== 'PAYMENT';
+  }
+
+  private static paymentAllocationTotal(payment: FinancialLedgerPaymentItem): Decimal {
+    if (payment.status === 'VOIDED') return ZERO_MONEY;
+    return sumMoney(payment.allocations.map((allocation) => new Decimal(allocation.amount)));
+  }
+
+  private static planOutstandingForSummary(
+    plan: PlanComputation,
+    query: FinancialLedgerQueryInput
+  ): Decimal {
+    if (!query.dueFrom && !query.dueTo) return plan.remainingBalance;
+
+    return sumMoney(
+      plan.installments
+        .filter((installment) => !installment.isCancelled)
+        .filter((installment) => {
+          if (query.dueFrom && compareBusinessDates(installment.dueDate, query.dueFrom) < 0) {
+            return false;
+          }
+          if (query.dueTo && compareBusinessDates(installment.dueDate, query.dueTo) > 0) {
+            return false;
+          }
+          return true;
+        })
+        .map((installment) => installment.remainingAmount)
+    );
+  }
+
+  private static planPaidForSummary(plan: PlanComputation, query: FinancialLedgerQueryInput): Decimal {
+    if (!query.dueFrom && !query.dueTo) return plan.totalPaid;
+
+    return sumMoney(
+      plan.installments
+        .filter((installment) => !installment.isCancelled)
+        .filter((installment) => {
+          if (query.dueFrom && compareBusinessDates(installment.dueDate, query.dueFrom) < 0) {
+            return false;
+          }
+          if (query.dueTo && compareBusinessDates(installment.dueDate, query.dueTo) > 0) {
+            return false;
+          }
+          return true;
+        })
+        .map((installment) => installment.totalPaid)
+    );
+  }
+
+  private static toPlanPeriodSummary(
+    installments: Array<{
+      dueDate: string;
+      amountDue: Decimal;
+      totalPaid: Decimal;
+      remainingAmount: Decimal;
+      isCancelled: boolean;
+    }>,
+    query: FinancialLedgerQueryInput
+  ): FinancialLedgerPlanItem['periodSummary'] {
+    if (!query.dueFrom && !query.dueTo) return null;
+
+    const periodInstallments = installments
+      .filter((installment) => !installment.isCancelled)
+      .filter((installment) => {
+        if (query.dueFrom && compareBusinessDates(installment.dueDate, query.dueFrom) < 0) return false;
+        if (query.dueTo && compareBusinessDates(installment.dueDate, query.dueTo) > 0) return false;
+        return true;
+      });
+
+    return {
+      dueFrom: query.dueFrom ?? null,
+      dueTo: query.dueTo ?? null,
+      installmentCount: periodInstallments.length,
+      totalDue: moneyToApiString(sumMoney(periodInstallments.map((installment) => installment.amountDue))),
+      totalPaid: moneyToApiString(sumMoney(periodInstallments.map((installment) => installment.totalPaid))),
+      totalRemaining: moneyToApiString(
+        sumMoney(periodInstallments.map((installment) => installment.remainingAmount))
+      ),
+    };
+  }
+
+  private static toCorrectionView(
+    correctionMarker?: FinancialLedgerCorrectionMarker
+  ): FinancialLedgerCorrectionView {
+    return {
+      hasCorrections: correctionMarker?.hasCorrections ?? false,
+      correctionCount: correctionMarker?.correctionCount ?? 0,
+      lastCorrectedAt: correctionMarker?.lastCorrectedAt?.toISOString() ?? null,
+    };
   }
 }

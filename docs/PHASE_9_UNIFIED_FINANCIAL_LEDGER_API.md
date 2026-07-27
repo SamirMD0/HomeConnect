@@ -39,6 +39,7 @@ Dates use strict `YYYY-MM-DD`.
       "totalPaid": "950.00",
       "activeDebtCount": 4,
       "activePlanCount": 2,
+      "activeCustomerCount": 5,
       "overdueDebtCount": 1,
       "overdueInstallmentCount": 3
     },
@@ -113,6 +114,14 @@ Installment-plan item:
       "remainingAmount": "100.00",
       "status": "PENDING"
     }
+  },
+  "periodSummary": {
+    "dueFrom": "2026-08-01",
+    "dueTo": "2026-08-31",
+    "installmentCount": 1,
+    "totalDue": "100.00",
+    "totalPaid": "0.00",
+    "totalRemaining": "100.00"
   }
 }
 ```

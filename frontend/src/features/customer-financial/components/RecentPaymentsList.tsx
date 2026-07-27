@@ -6,9 +6,17 @@ import { FinancialEmptyState } from './FinancialEmptyState';
 
 interface RecentPaymentsListProps {
   payments: RecentFinancialPayment[];
+  canMutate?: boolean;
+  onVoidPayment?: (payment: RecentFinancialPayment) => void;
+  onReallocatePayment?: (payment: RecentFinancialPayment) => void;
 }
 
-export const RecentPaymentsList: React.FC<RecentPaymentsListProps> = ({ payments }) => {
+export const RecentPaymentsList: React.FC<RecentPaymentsListProps> = ({
+  payments,
+  canMutate = false,
+  onVoidPayment,
+  onReallocatePayment,
+}) => {
   if (payments.length === 0) {
     return (
       <FinancialEmptyState
@@ -44,6 +52,28 @@ export const RecentPaymentsList: React.FC<RecentPaymentsListProps> = ({ payments
                 {payment.notes && <p className="mt-1 text-sm text-slate-600">{payment.notes}</p>}
                 {payment.voidReason && <p className="mt-1 text-sm text-slate-600">Void reason: {payment.voidReason}</p>}
               </div>
+              {canMutate && !payment.voidedAt && (
+                <div className="flex flex-wrap gap-2 sm:justify-end">
+                  {onReallocatePayment && isInstallmentPayment(payment) && (
+                    <button
+                      type="button"
+                      onClick={() => onReallocatePayment(payment)}
+                      className="rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                    >
+                      Reallocate
+                    </button>
+                  )}
+                  {onVoidPayment && (
+                    <button
+                      type="button"
+                      onClick={() => onVoidPayment(payment)}
+                      className="rounded-md border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500/30"
+                    >
+                      Void payment
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="mt-4 rounded-lg border border-slate-100 bg-slate-50">
@@ -73,3 +103,10 @@ export const RecentPaymentsList: React.FC<RecentPaymentsListProps> = ({ payments
     </section>
   );
 };
+
+function isInstallmentPayment(payment: RecentFinancialPayment): boolean {
+  return (
+    payment.allocations.length > 0 &&
+    payment.allocations.every((allocation) => allocation.targetType === 'INSTALLMENT')
+  );
+}

@@ -7,12 +7,20 @@ import { DebtDetails } from '../features/customer-financial/components/DebtDetai
 import { InstallmentPlanDetails } from '../features/customer-financial/components/InstallmentPlanDetails';
 import { CancelDebtDialog } from '../features/customer-financial/components/CancelDebtDialog';
 import { CancelInstallmentPlanDialog } from '../features/customer-financial/components/CancelInstallmentPlanDialog';
+import { EditInstallmentPlanDialog } from '../features/customer-financial/components/EditInstallmentPlanDialog';
 import { RecordDebtPaymentDialog } from '../features/customer-financial/components/RecordDebtPaymentDialog';
+import { DebtPaymentTarget } from '../features/customer-financial/components/RecordDebtPaymentDialog';
 import { RecordPlanPaymentDialog } from '../features/customer-financial/components/RecordPlanPaymentDialog';
+import { PlanPaymentTarget } from '../features/customer-financial/components/RecordPlanPaymentDialog';
+import { VoidPaymentDialog } from '../features/customer-financial/components/VoidPaymentDialog';
+import { InstallmentPlanDetail } from '../features/customer-financial/types/customer-financial.types';
 import { isFinancialAdmin } from '../features/customer-financial/utils/financial-auth';
 import { GlobalAddObligationDialog } from '../features/financial-ledger/components/GlobalAddObligationDialog';
 import { GlobalReceivePaymentDialog } from '../features/financial-ledger/components/GlobalReceivePaymentDialog';
-import { LedgerFilters } from '../features/financial-ledger/components/LedgerFilters';
+import {
+  hasActiveLedgerFilters,
+  LedgerFilters,
+} from '../features/financial-ledger/components/LedgerFilters';
 import { LedgerSummaryCards } from '../features/financial-ledger/components/LedgerSummaryCards';
 import { LedgerTable } from '../features/financial-ledger/components/LedgerTable';
 import {
@@ -25,10 +33,12 @@ import {
   useFinancialLedger,
 } from '../features/financial-ledger/hooks/useFinancialLedger';
 import {
-  FinancialLedgerDebtItem,
   FinancialLedgerFilters,
-  FinancialLedgerPlanItem,
+  FinancialLedgerPaymentItem,
 } from '../features/financial-ledger/types/financial-ledger.types';
+
+type DebtMutationTarget = DebtPaymentTarget & { customer: { id: string } };
+type PlanMutationTarget = PlanPaymentTarget & { customer: { id: string } };
 
 export const LedgerPage: React.FC = () => {
   const { user } = useAuth();
@@ -38,18 +48,22 @@ export const LedgerPage: React.FC = () => {
     type: 'ALL',
     page: 1,
     limit: 25,
-    sortBy: 'date',
-    sortOrder: 'asc',
+    sortBy: 'createdAt',
+    sortOrder: 'desc',
     includeCancelled: false,
+    includeCompleted: false,
+    correctedOnly: false,
   });
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isReceivePaymentDialogOpen, setIsReceivePaymentDialogOpen] = useState(false);
   const [selectedDebtId, setSelectedDebtId] = useState<string | null>(null);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
-  const [debtForPayment, setDebtForPayment] = useState<FinancialLedgerDebtItem | null>(null);
-  const [debtForCancellation, setDebtForCancellation] = useState<FinancialLedgerDebtItem | null>(null);
-  const [planForPayment, setPlanForPayment] = useState<FinancialLedgerPlanItem | null>(null);
-  const [planForCancellation, setPlanForCancellation] = useState<FinancialLedgerPlanItem | null>(null);
+  const [debtForPayment, setDebtForPayment] = useState<DebtMutationTarget | null>(null);
+  const [debtForCancellation, setDebtForCancellation] = useState<DebtMutationTarget | null>(null);
+  const [planForPayment, setPlanForPayment] = useState<PlanMutationTarget | null>(null);
+  const [planForEdit, setPlanForEdit] = useState<InstallmentPlanDetail | null>(null);
+  const [planForCancellation, setPlanForCancellation] = useState<PlanMutationTarget | null>(null);
+  const [paymentForVoid, setPaymentForVoid] = useState<FinancialLedgerPaymentItem | null>(null);
 
   const { data, isLoading, isError, refetch } = useFinancialLedger(filters);
 
@@ -60,15 +74,43 @@ export const LedgerPage: React.FC = () => {
   const closeMutationDialogsAndRefresh = () => {
     setIsAddDialogOpen(false);
     setIsReceivePaymentDialogOpen(false);
+    setSelectedDebtId(null);
+    setSelectedPlanId(null);
     setDebtForPayment(null);
     setDebtForCancellation(null);
+    setPlanForEdit(null);
     setPlanForPayment(null);
     setPlanForCancellation(null);
+    setPaymentForVoid(null);
     refreshLedger();
+  };
+
+  const openDebtPayment = (debt: DebtMutationTarget) => {
+    setSelectedDebtId(null);
+    setDebtForPayment(debt);
+  };
+
+  const openDebtCancellation = (debt: DebtMutationTarget) => {
+    setSelectedDebtId(null);
+    setDebtForCancellation(debt);
+  };
+
+  const openPlanPayment = (plan: PlanMutationTarget) => {
+    setSelectedPlanId(null);
+    setPlanForPayment(plan);
+  };
+
+  const openPlanCancellation = (plan: PlanMutationTarget) => {
+    setSelectedPlanId(null);
+    setPlanForCancellation(plan);
   };
 
   const goToPage = (page: number) => {
     setFilters((current) => ({ ...current, page }));
+  };
+
+  const includeCompleted = () => {
+    setFilters((current) => ({ ...current, includeCompleted: true, page: 1 }));
   };
 
   return (
@@ -115,18 +157,30 @@ export const LedgerPage: React.FC = () => {
           <LedgerSummaryCards summary={data.summary} />
           <LedgerFilters filters={filters} onChange={setFilters} />
           {data.items.length === 0 ? (
-            <LedgerEmptyState filtered={hasActiveFilters(filters)} />
-          ) : (
-            <LedgerTable
-              items={data.items}
-              canMutate={canMutate}
-              onViewDebt={setSelectedDebtId}
-              onViewPlan={setSelectedPlanId}
-              onRecordDebtPayment={setDebtForPayment}
-              onCancelDebt={setDebtForCancellation}
-              onRecordPlanPayment={setPlanForPayment}
-              onCancelPlan={setPlanForCancellation}
+            <LedgerEmptyState
+              filtered={hasActiveLedgerFilters(filters)}
+              canIncludeCompleted={!filters.includeCompleted}
+              onIncludeCompleted={includeCompleted}
             />
+          ) : (
+            <div className="space-y-2">
+              <LedgerTable
+                items={data.items}
+                canMutate={canMutate}
+                onViewDebt={setSelectedDebtId}
+                onViewPlan={setSelectedPlanId}
+                onRecordDebtPayment={openDebtPayment}
+                onCancelDebt={openDebtCancellation}
+                onRecordPlanPayment={openPlanPayment}
+                onCancelPlan={openPlanCancellation}
+                onVoidPayment={setPaymentForVoid}
+              />
+              {!filters.includeCompleted && (
+                <p className="px-1 text-xs text-slate-500">
+                  Completed debts and plans are hidden. Include completed to show them.
+                </p>
+              )}
+            </div>
           )}
           <div className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between">
             <p>
@@ -181,7 +235,12 @@ export const LedgerPage: React.FC = () => {
         title="Debt details"
         maxWidth="max-w-4xl"
       >
-        <DebtDetails debtId={selectedDebtId} canMutate={canMutate} />
+        <DebtDetails
+          debtId={selectedDebtId}
+          canMutate={canMutate}
+          onRecordPayment={openDebtPayment}
+          onCancelDebt={openDebtCancellation}
+        />
       </Modal>
 
       <Modal
@@ -190,7 +249,31 @@ export const LedgerPage: React.FC = () => {
         title="Installment plan details"
         maxWidth="max-w-5xl"
       >
-        <InstallmentPlanDetails planId={selectedPlanId} canMutate={canMutate} />
+        <InstallmentPlanDetails
+          planId={selectedPlanId}
+          canMutate={canMutate}
+          onEditPlan={(plan) => {
+            setSelectedPlanId(null);
+            setPlanForEdit(plan);
+          }}
+          onRecordPayment={openPlanPayment}
+          onCancelPlan={openPlanCancellation}
+        />
+      </Modal>
+
+      <Modal
+        isOpen={Boolean(planForEdit)}
+        onClose={() => setPlanForEdit(null)}
+        title="Edit installment plan"
+        maxWidth="max-w-2xl"
+      >
+        {planForEdit && (
+          <EditInstallmentPlanDialog
+            customerId={planForEdit.customer.id}
+            plan={planForEdit}
+            onSuccess={closeMutationDialogsAndRefresh}
+          />
+        )}
       </Modal>
 
       <Modal
@@ -252,19 +335,28 @@ export const LedgerPage: React.FC = () => {
           />
         )}
       </Modal>
+
+      <Modal
+        isOpen={Boolean(paymentForVoid)}
+        onClose={() => setPaymentForVoid(null)}
+        title="Void payment"
+        maxWidth="max-w-xl"
+      >
+        {paymentForVoid && (
+          <VoidPaymentDialog
+            customerId={paymentForVoid.customer.id}
+            payment={{
+              id: paymentForVoid.id,
+              totalAmount: paymentForVoid.amount,
+              paymentDate: paymentForVoid.paymentDate,
+              paymentMethod: paymentForVoid.paymentMethod,
+              reference: paymentForVoid.reference,
+            }}
+            sourceScreen="LEDGER"
+            onSuccess={closeMutationDialogsAndRefresh}
+          />
+        )}
+      </Modal>
     </div>
   );
 };
-
-function hasActiveFilters(filters: FinancialLedgerFilters): boolean {
-  return Boolean(
-    (filters.type && filters.type !== 'ALL') ||
-      filters.status ||
-      filters.search ||
-      filters.dueFrom ||
-      filters.dueTo ||
-      filters.paymentFrom ||
-      filters.paymentTo ||
-      filters.includeCancelled
-  );
-}

@@ -2,6 +2,7 @@ import path from 'path';
 import { describe, expect, it } from 'vitest';
 import {
   createBrowserWindowOptions,
+  createStartupMonitorOptions,
   DEFAULT_DEV_SERVER_URL,
   resolveProductionFrontendPath,
 } from './window';
@@ -18,6 +19,17 @@ describe('Electron window configuration', () => {
 
   it('enforces secure renderer options', () => {
     const options = createBrowserWindowOptions();
+
+    expect(options.show).toBe(false);
+    expect(options.webPreferences.nodeIntegration).toBe(false);
+    expect(options.webPreferences.contextIsolation).toBe(true);
+    expect(options.webPreferences.sandbox).toBe(true);
+    expect(options.webPreferences.preload).toBe(path.join(__dirname, 'preload.js'));
+    expect(options.webPreferences).not.toHaveProperty('webSecurity', false);
+  });
+
+  it('enforces secure options for startup monitor', () => {
+    const options = createStartupMonitorOptions();
 
     expect(options.show).toBe(false);
     expect(options.webPreferences.nodeIntegration).toBe(false);

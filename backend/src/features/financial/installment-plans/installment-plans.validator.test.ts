@@ -140,9 +140,12 @@ describe('installment plan validators', () => {
       sortOrder: 'desc',
     });
 
-    expect(() => cancelInstallmentPlanSchema.parse({ reason: '' })).toThrow();
-    expect(cancelInstallmentPlanSchema.parse({ reason: ' Agreement cancelled ' })).toEqual({
+    expect(() => cancelInstallmentPlanSchema.parse({ reason: '', accountPassword: '' })).toThrow();
+    expect(
+      cancelInstallmentPlanSchema.parse({ reason: ' Agreement cancelled ', accountPassword: 'admin123' })
+    ).toEqual({
       reason: 'Agreement cancelled',
+      accountPassword: 'admin123',
     });
   });
 });

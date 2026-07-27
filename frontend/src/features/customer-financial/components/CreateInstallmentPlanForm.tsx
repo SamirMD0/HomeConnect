@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { ArrowLeft } from 'lucide-react';
@@ -27,6 +27,8 @@ export const CreateInstallmentPlanForm: React.FC<CreateInstallmentPlanFormProps>
 }) => {
   const createPlan = useCreateInstallmentPlan(customer.id);
   const [serverError, setServerError] = useState<string | null>(null);
+  const [scheduleMode, setScheduleMode] = useState<'AUTO' | 'MANUAL'>('AUTO');
+  const [manualAmounts, setManualAmounts] = useState<string[]>([]);
   const {
     register,
     handleSubmit,
@@ -47,25 +49,42 @@ export const CreateInstallmentPlanForm: React.FC<CreateInstallmentPlanFormProps>
   });
 
   const values = watch();
+  const installmentCount = Number(values.installmentCount);
+
   const previewResult = useMemo(() => {
     try {
       return {
         preview: generateInstallmentPreview({
           totalAmount: values.totalAmount || '',
           startDate: values.startDate || '',
-          installmentCount: Number(values.installmentCount),
+          installmentCount,
+          manualAmounts: scheduleMode === 'MANUAL' ? manualAmounts : undefined,
         }),
         error: null,
       };
     } catch (error) {
       return { preview: null, error: error instanceof Error ? error.message : 'Preview unavailable.' };
     }
-  }, [values.installmentCount, values.startDate, values.totalAmount]);
+  }, [installmentCount, manualAmounts, scheduleMode, values.startDate, values.totalAmount]);
+
+  useEffect(() => {
+    if (!Number.isInteger(installmentCount) || installmentCount < 1 || installmentCount > 120) {
+      return;
+    }
+
+    setManualAmounts((current) =>
+      Array.from({ length: installmentCount }, (_, index) => current[index] ?? '')
+    );
+  }, [installmentCount]);
 
   const onSubmit = async (formValues: CreateInstallmentPlanFormValues) => {
     setServerError(null);
     if (!previewResult.preview) {
       setServerError(previewResult.error || 'Preview must be valid before creating the plan.');
+      return;
+    }
+    if (scheduleMode === 'MANUAL' && !previewResult.preview.isBalanced) {
+      setServerError('Manual schedule total must match the installment plan total.');
       return;
     }
 
@@ -77,6 +96,10 @@ export const CreateInstallmentPlanForm: React.FC<CreateInstallmentPlanFormProps>
         installmentCount: formValues.installmentCount,
         frequency: 'MONTHLY',
         notes: formValues.notes?.trim() || null,
+        schedule:
+          scheduleMode === 'MANUAL'
+            ? previewResult.preview.rows.map((row) => ({ amountDue: row.amountDue }))
+            : undefined,
       });
       onSuccess();
     } catch (error) {
@@ -153,6 +176,62 @@ export const CreateInstallmentPlanForm: React.FC<CreateInstallmentPlanFormProps>
         <textarea {...register('notes')} rows={3} className={inputClass(Boolean(errors.notes))} placeholder="Optional" />
       </TextField>
 
+      <div className="space-y-3">
+        <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-1">
+          <button
+            type="button"
+            onClick={() => setScheduleMode('AUTO')}
+            className={scheduleModeClass(scheduleMode === 'AUTO')}
+          >
+            Auto
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (previewResult.preview?.rows.length === installmentCount) {
+                setManualAmounts(previewResult.preview.rows.map((row) => row.amountDue));
+              }
+              setScheduleMode('MANUAL');
+            }}
+            className={scheduleModeClass(scheduleMode === 'MANUAL')}
+          >
+            Manual
+          </button>
+        </div>
+
+        {scheduleMode === 'MANUAL' && (
+          <div className="rounded-lg border border-slate-200">
+            <div className="grid grid-cols-[72px_minmax(0,1fr)] border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-600">
+              <span>#</span>
+              <span>Amount</span>
+            </div>
+            <div className="divide-y divide-slate-100">
+              {manualAmounts.map((amount, index) => (
+                <label key={index} className="grid grid-cols-[72px_minmax(0,1fr)] items-center gap-3 px-3 py-2 text-sm">
+                  <span className="font-medium text-slate-700">{index + 1}</span>
+                  <input
+                    value={amount}
+                    inputMode="decimal"
+                    onChange={(event) => {
+                      const nextAmounts = [...manualAmounts];
+                      nextAmounts[index] = event.target.value;
+                      setManualAmounts(nextAmounts);
+                    }}
+                    onBlur={() => {
+                      const nextAmounts = [...manualAmounts];
+                      nextAmounts[index] = canonicalMoneyInput(nextAmounts[index] ?? '');
+                      setManualAmounts(nextAmounts);
+                    }}
+                    className={inputClass(false)}
+                    placeholder="0.00"
+                  />
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
       <InstallmentSchedulePreview preview={previewResult.preview} error={previewResult.error} />
 
       <SubmitButton
@@ -163,3 +242,9 @@ export const CreateInstallmentPlanForm: React.FC<CreateInstallmentPlanFormProps>
     </form>
   );
 };
+
+function scheduleModeClass(active: boolean): string {
+  return active
+    ? 'rounded-md bg-white px-3 py-1.5 text-sm font-semibold text-emerald-700 shadow-sm'
+    : 'rounded-md px-3 py-1.5 text-sm font-semibold text-slate-600 hover:text-slate-900';
+}

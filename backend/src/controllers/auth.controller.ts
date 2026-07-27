@@ -81,7 +81,15 @@ export class AuthController {
       const refreshToken = req.cookies?.refreshToken;
       
       if (!refreshToken) {
-        throw new ValidationError('Refresh token not found');
+        res.clearCookie('refreshToken');
+        return res.status(401).json({
+          success: false,
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Session expired. Please log in again.',
+          },
+          meta: { timestamp: new Date().toISOString() },
+        });
       }
 
       const tokens = await AuthService.refreshToken(refreshToken);

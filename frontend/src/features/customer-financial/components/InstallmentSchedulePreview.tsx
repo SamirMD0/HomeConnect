@@ -34,9 +34,15 @@ export const InstallmentSchedulePreview: React.FC<InstallmentSchedulePreviewProp
           Schedule preview
         </h3>
         <p className="text-sm text-slate-600">
-          {preview.rows.length} installments, total {formatMoney(preview.totalScheduled)}
+          {preview.rows.length} installments, scheduled {formatMoney(preview.totalScheduled)} of{' '}
+          {formatMoney(preview.expectedTotal)}
         </p>
       </div>
+      {!preview.isBalanced && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          Manual schedule must match the total. Difference: {formatMoney(preview.balanceDifference)}.
+        </div>
+      )}
       <div className="max-h-64 overflow-y-auto rounded-lg border border-slate-200">
         <table className="min-w-full divide-y divide-slate-200 text-sm">
           <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">

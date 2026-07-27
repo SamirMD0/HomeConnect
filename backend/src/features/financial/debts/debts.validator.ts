@@ -1,4 +1,4 @@
-import { DebtStatus, PaymentMethod } from '@prisma/client';
+import { DebtStatus, FinancialCorrectionSourceScreen, PaymentMethod } from '@prisma/client';
 import { z } from 'zod';
 
 const uuidSchema = z.string().uuid('Invalid ID');
@@ -29,6 +29,19 @@ export const createDebtSchema = z
   })
   .strict();
 
+export const updateDebtSchema = z
+  .object({
+    originalAmount: moneyStringSchema.optional(),
+    description: z.string().trim().min(1, 'Description is required').max(200, 'Description is too long'),
+    dueDate: businessDateSchema,
+    notes: z.string().trim().max(1000, 'Notes are too long').optional().nullable(),
+    cancelReason: z.string().trim().min(5, 'Cancellation reason is too short').max(1000, 'Cancellation reason is too long').optional().nullable(),
+    reason: z.string().trim().min(5, 'Correction reason must be at least 5 characters').max(1000, 'Correction reason is too long'),
+    sourceScreen: z.nativeEnum(FinancialCorrectionSourceScreen).default(FinancialCorrectionSourceScreen.API),
+    accountPassword: z.string().min(1, 'Account password is required'),
+  })
+  .strict();
+
 export const listCustomerDebtsQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(100).default(10),
@@ -56,12 +69,14 @@ export const createDebtPaymentSchema = z
 export const cancelDebtSchema = z
   .object({
     reason: z.string().trim().min(1, 'Cancellation reason is required').max(1000, 'Cancellation reason is too long'),
+    accountPassword: z.string().min(1, 'Account password is required'),
   })
   .strict();
 
 export type CustomerDebtParamsInput = z.infer<typeof customerDebtParamsSchema>;
 export type DebtParamsInput = z.infer<typeof debtParamsSchema>;
 export type CreateDebtInput = z.infer<typeof createDebtSchema>;
+export type UpdateDebtInput = z.infer<typeof updateDebtSchema>;
 export type ListCustomerDebtsQueryInput = z.infer<typeof listCustomerDebtsQuerySchema>;
 export type CreateDebtPaymentInput = z.infer<typeof createDebtPaymentSchema>;
 export type CancelDebtInput = z.infer<typeof cancelDebtSchema>;

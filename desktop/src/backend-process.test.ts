@@ -1,6 +1,6 @@
 import path from 'path';
 import { describe, expect, it } from 'vitest';
-import { buildBackendEnvironment, buildBackendSpawnConfig, redactLogChunk } from './backend-process';
+import { buildBackendEnvironment, buildBackendSpawnConfig, redactLogChunk, pipeChildOutput } from './backend-process';
 
 describe('Electron backend process configuration', () => {
   it('uses localhost-only runtime configuration and credentialed CORS origins', () => {
@@ -47,5 +47,18 @@ describe('Electron backend process configuration', () => {
     expect(redacted).not.toContain('secret@localhost');
     expect(redacted).not.toContain('my-secret');
     expect(redacted).not.toContain('PGPASSWORD=pass');
+  });
+  it('calls onOutput callback with redacted logs', () => {
+    let capturedLog = '';
+    const mockChild = {
+      stdout: { on: (event: string, cb: any) => { if (event === 'data') cb('DATABASE_URL=postgresql://secret@host/db starting'); } },
+      stderr: { on: () => {} },
+    } as unknown as import('child_process').ChildProcess;
+
+    pipeChildOutput(mockChild, (log: string) => {
+      capturedLog = log;
+    });
+
+    expect(capturedLog).toContain('[backend] DATABASE_URL=[REDACTED] starting');
   });
 });

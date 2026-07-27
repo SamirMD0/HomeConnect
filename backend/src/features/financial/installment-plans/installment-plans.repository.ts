@@ -236,6 +236,49 @@ export class InstallmentPlansRepository {
     });
   }
 
+  static async updatePlanDetails(
+    tx: FinancialTransactionClient,
+    planId: string,
+    data: {
+      description: string;
+      totalAmount?: Decimal;
+      startDate?: Date;
+      installmentCount?: number;
+      status?: InstallmentPlanStatus;
+      notes?: string | null;
+      cancelReason?: string | null;
+    }
+  ) {
+    return tx.installmentPlan.update({
+      where: { id: planId },
+      data,
+      include: installmentPlanInclude,
+    });
+  }
+
+  static async updateInstallmentScheduleRows(
+    tx: FinancialTransactionClient,
+    installments: Array<{
+      id: string;
+      dueDate: Date;
+      amountDue: Decimal;
+      status: InstallmentStatus;
+      paidDate?: Date | null;
+    }>
+  ) {
+    for (const installment of installments) {
+      await tx.installment.update({
+        where: { id: installment.id },
+        data: {
+          dueDate: installment.dueDate,
+          amountDue: installment.amountDue,
+          status: installment.status,
+          paidDate: installment.paidDate ?? null,
+        },
+      });
+    }
+  }
+
   static async cancelPlan(
     tx: FinancialTransactionClient,
     planId: string,

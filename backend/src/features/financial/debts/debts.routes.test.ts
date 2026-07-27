@@ -9,6 +9,8 @@ const { debtsServiceMock } = vi.hoisted(() => ({
     listCustomerDebts: vi.fn(),
     getDebt: vi.fn(),
     listDebtPayments: vi.fn(),
+    updateDebt: vi.fn(),
+    correctDebt: vi.fn(),
     recordDebtPayment: vi.fn(),
     cancelDebt: vi.fn(),
   },
@@ -70,6 +72,20 @@ describe('debt routes', () => {
     });
     debtsServiceMock.getDebt.mockResolvedValue(debtResponse);
     debtsServiceMock.listDebtPayments.mockResolvedValue([]);
+    debtsServiceMock.updateDebt.mockResolvedValue({
+      ...debtResponse,
+      description: 'Updated refrigerator',
+      originalAmount: '650.00',
+      dueDate: '2026-08-15',
+      notes: 'Updated notes',
+    });
+    debtsServiceMock.correctDebt.mockResolvedValue({
+      ...debtResponse,
+      description: 'Updated refrigerator',
+      originalAmount: '650.00',
+      dueDate: '2026-08-15',
+      notes: 'Updated notes',
+    });
     debtsServiceMock.recordDebtPayment.mockResolvedValue({
       ...debtResponse,
       totalPaid: '200.00',
@@ -189,10 +205,60 @@ describe('debt routes', () => {
       .set('Authorization', `Bearer ${adminToken}`)
       .send({
         reason: 'Customer returned product',
+        accountPassword: 'admin-password',
       });
 
     expect(cancelResponse.status).toBe(200);
     expect(cancelResponse.body.data.status).toBe('CANCELLED');
     expect(cancelResponse.body.data.cancellation.reason).toBe('Customer returned product');
+  });
+
+  it('allows admins to correct debt details and amount with account password', async () => {
+    const response = await request(app)
+      .post(`/api/v1/debts/${debtId}/corrections`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        originalAmount: '650.00',
+        description: 'Updated refrigerator',
+        dueDate: '2026-08-15',
+        notes: 'Updated notes',
+        reason: 'Original invoice amount was entered incorrectly',
+        sourceScreen: 'CUSTOMER_PROFILE',
+        accountPassword: 'admin-password',
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.description).toBe('Updated refrigerator');
+    expect(response.body.data.originalAmount).toBe('650.00');
+    expect(debtsServiceMock.correctDebt).toHaveBeenCalledWith(
+      debtId,
+      {
+        originalAmount: '650.00',
+        description: 'Updated refrigerator',
+        dueDate: '2026-08-15',
+        notes: 'Updated notes',
+        reason: 'Original invoice amount was entered incorrectly',
+        sourceScreen: 'CUSTOMER_PROFILE',
+        accountPassword: 'admin-password',
+      },
+      expect.objectContaining({ role: 'ADMIN' })
+    );
+  });
+
+  it('keeps the legacy patch debt route as a correction alias', async () => {
+    const response = await request(app)
+      .patch(`/api/v1/debts/${debtId}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        description: 'Updated refrigerator',
+        dueDate: '2026-08-15',
+        notes: 'Updated notes',
+        reason: 'Corrected description typo',
+        sourceScreen: 'CUSTOMER_PROFILE',
+        accountPassword: 'admin-password',
+      });
+
+    expect(response.status).toBe(200);
+    expect(debtsServiceMock.updateDebt).toHaveBeenCalledTimes(1);
   });
 });

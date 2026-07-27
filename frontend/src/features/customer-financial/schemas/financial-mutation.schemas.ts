@@ -38,8 +38,23 @@ export const debtPaymentSchema = (remainingBalance: string) =>
     notes: optionalTextSchema,
   });
 
+export const updateDebtSchema = z.object({
+  originalAmount: moneySchema,
+  description: z.string().trim().min(1, 'Description is required'),
+  dueDate: businessDateSchema,
+  notes: optionalTextSchema,
+  reason: z.string().trim().min(5, 'Correction reason must be at least 5 characters'),
+  accountPassword: z.string().min(1, 'Account password is required'),
+});
+
 export const cancelFinancialRecordSchema = z.object({
   reason: z.string().trim().min(1, 'Cancellation reason is required'),
+  accountPassword: z.string().min(1, 'Account password is required'),
+});
+
+export const voidPaymentSchema = z.object({
+  reason: z.string().trim().min(5, 'Void reason must be at least 5 characters'),
+  accountPassword: z.string().min(1, 'Account password is required'),
 });
 
 export const createInstallmentPlanSchema = z.object({
@@ -53,6 +68,20 @@ export const createInstallmentPlanSchema = z.object({
     .max(120, 'Installment count is too large'),
   frequency: z.literal('MONTHLY'),
   notes: optionalTextSchema,
+});
+
+export const updateInstallmentPlanSchema = z.object({
+  totalAmount: moneySchema,
+  description: z.string().trim().min(1, 'Description is required'),
+  startDate: businessDateSchema,
+  installmentCount: z
+    .number()
+    .int('Installment count must be a whole number')
+    .positive('Installment count must be positive')
+    .max(120, 'Installment count is too large'),
+  notes: optionalTextSchema,
+  reason: z.string().trim().min(5, 'Correction reason must be at least 5 characters'),
+  accountPassword: z.string().min(1, 'Account password is required'),
 });
 
 export const installmentPlanPaymentSchema = (remainingBalance: string) =>
@@ -69,8 +98,11 @@ export const installmentPlanPaymentSchema = (remainingBalance: string) =>
 
 export type CreateDebtFormValues = z.infer<typeof createDebtSchema>;
 export type DebtPaymentFormValues = z.infer<ReturnType<typeof debtPaymentSchema>>;
+export type UpdateDebtFormValues = z.infer<typeof updateDebtSchema>;
 export type CancelFinancialRecordFormValues = z.infer<typeof cancelFinancialRecordSchema>;
+export type VoidPaymentFormValues = z.infer<typeof voidPaymentSchema>;
 export type CreateInstallmentPlanFormValues = z.infer<typeof createInstallmentPlanSchema>;
+export type UpdateInstallmentPlanFormValues = z.infer<typeof updateInstallmentPlanSchema>;
 export type InstallmentPlanPaymentFormValues = z.infer<
   ReturnType<typeof installmentPlanPaymentSchema>
 >;

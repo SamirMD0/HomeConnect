@@ -9,6 +9,8 @@ const { installmentPlansServiceMock } = vi.hoisted(() => ({
     listCustomerPlans: vi.fn(),
     getPlan: vi.fn(),
     listPlanPayments: vi.fn(),
+    updatePlan: vi.fn(),
+    correctPlan: vi.fn(),
     recordPlanPayment: vi.fn(),
     cancelPlan: vi.fn(),
   },
@@ -88,6 +90,17 @@ describe('installment plan routes', () => {
     });
     installmentPlansServiceMock.getPlan.mockResolvedValue(planResponse);
     installmentPlansServiceMock.listPlanPayments.mockResolvedValue([]);
+    installmentPlansServiceMock.updatePlan.mockResolvedValue({
+      ...planResponse,
+      description: 'Updated refrigerator',
+      notes: 'Updated notes',
+    });
+    installmentPlansServiceMock.correctPlan.mockResolvedValue({
+      ...planResponse,
+      description: 'Updated refrigerator',
+      totalAmount: '650.00',
+      notes: 'Updated notes',
+    });
     installmentPlansServiceMock.recordPlanPayment.mockResolvedValue({
       ...planResponse,
       totalPaid: '150.00',
@@ -233,10 +246,61 @@ describe('installment plan routes', () => {
       .set('Authorization', `Bearer ${adminToken}`)
       .send({
         reason: 'Agreement cancelled',
+        accountPassword: 'admin-password',
       });
 
     expect(cancelResponse.status).toBe(200);
     expect(cancelResponse.body.data.status).toBe('CANCELLED');
     expect(cancelResponse.body.data.cancellation.reason).toBe('Agreement cancelled');
+  });
+
+  it('allows admins to correct plan details with account password and reason', async () => {
+    const response = await request(app)
+      .post(`/api/v1/installment-plans/${planId}/corrections`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        totalAmount: '650.00',
+        description: 'Updated refrigerator',
+        startDate: '2026-08-01',
+        installmentCount: 6,
+        notes: 'Updated notes',
+        reason: 'Corrected agreement amount',
+        sourceScreen: 'PLAN_DETAILS',
+        accountPassword: 'admin-password',
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.description).toBe('Updated refrigerator');
+    expect(response.body.data.totalAmount).toBe('650.00');
+    expect(installmentPlansServiceMock.correctPlan).toHaveBeenCalledWith(
+      planId,
+      {
+        totalAmount: '650.00',
+        description: 'Updated refrigerator',
+        startDate: '2026-08-01',
+        installmentCount: 6,
+        notes: 'Updated notes',
+        reason: 'Corrected agreement amount',
+        sourceScreen: 'PLAN_DETAILS',
+        accountPassword: 'admin-password',
+      },
+      expect.objectContaining({ role: 'ADMIN' })
+    );
+  });
+
+  it('keeps the legacy patch plan route as a correction alias', async () => {
+    const response = await request(app)
+      .patch(`/api/v1/installment-plans/${planId}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        description: 'Updated refrigerator',
+        notes: 'Updated notes',
+        reason: 'Corrected description typo',
+        sourceScreen: 'PLAN_DETAILS',
+        accountPassword: 'admin-password',
+      });
+
+    expect(response.status).toBe(200);
+    expect(installmentPlansServiceMock.updatePlan).toHaveBeenCalledTimes(1);
   });
 });

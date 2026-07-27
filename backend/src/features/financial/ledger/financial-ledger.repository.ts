@@ -1,4 +1,9 @@
-import { DebtStatus, InstallmentPlanStatus, Prisma } from '@prisma/client';
+import {
+  DebtStatus,
+  FinancialCorrectionRecordType,
+  InstallmentPlanStatus,
+  Prisma,
+} from '@prisma/client';
 import { prisma } from '../../../lib/prisma';
 
 const customerSelect = {
@@ -89,7 +94,18 @@ export interface FinancialLedgerRecordSet {
   debts: FinancialLedgerDebtRecord[];
   plans: FinancialLedgerPlanRecord[];
   payments: FinancialLedgerPaymentRecord[];
-  totalPaid: Prisma.Decimal;
+}
+
+export interface FinancialLedgerCorrectionMarker {
+  hasCorrections: boolean;
+  correctionCount: number;
+  lastCorrectedAt: Date | null;
+}
+
+export interface FinancialLedgerCorrectionMarkers {
+  debts: Map<string, FinancialLedgerCorrectionMarker>;
+  plans: Map<string, FinancialLedgerCorrectionMarker>;
+  payments: Map<string, FinancialLedgerCorrectionMarker>;
 }
 
 export class FinancialLedgerRepository {
@@ -138,13 +154,7 @@ export class FinancialLedgerRepository {
           }
         : {}),
     };
-    const paidAggregateWhere: Prisma.PaymentWhereInput = {
-      ...customerWhere,
-      ...(params.customerId ? { customerId: params.customerId } : {}),
-      voidedAt: null,
-    };
-
-    const [debts, plans, payments, totalPaid] = await Promise.all([
+    const [debts, plans, payments] = await Promise.all([
       params.includeDebts
         ? prisma.debt.findMany({
             where: debtWhere,
@@ -166,20 +176,76 @@ export class FinancialLedgerRepository {
             orderBy: [{ paymentDate: 'desc' }, { createdAt: 'desc' }, { id: 'asc' }],
           })
         : Promise.resolve([]),
-      prisma.payment.aggregate({
-        where: paidAggregateWhere,
-        _sum: {
-          totalAmount: true,
-        },
-      }),
     ]);
 
     return {
       debts,
       plans,
       payments,
-      totalPaid: totalPaid._sum.totalAmount ?? new Prisma.Decimal('0.00'),
     };
+  }
+
+  static async loadCorrectionMarkers(params: {
+    debtIds: string[];
+    planIds: string[];
+    paymentIds: string[];
+  }): Promise<FinancialLedgerCorrectionMarkers> {
+    const markers: FinancialLedgerCorrectionMarkers = {
+      debts: new Map(),
+      plans: new Map(),
+      payments: new Map(),
+    };
+    const clauses: Prisma.FinancialCorrectionAuditWhereInput[] = [];
+
+    if (params.debtIds.length > 0) {
+      clauses.push({
+        recordType: FinancialCorrectionRecordType.DEBT,
+        recordId: { in: params.debtIds },
+      });
+    }
+    if (params.planIds.length > 0) {
+      clauses.push({
+        recordType: FinancialCorrectionRecordType.INSTALLMENT_PLAN,
+        recordId: { in: params.planIds },
+      });
+    }
+    if (params.paymentIds.length > 0) {
+      clauses.push({
+        recordType: {
+          in: [FinancialCorrectionRecordType.PAYMENT, FinancialCorrectionRecordType.PAYMENT_ALLOCATION],
+        },
+        recordId: { in: params.paymentIds },
+      });
+    }
+
+    if (clauses.length === 0) return markers;
+
+    const audits = await prisma.financialCorrectionAudit.findMany({
+      where: { OR: clauses },
+      select: {
+        recordType: true,
+        recordId: true,
+        correctedAt: true,
+      },
+      orderBy: { correctedAt: 'desc' },
+    });
+
+    for (const audit of audits) {
+      const targetMap = this.correctionMapForRecordType(markers, audit.recordType);
+      const existing = targetMap.get(audit.recordId) ?? {
+        hasCorrections: true,
+        correctionCount: 0,
+        lastCorrectedAt: null,
+      };
+
+      existing.correctionCount += 1;
+      if (!existing.lastCorrectedAt || audit.correctedAt > existing.lastCorrectedAt) {
+        existing.lastCorrectedAt = audit.correctedAt;
+      }
+      targetMap.set(audit.recordId, existing);
+    }
+
+    return markers;
   }
 
   private static customerWhere(params: LoadFinancialLedgerParams) {
@@ -198,5 +264,14 @@ export class FinancialLedgerRepository {
           : {}),
       },
     } satisfies Pick<Prisma.DebtWhereInput, 'customer'>;
+  }
+
+  private static correctionMapForRecordType(
+    markers: FinancialLedgerCorrectionMarkers,
+    recordType: FinancialCorrectionRecordType
+  ): Map<string, FinancialLedgerCorrectionMarker> {
+    if (recordType === FinancialCorrectionRecordType.DEBT) return markers.debts;
+    if (recordType === FinancialCorrectionRecordType.INSTALLMENT_PLAN) return markers.plans;
+    return markers.payments;
   }
 }

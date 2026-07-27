@@ -121,7 +121,6 @@ export interface CustomerFinancialSummaryRecordSet {
   customer: FinancialSummaryCustomer | null;
   debts: FinancialSummaryDebt[];
   plans: FinancialSummaryPlan[];
-  totalPaid: Prisma.Decimal;
   recentPayments: FinancialSummaryPayment[];
 }
 
@@ -138,7 +137,7 @@ export class CustomerFinancialSummaryRepository {
       ...(!params.includeCancelled ? { status: { not: InstallmentPlanStatus.CANCELLED } } : {}),
     };
 
-    const [customer, debts, plans, paidAggregate, recentPayments] = await Promise.all([
+    const [customer, debts, plans, recentPayments] = await Promise.all([
       prisma.customer.findFirst({
         where: {
           id: params.customerId,
@@ -156,15 +155,6 @@ export class CustomerFinancialSummaryRepository {
         orderBy: [{ startDate: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
         include: installmentPlanInclude,
       }),
-      prisma.payment.aggregate({
-        where: {
-          customerId: params.customerId,
-          voidedAt: null,
-        },
-        _sum: {
-          totalAmount: true,
-        },
-      }),
       params.includePayments
         ? prisma.payment.findMany({
             where: {
@@ -181,7 +171,6 @@ export class CustomerFinancialSummaryRepository {
       customer,
       debts,
       plans,
-      totalPaid: paidAggregate._sum.totalAmount ?? new Prisma.Decimal('0.00'),
       recentPayments,
     };
   }

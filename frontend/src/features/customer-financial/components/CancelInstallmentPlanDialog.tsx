@@ -32,18 +32,24 @@ export const CancelInstallmentPlanDialog: React.FC<CancelInstallmentPlanDialogPr
     formState: { errors },
   } = useForm<CancelFinancialRecordFormValues>({
     resolver: zodResolver(cancelFinancialRecordSchema),
-    defaultValues: { reason: '' },
+    defaultValues: { reason: '', accountPassword: '' },
   });
 
   const onSubmit = async (values: CancelFinancialRecordFormValues) => {
     setServerError(null);
     try {
-      await cancelPlan.mutateAsync({ reason: values.reason.trim() });
+      await cancelPlan.mutateAsync({
+        reason: values.reason.trim(),
+        accountPassword: values.accountPassword,
+      });
       onSuccess();
     } catch (error) {
       const normalized = normalizeFinancialError(error);
       setServerError(normalized.message);
       if (normalized.fieldErrors.reason) setError('reason', { message: normalized.fieldErrors.reason });
+      if (normalized.fieldErrors.accountPassword) {
+        setError('accountPassword', { message: normalized.fieldErrors.accountPassword });
+      }
     }
   };
 
@@ -68,6 +74,14 @@ export const CancelInstallmentPlanDialog: React.FC<CancelInstallmentPlanDialogPr
       )}
       <TextField label="Cancellation reason" error={errors.reason?.message}>
         <textarea {...register('reason')} rows={4} className={inputClass(Boolean(errors.reason))} />
+      </TextField>
+      <TextField label="Account password" error={errors.accountPassword?.message}>
+        <input
+          {...register('accountPassword')}
+          type="password"
+          autoComplete="current-password"
+          className={inputClass(Boolean(errors.accountPassword))}
+        />
       </TextField>
       <SubmitButton
         isPending={cancelPlan.isPending}

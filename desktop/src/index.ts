@@ -7,18 +7,18 @@ import { startCompiledBackend } from './backend-process';
 import { BACKEND_HEALTH_URL, FRONTEND_ORIGIN, READY_TIMEOUT_MS } from './runtime-config';
 import { startStaticFrontendServer } from './static-frontend-server';
 import { waitForUrl } from './readiness';
-import { createWindow } from './window';
-import { closeServerWithTimeout, focusExistingWindow, startupErrorMessage, stopChildProcessWithTimeout, shouldQuitAfterChildExit } from './lifecycle';
+import { createWindow, createStartupMonitorWindow, DEFAULT_DEV_SERVER_URL } from './window';
+import { focusExistingWindow, startupErrorMessage, shouldQuitAfterChildExit, cleanupRuntime as performCleanup } from './lifecycle';
 import { writeStartupDiagnostics } from './startup-diagnostics';
 import { BACKEND_PORT, FRONTEND_PORT } from './runtime-config';
 
 let backendProcess: ChildProcess | null = null;
 let frontendServer: Server | null = null;
 let isQuitting = false;
+let isRetrying = false;
 
 app.commandLine.appendSwitch('disable-crash-reporter');
 
-// Single instance lock
 const gotTheLock = app.requestSingleInstanceLock();
 
 if (!gotTheLock) {
@@ -43,28 +43,139 @@ if (!gotTheLock) {
       clipboard.writeText(data);
     });
 
-    try {
-      if (process.env.NODE_ENV === 'development') {
-        createWindow();
-      } else {
-        await startProductionRuntime();
-        if (process.env.ELECTRON_PRODUCTION_CHECK_ONLY === '1') {
+    ipcMain.handle('diagnostics:closeApp', () => {
+      app.quit();
+    });
+
+    ipcMain.handle('diagnostics:retryStartup', async () => {
+      isRetrying = true;
+      await performCleanup(frontendServer, backendProcess);
+      frontendServer = null;
+      backendProcess = null;
+      await bootApp();
+    });
+
+    let monitorWindow: BrowserWindow | null = null;
+
+    const bootApp = async () => {
+      isRetrying = false;
+      if (!monitorWindow || monitorWindow.isDestroyed()) {
+        monitorWindow = createStartupMonitorWindow();
+      }
+
+      const isDev = process.env.NODE_ENV === 'development';
+      monitorWindow.webContents.on('did-finish-load', () => {
+         monitorWindow?.webContents.send('diagnostics:startupState', { devMode: isDev });
+      });
+
+      const sendLog = (msg: string) => monitorWindow?.webContents.send('diagnostics:startupLog', msg);
+      const updateStep = (step: string, status: 'active' | 'success' | 'error', errorMsg?: string) => {
+        monitorWindow?.webContents.send('diagnostics:startupState', { step, status, error: errorMsg });
+      };
+
+      try {
+        // Wait for preload script to be ready
+        await new Promise(r => setTimeout(r, 500));
+
+        updateStep('step-config', 'active');
+        sendLog('Checking configuration...');
+        await new Promise(r => setTimeout(r, 100)); // UI tick
+        updateStep('step-config', 'success');
+
+        if (isDev) {
+          updateStep('step-backend', 'active');
+          sendLog('Waiting for development backend...');
+          await waitForUrl(BACKEND_HEALTH_URL, READY_TIMEOUT_MS, 'Development Express backend');
+          updateStep('step-backend', 'success');
+
+          updateStep('step-db', 'active');
+          sendLog('Database verified via dev backend.');
+          updateStep('step-db', 'success');
+
+          updateStep('step-frontend', 'active');
+          sendLog('Waiting for development frontend...');
+          await waitForUrl(process.env.VITE_DEV_SERVER_URL || DEFAULT_DEV_SERVER_URL, READY_TIMEOUT_MS, 'Vite frontend');
+          updateStep('step-frontend', 'success');
+
+          sendLog('Startup complete. Opening app...');
+          await new Promise(r => setTimeout(r, 500));
+          if (monitorWindow && !monitorWindow.isDestroyed()) {
+             monitorWindow.close();
+             monitorWindow = null;
+          }
+          createWindow();
+        } else {
+          const appRoot = app.getAppPath();
+          const backendRoot = app.isPackaged ? process.resourcesPath : appRoot;
+          const backendEntryPath = path.join(backendRoot, 'dist/server/backend/src/index.js');
+          const frontendDistPath = app.isPackaged ? path.join(process.resourcesPath, 'frontend/dist') : path.join(appRoot, 'frontend/dist');
+
+          updateStep('step-backend', 'active');
+          sendLog('Starting compiled backend process...');
+          backendProcess = startCompiledBackend(backendEntryPath, app.getPath('userData'), process.resourcesPath, sendLog);
+
+          backendProcess.once('exit', (code) => {
+            if (!isRetrying && shouldQuitAfterChildExit(isQuitting)) {
+              dialog.showErrorBox('HomeConnect backend stopped', `Backend exited unexpectedly with code ${code ?? 'unknown'}`);
+              app.quit();
+            }
+          });
+
+          await waitForUrl(BACKEND_HEALTH_URL, READY_TIMEOUT_MS, 'Compiled Express backend');
+          updateStep('step-backend', 'success');
+
+          updateStep('step-db', 'active');
+          sendLog('Database verified via compiled backend.');
+          updateStep('step-db', 'success');
+
+          updateStep('step-frontend', 'active');
+          sendLog('Starting static React frontend...');
+          frontendServer = await startStaticFrontendServer(frontendDistPath);
+          await waitForUrl(FRONTEND_ORIGIN, READY_TIMEOUT_MS, 'Static React frontend');
+          updateStep('step-frontend', 'success');
+
+          if (process.env.ELECTRON_PRODUCTION_CHECK_ONLY === '1') {
+            await cleanupRuntime();
+            app.quit();
+            return;
+          }
+
+          await recordDiagnostic(true);
+          sendLog('Startup complete. Opening app...');
+          await new Promise(r => setTimeout(r, 500));
+          if (monitorWindow && !monitorWindow.isDestroyed()) {
+             monitorWindow.close();
+             monitorWindow = null;
+          }
+          createWindow(FRONTEND_ORIGIN);
+        }
+      } catch (error) {
+        const errorMsg = startupErrorMessage(error);
+        sendLog(`[ERROR] ${errorMsg}`);
+
+        if (errorMsg.includes('frontend')) {
+          updateStep('step-frontend', 'error', errorMsg);
+        } else if (errorMsg.includes('backend') || errorMsg.includes('DATABASE_UNAVAILABLE') || errorMsg.includes('fast-failed')) {
+          if (errorMsg.includes('DATABASE_UNAVAILABLE') || errorMsg.includes('fast-failed')) {
+             updateStep('step-db', 'error', errorMsg);
+          } else {
+             updateStep('step-backend', 'error', errorMsg);
+          }
+        } else {
+          updateStep('step-config', 'error', errorMsg);
+        }
+
+        await recordDiagnostic(false, errorMsg);
+
+        if (!monitorWindow || monitorWindow.isDestroyed()) {
+          dialog.showErrorBox('HomeConnect failed to start', errorMsg);
           await cleanupRuntime();
           app.quit();
-          return;
         }
-        await recordDiagnostic(true);
-        createWindow(FRONTEND_ORIGIN);
       }
-    } catch (error) {
-      await recordDiagnostic(false, String(error));
-      const message = startupErrorMessage(error);
-      console.error(message);
-      dialog.showErrorBox('HomeConnect failed to start', message);
-      await cleanupRuntime();
-      app.quit();
-      return;
-    }
+    };
+
+    bootApp();
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) {
@@ -88,61 +199,16 @@ if (!gotTheLock) {
   });
 }
 
-async function startProductionRuntime() {
-  const appRoot = app.getAppPath();
-  const backendRoot = app.isPackaged
-    ? process.resourcesPath
-    : appRoot;
-  const backendEntryPath = path.join(backendRoot, 'dist/server/backend/src/index.js');
-  const frontendDistPath = app.isPackaged
-    ? path.join(process.resourcesPath, 'frontend/dist')
-    : path.join(appRoot, 'frontend/dist');
-
-  backendProcess = startCompiledBackend(backendEntryPath, app.getPath('userData'), process.resourcesPath);
-  backendProcess.once('exit', (code) => {
-    backendProcess = null;
-    if (shouldQuitAfterChildExit(isQuitting)) {
-      const message = `Backend exited unexpectedly with code ${code ?? 'unknown'}`;
-      console.error(message);
-      dialog.showErrorBox('HomeConnect backend stopped', message);
-      app.quit();
-    }
-  });
-
-  frontendServer = await startStaticFrontendServer(frontendDistPath);
-
-  let backendReady = false;
-  let frontendReady = false;
-  
-  await Promise.all([
-    waitForUrl(BACKEND_HEALTH_URL, READY_TIMEOUT_MS, 'Compiled Express backend').then(() => { backendReady = true; }),
-    waitForUrl(FRONTEND_ORIGIN, READY_TIMEOUT_MS, 'Static React frontend').then(() => { frontendReady = true; }),
-  ]);
-  
-  return { backendReady, frontendReady };
-}
-
 async function recordDiagnostic(success: boolean, errorMsg?: string) {
   const appRoot = app.getAppPath();
   const backendRoot = app.isPackaged ? process.resourcesPath : appRoot;
   const safeUserDataPath = app.getPath('userData') || process.env.HOME_CONNECT_USER_DATA || '';
   const envFilePath = process.env.BACKEND_ENV_FILE || path.join(safeUserDataPath, 'config', 'production.env');
 
-  let backendReady = false;
-  let frontendReady = false;
-  
-  // If success is true, we know they are ready. If false, we just guess false for now 
-  // since startProductionRuntime threw before setting global flags or we can just pass what we know.
-  // Actually, we'll let the network check handle port status.
-  if (success) {
-    backendReady = true;
-    frontendReady = true;
-  }
-
   await writeStartupDiagnostics(safeUserDataPath, {
     envFilePath,
-    backendReady,
-    frontendReady,
+    backendReady: success,
+    frontendReady: success,
     backendPort: BACKEND_PORT,
     frontendPort: FRONTEND_PORT,
     backendPath: path.join(backendRoot, 'dist/server/backend/src/index.js'),
@@ -155,12 +221,7 @@ async function recordDiagnostic(success: boolean, errorMsg?: string) {
 
 async function cleanupRuntime() {
   isQuitting = true;
-
-  if (frontendServer) {
-    await closeServerWithTimeout(frontendServer);
-    frontendServer = null;
-  }
-
-  if (backendProcess) await stopChildProcessWithTimeout(backendProcess);
+  await performCleanup(frontendServer, backendProcess);
+  frontendServer = null;
   backendProcess = null;
 }

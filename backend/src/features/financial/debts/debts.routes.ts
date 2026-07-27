@@ -9,6 +9,7 @@ import {
   customerDebtParamsSchema,
   debtParamsSchema,
   listCustomerDebtsQuerySchema,
+  updateDebtSchema,
 } from './debts.validator';
 
 export const customerDebtsRoutes = Router();
@@ -39,6 +40,22 @@ debtsRoutes.get(
   '/:debtId/payments',
   validate(debtParamsSchema, 'params'),
   DebtsController.listDebtPayments
+);
+
+debtsRoutes.patch(
+  '/:debtId',
+  validate(debtParamsSchema, 'params'),
+  requireFinancialAdmin,
+  validate(updateDebtSchema),
+  DebtsController.updateDebt
+);
+
+debtsRoutes.post(
+  '/:debtId/corrections',
+  validate(debtParamsSchema, 'params'),
+  requireFinancialAdmin,
+  validate(updateDebtSchema),
+  DebtsController.correctDebt
 );
 
 debtsRoutes.post(

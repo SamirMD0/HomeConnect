@@ -17,6 +17,7 @@ import { FinancialLedgerService } from './financial-ledger.service';
 const { repositoryMock } = vi.hoisted(() => ({
   repositoryMock: {
     loadFinancialLedger: vi.fn(),
+    loadCorrectionMarkers: vi.fn(),
   },
 }));
 
@@ -181,16 +182,23 @@ function mockRecordSet(overrides: Record<string, unknown> = {}) {
     totalPaid: new Decimal('0.00'),
     ...overrides,
   });
+  repositoryMock.loadCorrectionMarkers.mockResolvedValue({
+    debts: new Map(),
+    plans: new Map(),
+    payments: new Map(),
+  });
 }
 
 function baseQuery(overrides: Record<string, unknown> = {}) {
   return {
     type: 'ALL',
     includeCancelled: false,
+    includeCompleted: false,
+    correctedOnly: false,
     page: 1,
     limit: 25,
-    sortBy: 'date',
-    sortOrder: 'asc',
+    sortBy: 'createdAt',
+    sortOrder: 'desc',
     ...overrides,
   } as Parameters<typeof FinancialLedgerService.getFinancialLedger>[0];
 }
@@ -203,12 +211,49 @@ describe('FinancialLedgerService', () => {
   it('returns zero summary and empty pagination without financial data', async () => {
     mockRecordSet();
 
-    const result = await FinancialLedgerService.getFinancialLedger(baseQuery());
+    const result = await FinancialLedgerService.getFinancialLedger(baseQuery({ includeCompleted: true }));
 
+    expect(result.summary.basis).toBe('filtered');
     expect(result.summary.totalOutstanding).toBe('0.00');
     expect(result.summary.totalPaid).toBe('0.00');
     expect(result.items).toEqual([]);
     expect(result.pagination.totalPages).toBe(1);
+  });
+
+  it('hides completed rows by default and places them after active rows when included', async () => {
+    const activeDebt = makeDebt({
+      id: '33333333-3333-4333-8333-333333333331',
+      description: 'Newest active bill',
+      createdAt: new Date('2026-07-24T12:00:00.000Z'),
+    });
+    const completedDebt = makeDebt({
+      id: '33333333-3333-4333-8333-333333333332',
+      description: 'Completed bill',
+      originalAmount: new Decimal('100.00'),
+      status: DebtStatus.PAID,
+      paymentAllocations: [
+        makeDebtAllocation('33333333-3333-4333-8333-333333333332', '100.00'),
+      ],
+      createdAt: new Date('2026-07-25T12:00:00.000Z'),
+    });
+    const olderActiveDebt = makeDebt({
+      id: '33333333-3333-4333-8333-333333333333',
+      description: 'Older active bill',
+      createdAt: new Date('2026-07-23T12:00:00.000Z'),
+    });
+    mockRecordSet({ debts: [completedDebt, olderActiveDebt, activeDebt] });
+
+    const defaultResult = await FinancialLedgerService.getFinancialLedger(baseQuery());
+    const includedResult = await FinancialLedgerService.getFinancialLedger(
+      baseQuery({ includeCompleted: true })
+    );
+
+    expect(defaultResult.items.map((item) => item.id)).toEqual([activeDebt.id, olderActiveDebt.id]);
+    expect(includedResult.items.map((item) => item.id)).toEqual([
+      activeDebt.id,
+      olderActiveDebt.id,
+      completedDebt.id,
+    ]);
   });
 
   it('serializes debt, plan, and one multi-allocation payment item without double-counting payment rows', async () => {
@@ -274,19 +319,114 @@ describe('FinancialLedgerService', () => {
       totalPaid: new Decimal('350.00'),
     });
 
-    const result = await FinancialLedgerService.getFinancialLedger(baseQuery());
+    const result = await FinancialLedgerService.getFinancialLedger(baseQuery({ includeCompleted: true }));
 
     expect(result.summary.totalOutstanding).toBe('550.00');
     expect(result.summary.totalPaid).toBe('350.00');
     expect(result.summary.activeDebtCount).toBe(1);
     expect(result.summary.activePlanCount).toBe(1);
+    expect(result.summary.activeCustomerCount).toBe(1);
     expect(result.items.filter((item) => item.type === 'PAYMENT')).toHaveLength(1);
     expect(result.items.find((item) => item.type === 'PAYMENT')).toMatchObject({
       amount: '150.00',
+      correction: {
+        hasCorrections: false,
+        correctionCount: 0,
+        lastCorrectedAt: null,
+      },
       allocations: expect.arrayContaining([
         expect.objectContaining({ amount: '100.00' }),
         expect.objectContaining({ amount: '50.00' }),
       ]),
+    });
+  });
+
+  it('uses month-filtered installment paid amounts for total paid when due dates are filtered', async () => {
+    const plan = makePlan({
+      totalAmount: new Decimal('300.00'),
+      installments: [
+        makeInstallment(1, '2026-08-10', '100.00', {
+          paymentAllocations: [
+            makeInstallmentAllocation('66666666-6666-4666-8666-666666666661', '40.00'),
+          ],
+        }),
+        makeInstallment(2, '2026-09-10', '100.00'),
+        makeInstallment(3, '2026-10-10', '100.00'),
+      ],
+    });
+    mockRecordSet({
+      plans: [plan],
+      payments: [],
+    });
+
+    const result = await FinancialLedgerService.getFinancialLedger(
+      baseQuery({
+        dueFrom: '2026-08-01',
+        dueTo: '2026-08-31',
+        paymentFrom: '2026-08-01',
+        paymentTo: '2026-08-31',
+      })
+    );
+
+    expect(result.summary.totalOutstanding).toBe('60.00');
+    expect(result.summary.totalPaid).toBe('40.00');
+    expect(result.summary.activeCustomerCount).toBe(1);
+    expect(result.items.find((item) => item.type === 'INSTALLMENT_PLAN')).toMatchObject({
+      periodSummary: {
+        dueFrom: '2026-08-01',
+        dueTo: '2026-08-31',
+        installmentCount: 1,
+        totalDue: '100.00',
+        totalPaid: '40.00',
+        totalRemaining: '60.00',
+      },
+    });
+  });
+
+  it('marks corrected rows and supports the corrected-only ledger filter', async () => {
+    const debt = makeDebt({
+      id: '33333333-3333-4333-8333-333333333331',
+      description: 'Corrected TV',
+    });
+    const plan = makePlan({
+      id: '55555555-5555-4555-8555-555555555551',
+      description: 'Uncorrected refrigerator',
+    });
+    mockRecordSet({
+      debts: [debt],
+      plans: [plan],
+    });
+    repositoryMock.loadCorrectionMarkers.mockResolvedValue({
+      debts: new Map([
+        [
+          debt.id,
+          {
+            hasCorrections: true,
+            correctionCount: 2,
+            lastCorrectedAt: new Date('2026-08-20T11:00:00.000Z'),
+          },
+        ],
+      ]),
+      plans: new Map(),
+      payments: new Map(),
+    });
+
+    const result = await FinancialLedgerService.getFinancialLedger(baseQuery({ correctedOnly: true }));
+
+    expect(repositoryMock.loadCorrectionMarkers).toHaveBeenCalledWith({
+      debtIds: [debt.id],
+      planIds: [plan.id],
+      paymentIds: [],
+    });
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]).toMatchObject({
+      type: 'DEBT',
+      description: 'Corrected TV',
+      correction: {
+        hasCorrections: true,
+        correctionCount: 2,
+        lastCorrectedAt: '2026-08-20T11:00:00.000Z',
+      },
     });
   });
 
@@ -337,7 +477,7 @@ describe('FinancialLedgerService', () => {
     expect(result.pagination.total).toBe(2);
     expect(result.pagination.page).toBe(2);
     expect(result.items).toHaveLength(1);
-    expect(result.items[0].type).toBe('INSTALLMENT_PLAN');
+    expect(result.items[0].type).toBe('DEBT');
   });
 
   it('passes customer search and date filters to the repository', async () => {

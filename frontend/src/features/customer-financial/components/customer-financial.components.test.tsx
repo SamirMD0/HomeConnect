@@ -5,6 +5,7 @@ import { AddFinancialObligationDialog } from './AddFinancialObligationDialog';
 import { CustomerDebtsList } from './CustomerDebtsList';
 import { CustomerFinancialProfile } from './CustomerFinancialProfile';
 import { DebtDetails } from './DebtDetails';
+import { FinancialStatusBadge } from './FinancialStatusBadge';
 import { FinancialSummaryCards } from './FinancialSummaryCards';
 import { InstallmentPlanDetails } from './InstallmentPlanDetails';
 import { InstallmentPlansList } from './InstallmentPlansList';
@@ -278,6 +279,19 @@ describe('customer financial profile components', () => {
     expect(emptyHtml).toContain('No single debts');
   });
 
+  it('renders an unknown financial status as a neutral badge instead of crashing', () => {
+    const html = renderToStaticMarkup(
+      <FinancialStatusBadge type="debt" status={'WRITTEN_OFF' as never} />
+    );
+    const missingHtml = renderToStaticMarkup(
+      <FinancialStatusBadge type="installment" status={undefined} />
+    );
+
+    expect(html).toContain('Written Off');
+    expect(html).toContain('bg-slate-100');
+    expect(missingHtml).toContain('Unknown');
+  });
+
   it('renders eligible debt mutation actions for admins only', () => {
     const adminHtml = renderToStaticMarkup(
       <CustomerDebtsList
@@ -354,12 +368,23 @@ describe('customer financial profile components', () => {
   });
 
   it('renders each payment once with multiple allocations under the same payment', () => {
-    const html = renderToStaticMarkup(<RecentPaymentsList payments={summary.recentPayments} />);
+    const html = renderToStaticMarkup(
+      <RecentPaymentsList
+        payments={summary.recentPayments}
+        canMutate
+        onVoidPayment={() => undefined}
+      />
+    );
+    const readOnlyHtml = renderToStaticMarkup(
+      <RecentPaymentsList payments={summary.recentPayments} />
+    );
 
     expect(html.match(/receipt-1/g)).toHaveLength(1);
     expect(html.match(/Refrigerator/g)).toHaveLength(2);
     expect(html).toContain('Voided');
+    expect(html.match(/Void payment/g)).toHaveLength(1);
     expect(html).toContain('Duplicate');
+    expect(readOnlyHtml).not.toContain('Void payment');
   });
 
   it('renders read-only debt details and installment plan schedule details', () => {
@@ -417,6 +442,128 @@ describe('customer financial profile components', () => {
     expect(planHtml).toContain('Schedule');
     expect(planHtml).toContain('Amount due');
     expect(planHtml).toContain('Partially paid');
+  });
+
+  it('hides debt delete action for admins when the debt has payments', () => {
+    debtDetailHookMock.mockReturnValue({
+      data: {
+        ...summary.debts[0],
+        customer: { id: 'customer-1', name: 'Ali Ahmad', phone: '70123456' },
+        payments: [summary.recentPayments[1]],
+      },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+
+    const html = renderToStaticMarkup(
+      <DebtDetails
+        debtId="debt-1"
+        canMutate
+        onEditDebt={() => undefined}
+        onRecordPayment={() => undefined}
+        onCancelDebt={() => undefined}
+      />
+    );
+
+    expect(html).toContain('Edit');
+    expect(html).toContain('Record payment');
+    expect(html).toContain('Void or reverse payments before deleting this debt.');
+    expect(html).not.toContain('Delete debt');
+  });
+
+  it('renders installment plan details with missing statuses instead of crashing', () => {
+    planDetailHookMock.mockReturnValue({
+      data: {
+        ...summary.installmentPlans[0],
+        calculatedStatus: undefined,
+        customer: { id: 'customer-1', name: 'Ali Ahmad', phone: '70123456' },
+        schedule: [
+          {
+            id: 'installment-1',
+            installmentNumber: 1,
+            dueDate: '2026-08-01',
+            amountDue: '100.00',
+            totalPaid: '0.00',
+            remainingAmount: '100.00',
+            status: undefined,
+            storedStatus: undefined,
+            paidDate: null,
+          },
+        ],
+        payments: [],
+      },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+
+    const html = renderToStaticMarkup(<InstallmentPlanDetails planId="plan-1" />);
+
+    expect(html).toContain('Refrigerator');
+    expect(html.match(/Unknown/g)).toHaveLength(2);
+  });
+
+  it('renders installment plan detail edit/delete actions for admins', () => {
+    planDetailHookMock.mockReturnValue({
+      data: {
+        ...summary.installmentPlans[0],
+        totalPaid: '0.00',
+        remainingBalance: '600.00',
+        calculatedStatus: 'ACTIVE',
+        status: 'ACTIVE',
+        customer: { id: 'customer-1', name: 'Ali Ahmad', phone: '70123456' },
+        schedule: [],
+        payments: [],
+      },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+
+    const html = renderToStaticMarkup(
+      <InstallmentPlanDetails
+        planId="plan-1"
+        canMutate
+        onEditPlan={() => undefined}
+        onRecordPayment={() => undefined}
+        onCancelPlan={() => undefined}
+      />
+    );
+
+    expect(html).toContain('Edit');
+    expect(html).toContain('Delete plan');
+    expect(html).toContain('Record payment');
+  });
+
+  it('shows delete as available for installment plans with payments after password confirmation', () => {
+    planDetailHookMock.mockReturnValue({
+      data: {
+        ...summary.installmentPlans[0],
+        totalPaid: '150.00',
+        calculatedStatus: 'ACTIVE',
+        status: 'ACTIVE',
+        customer: { id: 'customer-1', name: 'Ali Ahmad', phone: '70123456' },
+        schedule: [],
+        payments: [],
+      },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+
+    const html = renderToStaticMarkup(
+      <InstallmentPlanDetails
+        planId="plan-1"
+        canMutate
+        onEditPlan={() => undefined}
+        onCancelPlan={() => undefined}
+      />
+    );
+
+    expect(html).toContain('Delete plan');
+    expect(html).toContain('Edit');
+    expect(html).not.toContain('disabled=""');
   });
 
   it('renders loading, success, and error states at the profile level', () => {

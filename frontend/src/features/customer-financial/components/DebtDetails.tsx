@@ -1,6 +1,6 @@
 import React from 'react';
 import { useDebtDetail } from '../hooks/useCustomerFinancialSummary';
-import { DebtDetail } from '../types/customer-financial.types';
+import { DebtDetail, RecentFinancialPayment } from '../types/customer-financial.types';
 import { formatBusinessDate, formatDateTime, formatMoney } from '../utils/financial-format';
 import { canCancelDebt, canRecordDebtPayment } from '../utils/financial-auth';
 import { FinancialErrorState } from './FinancialErrorState';
@@ -10,15 +10,19 @@ import { RecentPaymentsList } from './RecentPaymentsList';
 interface DebtDetailsProps {
   debtId: string | null;
   canMutate?: boolean;
+  onEditDebt?: (debt: DebtDetail) => void;
   onRecordPayment?: (debt: DebtDetail) => void;
   onCancelDebt?: (debt: DebtDetail) => void;
+  onVoidPayment?: (payment: RecentFinancialPayment) => void;
 }
 
 export const DebtDetails: React.FC<DebtDetailsProps> = ({
   debtId,
   canMutate = false,
+  onEditDebt,
   onRecordPayment,
   onCancelDebt,
+  onVoidPayment,
 }) => {
   const { data: debt, isLoading, isError, refetch } = useDebtDetail(debtId);
 
@@ -47,6 +51,15 @@ export const DebtDetails: React.FC<DebtDetailsProps> = ({
         <p className="text-sm text-slate-500">Created {formatDateTime(debt.createdAt)} by {debt.createdBy.name}</p>
         {canMutate && (
           <div className="mt-4 flex flex-wrap gap-2">
+            {onEditDebt && (
+              <button
+                type="button"
+                onClick={() => onEditDebt(debt)}
+                className="rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+              >
+                Edit
+              </button>
+            )}
             {canRecordDebtPayment(debt.calculatedStatus) && onRecordPayment && (
               <button
                 type="button"
@@ -56,14 +69,20 @@ export const DebtDetails: React.FC<DebtDetailsProps> = ({
                 Record payment
               </button>
             )}
-            {canCancelDebt(debt.calculatedStatus, debt.totalPaid) && onCancelDebt && (
+            {onCancelDebt && canCancelDebt(debt.calculatedStatus, debt.totalPaid) && (
               <button
                 type="button"
                 onClick={() => onCancelDebt(debt)}
-                className="rounded-md border border-amber-200 px-3 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-50 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+                title="Delete by cancelling this debt while preserving payment and audit history."
+                className="rounded-md border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500/30"
               >
-                Cancel debt
+                Delete debt
               </button>
+            )}
+            {onCancelDebt && !canCancelDebt(debt.calculatedStatus, debt.totalPaid) && debt.totalPaid !== '0.00' && (
+              <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">
+                Void or reverse payments before deleting this debt.
+              </p>
             )}
           </div>
         )}
@@ -91,7 +110,11 @@ export const DebtDetails: React.FC<DebtDetailsProps> = ({
         </div>
       )}
 
-      <RecentPaymentsList payments={debt.payments} />
+      <RecentPaymentsList
+        payments={debt.payments}
+        canMutate={canMutate}
+        onVoidPayment={onVoidPayment}
+      />
     </div>
   );
 };

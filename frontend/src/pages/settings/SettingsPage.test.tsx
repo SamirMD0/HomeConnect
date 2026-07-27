@@ -16,6 +16,10 @@ vi.mock('../../features/backup/components/BackupRestorePanel', () => ({
   BackupRestorePanel: () => <section>Backup panel rendered</section>,
 }));
 
+vi.mock('../../features/diagnostics/components/DiagnosticsPanel', () => ({
+  DiagnosticsPanel: () => <section>Diagnostics panel rendered</section>,
+}));
+
 describe('SettingsPage', () => {
   beforeEach(() => {
     authMock.user = { id: 'admin', username: 'admin', fullName: 'Admin', role: 'ADMIN' };

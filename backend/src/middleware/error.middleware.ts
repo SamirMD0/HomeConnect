@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { AppError } from '../lib/errors';
 import { logger } from '../lib/logger';
 import { logBackendError } from '../features/diagnostics/error-logger';
+import { redactSensitiveData } from '../lib/redaction';
 
 export const errorHandler = (
   err: Error,
@@ -10,7 +11,8 @@ export const errorHandler = (
   _next: NextFunction
 ) => {
   if (err instanceof AppError) {
-    logger.warn(`[${err.code}] ${err.message}`, { details: err.details, path: req.path });
+    const safeDetails = redactSensitiveData(err.details);
+    logger.warn(`[${err.code}] ${err.message}`, { details: safeDetails, path: req.path });
     
     logBackendError({
       method: req.method,
@@ -27,7 +29,7 @@ export const errorHandler = (
       error: {
         code: err.code,
         message: err.message,
-        details: err.details,
+        details: safeDetails,
       },
       meta: { timestamp: new Date().toISOString() },
     });

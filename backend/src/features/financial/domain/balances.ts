@@ -20,6 +20,15 @@ export function calculateTotalPaidFromAllocations(
   );
 }
 
+export function isPaymentAllocationVoided(allocation: {
+  voidedAt?: Date | string | null;
+  payment?: {
+    voidedAt?: Date | string | null;
+  } | null;
+}): boolean {
+  return Boolean(allocation.voidedAt || allocation.payment?.voidedAt);
+}
+
 export function calculateDebtBalance(input: DebtBalanceInput): ObligationBalance {
   return calculateObligationBalance(input.originalAmount, input.allocations);
 }

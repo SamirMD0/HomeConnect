@@ -6,6 +6,13 @@ export async function waitForUrl(url: string, timeoutMs: number, label: string) 
   while (Date.now() - startedAt < timeoutMs) {
     const response = await probeUrl(url);
     if (response.reachable && response.statusCode && response.statusCode >= 200 && response.statusCode < 500) return;
+
+    // Fast-fail for known fatal conditions
+    if (response.reachable && response.statusCode === 503 && response.body?.includes('"DATABASE_UNAVAILABLE"')) {
+      const statusDetails = ` Last response: HTTP 503 ${response.body}`;
+      throw new Error(`${label} fast-failed during startup: ${url}.${statusDetails}`);
+    }
+
     if (response.reachable) lastResponse = response;
     await delay(500);
   }

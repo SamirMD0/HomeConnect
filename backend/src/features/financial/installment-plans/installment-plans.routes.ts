@@ -9,6 +9,7 @@ import {
   customerInstallmentPlanParamsSchema,
   installmentPlanParamsSchema,
   listCustomerInstallmentPlansQuerySchema,
+  updateInstallmentPlanSchema,
 } from './installment-plans.validator';
 
 export const customerInstallmentPlansRoutes = Router();
@@ -39,6 +40,22 @@ installmentPlansRoutes.get(
   '/:planId/payments',
   validate(installmentPlanParamsSchema, 'params'),
   InstallmentPlansController.listPlanPayments
+);
+
+installmentPlansRoutes.patch(
+  '/:planId',
+  validate(installmentPlanParamsSchema, 'params'),
+  requireFinancialAdmin,
+  validate(updateInstallmentPlanSchema),
+  InstallmentPlansController.updatePlan
+);
+
+installmentPlansRoutes.post(
+  '/:planId/corrections',
+  validate(installmentPlanParamsSchema, 'params'),
+  requireFinancialAdmin,
+  validate(updateInstallmentPlanSchema),
+  InstallmentPlansController.correctPlan
 );
 
 installmentPlansRoutes.post(

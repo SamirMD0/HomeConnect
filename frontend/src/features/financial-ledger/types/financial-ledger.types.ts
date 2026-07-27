@@ -20,6 +20,8 @@ export interface FinancialLedgerFilters {
   paymentFrom?: string;
   paymentTo?: string;
   includeCancelled?: boolean;
+  includeCompleted?: boolean;
+  correctedOnly?: boolean;
   page?: number;
   limit?: number;
   sortBy?: FinancialLedgerSortBy;
@@ -33,12 +35,20 @@ export interface FinancialLedgerCustomer {
 }
 
 export interface FinancialLedgerSummary {
+  basis: 'filtered';
   totalOutstanding: string;
   totalPaid: string;
   activeDebtCount: number;
   activePlanCount: number;
+  activeCustomerCount: number;
   overdueDebtCount: number;
   overdueInstallmentCount: number;
+}
+
+export interface FinancialLedgerCorrection {
+  hasCorrections: boolean;
+  correctionCount: number;
+  lastCorrectedAt: string | null;
 }
 
 export interface FinancialLedgerDebtItem {
@@ -59,6 +69,7 @@ export interface FinancialLedgerDebtItem {
     cancelledAt: string;
     reason: string | null;
   } | null;
+  correction: FinancialLedgerCorrection;
 }
 
 export interface FinancialLedgerPlanItem {
@@ -96,6 +107,15 @@ export interface FinancialLedgerPlanItem {
       status: InstallmentStatus;
     } | null;
   };
+  periodSummary: {
+    dueFrom: string | null;
+    dueTo: string | null;
+    installmentCount: number;
+    totalDue: string;
+    totalPaid: string;
+    totalRemaining: string;
+  } | null;
+  correction: FinancialLedgerCorrection;
 }
 
 export interface FinancialLedgerPaymentItem {
@@ -121,6 +141,7 @@ export interface FinancialLedgerPaymentItem {
     amount: string;
     createdAt: string;
   }>;
+  correction: FinancialLedgerCorrection;
 }
 
 export type FinancialLedgerItem =

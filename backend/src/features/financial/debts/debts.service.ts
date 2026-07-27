@@ -1,5 +1,9 @@
-import { DebtStatus, PaymentMethod } from '@prisma/client';
-import { Decimal } from '@prisma/client/runtime/library';
+import {
+  DebtStatus,
+  FinancialCorrectionAction,
+  FinancialCorrectionRecordType,
+  PaymentMethod,
+} from '@prisma/client';
 import { NotFoundError, ValidationError } from '../../../lib/errors';
 import {
   assertCanCancelDebt,
@@ -11,6 +15,7 @@ import {
   determineDebtStatus,
   FinancialRecordAlreadyPaidError,
   FinancialRecordCancelledError,
+  isPaymentAllocationVoided,
   moneyToApiString,
   normalizeIdempotencyKey,
   parseBusinessDate,
@@ -18,13 +23,17 @@ import {
   prismaDateToBusinessDate,
   runFinancialTransaction,
   todayInBusinessTimezone,
+  ZERO_MONEY,
 } from '../index';
 import { DebtsRepository, DebtWithDetails } from './debts.repository';
+import { verifyAccountPassword, verifyAdminPasswordForCorrection } from '../authorization/account-password';
+import { writeFinancialCorrectionAudit } from '../corrections/correction-audit';
 import {
   CancelDebtInput,
   CreateDebtInput,
   CreateDebtPaymentInput,
   ListCustomerDebtsQueryInput,
+  UpdateDebtInput,
 } from './debts.validator';
 
 interface AuthenticatedUser {
@@ -182,6 +191,95 @@ export class DebtsService {
     return this.toPaymentHistory(debt);
   }
 
+  static async updateDebt(
+    debtId: string,
+    input: UpdateDebtInput,
+    user: AuthenticatedUser
+  ): Promise<DebtView> {
+    return this.correctDebt(debtId, input, user);
+  }
+
+  static async correctDebt(
+    debtId: string,
+    input: UpdateDebtInput,
+    user: AuthenticatedUser
+  ): Promise<DebtView> {
+    await verifyAdminPasswordForCorrection(user.userId, input.accountPassword, {
+      action: 'CORRECT_DEBT',
+      recordType: FinancialCorrectionRecordType.DEBT,
+      recordId: debtId,
+    });
+
+    const correctingUser = await DebtsRepository.findUserIdentity(user.userId);
+    if (!correctingUser) {
+      throw new NotFoundError('Correcting user not found');
+    }
+
+    const dueDate = parseBusinessDate(input.dueDate);
+    const correctedAmount = input.originalAmount ? assertPositiveMoney(input.originalAmount) : null;
+
+    return runFinancialTransaction(async (tx) => {
+      const debt = await DebtsRepository.findDebtById(debtId, tx);
+      if (!debt) {
+        throw new NotFoundError('Debt not found');
+      }
+
+      const balance = this.calculateBalance(debt);
+      const originalAmount = correctedAmount ?? debt.originalAmount;
+      if (originalAmount.lessThan(balance.totalPaid)) {
+        throw new ValidationError('Debt amount cannot be lower than the amount already paid');
+      }
+      const status = determineDebtStatus({
+        isCancelled: debt.status === DebtStatus.CANCELLED || Boolean(debt.cancelledAt),
+        dueDate: input.dueDate,
+        businessDate: todayInBusinessTimezone(),
+        balance: calculateDebtBalance({
+          originalAmount,
+          allocations: debt.paymentAllocations.map((allocation) => ({
+            amount: allocation.amount,
+            isVoided: isPaymentAllocationVoided(allocation),
+          })),
+        }),
+      });
+      const beforeValues = this.toDebtAuditValues(debt);
+
+      const updatedDebt = await DebtsRepository.updateDebtDetails(tx, debtId, {
+        originalAmount,
+        description: input.description,
+        dueDate: businessDateToPrisma(dueDate),
+        notes: input.notes ?? null,
+        status,
+        ...(debt.cancelledAt ? { cancelReason: input.cancelReason ?? debt.cancelReason } : {}),
+      });
+
+      const updatedBalance = this.calculateBalance(updatedDebt);
+      await writeFinancialCorrectionAudit(
+        {
+          recordType: FinancialCorrectionRecordType.DEBT,
+          recordId: debtId,
+          customerId: debt.customerId,
+          action: originalAmount.equals(debt.originalAmount)
+            ? FinancialCorrectionAction.CORRECT_DETAILS
+            : FinancialCorrectionAction.CORRECT_AMOUNT,
+          correctedById: correctingUser.id,
+          correctedByName: correctingUser.fullName,
+          correctedByUsername: correctingUser.username,
+          reason: input.reason,
+          beforeValues,
+          afterValues: this.toDebtAuditValues(updatedDebt),
+          affectedTotals: {
+            obligationRemainingBefore: moneyToApiString(balance.remainingBalance),
+            obligationRemainingAfter: moneyToApiString(updatedBalance.remainingBalance),
+          },
+          sourceScreen: input.sourceScreen,
+        },
+        tx
+      );
+
+      return this.toDebtView(updatedDebt);
+    });
+  }
+
   static async recordDebtPayment(
     debtId: string,
     input: CreateDebtPaymentInput,
@@ -285,6 +383,8 @@ export class DebtsService {
     input: CancelDebtInput,
     user: AuthenticatedUser
   ): Promise<DebtView> {
+    await verifyAccountPassword(user.userId, input.accountPassword);
+
     return runFinancialTransaction(async (tx) => {
       const debt = await DebtsRepository.findDebtById(debtId, tx);
       if (!debt) {
@@ -292,16 +392,10 @@ export class DebtsService {
       }
 
       const balance = this.calculateBalance(debt);
-      const hasValidPayments = balance.totalPaid.greaterThan(new Decimal('0.00'));
-      if (hasValidPayments) {
-        throw new FinancialRecordAlreadyPaidError(
-          'Debt with payments cannot be cancelled; use a reversal or void workflow'
-        );
-      }
 
       assertCanCancelDebt({
         status: debt.status,
-        hasPayments: false,
+        hasPayments: balance.totalPaid.greaterThan(ZERO_MONEY),
         reason: input.reason,
         cancelledById: user.userId,
       });
@@ -413,9 +507,20 @@ export class DebtsService {
       originalAmount: debt.originalAmount,
       allocations: debt.paymentAllocations.map((allocation) => ({
         amount: allocation.amount,
-        isVoided: Boolean(allocation.payment.voidedAt),
+        isVoided: isPaymentAllocationVoided(allocation),
       })),
     });
+  }
+
+  private static toDebtAuditValues(debt: DebtWithDetails) {
+    return {
+      description: debt.description,
+      originalAmount: moneyToApiString(debt.originalAmount),
+      dueDate: prismaDateToBusinessDate(debt.dueDate),
+      notes: debt.notes,
+      status: debt.status,
+      cancelReason: debt.cancelReason,
+    };
   }
 
   static assertNoUnknownFinancialFieldsForTests(input: Record<string, unknown>) {

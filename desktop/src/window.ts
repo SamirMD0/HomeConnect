@@ -2,12 +2,27 @@ import { BrowserWindow } from 'electron';
 import path from 'path';
 
 let mainWindow: BrowserWindow | null = null;
+let startupMonitorWindow: BrowserWindow | null = null;
 export const DEFAULT_DEV_SERVER_URL = 'http://127.0.0.1:3002';
 
 export function createBrowserWindowOptions() {
   return {
     width: 1200,
     height: 800,
+    show: false,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: true,
+    },
+  };
+}
+
+export function createStartupMonitorOptions() {
+  return {
+    width: 800,
+    height: 600,
     show: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -47,6 +62,24 @@ export const createWindow = (startUrl?: string) => {
   });
 
   return mainWindow;
+};
+
+export const createStartupMonitorWindow = () => {
+  startupMonitorWindow = new BrowserWindow(createStartupMonitorOptions());
+
+  startupMonitorWindow.setMenuBarVisibility(false);
+  startupMonitorWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  startupMonitorWindow.once('ready-to-show', () => {
+    startupMonitorWindow?.show();
+  });
+
+  startupMonitorWindow.loadFile(path.join(__dirname, 'startup-monitor.html'));
+
+  startupMonitorWindow.on('closed', () => {
+    startupMonitorWindow = null;
+  });
+
+  return startupMonitorWindow;
 };
 
 export const getMainWindow = () => mainWindow;

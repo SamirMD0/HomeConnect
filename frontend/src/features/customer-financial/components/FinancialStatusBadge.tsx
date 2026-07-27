@@ -13,7 +13,7 @@ import {
 } from '../types/customer-financial.types';
 
 interface FinancialStatusBadgeProps {
-  status: DebtStatus | InstallmentPlanStatus | InstallmentStatus;
+  status: DebtStatus | InstallmentPlanStatus | InstallmentStatus | null | undefined;
   type: 'debt' | 'plan' | 'installment';
 }
 
@@ -30,10 +30,29 @@ export const FinancialStatusBadge: React.FC<FinancialStatusBadgeProps> = ({ stat
 };
 
 function getStatusConfig(
-  status: DebtStatus | InstallmentPlanStatus | InstallmentStatus,
+  status: FinancialStatusBadgeProps['status'],
   type: FinancialStatusBadgeProps['type']
 ): StatusBadgeConfig {
-  if (type === 'debt') return debtStatusLabels[status as DebtStatus];
-  if (type === 'plan') return planStatusLabels[status as InstallmentPlanStatus];
-  return installmentStatusLabels[status as InstallmentStatus];
+  if (!status) return fallbackStatusConfig(status);
+  if (type === 'debt') return debtStatusLabels[status as DebtStatus] ?? fallbackStatusConfig(status);
+  if (type === 'plan') return planStatusLabels[status as InstallmentPlanStatus] ?? fallbackStatusConfig(status);
+  return installmentStatusLabels[status as InstallmentStatus] ?? fallbackStatusConfig(status);
+}
+
+function fallbackStatusConfig(status: string | null | undefined): StatusBadgeConfig {
+  if (!status) {
+    return {
+      label: 'Unknown',
+      tone: 'slate',
+    };
+  }
+
+  return {
+    label: status
+      .toLowerCase()
+      .split('_')
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' '),
+    tone: 'slate',
+  };
 }

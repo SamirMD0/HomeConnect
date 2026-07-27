@@ -7,6 +7,7 @@ import {
   CustomerInstallmentPlanParamsInput,
   InstallmentPlanParamsInput,
   ListCustomerInstallmentPlansQueryInput,
+  UpdateInstallmentPlanInput,
 } from './installment-plans.validator';
 
 export class InstallmentPlansController {
@@ -86,6 +87,40 @@ export class InstallmentPlansController {
       res.status(200).json({
         success: true,
         data: payments,
+        meta: { timestamp: new Date().toISOString() },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updatePlan(
+    req: Request<InstallmentPlanParamsInput, unknown, UpdateInstallmentPlanInput>,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const plan = await InstallmentPlansService.updatePlan(req.params.planId, req.body, req.user!);
+      res.status(200).json({
+        success: true,
+        data: plan,
+        meta: { timestamp: new Date().toISOString() },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async correctPlan(
+    req: Request<InstallmentPlanParamsInput, unknown, UpdateInstallmentPlanInput>,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const plan = await InstallmentPlansService.correctPlan(req.params.planId, req.body, req.user!);
+      res.status(200).json({
+        success: true,
+        data: plan,
         meta: { timestamp: new Date().toISOString() },
       });
     } catch (error) {

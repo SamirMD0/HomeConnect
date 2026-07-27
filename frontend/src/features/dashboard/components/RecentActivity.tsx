@@ -1,6 +1,7 @@
 import React from 'react';
 import { format } from 'date-fns';
 import { ActivityLog } from '../types';
+import { formatMoney } from '../../customer-financial/utils/financial-format';
 
 interface RecentActivityProps {
   logs: ActivityLog[];
@@ -32,8 +33,13 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({ logs, isLoading 
     const author = <span className="font-medium text-gray-900">{user.fullName}</span>;
 
     if (action === 'TRANSACTION_CREATED') {
-      const type = (details.type === 'ONE_TIME' || details.type === 'INSTALLMENT') ? 'a debt' : details.type === 'PAYMENT' ? 'a payment' : 'an adjustment';
-      return <>{author} recorded {type} of <span className="font-medium text-gray-900">${Number(details.amount).toFixed(2)}</span></>;
+      const type = activityType(details.type);
+      return (
+        <>
+          {author} recorded {type} of{' '}
+          <span className="font-medium text-gray-900">{formatMoney(activityAmount(details.amount))}</span>
+        </>
+      );
     }
     
     if (action === 'CUSTOMER_CREATED') {
@@ -43,7 +49,7 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({ logs, isLoading 
     return <>{author} performed {action}</>;
   };
 
-  const getActionIcon = (action: string, details: any) => {
+  const getActionIcon = (action: string, details: Record<string, unknown>) => {
     if (action === 'TRANSACTION_CREATED') {
       if (details.type === 'ONE_TIME' || details.type === 'INSTALLMENT') {
         return (
@@ -100,3 +106,15 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({ logs, isLoading 
     </div>
   );
 };
+
+function activityType(type: unknown): string {
+  if (type === 'ONE_TIME' || type === 'INSTALLMENT') return 'a debt';
+  if (type === 'PAYMENT') return 'a payment';
+  return 'an adjustment';
+}
+
+function activityAmount(amount: unknown): string {
+  if (typeof amount === 'string' && amount.trim()) return amount;
+  if (typeof amount === 'number' && Number.isFinite(amount)) return String(amount);
+  return '0.00';
+}

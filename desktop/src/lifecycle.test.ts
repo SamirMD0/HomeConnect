@@ -7,6 +7,7 @@ import {
   startupErrorMessage,
   stopChildProcessWithTimeout,
   shouldQuitAfterChildExit,
+  cleanupRuntime,
 } from './lifecycle';
 
 describe('Electron lifecycle helpers', () => {
@@ -59,6 +60,17 @@ describe('Electron lifecycle helpers', () => {
   it('quits after child crash only when the app is not already quitting', () => {
     expect(shouldQuitAfterChildExit(false)).toBe(true);
     expect(shouldQuitAfterChildExit(true)).toBe(false);
+  });
+  it('cleans up runtime completely during retry', async () => {
+    const server = http.createServer((_req, res) => res.end('ok'));
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', () => resolve()));
+
+    const child = new FakeChildProcess(true);
+
+    await cleanupRuntime(server, child as any);
+
+    expect(server.listening).toBe(false);
+    expect(child.signals).toEqual(['SIGTERM']);
   });
 });
 

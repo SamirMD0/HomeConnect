@@ -68,6 +68,23 @@ export function stopChildProcessWithTimeout(
   });
 }
 
+export async function cleanupRuntime(
+  frontendServer: Server | null,
+  backendProcess: {
+    exitCode: number | null;
+    kill: (signal?: NodeJS.Signals | number) => boolean;
+    once: (event: 'exit', listener: () => void) => unknown;
+  } | null
+) {
+  if (frontendServer) {
+    await closeServerWithTimeout(frontendServer);
+  }
+
+  if (backendProcess) {
+    await stopChildProcessWithTimeout(backendProcess);
+  }
+}
+
 export function startupErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : 'Electron startup failed';
 }

@@ -24,20 +24,20 @@ describe('monthly installment schedule generation', () => {
     expect(schedule.every((installment) => moneyToApiString(installment.amountDue) === '100.00')).toBe(true);
   });
 
-  it('puts the rounding difference on the final installment', () => {
+  it('splits whole-dollar totals without cents and puts remainder dollars first', () => {
     const schedule = generateMonthlyInstallmentSchedule({
-      totalAmount: '100.00',
+      totalAmount: '320.00',
       startDate: '2026-08-01',
       installmentCount: 3,
       frequency: InstallmentPlanFrequency.MONTHLY,
     });
 
     expect(schedule.map((installment) => moneyToApiString(installment.amountDue))).toEqual([
-      '33.33',
-      '33.33',
-      '33.34',
+      '107.00',
+      '107.00',
+      '106.00',
     ]);
-    expect(moneyToApiString(sumMoney(schedule.map((installment) => installment.amountDue)))).toBe('100.00');
+    expect(moneyToApiString(sumMoney(schedule.map((installment) => installment.amountDue)))).toBe('320.00');
   });
 
   it('supports a one-installment schedule', () => {

@@ -16,6 +16,7 @@ import {
   determineDebtStatus,
   determineInstallmentPlanStatus,
   determineInstallmentStatus,
+  isPaymentAllocationVoided,
   moneyToApiString,
   prismaDateToBusinessDate,
   subtractMoney,
@@ -226,6 +227,10 @@ export class CustomerFinancialSummaryService {
     const businessDate = todayInBusinessTimezone();
     const debtComputations = records.debts.map((debt) => this.computeDebt(debt, businessDate));
     const planComputations = records.plans.map((plan) => this.computePlan(plan, businessDate));
+    const totalPaid = sumMoney([
+      ...debtComputations.map((debt) => debt.totalPaid),
+      ...planComputations.map((plan) => plan.totalPaid),
+    ]);
 
     const activeDebts = debtComputations.filter(
       (debt) => debt.view.calculatedStatus !== DebtStatus.PAID && debt.view.calculatedStatus !== DebtStatus.CANCELLED
@@ -261,7 +266,7 @@ export class CustomerFinancialSummaryService {
         totalOutstanding: moneyToApiString(sumMoney([singleDebtOutstanding, installmentPlanOutstanding])),
         singleDebtOutstanding: moneyToApiString(singleDebtOutstanding),
         installmentPlanOutstanding: moneyToApiString(installmentPlanOutstanding),
-        totalPaid: moneyToApiString(records.totalPaid),
+        totalPaid: moneyToApiString(totalPaid),
         activeDebtCount: activeDebts.length,
         activePlanCount: activePlans.length,
         overdueDebtCount: debtComputations.filter(
@@ -286,7 +291,7 @@ export class CustomerFinancialSummaryService {
       originalAmount: debt.originalAmount,
       allocations: debt.paymentAllocations.map((allocation) => ({
         amount: allocation.amount,
-        isVoided: Boolean(allocation.payment.voidedAt),
+        isVoided: isPaymentAllocationVoided(allocation),
       })),
     });
     const dueDate = prismaDateToBusinessDate(debt.dueDate);
@@ -329,7 +334,7 @@ export class CustomerFinancialSummaryService {
         amountDue: installment.amountDue,
         allocations: installment.paymentAllocations.map((allocation) => ({
           amount: allocation.amount,
-          isVoided: Boolean(allocation.payment.voidedAt),
+          isVoided: isPaymentAllocationVoided(allocation),
         })),
       });
       const dueDate = prismaDateToBusinessDate(installment.dueDate);

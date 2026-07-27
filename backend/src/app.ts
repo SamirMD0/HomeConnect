@@ -19,6 +19,8 @@ import {
   installmentPlansRoutes,
 } from './features/financial/installment-plans/installment-plans.routes';
 import { financialLedgerRoutes } from './features/financial/ledger/financial-ledger.routes';
+import { correctionsRoutes, customerCorrectionsRoutes } from './features/financial/corrections/corrections.routes';
+import { paymentsRoutes } from './features/financial/payments/payments.routes';
 import { monthlyDebtsRoutes } from './features/reports/monthly-debts/monthly-debts.routes';
 import { backupRoutes } from './features/backup/backup.routes';
 import { blockWritesDuringRestore } from './features/backup/backup.middleware';
@@ -75,10 +77,13 @@ app.use('/api/v1/users', requireAuth, usersRoutes);
 app.use('/api/v1/customers', requireAuth, customerDebtsRoutes);
 app.use('/api/v1/customers', requireAuth, customerInstallmentPlansRoutes);
 app.use('/api/v1/customers', requireAuth, customerFinancialSummaryRoutes);
+app.use('/api/v1/customers', requireAuth, customerCorrectionsRoutes);
 app.use('/api/v1/customers', requireAuth, customersRoutes);
 app.use('/api/v1/debts', requireAuth, debtsRoutes);
 app.use('/api/v1/installment-plans', requireAuth, installmentPlansRoutes);
+app.use('/api/v1/payments', requireAuth, paymentsRoutes);
 app.use('/api/v1/financial-ledger', requireAuth, financialLedgerRoutes);
+app.use('/api/v1/corrections', requireAuth, correctionsRoutes);
 app.use('/api/v1/reports', requireAuth, monthlyDebtsRoutes);
 app.use('/api/v1/admin/backups', requireAuth, backupRoutes);
 app.use('/api/v1/admin/diagnostics', requireAuth, diagnosticsRoutes);

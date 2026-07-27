@@ -7,6 +7,8 @@ vi.mock('electron', () => ({
   },
   ipcRenderer: {
     invoke: vi.fn(),
+    on: vi.fn(),
+    removeListener: vi.fn(),
   },
 }));
 
@@ -27,7 +29,10 @@ describe('preload', () => {
     expect(apiKey).toBe('electronAPI');
     
     // Check surface area
-    const allowedMethods = ['ping', 'openLogsFolder', 'copyDiagnostics'];
+    const allowedMethods = [
+      'ping', 'openLogsFolder', 'copyDiagnostics',
+      'retryStartup', 'closeApp', 'onStartupLog', 'onStartupState'
+    ];
     const actualMethods = Object.keys(apiObj as object);
     
     expect(actualMethods.sort()).toEqual(allowedMethods.sort());
@@ -45,5 +50,21 @@ describe('preload', () => {
     
     openLogsFolderFn();
     expect(ipcRenderer.invoke).toHaveBeenCalledWith('diagnostics:openLogsFolder');
+
+    // Verify onStartupLog returns an unsubscribe function
+    const onStartupLogFn = (apiObj as any).onStartupLog;
+    const dummyCallback1 = () => {};
+    const unsub1 = onStartupLogFn(dummyCallback1);
+    expect(ipcRenderer.on).toHaveBeenCalledWith('diagnostics:startupLog', dummyCallback1);
+    unsub1();
+    expect(ipcRenderer.removeListener).toHaveBeenCalledWith('diagnostics:startupLog', dummyCallback1);
+
+    // Verify onStartupState returns an unsubscribe function
+    const onStartupStateFn = (apiObj as any).onStartupState;
+    const dummyCallback2 = () => {};
+    const unsub2 = onStartupStateFn(dummyCallback2);
+    expect(ipcRenderer.on).toHaveBeenCalledWith('diagnostics:startupState', dummyCallback2);
+    unsub2();
+    expect(ipcRenderer.removeListener).toHaveBeenCalledWith('diagnostics:startupState', dummyCallback2);
   });
 });

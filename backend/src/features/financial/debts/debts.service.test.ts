@@ -1,4 +1,10 @@
-import { DebtStatus, PaymentMethod } from '@prisma/client';
+import {
+  DebtStatus,
+  FinancialCorrectionAction,
+  FinancialCorrectionRecordType,
+  FinancialCorrectionSourceScreen,
+  PaymentMethod,
+} from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NotFoundError } from '../../../lib/errors';
@@ -13,22 +19,36 @@ import { DebtsService } from './debts.service';
 
 const tx = { id: 'tx' };
 
-const { repositoryMock } = vi.hoisted(() => ({
+const { correctionAuditMock, repositoryMock, verifyAccountPasswordMock, verifyAdminPasswordMock } = vi.hoisted(() => ({
+  correctionAuditMock: vi.fn(),
   repositoryMock: {
     findActiveCustomerById: vi.fn(),
     createDebt: vi.fn(),
     findDebtById: vi.fn(),
+    findUserIdentity: vi.fn(),
     listDebtsByCustomer: vi.fn(),
     createPayment: vi.fn(),
     createDebtPaymentAllocation: vi.fn(),
     updateDebtStatus: vi.fn(),
+    updateDebtDetails: vi.fn(),
     cancelDebt: vi.fn(),
     findPaymentByIdempotencyKey: vi.fn(),
   },
+  verifyAccountPasswordMock: vi.fn(),
+  verifyAdminPasswordMock: vi.fn(),
 }));
 
 vi.mock('./debts.repository', () => ({
   DebtsRepository: repositoryMock,
+}));
+
+vi.mock('../authorization/account-password', () => ({
+  verifyAccountPassword: verifyAccountPasswordMock,
+  verifyAdminPasswordForCorrection: verifyAdminPasswordMock,
+}));
+
+vi.mock('../corrections/correction-audit', () => ({
+  writeFinancialCorrectionAudit: correctionAuditMock,
 }));
 
 vi.mock('../index', async (importOriginal) => {
@@ -122,6 +142,14 @@ function makeAllocation(amount: string, paymentOverrides: Record<string, unknown
 describe('DebtsService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    verifyAccountPasswordMock.mockResolvedValue(undefined);
+    verifyAdminPasswordMock.mockResolvedValue(undefined);
+    correctionAuditMock.mockResolvedValue(undefined);
+    repositoryMock.findUserIdentity.mockResolvedValue({
+      id: adminUser.userId,
+      fullName: 'Admin User',
+      username: 'admin',
+    });
   });
 
   it('creates a debt for an existing active customer and serializes money/date values', async () => {
@@ -361,7 +389,88 @@ describe('DebtsService', () => {
     ).rejects.toThrow(PaymentIdempotencyConflictError);
   });
 
-  it('cancels eligible debts and rejects cancellation after payment', async () => {
+  it('corrects debt details and amount after admin password verification', async () => {
+    repositoryMock.findDebtById.mockResolvedValue(makeDebt());
+    repositoryMock.updateDebtDetails.mockResolvedValue(
+      makeDebt({
+        description: 'Updated refrigerator',
+        originalAmount: new Decimal('650.00'),
+        dueDate: new Date(Date.UTC(2026, 7, 15)),
+        notes: 'Updated notes',
+      })
+    );
+
+    const updated = await DebtsService.updateDebt(
+      '33333333-3333-4333-8333-333333333333',
+      {
+        originalAmount: '650.00',
+        description: 'Updated refrigerator',
+        dueDate: '2026-08-15',
+        notes: 'Updated notes',
+        reason: 'Original invoice amount was corrected',
+        sourceScreen: FinancialCorrectionSourceScreen.CUSTOMER_PROFILE,
+        accountPassword: 'admin-password',
+      },
+      adminUser
+    );
+
+    expect(verifyAdminPasswordMock).toHaveBeenCalledWith(adminUser.userId, 'admin-password', {
+      action: 'CORRECT_DEBT',
+      recordType: FinancialCorrectionRecordType.DEBT,
+      recordId: '33333333-3333-4333-8333-333333333333',
+    });
+    expect(repositoryMock.updateDebtDetails).toHaveBeenCalledWith(
+      tx,
+      '33333333-3333-4333-8333-333333333333',
+      expect.objectContaining({
+        originalAmount: expect.any(Decimal),
+        description: 'Updated refrigerator',
+        dueDate: expect.any(Date),
+        notes: 'Updated notes',
+      })
+    );
+    expect(updated.description).toBe('Updated refrigerator');
+    expect(updated.originalAmount).toBe('650.00');
+    expect(updated.dueDate).toBe('2026-08-15');
+    expect(correctionAuditMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recordType: FinancialCorrectionRecordType.DEBT,
+        recordId: '33333333-3333-4333-8333-333333333333',
+        action: FinancialCorrectionAction.CORRECT_AMOUNT,
+        correctedById: adminUser.userId,
+        reason: 'Original invoice amount was corrected',
+        sourceScreen: FinancialCorrectionSourceScreen.CUSTOMER_PROFILE,
+      }),
+      tx
+    );
+  });
+
+  it('rejects correcting a debt amount below already paid allocations', async () => {
+    repositoryMock.findDebtById.mockResolvedValue(
+      makeDebt({ paymentAllocations: [makeAllocation('500.00')] })
+    );
+
+    await expect(
+      DebtsService.correctDebt(
+        '33333333-3333-4333-8333-333333333333',
+        {
+          originalAmount: '499.99',
+          description: 'Refrigerator',
+          dueDate: '2026-08-10',
+          notes: null,
+          reason: 'Correction would break paid balance',
+          sourceScreen: FinancialCorrectionSourceScreen.CUSTOMER_PROFILE,
+          accountPassword: 'admin-password',
+        },
+        adminUser
+      )
+    ).rejects.toThrow('Debt amount cannot be lower than the amount already paid');
+
+    expect(repositoryMock.updateDebtDetails).not.toHaveBeenCalled();
+    expect(correctionAuditMock).not.toHaveBeenCalled();
+  });
+
+  it('cancels unpaid debts after account-password verification and rejects debts with payments', async () => {
     repositoryMock.findDebtById.mockResolvedValue(makeDebt());
     repositoryMock.cancelDebt.mockResolvedValue(
       makeDebt({
@@ -378,20 +487,21 @@ describe('DebtsService', () => {
 
     const cancelled = await DebtsService.cancelDebt(
       '33333333-3333-4333-8333-333333333333',
-      { reason: 'Customer returned product' },
+      { reason: 'Customer returned product', accountPassword: 'admin-password' },
       adminUser
     );
 
     expect(cancelled.status).toBe(DebtStatus.CANCELLED);
     expect(cancelled.cancellation?.reason).toBe('Customer returned product');
+    expect(verifyAccountPasswordMock).toHaveBeenCalledWith(adminUser.userId, 'admin-password');
 
     repositoryMock.findDebtById.mockResolvedValue(makeDebt({ paymentAllocations: [makeAllocation('1.00')] }));
     await expect(
       DebtsService.cancelDebt(
         '33333333-3333-4333-8333-333333333333',
-        { reason: 'Customer returned product' },
+        { reason: 'Customer returned product', accountPassword: 'admin-password' },
         adminUser
       )
-    ).rejects.toThrow(FinancialRecordAlreadyPaidError);
+    ).rejects.toThrow('Debt with payments requires a dedicated reversal workflow');
   });
 });

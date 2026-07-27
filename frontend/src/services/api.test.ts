@@ -8,7 +8,7 @@ describe('API Interceptors', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.spyOn(axios, 'post').mockResolvedValue({ data: {} });
-    setAccessToken(null);
+    setAccessToken('fake-token-for-test');
     if (typeof window === 'undefined') {
       (globalThis as any).window = {
         location: { pathname: '/dashboard', hash: '' },

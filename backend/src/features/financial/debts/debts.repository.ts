@@ -87,6 +87,17 @@ export interface CreateDebtPaymentData {
 }
 
 export class DebtsRepository {
+  static async findUserIdentity(userId: string) {
+    return prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        fullName: true,
+        username: true,
+      },
+    });
+  }
+
   static async findActiveCustomerById(customerId: string) {
     return prisma.customer.findFirst({
       where: {
@@ -188,6 +199,25 @@ export class DebtsRepository {
     return tx.debt.update({
       where: { id: debtId },
       data: { status },
+      include: debtInclude,
+    });
+  }
+
+  static async updateDebtDetails(
+    tx: FinancialTransactionClient,
+    debtId: string,
+    data: {
+      originalAmount?: Decimal;
+      description: string;
+      dueDate: Date;
+      notes?: string | null;
+      status: DebtStatus;
+      cancelReason?: string | null;
+    }
+  ) {
+    return tx.debt.update({
+      where: { id: debtId },
+      data,
       include: debtInclude,
     });
   }

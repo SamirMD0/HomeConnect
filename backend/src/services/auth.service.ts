@@ -5,6 +5,7 @@ import { AuthenticationError, AuthorizationError, AppError } from '../lib/errors
 import { Role } from '@prisma/client';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key_change_in_production';
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || JWT_SECRET;
 const ACCESS_EXPIRY = process.env.JWT_ACCESS_EXPIRY || '15m';
 const REFRESH_EXPIRY = process.env.JWT_REFRESH_EXPIRY || '7d';
 const MAX_LOGIN_ATTEMPTS = 5;
@@ -18,7 +19,7 @@ export class AuthService {
     const payload = { userId, role };
     
     const accessToken = jwt.sign(payload, JWT_SECRET, { expiresIn: ACCESS_EXPIRY as any });
-    const refreshToken = jwt.sign(payload, JWT_SECRET, { expiresIn: REFRESH_EXPIRY as any });
+    const refreshToken = jwt.sign(payload, JWT_REFRESH_SECRET, { expiresIn: REFRESH_EXPIRY as any });
     
     return { accessToken, refreshToken };
   }
@@ -93,7 +94,7 @@ export class AuthService {
    */
   static async refreshToken(refreshToken: string) {
     try {
-      const decoded = jwt.verify(refreshToken, JWT_SECRET) as { userId: string, role: string };
+      const decoded = jwt.verify(refreshToken, JWT_REFRESH_SECRET) as { userId: string, role: string };
       
       const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
       

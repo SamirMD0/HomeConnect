@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HomeConnect Startup Monitor</title>
+  <style>
+    body {
+      background-color: #0f172a; /* slate-950 */
+      color: #f8fafc; /* slate-50 */
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+    
+    .header {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid #1e293b; /* slate-800 */
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    
+    .title {
+      font-size: 1.125rem;
+      font-weight: 600;
+      margin: 0;
+    }
+    
+    .status-badge {
+      background-color: #3b82f6; /* blue-500 */
+      color: white;
+      font-size: 0.75rem;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-weight: 500;
+    }
+    
+    .status-badge.error {
+      background-color: #ef4444; /* red-500 */
+    }
+
+    .status-badge.dev {
+      background-color: #8b5cf6; /* violet-500 */
+    }
+    
+    .content {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+    
+    .sidebar {
+      width: 250px;
+      background-color: #0f172a;
+      border-right: 1px solid #1e293b;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+    
+    .checklist {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 2rem 0;
+      flex: 1;
+    }
+    
+    .checklist li {
+      display: flex;
+      align-items: center;
+      margin-bottom: 1rem;
+      font-size: 0.875rem;
+      color: #94a3b8; /* slate-400 */
+    }
+    
+    .checklist li.active {
+      color: #f8fafc;
+      font-weight: 500;
+    }
+    
+    .checklist li.success {
+      color: #22c55e; /* green-500 */
+    }
+    
+    .checklist li.error {
+      color: #ef4444; /* red-500 */
+    }
+    
+    .icon {
+      width: 16px;
+      height: 16px;
+      margin-right: 10px;
+      border-radius: 50%;
+      border: 2px solid currentColor;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .checklist li.active .icon {
+      border-color: #3b82f6;
+      background-color: rgba(59, 130, 246, 0.2);
+    }
+    
+    .checklist li.success .icon {
+      background-color: currentColor;
+    }
+    
+    .checklist li.error .icon {
+      background-color: currentColor;
+    }
+    
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    
+    button {
+      background-color: #1e293b;
+      color: #f8fafc;
+      border: 1px solid #334155;
+      padding: 0.5rem 1rem;
+      border-radius: 0.375rem;
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      text-align: left;
+    }
+    
+    button:hover {
+      background-color: #334155;
+    }
+    
+    button.primary {
+      background-color: #3b82f6;
+      border-color: #3b82f6;
+    }
+    
+    button.primary:hover {
+      background-color: #2563eb;
+    }
+    
+    .logs-container {
+      flex: 1;
+      background-color: #020617; /* slate-950 (darker) */
+      padding: 1rem;
+      overflow-y: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 0.8125rem;
+      color: #94a3b8;
+      line-height: 1.5;
+    }
+    
+    .log-line {
+      margin-bottom: 0.25rem;
+      word-wrap: break-word;
+    }
+    
+    .log-error {
+      color: #ef4444;
+    }
+    
+    .log-warn {
+      color: #eab308;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1 class="title">HomeConnect Startup Monitor</h1>
+    <span id="status-badge" class="status-badge">Starting...</span>
+  </div>
+  
+  <div class="content">
+    <div class="sidebar">
+      <ul class="checklist" id="checklist">
+        <li id="step-config" class="active"><span class="icon"></span>Checking Config</li>
+        <li id="step-backend"><span class="icon"></span>Starting Backend</li>
+        <li id="step-db"><span class="icon"></span>Checking PostgreSQL</li>
+        <li id="step-frontend"><span class="icon"></span>Starting Frontend</li>
+      </ul>
+      
+      <div class="actions">
+        <button id="btn-retry" style="display: none;" class="primary">Retry Startup</button>
+        <button id="btn-copy">Copy Diagnostics</button>
+        <button id="btn-logs">Open Logs Folder</button>
+        <button id="btn-close">Close App</button>
+      </div>
+    </div>
+    
+    <div class="logs-container" id="logs">
+      <div class="log-line">Initializing boot sequence...</div>
+    </div>
+  </div>
+
+  <script>
+    const logsContainer = document.getElementById('logs');
+    const statusBadge = document.getElementById('status-badge');
+    const retryBtn = document.getElementById('btn-retry');
+    
+    let isDev = false;
+
+    // Auto-scroll logic
+    function scrollToBottom() {
+      logsContainer.scrollTop = logsContainer.scrollHeight;
+    }
+
+    function appendLog(text) {
+      const div = document.createElement('div');
+      div.className = 'log-line';
+      if (text.toLowerCase().includes('error')) div.classList.add('log-error');
+      if (text.toLowerCase().includes('warn')) div.classList.add('log-warn');
+      div.textContent = text;
+      logsContainer.appendChild(div);
+      scrollToBottom();
+    }
+
+    function updateStep(stepId, status) {
+      const el = document.getElementById(stepId);
+      if (el) {
+        el.className = status; // active, success, error, or empty
+      }
+    }
+
+    // Set up button handlers
+    document.getElementById('btn-copy').addEventListener('click', () => {
+      const allText = Array.from(logsContainer.children).map(c => c.textContent).join('\n');
+      window.electronAPI?.copyDiagnostics(allText);
+    });
+
+    document.getElementById('btn-logs').addEventListener('click', () => {
+      window.electronAPI?.openLogsFolder();
+    });
+
+    document.getElementById('btn-close').addEventListener('click', () => {
+      window.electronAPI?.closeApp();
+    });
+
+    retryBtn.addEventListener('click', () => {
+      retryBtn.style.display = 'none';
+      statusBadge.textContent = 'Retrying...';
+      statusBadge.className = 'status-badge';
+      logsContainer.innerHTML = ''; // clear logs
+      appendLog('Retrying startup sequence...');
+      ['step-config', 'step-backend', 'step-db', 'step-frontend'].forEach(id => updateStep(id, ''));
+      updateStep('step-config', 'active');
+      window.electronAPI?.retryStartup();
+    });
+
+    // Listen to IPC
+    if (window.electronAPI) {
+      window.electronAPI.onStartupLog((event, message) => {
+        appendLog(message);
+      });
+
+      window.electronAPI.onStartupState((event, state) => {
+        if (state.devMode) {
+          isDev = true;
+          statusBadge.textContent = 'Development Mode';
+          statusBadge.className = 'status-badge dev';
+        }
+
+        if (state.step) {
+          ['step-config', 'step-backend', 'step-db', 'step-frontend'].forEach(id => {
+            if (id === state.step) {
+              if (state.status === 'error') {
+                updateStep(id, 'error');
+                statusBadge.textContent = 'Startup Failed';
+                statusBadge.className = 'status-badge error';
+                retryBtn.style.display = 'block';
+                appendLog(`[SYSTEM] Startup failed during: ${state.step}`);
+                if (state.error) appendLog(`[ERROR] ${state.error}`);
+              } else if (state.status === 'success') {
+                updateStep(id, 'success');
+              } else {
+                updateStep(id, 'active');
+              }
+            } else if (state.status === 'error') {
+              // Leave other steps alone
+            }
+          });
+        }
+      });
+    } else {
+      appendLog('[WARN] electronAPI not found. Running in browser?');
+    }
+  </script>
+</body>
+</html>

@@ -32,11 +32,6 @@ async function main() {
     FRONTEND_PORT,
   ]);
 
-  await Promise.all([
-    waitForUrl(BACKEND_URL, READY_TIMEOUT_MS, 'Express backend'),
-    waitForUrl(FRONTEND_URL, READY_TIMEOUT_MS, 'Vite frontend'),
-  ]);
-
   if (CHECK_ONLY) {
     console.log('Electron dev dependencies are ready.');
     shutdown(backend, frontend);

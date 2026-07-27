@@ -116,9 +116,10 @@ describe('debt validators', () => {
       sortOrder: 'desc',
     });
 
-    expect(() => cancelDebtSchema.parse({ reason: '' })).toThrow();
-    expect(cancelDebtSchema.parse({ reason: ' Customer returned product ' })).toEqual({
+    expect(() => cancelDebtSchema.parse({ reason: '', accountPassword: '' })).toThrow();
+    expect(cancelDebtSchema.parse({ reason: ' Customer returned product ', accountPassword: 'admin123' })).toEqual({
       reason: 'Customer returned product',
+      accountPassword: 'admin123',
     });
   });
 });

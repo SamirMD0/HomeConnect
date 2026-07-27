@@ -1,12 +1,17 @@
 import React from 'react';
-import { useDashboardSummary, useRecentActivity } from '../hooks/useDashboard';
+import { useFinancialSummary, useRecentActivity } from '../hooks/useDashboard';
 import { StatCard } from '../components/StatCard';
 import { RecentActivity } from '../components/RecentActivity';
 import { QuickActions } from '../components/QuickActions';
+import { UpcomingDueList } from '../components/UpcomingDueList';
+import { OverdueCustomersList } from '../components/OverdueCustomersList';
+import { RecentPaymentsPanel } from '../components/RecentPaymentsPanel';
+import { formatMoney } from '../../customer-financial/utils/financial-format';
 
 export const DashboardPage: React.FC = () => {
-  const { data: summary, isLoading: isLoadingSummary } = useDashboardSummary();
+  const { data: summary, isLoading: isLoadingSummary } = useFinancialSummary();
   const { data: recentActivity, isLoading: isLoadingActivity } = useRecentActivity();
+  const netChangeTodayIsIncrease = summary ? !summary.money.netChangeToday.startsWith('-') : false;
 
   return (
     <div className="space-y-6">
@@ -22,7 +27,7 @@ export const DashboardPage: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title="Total Outstanding Debt"
-          value={isLoadingSummary ? '...' : `$${summary?.totalDebt.toFixed(2)}`}
+          value={isLoadingSummary || !summary ? '...' : formatMoney(summary.money.totalOutstanding)}
           color="danger"
           icon={
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -32,7 +37,7 @@ export const DashboardPage: React.FC = () => {
         />
         <StatCard
           title="Customers in Debt"
-          value={isLoadingSummary ? '...' : summary?.customersWithDebt || 0}
+          value={isLoadingSummary || !summary ? '...' : summary.counts.customersWithOutstanding}
           color="warning"
           icon={
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -42,7 +47,7 @@ export const DashboardPage: React.FC = () => {
         />
         <StatCard
           title="Payments This Month"
-          value={isLoadingSummary ? '...' : `$${summary?.paymentsThisMonth.toFixed(2)}`}
+          value={isLoadingSummary || !summary ? '...' : formatMoney(summary.money.paymentsThisMonth)}
           color="success"
           icon={
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -52,7 +57,7 @@ export const DashboardPage: React.FC = () => {
         />
         <StatCard
           title="Total Customers"
-          value={isLoadingSummary ? '...' : summary?.totalCustomers || 0}
+          value={isLoadingSummary || !summary ? '...' : summary.counts.totalCustomers}
           color="info"
           icon={
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -60,6 +65,12 @@ export const DashboardPage: React.FC = () => {
             </svg>
           }
         />
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+        <UpcomingDueList items={summary?.upcomingDue ?? []} isLoading={isLoadingSummary} />
+        <OverdueCustomersList customers={summary?.overdueCustomers ?? []} isLoading={isLoadingSummary} />
+        <RecentPaymentsPanel payments={summary?.recentPayments ?? []} isLoading={isLoadingSummary} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -75,21 +86,19 @@ export const DashboardPage: React.FC = () => {
               <div className="flex justify-between items-center py-2 border-b border-gray-50">
                 <span className="text-gray-500">Sales (New Debt)</span>
                 <span className="font-semibold text-gray-900">
-                  {isLoadingSummary ? '...' : `$${summary?.salesToday.toFixed(2)}`}
+                  {isLoadingSummary || !summary ? '...' : formatMoney(summary.money.obligationsCreatedToday)}
                 </span>
               </div>
               <div className="flex justify-between items-center py-2 border-b border-gray-50">
                 <span className="text-gray-500">Payments Received</span>
                 <span className="font-semibold text-green-600">
-                  {isLoadingSummary ? '...' : `$${summary?.paymentsToday.toFixed(2)}`}
+                  {isLoadingSummary || !summary ? '...' : formatMoney(summary.money.paymentsToday)}
                 </span>
               </div>
               <div className="flex justify-between items-center py-2 pt-4">
                 <span className="text-gray-700 font-medium">Net Change</span>
-                <span className={`font-bold ${
-                  !summary ? '' : summary.salesToday - summary.paymentsToday > 0 ? 'text-red-600' : 'text-green-600'
-                }`}>
-                  {isLoadingSummary || !summary ? '...' : `${summary.salesToday - summary.paymentsToday > 0 ? '+' : ''}${(summary.salesToday - summary.paymentsToday).toFixed(2)}`}
+                <span className={`font-bold ${netChangeTodayIsIncrease ? 'text-red-600' : 'text-green-600'}`}>
+                  {isLoadingSummary || !summary ? '...' : formatSignedMoney(summary.money.netChangeToday)}
                 </span>
               </div>
             </div>
@@ -99,3 +108,9 @@ export const DashboardPage: React.FC = () => {
     </div>
   );
 };
+
+function formatSignedMoney(value: string): string {
+  if (value.startsWith('-')) return formatMoney(value);
+  if (value === '0.00') return formatMoney(value);
+  return `+${formatMoney(value)}`;
+}

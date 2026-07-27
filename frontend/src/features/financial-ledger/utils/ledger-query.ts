@@ -2,8 +2,23 @@ import { FinancialLedgerFilters } from '../types/financial-ledger.types';
 
 export function normalizeFinancialLedgerFilters(
   filters: FinancialLedgerFilters = {}
-): Required<Pick<FinancialLedgerFilters, 'type' | 'includeCancelled' | 'page' | 'limit' | 'sortBy' | 'sortOrder'>> &
-  Omit<FinancialLedgerFilters, 'type' | 'includeCancelled' | 'page' | 'limit' | 'sortBy' | 'sortOrder'> {
+): Required<
+  Pick<
+    FinancialLedgerFilters,
+    'type' | 'includeCancelled' | 'includeCompleted' | 'correctedOnly' | 'page' | 'limit' | 'sortBy' | 'sortOrder'
+  >
+> &
+  Omit<
+    FinancialLedgerFilters,
+    | 'type'
+    | 'includeCancelled'
+    | 'includeCompleted'
+    | 'correctedOnly'
+    | 'page'
+    | 'limit'
+    | 'sortBy'
+    | 'sortOrder'
+  > {
   return {
     type: filters.type ?? 'ALL',
     status: filters.status,
@@ -14,10 +29,12 @@ export function normalizeFinancialLedgerFilters(
     paymentFrom: filters.paymentFrom || undefined,
     paymentTo: filters.paymentTo || undefined,
     includeCancelled: filters.includeCancelled ?? false,
+    includeCompleted: filters.includeCompleted ?? false,
+    correctedOnly: filters.correctedOnly ?? false,
     page: filters.page ?? 1,
     limit: filters.limit ?? 25,
-    sortBy: filters.sortBy ?? 'date',
-    sortOrder: filters.sortOrder ?? 'asc',
+    sortBy: filters.sortBy ?? 'createdAt',
+    sortOrder: filters.sortOrder ?? 'desc',
   };
 }
 

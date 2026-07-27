@@ -1,29 +1,33 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { Modal } from '../../../components/ui/Modal';
 import { useInstallmentPlanDetail } from '../hooks/useCustomerFinancialSummary';
-import { InstallmentPlanDetail } from '../types/customer-financial.types';
+import { InstallmentPlanDetail, RecentFinancialPayment } from '../types/customer-financial.types';
 import { formatBusinessDate, formatDateTime, formatMoney } from '../utils/financial-format';
-import {
-  canCancelInstallmentPlan,
-  canRecordInstallmentPlanPayment,
-} from '../utils/financial-auth';
+import { canRecordInstallmentPlanPayment } from '../utils/financial-auth';
 import { FinancialErrorState } from './FinancialErrorState';
 import { FinancialStatusBadge } from './FinancialStatusBadge';
 import { RecentPaymentsList } from './RecentPaymentsList';
+import { ReallocatePaymentDialog } from './ReallocatePaymentDialog';
 
 interface InstallmentPlanDetailsProps {
   planId: string | null;
   canMutate?: boolean;
+  onEditPlan?: (plan: InstallmentPlanDetail) => void;
   onRecordPayment?: (plan: InstallmentPlanDetail) => void;
   onCancelPlan?: (plan: InstallmentPlanDetail) => void;
+  onVoidPayment?: (payment: RecentFinancialPayment) => void;
 }
 
 export const InstallmentPlanDetails: React.FC<InstallmentPlanDetailsProps> = ({
   planId,
   canMutate = false,
+  onEditPlan,
   onRecordPayment,
   onCancelPlan,
+  onVoidPayment,
 }) => {
   const { data: plan, isLoading, isError, refetch } = useInstallmentPlanDetail(planId);
+  const [paymentForReallocation, setPaymentForReallocation] = useState<RecentFinancialPayment | null>(null);
 
   if (isLoading) {
     return <div className="py-8 text-center text-sm text-slate-500">Loading plan details...</div>;
@@ -40,6 +44,8 @@ export const InstallmentPlanDetails: React.FC<InstallmentPlanDetailsProps> = ({
     );
   }
 
+  const canRecordPayment = canRecordInstallmentPlanPayment(plan.calculatedStatus) && onRecordPayment;
+
   return (
     <div className="space-y-6">
       <div>
@@ -50,7 +56,16 @@ export const InstallmentPlanDetails: React.FC<InstallmentPlanDetailsProps> = ({
         <p className="text-sm text-slate-500">Created {formatDateTime(plan.createdAt)} by {plan.createdBy.name}</p>
         {canMutate && (
           <div className="mt-4 flex flex-wrap gap-2">
-            {canRecordInstallmentPlanPayment(plan.calculatedStatus) && onRecordPayment && (
+            {onEditPlan && (
+              <button
+                type="button"
+                onClick={() => onEditPlan(plan)}
+                className="rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+              >
+                Edit
+              </button>
+            )}
+            {canRecordPayment && (
               <button
                 type="button"
                 onClick={() => onRecordPayment(plan)}
@@ -59,13 +74,14 @@ export const InstallmentPlanDetails: React.FC<InstallmentPlanDetailsProps> = ({
                 Record payment
               </button>
             )}
-            {canCancelInstallmentPlan(plan.calculatedStatus, plan.totalPaid) && onCancelPlan && (
+            {onCancelPlan && (
               <button
                 type="button"
                 onClick={() => onCancelPlan(plan)}
-                className="rounded-md border border-amber-200 px-3 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-50 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+                title="Delete by cancelling this plan while preserving payment and audit history."
+                className="rounded-md border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500/30"
               >
-                Cancel plan
+                Delete plan
               </button>
             )}
           </div>
@@ -115,7 +131,32 @@ export const InstallmentPlanDetails: React.FC<InstallmentPlanDetailsProps> = ({
         </div>
       </section>
 
-      <RecentPaymentsList payments={plan.payments} />
+      <RecentPaymentsList
+        payments={plan.payments}
+        canMutate={canMutate}
+        onVoidPayment={onVoidPayment}
+        onReallocatePayment={setPaymentForReallocation}
+      />
+
+      <Modal
+        isOpen={Boolean(paymentForReallocation)}
+        onClose={() => setPaymentForReallocation(null)}
+        title="Reallocate payment"
+        maxWidth="max-w-4xl"
+      >
+        {paymentForReallocation && (
+          <ReallocatePaymentDialog
+            customerId={plan.customer.id}
+            planId={plan.id}
+            payment={paymentForReallocation}
+            schedule={plan.schedule}
+            onSuccess={() => {
+              setPaymentForReallocation(null);
+              void refetch();
+            }}
+          />
+        )}
+      </Modal>
     </div>
   );
 };

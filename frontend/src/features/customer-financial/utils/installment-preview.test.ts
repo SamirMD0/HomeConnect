@@ -2,19 +2,42 @@ import { describe, expect, it } from 'vitest';
 import { generateInstallmentPreview } from './installment-preview';
 
 describe('generateInstallmentPreview', () => {
-  it('uses start date as first due date and lets the final installment absorb rounding', () => {
+  it('uses start date as first due date and splits whole-dollar totals without cents', () => {
     const preview = generateInstallmentPreview({
-      totalAmount: '100.00',
+      totalAmount: '320.00',
       startDate: '2026-08-01',
       installmentCount: 3,
     });
 
     expect(preview.rows).toEqual([
-      { installmentNumber: 1, dueDate: '2026-08-01', amountDue: '33.33' },
-      { installmentNumber: 2, dueDate: '2026-09-01', amountDue: '33.33' },
-      { installmentNumber: 3, dueDate: '2026-10-01', amountDue: '33.34' },
+      { installmentNumber: 1, dueDate: '2026-08-01', amountDue: '107.00' },
+      { installmentNumber: 2, dueDate: '2026-09-01', amountDue: '107.00' },
+      { installmentNumber: 3, dueDate: '2026-10-01', amountDue: '106.00' },
     ]);
-    expect(preview.totalScheduled).toBe('100.00');
+    expect(preview.totalScheduled).toBe('320.00');
+    expect(preview.isBalanced).toBe(true);
+  });
+
+  it('previews manual schedules and reports total mismatches', () => {
+    const preview = generateInstallmentPreview({
+      totalAmount: '320.00',
+      startDate: '2026-08-01',
+      installmentCount: 3,
+      manualAmounts: ['120', '110', '90'],
+    });
+    const mismatch = generateInstallmentPreview({
+      totalAmount: '320.00',
+      startDate: '2026-08-01',
+      installmentCount: 3,
+      manualAmounts: ['120', '110', '80'],
+    });
+
+    expect(preview.rows.map((row) => row.amountDue)).toEqual(['120.00', '110.00', '90.00']);
+    expect(preview.totalScheduled).toBe('320.00');
+    expect(preview.isBalanced).toBe(true);
+    expect(mismatch.totalScheduled).toBe('310.00');
+    expect(mismatch.balanceDifference).toBe('10.00');
+    expect(mismatch.isBalanced).toBe(false);
   });
 
   it('preserves the original anchor day and clamps month ends', () => {

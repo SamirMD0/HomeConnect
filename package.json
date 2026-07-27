@@ -1,6 +1,6 @@
 {
   "name": "home-connect",
-  "version": "1.0.2",
+  "version": "1.0.4",
   "main": "dist/electron/desktop/src/index.js",
   "build": {
     "appId": "com.homeconnect.desktop",
@@ -84,7 +84,7 @@
     "dev:server": "nodemon --watch backend/src -e ts --exec tsx backend/src/index.ts",
     "dev:electron": "tsx desktop/scripts/dev-electron.ts",
     "typecheck:electron": "tsc -p tsconfig.electron.json --noEmit",
-    "build:electron-main": "tsc -p tsconfig.electron.json",
+    "build:electron-main": "tsc -p tsconfig.electron.json && node -e \"require('fs').copyFileSync('desktop/src/startup-monitor.html', 'dist/electron/desktop/src/startup-monitor.html')\"",
     "check:electron-production-runtime": "tsx desktop/scripts/check-production-runtime.ts",
     "pack:win": "npm run build && npm run build:electron-main && electron-builder --win --dir --config.npmRebuild=false --publish=never",
     "dist:win": "npm run build && npm run build:electron-main && electron-builder --win --config.npmRebuild=false --publish=never",

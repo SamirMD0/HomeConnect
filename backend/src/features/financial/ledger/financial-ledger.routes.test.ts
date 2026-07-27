@@ -29,10 +29,12 @@ const employeeToken = jwt.sign(
 
 const ledgerResponse = {
   summary: {
+    basis: 'filtered',
     totalOutstanding: '0.00',
     totalPaid: '0.00',
     activeDebtCount: 0,
     activePlanCount: 0,
+    activeCustomerCount: 0,
     overdueDebtCount: 0,
     overdueInstallmentCount: 0,
   },
@@ -76,6 +78,8 @@ describe('financial ledger routes', () => {
       paymentFrom: undefined,
       paymentTo: undefined,
       includeCancelled: true,
+      includeCompleted: false,
+      correctedOnly: false,
       page: 2,
       limit: 10,
       sortBy: 'customer',

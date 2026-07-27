@@ -1,4 +1,9 @@
-import { InstallmentPlanFrequency, InstallmentPlanStatus, PaymentMethod } from '@prisma/client';
+import {
+  FinancialCorrectionSourceScreen,
+  InstallmentPlanFrequency,
+  InstallmentPlanStatus,
+  PaymentMethod,
+} from '@prisma/client';
 import { z } from 'zod';
 
 const uuidSchema = z.string().uuid('Invalid ID');
@@ -28,8 +33,26 @@ export const createInstallmentPlanSchema = z
     installmentCount: z.coerce.number().int().positive().max(120, 'Installment count is too large'),
     frequency: z.nativeEnum(InstallmentPlanFrequency).default(InstallmentPlanFrequency.MONTHLY),
     notes: z.string().trim().max(1000, 'Notes are too long').optional().nullable(),
+    schedule: z
+      .array(
+        z
+          .object({
+            amountDue: moneyStringSchema,
+          })
+          .strict()
+      )
+      .optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((value, context) => {
+    if (value.schedule && value.schedule.length !== value.installmentCount) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['schedule'],
+        message: 'Manual schedule must have one amount for each installment',
+      });
+    }
+  });
 
 export const listCustomerInstallmentPlansQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
@@ -57,8 +80,41 @@ export const createInstallmentPlanPaymentSchema = z
 export const cancelInstallmentPlanSchema = z
   .object({
     reason: z.string().trim().min(1, 'Cancellation reason is required').max(1000, 'Cancellation reason is too long'),
+    accountPassword: z.string().min(1, 'Account password is required'),
   })
   .strict();
+
+export const updateInstallmentPlanSchema = z
+  .object({
+    totalAmount: moneyStringSchema.optional(),
+    description: z.string().trim().min(1, 'Description is required').max(200, 'Description is too long'),
+    startDate: businessDateSchema.optional(),
+    installmentCount: z.coerce.number().int().positive().max(120, 'Installment count is too large').optional(),
+    notes: z.string().trim().max(1000, 'Notes are too long').optional().nullable(),
+    cancelReason: z.string().trim().min(5, 'Cancellation reason is too short').max(1000, 'Cancellation reason is too long').optional().nullable(),
+    schedule: z
+      .array(
+        z
+          .object({
+            amountDue: moneyStringSchema,
+          })
+          .strict()
+      )
+      .optional(),
+    reason: z.string().trim().min(5, 'Correction reason must be at least 5 characters').max(1000, 'Correction reason is too long'),
+    sourceScreen: z.nativeEnum(FinancialCorrectionSourceScreen).default(FinancialCorrectionSourceScreen.API),
+    accountPassword: z.string().min(1, 'Account password is required'),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    if (value.schedule && value.installmentCount && value.schedule.length !== value.installmentCount) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['schedule'],
+        message: 'Manual schedule must have one amount for each installment',
+      });
+    }
+  });
 
 export type CustomerInstallmentPlanParamsInput = z.infer<typeof customerInstallmentPlanParamsSchema>;
 export type InstallmentPlanParamsInput = z.infer<typeof installmentPlanParamsSchema>;
@@ -66,3 +122,4 @@ export type CreateInstallmentPlanInput = z.infer<typeof createInstallmentPlanSch
 export type ListCustomerInstallmentPlansQueryInput = z.infer<typeof listCustomerInstallmentPlansQuerySchema>;
 export type CreateInstallmentPlanPaymentInput = z.infer<typeof createInstallmentPlanPaymentSchema>;
 export type CancelInstallmentPlanInput = z.infer<typeof cancelInstallmentPlanSchema>;
+export type UpdateInstallmentPlanInput = z.infer<typeof updateInstallmentPlanSchema>;

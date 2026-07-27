@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Users } from 'lucide-react';
+import { Eye, Plus, Search, Users } from 'lucide-react';
 import { useCustomers, useCreateCustomer } from '../../features/customers/hooks/useCustomers';
 import { Table } from '../../components/ui/Table';
 import { Pagination } from '../../components/ui/Pagination';
@@ -58,7 +58,23 @@ export const CustomersListPage: React.FC = () => {
     {
       header: 'Balance',
       accessor: (customer: any) => <CustomerBalanceCell customerId={customer.id} />
-    }
+    },
+    {
+      header: 'Actions',
+      accessor: (customer: any) => (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            navigate(`/customers/${customer.id}`);
+          }}
+          className="inline-flex items-center justify-center gap-2 rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+        >
+          <Eye className="h-4 w-4" aria-hidden="true" />
+          View details
+        </button>
+      ),
+    },
   ];
 
   return (

@@ -37,6 +37,7 @@ describe('financialLedgerApi', () => {
         search: 'Ali',
         page: 2,
         includeCancelled: true,
+        includeCompleted: false,
       }),
     });
     expect(apiMock.get.mock.calls[0][0]).not.toContain('/transactions');
