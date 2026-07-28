@@ -48,14 +48,14 @@ const typeLabels: Record<MonthlyFinancialActivityItem['type'], string> = {
 const ActivityRow: React.FC<{ item: MonthlyFinancialActivityItem }> = ({ item }) => (
   <tr>
     <td className="px-4 py-3 whitespace-nowrap text-slate-600">{formatBusinessDate(item.date)}</td>
-    <td className="px-4 py-3 font-medium text-slate-900">{item.customer.name}</td>
+    <td className="user-text px-4 py-3 font-medium text-slate-900" dir="auto">{item.customer.name}</td>
     <td className="px-4 py-3 whitespace-nowrap text-slate-600">{item.customer.phone}</td>
     <td className="px-4 py-3">
       <span className="inline-flex rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700">
         {typeLabels[item.type]}
       </span>
     </td>
-    <td className="px-4 py-3 text-slate-700">{item.description}</td>
+    <td className="user-text px-4 py-3 text-slate-700" dir="auto">{item.description}</td>
     <td className="px-4 py-3 text-right font-medium text-slate-900">{formatMoney(item.amount)}</td>
   </tr>
 );

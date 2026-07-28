@@ -42,7 +42,14 @@ export const CustomersListPage: React.FC = () => {
   };
 
   const columns = [
-    { header: 'Name', accessor: 'name' as const, className: 'font-medium text-slate-900' },
+    {
+      header: 'Name',
+      accessor: (customer: any) => (
+        <span className="user-text font-medium text-slate-900" dir="auto">
+          {customer.name}
+        </span>
+      ),
+    },
     { header: 'Phone', accessor: 'phone' as const },
     { header: 'Added', accessor: (customer: any) => new Date(customer.createdAt).toLocaleDateString('en-GB') },
     { 
@@ -102,7 +109,8 @@ export const CustomersListPage: React.FC = () => {
           </div>
           <input
             type="text"
-            className="block w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm transition-colors"
+            dir="auto"
+            className="user-text-input block w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm transition-colors"
             placeholder="Search customers by name or phone..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -159,7 +167,7 @@ export const CustomersListPage: React.FC = () => {
       <Modal
         isOpen={isAddModalOpen}
         onClose={() => !createCustomer.isPending && setIsAddModalOpen(false)}
-        title="Add New Customer"
+        title="Add New Customer / إضافة زبون جديد"
       >
         <CustomerForm
           onSubmit={handleCreateCustomer}

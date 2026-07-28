@@ -50,7 +50,7 @@ export const InstallmentPlanDetails: React.FC<InstallmentPlanDetailsProps> = ({
     <div className="space-y-6">
       <div>
         <div className="mb-2 flex flex-wrap items-center gap-3">
-          <h3 className="text-lg font-semibold text-slate-900">{plan.description}</h3>
+          <h3 className="user-text text-lg font-semibold text-slate-900" dir="auto">{plan.description}</h3>
           <FinancialStatusBadge type="plan" status={plan.calculatedStatus} />
         </div>
         <p className="text-sm text-slate-500">Created {formatDateTime(plan.createdAt)} by {plan.createdBy.name}</p>

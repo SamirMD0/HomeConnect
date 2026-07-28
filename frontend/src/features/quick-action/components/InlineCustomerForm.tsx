@@ -86,7 +86,8 @@ export const InlineCustomerForm: React.FC<InlineCustomerFormProps> = ({ initialS
               <input
                 type="text"
                 {...register('name')}
-                className={`block w-full rounded-xl border-0 py-2.5 pl-10 pr-3 text-slate-900 ring-1 ring-inset ${errors.name ? 'ring-red-300 focus:ring-red-500' : 'ring-slate-200 focus:ring-indigo-600'} placeholder:text-slate-400 focus:ring-2 focus:ring-inset sm:text-sm sm:leading-6`}
+                dir="auto"
+                className={`user-text-input block w-full rounded-xl border-0 py-2.5 pl-10 pr-3 text-slate-900 ring-1 ring-inset ${errors.name ? 'ring-red-300 focus:ring-red-500' : 'ring-slate-200 focus:ring-indigo-600'} placeholder:text-slate-400 focus:ring-2 focus:ring-inset sm:text-sm sm:leading-6`}
                 placeholder="John Doe"
               />
             </div>
@@ -118,7 +119,8 @@ export const InlineCustomerForm: React.FC<InlineCustomerFormProps> = ({ initialS
               <input
                 type="text"
                 {...register('address')}
-                className="block w-full rounded-xl border-0 py-2.5 pl-10 pr-3 text-slate-900 ring-1 ring-inset ring-slate-200 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                dir="auto"
+                className="user-text-input block w-full rounded-xl border-0 py-2.5 pl-10 pr-3 text-slate-900 ring-1 ring-inset ring-slate-200 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
                 placeholder="123 Main St"
               />
             </div>

@@ -27,6 +27,8 @@ interface LedgerMobileCardProps {
   onOpenMenuChange: (menuKey: string | null) => void;
   onViewDebt: (debtId: string) => void;
   onViewPlan: (planId: string) => void;
+  onEditDebt: (debt: FinancialLedgerDebtItem) => void;
+  onEditPlan: (plan: FinancialLedgerPlanItem) => void;
   onRecordDebtPayment: (debt: FinancialLedgerDebtItem) => void;
   onCancelDebt: (debt: FinancialLedgerDebtItem) => void;
   onRecordPlanPayment: (plan: FinancialLedgerPlanItem) => void;
@@ -44,6 +46,8 @@ export const LedgerMobileCard: React.FC<LedgerMobileCardProps> = ({
   onOpenMenuChange,
   onViewDebt,
   onViewPlan,
+  onEditDebt,
+  onEditPlan,
   onRecordDebtPayment,
   onCancelDebt,
   onRecordPlanPayment,
@@ -55,7 +59,7 @@ export const LedgerMobileCard: React.FC<LedgerMobileCardProps> = ({
       <article className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="font-semibold text-slate-900">{item.customer.name}</p>
+            <p className="user-text font-semibold text-slate-900" dir="auto">{item.customer.name}</p>
             <p className="text-xs text-slate-500">{formatBusinessDate(item.paymentDate)} · Payment</p>
           </div>
           <PaymentStatus status={item.status} />
@@ -86,13 +90,13 @@ export const LedgerMobileCard: React.FC<LedgerMobileCardProps> = ({
   const totalPaid = periodSummary?.totalPaid ?? item.totalPaid;
   const remainingBalance = periodSummary?.totalRemaining ?? item.remainingBalance;
   const dueDate = isDebt ? item.dueDate : item.nextDueDate;
-  const openDetails = () => {
+  const openEdit = () => {
     if (isDebt) {
-      onViewDebt(item.id);
+      onEditDebt(item);
       return;
     }
 
-    onViewPlan(item.id);
+    onEditPlan(item);
   };
   const actions = buildMobileObligationActions({
     item,
@@ -109,13 +113,13 @@ export const LedgerMobileCard: React.FC<LedgerMobileCardProps> = ({
     <article className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="font-semibold text-slate-900">{item.customer.name}</p>
+          <p className="user-text font-semibold text-slate-900" dir="auto">{item.customer.name}</p>
           <p className="text-xs text-slate-500">{item.customer.phone}</p>
         </div>
         <FinancialStatusBadge type={isDebt ? 'debt' : 'plan'} status={item.status} />
       </div>
 
-      <p className="mt-3 line-clamp-2 text-sm font-medium text-slate-800">{item.description}</p>
+      <p className="user-text mt-3 line-clamp-2 text-sm font-medium text-slate-800" dir="auto">{item.description}</p>
       <p className="mt-4 text-xs font-medium uppercase tracking-wide text-slate-500">Remaining</p>
       <p className="text-2xl font-semibold tabular-nums text-slate-900">{formatMoney(remainingBalance)}</p>
 
@@ -148,11 +152,11 @@ export const LedgerMobileCard: React.FC<LedgerMobileCardProps> = ({
             onClick={(event) => {
               event.preventDefault();
               event.stopPropagation();
-              openDetails();
+              openEdit();
             }}
             className="inline-flex min-h-9 items-center rounded-md border border-slate-200 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-950 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
           >
-            View
+            Edit
           </button>
           <LedgerRowActions
             menuKey={`${item.type}-${item.id}`}

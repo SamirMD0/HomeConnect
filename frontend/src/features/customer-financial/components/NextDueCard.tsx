@@ -47,7 +47,7 @@ export const NextDueCard: React.FC<NextDueCardProps> = ({ nextDue, onOpenDebt, o
                 <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   {itemTypeLabels[item.type]}
                 </span>
-                <p className="mt-1 font-medium text-slate-900">{item.description}</p>
+                <p className="user-text mt-1 font-medium text-slate-900" dir="auto">{item.description}</p>
               </div>
               <div className="flex items-center gap-3">
                 <span className="font-semibold text-slate-900">{formatMoney(item.remainingAmount)}</span>

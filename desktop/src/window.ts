@@ -9,6 +9,7 @@ export function createBrowserWindowOptions() {
   return {
     width: 1200,
     height: 800,
+    icon: path.join(__dirname, '../assets/homeconnects-logo.png'),
     show: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -23,6 +24,7 @@ export function createStartupMonitorOptions() {
   return {
     width: 800,
     height: 600,
+    icon: path.join(__dirname, '../assets/homeconnects-logo.png'),
     show: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),

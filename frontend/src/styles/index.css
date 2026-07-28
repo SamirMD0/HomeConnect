@@ -6,3 +6,30 @@
     @apply antialiased text-gray-900 bg-gray-50;
   }
 }
+
+@layer utilities {
+  .user-text {
+    unicode-bidi: plaintext;
+    overflow-wrap: anywhere;
+    word-break: normal;
+  }
+
+  .user-text-pre {
+    unicode-bidi: plaintext;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+  }
+
+  .user-text-input {
+    unicode-bidi: plaintext;
+    text-align: start;
+  }
+
+  @media print {
+    body,
+    .user-text,
+    .user-text-pre {
+      font-family: Tahoma, Arial, sans-serif !important;
+    }
+  }
+}

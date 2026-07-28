@@ -68,7 +68,7 @@ export const VoidPaymentDialog: React.FC<VoidPaymentDialogProps> = ({
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
         <p className="font-semibold">This will void the payment and remove its allocations from balances.</p>
-        <p className="mt-1">
+        <p className="user-text mt-1" dir="auto">
           {formatMoney(payment.totalAmount)} · {formatBusinessDate(payment.paymentDate)} ·{' '}
           {paymentMethodLabels[payment.paymentMethod]}
           {payment.reference ? ` · ${payment.reference}` : ''}
@@ -84,6 +84,7 @@ export const VoidPaymentDialog: React.FC<VoidPaymentDialogProps> = ({
       <TextField label="Void reason" error={errors.reason?.message}>
         <textarea
           {...register('reason')}
+          dir="auto"
           rows={3}
           className={inputClass(Boolean(errors.reason))}
           placeholder="Required for audit history"

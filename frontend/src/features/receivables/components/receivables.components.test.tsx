@@ -301,7 +301,6 @@ describe('receivables components', () => {
 
     expect(html).toContain('type="month"');
     expect(html).toContain('value="2026-07"');
-    expect(html).toContain('Scopes amounts to that month.');
     expect(html).toContain('Clear filters');
 
     const emptyHtml = renderToStaticMarkup(

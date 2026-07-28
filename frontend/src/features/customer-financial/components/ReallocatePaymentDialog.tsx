@@ -142,6 +142,7 @@ export const ReallocatePaymentDialog: React.FC<ReallocatePaymentDialogProps> = (
         <textarea
           value={reason}
           onChange={(event) => setReason(event.target.value)}
+          dir="auto"
           rows={3}
           className={inputClass(false)}
           placeholder="Required for audit history"

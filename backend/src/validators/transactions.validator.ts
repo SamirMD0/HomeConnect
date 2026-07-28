@@ -1,15 +1,16 @@
 import { z } from 'zod';
+import { userTextSchema } from './user-text';
 
 export const createTransactionSchema = z.object({
   customerId: z.string().uuid('Invalid customer ID').optional(),
-  customerName: z.string().optional(),
+  customerName: userTextSchema({ field: 'Customer name', max: 100 }).optional(),
   customerPhone: z.string().optional(),
   type: z.enum(['ONE_TIME', 'INSTALLMENT', 'PAYMENT', 'ADJUSTMENT']),
   amount: z.number().positive('Amount must be positive'),
-  description: z.string().min(1, 'Description is required').max(255, 'Description is too long'),
+  description: userTextSchema({ field: 'Description', min: 1, max: 255 }),
   date: z.string().datetime().optional(),
   dueDate: z.string().datetime().optional().nullable(),
-  referenceNumber: z.string().optional().nullable(),
+  referenceNumber: userTextSchema({ field: 'Reference number', max: 100 }).optional().nullable(),
   metadata: z.any().optional().nullable(),
   parentId: z.string().uuid().optional().nullable(),
 }).refine(data => data.customerId || (data.customerName && data.customerPhone), {
@@ -19,10 +20,10 @@ export const createTransactionSchema = z.object({
 
 export const updateTransactionSchema = z.object({
   amount: z.number().positive('Amount must be positive').optional(),
-  description: z.string().min(1, 'Description is required').max(255, 'Description is too long').optional(),
+  description: userTextSchema({ field: 'Description', min: 1, max: 255 }).optional(),
   date: z.string().datetime().optional(),
   dueDate: z.string().datetime().optional().nullable(),
-  referenceNumber: z.string().optional().nullable(),
+  referenceNumber: userTextSchema({ field: 'Reference number', max: 100 }).optional().nullable(),
   metadata: z.any().optional().nullable(),
 });
 

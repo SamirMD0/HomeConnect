@@ -106,10 +106,10 @@ export const RecordDebtPaymentDialog: React.FC<RecordDebtPaymentDialogProps> = (
         </select>
       </TextField>
       <TextField label="Reference" error={errors.reference?.message}>
-        <input {...register('reference')} className={inputClass(Boolean(errors.reference))} placeholder="Optional" />
+        <input {...register('reference')} dir="auto" className={inputClass(Boolean(errors.reference))} placeholder="Optional" />
       </TextField>
       <TextField label="Notes" error={errors.notes?.message}>
-        <textarea {...register('notes')} rows={3} className={inputClass(Boolean(errors.notes))} placeholder="Optional" />
+        <textarea {...register('notes')} dir="auto" rows={3} className={inputClass(Boolean(errors.notes))} placeholder="Optional" />
       </TextField>
       <SubmitButton
         isPending={recordPayment.isPending}
@@ -123,7 +123,7 @@ export const RecordDebtPaymentDialog: React.FC<RecordDebtPaymentDialogProps> = (
 const DebtPaymentContext: React.FC<{ debt: DebtPaymentTarget }> = ({ debt }) => (
   <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm">
     <div className="flex flex-wrap items-center gap-2">
-      <p className="font-semibold text-slate-900">{debt.description}</p>
+      <p className="user-text font-semibold text-slate-900" dir="auto">{debt.description}</p>
       <FinancialStatusBadge type="debt" status={debt.calculatedStatus ?? debt.status ?? 'UNPAID'} />
     </div>
     <dl className="grid grid-cols-2 gap-3 text-slate-600 sm:grid-cols-4">

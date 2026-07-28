@@ -78,7 +78,7 @@ export const EditDebtDialog: React.FC<EditDebtDialogProps> = ({
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
       <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-        <p className="font-semibold text-slate-900">{debt.description}</p>
+        <p className="user-text font-semibold text-slate-900" dir="auto">{debt.description}</p>
         <p className="mt-1">
           Original {formatMoney(debt.originalAmount)} · Paid {formatMoney(debt.totalPaid)} · Remaining{' '}
           {formatMoney(debt.remainingBalance)}
@@ -102,6 +102,7 @@ export const EditDebtDialog: React.FC<EditDebtDialogProps> = ({
       <TextField label="Description" error={errors.description?.message}>
         <input
           {...register('description')}
+          dir="auto"
           className={inputClass(Boolean(errors.description))}
         />
       </TextField>
@@ -117,6 +118,7 @@ export const EditDebtDialog: React.FC<EditDebtDialogProps> = ({
       <TextField label="Notes" error={errors.notes?.message}>
         <textarea
           {...register('notes')}
+          dir="auto"
           rows={3}
           className={inputClass(Boolean(errors.notes))}
           placeholder="Optional"
@@ -126,6 +128,7 @@ export const EditDebtDialog: React.FC<EditDebtDialogProps> = ({
       <TextField label="Correction reason" error={errors.reason?.message}>
         <textarea
           {...register('reason')}
+          dir="auto"
           rows={3}
           className={inputClass(Boolean(errors.reason))}
           placeholder="Required for audit history"

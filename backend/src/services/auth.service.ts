@@ -110,6 +110,66 @@ export class AuthService {
   }
 
   /**
+   * Public setup endpoint.
+   * Creates the first admin when no admin exists. After that, requires an
+   * existing active admin password before creating another account.
+   */
+  static async setupAccount(data: {
+    username: string;
+    passwordString: string;
+    fullName: string;
+    role?: Role;
+    adminUsername?: string;
+    adminPassword?: string;
+  }) {
+    const existingAdmin = await prisma.user.findFirst({
+      where: { role: Role.ADMIN, deletedAt: null, isActive: true },
+    });
+
+    if (!existingAdmin) {
+      return this.setupFirstAdmin(data.username, data.passwordString, data.fullName);
+    }
+
+    if (!data.adminUsername || !data.adminPassword) {
+      throw new AuthorizationError('Admin username and password are required to create an account');
+    }
+
+    const approvingAdmin = await prisma.user.findUnique({ where: { username: data.adminUsername } });
+    if (!approvingAdmin || approvingAdmin.deletedAt || !approvingAdmin.isActive || approvingAdmin.role !== Role.ADMIN) {
+      throw new AuthorizationError('Invalid admin credentials');
+    }
+
+    const adminPasswordMatches = await bcrypt.compare(data.adminPassword, approvingAdmin.password);
+    if (!adminPasswordMatches) {
+      throw new AuthorizationError('Invalid admin credentials');
+    }
+
+    const existingUser = await prisma.user.findUnique({ where: { username: data.username } });
+    if (existingUser) {
+      throw new AppError('Username already exists', 400);
+    }
+
+    const hashedPassword = await bcrypt.hash(data.passwordString, 12);
+    const newUser = await prisma.user.create({
+      data: {
+        username: data.username,
+        password: hashedPassword,
+        fullName: data.fullName,
+        role: data.role ?? Role.EMPLOYEE,
+      },
+    });
+
+    return {
+      user: {
+        id: newUser.id,
+        username: newUser.username,
+        fullName: newUser.fullName,
+        role: newUser.role,
+      },
+    };
+  }
+
+  /**
    * Initial Setup: Create the first admin account
    */
   static async setupFirstAdmin(username: string, passwordString: string, fullName: string) {

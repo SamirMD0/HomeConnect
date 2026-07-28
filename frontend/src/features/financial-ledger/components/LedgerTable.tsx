@@ -16,6 +16,8 @@ interface LedgerTableProps {
   canMutate: boolean;
   onViewDebt: (debtId: string) => void;
   onViewPlan: (planId: string) => void;
+  onEditDebt: (debt: FinancialLedgerDebtItem) => void;
+  onEditPlan: (plan: FinancialLedgerPlanItem) => void;
   onRecordDebtPayment: (debt: FinancialLedgerDebtItem) => void;
   onCancelDebt: (debt: FinancialLedgerDebtItem) => void;
   onRecordPlanPayment: (plan: FinancialLedgerPlanItem) => void;
@@ -28,6 +30,8 @@ export const LedgerTable: React.FC<LedgerTableProps> = ({
   canMutate,
   onViewDebt,
   onViewPlan,
+  onEditDebt,
+  onEditPlan,
   onRecordDebtPayment,
   onCancelDebt,
   onRecordPlanPayment,
@@ -56,6 +60,8 @@ export const LedgerTable: React.FC<LedgerTableProps> = ({
               onOpenMenuChange={setOpenMenuKey}
               onViewDebt={onViewDebt}
               onViewPlan={onViewPlan}
+              onEditDebt={onEditDebt}
+              onEditPlan={onEditPlan}
               onRecordDebtPayment={onRecordDebtPayment}
               onCancelDebt={onCancelDebt}
               onRecordPlanPayment={onRecordPlanPayment}
@@ -117,6 +123,8 @@ export const LedgerTable: React.FC<LedgerTableProps> = ({
                     onOpenMenuChange={setOpenMenuKey}
                     onViewDebt={onViewDebt}
                     onViewPlan={onViewPlan}
+                    onEditDebt={onEditDebt}
+                    onEditPlan={onEditPlan}
                     onRecordDebtPayment={onRecordDebtPayment}
                     onCancelDebt={onCancelDebt}
                     onRecordPlanPayment={onRecordPlanPayment}

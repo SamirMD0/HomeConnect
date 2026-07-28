@@ -117,7 +117,7 @@ const EligibleObligationPicker: React.FC<EligibleObligationPickerProps> = ({
     <div className="space-y-4">
       <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Customer</p>
-        <p className="mt-1 font-semibold text-slate-900">{customer.name}</p>
+        <p className="user-text mt-1 font-semibold text-slate-900" dir="auto">{customer.name}</p>
         <p className="text-sm text-slate-600">{customer.phone}</p>
         <button type="button" onClick={onChangeCustomer} className="mt-2 text-sm font-medium text-emerald-700">
           Change customer
@@ -138,7 +138,7 @@ const EligibleObligationPicker: React.FC<EligibleObligationPickerProps> = ({
               className="block w-full rounded-lg border border-slate-200 bg-white p-3 text-left hover:bg-emerald-50"
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="font-semibold text-slate-900">{debt.description}</span>
+                <span className="user-text font-semibold text-slate-900" dir="auto">{debt.description}</span>
                 <FinancialStatusBadge type="debt" status={debt.calculatedStatus} />
               </div>
               <p className="mt-1 text-sm text-slate-600">
@@ -154,7 +154,7 @@ const EligibleObligationPicker: React.FC<EligibleObligationPickerProps> = ({
               className="block w-full rounded-lg border border-slate-200 bg-white p-3 text-left hover:bg-emerald-50"
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="font-semibold text-slate-900">{plan.description}</span>
+                <span className="user-text font-semibold text-slate-900" dir="auto">{plan.description}</span>
                 <FinancialStatusBadge type="plan" status={plan.calculatedStatus} />
               </div>
               <p className="mt-1 text-sm text-slate-600">

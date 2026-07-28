@@ -45,7 +45,7 @@ export const DebtDetails: React.FC<DebtDetailsProps> = ({
     <div className="space-y-6">
       <div>
         <div className="mb-2 flex flex-wrap items-center gap-3">
-          <h3 className="text-lg font-semibold text-slate-900">{debt.description}</h3>
+          <h3 className="user-text text-lg font-semibold text-slate-900" dir="auto">{debt.description}</h3>
           <FinancialStatusBadge type="debt" status={debt.calculatedStatus} />
         </div>
         <p className="text-sm text-slate-500">Created {formatDateTime(debt.createdAt)} by {debt.createdBy.name}</p>
@@ -98,7 +98,7 @@ export const DebtDetails: React.FC<DebtDetailsProps> = ({
       {debt.notes && (
         <div>
           <h4 className="text-sm font-semibold text-slate-700">Notes</h4>
-          <p className="mt-1 whitespace-pre-wrap text-sm text-slate-600">{debt.notes}</p>
+          <p className="user-text-pre mt-1 text-sm text-slate-600" dir="auto">{debt.notes}</p>
         </div>
       )}
 
@@ -106,7 +106,7 @@ export const DebtDetails: React.FC<DebtDetailsProps> = ({
         <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
           Cancelled {formatDateTime(debt.cancellation.cancelledAt)}
           {debt.cancellation.cancelledBy ? ` by ${debt.cancellation.cancelledBy.name}` : ''}
-          {debt.cancellation.reason ? `: ${debt.cancellation.reason}` : ''}
+          {debt.cancellation.reason ? <span className="user-text" dir="auto">: {debt.cancellation.reason}</span> : ''}
         </div>
       )}
 

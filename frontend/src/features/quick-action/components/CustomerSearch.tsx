@@ -38,7 +38,8 @@ export const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer
           </div>
           <input
             type="text"
-            className="block w-full rounded-xl border-0 py-3 pl-10 pr-3 text-slate-900 ring-1 ring-inset ring-slate-200 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 transition-shadow"
+            dir="auto"
+            className="user-text-input block w-full rounded-xl border-0 py-3 pl-10 pr-3 text-slate-900 ring-1 ring-inset ring-slate-200 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 transition-shadow"
             placeholder="Search by name or phone..."
             autoFocus
             value={searchTerm}
@@ -63,7 +64,7 @@ export const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer
               >
                 <div className="flex justify-between items-start">
                   <div>
-                    <h3 className="text-sm font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                    <h3 className="user-text text-sm font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors" dir="auto">
                       {customer.name}
                     </h3>
                     <div className="mt-1 flex items-center text-xs text-slate-500">

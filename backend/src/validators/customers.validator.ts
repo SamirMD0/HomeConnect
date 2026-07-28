@@ -1,17 +1,18 @@
 import { z } from 'zod';
+import { userTextSchema } from './user-text';
 
 export const createCustomerSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters long').max(100, 'Name is too long'),
+  name: userTextSchema({ field: 'Name', min: 2, max: 100 }),
   phone: z.string().min(5, 'Phone number must be at least 5 characters long').max(20, 'Phone number is too long'),
-  address: z.string().max(255, 'Address is too long').optional(),
-  notes: z.string().optional(),
+  address: userTextSchema({ field: 'Address', max: 255 }).optional(),
+  notes: userTextSchema({ field: 'Notes', max: 1000 }).optional(),
 });
 
 export const updateCustomerSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters long').max(100, 'Name is too long').optional(),
+  name: userTextSchema({ field: 'Name', min: 2, max: 100 }).optional(),
   phone: z.string().min(5, 'Phone number must be at least 5 characters long').max(20, 'Phone number is too long').optional(),
-  address: z.string().max(255, 'Address is too long').optional().nullable(),
-  notes: z.string().optional().nullable(),
+  address: userTextSchema({ field: 'Address', max: 255 }).optional().nullable(),
+  notes: userTextSchema({ field: 'Notes', max: 1000 }).optional().nullable(),
   isActive: z.boolean().optional(),
 });
 

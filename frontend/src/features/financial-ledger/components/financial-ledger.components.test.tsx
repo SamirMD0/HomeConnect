@@ -14,7 +14,11 @@ import { LedgerTable } from './LedgerTable';
 import { buildPaymentChildView } from './LedgerPaymentChildRows';
 import { LedgerEmptyState, LedgerErrorState, LedgerLoadingState } from './LedgerStates';
 import { RecentFinancialPayment } from '../../customer-financial/types/customer-financial.types';
-import { FinancialLedgerItem, FinancialLedgerPlanItem } from '../types/financial-ledger.types';
+import {
+  FinancialLedgerDebtItem,
+  FinancialLedgerItem,
+  FinancialLedgerPlanItem,
+} from '../types/financial-ledger.types';
 
 const items: FinancialLedgerItem[] = [
   {
@@ -152,6 +156,8 @@ describe('financial ledger components', () => {
         canMutate
         onViewDebt={() => undefined}
         onViewPlan={() => undefined}
+        onEditDebt={() => undefined}
+        onEditPlan={() => undefined}
         onRecordDebtPayment={() => undefined}
         onCancelDebt={() => undefined}
         onRecordPlanPayment={() => undefined}
@@ -174,13 +180,41 @@ describe('financial ledger components', () => {
     expect(html).toContain('Payments');
     expect(html).toContain('md:hidden');
     expect(html).toContain('Corrected');
-    expect(html).toContain('View');
+    expect(html).toContain('Edit');
     expect(html).toContain('$400.00');
     expect(html).toContain('$450.00');
     expect(html).not.toContain('Correct record');
-    expect(html).not.toContain('Edit');
     expect(html).not.toContain('Delete');
     expect(html).not.toContain('Trash');
+  });
+
+  it('renders Arabic customer and obligation text with automatic direction', () => {
+    const html = renderToStaticMarkup(
+      <LedgerTable
+        items={[
+          {
+            ...(items[0] as FinancialLedgerDebtItem),
+            customer: { ...(items[0] as FinancialLedgerDebtItem).customer, name: 'علي الحاج' },
+            description: 'ثلاجة سامسونج',
+          },
+        ]}
+        canMutate
+        onViewDebt={() => undefined}
+        onViewPlan={() => undefined}
+        onEditDebt={() => undefined}
+        onEditPlan={() => undefined}
+        onRecordDebtPayment={() => undefined}
+        onCancelDebt={() => undefined}
+        onRecordPlanPayment={() => undefined}
+        onCancelPlan={() => undefined}
+        onVoidPayment={() => undefined}
+      />
+    );
+
+    expect(html).toContain('علي الحاج');
+    expect(html).toContain('ثلاجة سامسونج');
+    expect(html).toContain('dir="auto"');
+    expect(html).toContain('user-text');
   });
 
   it('renders unknown ledger obligation statuses instead of crashing', () => {
@@ -193,6 +227,8 @@ describe('financial ledger components', () => {
         canMutate
         onViewDebt={() => undefined}
         onViewPlan={() => undefined}
+        onEditDebt={() => undefined}
+        onEditPlan={() => undefined}
         onRecordDebtPayment={() => undefined}
         onCancelDebt={() => undefined}
         onRecordPlanPayment={() => undefined}
@@ -224,6 +260,8 @@ describe('financial ledger components', () => {
         canMutate
         onViewDebt={() => undefined}
         onViewPlan={() => undefined}
+        onEditDebt={() => undefined}
+        onEditPlan={() => undefined}
         onRecordDebtPayment={() => undefined}
         onCancelDebt={() => undefined}
         onRecordPlanPayment={() => undefined}
@@ -246,6 +284,8 @@ describe('financial ledger components', () => {
         canMutate={false}
         onViewDebt={() => undefined}
         onViewPlan={() => undefined}
+        onEditDebt={() => undefined}
+        onEditPlan={() => undefined}
         onRecordDebtPayment={() => undefined}
         onCancelDebt={() => undefined}
         onRecordPlanPayment={() => undefined}

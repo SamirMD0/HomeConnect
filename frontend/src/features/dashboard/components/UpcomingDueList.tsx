@@ -34,9 +34,11 @@ export const UpcomingDueList: React.FC<UpcomingDueListProps> = ({ items, isLoadi
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-emerald-950">{item.description}</p>
+                <p className="user-text truncate text-sm font-semibold text-emerald-950" dir="auto">
+                  {item.description}
+                </p>
                 <p className="text-xs text-emerald-700">
-                  {item.customer.name} · {formatBusinessDate(item.dueDate)}
+                  <span className="user-text" dir="auto">{item.customer.name}</span> · {formatBusinessDate(item.dueDate)}
                 </p>
               </div>
               <p className="whitespace-nowrap text-sm font-semibold text-emerald-900">

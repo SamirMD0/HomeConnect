@@ -111,6 +111,42 @@ describe('monthly report components', () => {
     expect(tableHtml).toContain('Receipt 1');
   });
 
+  it('renders Arabic report row text with automatic direction', () => {
+    const debtHtml = renderToStaticMarkup(
+      <MonthlyDebtReportTable
+        report={{
+          ...debtReport,
+          rows: [
+            {
+              ...debtReport.rows[0],
+              customer: { ...debtReport.rows[0].customer, name: 'علي الحاج' },
+            },
+          ],
+        }}
+        onOpenCustomer={() => undefined}
+      />
+    );
+    const activityHtml = renderToStaticMarkup(
+      <MonthlyActivityReportTable
+        report={{
+          ...activityReport,
+          items: [
+            {
+              ...activityReport.items[0],
+              customer: { ...activityReport.items[0].customer, name: 'مريم' },
+              description: 'دفعة شهر تموز',
+            },
+          ],
+        }}
+      />
+    );
+
+    expect(debtHtml).toContain('علي الحاج');
+    expect(activityHtml).toContain('دفعة شهر تموز');
+    expect(`${debtHtml}${activityHtml}`).toContain('dir="auto"');
+    expect(`${debtHtml}${activityHtml}`).toContain('user-text');
+  });
+
   it('renders report states', () => {
     const loadingHtml = renderToStaticMarkup(<ReportLoadingState />);
     const errorHtml = renderToStaticMarkup(<ReportErrorState onRetry={vi.fn()} />);

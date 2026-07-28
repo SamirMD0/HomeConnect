@@ -4,6 +4,7 @@ import {
   FinancialCorrectionSourceScreen,
 } from '@prisma/client';
 import { z } from 'zod';
+import { userTextSchema } from '../../../validators/user-text';
 
 const uuidSchema = z.string().uuid('Invalid ID');
 const businessDateSchema = z
@@ -25,7 +26,7 @@ export const customerCorrectionsParamsSchema = z.object({
   customerId: uuidSchema,
 });
 
-export const correctionReasonSchema = z.string().trim().min(5, 'Correction reason must be at least 5 characters');
+export const correctionReasonSchema = userTextSchema({ field: 'Correction reason', min: 5, max: 1000 });
 
 export type CorrectionsQueryInput = z.infer<typeof correctionsQuerySchema>;
 export type CustomerCorrectionsParamsInput = z.infer<typeof customerCorrectionsParamsSchema>;

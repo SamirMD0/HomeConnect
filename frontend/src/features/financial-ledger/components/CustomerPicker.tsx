@@ -50,7 +50,7 @@ export const CustomerPicker: React.FC<CustomerPickerProps> = ({ selectedCustomer
                   selectedCustomer?.id === customer.id ? 'bg-emerald-50 text-emerald-800' : 'text-slate-700'
                 }`}
               >
-                <span className="font-semibold">{customer.name}</span>
+                <span className="user-text font-semibold" dir="auto">{customer.name}</span>
                 <span className="ml-2 text-slate-500">{customer.phone}</span>
               </button>
             ))}

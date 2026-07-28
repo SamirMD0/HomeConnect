@@ -9,26 +9,38 @@ export class AuthController {
   static async setup(req: Request, res: Response, next: NextFunction) {
     try {
       const validatedData = setupSchema.parse(req.body);
-      const result = await AuthService.setupFirstAdmin(
-        validatedData.username,
-        validatedData.password,
-        validatedData.fullName
-      );
-
-      // Set HTTP-only cookie for refresh token
-      res.cookie('refreshToken', result.refreshToken, {
-        httpOnly: true,
-        secure: process.env.COOKIE_SECURE === 'true',
-        sameSite: 'lax',
-        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+      const result = await AuthService.setupAccount({
+        username: validatedData.username,
+        passwordString: validatedData.password,
+        fullName: validatedData.fullName,
+        role: validatedData.role,
+        adminUsername: validatedData.adminUsername,
+        adminPassword: validatedData.adminPassword,
       });
+
+      if ('refreshToken' in result && result.refreshToken) {
+        res.cookie('refreshToken', result.refreshToken, {
+          httpOnly: true,
+          secure: process.env.COOKIE_SECURE === 'true',
+          sameSite: 'lax',
+          maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+        });
+      }
+
+      const responseData: {
+        user: typeof result.user;
+        accessToken?: string;
+      } = {
+        user: result.user,
+      };
+
+      if ('accessToken' in result && result.accessToken) {
+        responseData.accessToken = result.accessToken;
+      }
 
       res.status(201).json({
         success: true,
-        data: {
-          user: result.user,
-          accessToken: result.accessToken
-        }
+        data: responseData
       });
     } catch (error: any) {
       if (error.name === 'ZodError') {

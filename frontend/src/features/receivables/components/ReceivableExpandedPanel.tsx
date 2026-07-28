@@ -79,7 +79,7 @@ export const ReceivableExpandedPanel: React.FC<ReceivableExpandedPanelProps> = (
                   <ReceiptText className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden="true" />
                   <span className="min-w-0">
                     <span className="block truncate font-medium text-slate-800">
-                      {debt.description}
+                      <span className="user-text" dir="auto">{debt.description}</span>
                     </span>
                     <span className="text-slate-500">Due {formatBusinessDate(debt.dueDate)}</span>
                   </span>
@@ -101,7 +101,7 @@ export const ReceivableExpandedPanel: React.FC<ReceivableExpandedPanelProps> = (
                   <CalendarClock className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden="true" />
                   <span className="min-w-0">
                     <span className="block truncate font-medium text-slate-800">
-                      {plan.description}
+                      <span className="user-text" dir="auto">{plan.description}</span>
                     </span>
                     <span className="text-slate-500">
                       {plan.scheduleSummary.completedInstallments}/
@@ -141,7 +141,7 @@ export const ReceivableExpandedPanel: React.FC<ReceivableExpandedPanelProps> = (
                     {paymentMethodLabels[payment.paymentMethod]}
                   </span>
                   <span className="block truncate text-slate-500">
-                    {payment.reference || 'No reference'}
+                    <span className="user-text" dir="auto">{payment.reference || 'No reference'}</span>
                     {payment.allocations.length > 0
                       ? ` → ${payment.allocations.length} item${payment.allocations.length === 1 ? '' : 's'}`
                       : ''}

@@ -48,9 +48,9 @@ export const RecentPaymentsList: React.FC<RecentPaymentsListProps> = ({
                   {formatBusinessDate(payment.paymentDate)} · {paymentMethodLabels[payment.paymentMethod]} · Created by {payment.createdBy.name}
                 </p>
                 <p className="mt-1 text-xs text-slate-500">{formatDateTime(payment.createdAt)}</p>
-                {payment.reference && <p className="mt-2 text-sm text-slate-600">Reference: {payment.reference}</p>}
-                {payment.notes && <p className="mt-1 text-sm text-slate-600">{payment.notes}</p>}
-                {payment.voidReason && <p className="mt-1 text-sm text-slate-600">Void reason: {payment.voidReason}</p>}
+                {payment.reference && <p className="user-text mt-2 text-sm text-slate-600" dir="auto">Reference: {payment.reference}</p>}
+                {payment.notes && <p className="user-text-pre mt-1 text-sm text-slate-600" dir="auto">{payment.notes}</p>}
+                {payment.voidReason && <p className="user-text mt-1 text-sm text-slate-600" dir="auto">Void reason: {payment.voidReason}</p>}
               </div>
               {canMutate && !payment.voidedAt && (
                 <div className="flex flex-wrap gap-2 sm:justify-end">
@@ -90,7 +90,7 @@ export const RecentPaymentsList: React.FC<RecentPaymentsListProps> = ({
                       <span className="font-medium text-slate-800">
                         {allocationTargetLabels[allocation.targetType]}
                       </span>
-                      <span className="text-slate-500"> · {allocation.description || 'No description'}</span>
+                      <span className="user-text text-slate-500" dir="auto"> · {allocation.description || 'No description'}</span>
                     </div>
                     <span className="font-semibold text-slate-900">{formatMoney(allocation.amount)}</span>
                   </li>

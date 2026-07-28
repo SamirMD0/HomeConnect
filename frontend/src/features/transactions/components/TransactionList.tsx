@@ -90,7 +90,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({ customerId, on
                     </span>
                   </td>
                   <td className="px-3 py-4 text-sm text-slate-500">
-                    <div className="max-w-xs truncate" title={transaction.description}>
+                    <div className="user-text max-w-xs truncate" dir="auto" title={transaction.description}>
                       {transaction.description}
                     </div>
                   </td>
@@ -138,7 +138,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({ customerId, on
                       <td className="whitespace-nowrap px-3 py-3 text-sm font-medium border-t-0">
                         {!isPayment && <span className="text-xs text-slate-400 font-medium px-1.5 py-0.5 rounded-md bg-slate-100">Schedule</span>}
                       </td>
-                      <td className="px-3 py-3 text-sm text-slate-500 border-t-0">
+                      <td className="user-text px-3 py-3 text-sm text-slate-500 border-t-0" dir="auto">
                         {child.description}
                       </td>
                       <td className={`whitespace-nowrap px-3 py-3 text-sm font-medium text-right border-t-0 ${isPayment ? 'text-emerald-600' : 'text-slate-500'}`}>

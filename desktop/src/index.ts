@@ -1,9 +1,10 @@
-import { app, BrowserWindow, dialog, ipcMain, shell, clipboard } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, session, shell, clipboard } from 'electron';
 import { ChildProcess } from 'child_process';
 import { Server } from 'http';
 import path from 'path';
 import fs from 'fs';
 import { startCompiledBackend } from './backend-process';
+import { applyContentSecurityPolicy, resolveCspMode } from './content-security-policy';
 import { BACKEND_HEALTH_URL, FRONTEND_ORIGIN, READY_TIMEOUT_MS } from './runtime-config';
 import { startStaticFrontendServer } from './static-frontend-server';
 import { waitForUrl } from './readiness';
@@ -29,6 +30,9 @@ if (!gotTheLock) {
   });
 
   app.whenReady().then(async () => {
+    // Registered before any window loads so the first response already carries it.
+    applyContentSecurityPolicy(session.defaultSession, resolveCspMode());
+
     ipcMain.handle('ping', () => 'pong');
 
     ipcMain.handle('backup:selectDirectory', async () => {

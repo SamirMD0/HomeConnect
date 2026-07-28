@@ -62,7 +62,7 @@ export const CancelDebtDialog: React.FC<CancelDebtDialogProps> = ({
           <AlertTriangle className="h-4 w-4" />
           Cancellation preserves history
         </div>
-        <p>
+        <p className="user-text" dir="auto">
           This will cancel {debt.description}. Original amount {formatMoney(debt.originalAmount)},
           remaining balance {formatMoney(debt.remainingBalance)}. No payment or obligation history is deleted.
         </p>
@@ -79,7 +79,7 @@ export const CancelDebtDialog: React.FC<CancelDebtDialogProps> = ({
       ) : (
         <>
       <TextField label="Cancellation reason" error={errors.reason?.message}>
-        <textarea {...register('reason')} rows={4} className={inputClass(Boolean(errors.reason))} />
+        <textarea {...register('reason')} dir="auto" rows={4} className={inputClass(Boolean(errors.reason))} />
       </TextField>
       <TextField label="Account password" error={errors.accountPassword?.message}>
         <input

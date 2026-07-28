@@ -5,6 +5,7 @@ import {
   PaymentMethod,
 } from '@prisma/client';
 import { z } from 'zod';
+import { userTextSchema } from '../../../validators/user-text';
 
 const uuidSchema = z.string().uuid('Invalid ID');
 const moneyStringSchema = z
@@ -28,11 +29,11 @@ export const installmentPlanParamsSchema = z.object({
 export const createInstallmentPlanSchema = z
   .object({
     totalAmount: moneyStringSchema,
-    description: z.string().trim().min(1, 'Description is required').max(200, 'Description is too long'),
+    description: userTextSchema({ field: 'Description', min: 1, max: 200 }),
     startDate: businessDateSchema,
     installmentCount: z.coerce.number().int().positive().max(120, 'Installment count is too large'),
     frequency: z.nativeEnum(InstallmentPlanFrequency).default(InstallmentPlanFrequency.MONTHLY),
-    notes: z.string().trim().max(1000, 'Notes are too long').optional().nullable(),
+    notes: userTextSchema({ field: 'Notes', max: 1000 }).optional().nullable(),
     schedule: z
       .array(
         z
@@ -71,15 +72,15 @@ export const createInstallmentPlanPaymentSchema = z
     amount: moneyStringSchema,
     paymentDate: businessDateSchema,
     paymentMethod: z.nativeEnum(PaymentMethod).default(PaymentMethod.CASH),
-    reference: z.string().trim().max(100, 'Reference is too long').optional().nullable(),
-    notes: z.string().trim().max(1000, 'Notes are too long').optional().nullable(),
+    reference: userTextSchema({ field: 'Reference', max: 100 }).optional().nullable(),
+    notes: userTextSchema({ field: 'Notes', max: 1000 }).optional().nullable(),
     idempotencyKey: z.string().trim().max(128, 'Idempotency key is too long').optional().nullable(),
   })
   .strict();
 
 export const cancelInstallmentPlanSchema = z
   .object({
-    reason: z.string().trim().min(1, 'Cancellation reason is required').max(1000, 'Cancellation reason is too long'),
+    reason: userTextSchema({ field: 'Cancellation reason', min: 1, max: 1000 }),
     accountPassword: z.string().min(1, 'Account password is required'),
   })
   .strict();
@@ -87,11 +88,11 @@ export const cancelInstallmentPlanSchema = z
 export const updateInstallmentPlanSchema = z
   .object({
     totalAmount: moneyStringSchema.optional(),
-    description: z.string().trim().min(1, 'Description is required').max(200, 'Description is too long'),
+    description: userTextSchema({ field: 'Description', min: 1, max: 200 }),
     startDate: businessDateSchema.optional(),
     installmentCount: z.coerce.number().int().positive().max(120, 'Installment count is too large').optional(),
-    notes: z.string().trim().max(1000, 'Notes are too long').optional().nullable(),
-    cancelReason: z.string().trim().min(5, 'Cancellation reason is too short').max(1000, 'Cancellation reason is too long').optional().nullable(),
+    notes: userTextSchema({ field: 'Notes', max: 1000 }).optional().nullable(),
+    cancelReason: userTextSchema({ field: 'Cancellation reason', min: 5, max: 1000 }).optional().nullable(),
     schedule: z
       .array(
         z
@@ -101,7 +102,7 @@ export const updateInstallmentPlanSchema = z
           .strict()
       )
       .optional(),
-    reason: z.string().trim().min(5, 'Correction reason must be at least 5 characters').max(1000, 'Correction reason is too long'),
+    reason: userTextSchema({ field: 'Correction reason', min: 5, max: 1000 }),
     sourceScreen: z.nativeEnum(FinancialCorrectionSourceScreen).default(FinancialCorrectionSourceScreen.API),
     accountPassword: z.string().min(1, 'Account password is required'),
   })

@@ -328,7 +328,7 @@ const RestoreBackupDialog: React.FC<{
     setIsWorking(true);
     try {
       const result = await backupApi.restoreBackup(backup.id, 'RESTORE', accountPassword);
-      toast.success(result.restartRequired ? 'Restore completed. Restart HomeConnect.' : 'Restore completed');
+      toast.success(result.restartRequired ? 'Restore completed. Restart Home Connects.' : 'Restore completed');
       onRestored();
     } catch {
       toast.error('Restore failed');

@@ -61,7 +61,7 @@ const MonthlyDebtReportRowView: React.FC<{
   onOpenCustomer: (customerId: string) => void;
 }> = ({ row, onOpenCustomer }) => (
   <tr className="align-top">
-    <td className="px-4 py-3 font-medium text-slate-900">{row.customer.name}</td>
+    <td className="user-text px-4 py-3 font-medium text-slate-900" dir="auto">{row.customer.name}</td>
     <td className="px-4 py-3 whitespace-nowrap text-slate-600">{row.customer.phone}</td>
     <td className="px-4 py-3 text-right text-slate-700">{formatMoney(row.singleDebtOutstanding)}</td>
     <td className="px-4 py-3 text-right text-slate-700">{formatMoney(row.installmentPlanOutstanding)}</td>

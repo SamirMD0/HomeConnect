@@ -52,9 +52,9 @@ export const CustomerDebtsList: React.FC<CustomerDebtsListProps> = ({
             {debts.map((debt) => (
               <tr key={debt.id} className="align-top">
                 <td className="px-4 py-3">
-                  <p className="font-medium text-slate-900">{debt.description}</p>
+                  <p className="user-text font-medium text-slate-900" dir="auto">{debt.description}</p>
                   {debt.cancellation && (
-                    <p className="mt-1 text-xs text-slate-500">Cancelled: {debt.cancellation.reason || 'No reason recorded'}</p>
+                    <p className="user-text mt-1 text-xs text-slate-500" dir="auto">Cancelled: {debt.cancellation.reason || 'No reason recorded'}</p>
                   )}
                 </td>
                 <td className="px-4 py-3 text-right text-slate-700">{formatMoney(debt.originalAmount)}</td>

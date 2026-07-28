@@ -1,3 +1,4 @@
+import { Role } from '@prisma/client';
 import { z } from 'zod';
 
 export const loginSchema = z.object({
@@ -9,6 +10,9 @@ export const setupSchema = z.object({
   username: z.string().min(3, 'Username must be at least 3 characters'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   fullName: z.string().min(2, 'Full name must be at least 2 characters'),
+  role: z.nativeEnum(Role).optional(),
+  adminUsername: z.string().optional(),
+  adminPassword: z.string().optional(),
 });
 
 export const changePasswordSchema = z.object({

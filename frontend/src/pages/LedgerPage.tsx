@@ -4,6 +4,7 @@ import { Plus, WalletCards, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Modal } from '../components/ui/Modal';
 import { useAuth } from '../hooks/useAuth';
 import { DebtDetails } from '../features/customer-financial/components/DebtDetails';
+import { EditDebtDialog } from '../features/customer-financial/components/EditDebtDialog';
 import { InstallmentPlanDetails } from '../features/customer-financial/components/InstallmentPlanDetails';
 import { CancelDebtDialog } from '../features/customer-financial/components/CancelDebtDialog';
 import { CancelInstallmentPlanDialog } from '../features/customer-financial/components/CancelInstallmentPlanDialog';
@@ -13,7 +14,7 @@ import { DebtPaymentTarget } from '../features/customer-financial/components/Rec
 import { RecordPlanPaymentDialog } from '../features/customer-financial/components/RecordPlanPaymentDialog';
 import { PlanPaymentTarget } from '../features/customer-financial/components/RecordPlanPaymentDialog';
 import { VoidPaymentDialog } from '../features/customer-financial/components/VoidPaymentDialog';
-import { InstallmentPlanDetail } from '../features/customer-financial/types/customer-financial.types';
+import { DebtDetail, InstallmentPlanDetail } from '../features/customer-financial/types/customer-financial.types';
 import { isFinancialAdmin } from '../features/customer-financial/utils/financial-auth';
 import { GlobalAddObligationDialog } from '../features/financial-ledger/components/GlobalAddObligationDialog';
 import { GlobalReceivePaymentDialog } from '../features/financial-ledger/components/GlobalReceivePaymentDialog';
@@ -34,7 +35,9 @@ import {
 } from '../features/financial-ledger/hooks/useFinancialLedger';
 import {
   FinancialLedgerFilters,
+  FinancialLedgerDebtItem,
   FinancialLedgerPaymentItem,
+  FinancialLedgerPlanItem,
 } from '../features/financial-ledger/types/financial-ledger.types';
 
 type DebtMutationTarget = DebtPaymentTarget & { customer: { id: string } };
@@ -59,6 +62,7 @@ export const LedgerPage: React.FC = () => {
   const [selectedDebtId, setSelectedDebtId] = useState<string | null>(null);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [debtForPayment, setDebtForPayment] = useState<DebtMutationTarget | null>(null);
+  const [debtForEdit, setDebtForEdit] = useState<DebtDetail | null>(null);
   const [debtForCancellation, setDebtForCancellation] = useState<DebtMutationTarget | null>(null);
   const [planForPayment, setPlanForPayment] = useState<PlanMutationTarget | null>(null);
   const [planForEdit, setPlanForEdit] = useState<InstallmentPlanDetail | null>(null);
@@ -77,6 +81,7 @@ export const LedgerPage: React.FC = () => {
     setSelectedDebtId(null);
     setSelectedPlanId(null);
     setDebtForPayment(null);
+    setDebtForEdit(null);
     setDebtForCancellation(null);
     setPlanForEdit(null);
     setPlanForPayment(null);
@@ -90,6 +95,11 @@ export const LedgerPage: React.FC = () => {
     setDebtForPayment(debt);
   };
 
+  const openDebtEdit = (debt: FinancialLedgerDebtItem) => {
+    setSelectedDebtId(null);
+    setDebtForEdit(toDebtDetail(debt));
+  };
+
   const openDebtCancellation = (debt: DebtMutationTarget) => {
     setSelectedDebtId(null);
     setDebtForCancellation(debt);
@@ -98,6 +108,11 @@ export const LedgerPage: React.FC = () => {
   const openPlanPayment = (plan: PlanMutationTarget) => {
     setSelectedPlanId(null);
     setPlanForPayment(plan);
+  };
+
+  const openPlanEdit = (plan: FinancialLedgerPlanItem) => {
+    setSelectedPlanId(null);
+    setPlanForEdit(toPlanDetail(plan));
   };
 
   const openPlanCancellation = (plan: PlanMutationTarget) => {
@@ -169,6 +184,8 @@ export const LedgerPage: React.FC = () => {
                 canMutate={canMutate}
                 onViewDebt={setSelectedDebtId}
                 onViewPlan={setSelectedPlanId}
+                onEditDebt={openDebtEdit}
+                onEditPlan={openPlanEdit}
                 onRecordDebtPayment={openDebtPayment}
                 onCancelDebt={openDebtCancellation}
                 onRecordPlanPayment={openPlanPayment}
@@ -239,8 +256,27 @@ export const LedgerPage: React.FC = () => {
           debtId={selectedDebtId}
           canMutate={canMutate}
           onRecordPayment={openDebtPayment}
+          onEditDebt={(debt) => {
+            setSelectedDebtId(null);
+            setDebtForEdit(debt);
+          }}
           onCancelDebt={openDebtCancellation}
         />
+      </Modal>
+
+      <Modal
+        isOpen={Boolean(debtForEdit)}
+        onClose={() => setDebtForEdit(null)}
+        title="Edit debt"
+        maxWidth="max-w-2xl"
+      >
+        {debtForEdit && (
+          <EditDebtDialog
+            customerId={debtForEdit.customer.id}
+            debt={debtForEdit}
+            onSuccess={closeMutationDialogsAndRefresh}
+          />
+        )}
       </Modal>
 
       <Modal
@@ -360,3 +396,42 @@ export const LedgerPage: React.FC = () => {
     </div>
   );
 };
+
+function toDebtDetail(debt: FinancialLedgerDebtItem): DebtDetail {
+  return {
+    ...debt,
+    calculatedStatus: debt.status,
+    createdBy: {
+      id: 'system',
+      name: 'System',
+      username: 'system',
+    },
+    cancellation: debt.cancellation
+      ? {
+          ...debt.cancellation,
+          cancelledBy: null,
+        }
+      : null,
+    payments: [],
+  };
+}
+
+function toPlanDetail(plan: FinancialLedgerPlanItem): InstallmentPlanDetail {
+  return {
+    ...plan,
+    calculatedStatus: plan.status,
+    createdBy: {
+      id: 'system',
+      name: 'System',
+      username: 'system',
+    },
+    cancellation: plan.cancellation
+      ? {
+          ...plan.cancellation,
+          cancelledBy: null,
+        }
+      : null,
+    schedule: [],
+    payments: [],
+  };
+}

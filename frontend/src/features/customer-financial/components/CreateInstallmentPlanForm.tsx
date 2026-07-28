@@ -148,7 +148,7 @@ export const CreateInstallmentPlanForm: React.FC<CreateInstallmentPlanFormProps>
       </TextField>
 
       <TextField label="Description" error={errors.description?.message}>
-        <input {...register('description')} className={inputClass(Boolean(errors.description))} placeholder="Refrigerator" />
+        <input {...register('description')} dir="auto" className={inputClass(Boolean(errors.description))} placeholder="Refrigerator" />
       </TextField>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -173,7 +173,7 @@ export const CreateInstallmentPlanForm: React.FC<CreateInstallmentPlanFormProps>
       </TextField>
 
       <TextField label="Notes" error={errors.notes?.message}>
-        <textarea {...register('notes')} rows={3} className={inputClass(Boolean(errors.notes))} placeholder="Optional" />
+        <textarea {...register('notes')} dir="auto" rows={3} className={inputClass(Boolean(errors.notes))} placeholder="Optional" />
       </TextField>
 
       <div className="space-y-3">

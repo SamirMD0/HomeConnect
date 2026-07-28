@@ -262,6 +262,30 @@ describe('MonthlyDebtsService', () => {
     expect(exportResult.csv).toContain('"Nour, Trading",03654321,100.00');
     expect(exportResult.csv.charCodeAt(0)).toBe(0xfeff);
   });
+
+  it('exports Arabic customer names as UTF-8 with BOM and CSV escaping', async () => {
+    repositoryMock.loadSnapshotRecords.mockResolvedValue({
+      debts: [
+        debt({
+          customer: {
+            id: 'customer-ar',
+            name: 'علي، "بيروت"',
+            phone: '03123456',
+          },
+          originalAmount: '150.00',
+          dueDate: '2026-08-10',
+        }),
+      ],
+      plans: [],
+      paymentsThroughCutoff: [],
+      monthlyPayments: [],
+    });
+
+    const exportResult = await MonthlyDebtsService.getMonthlyDebtCsv(baseSnapshotQuery());
+
+    expect(exportResult.csv.charCodeAt(0)).toBe(0xfeff);
+    expect(exportResult.csv).toContain('"علي، ""بيروت""",03123456,150.00');
+  });
 });
 
 function baseSnapshotQuery() {

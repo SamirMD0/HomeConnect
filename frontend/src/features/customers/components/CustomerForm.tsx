@@ -54,20 +54,25 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSubmi
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1">Customer Name *</label>
+        <label className="block text-sm font-medium text-slate-700 mb-1">
+          Customer Name / اسم الزبون *
+        </label>
         <input
           type="text"
           {...register('name')}
-          className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:outline-none transition-all ${
+          dir="auto"
+          className={`user-text-input w-full px-4 py-2 border rounded-lg focus:ring-2 focus:outline-none transition-all ${
             errors.name ? 'border-red-500 focus:ring-red-200' : 'border-slate-300 focus:ring-emerald-500/20 focus:border-emerald-500'
           }`}
-          placeholder="e.g. John Doe"
+          placeholder="e.g. محمد أحمد"
         />
         {errors.name && <p className="mt-1 text-sm text-red-500">{errors.name.message}</p>}
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1">Phone Number *</label>
+        <label className="block text-sm font-medium text-slate-700 mb-1">
+          Phone Number / رقم الهاتف *
+        </label>
         <input
           type="text"
           {...register('phone')}
@@ -80,27 +85,33 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSubmi
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1">Address (Optional)</label>
+        <label className="block text-sm font-medium text-slate-700 mb-1">
+          Address / العنوان <span className="font-normal text-slate-500">(Optional)</span>
+        </label>
         <input
           type="text"
           {...register('address')}
-          className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:outline-none transition-all ${
+          dir="auto"
+          className={`user-text-input w-full px-4 py-2 border rounded-lg focus:ring-2 focus:outline-none transition-all ${
             errors.address ? 'border-red-500 focus:ring-red-200' : 'border-slate-300 focus:ring-emerald-500/20 focus:border-emerald-500'
           }`}
-          placeholder="e.g. 123 Main St, City"
+          placeholder="e.g. بيروت، شارع الحمرا"
         />
         {errors.address && <p className="mt-1 text-sm text-red-500">{errors.address.message}</p>}
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1">Notes (Optional)</label>
+        <label className="block text-sm font-medium text-slate-700 mb-1">
+          Notes / ملاحظات <span className="font-normal text-slate-500">(Optional)</span>
+        </label>
         <textarea
           {...register('notes')}
           rows={3}
-          className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:outline-none transition-all ${
+          dir="auto"
+          className={`user-text-input w-full px-4 py-2 border rounded-lg focus:ring-2 focus:outline-none transition-all ${
             errors.notes ? 'border-red-500 focus:ring-red-200' : 'border-slate-300 focus:ring-emerald-500/20 focus:border-emerald-500'
           }`}
-          placeholder="Any additional details..."
+          placeholder="أي ملاحظات إضافية..."
         />
         {errors.notes && <p className="mt-1 text-sm text-red-500">{errors.notes.message}</p>}
       </div>
@@ -112,7 +123,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSubmi
           disabled={isSubmitting}
           className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50"
         >
-          Cancel
+          Cancel / إلغاء
         </button>
         <button
           type="submit"
@@ -128,7 +139,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSubmi
               Saving...
             </>
           ) : (
-            'Save Customer'
+            'Save Customer / حفظ الزبون'
           )}
         </button>
       </div>

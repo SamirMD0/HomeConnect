@@ -81,7 +81,7 @@ export const CreateDebtForm: React.FC<CreateDebtFormProps> = ({ customer, onBack
       </TextField>
 
       <TextField label="Description" error={errors.description?.message}>
-        <input {...register('description')} className={inputClass(Boolean(errors.description))} placeholder="Refrigerator" />
+        <input {...register('description')} dir="auto" className={inputClass(Boolean(errors.description))} placeholder="Refrigerator" />
       </TextField>
 
       <TextField label="Exact due date" error={errors.dueDate?.message}>
@@ -89,10 +89,10 @@ export const CreateDebtForm: React.FC<CreateDebtFormProps> = ({ customer, onBack
       </TextField>
 
       <TextField label="Notes" error={errors.notes?.message}>
-        <textarea {...register('notes')} rows={3} className={inputClass(Boolean(errors.notes))} placeholder="Optional" />
+        <textarea {...register('notes')} dir="auto" rows={3} className={inputClass(Boolean(errors.notes))} placeholder="Optional" />
       </TextField>
 
-      <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
+      <div className="user-text rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600" dir="auto">
         Review: {description.trim() || 'No description'} for {amount || '0.00'} due {dueDate || 'not set'}.
       </div>
 
@@ -104,7 +104,7 @@ export const CreateDebtForm: React.FC<CreateDebtFormProps> = ({ customer, onBack
 export const CustomerContext: React.FC<{ customer: FinancialSummaryCustomer }> = ({ customer }) => (
   <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
     <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Customer</p>
-    <p className="mt-1 font-semibold text-slate-900">{customer.name}</p>
+    <p className="user-text mt-1 font-semibold text-slate-900" dir="auto">{customer.name}</p>
     <p className="text-sm text-slate-600">{customer.phone}</p>
   </div>
 );
@@ -137,7 +137,7 @@ export const SubmitButton: React.FC<{ isPending: boolean; label: string; pending
 );
 
 export function inputClass(hasError: boolean): string {
-  return `block w-full rounded-lg border px-3 py-2 text-sm text-slate-900 shadow-sm focus:outline-none focus:ring-2 ${
+  return `user-text-input block w-full rounded-lg border px-3 py-2 text-sm text-slate-900 shadow-sm focus:outline-none focus:ring-2 ${
     hasError
       ? 'border-red-300 focus:border-red-500 focus:ring-red-500/20'
       : 'border-slate-300 focus:border-emerald-500 focus:ring-emerald-500/20'

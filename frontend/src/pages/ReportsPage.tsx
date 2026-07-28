@@ -248,12 +248,13 @@ function tabClass(active: boolean) {
 }
 
 const printStyles = `
-  body { background: white !important; }
+  body { background: white !important; font-family: Tahoma, Arial, sans-serif !important; }
   aside, header, .print\\:hidden { display: none !important; }
   main { padding: 0 !important; overflow: visible !important; }
   .report-print-root { max-width: none !important; padding: 0 !important; }
   table { font-size: 10px; page-break-inside: auto; }
   thead { display: table-header-group; }
   tr { page-break-inside: avoid; }
-  th, td { padding: 6px !important; }
+  th, td { padding: 6px !important; overflow-wrap: anywhere; }
+  .user-text, .user-text-pre { font-family: Tahoma, Arial, sans-serif !important; }
 `;

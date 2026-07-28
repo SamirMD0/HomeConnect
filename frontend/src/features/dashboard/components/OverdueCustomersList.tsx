@@ -37,7 +37,9 @@ export const OverdueCustomersList: React.FC<OverdueCustomersListProps> = ({
           >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold text-red-950">{item.customer.name}</p>
+                <p className="user-text text-sm font-semibold text-red-950" dir="auto">
+                  {item.customer.name}
+                </p>
                 <p className="text-xs text-red-700">
                   {item.overdueItemCount} overdue item{item.overdueItemCount === 1 ? '' : 's'}
                 </p>

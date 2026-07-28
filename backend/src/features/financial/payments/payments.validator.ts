@@ -1,5 +1,6 @@
 import { FinancialCorrectionSourceScreen, PaymentMethod } from '@prisma/client';
 import { z } from 'zod';
+import { userTextSchema } from '../../../validators/user-text';
 
 const uuidSchema = z.string().uuid('Invalid ID');
 const businessDateSchema = z
@@ -19,7 +20,7 @@ export const paymentParamsSchema = z.object({
 
 export const voidPaymentSchema = z
   .object({
-    reason: z.string().trim().min(5, 'Void reason must be at least 5 characters').max(1000, 'Void reason is too long'),
+    reason: userTextSchema({ field: 'Void reason', min: 5, max: 1000 }),
     sourceScreen: z.nativeEnum(FinancialCorrectionSourceScreen).default(FinancialCorrectionSourceScreen.API),
     accountPassword: z.string().min(1, 'Account password is required'),
   })
@@ -30,9 +31,9 @@ export const correctPaymentSchema = z
     amount: moneyStringSchema.optional(),
     paymentDate: businessDateSchema,
     paymentMethod: z.nativeEnum(PaymentMethod),
-    reference: z.string().trim().max(100, 'Reference is too long').optional().nullable(),
-    notes: z.string().trim().max(1000, 'Notes are too long').optional().nullable(),
-    reason: z.string().trim().min(5, 'Correction reason must be at least 5 characters').max(1000, 'Correction reason is too long'),
+    reference: userTextSchema({ field: 'Reference', max: 100 }).optional().nullable(),
+    notes: userTextSchema({ field: 'Notes', max: 1000 }).optional().nullable(),
+    reason: userTextSchema({ field: 'Correction reason', min: 5, max: 1000 }),
     sourceScreen: z.nativeEnum(FinancialCorrectionSourceScreen).default(FinancialCorrectionSourceScreen.API),
     accountPassword: z.string().min(1, 'Account password is required'),
   })
@@ -51,7 +52,7 @@ export const reallocatePaymentSchema = z
       )
       .min(1, 'At least one allocation is required')
       .max(120, 'Too many allocations'),
-    reason: z.string().trim().min(5, 'Correction reason must be at least 5 characters').max(1000, 'Correction reason is too long'),
+    reason: userTextSchema({ field: 'Correction reason', min: 5, max: 1000 }),
     sourceScreen: z.nativeEnum(FinancialCorrectionSourceScreen).default(FinancialCorrectionSourceScreen.API),
     accountPassword: z.string().min(1, 'Account password is required'),
   })

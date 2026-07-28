@@ -45,7 +45,7 @@ export const OverdueItemsList: React.FC<OverdueItemsListProps> = ({ items, onOpe
             {items.map((item) => (
               <tr key={`${item.type}-${item.obligationId}`} className="align-top">
                 <td className="px-4 py-3 font-medium text-red-700">{itemTypeLabels[item.type]}</td>
-                <td className="px-4 py-3 text-slate-900">{item.description}</td>
+                <td className="user-text px-4 py-3 text-slate-900" dir="auto">{item.description}</td>
                 <td className="px-4 py-3 text-slate-600">{formatBusinessDate(item.dueDate)}</td>
                 <td className="px-4 py-3 text-right font-semibold text-slate-900">
                   {formatMoney(item.remainingAmount)}

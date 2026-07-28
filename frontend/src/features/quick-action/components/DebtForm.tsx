@@ -83,7 +83,7 @@ export const DebtForm: React.FC<DebtFormProps> = ({ customer, onSuccess, onBack 
         <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 flex justify-between items-center">
            <div>
               <p className="text-xs text-indigo-600 font-semibold uppercase tracking-wider mb-0.5">Customer</p>
-              <h3 className="text-base font-bold text-slate-900">{customer.name}</h3>
+              <h3 className="user-text text-base font-bold text-slate-900" dir="auto">{customer.name}</h3>
               <p className="text-sm text-slate-500">{customer.phone}</p>
            </div>
            <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold">
@@ -139,7 +139,8 @@ export const DebtForm: React.FC<DebtFormProps> = ({ customer, onSuccess, onBack 
               <textarea
                 rows={3}
                 {...register('description')}
-                className={`block w-full rounded-xl border-0 py-2.5 pl-10 pr-3 text-slate-900 ring-1 ring-inset ${errors.description ? 'ring-red-300 focus:ring-red-500' : 'ring-slate-200 focus:ring-indigo-600'} placeholder:text-slate-400 focus:ring-2 focus:ring-inset sm:text-sm sm:leading-6 resize-none`}
+                dir="auto"
+                className={`user-text-input block w-full rounded-xl border-0 py-2.5 pl-10 pr-3 text-slate-900 ring-1 ring-inset ${errors.description ? 'ring-red-300 focus:ring-red-500' : 'ring-slate-200 focus:ring-indigo-600'} placeholder:text-slate-400 focus:ring-2 focus:ring-inset sm:text-sm sm:leading-6 resize-none`}
                 placeholder="What was this debt for?"
               />
             </div>

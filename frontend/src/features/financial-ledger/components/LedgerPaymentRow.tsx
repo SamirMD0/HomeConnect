@@ -26,7 +26,7 @@ export const LedgerPaymentRow: React.FC<LedgerPaymentRowProps> = ({
       <p className="text-xs text-slate-400">Created {formatDateTime(item.createdAt)}</p>
     </td>
     <td className="px-4 py-3">
-      <p className="font-medium text-slate-900">{item.customer.name}</p>
+      <p className="user-text font-medium text-slate-900" dir="auto">{item.customer.name}</p>
       <p className="text-xs text-slate-500">{item.customer.phone}</p>
     </td>
     <td className="hidden px-4 py-3 lg:table-cell">
@@ -36,7 +36,7 @@ export const LedgerPaymentRow: React.FC<LedgerPaymentRowProps> = ({
     </td>
     <td className="max-w-xs px-4 py-3 text-slate-700">
       <div className="space-y-1">
-        <p className="line-clamp-2" title={allocationSummary(item)}>
+        <p className="user-text line-clamp-2" dir="auto" title={allocationSummary(item)}>
           {allocationSummary(item)}
         </p>
         {item.correction.hasCorrections && (

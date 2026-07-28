@@ -87,7 +87,7 @@ export const CustomerProfilePage: React.FC = () => {
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-3">
-                <h2 className="text-2xl font-bold text-slate-900">{customer.name}</h2>
+                <h2 className="user-text text-2xl font-bold text-slate-900" dir="auto">{customer.name}</h2>
                 <span
                   className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
                     customer.isActive
@@ -104,7 +104,7 @@ export const CustomerProfilePage: React.FC = () => {
                   {customer.phone}
                 </span>
                 {customer.address && (
-                  <span className="flex items-center">
+                  <span className="user-text flex items-center" dir="auto">
                     <MapPin className="mr-1.5 h-4 w-4" aria-hidden="true" />
                     {customer.address}
                   </span>
@@ -145,7 +145,7 @@ export const CustomerProfilePage: React.FC = () => {
               </div>
               <div>
                 <dt className="text-sm font-medium text-slate-500">Address</dt>
-                <dd className="mt-1 text-sm text-slate-900">{customer.address || '—'}</dd>
+                <dd className="user-text mt-1 text-sm text-slate-900" dir="auto">{customer.address || '—'}</dd>
               </div>
             </dl>
           </div>
@@ -161,7 +161,7 @@ export const CustomerProfilePage: React.FC = () => {
               </div>
               <div>
                 <dt className="text-sm font-medium text-slate-500">Notes</dt>
-                <dd className="mt-1 whitespace-pre-wrap text-sm text-slate-900">
+                <dd className="user-text-pre mt-1 text-sm text-slate-900" dir="auto">
                   {customer.notes || '—'}
                 </dd>
               </div>

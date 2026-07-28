@@ -60,7 +60,7 @@ export const CancelInstallmentPlanDialog: React.FC<CancelInstallmentPlanDialogPr
           <AlertTriangle className="h-4 w-4" />
           Cancellation preserves history
         </div>
-        <p>
+        <p className="user-text" dir="auto">
           This will cancel {plan.description}. Total amount {formatMoney(plan.totalAmount)},
           remaining balance {formatMoney(plan.remainingBalance)}. The plan, schedule, payments, and
           allocations are kept; no records are deleted.
@@ -73,7 +73,7 @@ export const CancelInstallmentPlanDialog: React.FC<CancelInstallmentPlanDialogPr
         </div>
       )}
       <TextField label="Cancellation reason" error={errors.reason?.message}>
-        <textarea {...register('reason')} rows={4} className={inputClass(Boolean(errors.reason))} />
+        <textarea {...register('reason')} dir="auto" rows={4} className={inputClass(Boolean(errors.reason))} />
       </TextField>
       <TextField label="Account password" error={errors.accountPassword?.message}>
         <input

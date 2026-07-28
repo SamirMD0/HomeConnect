@@ -1,5 +1,5 @@
-import React, { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { api, setAccessToken } from '../services/api';
+import React, { createContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
+import { api, refreshAccessToken, setAccessToken } from '../services/api';
 
 interface User {
   id: string;
@@ -28,25 +28,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [accessToken, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Inactivity logout timer reference
-  let inactivityTimer: ReturnType<typeof setTimeout>;
+  // Held in a ref, not a plain variable: a variable declared in the component body
+  // is rebound on every render, so the id set by one render is invisible to the
+  // next one and the timer can never be cleared reliably.
+  const inactivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const resetInactivityTimer = useCallback(() => {
-    if (inactivityTimer) clearTimeout(inactivityTimer);
-    inactivityTimer = setTimeout(() => {
-      // Auto-logout user after 15 minutes of inactivity
-      handleLogout();
-    }, INACTIVITY_TIMEOUT_MS);
+  const clearInactivityTimer = useCallback(() => {
+    if (inactivityTimerRef.current) {
+      clearTimeout(inactivityTimerRef.current);
+      inactivityTimerRef.current = null;
+    }
   }, []);
 
-  const handleLogin = (userData: User, token: string) => {
-    setUser(userData);
-    setToken(token);
-    setAccessToken(token);
-    resetInactivityTimer();
-  };
+  const handleLogout = useCallback(async () => {
+    clearInactivityTimer();
 
-  const handleLogout = async () => {
     try {
       await api.post('/auth/logout');
     } catch (e) {
@@ -55,8 +51,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setUser(null);
       setToken(null);
       setAccessToken(null);
-      if (inactivityTimer) clearTimeout(inactivityTimer);
     }
+  }, [clearInactivityTimer]);
+
+  const resetInactivityTimer = useCallback(() => {
+    clearInactivityTimer();
+    inactivityTimerRef.current = setTimeout(() => {
+      // Auto-logout user after 15 minutes of inactivity
+      handleLogout();
+    }, INACTIVITY_TIMEOUT_MS);
+  }, [clearInactivityTimer, handleLogout]);
+
+  const handleLogin = (userData: User, token: string) => {
+    setUser(userData);
+    setToken(token);
+    setAccessToken(token);
   };
 
   const updateUser = (userData: Partial<User>) => {
@@ -65,17 +74,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Check current session on mount
   useEffect(() => {
-    const fetchUser = async () => {
+    const restoreSession = async () => {
       try {
-        // We try to hit the /me endpoint. If we have no token, or it's expired,
-        // the API interceptor will automatically attempt to use the refresh token
-        // cookie to get a new token.
+        // On a cold start there is no access token in memory, so calling /auth/me
+        // first would always fail with a 401 before the interceptor recovered it.
+        // The refresh cookie is the real session, so ask for a token from it first
+        // and only then find out who the user is.
+        const token = await refreshAccessToken();
+
+        if (!token) {
+          setUser(null);
+          return;
+        }
+
+        setToken(token);
+
         const response = await api.get('/auth/me');
         if (response.data.success) {
           setUser(response.data.data);
-          // Wait, if it refreshed successfully, the interceptor fired a 'token_refreshed' event
-          // but we still need the accessToken in our state. The interceptor doesn't return it
-          // directly here. However, our next API calls will work.
         }
       } catch (error) {
         // Not authenticated
@@ -84,8 +100,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setIsLoading(false);
       }
     };
-
-    fetchUser();
 
     // Listen for custom token refresh events from the API interceptor
     const handleTokenRefreshed = (e: Event) => {
@@ -102,21 +116,42 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     window.addEventListener('token_refreshed', handleTokenRefreshed);
     window.addEventListener('auth_logout', handleForcedLogout);
 
-    // Setup user activity listeners for the inactivity timeout
+    // Started after the listeners are attached so a refresh cannot fire first.
+    restoreSession();
+
+    return () => {
+      window.removeEventListener('token_refreshed', handleTokenRefreshed);
+      window.removeEventListener('auth_logout', handleForcedLogout);
+    };
+    // Session restore runs once per mount; the setters it uses are stable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Inactivity auto-logout, armed only while a session exists. Watching activity
+  // on the login screen would otherwise schedule a logout for a user who is not
+  // signed in, firing a pointless POST /auth/logout fifteen minutes later.
+  const isLoggedIn = !!user;
+
+  useEffect(() => {
+    if (!isLoggedIn) {
+      clearInactivityTimer();
+      return;
+    }
+
+    resetInactivityTimer();
+
     const activityEvents = ['mousedown', 'keydown', 'scroll', 'touchstart'];
     activityEvents.forEach(event => {
       window.addEventListener(event, resetInactivityTimer);
     });
 
     return () => {
-      window.removeEventListener('token_refreshed', handleTokenRefreshed);
-      window.removeEventListener('auth_logout', handleForcedLogout);
       activityEvents.forEach(event => {
         window.removeEventListener(event, resetInactivityTimer);
       });
-      if (inactivityTimer) clearTimeout(inactivityTimer);
+      clearInactivityTimer();
     };
-  }, [resetInactivityTimer]);
+  }, [isLoggedIn, resetInactivityTimer, clearInactivityTimer]);
 
   const value = {
     user,

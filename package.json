@@ -1,6 +1,6 @@
 {
   "name": "home-connect",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "main": "dist/electron/desktop/src/index.js",
   "build": {
     "appId": "com.homeconnect.desktop",
@@ -59,6 +59,7 @@
       }
     ],
     "win": {
+      "icon": "desktop/assets/homeconnects-logo.ico",
       "target": [
         {
           "target": "nsis",
@@ -83,8 +84,9 @@
     "dev:vite": "vite frontend",
     "dev:server": "nodemon --watch backend/src -e ts --exec tsx backend/src/index.ts",
     "dev:electron": "tsx desktop/scripts/dev-electron.ts",
+    "electron": "npm run build && npm run build:electron-main && electron .",
     "typecheck:electron": "tsc -p tsconfig.electron.json --noEmit",
-    "build:electron-main": "tsc -p tsconfig.electron.json && node -e \"require('fs').copyFileSync('desktop/src/startup-monitor.html', 'dist/electron/desktop/src/startup-monitor.html')\"",
+    "build:electron-main": "tsc -p tsconfig.electron.json && node -e \"const fs=require('fs');fs.mkdirSync('dist/electron/desktop/src',{recursive:true});fs.mkdirSync('dist/electron/desktop/assets',{recursive:true});fs.copyFileSync('desktop/src/startup-monitor.html','dist/electron/desktop/src/startup-monitor.html');for(const file of ['homeconnects-logo.png','homeconnects-logo.ico'])fs.copyFileSync('desktop/assets/'+file,'dist/electron/desktop/assets/'+file);\"",
     "check:electron-production-runtime": "tsx desktop/scripts/check-production-runtime.ts",
     "pack:win": "npm run build && npm run build:electron-main && electron-builder --win --dir --config.npmRebuild=false --publish=never",
     "dist:win": "npm run build && npm run build:electron-main && electron-builder --win --config.npmRebuild=false --publish=never",

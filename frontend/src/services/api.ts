@@ -31,6 +31,33 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+/**
+ * Exchanges the http-only refresh cookie for a new access token.
+ * Uses a bare axios call so it never re-enters the interceptor below.
+ * Returns null when there is no usable session — callers treat that as
+ * "signed out", not as an error worth reporting.
+ */
+export const refreshAccessToken = async (): Promise<string | null> => {
+  try {
+    const response = await axios.post(`${API_URL}/auth/refresh`, {}, {
+      withCredentials: true,
+    });
+    const newAccessToken: string | null = response.data?.data?.accessToken ?? null;
+    if (!newAccessToken) return null;
+
+    setAccessToken(newAccessToken);
+    window.dispatchEvent(new CustomEvent('token_refreshed', { detail: newAccessToken }));
+    return newAccessToken;
+  } catch {
+    return null;
+  }
+};
+
+// Requests that must never trigger a refresh attempt: a rejected login is a
+// credential problem, and the refresh call itself cannot refresh itself.
+const skipsRefresh = (url?: string) =>
+  Boolean(url && (url.includes('/auth/login') || url.includes('/auth/refresh')));
+
 // Response interceptor to handle 401s and auto-refresh token
 api.interceptors.response.use(
   (response) => response,
@@ -38,32 +65,25 @@ api.interceptors.response.use(
     const originalRequest = error.config;
 
     // If error is 401 and we haven't retried yet
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !skipsRefresh(originalRequest.url)
+    ) {
       originalRequest._retry = true;
 
-      try {
-        // Attempt to refresh the token using the http-only cookie
-        const response = await axios.post(`${API_URL}/auth/refresh`, {}, {
-          withCredentials: true 
-        });
+      const newAccessToken = await refreshAccessToken();
 
-        const newAccessToken = response.data.data.accessToken;
-        
-        // Update the access token
-        setAccessToken(newAccessToken);
-        
-        // Dispatch a custom event so the AuthContext knows the token was refreshed
-        window.dispatchEvent(new CustomEvent('token_refreshed', { detail: newAccessToken }));
-
-        // Retry the original request with the new token
-        originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
-        return api(originalRequest);
-      } catch (refreshError) {
+      if (!newAccessToken) {
         // Refresh failed (token expired or missing). We must log out.
         setAccessToken(null);
         window.dispatchEvent(new Event('auth_logout'));
-        return Promise.reject(refreshError);
+        return Promise.reject(error);
       }
+
+      // Retry the original request with the new token
+      originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
+      return api(originalRequest);
     }
 
     // Log the API failure securely before rejecting

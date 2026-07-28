@@ -24,6 +24,8 @@ interface LedgerObligationRowProps {
   onOpenMenuChange: (menuKey: string | null) => void;
   onViewDebt: (debtId: string) => void;
   onViewPlan: (planId: string) => void;
+  onEditDebt: (debt: FinancialLedgerDebtItem) => void;
+  onEditPlan: (plan: FinancialLedgerPlanItem) => void;
   onRecordDebtPayment: (debt: FinancialLedgerDebtItem) => void;
   onCancelDebt: (debt: FinancialLedgerDebtItem) => void;
   onRecordPlanPayment: (plan: FinancialLedgerPlanItem) => void;
@@ -40,6 +42,8 @@ export const LedgerObligationRow: React.FC<LedgerObligationRowProps> = ({
   onOpenMenuChange,
   onViewDebt,
   onViewPlan,
+  onEditDebt,
+  onEditPlan,
   onRecordDebtPayment,
   onCancelDebt,
   onRecordPlanPayment,
@@ -53,13 +57,13 @@ export const LedgerObligationRow: React.FC<LedgerObligationRowProps> = ({
   const remainingBalance = periodSummary?.totalRemaining ?? item.remainingBalance;
   const statusType = isDebt ? 'debt' : 'plan';
   const isOverdue = item.status === 'OVERDUE';
-  const openDetails = () => {
+  const openEdit = () => {
     if (isDebt) {
-      onViewDebt(item.id);
+      onEditDebt(item);
       return;
     }
 
-    onViewPlan(item.id);
+    onEditPlan(item);
   };
   const actions = buildObligationActions({
     item,
@@ -96,7 +100,7 @@ export const LedgerObligationRow: React.FC<LedgerObligationRowProps> = ({
         <p className="text-xs font-normal text-slate-400">Created {formatDateTime(item.createdAt)}</p>
       </td>
       <td className="px-4 py-3">
-        <p className="font-medium text-slate-900">{item.customer.name}</p>
+        <p className="user-text font-medium text-slate-900" dir="auto">{item.customer.name}</p>
         <p className="text-xs text-slate-500">{item.customer.phone}</p>
       </td>
       <td className="hidden px-4 py-3 lg:table-cell">
@@ -110,7 +114,7 @@ export const LedgerObligationRow: React.FC<LedgerObligationRowProps> = ({
       </td>
       <td className="max-w-xs px-4 py-3 text-slate-700">
         <div className="space-y-1">
-          <p className="line-clamp-2" title={item.description}>
+          <p className="user-text line-clamp-2" dir="auto" title={item.description}>
             {item.description}
           </p>
           {item.correction.hasCorrections && (
@@ -133,11 +137,11 @@ export const LedgerObligationRow: React.FC<LedgerObligationRowProps> = ({
             onClick={(event) => {
               event.preventDefault();
               event.stopPropagation();
-              openDetails();
+              openEdit();
             }}
             className="inline-flex min-h-9 items-center rounded-md border border-slate-200 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-950 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
           >
-            View
+            Edit
           </button>
           <LedgerRowActions
             menuKey={`${item.type}-${item.id}`}

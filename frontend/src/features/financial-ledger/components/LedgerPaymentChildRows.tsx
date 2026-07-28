@@ -94,19 +94,19 @@ const PaymentChildCard: React.FC<{ paymentView: LedgerPaymentChildView }> = ({ p
               </span>
             )}
           </p>
-          <p className="mt-1 text-slate-500">
+          <p className="user-text mt-1 text-slate-500" dir="auto">
             {payment.reference ? `Ref: ${payment.reference} · ` : ''}
             Recorded by {payment.createdBy.name} on {formatDateTime(payment.createdAt)}
           </p>
-          {payment.notes && <p className="mt-1 line-clamp-2 text-slate-500">{payment.notes}</p>}
-          {payment.voidReason && <p className="mt-1 text-amber-700">Void reason: {payment.voidReason}</p>}
+          {payment.notes && <p className="user-text mt-1 line-clamp-2 text-slate-500" dir="auto">{payment.notes}</p>}
+          {payment.voidReason && <p className="user-text mt-1 text-amber-700" dir="auto">Void reason: {payment.voidReason}</p>}
           {showAllocationBreakdown && (
             <ul className="mt-2 space-y-1 border-l border-slate-200 pl-3">
               {parentAllocations.map((allocation) => (
                 <li key={allocation.id} className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                   <span className="text-slate-500">
                     <span className="font-medium text-slate-700">{allocationLabel(allocation)}</span>
-                    {allocation.description && <span> · {allocation.description}</span>}
+                    {allocation.description && <span className="user-text" dir="auto"> · {allocation.description}</span>}
                   </span>
                   <span className="font-semibold tabular-nums text-slate-900">{formatMoney(allocation.amount)}</span>
                 </li>

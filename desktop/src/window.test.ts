@@ -21,6 +21,7 @@ describe('Electron window configuration', () => {
     const options = createBrowserWindowOptions();
 
     expect(options.show).toBe(false);
+    expect(options.icon).toBe(path.join(__dirname, '../assets/homeconnects-logo.png'));
     expect(options.webPreferences.nodeIntegration).toBe(false);
     expect(options.webPreferences.contextIsolation).toBe(true);
     expect(options.webPreferences.sandbox).toBe(true);
@@ -32,6 +33,7 @@ describe('Electron window configuration', () => {
     const options = createStartupMonitorOptions();
 
     expect(options.show).toBe(false);
+    expect(options.icon).toBe(path.join(__dirname, '../assets/homeconnects-logo.png'));
     expect(options.webPreferences.nodeIntegration).toBe(false);
     expect(options.webPreferences.contextIsolation).toBe(true);
     expect(options.webPreferences.sandbox).toBe(true);

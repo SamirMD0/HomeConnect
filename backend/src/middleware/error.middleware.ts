@@ -4,6 +4,16 @@ import { logger } from '../lib/logger';
 import { logBackendError } from '../features/diagnostics/error-logger';
 import { redactSensitiveData } from '../lib/redaction';
 
+/**
+ * An unauthenticated or expired-session request is a normal client state, not an
+ * application fault: the app polls /auth/me and /auth/refresh on every cold start.
+ * Recording those in the diagnostics log buries the failures that actually need
+ * attention. Failed logins are deliberately still recorded — repeated credential
+ * failures against a real account are worth seeing.
+ */
+export const isRoutineAuthFailure = (statusCode: number, path: string): boolean =>
+  statusCode === 401 && !path.includes('/auth/login');
+
 export const errorHandler = (
   err: Error,
   req: Request,
@@ -13,16 +23,18 @@ export const errorHandler = (
   if (err instanceof AppError) {
     const safeDetails = redactSensitiveData(err.details);
     logger.warn(`[${err.code}] ${err.message}`, { details: safeDetails, path: req.path });
-    
-    logBackendError({
-      method: req.method,
-      path: req.path,
-      query: req.query,
-      status: err.statusCode,
-      errorCode: err.code,
-      message: err.message,
-      stack: err.stack,
-    });
+
+    if (!isRoutineAuthFailure(err.statusCode, req.path)) {
+      logBackendError({
+        method: req.method,
+        path: req.path,
+        query: req.query,
+        status: err.statusCode,
+        errorCode: err.code,
+        message: err.message,
+        stack: err.stack,
+      });
+    }
 
     return res.status(err.statusCode).json({
       success: false,

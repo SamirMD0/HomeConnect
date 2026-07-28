@@ -6,13 +6,16 @@ import { motion } from 'framer-motion';
 import { api } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import { UserPlus, User, Lock, Loader2, AlertCircle, ShieldCheck } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 const setupSchema = z.object({
   username: z.string().min(3, 'Username must be at least 3 characters'),
   fullName: z.string().min(2, 'Full name must be at least 2 characters'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   confirmPassword: z.string().min(1, 'Please confirm your password'),
+  role: z.enum(['ADMIN', 'EMPLOYEE']),
+  adminUsername: z.string().optional(),
+  adminPassword: z.string().optional(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
@@ -24,29 +27,43 @@ export const Setup: React.FC = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors, isSubmitting },
   } = useForm<SetupFormValues>({
     resolver: zodResolver(setupSchema),
+    defaultValues: {
+      role: 'EMPLOYEE',
+    },
   });
 
   const onSubmit = async (data: SetupFormValues) => {
     setErrorMsg(null);
+    setSuccessMsg(null);
     try {
       const response = await api.post('/auth/setup', {
         username: data.username,
         fullName: data.fullName,
         password: data.password,
+        role: data.role,
+        adminUsername: data.adminUsername?.trim() || undefined,
+        adminPassword: data.adminPassword || undefined,
       });
 
       if (response.data.success) {
-        // First run setup auto-logs you in via backend
         const { user, accessToken } = response.data.data;
-        login(user, accessToken);
-        navigate('/');
+        if (accessToken) {
+          login(user, accessToken);
+          navigate('/');
+          return;
+        }
+
+        reset({ role: 'EMPLOYEE' });
+        setSuccessMsg('Account created. The user can sign in from the login page.');
       }
     } catch (err: any) {
       const apiError = err.response?.data?.error?.message || err.response?.data?.message;
@@ -75,13 +92,23 @@ export const Setup: React.FC = () => {
             <div className="h-16 w-16 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-emerald-500/25">
               <ShieldCheck className="text-white w-8 h-8" />
             </div>
-            <h1 className="text-3xl font-bold text-white tracking-tight">System Setup</h1>
+            <h1 className="text-3xl font-bold text-white tracking-tight">Account Setup</h1>
             <p className="text-slate-400 mt-2 text-sm leading-relaxed">
-              Welcome to Home Connects. Please create the master administrator account to initialize the system.
+              Create the first administrator, or create another account with an existing admin password.
             </p>
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+            {successMsg && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4"
+              >
+                <p className="text-sm text-emerald-300 leading-relaxed">{successMsg}</p>
+              </motion.div>
+            )}
+
             {errorMsg && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
@@ -92,6 +119,58 @@ export const Setup: React.FC = () => {
                 <p className="text-sm text-red-400 leading-relaxed">{errorMsg}</p>
               </motion.div>
             )}
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-300 ml-1">Role</label>
+              <select
+                {...register('role')}
+                className="w-full bg-slate-950/50 border border-slate-800 text-white rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all"
+              >
+                <option value="EMPLOYEE">Employee</option>
+                <option value="ADMIN">Admin</option>
+              </select>
+            </div>
+
+            <div className="rounded-2xl border border-slate-800 bg-slate-950/30 p-4">
+              <p className="text-sm font-semibold text-slate-200">Existing admin approval</p>
+              <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                Required when an administrator account already exists.
+              </p>
+
+              <div className="mt-4 space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-300 ml-1">Admin username</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                      <User className="h-5 w-5 text-slate-500" />
+                    </div>
+                    <input
+                      {...register('adminUsername')}
+                      type="text"
+                      autoComplete="username"
+                      className="w-full bg-slate-950/50 border border-slate-800 text-white rounded-xl pl-11 pr-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all placeholder:text-slate-600"
+                      placeholder="admin"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-300 ml-1">Admin password</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                      <Lock className="h-5 w-5 text-slate-500" />
+                    </div>
+                    <input
+                      {...register('adminPassword')}
+                      type="password"
+                      autoComplete="current-password"
+                      className="w-full bg-slate-950/50 border border-slate-800 text-white rounded-xl pl-11 pr-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all placeholder:text-slate-600"
+                      placeholder="••••••••"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-300 ml-1">Full Name</label>
@@ -165,13 +244,20 @@ export const Setup: React.FC = () => {
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>Initializing System...</span>
+                  <span>Creating Account...</span>
                 </>
               ) : (
-                <span>Create Admin Account</span>
+                <span>Create Account</span>
               )}
             </button>
           </form>
+
+          <p className="mt-6 text-center text-sm text-slate-400">
+            Already have an account?{' '}
+            <Link to="/login" className="font-medium text-emerald-400 transition-colors hover:text-emerald-300">
+              Sign in
+            </Link>
+          </p>
         </div>
       </motion.div>
     </div>

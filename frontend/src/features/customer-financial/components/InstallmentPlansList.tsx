@@ -56,12 +56,12 @@ export const InstallmentPlansList: React.FC<InstallmentPlansListProps> = ({
             {plans.map((plan) => (
               <tr key={plan.id} className="align-top">
                 <td className="px-4 py-3">
-                  <p className="font-medium text-slate-900">{plan.description}</p>
+                  <p className="user-text font-medium text-slate-900" dir="auto">{plan.description}</p>
                   <p className="mt-1 text-xs text-slate-500">
                     Created {formatDateTime(plan.createdAt)}
                   </p>
                   {plan.cancellation && (
-                    <p className="mt-1 text-xs text-slate-500">Cancelled: {plan.cancellation.reason || 'No reason recorded'}</p>
+                    <p className="user-text mt-1 text-xs text-slate-500" dir="auto">Cancelled: {plan.cancellation.reason || 'No reason recorded'}</p>
                   )}
                 </td>
                 <td className="px-4 py-3 text-right text-slate-700">{formatMoney(plan.totalAmount)}</td>

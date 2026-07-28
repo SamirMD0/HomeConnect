@@ -121,10 +121,10 @@ export const RecordPlanPaymentDialog: React.FC<RecordPlanPaymentDialogProps> = (
         </select>
       </TextField>
       <TextField label="Reference" error={errors.reference?.message}>
-        <input {...register('reference')} className={inputClass(Boolean(errors.reference))} placeholder="Optional" />
+        <input {...register('reference')} dir="auto" className={inputClass(Boolean(errors.reference))} placeholder="Optional" />
       </TextField>
       <TextField label="Notes" error={errors.notes?.message}>
-        <textarea {...register('notes')} rows={3} className={inputClass(Boolean(errors.notes))} placeholder="Optional" />
+        <textarea {...register('notes')} dir="auto" rows={3} className={inputClass(Boolean(errors.notes))} placeholder="Optional" />
       </TextField>
       <SubmitButton
         isPending={recordPayment.isPending}
@@ -140,7 +140,7 @@ const PlanPaymentContext: React.FC<{ plan: PlanPaymentTarget }> = ({
 }) => (
   <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm">
     <div className="flex flex-wrap items-center gap-2">
-      <p className="font-semibold text-slate-900">{plan.description}</p>
+      <p className="user-text font-semibold text-slate-900" dir="auto">{plan.description}</p>
       <FinancialStatusBadge type="plan" status={plan.calculatedStatus ?? plan.status ?? 'ACTIVE'} />
     </div>
     <dl className="grid grid-cols-2 gap-3 text-slate-600 sm:grid-cols-4">

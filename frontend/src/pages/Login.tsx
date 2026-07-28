@@ -5,8 +5,8 @@ import { z } from 'zod';
 import { motion } from 'framer-motion';
 import { useAuth } from '../hooks/useAuth';
 import { api } from '../services/api';
-import { Home, Lock, User, Loader2, AlertCircle } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Lock, User, Loader2, AlertCircle } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 
 const loginSchema = z.object({
   username: z.string().min(1, 'Username is required'),
@@ -69,9 +69,11 @@ export const Login: React.FC = () => {
       >
         <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-3xl p-8 shadow-2xl">
           <div className="flex flex-col items-center mb-8">
-            <div className="h-16 w-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-blue-500/25">
-              <Home className="text-white w-8 h-8" />
-            </div>
+            <img
+              src="/homeconnects-logo.webp"
+              alt="Home Connects"
+              className="mb-6 h-20 w-20 rounded-2xl bg-white object-contain p-2 shadow-lg shadow-blue-500/25"
+            />
             <h1 className="text-3xl font-bold text-white tracking-tight">Home Connects</h1>
             <p className="text-slate-400 mt-2 text-sm">Sign in to your dashboard</p>
           </div>
@@ -153,6 +155,13 @@ export const Login: React.FC = () => {
               )}
             </button>
           </form>
+
+          <p className="mt-6 text-center text-sm text-slate-400">
+            Need another account?{' '}
+            <Link to="/setup" className="font-medium text-blue-400 transition-colors hover:text-blue-300">
+              Create account
+            </Link>
+          </p>
         </div>
         
         <p className="text-center text-slate-500 text-sm mt-8">
