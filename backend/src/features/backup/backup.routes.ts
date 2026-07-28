@@ -4,6 +4,7 @@ import { validate } from '../../middleware/validate.middleware';
 import { BackupController } from './backup.controller';
 import {
   backupIdParamsSchema,
+  importBackupSchema,
   backupListQuerySchema,
   createBackupSchema,
   restoreBackupSchema,
@@ -19,6 +20,7 @@ backupRoutes.get('/settings', BackupController.getSettings);
 backupRoutes.put('/settings', validate(updateBackupSettingsSchema), BackupController.updateSettings);
 backupRoutes.get('/', validate(backupListQuerySchema, 'query'), BackupController.listBackups);
 backupRoutes.post('/', validate(createBackupSchema), BackupController.createBackup);
+backupRoutes.post('/import', validate(importBackupSchema), BackupController.importBackup);
 backupRoutes.post(
   '/:backupId/validate-restore',
   validate(backupIdParamsSchema, 'params'),

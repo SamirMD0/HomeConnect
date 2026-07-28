@@ -11,6 +11,7 @@ import { CustomersListPage } from './pages/customers/CustomersListPage';
 import { CustomerProfilePage } from './pages/customers/CustomerProfilePage';
 import { DashboardPage } from './features/dashboard/pages/DashboardPage';
 import { LedgerPage } from './pages/LedgerPage';
+import { AccountsReceivablePage } from './pages/AccountsReceivablePage';
 import { ReportsPage } from './pages/ReportsPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -43,6 +44,7 @@ const App: React.FC = () => {
               <Route path="customers" element={<CustomersListPage />} />
               <Route path="customers/:id" element={<CustomerProfilePage />} />
               <Route path="ledger" element={<LedgerPage />} />
+              <Route path="receivables" element={<AccountsReceivablePage />} />
               <Route path="reports" element={<ReportsPage />} />
               <Route path="settings" element={<SettingsPage />} />
             </Route>

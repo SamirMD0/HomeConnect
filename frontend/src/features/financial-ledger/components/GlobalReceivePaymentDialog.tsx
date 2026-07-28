@@ -16,8 +16,13 @@ import {
 import { formatBusinessDate, formatMoney } from '../../customer-financial/utils/financial-format';
 import { CustomerPicker } from './CustomerPicker';
 
+/** Only these fields are needed to record a payment for a known customer. */
+export type ReceivePaymentCustomer = Pick<Customer, 'id' | 'name' | 'phone'>;
+
 interface GlobalReceivePaymentDialogProps {
   onSuccess: () => void;
+  /** Skips the customer picker when the caller already knows the customer. */
+  initialCustomer?: ReceivePaymentCustomer | null;
 }
 
 type SelectedTarget =
@@ -27,12 +32,15 @@ type SelectedTarget =
 
 export const GlobalReceivePaymentDialog: React.FC<GlobalReceivePaymentDialogProps> = ({
   onSuccess,
+  initialCustomer = null,
 }) => {
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<ReceivePaymentCustomer | null>(
+    initialCustomer
+  );
   const [selectedTarget, setSelectedTarget] = useState<SelectedTarget>(null);
 
   if (!selectedCustomer) {
-    return <CustomerPicker selectedCustomer={selectedCustomer} onSelect={setSelectedCustomer} />;
+    return <CustomerPicker selectedCustomer={null} onSelect={setSelectedCustomer} />;
   }
 
   if (selectedTarget?.type === 'DEBT') {
@@ -66,7 +74,7 @@ export const GlobalReceivePaymentDialog: React.FC<GlobalReceivePaymentDialogProp
 };
 
 interface EligibleObligationPickerProps {
-  customer: Customer;
+  customer: ReceivePaymentCustomer;
   onChangeCustomer: () => void;
   onSelectDebt: (debt: DebtSummaryItem) => void;
   onSelectPlan: (plan: InstallmentPlanSummaryItem) => void;

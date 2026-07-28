@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { CheckCircle2, Download, FolderOpen, RefreshCw, RotateCcw, ShieldAlert } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Modal } from '../../../components/ui/Modal';
@@ -21,6 +21,7 @@ export const BackupRestorePanel: React.FC = () => {
   const createBackup = useCreateBackup();
   const updateSettings = useUpdateBackupSettings();
   const [restoreTarget, setRestoreTarget] = useState<BackupRecord | null>(null);
+  const [isImportingBackup, setIsImportingBackup] = useState(false);
 
   if (statusQuery.isLoading || settingsQuery.isLoading || listQuery.isLoading) {
     return <div className="h-48 animate-pulse rounded-lg border border-slate-200 bg-slate-100" />;
@@ -66,6 +67,28 @@ export const BackupRestorePanel: React.FC = () => {
     await window.electronAPI.openBackupDirectory(settings.backupDirectory);
   };
 
+  const handleRestoreDatabase = async () => {
+    if (!window.electronAPI?.selectBackupFile) {
+      toast.error('Backup file selection is available in the desktop app');
+      return;
+    }
+
+    const selected = await window.electronAPI.selectBackupFile();
+    if (!selected) return;
+
+    setIsImportingBackup(true);
+    try {
+      const importedBackup = await backupApi.importBackupFile(selected);
+      toast.success('Backup file imported');
+      void listQuery.refetch();
+      setRestoreTarget(importedBackup);
+    } catch {
+      toast.error('Backup import failed');
+    } finally {
+      setIsImportingBackup(false);
+    }
+  };
+
   return (
     <section className="space-y-5">
       <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
@@ -84,6 +107,15 @@ export const BackupRestorePanel: React.FC = () => {
             <button type="button" onClick={() => void handleOpenFolder()} className={secondaryButtonClass}>
               <FolderOpen className="h-4 w-4" />
               Open folder
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleRestoreDatabase()}
+              disabled={isImportingBackup}
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-amber-200 bg-white px-4 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <RotateCcw className="h-4 w-4" />
+              {isImportingBackup ? 'Importing backup' : 'Restore database'}
             </button>
             <button
               type="button"
@@ -270,7 +302,14 @@ const RestoreBackupDialog: React.FC<{
 }> = ({ backup, onClose, onRestored }) => {
   const [validation, setValidation] = useState<RestoreValidationData | null>(null);
   const [confirmation, setConfirmation] = useState('');
+  const [accountPassword, setAccountPassword] = useState('');
   const [isWorking, setIsWorking] = useState(false);
+
+  useEffect(() => {
+    setValidation(null);
+    setConfirmation('');
+    setAccountPassword('');
+  }, [backup?.id]);
 
   const handleValidate = async () => {
     if (!backup) return;
@@ -285,11 +324,11 @@ const RestoreBackupDialog: React.FC<{
   };
 
   const handleRestore = async () => {
-    if (!backup || confirmation !== 'RESTORE') return;
+    if (!backup || confirmation !== 'RESTORE' || !accountPassword) return;
     setIsWorking(true);
     try {
-      await backupApi.restoreBackup(backup.id, 'RESTORE');
-      toast.success('Restore completed');
+      const result = await backupApi.restoreBackup(backup.id, 'RESTORE', accountPassword);
+      toast.success(result.restartRequired ? 'Restore completed. Restart HomeConnect.' : 'Restore completed');
       onRestored();
     } catch {
       toast.error('Restore failed');
@@ -330,12 +369,22 @@ const RestoreBackupDialog: React.FC<{
               className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
             />
           </label>
+          <label className="block text-sm font-medium text-slate-700">
+            Account password
+            <input
+              type="password"
+              value={accountPassword}
+              onChange={(event) => setAccountPassword(event.target.value)}
+              autoComplete="current-password"
+              className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            />
+          </label>
           <div className="flex justify-end gap-2">
             <button type="button" onClick={onClose} className={secondaryButtonClass}>Cancel</button>
             <button
               type="button"
               onClick={() => void handleRestore()}
-              disabled={!validation?.archiveReadable || !validation.checksumMatches || !validation.compatible || confirmation !== 'RESTORE' || isWorking}
+              disabled={!validation?.archiveReadable || !validation.checksumMatches || !validation.compatible || confirmation !== 'RESTORE' || !accountPassword || isWorking}
               className="inline-flex items-center justify-center rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60"
             >
               Restore database

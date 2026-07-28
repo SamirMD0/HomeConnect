@@ -2,6 +2,9 @@ import { contextBridge, ipcRenderer } from 'electron';
 
 contextBridge.exposeInMainWorld('electronAPI', {
   ping: () => ipcRenderer.invoke('ping'),
+  selectBackupDirectory: () => ipcRenderer.invoke('backup:selectDirectory'),
+  openBackupDirectory: (directory: string) => ipcRenderer.invoke('backup:openDirectory', directory),
+  selectBackupFile: () => ipcRenderer.invoke('backup:selectFile'),
   openLogsFolder: () => ipcRenderer.invoke('diagnostics:openLogsFolder'),
   copyDiagnostics: (data: string) => ipcRenderer.invoke('diagnostics:copyDiagnostics', data),
   retryStartup: () => ipcRenderer.invoke('diagnostics:retryStartup'),

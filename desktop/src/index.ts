@@ -31,6 +31,30 @@ if (!gotTheLock) {
   app.whenReady().then(async () => {
     ipcMain.handle('ping', () => 'pong');
 
+    ipcMain.handle('backup:selectDirectory', async () => {
+      const result = await dialog.showOpenDialog({
+        title: 'Select HomeConnect backup folder',
+        properties: ['openDirectory', 'createDirectory'],
+      });
+
+      return result.canceled ? null : result.filePaths[0] ?? null;
+    });
+
+    ipcMain.handle('backup:selectFile', async () => {
+      const result = await dialog.showOpenDialog({
+        title: 'Select HomeConnect backup file',
+        properties: ['openFile'],
+        filters: [{ name: 'HomeConnect backups', extensions: ['backup'] }],
+      });
+
+      return result.canceled ? null : result.filePaths[0] ?? null;
+    });
+
+    ipcMain.handle('backup:openDirectory', async (_event, directory: string) => {
+      if (!directory || typeof directory !== 'string') return '';
+      return shell.openPath(directory);
+    });
+
     ipcMain.handle('diagnostics:openLogsFolder', async () => {
       const safeUserDataPath = app.getPath('userData') || process.env.HOME_CONNECT_USER_DATA || '';
       const logsPath = path.join(safeUserDataPath, 'logs');

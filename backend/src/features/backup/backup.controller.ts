@@ -4,6 +4,7 @@ import {
   BackupIdParamsInput,
   BackupListQueryInput,
   CreateBackupInput,
+  ImportBackupInput,
   RestoreBackupInput,
   UpdateBackupSettingsInput,
 } from './backup.validator';
@@ -59,6 +60,23 @@ export class BackupController {
     }
   }
 
+  static async importBackup(req: Request, res: Response, next: NextFunction) {
+    try {
+      const body = req.body as ImportBackupInput;
+      const backup = await BackupService.importExternalBackup(
+        body.backupPath,
+        req.user?.userId ?? null
+      );
+      res.status(201).json({
+        success: true,
+        data: backup,
+        meta: { timestamp: new Date().toISOString() },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async validateRestore(req: Request, res: Response, next: NextFunction) {
     try {
       const params = req.params as BackupIdParamsInput;
@@ -76,6 +94,7 @@ export class BackupController {
       const result = await BackupService.restoreBackup(
         params.backupId,
         body.confirmation,
+        body.accountPassword,
         req.user?.userId ?? null
       );
       res.status(200).json({ success: true, data: result, meta: { timestamp: new Date().toISOString() } });

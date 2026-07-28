@@ -10,6 +10,7 @@ const { backupServiceMock } = vi.hoisted(() => ({
     updateSettings: vi.fn(),
     listBackups: vi.fn(),
     createManualBackup: vi.fn(),
+    importExternalBackup: vi.fn(),
     validateRestore: vi.fn(),
     restoreBackup: vi.fn(),
   },
@@ -65,6 +66,7 @@ describe('backup admin routes', () => {
       pagination: { page: 1, limit: 25, total: 1, totalPages: 1 },
     });
     backupServiceMock.createManualBackup.mockResolvedValue(backupRecord);
+    backupServiceMock.importExternalBackup.mockResolvedValue(backupRecord);
     backupServiceMock.validateRestore.mockResolvedValue({
       backup: backupRecord,
       checksumMatches: true,
@@ -128,10 +130,23 @@ describe('backup admin routes', () => {
     const response = await request(app)
       .post(`/api/v1/admin/backups/${backupRecord.id}/restore`)
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ confirmation: 'restore' });
+      .send({ confirmation: 'restore', accountPassword: 'admin123' });
 
     expect(response.status).toBe(400);
     expect(backupServiceMock.restoreBackup).not.toHaveBeenCalled();
+  });
+
+  it('imports selected backup files for admins', async () => {
+    const response = await request(app)
+      .post('/api/v1/admin/backups/import')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ backupPath: 'D:/Backups/HomeConnect/manual.backup' });
+
+    expect(response.status).toBe(201);
+    expect(backupServiceMock.importExternalBackup).toHaveBeenCalledWith(
+      'D:/Backups/HomeConnect/manual.backup',
+      '11111111-1111-4111-8111-111111111111'
+    );
   });
 
   it('validates and restores selected backups for admins', async () => {
@@ -142,7 +157,7 @@ describe('backup admin routes', () => {
     const restoreResponse = await request(app)
       .post(`/api/v1/admin/backups/${backupRecord.id}/restore`)
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ confirmation: 'RESTORE' });
+      .send({ confirmation: 'RESTORE', accountPassword: 'admin123' });
 
     expect(validateResponse.status).toBe(200);
     expect(restoreResponse.status).toBe(200);
@@ -150,6 +165,7 @@ describe('backup admin routes', () => {
     expect(backupServiceMock.restoreBackup).toHaveBeenCalledWith(
       backupRecord.id,
       'RESTORE',
+      'admin123',
       '11111111-1111-4111-8111-111111111111'
     );
   });

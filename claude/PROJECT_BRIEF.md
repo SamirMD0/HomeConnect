@@ -22,7 +22,8 @@ The repository is intentionally phase-heavy and contains many docs. Do not scan 
 - `1.0.1`: fixed packaged Ledger runtime Decimal issue.
 - `1.0.2`: attempted error/startup monitor work.
 - `1.0.3`: startup monitor appears and fast-fails database connection errors.
-- Planned `1.0.4`: production config guardrails so malformed `production.env` is detected before backend startup.
+- `1.0.4`: financial corrections, ledger UI improvements, dashboard financial rewrite, and packaged Windows release.
+- `1.0.5`: Accounts Receivable, backup restore button, docs cleanup, and partial Phase 12 migration repair artifact.
 
 Generated release folders live under:
 

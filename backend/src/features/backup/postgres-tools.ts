@@ -2,10 +2,13 @@ import fs from 'fs';
 import path from 'path';
 import { BackupSettings, BackupToolPaths } from './backup.types';
 
+const drives = ['C', 'D', 'E', 'F'];
 const windowsProgramFiles = [
   process.env.ProgramFiles,
   process.env['ProgramFiles(x86)'],
-].filter((value): value is string => Boolean(value));
+  ...drives.map((d) => `${d}:\\Program Files`),
+  ...drives.map((d) => `${d}:\\Program Files (x86)`),
+].filter((value, index, self): value is string => Boolean(value) && self.indexOf(value) === index);
 
 export class PostgresToolDiscovery {
   static discover(settings: BackupSettings): BackupToolPaths {

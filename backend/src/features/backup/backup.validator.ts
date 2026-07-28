@@ -30,9 +30,16 @@ export const backupIdParamsSchema = z.object({
   backupId: z.string().uuid('Invalid backup ID'),
 });
 
+export const importBackupSchema = z
+  .object({
+    backupPath: z.string().trim().min(1),
+  })
+  .strict();
+
 export const restoreBackupSchema = z
   .object({
     confirmation: z.literal('RESTORE'),
+    accountPassword: z.string().min(1, 'Account password is required'),
   })
   .strict();
 
@@ -40,4 +47,5 @@ export type CreateBackupInput = z.infer<typeof createBackupSchema>;
 export type BackupListQueryInput = z.infer<typeof backupListQuerySchema>;
 export type UpdateBackupSettingsInput = z.infer<typeof updateBackupSettingsSchema>;
 export type BackupIdParamsInput = z.infer<typeof backupIdParamsSchema>;
+export type ImportBackupInput = z.infer<typeof importBackupSchema>;
 export type RestoreBackupInput = z.infer<typeof restoreBackupSchema>;

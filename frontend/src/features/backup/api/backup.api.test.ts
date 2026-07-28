@@ -48,23 +48,30 @@ describe('backupApi', () => {
   it('creates manual backups and enforces restore confirmation payload', async () => {
     apiMock.post
       .mockResolvedValueOnce({ data: { success: true, data: { filename: 'backup.backup' } } })
+      .mockResolvedValueOnce({ data: { success: true, data: { id: 'backup-id' } } })
       .mockResolvedValueOnce({ data: { success: true, data: { archiveReadable: true } } })
       .mockResolvedValueOnce({ data: { success: true, data: { restartRequired: true } } });
 
     await backupApi.createManualBackup();
+    await backupApi.importBackupFile('D:/Backups/HomeConnect/manual.backup');
     await backupApi.validateRestore('backup-id');
-    await backupApi.restoreBackup('backup-id', 'RESTORE');
+    await backupApi.restoreBackup('backup-id', 'RESTORE', 'admin123');
 
     expect(apiMock.post).toHaveBeenNthCalledWith(1, '/admin/backups', { type: 'MANUAL' });
     expect(apiMock.post).toHaveBeenNthCalledWith(
       2,
+      '/admin/backups/import',
+      { backupPath: 'D:/Backups/HomeConnect/manual.backup' }
+    );
+    expect(apiMock.post).toHaveBeenNthCalledWith(
+      3,
       '/admin/backups/backup-id/validate-restore',
       {}
     );
     expect(apiMock.post).toHaveBeenNthCalledWith(
-      3,
+      4,
       '/admin/backups/backup-id/restore',
-      { confirmation: 'RESTORE' }
+      { confirmation: 'RESTORE', accountPassword: 'admin123' }
     );
   });
 });

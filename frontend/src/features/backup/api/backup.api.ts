@@ -36,6 +36,14 @@ export const backupApi = {
     return response.data.data;
   },
 
+  importBackupFile: async (backupPath: string) => {
+    const response = await api.post<ApiResponse<RestoreValidationData['backup']>>(
+      '/admin/backups/import',
+      { backupPath }
+    );
+    return response.data.data;
+  },
+
   validateRestore: async (backupId: string): Promise<RestoreValidationData> => {
     const response = await api.post<ApiResponse<RestoreValidationData>>(
       `/admin/backups/${backupId}/validate-restore`,
@@ -44,10 +52,14 @@ export const backupApi = {
     return response.data.data;
   },
 
-  restoreBackup: async (backupId: string, confirmation: 'RESTORE'): Promise<RestoreResultData> => {
+  restoreBackup: async (
+    backupId: string,
+    confirmation: 'RESTORE',
+    accountPassword: string
+  ): Promise<RestoreResultData> => {
     const response = await api.post<ApiResponse<RestoreResultData>>(
       `/admin/backups/${backupId}/restore`,
-      { confirmation }
+      { confirmation, accountPassword }
     );
     return response.data.data;
   },

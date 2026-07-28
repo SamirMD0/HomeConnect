@@ -30,7 +30,7 @@ describe('preload', () => {
     
     // Check surface area
     const allowedMethods = [
-      'ping', 'openLogsFolder', 'copyDiagnostics',
+      'ping', 'selectBackupDirectory', 'openBackupDirectory', 'selectBackupFile', 'openLogsFolder', 'copyDiagnostics',
       'retryStartup', 'closeApp', 'onStartupLog', 'onStartupState'
     ];
     const actualMethods = Object.keys(apiObj as object);
@@ -50,6 +50,15 @@ describe('preload', () => {
     
     openLogsFolderFn();
     expect(ipcRenderer.invoke).toHaveBeenCalledWith('diagnostics:openLogsFolder');
+
+    (apiObj as any).selectBackupDirectory();
+    expect(ipcRenderer.invoke).toHaveBeenCalledWith('backup:selectDirectory');
+
+    (apiObj as any).selectBackupFile();
+    expect(ipcRenderer.invoke).toHaveBeenCalledWith('backup:selectFile');
+
+    (apiObj as any).openBackupDirectory('D:/Backups/HomeConnect');
+    expect(ipcRenderer.invoke).toHaveBeenCalledWith('backup:openDirectory', 'D:/Backups/HomeConnect');
 
     // Verify onStartupLog returns an unsubscribe function
     const onStartupLogFn = (apiObj as any).onStartupLog;

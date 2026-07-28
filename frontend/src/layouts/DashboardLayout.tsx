@@ -1,7 +1,7 @@
 import React from 'react';
 import { Outlet, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { LayoutDashboard, Users, LogOut, FileText, Menu, X, Settings, BookOpen } from 'lucide-react';
+import { LayoutDashboard, Users, LogOut, FileText, Menu, X, Settings, BookOpen, Wallet } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export const DashboardLayout: React.FC = () => {
@@ -19,6 +19,7 @@ export const DashboardLayout: React.FC = () => {
     { name: 'Dashboard', path: '/', icon: LayoutDashboard },
     { name: 'Customers', path: '/customers', icon: Users },
     { name: 'Ledger', path: '/ledger', icon: BookOpen },
+    { name: 'Accounts Receivable', path: '/receivables', icon: Wallet },
     { name: 'Reports', path: '/reports', icon: FileText },
     ...(user?.role === 'ADMIN' ? [{ name: 'Settings', path: '/settings', icon: Settings }] : []),
   ];

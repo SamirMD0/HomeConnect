@@ -14,6 +14,7 @@ import {
   ensureDirectory,
 } from './backup-paths';
 import { BackupSettingsStore } from './backup-settings.store';
+import { verifyAdminPasswordForCorrection } from '../financial/authorization/account-password';
 import { PostgresToolDiscovery } from './postgres-tools';
 import { parsePostgresConnectionString } from './postgres-url';
 import {
@@ -100,6 +101,62 @@ export class BackupService {
     return this.toPublicRecord(record);
   }
 
+  static async importExternalBackup(sourcePath: string, createdBy: string | null) {
+    const settings = await BackupSettingsStore.load();
+    await ensureDirectory(settings.backupDirectory);
+    const sourceAbsolutePath = path.resolve(sourcePath);
+
+    if (!path.isAbsolute(sourcePath)) {
+      throw new BackupValidationError('Backup file path must be absolute');
+    }
+
+    if (!sourceAbsolutePath.toLowerCase().endsWith('.backup')) {
+      throw new BackupInvalidError('Backup file must use .backup extension');
+    }
+
+    const sourceStats = await fs.stat(sourceAbsolutePath);
+    if (!sourceStats.isFile() || sourceStats.size < MIN_BACKUP_SIZE_BYTES) {
+      throw new BackupInvalidError('Backup file is empty or invalid');
+    }
+
+    const destinationPath = await this.nextImportedBackupPath(settings.backupDirectory, sourceAbsolutePath);
+    const copiedFile = path.resolve(sourceAbsolutePath) !== path.resolve(destinationPath);
+    if (copiedFile) {
+      await fs.copyFile(sourceAbsolutePath, destinationPath);
+    }
+
+    const connection = parsePostgresConnectionString();
+    const record = BackupMetadataStore.createRecord({
+      filename: path.basename(destinationPath),
+      absolutePath: destinationPath,
+      type: 'MANUAL',
+      databaseName: connection.database,
+      applicationVersion: APPLICATION_VERSION,
+      postgresVersion: null,
+      createdBy,
+    });
+
+    try {
+      const verified = await this.verifyBackupFile(settings, { ...record, absolutePath: destinationPath });
+      const completedRecord: BackupRecord = {
+        ...record,
+        status: 'COMPLETED',
+        sizeBytes: verified.sizeBytes,
+        checksum: verified.checksum,
+        verified: verified.verified,
+        durationMs: null,
+      };
+      await BackupMetadataStore.upsert(settings.backupDirectory, completedRecord);
+      logger.info('backup_imported', { backupId: completedRecord.id, filename: completedRecord.filename, actor: createdBy });
+      return this.toPublicRecord(completedRecord);
+    } catch (error) {
+      if (copiedFile) {
+        await BackupCommandRunner.removeIncompleteFile(destinationPath);
+      }
+      throw error;
+    }
+  }
+
   static async createAutomaticBackup() {
     const record = await BackupOperationLock.runExclusive('BACKUP', () =>
       this.createBackupInternal('AUTO', null)
@@ -129,10 +186,24 @@ export class BackupService {
     };
   }
 
-  static async restoreBackup(backupId: string, confirmation: 'RESTORE', createdBy: string | null) {
+  static async restoreBackup(
+    backupId: string,
+    confirmation: 'RESTORE',
+    accountPassword: string,
+    createdBy: string | null
+  ) {
     if (confirmation !== 'RESTORE') {
       throw new BackupValidationError('Restore confirmation must be RESTORE');
     }
+    if (!createdBy) {
+      throw new BackupValidationError('Restore requires an authenticated administrator');
+    }
+
+    await verifyAdminPasswordForCorrection(createdBy, accountPassword, {
+      action: 'DATABASE_RESTORE',
+      recordType: 'BACKUP',
+      recordId: backupId,
+    });
 
     return BackupOperationLock.runExclusive('RESTORE', async () => {
       backupMaintenance.enter('RESTORE_IN_PROGRESS', 'Database restore is running');
@@ -297,6 +368,30 @@ export class BackupService {
     const timestamp = formatLocalTimestamp(inputDate);
     const typeLabel = type.toLowerCase().replace('_', '-');
     return `homeconnect-${timestamp}-${typeLabel}.backup`;
+  }
+
+  private static async nextImportedBackupPath(backupDirectory: string, sourcePath: string) {
+    const parsed = path.parse(sourcePath);
+    const safeBaseName = parsed.name.replace(/[^a-zA-Z0-9._-]/g, '-').slice(0, 80) || 'imported-backup';
+    const candidateBaseName = safeBaseName.endsWith('-imported') ? safeBaseName : `${safeBaseName}-imported`;
+
+    for (let index = 0; index < 1000; index += 1) {
+      const suffix = index === 0 ? '' : `-${index}`;
+      const candidate = assertPathInsideDirectory(
+        backupDirectory,
+        path.join(backupDirectory, `${candidateBaseName}${suffix}.backup`)
+      );
+
+      try {
+        await fs.access(candidate);
+      } catch (error) {
+        const code = (error as NodeJS.ErrnoException).code;
+        if (code === 'ENOENT') return candidate;
+        throw error;
+      }
+    }
+
+    throw new BackupValidationError('Could not create a unique imported backup filename');
   }
 
   private static async verifyBackupFile(settings: BackupSettings, record: BackupRecord) {

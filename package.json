@@ -1,6 +1,6 @@
 {
   "name": "home-connect",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "main": "dist/electron/desktop/src/index.js",
   "build": {
     "appId": "com.homeconnect.desktop",

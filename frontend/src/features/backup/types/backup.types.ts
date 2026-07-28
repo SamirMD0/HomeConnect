@@ -81,6 +81,7 @@ declare global {
     electronAPI?: {
       ping?: () => Promise<string>;
       selectBackupDirectory?: () => Promise<string | null>;
+      selectBackupFile?: () => Promise<string | null>;
       openBackupDirectory?: (directory: string) => Promise<string>;
       openLogsFolder?: () => Promise<void>;
       copyDiagnostics?: (data: string) => Promise<void>;
