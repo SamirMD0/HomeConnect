@@ -25,6 +25,9 @@ import {
   ProductServiceJobsQueryInput,
   UpdateProductPricingInput,
   ProductPricingPreviewQueryInput,
+  ProductLabelQueryInput,
+  UpdateProductSkuInput,
+  UpdateProductStockInput,
   UpdateProductInput,
 } from './products.validator';
 import { ProductsRepository } from './products.repository';
@@ -294,17 +297,58 @@ export class ProductsService {
     return this.setActive(id, true, ServiceAuditAction.RESTORE, input, user, context);
   }
 
-  static async label(id: string) {
+  static async label(id: string, query: ProductLabelQueryInput) {
     const product = await ProductsRepository.findById(id);
     if (!product) throw new NotFoundError('Product not found');
+    const usesManufacturer = product.labelBarcodeSource === 'MANUFACTURER' && Boolean(product.barcode);
+    const preview = query.includePriceCode
+      ? resolveProductPricing(product, await ProductsRepository.findActiveDefaultPricingPreset())
+      : null;
     return {
       id: product.id,
       name: product.name,
       model: product.model,
       brand: product.brand,
-      barcode: product.barcode,
-      price: product.price ? moneyToApiString(product.price) : null,
+      sku: product.sku,
+      barcodeValue: usesManufacturer ? product.barcode! : product.sku,
+      barcodeSource: usesManufacturer ? 'MANUFACTURER' as const : 'SKU' as const,
+      internalPriceCode: preview?.pricingAvailable ? preview.internalPriceCode : null,
     };
+  }
+
+  static updateSku(id: string, input: UpdateProductSkuInput, user: ServiceMutationUser, context: RequestContext) {
+    return this.changeSku(id, input.sku, ServiceAuditAction.CHANGE_SKU, input, user, context);
+  }
+
+  static regenerateSku(id: string, input: ProductActionInput, user: ServiceMutationUser, context: RequestContext) {
+    return this.changeSku(id, null, ServiceAuditAction.REGENERATE_SKU, input, user, context);
+  }
+
+  static async updateStock(id: string, input: UpdateProductStockInput, user: ServiceMutationUser, context: RequestContext) {
+    assertServiceAdmin(user);
+    return runFinancialTransaction(async (tx) => {
+      const existing = await ProductsRepository.findById(id, tx);
+      if (!existing) throw new NotFoundError('Product not found');
+      await verifyAdminPassword(user.userId, input.accountPassword, {
+        action: 'UPDATE_PRODUCT_STOCK', recordType: 'PRODUCT', recordId: id,
+        ipAddress: context.ipAddress, domainLabel: 'product stock changes',
+      }, tx);
+      const updated = await ProductsRepository.update(id, {
+        trackStock: input.trackStock,
+        stockQuantity: input.stockQuantity,
+        lowStockThreshold: input.lowStockThreshold,
+        updatedById: user.userId,
+      }, tx);
+      const actor = await loadActor(user.userId, tx);
+      await writeServiceAudit({
+        recordType: ServiceAuditRecordType.PRODUCT, recordId: id, action: ServiceAuditAction.CHANGE_STOCK,
+        changedById: user.userId, changedByName: actor.fullName, changedByUsername: actor.username,
+        reason: input.reason,
+        beforeValues: stockSnapshot(existing), afterValues: stockSnapshot(updated),
+        requestId: context.requestId, ipAddress: context.ipAddress,
+      }, tx);
+      return serializeProduct(updated, await ProductsRepository.findActiveDefaultPricingPreset(tx), true);
+    });
   }
 
   static async audit(id: string, query: ProductAuditQueryInput) {
@@ -367,6 +411,45 @@ export class ProductsService {
       return serializeProduct(updated);
     });
   }
+
+  private static async changeSku(
+    id: string,
+    requestedSku: string | null,
+    action: ServiceAuditAction,
+    input: ProductActionInput,
+    user: ServiceMutationUser,
+    context: RequestContext
+  ) {
+    assertServiceAdmin(user);
+    try {
+      return await runFinancialTransaction(async (tx) => {
+        const existing = await ProductsRepository.findById(id, tx);
+        if (!existing) throw new NotFoundError('Product not found');
+        await verifyAdminPassword(user.userId, input.accountPassword, {
+          action: action === ServiceAuditAction.REGENERATE_SKU ? 'REGENERATE_PRODUCT_SKU' : 'CHANGE_PRODUCT_SKU',
+          recordType: 'PRODUCT', recordId: id, ipAddress: context.ipAddress,
+          domainLabel: 'product SKU changes',
+        }, tx);
+        const sku = requestedSku ?? await generateProductSku(tx);
+        if (sku === existing.sku) throw new ValidationError('The new SKU matches the current SKU');
+        const updated = await ProductsRepository.update(id, { sku, updatedById: user.userId }, tx);
+        const actor = await loadActor(user.userId, tx);
+        await writeServiceAudit({
+          recordType: ServiceAuditRecordType.PRODUCT, recordId: id, action,
+          changedById: user.userId, changedByName: actor.fullName, changedByUsername: actor.username,
+          reason: input.reason, beforeValues: { sku: existing.sku }, afterValues: { sku },
+          requestId: context.requestId, ipAddress: context.ipAddress,
+        }, tx);
+        return serializeProduct(updated, await ProductsRepository.findActiveDefaultPricingPreset(tx), true);
+      });
+    } catch (error) {
+      throw mapProductError(error);
+    }
+  }
+}
+
+function stockSnapshot(product: Product): Prisma.InputJsonObject {
+  return { trackStock: product.trackStock, stockQuantity: product.stockQuantity, lowStockThreshold: product.lowStockThreshold };
 }
 
 function productUpdateData(input: UpdateProductInput, updatedById: string): Prisma.ProductUncheckedUpdateInput {
@@ -573,6 +656,9 @@ function barcodeConflict() {
 }
 
 function mapProductError(error: unknown): unknown {
-  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') return barcodeConflict();
+  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+    const target = Array.isArray(error.meta?.target) ? error.meta.target.join(',') : String(error.meta?.target ?? '');
+    return target.includes('sku') ? new ServiceConflictError('A product with this SKU already exists', { field: 'sku' }) : barcodeConflict();
+  }
   return error;
 }

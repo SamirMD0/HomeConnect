@@ -6,6 +6,7 @@ import {
   ProductDuplicateQueryInput, ProductListQueryInput, ProductParamsInput,
   ProductServiceJobsQueryInput, UpdateProductInput,
   UpdateProductPricingInput, ProductPricingPreviewQueryInput,
+  ProductLabelQueryInput, UpdateProductSkuInput, UpdateProductStockInput,
 } from './products.validator';
 
 const contextFrom = (req: { headers: Request['headers']; ip?: string }) => ({
@@ -74,7 +75,19 @@ export class ProductsController {
     catch (error) { next(error); }
   }
   static async label(req: Request<ProductParamsInput>, res: Response, next: NextFunction) {
-    try { res.json({ success: true, data: await ProductsService.label(req.params.productId) }); }
+    try { res.json({ success: true, data: await ProductsService.label(req.params.productId, req.query as unknown as ProductLabelQueryInput) }); }
+    catch (error) { next(error); }
+  }
+  static async updateSku(req: Request<ProductParamsInput, unknown, UpdateProductSkuInput>, res: Response, next: NextFunction) {
+    try { res.json({ success: true, data: await ProductsService.updateSku(req.params.productId, req.body, req.user!, contextFrom(req)) }); }
+    catch (error) { next(error); }
+  }
+  static async regenerateSku(req: Request<ProductParamsInput, unknown, ProductActionInput>, res: Response, next: NextFunction) {
+    try { res.json({ success: true, data: await ProductsService.regenerateSku(req.params.productId, req.body, req.user!, contextFrom(req)) }); }
+    catch (error) { next(error); }
+  }
+  static async updateStock(req: Request<ProductParamsInput, unknown, UpdateProductStockInput>, res: Response, next: NextFunction) {
+    try { res.json({ success: true, data: await ProductsService.updateStock(req.params.productId, req.body, req.user!, contextFrom(req)) }); }
     catch (error) { next(error); }
   }
   static async audit(req: Request<ProductParamsInput>, res: Response, next: NextFunction) {

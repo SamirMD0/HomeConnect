@@ -3,7 +3,7 @@ import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { app } from '../../../app';
 
-const { service } = vi.hoisted(() => ({ service: { create: vi.fn(), list: vi.fn(), get: vi.fn(), update: vi.fn(), archive: vi.fn(), restore: vi.fn(), label: vi.fn(), audit: vi.fn(), checkDuplicate: vi.fn(), serviceJobs: vi.fn() } }));
+const { service } = vi.hoisted(() => ({ service: { create: vi.fn(), list: vi.fn(), get: vi.fn(), update: vi.fn(), archive: vi.fn(), restore: vi.fn(), label: vi.fn(), audit: vi.fn(), checkDuplicate: vi.fn(), serviceJobs: vi.fn(), updateSku: vi.fn(), regenerateSku: vi.fn(), updateStock: vi.fn() } }));
 vi.mock('./products.service', () => ({ ProductsService: service }));
 vi.mock('../../../lib/prisma', () => ({ prisma: { $queryRaw: vi.fn().mockResolvedValue([{ result: 1 }]) }, transactionModel: {}, activityLogModel: {} }));
 
@@ -22,6 +22,23 @@ describe('product routes', () => {
     service.archive.mockResolvedValue({ ...product, isActive: false });
     service.checkDuplicate.mockResolvedValue({ matches: [] });
     service.serviceJobs.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 10 });
+    service.label.mockResolvedValue({ id: productId, sku: 'HC-000001', barcodeValue: 'HC-000001', barcodeSource: 'SKU', internalPriceCode: null });
+    service.updateSku.mockResolvedValue(product);
+    service.regenerateSku.mockResolvedValue(product);
+    service.updateStock.mockResolvedValue(product);
+  });
+  it('keeps protected SKU and stock routes above the bare product route', async () => {
+    const credentials = { reason: 'Correct product identity', accountPassword: 'pass' };
+    expect((await request(app).patch(`/api/v1/products/${productId}/sku`).set('Authorization', `Bearer ${admin}`).send({ ...credentials, sku: 'HC-009999' })).status).toBe(200);
+    expect((await request(app).post(`/api/v1/products/${productId}/regenerate-sku`).set('Authorization', `Bearer ${admin}`).send(credentials)).status).toBe(200);
+    expect((await request(app).patch(`/api/v1/products/${productId}/stock`).set('Authorization', `Bearer ${admin}`).send({ ...credentials, trackStock: true, stockQuantity: 2, lowStockThreshold: 1 })).status).toBe(200);
+    expect(service.update).not.toHaveBeenCalled();
+  });
+  it('serves a narrow label payload without any price field', async () => {
+    const response = await request(app).get(`/api/v1/products/${productId}/label?includePriceCode=true`).set('Authorization', `Bearer ${employee}`);
+    expect(response.status).toBe(200);
+    expect(response.body.data).not.toHaveProperty('price');
+    expect(response.body.data).not.toHaveProperty('cashPrice');
   });
   it('requires auth and lets employees create/list products', async () => {
     expect((await request(app).get('/api/v1/products')).status).toBe(401);
