@@ -62,9 +62,6 @@ export class ProductsService {
             discount: moneyOrNull(input.discount),
             notes: input.notes ?? null,
             labelBarcodeSource: input.labelBarcodeSource,
-            trackStock: input.trackStock ?? false,
-            stockQuantity: input.stockQuantity ?? 0,
-            lowStockThreshold: input.lowStockThreshold ?? null,
             specifications: input.specifications == null ? Prisma.JsonNull : specificationsJson(input.specifications),
             specificationNotes: input.specificationNotes ?? null,
             createdById: user.userId,
@@ -202,7 +199,9 @@ export class ProductsService {
         await writeServiceAudit({
           recordType: ServiceAuditRecordType.PRODUCT,
           recordId: id,
-          action: ServiceAuditAction.UPDATE_DETAILS,
+          action: fields.every((field) => ['specifications', 'specificationNotes'].includes(field))
+            ? ServiceAuditAction.CHANGE_SPECIFICATIONS
+            : ServiceAuditAction.UPDATE_DETAILS,
           changedById: user.userId,
           changedByName: actor.fullName,
           changedByUsername: actor.username,
@@ -312,7 +311,7 @@ export class ProductsService {
       sku: product.sku,
       barcodeValue: usesManufacturer ? product.barcode! : product.sku,
       barcodeSource: usesManufacturer ? 'MANUFACTURER' as const : 'SKU' as const,
-      internalPriceCode: preview?.pricingAvailable ? preview.internalPriceCode : null,
+      ...(query.includePriceCode ? { internalPriceCode: preview?.pricingAvailable ? preview.internalPriceCode : null } : {}),
     };
   }
 

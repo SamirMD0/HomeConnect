@@ -4,6 +4,7 @@ import {
   productDuplicateQuerySchema,
   productListQuerySchema,
   updateProductSchema,
+  updateProductStockSchema,
 } from './products.validator';
 
 describe('product validation', () => {
@@ -46,5 +47,16 @@ describe('product validation', () => {
   it('accepts duplicate checks with Arabic product text', () => {
     expect(productDuplicateQuerySchema.parse({ name: 'مروحة', model: 'F1', brand: '' }))
       .toEqual({ name: 'مروحة', model: 'F1', brand: null });
+  });
+  it('rejects client SKU and stock writes during product creation', () => {
+    expect(() => createProductSchema.parse({ name: 'Fan', model: 'F1', sku: 'HC-999999' })).toThrow();
+    expect(() => createProductSchema.parse({ name: 'Fan', model: 'F1', stockQuantity: 4 })).toThrow();
+  });
+  it('normalizes ordered specifications and enforces stock integers', () => {
+    expect(createProductSchema.parse({ name: 'Fan', model: 'F1', specifications: [{ label: ' Color ', value: ' Silver ' }, { label: '', value: '' }] }).specifications)
+      .toEqual([{ label: 'Color', value: 'Silver' }]);
+    const protectedFields = { reason: 'Manual stock count', accountPassword: 'secret', trackStock: true, stockQuantity: 2, lowStockThreshold: 2 };
+    expect(updateProductStockSchema.parse(protectedFields).stockQuantity).toBe(2);
+    expect(() => updateProductStockSchema.parse({ ...protectedFields, stockQuantity: 2.5 })).toThrow('integer');
   });
 });

@@ -49,16 +49,26 @@ export class ProductsRepository {
           }
         : {}),
     };
-    const [items, total] = await Promise.all([
-      prisma.product.findMany({
-        where,
+    const [exact, total] = await Promise.all([
+      params.search && params.skip === 0 ? prisma.product.findFirst({
+        where: {
+          AND: [where, { OR: [
+            { sku: { equals: params.search, mode: 'insensitive' } },
+            { barcode: { equals: params.search, mode: 'insensitive' } },
+          ] }],
+        },
         include: productActorInclude,
-        skip: params.skip,
-        take: params.take,
-        orderBy: [{ [params.sortBy]: params.sortOrder }, { id: 'asc' }],
-      }),
+      }) : Promise.resolve(null),
       prisma.product.count({ where }),
     ]);
+    const remaining = await prisma.product.findMany({
+      where: exact ? { AND: [where, { id: { not: exact.id } }] } : where,
+      include: productActorInclude,
+      skip: params.skip,
+      take: Math.max(0, params.take - (exact ? 1 : 0)),
+      orderBy: [{ [params.sortBy]: params.sortOrder }, { id: 'asc' }],
+    });
+    const items = exact ? [exact, ...remaining] : remaining;
     return { items, total };
   }
 

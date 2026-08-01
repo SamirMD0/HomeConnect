@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Package, Plus, Printer } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Pagination } from '../../components/ui/Pagination';
@@ -24,6 +24,8 @@ export const ProductsPage: React.FC = () => {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [archiveProduct, setArchiveProduct] = useState<Product | null>(null);
   const [restoreProduct, setRestoreProduct] = useState<Product | null>(null);
+  const [scannedValue, setScannedValue] = useState<string | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { const timer = window.setTimeout(() => setDebouncedSearch(search.trim()), 300); return () => window.clearTimeout(timer); }, [search]);
   useEffect(() => {
@@ -45,6 +47,18 @@ export const ProductsPage: React.FC = () => {
   }), [params]);
   const products = useProducts(filters);
   const focusedId = params.get('focus');
+
+  useEffect(() => {
+    if (!scannedValue || products.isFetching) return;
+    const exact = products.data?.items.find((item) => item.exactMatch);
+    if (exact) { focus(exact.id); setScannedValue(null); }
+  // focus is intentionally URL-backed; this effect only reacts to scan results.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [products.data, products.isFetching, scannedValue]);
+
+  useEffect(() => {
+    if (!formOpen && !focusedId && !archiveProduct && !restoreProduct) searchInputRef.current?.focus();
+  }, [archiveProduct, focusedId, formOpen, restoreProduct]);
 
   const updateFilters = (patch: Partial<ProductFilterValues>) => {
     const next = new URLSearchParams(params);
@@ -71,6 +85,11 @@ export const ProductsPage: React.FC = () => {
   const openRestore = (product: Product) => { focus(null); setRestoreProduct(product); };
   const closeForm = () => { setFormOpen(false); setEditingProduct(null); };
   const visible = products.data?.items ?? [];
+  const submitScan = () => {
+    const value = search.trim(); if (!value) return;
+    const next = new URLSearchParams(params); next.set('search', value); next.delete('page'); setParams(next);
+    setDebouncedSearch(value); setScannedValue(value);
+  };
 
   return <div className="space-y-5">
     <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -86,7 +105,8 @@ export const ProductsPage: React.FC = () => {
       {selectedIds.size > 0 && <Link to={`/products/labels?ids=${encodeURIComponent([...selectedIds].slice(0, 40).join(','))}`} className="mb-2 inline-flex items-center gap-2 rounded-lg border border-emerald-300 px-3 py-2 text-sm font-semibold text-emerald-700"><Printer className="h-4 w-4" /> Print Labels ({selectedIds.size}) / طباعة الملصقات</Link>}
     </div>
 
-    <ProductFilters filters={filters} search={search} onSearchChange={setSearch} onChange={updateFilters} />
+    <ProductFilters filters={filters} search={search} onSearchChange={(value) => { setSearch(value); setScannedValue(null); }} onSearchSubmit={submitScan} searchInputRef={searchInputRef} onChange={updateFilters} />
+    {scannedValue && !products.isFetching && !visible.some((item) => item.exactMatch) && <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-medium text-amber-900">No product found for <span className="font-mono">{scannedValue}</span> / لم يتم العثور على المنتج</p>}
 
     {products.isLoading ? <div className="p-12 text-center text-slate-500">Loading products / جارٍ تحميل المنتجات…</div>
       : products.isError ? <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">Unable to load products / تعذر تحميل المنتجات.</div>

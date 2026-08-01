@@ -71,9 +71,6 @@ const productValues = {
   imageUrl: imageUrlSchema,
   notes: optionalUserText('Notes', 2000),
   labelBarcodeSource: z.nativeEnum(LabelBarcodeSource).optional(),
-  trackStock: z.boolean().optional(),
-  stockQuantity: z.number().int('Stock quantity must be an integer').min(0).optional(),
-  lowStockThreshold: z.preprocess(emptyToNull, z.number().int('Low stock threshold must be an integer').min(0).optional().nullable()),
   specifications: z.array(z.object({
     label: userTextSchema({ field: 'Specification label', max: 64 }),
     value: userTextSchema({ field: 'Specification value', max: 256 }),

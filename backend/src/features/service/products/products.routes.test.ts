@@ -37,8 +37,9 @@ describe('product routes', () => {
   it('serves a narrow label payload without any price field', async () => {
     const response = await request(app).get(`/api/v1/products/${productId}/label?includePriceCode=true`).set('Authorization', `Bearer ${employee}`);
     expect(response.status).toBe(200);
-    expect(response.body.data).not.toHaveProperty('price');
-    expect(response.body.data).not.toHaveProperty('cashPrice');
+    for (const forbidden of ['price', 'costPrice', 'cashPrice', 'installmentPrice', 'discount']) {
+      expect(Object.keys(response.body.data)).not.toContain(forbidden);
+    }
   });
   it('requires auth and lets employees create/list products', async () => {
     expect((await request(app).get('/api/v1/products')).status).toBe(401);

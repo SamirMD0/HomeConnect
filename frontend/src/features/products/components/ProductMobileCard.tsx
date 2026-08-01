@@ -5,6 +5,7 @@ import { formatMoney } from '../../customer-financial/utils/financial-format';
 import { Product } from '../types/product.types';
 import { ProductImageView } from './ProductImageView';
 import { ProductStatusBadge } from './ProductStatusBadge';
+import { ProductStockBadge } from './ProductStockBadge';
 
 interface ProductMobileCardProps {
   product: Product;
@@ -49,12 +50,14 @@ export const ProductMobileCard: React.FC<ProductMobileCardProps> = ({
               {product.model}{product.brand ? ` · ${product.brand}` : ''}
             </span>
             {product.barcode && <span className="block truncate font-mono text-[11px] text-slate-400">{product.barcode}</span>}
+            <span className="block truncate font-mono text-[11px] font-semibold text-slate-600">{product.sku}</span>
           </span>
         </label>
         <ProductStatusBadge isActive={product.isActive} />
       </div>
 
       <div className="border-t border-slate-100 px-4 py-3">
+        <div className="mb-3"><ProductStockBadge status={product.stockStatus} /></div>
         <div className="flex items-baseline justify-between gap-3">
           <span className="text-xs text-slate-500">Cash Price / السعر النقدي</span>
           <span dir="ltr" className="text-lg font-bold tabular-nums text-emerald-700">

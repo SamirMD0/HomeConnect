@@ -14,12 +14,16 @@ describe('service mutation policy', () => {
         'imageUrl', 'costPrice', 'pricingPresetId', 'useCustomPricing', 'customExpensePercent',
         'customProfitPercent', 'customDiscountBufferPercent', 'customInstallmentMarkupPercent',
         'customDownPaymentPercent', 'customInstallmentMonths', 'customCalculationMode',
+        'sku', 'labelBarcodeSource', 'trackStock', 'stockQuantity', 'lowStockThreshold',
+        'specifications', 'specificationNotes',
       ].sort()
     );
     expect(containsSensitiveProductFields(['price'])).toBe(true);
     expect(containsSensitiveProductFields(['notes'])).toBe(false);
     expect(containsSensitiveProductFields(['costPrice'])).toBe(true);
     expect(containsSensitiveProductFields(['imageUrl'])).toBe(false);
+    expect(containsSensitiveProductFields(['sku', 'stockQuantity'])).toBe(true);
+    expect(containsSensitiveProductFields(['specifications', 'specificationNotes'])).toBe(false);
   });
 
   it('keeps routine service notes and manual text non-sensitive', () => {

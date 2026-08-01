@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search } from 'lucide-react';
+import { ScanLine } from 'lucide-react';
 import { ProductFilters as ProductFilterValues, ProductSortBy, ProductSortOrder } from '../types/product.types';
 import { productLabels } from '../utils/product-labels';
 
@@ -8,15 +8,17 @@ interface ProductFiltersProps {
   search: string;
   onSearchChange: (value: string) => void;
   onChange: (patch: Partial<ProductFilterValues>) => void;
+  onSearchSubmit: () => void;
+  searchInputRef: React.RefObject<HTMLInputElement | null>;
 }
 
-export const ProductFilters: React.FC<ProductFiltersProps> = ({ filters, search, onSearchChange, onChange }) => (
+export const ProductFilters: React.FC<ProductFiltersProps> = ({ filters, search, onSearchChange, onChange, onSearchSubmit, searchInputRef }) => (
   <section className="border-y border-slate-200 bg-white py-4">
     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(20rem,2fr)_repeat(4,minmax(9rem,1fr))]">
       <label className="relative min-w-0">
         <span className="sr-only">Search products</span>
-        <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-        <input value={search} onChange={(event) => onSearchChange(event.target.value)} placeholder={productLabels.searchPlaceholder} className="w-full rounded-lg border border-slate-300 py-2.5 pl-9 pr-3 text-sm" />
+        <ScanLine className="absolute left-3 top-3 h-4 w-4 text-emerald-600" />
+        <input ref={searchInputRef} autoFocus value={search} onChange={(event) => onSearchChange(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); onSearchSubmit(); } }} placeholder={productLabels.searchPlaceholder} className="w-full rounded-lg border border-slate-300 py-2.5 pl-9 pr-3 text-sm" />
       </label>
       <input value={filters.brand ?? ''} onChange={(event) => onChange({ brand: event.target.value || undefined, page: 1 })} placeholder={productLabels.allBrands} className="min-w-0 rounded-lg border border-slate-300 px-3 py-2.5 text-sm" dir="auto" />
       <select value={filters.hasBarcode === undefined ? '' : String(filters.hasBarcode)} onChange={(event) => onChange({ hasBarcode: event.target.value === '' ? undefined : event.target.value === 'true', page: 1 })} className="min-w-0 rounded-lg border border-slate-300 px-3 py-2.5 text-sm">

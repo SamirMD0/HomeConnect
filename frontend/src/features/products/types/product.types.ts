@@ -50,7 +50,7 @@ export interface ProductLabelData {
   sku: string;
   barcodeValue: string;
   barcodeSource: LabelBarcodeSource;
-  internalPriceCode: string | null;
+  internalPriceCode?: string | null;
 }
 
 export type LabelBarcodeSource = 'SKU' | 'MANUFACTURER';
@@ -104,9 +104,6 @@ export interface CreateProductInput extends ProductPricingConfigurationInput {
   imageUrl?: string | null;
   notes?: string | null;
   labelBarcodeSource?: LabelBarcodeSource;
-  trackStock?: boolean;
-  stockQuantity?: number;
-  lowStockThreshold?: number | null;
   specifications?: ProductSpecification[];
   specificationNotes?: string | null;
 }

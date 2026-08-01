@@ -4,6 +4,8 @@ Local Windows business management system built with React, Electron, Express, Pr
 
 The backend-authoritative ERP dashboard adds customer, supplier, maintenance, and product analytics; an exception center; live-recomputed month-end controls; recent activity; bilingual labels; and an ERP module roadmap. See [Dashboard Information Architecture](docs/ERP_DASHBOARD_INFORMATION_ARCHITECTURE.md) and [Analytics Data Flow](docs/DASHBOARD_ANALYTICS_DATA_FLOW.md).
 
+Products support sequence-generated SKUs, scanner lookup, configurable price-free labels, basic recorded stock fields, and ordered specifications. See [Product Label Printing](docs/setup/PRODUCT_LABEL_PRINTING.md) and [Product SKU Policy](docs/project/PRODUCT_SKU_POLICY.md).
+
 ## Prerequisites
 - Node.js (v20 or higher)
 - PostgreSQL (v16 or higher)

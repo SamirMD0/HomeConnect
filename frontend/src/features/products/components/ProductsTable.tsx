@@ -6,6 +6,7 @@ import { Product } from '../types/product.types';
 import { ProductImageView } from './ProductImageView';
 import { ProductMobileCard } from './ProductMobileCard';
 import { ProductStatusBadge } from './ProductStatusBadge';
+import { ProductStockBadge } from './ProductStockBadge';
 
 interface ProductsTableProps {
   products: Product[];
@@ -36,6 +37,7 @@ export const ProductsTable: React.FC<ProductsTableProps> = ({
             <th scope="col" className="whitespace-nowrap px-4 py-2.5"><ColumnHeading english="Cash Price" arabic="السعر النقدي" align="right" /></th>
             <th scope="col" className="whitespace-nowrap px-4 py-2.5"><ColumnHeading english="Installment" arabic="التقسيط" align="right" /></th>
             <th scope="col" className="whitespace-nowrap px-4 py-2.5"><ColumnHeading english="Status" arabic="الحالة" /></th>
+            <th scope="col" className="whitespace-nowrap px-4 py-2.5"><ColumnHeading english="Stock" arabic="المخزون" /></th>
             <th scope="col" className="sticky right-0 whitespace-nowrap bg-slate-50 px-4 py-2.5"><ColumnHeading english="Actions" arabic="الإجراءات" align="right" /></th>
           </tr>
         </thead>
@@ -81,6 +83,7 @@ export const ProductsTable: React.FC<ProductsTableProps> = ({
                       {product.barcode && (
                         <span className="mt-0.5 block truncate font-mono text-[11px] text-slate-400">{product.barcode}</span>
                       )}
+                      <span className="mt-0.5 block truncate font-mono text-[11px] font-semibold text-slate-600">{product.sku}</span>
                     </div>
                   </div>
                 </td>
@@ -104,6 +107,7 @@ export const ProductsTable: React.FC<ProductsTableProps> = ({
                 </td>
 
                 <td className="whitespace-nowrap px-4 py-3 align-top"><ProductStatusBadge isActive={product.isActive} /></td>
+                <td className="whitespace-nowrap px-4 py-3 align-top"><ProductStockBadge status={product.stockStatus} /></td>
 
                 <td className={`sticky right-0 whitespace-nowrap px-4 py-3 align-top ${rowBg}`}>
                   <div className="flex items-center justify-end gap-1.5">
