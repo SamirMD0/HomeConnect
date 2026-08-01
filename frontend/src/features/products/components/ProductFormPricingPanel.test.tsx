@@ -23,6 +23,7 @@ const result: PricingCalculationResult = {
   cashPrice: '377.82', installmentPrice: '453.38', downPayment: '181.35', remaining: '272.03',
   monthlyPayment: '90.67', lastInstallmentPayment: '90.69', installmentMonths: 3,
   expensesAmount: '30.00', profitAmount: '23.10', discountBufferAmount: '24.72',
+  priceWithoutDiscountBuffer: '353.10', internalPriceCode: 'P353',
 };
 
 function renderPanel(value: ProductFormPricingValues, preview = result) {

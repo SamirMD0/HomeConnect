@@ -4,15 +4,17 @@ import { Modal } from '../../../components/ui/Modal';
 import { useAuth } from '../../../hooks/useAuth';
 import { businessLabels } from '../../../shared/labels/business-labels';
 import { productCorrectionSchema, productFormSchema, ProductFormValues } from '../schemas/product.schemas';
-import { Product, UpdateProductInput } from '../types/product.types';
+import { LabelBarcodeSource, Product, ProductSpecification, ProductStockInput, UpdateProductInput } from '../types/product.types';
 import { normalizeProductError } from '../utils/product-form-errors';
 import { productLabels } from '../utils/product-labels';
-import { useCheckProductDuplicate, useCreateProduct, useRemoveProductImage, useUpdateProduct, useUpdateProductPricing, useUploadProductImage } from '../hooks/useProducts';
+import { useCheckProductDuplicate, useCreateProduct, useRemoveProductImage, useUpdateProduct, useUpdateProductPricing, useUpdateProductStock, useUploadProductImage } from '../hooks/useProducts';
 import { ProductImageField } from './ProductImageField';
 import { productPricingConfigurationSchema, productPricingPreviewOverridesSchema } from '../../pricing/schemas/pricing.schemas';
 import { ProductPricingConfigurationInput } from '../../pricing/types/pricing.types';
 import { ProductDuplicateWarning } from './ProductDuplicateWarning';
 import { emptyProductFormPricing, ProductFormPricingPanel, ProductFormPricingValues } from './ProductFormPricingPanel';
+import { ProductStockSection } from './ProductStockSection';
+import { ProductSpecificationsEditor } from './ProductSpecificationsEditor';
 
 interface ProductFormDialogProps {
   open: boolean;
@@ -30,6 +32,7 @@ export const ProductFormDialog: React.FC<ProductFormDialogProps> = ({ open, prod
   const create = useCreateProduct();
   const updateProduct = useUpdateProduct();
   const updatePricing = useUpdateProductPricing();
+  const updateStock = useUpdateProductStock();
   const uploadImage = useUploadProductImage();
   const removeImage = useRemoveProductImage();
   const duplicate = useCheckProductDuplicate();
@@ -37,6 +40,10 @@ export const ProductFormDialog: React.FC<ProductFormDialogProps> = ({ open, prod
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [form, setForm] = useState<ProductFormValues>(emptyForm);
   const [pricing, setPricing] = useState<ProductFormPricingValues>(emptyProductFormPricing);
+  const [stock, setStock] = useState<ProductStockInput>({ trackStock: false, stockQuantity: 0, lowStockThreshold: null });
+  const [specifications, setSpecifications] = useState<ProductSpecification[]>([]);
+  const [specificationNotes, setSpecificationNotes] = useState('');
+  const [labelBarcodeSource, setLabelBarcodeSource] = useState<LabelBarcodeSource>('SKU');
   const [reason, setReason] = useState('');
   const [accountPassword, setAccountPassword] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -57,6 +64,10 @@ export const ProductFormDialog: React.FC<ProductFormDialogProps> = ({ open, prod
     } : emptyForm);
     setImageFile(null);
     setPricing(productPricingForm(product));
+    setStock(product ? { trackStock: product.trackStock, stockQuantity: product.stockQuantity, lowStockThreshold: product.lowStockThreshold } : { trackStock: false, stockQuantity: 0, lowStockThreshold: null });
+    setSpecifications(product?.specifications ?? []);
+    setSpecificationNotes(product?.specificationNotes ?? '');
+    setLabelBarcodeSource(product?.labelBarcodeSource ?? 'SKU');
     setReason('');
     setAccountPassword('');
     setErrors({});
@@ -65,10 +76,11 @@ export const ProductFormDialog: React.FC<ProductFormDialogProps> = ({ open, prod
     resetDuplicate();
   }, [open, product, resetDuplicate]);
 
-  const sensitiveChanged = useMemo(() => Boolean(product && sensitiveFields.some((field) => normalized(form[field]) !== normalized(product[field]))), [form, product]);
+  const sensitiveChanged = useMemo(() => Boolean(product && (sensitiveFields.some((field) => normalized(form[field]) !== normalized(product[field])) || labelBarcodeSource !== product.labelBarcodeSource)), [form, labelBarcodeSource, product]);
+  const stockChanged = useMemo(() => Boolean(product && JSON.stringify(stock) !== JSON.stringify({ trackStock: product.trackStock, stockQuantity: product.stockQuantity, lowStockThreshold: product.lowStockThreshold })), [product, stock]);
   const pricingInput = useMemo(() => pricingConfigurationInput(pricing), [pricing]);
   const pricingChanged = useMemo(() => Boolean(product && isProductPricingChanged(product, pricingInput)), [pricingInput, product]);
-  const pending = create.isPending || updateProduct.isPending || updatePricing.isPending || uploadImage.isPending;
+  const pending = create.isPending || updateProduct.isPending || updatePricing.isPending || updateStock.isPending || uploadImage.isPending;
 
   const set = (field: keyof ProductFormValues, value: string) => {
     setForm((current) => ({ ...current, [field]: value }));
@@ -100,7 +112,11 @@ export const ProductFormDialog: React.FC<ProductFormDialogProps> = ({ open, prod
       setErrors((current) => ({ ...current, ...Object.fromEntries([...pricingIssues, ...previewIssues].map((issue) => [String(issue.path[0]), issue.message])) }));
       return;
     }
-    if (sensitiveChanged || pricingChanged) {
+    if (!Number.isInteger(stock.stockQuantity) || stock.stockQuantity < 0 || (stock.lowStockThreshold != null && (!Number.isInteger(stock.lowStockThreshold) || stock.lowStockThreshold < 0))) {
+      setErrors((current) => ({ ...current, stockQuantity: 'Stock values must be non-negative whole numbers' }));
+      return;
+    }
+    if (sensitiveChanged || pricingChanged || stockChanged) {
       const correction = productCorrectionSchema.safeParse({ reason, accountPassword });
       if (!correction.success) {
         setErrors((current) => ({ ...current, ...Object.fromEntries(correction.error.issues.map((issue) => [String(issue.path[0]), issue.message])) }));
@@ -113,7 +129,7 @@ export const ProductFormDialog: React.FC<ProductFormDialogProps> = ({ open, prod
       try {
         // The image endpoint is keyed by product id, so a chosen file uploads
         // only once the product row exists.
-        const created = await create.mutateAsync(toCreateInput(values, isAdmin ? pricingInput : undefined));
+        const created = await create.mutateAsync(toCreateInput(values, isAdmin ? pricingInput : undefined, stock, specifications, specificationNotes, labelBarcodeSource));
         if (imageFile) await uploadImage.mutateAsync({ id: created.id, file: imageFile });
         toast.success('Product created / تم إنشاء المنتج');
         onClose();
@@ -121,8 +137,8 @@ export const ProductFormDialog: React.FC<ProductFormDialogProps> = ({ open, prod
       return;
     }
 
-    const input = changedInput(product, values);
-    if (Object.keys(input).length === 0 && !pricingChanged && !imageFile) {
+    const input = changedInput(product, values, specifications, specificationNotes, labelBarcodeSource);
+    if (Object.keys(input).length === 0 && !pricingChanged && !stockChanged && !imageFile) {
       setServerError('No product changes were entered / لم يتم إدخال أي تعديل');
       return;
     }
@@ -130,6 +146,7 @@ export const ProductFormDialog: React.FC<ProductFormDialogProps> = ({ open, prod
     try {
       if (Object.keys(input).length > 0) await updateProduct.mutateAsync({ id: product.id, input });
       if (pricingChanged) await updatePricing.mutateAsync({ id: product.id, input: { ...pricingInput, reason: reason.trim(), accountPassword } });
+      if (stockChanged) await updateStock.mutateAsync({ id: product.id, input: { ...stock, reason: reason.trim(), accountPassword } });
       if (imageFile) await uploadImage.mutateAsync({ id: product.id, file: imageFile });
       toast.success('Product updated / تم تعديل المنتج');
       onClose();
@@ -159,12 +176,18 @@ export const ProductFormDialog: React.FC<ProductFormDialogProps> = ({ open, prod
           <p className="mt-1 text-xs text-slate-500">Product identity and notes / بيانات المنتج وملاحظاته</p>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
+          {product && <div className="sm:col-span-2"><span className="text-xs font-medium text-slate-500">SKU</span><div className="mt-1 inline-flex rounded-md bg-slate-100 px-3 py-2 font-mono text-sm font-bold">{product.sku}</div></div>}
           <Field label={`${businessLabels.product.name} *`} value={form.name} onChange={(value) => set('name', value)} error={errors.name} disabled={Boolean(product && !isAdmin)} />
           <Field label={`${businessLabels.product.model} *`} value={form.model} onChange={(value) => set('model', value)} onBlur={checkDuplicate} error={errors.model} disabled={Boolean(product && !isAdmin)} />
           <Field label={businessLabels.product.brand} value={form.brand} onChange={(value) => set('brand', value)} onBlur={checkDuplicate} error={errors.brand} disabled={Boolean(product && !isAdmin)} />
           <Field label={businessLabels.product.barcode} value={form.barcode} onChange={(value) => set('barcode', value)} error={errors.barcode} disabled={Boolean(product && !isAdmin)} dir="ltr" />
+          <label className="block text-sm font-medium text-slate-700">Label barcode source / مصدر باركود الملصق<select value={labelBarcodeSource} onChange={(event) => setLabelBarcodeSource(event.target.value as LabelBarcodeSource)} disabled={Boolean(product && !isAdmin)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 disabled:bg-slate-100"><option value="SKU">HomeConnect SKU</option><option value="MANUFACTURER" disabled={!form.barcode}>Manufacturer barcode / باركود الشركة</option></select></label>
           <Field label={businessLabels.product.notes} value={form.notes} onChange={(value) => set('notes', value)} error={errors.notes} textarea className="sm:col-span-2" />
         </div>
+
+        <ProductStockSection value={stock} onChange={setStock} />
+        {errors.stockQuantity && <p className="text-xs text-red-600">{errors.stockQuantity}</p>}
+        <ProductSpecificationsEditor value={specifications} notes={specificationNotes} onChange={setSpecifications} onNotesChange={setSpecificationNotes} />
 
         <ProductImageField
           product={product}
@@ -191,7 +214,7 @@ export const ProductFormDialog: React.FC<ProductFormDialogProps> = ({ open, prod
 
         {isAdmin && <ProductFormPricingPanel value={pricing} onChange={setPricing} errors={errors} />}
 
-        {(sensitiveChanged || pricingChanged) && <div className="grid gap-4 rounded-lg border border-amber-200 bg-amber-50 p-4 sm:grid-cols-2">
+        {(sensitiveChanged || pricingChanged || stockChanged) && <div className="grid gap-4 rounded-lg border border-amber-200 bg-amber-50 p-4 sm:grid-cols-2">
           <Field label={`${productLabels.reason} *`} value={reason} onChange={setReason} error={errors.reason} textarea />
           <Field label={`${productLabels.accountPassword} *`} value={accountPassword} onChange={setAccountPassword} error={errors.accountPassword} type="password" />
         </div>}
@@ -224,24 +247,32 @@ function normalized(value: unknown): string {
   return value == null ? '' : String(value).trim();
 }
 
-function toCreateInput(values: ProductFormValues, pricing?: ProductPricingConfigurationInput) {
+function toCreateInput(values: ProductFormValues, pricing?: ProductPricingConfigurationInput, stock?: ProductStockInput, specifications: ProductSpecification[] = [], specificationNotes = '', labelBarcodeSource: LabelBarcodeSource = 'SKU') {
   return {
     name: values.name.trim(), model: values.model.trim(), brand: values.brand.trim() || null,
     barcode: values.barcode.trim() || null, price: values.price.trim() || null,
     discount: values.discount.trim() || null, imageUrl: values.imageUrl.trim() || null,
     notes: values.notes.trim() || null,
+    labelBarcodeSource, ...stock,
+    specifications: cleanSpecifications(specifications), specificationNotes: specificationNotes.trim() || null,
     ...pricing,
   };
 }
 
-function changedInput(product: Product, values: ProductFormValues): UpdateProductInput {
+function changedInput(product: Product, values: ProductFormValues, specifications: ProductSpecification[], specificationNotes: string, labelBarcodeSource: LabelBarcodeSource): UpdateProductInput {
   const next = toCreateInput(values);
   const input: UpdateProductInput = {};
   for (const key of ['name','model','brand','barcode','price','discount','imageUrl','notes'] as const) {
     if (normalized(next[key]) !== normalized(product[key])) input[key] = next[key] as never;
   }
+  const cleaned = cleanSpecifications(specifications);
+  if (JSON.stringify(cleaned) !== JSON.stringify(product.specifications)) input.specifications = cleaned;
+  if (specificationNotes.trim() !== (product.specificationNotes ?? '')) input.specificationNotes = specificationNotes.trim() || null;
+  if (labelBarcodeSource !== product.labelBarcodeSource) input.labelBarcodeSource = labelBarcodeSource;
   return input;
 }
+
+const cleanSpecifications = (entries: ProductSpecification[]) => entries.map((entry) => ({ label: entry.label.trim(), value: entry.value.trim() })).filter((entry) => entry.label && entry.value);
 
 function productPricingForm(product?: Product | null): ProductFormPricingValues {
   if (!product) return { ...emptyProductFormPricing };

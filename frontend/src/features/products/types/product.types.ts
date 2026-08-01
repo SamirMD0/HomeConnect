@@ -13,6 +13,7 @@ export type ProductImage =
 
 export interface Product {
   id: string;
+  sku: string;
   name: string;
   model: string;
   barcode: string | null;
@@ -24,6 +25,14 @@ export interface Product {
   imageUrl: string | null;
   image: ProductImage | null;
   notes: string | null;
+  labelBarcodeSource: LabelBarcodeSource;
+  trackStock: boolean;
+  stockQuantity: number;
+  lowStockThreshold: number | null;
+  stockStatus: ProductStockStatus;
+  specifications: ProductSpecification[];
+  specificationNotes: string | null;
+  exactMatch?: boolean;
   createdAt: string;
   updatedAt: string;
   createdById?: string;
@@ -38,9 +47,20 @@ export interface ProductLabelData {
   name: string;
   model: string;
   brand: string | null;
-  barcode: string | null;
-  price: string | null;
+  sku: string;
+  barcodeValue: string;
+  barcodeSource: LabelBarcodeSource;
+  internalPriceCode: string | null;
 }
+
+export type LabelBarcodeSource = 'SKU' | 'MANUFACTURER';
+export type ProductStockStatus = 'NOT_TRACKED' | 'OUT_OF_STOCK' | 'LOW_STOCK' | 'IN_STOCK';
+export interface ProductSpecification { label: string; value: string }
+export interface ProductStockInput {
+  trackStock: boolean; stockQuantity: number; lowStockThreshold: number | null;
+}
+export interface UpdateProductStockInput extends ProductStockInput, ProductActionInput {}
+export interface UpdateProductSkuInput extends ProductActionInput { sku: string }
 
 export interface ProductAudit {
   id: string;
@@ -83,6 +103,12 @@ export interface CreateProductInput extends ProductPricingConfigurationInput {
   discount?: string | null;
   imageUrl?: string | null;
   notes?: string | null;
+  labelBarcodeSource?: LabelBarcodeSource;
+  trackStock?: boolean;
+  stockQuantity?: number;
+  lowStockThreshold?: number | null;
+  specifications?: ProductSpecification[];
+  specificationNotes?: string | null;
 }
 
 export type UpdateProductInput = Partial<CreateProductInput> & {

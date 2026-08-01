@@ -27,6 +27,7 @@ export interface PricingCalculationResult {
   cashPrice: string; installmentPrice: string; downPayment: string; remaining: string;
   monthlyPayment: string; lastInstallmentPayment: string; installmentMonths: number;
   expensesAmount: string; profitAmount: string; discountBufferAmount: string;
+  priceWithoutDiscountBuffer: string; internalPriceCode: string | null;
 }
 export interface PricingCalculateInput { costPrice:string; presetId?:string; overrides?:Partial<Omit<PricingFormulaInput,'defaultInstallmentMonths'>>; installmentMonths?:number }
 export interface PricingPreviewAvailable {
@@ -34,6 +35,7 @@ export interface PricingPreviewAvailable {
   calculationMode:PricingCalculationMode; roundingMode:PricingRoundingMode;
   inputs:{costPrice?:string;expensePercent:string;profitPercent:string;discountBufferPercent:string;installmentMarkupPercent:string;downPaymentPercent:string;installmentMonths:number};
   breakdown:{expensesAmount:string;profitAmount:string;discountBufferAmount:string}; cashPrice:string;
+  priceWithoutDiscountBuffer:string; internalPriceCode:string|null;
   installment:{installmentPrice:string;downPayment:string;remaining:string;monthlyPayment:string;lastInstallmentPayment:string;installmentMonths:number};
   warnings:string[];
 }

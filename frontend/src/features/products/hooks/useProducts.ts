@@ -8,13 +8,14 @@ import {
   ProductFilters,
   UpdateProductInput,
   UpdateProductPricingInput,
+  UpdateProductSkuInput, UpdateProductStockInput,
 } from '../types/product.types';
 
 export const productKeys = {
   all: ['products'] as const,
   list: (filters: ProductFilters) => [...productKeys.all, 'list', filters] as const,
   detail: (id: string) => [...productKeys.all, 'detail', id] as const,
-  label: (id: string) => [...productKeys.all, 'label', id] as const,
+  label: (id: string, includePriceCode = false) => [...productKeys.all, 'label', id, includePriceCode] as const,
   audit: (id: string) => [...productKeys.all, 'audit', id] as const,
   serviceJobs: (id: string, page: number) => [...productKeys.all, 'service-jobs', id, page] as const,
   pricing: (id:string,months?:number)=>[...productKeys.all,'pricing',id,months] as const,
@@ -69,8 +70,8 @@ export function useUpdateProductPricing(){const queryClient=useQueryClient();ret
 export function useProduct(id: string) {
   return useQuery({ queryKey: productKeys.detail(id), queryFn: () => productsApi.get(id), enabled: Boolean(id) });
 }
-export function useProductLabel(id: string) {
-  return useQuery({ queryKey: productKeys.label(id), queryFn: () => productsApi.label(id), enabled: Boolean(id) });
+export function useProductLabel(id: string, includePriceCode = false) {
+  return useQuery({ queryKey: productKeys.label(id, includePriceCode), queryFn: () => productsApi.label(id, includePriceCode), enabled: Boolean(id) });
 }
 export function useCreateProduct() {
   const queryClient = useQueryClient();
@@ -99,6 +100,22 @@ export function useRestoreProduct() {
     mutationFn: ({ id, input }: { id: string; input: ProductActionInput }) => productsApi.restore(id, input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: productKeys.all }),
   });
+}
+
+const invalidateProducts = (queryClient: ReturnType<typeof useQueryClient>) =>
+  queryClient.invalidateQueries({ queryKey: productKeys.all });
+
+export function useUpdateProductSku() {
+  const queryClient = useQueryClient();
+  return useMutation({ mutationFn: ({ id, input }: { id: string; input: UpdateProductSkuInput }) => productsApi.updateSku(id, input), onSuccess: () => invalidateProducts(queryClient) });
+}
+export function useRegenerateProductSku() {
+  const queryClient = useQueryClient();
+  return useMutation({ mutationFn: ({ id, input }: { id: string; input: ProductActionInput }) => productsApi.regenerateSku(id, input), onSuccess: () => invalidateProducts(queryClient) });
+}
+export function useUpdateProductStock() {
+  const queryClient = useQueryClient();
+  return useMutation({ mutationFn: ({ id, input }: { id: string; input: UpdateProductStockInput }) => productsApi.updateStock(id, input), onSuccess: () => invalidateProducts(queryClient) });
 }
 
 export function useProductAudit(id: string, enabled = true) {

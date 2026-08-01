@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { Archive, Edit3, Printer, RotateCcw, X } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Archive, Copy, Edit3, Printer, RotateCcw, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { formatBusinessDate, formatDateTime, formatMoney } from '../../customer-financial/utils/financial-format';
 import { useAuth } from '../../../hooks/useAuth';
@@ -11,6 +11,9 @@ import { ProductImageView } from './ProductImageView';
 import { ProductStatusBadge } from './ProductStatusBadge';
 import { ProductPricingSection } from './ProductPricingSection';
 import { PricingPreviewCard } from '../../pricing/components/PricingPreviewCard';
+import { ProductStockBadge } from './ProductStockBadge';
+import { ProductSpecificationsView } from './ProductSpecificationsView';
+import { ProductSkuEditDialog } from './ProductSkuEditDialog';
 
 interface ProductDetailsDrawerProps {
   productId: string | null;
@@ -26,6 +29,7 @@ export const ProductDetailsDrawer: React.FC<ProductDetailsDrawerProps> = ({ prod
   const audit = useProductAudit(productId ?? '', user?.role === 'ADMIN');
   const jobs = useProductServiceJobs(productId ?? '');
   const pricing = useProductPricing(productId ?? '');
+  const [skuProduct, setSkuProduct] = useState<Product | null>(null);
 
   useEffect(() => {
     if (!productId) return;
@@ -73,6 +77,7 @@ export const ProductDetailsDrawer: React.FC<ProductDetailsDrawerProps> = ({ prod
 
           <Section title="Product Information / معلومات المنتج"><dl className="grid gap-4 sm:grid-cols-2">
             <Value label={businessLabels.product.name} value={item.name} auto />
+            <div><dt className="text-xs font-medium text-slate-500">SKU</dt><dd className="mt-1 flex items-center gap-2 font-mono text-sm font-bold"><span>{item.sku}</span><button type="button" title="Copy SKU" onClick={() => navigator.clipboard.writeText(item.sku)} className="text-slate-500"><Copy className="h-4 w-4" /></button>{user?.role === 'ADMIN' && <button type="button" onClick={() => setSkuProduct(item)} className="font-sans text-xs font-semibold text-emerald-700">Edit</button>}</dd></div>
             <Value label={businessLabels.product.model} value={item.model} auto />
             <Value label={businessLabels.product.brand} value={item.brand ?? '—'} auto />
             <Value label={businessLabels.product.barcode} value={item.barcode ?? '—'} />
@@ -80,6 +85,10 @@ export const ProductDetailsDrawer: React.FC<ProductDetailsDrawerProps> = ({ prod
             <Value label={businessLabels.product.discountAmount} value={item.discount ? formatMoney(item.discount) : '—'} />
             <Value label={businessLabels.product.netPrice} value={item.netPrice ? formatMoney(item.netPrice) : '—'} />
           </dl></Section>
+
+          <Section title="Stock / المخزون"><div className="space-y-3"><ProductStockBadge status={item.stockStatus} /><dl className="grid gap-4 sm:grid-cols-2"><Value label="Quantity / الكمية" value={String(item.stockQuantity)} /><Value label="Low-stock threshold / الحد" value={item.lowStockThreshold == null ? '—' : String(item.lowStockThreshold)} /></dl></div></Section>
+
+          <Section title="Specifications / المواصفات"><ProductSpecificationsView specifications={item.specifications} notes={item.specificationNotes} /></Section>
 
           <Section title="Pricing / التسعير"><div className="space-y-4"><PricingPreviewCard preview={pricing.data} loading={pricing.isLoading} />{user?.role === 'ADMIN' && <ProductPricingSection product={item} />}</div></Section>
 
@@ -102,6 +111,7 @@ export const ProductDetailsDrawer: React.FC<ProductDetailsDrawerProps> = ({ prod
         </div>}
       </div>
     </aside>
+    <ProductSkuEditDialog product={skuProduct} onClose={() => setSkuProduct(null)} />
   </div>;
 };
 
