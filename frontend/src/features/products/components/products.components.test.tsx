@@ -28,7 +28,7 @@ const product: Product = {
   createdAt: '2026-07-29T10:00:00.000Z',
   updatedAt: '2026-07-29T10:00:00.000Z',
   pricing: {
-    pricingAvailable: true, source: 'PRESET', pricingPresetId: '33333333-3333-4333-8333-333333333333',
+    pricingAvailable: true, source: 'PRESET', pricingPresetId: '33333333-3333-4333-8333-333333333333', installmentEnabled: true,
     presetName: 'Standard AC', useCustomPricing: false, costPrice: '300.00', cashPrice: '377.82',
     installmentPrice: '453.38', downPayment: '181.35', remaining: '272.03', monthlyPayment: '90.67',
     lastInstallmentPayment: '90.69', installmentMonths: 3, warnings: [],
@@ -64,7 +64,7 @@ describe('product management frontend', () => {
     const large: Product = {
       ...product, price: null, discount: null, netPrice: null,
       pricing: {
-        pricingAvailable: true, source: 'PRESET', pricingPresetId: '33333333-3333-4333-8333-333333333333',
+        pricingAvailable: true, source: 'PRESET', pricingPresetId: '33333333-3333-4333-8333-333333333333', installmentEnabled: true,
         presetName: 'White', useCustomPricing: false, costPrice: '670.00', cashPrice: '844.00',
         installmentPrice: '1013.00', downPayment: '405.20', remaining: '607.80', monthlyPayment: '202.60',
         lastInstallmentPayment: '202.60', installmentMonths: 3, warnings: [],
@@ -80,12 +80,14 @@ describe('product management frontend', () => {
     const cachedProduct: Product = {
       ...product,
       pricing: {
-        pricingAvailable: true, source: 'PRESET', pricingPresetId: '33333333-3333-4333-8333-333333333333',
+        pricingAvailable: true, source: 'PRESET', pricingPresetId: '33333333-3333-4333-8333-333333333333', installmentEnabled: false,
         presetName: 'Standard AC', useCustomPricing: false, cashPrice: '377.82', warnings: [],
       },
     };
     const html = renderToStaticMarkup(<MemoryRouter><ProductsTable products={[cachedProduct]} selectedIds={new Set()} canAdmin onSelect={() => undefined} onSelectAll={() => undefined} onView={() => undefined} onEdit={() => undefined} onArchive={() => undefined} onRestore={() => undefined} /></MemoryRouter>);
     expect(html).toContain('$377.82');
+    expect(html).toContain('No installment preview / لا توجد معاينة تقسيط');
+    expect(html).not.toContain('$453.38');
     expect(html).toContain('View details / عرض التفاصيل');
   });
 
@@ -120,6 +122,21 @@ describe('product management frontend', () => {
     expect(html).toContain('SKU: HC-000001');
     expect(html).not.toContain('$450.00');
     expect(html).not.toContain('dir=');
+  });
+
+  it('renders the optional selling price and employee code before the barcode', () => {
+    const html = renderToStaticMarkup(<ProductLabel product={{ id: product.id, name: 'Coffee grinder', model: 'KA3083', brand: 'DSL', sku: 'HC-000003', barcodeValue: 'HC-000003', barcodeSource: 'SKU', internalPriceCode: 'P27', staffLabelCode: 'HC-000003-K27Z', cashPrice: '29.00' }} />);
+    expect(html).toContain('Staff: HC-000003-K27Z');
+    expect(html).toContain('Price: $29');
+    expect(html.indexOf('Price: $29')).toBeLessThan(html.indexOf('product-label-barcode'));
+  });
+
+  it('rounds label prices to whole dollars using half-up rules', async () => {
+    const { formatLabelPrice } = await import('./ProductLabel');
+    expect(formatLabelPrice('15.13')).toBe('$15');
+    expect(formatLabelPrice('15.49')).toBe('$15');
+    expect(formatLabelPrice('15.50')).toBe('$16');
+    expect(formatLabelPrice('15.99')).toBe('$16');
   });
 
   it('shows barcode values in the active service product picker', () => {

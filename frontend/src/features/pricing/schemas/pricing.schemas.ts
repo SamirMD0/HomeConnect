@@ -24,10 +24,18 @@ export const pricingPresetFormSchema = z.object({
 export const pricingActionSchema=z.object({reason:z.string().trim().min(5).max(1000),accountPassword:z.string().min(1)});
 const productPricingShape={
   costPrice:z.string().trim().refine((value)=>value===''||(moneyPattern.test(value)&&value!=='0'&&!/^0\.0{1,2}$/.test(value)),'Cost must be greater than zero with up to 2 decimals'),
-  pricingPresetId:z.string(), useCustomPricing:z.boolean(), customExpensePercent:z.string(), customProfitPercent:z.string(), customDiscountBufferPercent:z.string(),
+  pricingPresetId:z.string(), useCustomPricing:z.boolean(), installmentEnabled:z.boolean(), customExpensePercent:z.string(), customProfitPercent:z.string(), customDiscountBufferPercent:z.string(),
   customInstallmentMarkupPercent:z.string(), customDownPaymentPercent:z.string(), customInstallmentMonths:z.string(), customCalculationMode:z.enum(['COMPOUND','SIMPLE']),
 };
-const validateProductPricing=(value:z.infer<z.ZodObject<typeof productPricingShape>>,context:z.RefinementCtx)=>{ if(!value.useCustomPricing)return; for(const field of ['customExpensePercent','customProfitPercent','customDiscountBufferPercent','customInstallmentMarkupPercent','customDownPaymentPercent'] as const){const max=field==='customDownPaymentPercent'?'100.000':'999.999';if(!percentPattern.test(value[field])||!atMost(value[field],max))context.addIssue({code:'custom',path:[field],message:'Enter a valid percentage'});} if(!/^\d+$/.test(value.customInstallmentMonths)||BigInt(value.customInstallmentMonths)<1n||BigInt(value.customInstallmentMonths)>120n)context.addIssue({code:'custom',path:['customInstallmentMonths'],message:'Months must be between 1 and 120'}); };
+const validateProductPricing=(value:z.infer<z.ZodObject<typeof productPricingShape>>,context:z.RefinementCtx)=>{
+  if(!value.useCustomPricing)return;
+  const fields: Array<'customExpensePercent'|'customProfitPercent'|'customDiscountBufferPercent'|'customInstallmentMarkupPercent'|'customDownPaymentPercent'> = [
+    'customExpensePercent','customProfitPercent','customDiscountBufferPercent',
+    ...(value.installmentEnabled?['customInstallmentMarkupPercent','customDownPaymentPercent'] as const:[]),
+  ];
+  for(const field of fields){const max=field==='customDownPaymentPercent'?'100.000':'999.999';if(!percentPattern.test(value[field])||!atMost(value[field],max))context.addIssue({code:'custom',path:[field],message:'Enter a valid percentage'});}
+  if(value.installmentEnabled&&(!/^\d+$/.test(value.customInstallmentMonths)||BigInt(value.customInstallmentMonths)<1n||BigInt(value.customInstallmentMonths)>120n))context.addIssue({code:'custom',path:['customInstallmentMonths'],message:'Months must be between 1 and 120'});
+};
 export const productPricingConfigurationSchema=z.object(productPricingShape).superRefine(validateProductPricing);
 export const productPricingPreviewOverridesSchema=z.object({
   previewInstallmentMonths:z.string().trim().refine((value)=>value===''||(/^\d+$/.test(value)&&BigInt(value)>=1n&&BigInt(value)<=120n),'Months must be between 1 and 120'),

@@ -74,9 +74,10 @@ export class ServiceJobsRepository {
 }
 
 function buildWhere(query: ServiceJobListQueryInput): Prisma.ServiceJobWhereInput {
-  const statuses = expandStatuses(query.status);
+  const statuses = new Set(expandStatuses(query.status) ?? OPEN_SERVICE_STATUSES);
+  if (query.includeDelivered) statuses.add(ServiceJobStatus.DELIVERED_TO_CUSTOMER);
   return {
-    ...(statuses ? { status: { in: statuses } } : { status: { in: [...OPEN_SERVICE_STATUSES] } }),
+    status: { in: [...statuses] },
     ...(query.customerId ? { customerId: query.customerId } : {}),
     ...(query.productId ? { productId: query.productId } : {}),
     ...(query.requestType ? { requestType: { in: query.requestType } } : {}),

@@ -29,7 +29,7 @@ export const productsApi = {
   update: async (id: string, input: UpdateProductInput): Promise<Product> => (await api.patch(`/products/${id}`, input)).data.data,
   archive: async (id: string, input: ProductActionInput): Promise<Product> => (await api.post(`/products/${id}/archive`, input)).data.data,
   restore: async (id: string, input: ProductActionInput): Promise<Product> => (await api.post(`/products/${id}/restore`, input)).data.data,
-  label: async (id: string, includePriceCode = false): Promise<ProductLabelData> => (await api.get(`/products/${id}/label`, { params: { includePriceCode } })).data.data,
+  label: async (id: string, includePriceCode = false, includePrice = true): Promise<ProductLabelData> => (await api.get(`/products/${id}/label`, { params: { includePriceCode, includePrice } })).data.data,
   updateSku: async (id: string, input: UpdateProductSkuInput): Promise<Product> => (await api.patch(`/products/${id}/sku`, input)).data.data,
   regenerateSku: async (id: string, input: ProductActionInput): Promise<Product> => (await api.post(`/products/${id}/regenerate-sku`, input)).data.data,
   updateStock: async (id: string, input: UpdateProductStockInput): Promise<Product> => (await api.patch(`/products/${id}/stock`, input)).data.data,

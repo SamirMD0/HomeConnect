@@ -20,7 +20,7 @@ export const StatCard: React.FC<StatCardProps> = ({
   color = 'primary',
 }) => {
   const colorClasses = {
-    primary: 'bg-primary-50 text-primary-600',
+    primary: 'bg-brand-50 text-brand-600',
     success: 'bg-green-50 text-green-600',
     danger: 'bg-red-50 text-red-600',
     warning: 'bg-yellow-50 text-yellow-600',

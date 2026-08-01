@@ -24,6 +24,8 @@ describe('service status rules', () => {
     expect(requiredDateForTransition(ServiceJobStatus.IN_WORKSHOP_REPAIR, ServiceJobStatus.SENT_TO_COMPANY)).toBe('sentToCompanyDate');
     expect(requiredDateForTransition(ServiceJobStatus.SENT_TO_COMPANY, ServiceJobStatus.READY_FOR_PICKUP)).toBe('receivedFromCompanyDate');
     expect(requiredDateForTransition(ServiceJobStatus.READY_FOR_PICKUP, ServiceJobStatus.DELIVERED_TO_CUSTOMER)).toBe('returnedToCustomerDate');
+    expect(requiredDateForTransition(ServiceJobStatus.READY_FOR_PICKUP, ServiceJobStatus.PRODUCT_EXCHANGE)).toBe('returnedToCustomerDate');
+    expect(requiredDateForTransition(ServiceJobStatus.RECEIVED, ServiceJobStatus.COMPANY_HOME_MAINTENANCE)).toBeNull();
   });
 
   it('enforces chronological business dates', () => {

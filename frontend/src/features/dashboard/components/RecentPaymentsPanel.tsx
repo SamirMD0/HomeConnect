@@ -15,7 +15,7 @@ export const RecentPaymentsPanel: React.FC<RecentPaymentsPanelProps> = ({
   <section className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
     <div className="mb-4 flex items-center justify-between">
       <h3 className="text-lg font-semibold text-gray-900">Recent Payments</h3>
-      <Link to="/ledger" className="text-sm font-medium text-primary-700 hover:text-primary-800">
+      <Link to="/ledger" className="text-sm font-medium text-brand-700 hover:text-brand-800">
         Ledger
       </Link>
     </div>

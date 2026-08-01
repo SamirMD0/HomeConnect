@@ -162,7 +162,7 @@ export class ServiceJobsService {
         ...(input.sentToCompanyDate !== undefined ? { sentToCompanyDate: dateOrDb(input.sentToCompanyDate) } : {}),
         ...(input.receivedFromCompanyDate !== undefined ? { receivedFromCompanyDate: dateOrDb(input.receivedFromCompanyDate) } : {}),
         ...(input.returnedToCustomerDate !== undefined ? { returnedToCustomerDate: dateOrDb(input.returnedToCustomerDate) } : {}),
-        ...(input.status === ServiceJobStatus.DELIVERED_TO_CUSTOMER || input.status === ServiceJobStatus.NOT_REPAIRABLE
+        ...(input.status === ServiceJobStatus.DELIVERED_TO_CUSTOMER || input.status === ServiceJobStatus.PRODUCT_EXCHANGE || input.status === ServiceJobStatus.NOT_REPAIRABLE
           ? { completedAt: new Date() } : {}),
       };
       const updated = await ServiceJobsRepository.update(id, data, tx);

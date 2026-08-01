@@ -120,6 +120,7 @@ export const reopenServiceJobSchema = z.object({
   status: z.enum([
     ServiceJobStatus.RECEIVED, ServiceJobStatus.INSPECTION_PENDING,
     ServiceJobStatus.IN_WORKSHOP_REPAIR, ServiceJobStatus.SENT_TO_COMPANY,
+    ServiceJobStatus.COMPANY_HOME_MAINTENANCE,
     ServiceJobStatus.WAITING_FOR_PART, ServiceJobStatus.WAITING_CUSTOMER_APPROVAL,
     ServiceJobStatus.READY_FOR_PICKUP,
   ]),
@@ -149,6 +150,7 @@ export const serviceJobListQuerySchema = z.object({
     }
     return entries;
   }),
+  includeDelivered: z.enum(['true', 'false']).optional().transform((value) => value === 'true'),
   requestType: csvEnums(ServiceRequestType),
   routingDecision: csvEnums(ServiceRoutingDecision),
   warrantyStatus: csvEnums(WarrantyStatus),

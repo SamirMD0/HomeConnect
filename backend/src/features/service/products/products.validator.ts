@@ -52,6 +52,7 @@ const productPricingValues = {
   costPrice: positiveCost,
   pricingPresetId: z.preprocess(emptyToNull, z.string().uuid().optional().nullable()),
   useCustomPricing: z.boolean().optional(),
+  installmentEnabled: z.boolean().optional(),
   customExpensePercent: pricingPercent(),
   customProfitPercent: pricingPercent(),
   customDiscountBufferPercent: pricingPercent(),
@@ -178,18 +179,24 @@ export const updateProductPricingSchema = z.object({
 });
 
 function validateCustomPricing(values: Record<string, unknown>, context: z.RefinementCtx) {
-  const hasPricingConfiguration = Object.keys(productPricingValues).some((field) => values[field] != null);
+  const hasPricingConfiguration = Object.keys(productPricingValues)
+    .some((field) => field === 'installmentEnabled' ? values[field] === true : values[field] != null);
   if (hasPricingConfiguration && values.costPrice == null) {
     context.addIssue({ code: 'custom', path: ['costPrice'], message: 'Cost price is required for product pricing' });
   }
   if (values.useCustomPricing !== true) return;
-  for (const field of ['customExpensePercent','customProfitPercent','customDiscountBufferPercent','customInstallmentMarkupPercent','customDownPaymentPercent','customInstallmentMonths','customCalculationMode'] as const) {
+  const fields = ['customExpensePercent','customProfitPercent','customDiscountBufferPercent','customCalculationMode',
+    ...(values.installmentEnabled === true ? ['customInstallmentMarkupPercent','customDownPaymentPercent','customInstallmentMonths'] as const : [])];
+  for (const field of fields) {
     if (values[field] == null) context.addIssue({ code: 'custom', path: [field], message: 'Required when custom pricing is enabled' });
   }
 }
 
 export const productPricingPreviewQuerySchema = z.object({ installmentMonths: z.coerce.number().int().min(1).max(120).optional() });
-export const productLabelQuerySchema = z.object({ includePriceCode: z.enum(['true', 'false']).optional().transform((value) => value === 'true') });
+export const productLabelQuerySchema = z.object({
+  includePriceCode: z.enum(['true', 'false']).optional().transform((value) => value === 'true'),
+  includePrice: z.enum(['true', 'false']).optional().transform((value) => value === 'true'),
+});
 
 export type CreateProductInput = z.infer<typeof createProductSchema>;
 export type UpdateProductInput = z.infer<typeof updateProductSchema>;

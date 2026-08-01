@@ -452,7 +452,7 @@ const StatusDialog: React.FC<{
   const dateField =
     status === 'SENT_TO_COMPANY'
       ? 'sentToCompanyDate'
-      : status === 'DELIVERED_TO_CUSTOMER'
+      : status === 'DELIVERED_TO_CUSTOMER' || status === 'PRODUCT_EXCHANGE'
         ? 'returnedToCustomerDate'
         : job.status === 'SENT_TO_COMPANY' &&
             (status === 'READY_FOR_PICKUP' || status === 'IN_WORKSHOP_REPAIR')

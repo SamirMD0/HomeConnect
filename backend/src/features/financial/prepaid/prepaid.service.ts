@@ -362,6 +362,7 @@ export class PrepaidService {
       amountPaid: moneyToApiString(balance.totalPaid),
       adminDebt: moneyToApiString(adminDebt),
       remainingToCollect: moneyToApiString(remainingToCollect),
+      dueDate: prismaDateToBusinessDate(prepaid.debt.dueDate),
       isFullyPaid: remainingToCollect.isZero(),
       status,
       notes: prepaid.debt.notes,

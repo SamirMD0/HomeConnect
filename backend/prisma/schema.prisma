@@ -121,10 +121,12 @@ enum ServiceJobStatus {
   INSPECTION_PENDING
   IN_WORKSHOP_REPAIR
   SENT_TO_COMPANY
+  COMPANY_HOME_MAINTENANCE
   WAITING_FOR_PART
   WAITING_CUSTOMER_APPROVAL
   READY_FOR_PICKUP
   DELIVERED_TO_CUSTOMER
+  PRODUCT_EXCHANGE
   CANCELLED
   NOT_REPAIRABLE
 }
@@ -553,6 +555,7 @@ model Product {
   pricingPresetId                        String?                 @db.Uuid
   pricingPreset                          PricingPreset?          @relation(fields: [pricingPresetId], references: [id], onDelete: Restrict)
   useCustomPricing                       Boolean                 @default(false)
+  installmentEnabled                     Boolean                 @default(false)
   customExpensePercent                   Decimal?                @db.Decimal(6, 3)
   customProfitPercent                    Decimal?                @db.Decimal(6, 3)
   customDiscountBufferPercent            Decimal?                @db.Decimal(6, 3)

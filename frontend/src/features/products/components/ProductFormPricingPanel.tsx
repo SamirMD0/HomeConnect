@@ -15,6 +15,7 @@ export const emptyProductFormPricing: ProductFormPricingValues = {
   costPrice: '',
   pricingPresetId: '',
   useCustomPricing: false,
+  installmentEnabled: false,
   customExpensePercent: '',
   customProfitPercent: '',
   customDiscountBufferPercent: '',
@@ -38,9 +39,9 @@ export const ProductFormPricingPanel: React.FC<ProductFormPricingPanelProps> = (
   const activePresets = presets.data?.items ?? [];
   const effectivePreset = activePresets.find((preset) => preset.id === value.pricingPresetId)
     ?? (!value.pricingPresetId ? activePresets.find((preset) => preset.isDefault) : undefined);
-  const previewMonths = value.previewInstallmentMonths || String(effectivePreset?.defaultInstallmentMonths ?? '');
-  const previewDownPayment = value.previewDownPaymentPercent || effectivePreset?.downPaymentPercent || '';
-  const previewMarkup = value.previewInstallmentMarkupPercent || effectivePreset?.installmentMarkupPercent || '';
+  const previewMonths = value.installmentEnabled ? value.previewInstallmentMonths || String(effectivePreset?.defaultInstallmentMonths ?? '') : '1';
+  const previewDownPayment = value.installmentEnabled ? value.previewDownPaymentPercent || effectivePreset?.downPaymentPercent || '' : '100';
+  const previewMarkup = value.installmentEnabled ? value.previewInstallmentMarkupPercent || effectivePreset?.installmentMarkupPercent || '' : '0';
 
   const set = <K extends keyof ProductFormPricingValues>(field: K, next: ProductFormPricingValues[K]) => {
     onChange({ ...value, [field]: next });
@@ -95,6 +96,19 @@ export const ProductFormPricingPanel: React.FC<ProductFormPricingPanelProps> = (
         Use Custom Pricing / تسعير مخصص
       </label>
 
+      <label className="flex items-start gap-3 rounded-lg border border-slate-200 bg-white p-3">
+        <input
+          type="checkbox"
+          checked={value.installmentEnabled}
+          onChange={(event) => set('installmentEnabled', event.target.checked)}
+          className="mt-0.5 h-4 w-4"
+        />
+        <span>
+          <span className="block text-sm font-semibold text-slate-800">Offer installment payment / إتاحة الدفع بالتقسيط</span>
+          <span className="mt-0.5 block text-xs text-slate-500">Enable only when this product should be sold with an installment option / فعّل هذا الخيار فقط للمنتجات المتاحة بالتقسيط.</span>
+        </span>
+      </label>
+
       {value.useCustomPricing && <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-3 sm:grid-cols-2">
         <Field label="Expenses % / نسبة المصاريف" value={value.customExpensePercent} set={(next) => set('customExpensePercent', next)} error={errors.customExpensePercent} />
         <Field label="Profit % / نسبة الربح" value={value.customProfitPercent} set={(next) => set('customProfitPercent', next)} error={errors.customProfitPercent} />
@@ -108,7 +122,7 @@ export const ProductFormPricingPanel: React.FC<ProductFormPricingPanelProps> = (
         </label>
       </div>}
 
-      <div>
+      {value.installmentEnabled && <div>
         <h4 className="text-sm font-semibold text-slate-800">Pricing Preview Overrides / تعديلات معاينة السعر</h4>
         <p className="mt-1 text-xs text-slate-500">Preset defaults remain unchanged unless custom pricing is enabled / لا تتغير الصيغة الأصلية إلا عند تفعيل التسعير المخصص.</p>
         <div className="mt-3 grid gap-3 sm:grid-cols-3">
@@ -116,7 +130,7 @@ export const ProductFormPricingPanel: React.FC<ProductFormPricingPanelProps> = (
           <Field label="Preview Down Payment % / الدفعة الأولى للمعاينة" value={previewDownPayment} set={(next) => set('previewDownPaymentPercent', next)} error={errors.previewDownPaymentPercent || errors.customDownPaymentPercent} />
           <Field label="Preview Installment Markup % / زيادة التقسيط للمعاينة" value={previewMarkup} set={(next) => set('previewInstallmentMarkupPercent', next)} error={errors.previewInstallmentMarkupPercent || errors.customInstallmentMarkupPercent} />
         </div>
-      </div>
+      </div>}
 
       {presets.isError && <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">Unable to load pricing presets / تعذر تحميل صيغ التسعير</p>}
       {preview.isError && value.costPrice && <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">Check the pricing values and active preset / تحقق من قيم التسعير والصيغة النشطة</p>}
@@ -131,6 +145,7 @@ export const ProductFormPricingPanel: React.FC<ProductFormPricingPanelProps> = (
           discountBufferPercent: value.customDiscountBufferPercent || effectivePreset?.discountBufferPercent || '',
           downPaymentPercent: previewDownPayment,
         }}
+        showInstallment={value.installmentEnabled}
       />
     </section>
   );

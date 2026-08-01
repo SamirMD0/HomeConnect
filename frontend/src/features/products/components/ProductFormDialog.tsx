@@ -78,7 +78,6 @@ export const ProductFormDialog: React.FC<ProductFormDialogProps> = ({ open, prod
 
   const sensitiveChanged = useMemo(() => Boolean(product && (sensitiveFields.some((field) => normalized(form[field]) !== normalized(product[field])) || labelBarcodeSource !== product.labelBarcodeSource)), [form, labelBarcodeSource, product]);
   const stockChanged = useMemo(() => Boolean(product && JSON.stringify(stock) !== JSON.stringify({ trackStock: product.trackStock, stockQuantity: product.stockQuantity, lowStockThreshold: product.lowStockThreshold })), [product, stock]);
-  const initialStockRequested = !product && (stock.trackStock || stock.stockQuantity !== 0 || stock.lowStockThreshold != null);
   const pricingInput = useMemo(() => pricingConfigurationInput(pricing), [pricing]);
   const pricingChanged = useMemo(() => Boolean(product && isProductPricingChanged(product, pricingInput)), [pricingInput, product]);
   const pending = create.isPending || updateProduct.isPending || updatePricing.isPending || updateStock.isPending || uploadImage.isPending;
@@ -117,7 +116,7 @@ export const ProductFormDialog: React.FC<ProductFormDialogProps> = ({ open, prod
       setErrors((current) => ({ ...current, stockQuantity: 'Stock values must be non-negative whole numbers' }));
       return;
     }
-    if (sensitiveChanged || pricingChanged || stockChanged || initialStockRequested) {
+    if (product && (sensitiveChanged || pricingChanged || stockChanged)) {
       const correction = productCorrectionSchema.safeParse({ reason, accountPassword });
       if (!correction.success) {
         setErrors((current) => ({ ...current, ...Object.fromEntries(correction.error.issues.map((issue) => [String(issue.path[0]), issue.message])) }));
@@ -131,7 +130,6 @@ export const ProductFormDialog: React.FC<ProductFormDialogProps> = ({ open, prod
         // The image endpoint is keyed by product id, so a chosen file uploads
         // only once the product row exists.
         const created = await create.mutateAsync(toCreateInput(values, isAdmin ? pricingInput : undefined, specifications, specificationNotes, labelBarcodeSource));
-        if (initialStockRequested) await updateStock.mutateAsync({ id: created.id, input: { ...stock, reason: reason.trim(), accountPassword } });
         if (imageFile) await uploadImage.mutateAsync({ id: created.id, file: imageFile });
         toast.success('Product created / تم إنشاء المنتج');
         onClose();
@@ -187,8 +185,7 @@ export const ProductFormDialog: React.FC<ProductFormDialogProps> = ({ open, prod
           <Field label={businessLabels.product.notes} value={form.notes} onChange={(value) => set('notes', value)} error={errors.notes} textarea className="sm:col-span-2" />
         </div>
 
-        <ProductStockSection value={stock} onChange={setStock} />
-        {errors.stockQuantity && <p className="text-xs text-red-600">{errors.stockQuantity}</p>}
+        {product && <><ProductStockSection value={stock} onChange={setStock} />{errors.stockQuantity && <p className="text-xs text-red-600">{errors.stockQuantity}</p>}</>}
         <ProductSpecificationsEditor value={specifications} notes={specificationNotes} onChange={setSpecifications} onNotesChange={setSpecificationNotes} />
 
         <ProductImageField
@@ -216,14 +213,14 @@ export const ProductFormDialog: React.FC<ProductFormDialogProps> = ({ open, prod
 
         {isAdmin && <ProductFormPricingPanel value={pricing} onChange={setPricing} errors={errors} />}
 
-        {(sensitiveChanged || pricingChanged || stockChanged || initialStockRequested) && <div className="grid gap-4 rounded-lg border border-amber-200 bg-amber-50 p-4 sm:grid-cols-2">
+        {product && (sensitiveChanged || pricingChanged || stockChanged) && <div className="grid gap-4 rounded-lg border border-amber-200 bg-amber-50 p-4 sm:grid-cols-2">
           <Field label={`${productLabels.reason} *`} value={reason} onChange={setReason} error={errors.reason} textarea />
           <Field label={`${productLabels.accountPassword} *`} value={accountPassword} onChange={setAccountPassword} error={errors.accountPassword} type="password" />
         </div>}
 
         <div className="flex flex-wrap justify-end gap-2 border-t border-slate-200 pt-4">
           <button type="button" onClick={onClose} className="rounded-lg border border-slate-300 px-4 py-2 font-medium">{businessLabels.common.cancel}</button>
-          <button disabled={pending} className="rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-white disabled:opacity-50">{pending ? 'Saving…' : businessLabels.common.saveChanges}</button>
+          <button disabled={pending} className="rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-white disabled:opacity-50">{pending ? 'Saving…' : product ? businessLabels.common.saveChanges : 'Add Product / إضافة منتج'}</button>
         </div>
       </form>
     </Modal>
@@ -285,6 +282,7 @@ function productPricingForm(product?: Product | null): ProductFormPricingValues 
     costPrice: config?.costPrice ?? product.pricing?.costPrice ?? '',
     pricingPresetId: config?.pricingPresetId ?? product.pricing?.pricingPresetId ?? '',
     useCustomPricing: config?.useCustomPricing ?? product.pricing?.useCustomPricing ?? false,
+    installmentEnabled: config?.installmentEnabled ?? product.pricing?.installmentEnabled ?? false,
     customExpensePercent: config?.customExpensePercent ?? '',
     customProfitPercent: config?.customProfitPercent ?? '',
     customDiscountBufferPercent: config?.customDiscountBufferPercent ?? '',
@@ -313,6 +311,7 @@ function pricingConfigurationInput(values: ProductFormPricingValues): ProductPri
       costPrice: null,
       pricingPresetId: null,
       useCustomPricing: false,
+      installmentEnabled: false,
       customExpensePercent: null,
       customProfitPercent: null,
       customDiscountBufferPercent: null,
@@ -326,6 +325,7 @@ function pricingConfigurationInput(values: ProductFormPricingValues): ProductPri
     costPrice: values.costPrice.trim(),
     pricingPresetId: values.pricingPresetId || null,
     useCustomPricing: values.useCustomPricing,
+    installmentEnabled: values.installmentEnabled,
     customExpensePercent: null,
     customProfitPercent: null,
     customDiscountBufferPercent: null,
@@ -340,9 +340,9 @@ function pricingConfigurationInput(values: ProductFormPricingValues): ProductPri
     customExpensePercent: values.customExpensePercent,
     customProfitPercent: values.customProfitPercent,
     customDiscountBufferPercent: values.customDiscountBufferPercent,
-    customInstallmentMarkupPercent: values.previewInstallmentMarkupPercent,
-    customDownPaymentPercent: values.previewDownPaymentPercent,
-    customInstallmentMonths: /^\d+$/.test(values.previewInstallmentMonths) ? Number(values.previewInstallmentMonths) : null,
+    customInstallmentMarkupPercent: values.installmentEnabled ? values.previewInstallmentMarkupPercent : null,
+    customDownPaymentPercent: values.installmentEnabled ? values.previewDownPaymentPercent : null,
+    customInstallmentMonths: values.installmentEnabled && /^\d+$/.test(values.previewInstallmentMonths) ? Number(values.previewInstallmentMonths) : null,
     customCalculationMode: values.customCalculationMode,
   };
 }
@@ -353,6 +353,7 @@ function isProductPricingChanged(product: Product, next: ProductPricingConfigura
     costPrice: current?.costPrice ?? product.pricing?.costPrice ?? null,
     pricingPresetId: current?.pricingPresetId ?? product.pricing?.pricingPresetId ?? null,
     useCustomPricing: current?.useCustomPricing ?? product.pricing?.useCustomPricing ?? false,
+    installmentEnabled: current?.installmentEnabled ?? product.pricing?.installmentEnabled ?? false,
     customExpensePercent: current?.customExpensePercent ?? null,
     customProfitPercent: current?.customProfitPercent ?? null,
     customDiscountBufferPercent: current?.customDiscountBufferPercent ?? null,

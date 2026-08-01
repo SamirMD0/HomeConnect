@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { PricingCalculationResult, PricingPreview } from '../types/pricing.types';
 import { pricingLabels, pricingUnavailableLabels } from '../utils/pricing-labels';
 
-export const PricingPreviewCard:React.FC<{preview?:PricingPreview|PricingCalculationResult|null;loading?:boolean;stale?:boolean;costPrice?:string;percents?:{expensePercent:string;profitPercent:string;discountBufferPercent:string;downPaymentPercent:string}}>=({preview,loading,stale,costPrice,percents})=>{
+export const PricingPreviewCard:React.FC<{preview?:PricingPreview|PricingCalculationResult|null;loading?:boolean;stale?:boolean;costPrice?:string;percents?:{expensePercent:string;profitPercent:string;discountBufferPercent:string;downPaymentPercent:string};showInstallment?:boolean}>=({preview,loading,stale,costPrice,percents,showInstallment=true})=>{
   if(loading&&!preview)return <div className="h-52 animate-pulse rounded-lg bg-slate-100" aria-label="Loading pricing preview"/>;
   if(!preview)return <div className="rounded-lg border border-dashed border-slate-300 p-4 text-sm text-slate-500">{pricingLabels.pricingPreview}</div>;
   if('pricingAvailable'in preview&&!preview.pricingAvailable){return <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">{pricingUnavailableLabels[preview.reason]}{preview.reason==='NO_DEFAULT_PRESET'&&<Link className="ml-2 font-semibold underline" to="/pricing-presets">{pricingLabels.createPreset}</Link>}</div>;}
@@ -15,7 +15,7 @@ export const PricingPreviewCard:React.FC<{preview?:PricingPreview|PricingCalcula
       {costPrice&&<Line label={pricingLabels.costPrice} value={costPrice}/>}<Line label={`+ ${pricingLabels.expensePercent}${inputs?.expensePercent?` (${inputs.expensePercent}%)`:''}`} value={result.expensesAmount}/><Line label={`+ ${pricingLabels.profitPercent}${inputs?.profitPercent?` (${inputs.profitPercent}%)`:''}`} value={result.profitAmount}/><Line label={`+ ${pricingLabels.discountBufferPercent}${inputs?.discountBufferPercent?` (${inputs.discountBufferPercent}%)`:''}`} value={result.discountBufferAmount}/>
       <Line label="Price before buffer / السعر قبل هامش الخصم" value={result.priceWithoutDiscountBuffer}/>{result.internalPriceCode&&<TextLine label="Internal code / الرمز الداخلي" value={result.internalPriceCode}/>} 
       <div className="border-t border-slate-200 pt-2"><Line strong label={pricingLabels.cashPrice} value={result.cashPrice}/></div>
-      <Line label={pricingLabels.installmentPrice} value={result.installmentPrice}/><Line label={pricingLabels.downPayment} value={result.downPayment}/><Line label={pricingLabels.remaining} value={result.remaining}/><Line label={`${pricingLabels.monthlyPayment} × ${result.installmentMonths}`} value={`${result.monthlyPayment}${result.lastInstallmentPayment!==result.monthlyPayment?` (last ${result.lastInstallmentPayment})`:''}`}/>
+      {showInstallment&&<><Line label={pricingLabels.installmentPrice} value={result.installmentPrice}/><Line label={pricingLabels.downPayment} value={result.downPayment}/><Line label={pricingLabels.remaining} value={result.remaining}/><Line label={`${pricingLabels.monthlyPayment} × ${result.installmentMonths}`} value={`${result.monthlyPayment}${result.lastInstallmentPayment!==result.monthlyPayment?` (last ${result.lastInstallmentPayment})`:''}`}/></>}
     </dl>
   </section>;
 };

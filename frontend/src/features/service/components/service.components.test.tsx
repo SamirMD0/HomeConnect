@@ -51,5 +51,12 @@ describe('service frontend components', () => {
 
   it('serializes multi-value filters without unstable array params', () => {
     expect(serviceJobParams({ status: ['RECEIVED','WAITING_FOR_PART'], page: 2 })).toEqual({ status: 'RECEIVED,WAITING_FOR_PART', page: 2 });
+    expect(serviceJobParams({ includeDelivered: true })).toEqual({ includeDelivered: true });
+  });
+
+  it('keeps sent products distinct from company home maintenance and product exchange', () => {
+    expect(renderToStaticMarkup(<ServiceJobStatusChip status="SENT_TO_COMPANY" />)).toContain('Sent to Company / أرسل إلى الشركة');
+    expect(renderToStaticMarkup(<ServiceJobStatusChip status="COMPANY_HOME_MAINTENANCE" />)).toContain('Company Home Maintenance / صيانة منزلية من الشركة');
+    expect(renderToStaticMarkup(<ServiceJobStatusChip status="PRODUCT_EXCHANGE" />)).toContain('Product Exchange / استبدال المنتج');
   });
 });

@@ -15,7 +15,7 @@ export const productKeys = {
   all: ['products'] as const,
   list: (filters: ProductFilters) => [...productKeys.all, 'list', filters] as const,
   detail: (id: string) => [...productKeys.all, 'detail', id] as const,
-  label: (id: string, includePriceCode = false) => [...productKeys.all, 'label', id, includePriceCode] as const,
+  label: (id: string, includePriceCode = false, includePrice = true) => [...productKeys.all, 'label', id, includePriceCode, includePrice] as const,
   audit: (id: string) => [...productKeys.all, 'audit', id] as const,
   serviceJobs: (id: string, page: number) => [...productKeys.all, 'service-jobs', id, page] as const,
   pricing: (id:string,months?:number)=>[...productKeys.all,'pricing',id,months] as const,
@@ -70,8 +70,8 @@ export function useUpdateProductPricing(){const queryClient=useQueryClient();ret
 export function useProduct(id: string) {
   return useQuery({ queryKey: productKeys.detail(id), queryFn: () => productsApi.get(id), enabled: Boolean(id) });
 }
-export function useProductLabel(id: string, includePriceCode = false) {
-  return useQuery({ queryKey: productKeys.label(id, includePriceCode), queryFn: () => productsApi.label(id, includePriceCode), enabled: Boolean(id) });
+export function useProductLabel(id: string, includePriceCode = false, includePrice = true) {
+  return useQuery({ queryKey: productKeys.label(id, includePriceCode, includePrice), queryFn: () => productsApi.label(id, includePriceCode, includePrice), enabled: Boolean(id) });
 }
 export function useCreateProduct() {
   const queryClient = useQueryClient();

@@ -12,6 +12,9 @@ interface PrepaidRowActionsProps {
   onDeliver: (item: PrepaidPurchase) => void;
   onRevertDelivery: (item: PrepaidPurchase) => void;
   onViewDetails: (item: PrepaidPurchase) => void;
+  onEdit: (item: PrepaidPurchase) => void;
+  onRecordPayment: (item: PrepaidPurchase) => void;
+  onCancel: (item: PrepaidPurchase) => void;
 }
 
 export const PrepaidRowActions: React.FC<PrepaidRowActionsProps> = ({
@@ -23,6 +26,9 @@ export const PrepaidRowActions: React.FC<PrepaidRowActionsProps> = ({
   onDeliver,
   onRevertDelivery,
   onViewDetails,
+  onEdit,
+  onRecordPayment,
+  onCancel,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const isOpen = openMenuKey === menuKey;
@@ -48,7 +54,19 @@ export const PrepaidRowActions: React.FC<PrepaidRowActionsProps> = ({
   ];
 
   if (canMutate && item.status === 'PENDING') {
+    actions.push({ label: businessLabels.prepaid.editPurchase, onClick: () => onEdit(item) });
+    if (!item.isFullyPaid) {
+      actions.push({
+        label: businessLabels.prepaid.recordPayment,
+        onClick: () => onRecordPayment(item),
+      });
+    }
     actions.push({ label: businessLabels.prepaid.markDelivered, onClick: () => onDeliver(item) });
+    actions.push({
+      label: businessLabels.prepaid.cancelPurchase,
+      onClick: () => onCancel(item),
+      tone: 'danger',
+    });
   }
   if (canMutate && item.status === 'DELIVERED') {
     actions.push({

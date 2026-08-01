@@ -10,7 +10,7 @@ import { useUpdateProduct, useUpdateProductPricing } from '../hooks/useProducts'
 import { Product } from '../types/product.types';
 
 const empty: ProductPricingFormValues = {
-  costPrice: '', pricingPresetId: '', useCustomPricing: false,
+  costPrice: '', pricingPresetId: '', useCustomPricing: false, installmentEnabled: false,
   customExpensePercent: '', customProfitPercent: '', customDiscountBufferPercent: '',
   customInstallmentMarkupPercent: '', customDownPaymentPercent: '', customInstallmentMonths: '3',
   customCalculationMode: 'COMPOUND', reason: '', accountPassword: '',
@@ -35,6 +35,7 @@ export const ProductPricingSection: React.FC<{ product: Product; initiallyOpen?:
       costPrice: config?.costPrice ?? product.pricing?.costPrice ?? '',
       pricingPresetId: config?.pricingPresetId ?? product.pricing?.pricingPresetId ?? '',
       useCustomPricing: config?.useCustomPricing ?? product.pricing?.useCustomPricing ?? false,
+      installmentEnabled: config?.installmentEnabled ?? product.pricing?.installmentEnabled ?? false,
       customExpensePercent: config?.customExpensePercent ?? '', customProfitPercent: config?.customProfitPercent ?? '',
       customDiscountBufferPercent: config?.customDiscountBufferPercent ?? '', customInstallmentMarkupPercent: config?.customInstallmentMarkupPercent ?? '',
       customDownPaymentPercent: config?.customDownPaymentPercent ?? '', customInstallmentMonths: String(config?.customInstallmentMonths ?? 3),
@@ -60,15 +61,17 @@ export const ProductPricingSection: React.FC<{ product: Product; initiallyOpen?:
 
   const calculationInput = useMemo(() => form.costPrice ? {
     costPrice: form.costPrice, presetId: form.pricingPresetId || undefined,
-    installmentMonths: /^\d+$/.test(previewMonths || form.customInstallmentMonths) ? Number(previewMonths || form.customInstallmentMonths) : undefined,
+    installmentMonths: form.installmentEnabled
+      ? (/^\d+$/.test(previewMonths || form.customInstallmentMonths) ? Number(previewMonths || form.customInstallmentMonths) : undefined)
+      : 1,
     overrides: {
       ...(form.useCustomPricing ? {
       expensePercent: form.customExpensePercent, profitPercent: form.customProfitPercent,
       discountBufferPercent: form.customDiscountBufferPercent, calculationMode: form.customCalculationMode,
       roundingMode: selected?.roundingMode ?? 'NONE' as const,
       } : {}),
-      installmentMarkupPercent: previewMarkup || form.customInstallmentMarkupPercent || selected?.installmentMarkupPercent,
-      downPaymentPercent: previewDownPayment || form.customDownPaymentPercent || selected?.downPaymentPercent,
+      installmentMarkupPercent: form.installmentEnabled ? previewMarkup || form.customInstallmentMarkupPercent || selected?.installmentMarkupPercent : '0',
+      downPaymentPercent: form.installmentEnabled ? previewDownPayment || form.customDownPaymentPercent || selected?.downPaymentPercent : '100',
     },
   } : null, [form, previewDownPayment, previewMarkup, previewMonths, selected]);
   const preview = usePricingCalculation(calculationInput);
@@ -82,6 +85,7 @@ export const ProductPricingSection: React.FC<{ product: Product; initiallyOpen?:
     const value = parsed.data;
     save.mutate({ id: product.id, input: {
       costPrice: value.costPrice || null, pricingPresetId: value.pricingPresetId || null, useCustomPricing: value.useCustomPricing,
+      installmentEnabled: value.installmentEnabled,
       customExpensePercent: value.customExpensePercent || null, customProfitPercent: value.customProfitPercent || null,
       customDiscountBufferPercent: value.customDiscountBufferPercent || null, customInstallmentMarkupPercent: value.customInstallmentMarkupPercent || null,
       customDownPaymentPercent: value.customDownPaymentPercent || null,
@@ -105,11 +109,12 @@ export const ProductPricingSection: React.FC<{ product: Product; initiallyOpen?:
         <div className="grid gap-4 sm:grid-cols-2"><Field label={pricingLabels.costPrice} value={form.costPrice} set={(value) => set('costPrice', value)} error={errors.costPrice} /><label className="text-sm font-medium">{pricingLabels.pricingPresets}<select value={form.pricingPresetId} onChange={(event) => set('pricingPresetId', event.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"><option value="">Default preset / الصيغة الافتراضية</option>{presets.data?.items.map((preset) => <option key={preset.id} value={preset.id}>{preset.name}{!preset.isActive ? ' (archived)' : ''}</option>)}</select></label></div>
         {selected && !selected.isActive && <p className="rounded bg-amber-50 p-2 text-xs text-amber-800">Archived preset remains calculable / الصيغة المؤرشفة ما زالت قابلة للحساب</p>}
         <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={form.useCustomPricing} onChange={(event) => toggleCustom(event.target.checked)} />{pricingLabels.useCustomPricing}</label>
-        {form.useCustomPricing && <div className="grid gap-3 sm:grid-cols-2">{customPercentFields.map((field) => <Field key={field} label={`${field.replace('custom','').replace('Percent','')} %`} value={form[field]} set={(value) => set(field, value)} error={errors[field]} />)}<Field label={pricingLabels.installmentMonths} value={form.customInstallmentMonths} set={(value) => set('customInstallmentMonths', value)} error={errors.customInstallmentMonths} /><label className="text-sm font-medium">{pricingLabels.calculationMode}<select value={form.customCalculationMode} onChange={(event) => set('customCalculationMode', event.target.value as 'COMPOUND'|'SIMPLE')} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"><option value="COMPOUND">{pricingLabels.compound}</option><option value="SIMPLE">{pricingLabels.simple}</option></select></label></div>}
+        <label className="flex items-start gap-3 rounded-lg border border-slate-200 bg-white p-3"><input type="checkbox" checked={form.installmentEnabled} onChange={(event) => set('installmentEnabled', event.target.checked)} className="mt-0.5 h-4 w-4"/><span><span className="block text-sm font-semibold">Offer installment payment / إتاحة الدفع بالتقسيط</span><span className="text-xs font-normal text-slate-500">Enable only for products that can be sold in installments / فعّل فقط للمنتجات المتاحة بالتقسيط.</span></span></label>
+        {form.useCustomPricing && <div className="grid gap-3 sm:grid-cols-2">{customPercentFields.filter((field) => form.installmentEnabled || !['customInstallmentMarkupPercent','customDownPaymentPercent'].includes(field)).map((field) => <Field key={field} label={`${field.replace('custom','').replace('Percent','')} %`} value={form[field]} set={(value) => set(field, value)} error={errors[field]} />)}{form.installmentEnabled&&<Field label={pricingLabels.installmentMonths} value={form.customInstallmentMonths} set={(value) => set('customInstallmentMonths', value)} error={errors.customInstallmentMonths} />}<label className="text-sm font-medium">{pricingLabels.calculationMode}<select value={form.customCalculationMode} onChange={(event) => set('customCalculationMode', event.target.value as 'COMPOUND'|'SIMPLE')} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"><option value="COMPOUND">{pricingLabels.compound}</option><option value="SIMPLE">{pricingLabels.simple}</option></select></label></div>}
         <div className="grid gap-3 sm:grid-cols-2"><Field label="Reason / السبب" value={form.reason} set={(value) => set('reason', value)} error={errors.reason} auto /><Field label="Account Password / كلمة مرور الحساب" value={form.accountPassword} set={(value) => set('accountPassword', value)} error={errors.accountPassword} type="password" /></div>
         <div className="flex flex-wrap gap-2"><button type="button" onClick={submit} disabled={save.isPending} className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white"><Save className="h-4 w-4" />Save Pricing / حفظ التسعير</button>{preview.data?.cashPrice && preview.data.cashPrice !== product.price && <button type="button" onClick={copyCalculated} className="inline-flex items-center gap-2 rounded-lg border border-emerald-300 px-4 py-2 text-sm font-semibold text-emerald-700"><Copy className="h-4 w-4" />Use calculated price / اعتماد السعر المحسوب</button>}</div>
       </div>
-      <div className="space-y-3"><div className="grid gap-2 sm:grid-cols-3 xl:grid-cols-1"><Field label="Preview Months / أشهر المعاينة" value={previewMonths} set={setPreviewMonths} /><Field label="Preview Down Payment % / دفعة المعاينة" value={previewDownPayment} set={setPreviewDownPayment} /><Field label="Preview Markup % / زيادة المعاينة" value={previewMarkup} set={setPreviewMarkup} /></div><PricingPreviewCard preview={preview.data} loading={preview.isLoading} stale={preview.isFetching} costPrice={form.costPrice} percents={{ expensePercent: form.customExpensePercent, profitPercent: form.customProfitPercent, discountBufferPercent: form.customDiscountBufferPercent, downPaymentPercent: previewDownPayment || form.customDownPaymentPercent }} /></div>
+      <div className="space-y-3">{form.installmentEnabled&&<div className="grid gap-2 sm:grid-cols-3 xl:grid-cols-1"><Field label="Preview Months / أشهر المعاينة" value={previewMonths} set={setPreviewMonths} /><Field label="Preview Down Payment % / دفعة المعاينة" value={previewDownPayment} set={setPreviewDownPayment} /><Field label="Preview Markup % / زيادة المعاينة" value={previewMarkup} set={setPreviewMarkup} /></div>}<PricingPreviewCard preview={preview.data} loading={preview.isLoading} stale={preview.isFetching} costPrice={form.costPrice} percents={{ expensePercent: form.customExpensePercent, profitPercent: form.customProfitPercent, discountBufferPercent: form.customDiscountBufferPercent, downPaymentPercent: previewDownPayment || form.customDownPaymentPercent }} showInstallment={form.installmentEnabled} /></div>
     </div>}
   </section>;
 };

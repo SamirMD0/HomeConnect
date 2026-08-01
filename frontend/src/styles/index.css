@@ -1,9 +1,38 @@
 @import "tailwindcss";
 
+/*
+ * Design tokens. Tailwind v4 reads theme values from this block — it does NOT
+ * auto-load tailwind.config.js, so any custom colour must be declared here or
+ * it silently resolves to nothing.
+ *
+ * The app is light-only by design: fixed shop-floor desktops gain nothing from
+ * a dark theme, and every token, chart colour and print rule would need a
+ * second validated variant. Do not add a dark scheme here.
+ */
+@theme {
+  /* Brand accent — the emerald already established across the app. */
+  --color-brand-50: #ecfdf5;
+  --color-brand-100: #d1fae5;
+  --color-brand-200: #a7f3d0;
+  --color-brand-300: #6ee7b7;
+  --color-brand-400: #34d399;
+  --color-brand-500: #10b981;
+  --color-brand-600: #059669;
+  --color-brand-700: #047857;
+  --color-brand-800: #065f46;
+  --color-brand-900: #064e3b;
+
+  /* Semantic status. Reserved for state — never used as decoration, and
+     always paired with an icon or text label so colour is never the only cue. */
+  --color-success: #0ca30c;
+  --color-warning: #fab219;
+  --color-danger: #d03b3b;
+  --color-info: #2a78d6;
+}
 
 @layer base {
   body {
-    @apply antialiased text-gray-900 bg-gray-50;
+    @apply antialiased text-slate-900 bg-slate-50;
   }
 }
 
@@ -55,6 +84,7 @@
   grid-template-columns: repeat(auto-fill, minmax(var(--label-width, 50mm), 1fr));
   gap: 4mm;
 }
+.product-label-grid-auto { grid-template-columns: repeat(auto-fit, max-content); }
 
 .product-label {
   box-sizing: border-box;
@@ -69,6 +99,7 @@
   page-break-inside: avoid;
   font-family: Tahoma, Arial, sans-serif;
 }
+.product-label-auto { min-height: 30mm; overflow: visible; }
 
 .product-label h2 { display: -webkit-box; margin: 0; overflow: hidden; font-size: 12pt; line-height: 1.1; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .product-label p { margin: 1mm 0 0; font-size: 8pt; }
@@ -77,6 +108,7 @@
 .product-label-barcode-text { font-family: monospace; text-align: center; overflow-wrap: anywhere; }
 .product-label-sku { font-family: 'Courier New', monospace; font-weight: 700; }
 .product-label-code { margin-top: 0.5mm !important; text-align: right; font-size: 8pt !important; font-weight: 700; }
+.product-label-price { margin-top: 1mm !important; border-top: 1px solid #000; padding-top: 0.6mm; text-align: right; font-size: 10pt !important; font-weight: 800; }
 
 @layer components {
   .dashboard-shell { @apply mx-auto max-w-[1600px] space-y-5 pb-8; }

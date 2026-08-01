@@ -17,6 +17,8 @@ export interface PrepaidPurchaseView {
   adminDebt: string;
   /** Not a receivable until the item is delivered. */
   remainingToCollect: string;
+  /** Preserved when the underlying prepaid debt is corrected. */
+  dueDate: string;
   isFullyPaid: boolean;
   status: PrepaidPurchaseStatus;
   notes: string | null;

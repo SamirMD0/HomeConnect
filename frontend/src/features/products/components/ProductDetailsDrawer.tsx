@@ -72,7 +72,8 @@ export const ProductDetailsDrawer: React.FC<ProductDetailsDrawerProps> = ({ prod
               productId={item.id}
               image={item.image}
               alt={item.name}
-              className="h-56 w-full rounded-lg border border-slate-200"
+              fit="contain"
+              className="h-96 max-h-[55vh] w-full rounded-lg border border-slate-200 bg-slate-50 p-2"
             />
           )}
 
@@ -93,7 +94,7 @@ export const ProductDetailsDrawer: React.FC<ProductDetailsDrawerProps> = ({ prod
 
           <Section title="Label / الملصق"><ProductLabelPanel product={item} /></Section>
 
-          <Section title="Pricing / التسعير"><div className="space-y-4"><PricingPreviewCard preview={pricing.data} loading={pricing.isLoading} />{user?.role === 'ADMIN' && <ProductPricingSection product={item} />}</div></Section>
+          <Section title="Pricing / التسعير"><div className="space-y-4"><PricingPreviewCard preview={pricing.data} loading={pricing.isLoading} showInstallment={item.pricing?.installmentEnabled ?? false} />{user?.role === 'ADMIN' && <ProductPricingSection product={item} />}</div></Section>
 
           <Section title={businessLabels.product.notes}><p className="user-text-pre whitespace-pre-wrap text-sm text-slate-700" dir="auto">{item.notes || 'No notes / لا توجد ملاحظات'}</p></Section>
 

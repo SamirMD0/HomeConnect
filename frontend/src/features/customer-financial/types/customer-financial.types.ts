@@ -10,6 +10,7 @@ export type FinancialCorrectionSourceScreen =
   | 'LEDGER'
   | 'PLAN_DETAILS'
   | 'REPORTS'
+  | 'PREPAID'
   | 'API';
 
 export interface ApiEnvelope<T> {

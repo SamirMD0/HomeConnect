@@ -150,6 +150,7 @@ describe('PrepaidService', () => {
       expect(view.amountPaid).toBe('200.00');
       expect(view.adminDebt).toBe('-200.00');
       expect(view.remainingToCollect).toBe('200.00');
+      expect(view.dueDate).toBe('2026-07-30');
       expect(view.isFullyPaid).toBe(false);
     });
 

@@ -7,6 +7,7 @@ export const OPEN_SERVICE_STATUSES = [
   ServiceJobStatus.INSPECTION_PENDING,
   ServiceJobStatus.IN_WORKSHOP_REPAIR,
   ServiceJobStatus.SENT_TO_COMPANY,
+  ServiceJobStatus.COMPANY_HOME_MAINTENANCE,
   ServiceJobStatus.WAITING_FOR_PART,
   ServiceJobStatus.WAITING_CUSTOMER_APPROVAL,
   ServiceJobStatus.READY_FOR_PICKUP,
@@ -14,6 +15,7 @@ export const OPEN_SERVICE_STATUSES = [
 
 export const TERMINAL_SERVICE_STATUSES = [
   ServiceJobStatus.DELIVERED_TO_CUSTOMER,
+  ServiceJobStatus.PRODUCT_EXCHANGE,
   ServiceJobStatus.CANCELLED,
   ServiceJobStatus.NOT_REPAIRABLE,
 ] as const;
@@ -23,10 +25,12 @@ const STATUS_RANK: Record<ServiceJobStatus, number> = {
   INSPECTION_PENDING: 1,
   IN_WORKSHOP_REPAIR: 2,
   SENT_TO_COMPANY: 2,
+  COMPANY_HOME_MAINTENANCE: 2,
   WAITING_FOR_PART: 3,
   WAITING_CUSTOMER_APPROVAL: 3,
   READY_FOR_PICKUP: 4,
   DELIVERED_TO_CUSTOMER: 5,
+  PRODUCT_EXCHANGE: 5,
   NOT_REPAIRABLE: 5,
   CANCELLED: 5,
 };
@@ -69,7 +73,9 @@ export function requiredDateForTransition(
   ) {
     return 'receivedFromCompanyDate';
   }
-  if (target === ServiceJobStatus.DELIVERED_TO_CUSTOMER) return 'returnedToCustomerDate';
+  if (target === ServiceJobStatus.DELIVERED_TO_CUSTOMER || target === ServiceJobStatus.PRODUCT_EXCHANGE) {
+    return 'returnedToCustomerDate';
+  }
   return null;
 }
 

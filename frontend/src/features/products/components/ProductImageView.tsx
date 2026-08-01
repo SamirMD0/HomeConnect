@@ -8,6 +8,7 @@ interface ProductImageViewProps {
   image: ProductImage | null;
   alt: string;
   className?: string;
+  fit?: 'cover' | 'contain';
   /** Rendered when the product has no image at all. */
   placeholder?: React.ReactNode;
 }
@@ -18,14 +19,14 @@ interface ProductImageViewProps {
  * without touching the query client.
  */
 export const ProductImageView: React.FC<ProductImageViewProps> = ({
-  productId, image, alt, className = '', placeholder,
+  productId, image, alt, className = '', fit = 'cover', placeholder,
 }) => {
   if (!image) return <>{placeholder ?? <ProductImagePlaceholder className={className} />}</>;
-  if (image.source === 'URL') return <ExternalImage url={image.url} alt={alt} className={className} />;
-  return <UploadedImage productId={productId} version={image.updatedAt} alt={alt} className={className} />;
+  if (image.source === 'URL') return <ExternalImage url={image.url} alt={alt} className={className} fit={fit} />;
+  return <UploadedImage productId={productId} version={image.updatedAt} alt={alt} className={className} fit={fit} />;
 };
 
-const ExternalImage: React.FC<{ url: string; alt: string; className: string }> = ({ url, alt, className }) => {
+const ExternalImage: React.FC<{ url: string; alt: string; className: string; fit: 'cover' | 'contain' }> = ({ url, alt, className, fit }) => {
   const [failed, setFailed] = useState(false);
   useEffect(() => { setFailed(false); }, [url]);
 
@@ -36,19 +37,19 @@ const ExternalImage: React.FC<{ url: string; alt: string; className: string }> =
       alt={alt}
       loading="lazy"
       onError={() => setFailed(true)}
-      className={`object-cover ${className}`}
+      className={`${fit === 'contain' ? 'object-contain' : 'object-cover'} ${className}`}
     />
   );
 };
 
-const UploadedImage: React.FC<{ productId: string; version: string; alt: string; className: string }> = ({
-  productId, version, alt, className,
+const UploadedImage: React.FC<{ productId: string; version: string; alt: string; className: string; fit: 'cover' | 'contain' }> = ({
+  productId, version, alt, className, fit,
 }) => {
   const { url, isError } = useProductImageUrl(productId, version);
 
   if (isError) return <ProductImageBroken className={className} />;
   if (!url) return <div className={`animate-pulse bg-slate-100 ${className}`} aria-hidden />;
-  return <img src={url} alt={alt} className={`object-cover ${className}`} />;
+  return <img src={url} alt={alt} className={`${fit === 'contain' ? 'object-contain' : 'object-cover'} ${className}`} />;
 };
 
 export const ProductImagePlaceholder: React.FC<{ className?: string }> = ({ className = '' }) => (

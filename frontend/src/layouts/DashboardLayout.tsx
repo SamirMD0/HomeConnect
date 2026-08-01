@@ -115,11 +115,18 @@ export const DashboardLayout: React.FC = () => {
             </h2>
           </div>
           
-          <div className="flex items-center gap-4">
-             {/* We can put global search or notifications here later */}
-             <div className="text-sm font-medium text-slate-600 hidden sm:block">
-               {new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' })}
-             </div>
+          <div className="hidden items-center gap-2 sm:flex">
+            <span className="text-sm font-medium text-slate-600">
+              {new Date().toLocaleDateString('en-GB', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+              })}
+            </span>
+            <span className="rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-slate-500">
+              v{__APP_VERSION__}
+            </span>
           </div>
         </header>
 

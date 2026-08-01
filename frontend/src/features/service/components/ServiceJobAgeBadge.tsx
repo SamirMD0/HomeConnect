@@ -12,18 +12,24 @@ export const ServiceJobAgeBadge: React.FC<ServiceJobAgeBadgeProps> = ({ serviceC
   if (!age) return null;
 
   const overdue = age.state === 'OVERDUE';
-  const label = overdue ? 'Overdue / متأخر' : 'Active / نشط';
+  const englishLabel = overdue ? 'Overdue' : 'Active';
+  const arabicLabel = overdue ? 'متأخر' : 'نشط';
 
   return (
     <span
-      className={`mt-1 inline-flex whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-semibold ${
+      dir="ltr"
+      className={`mt-1 inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-0.5 text-[11px] font-semibold leading-4 ${
         overdue
           ? 'border border-red-200 bg-red-50 text-red-700'
           : 'border border-emerald-200 bg-emerald-50 text-emerald-700'
       }`}
-      title={`${age.daysOpen} days open / مفتوح منذ ${age.daysOpen} يوم`}
+      title={`${age.daysOpen} days open | مفتوح منذ ${age.daysOpen} يوم`}
     >
-      {label} · {age.daysOpen}d
+      <span>{englishLabel}</span>
+      <span aria-hidden="true">·</span>
+      <span>{age.daysOpen}d</span>
+      <span aria-hidden="true" className="font-normal opacity-60">/</span>
+      <span dir="rtl">{arabicLabel}</span>
     </span>
   );
 };

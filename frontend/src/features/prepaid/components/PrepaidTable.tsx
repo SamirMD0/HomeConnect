@@ -14,6 +14,9 @@ interface PrepaidTableProps {
   onDeliver: (item: PrepaidPurchase) => void;
   onRevertDelivery: (item: PrepaidPurchase) => void;
   onViewDetails: (item: PrepaidPurchase) => void;
+  onEdit: (item: PrepaidPurchase) => void;
+  onRecordPayment: (item: PrepaidPurchase) => void;
+  onCancel: (item: PrepaidPurchase) => void;
 }
 
 /** Negative while we hold the customer's money; muted zero once delivered. */
@@ -34,6 +37,9 @@ export const PrepaidTable: React.FC<PrepaidTableProps> = ({
   onDeliver,
   onRevertDelivery,
   onViewDetails,
+  onEdit,
+  onRecordPayment,
+  onCancel,
 }) => (
   <>
     <div className="space-y-3 md:hidden">
@@ -47,6 +53,9 @@ export const PrepaidTable: React.FC<PrepaidTableProps> = ({
           onDeliver={onDeliver}
           onRevertDelivery={onRevertDelivery}
           onViewDetails={onViewDetails}
+          onEdit={onEdit}
+          onRecordPayment={onRecordPayment}
+          onCancel={onCancel}
         />
       ))}
     </div>
@@ -116,6 +125,9 @@ export const PrepaidTable: React.FC<PrepaidTableProps> = ({
                     onDeliver={onDeliver}
                     onRevertDelivery={onRevertDelivery}
                     onViewDetails={onViewDetails}
+                    onEdit={onEdit}
+                    onRecordPayment={onRecordPayment}
+                    onCancel={onCancel}
                   />
                 </td>
               </tr>

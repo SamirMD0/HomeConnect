@@ -14,6 +14,12 @@ import {
 import { DeliverPrepaidDialog } from '../features/prepaid/components/DeliverPrepaidDialog';
 import { RevertPrepaidDeliveryDialog } from '../features/prepaid/components/RevertPrepaidDeliveryDialog';
 import { PrepaidDetailsDialog } from '../features/prepaid/components/PrepaidDetailsDialog';
+import { EditPrepaidPurchaseDialog } from '../features/prepaid/components/EditPrepaidPurchaseDialog';
+import {
+  DebtPaymentTarget,
+  RecordDebtPaymentDialog,
+} from '../features/customer-financial/components/RecordDebtPaymentDialog';
+import { CancelDebtDialog } from '../features/customer-financial/components/CancelDebtDialog';
 import { usePrepaidPurchases } from '../features/prepaid/hooks/usePrepaidPurchases';
 import {
   PrepaidFilters as PrepaidFiltersType,
@@ -31,6 +37,9 @@ export const PrepaidPurchasesPage: React.FC = () => {
   const [deliverTarget, setDeliverTarget] = useState<PrepaidPurchase | null>(null);
   const [revertTarget, setRevertTarget] = useState<PrepaidPurchase | null>(null);
   const [detailsTarget, setDetailsTarget] = useState<PrepaidPurchase | null>(null);
+  const [editTarget, setEditTarget] = useState<PrepaidPurchase | null>(null);
+  const [paymentTarget, setPaymentTarget] = useState<PrepaidPurchase | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<PrepaidPurchase | null>(null);
 
   const { data, isLoading, isError, refetch } = usePrepaidPurchases(filters);
 
@@ -40,6 +49,22 @@ export const PrepaidPurchasesPage: React.FC = () => {
     setDeliverTarget(null);
     setRevertTarget(null);
     setDetailsTarget(null);
+    setEditTarget(null);
+    setPaymentTarget(null);
+    setCancelTarget(null);
+  };
+
+  const finishMutation = () => {
+    closeDialogs();
+    void refetch();
+  };
+
+  const openFromDetails = (
+    target: PrepaidPurchase,
+    setter: React.Dispatch<React.SetStateAction<PrepaidPurchase | null>>
+  ) => {
+    setDetailsTarget(null);
+    setter(target);
   };
 
   return (
@@ -78,6 +103,9 @@ export const PrepaidPurchasesPage: React.FC = () => {
               onDeliver={setDeliverTarget}
               onRevertDelivery={setRevertTarget}
               onViewDetails={setDetailsTarget}
+              onEdit={setEditTarget}
+              onRecordPayment={setPaymentTarget}
+              onCancel={setCancelTarget}
             />
           )}
 
@@ -140,10 +168,83 @@ export const PrepaidPurchasesPage: React.FC = () => {
         title={businessLabels.prepaid.viewDetails}
         maxWidth="max-w-lg"
       >
-        {detailsTarget && <PrepaidDetailsDialog item={detailsTarget} />}
+        {detailsTarget && (
+          <PrepaidDetailsDialog
+            item={detailsTarget}
+            canMutate={canMutate}
+            onEdit={() => openFromDetails(detailsTarget, setEditTarget)}
+            onRecordPayment={() => openFromDetails(detailsTarget, setPaymentTarget)}
+            onCancel={() => openFromDetails(detailsTarget, setCancelTarget)}
+          />
+        )}
+      </Modal>
+
+      <Modal
+        isOpen={Boolean(editTarget)}
+        onClose={closeDialogs}
+        title={businessLabels.prepaid.editPurchase}
+        maxWidth="max-w-lg"
+      >
+        {editTarget && (
+          <EditPrepaidPurchaseDialog item={editTarget} onSuccess={finishMutation} />
+        )}
+      </Modal>
+
+      <Modal
+        isOpen={Boolean(paymentTarget)}
+        onClose={closeDialogs}
+        title={businessLabels.prepaid.recordPayment}
+        maxWidth="max-w-lg"
+      >
+        {paymentTarget && (
+          <RecordDebtPaymentDialog
+            customerId={paymentTarget.customer.id}
+            debt={toDebtPaymentTarget(paymentTarget)}
+            contextVariant="prepaid"
+            onSuccess={finishMutation}
+          />
+        )}
+      </Modal>
+
+      <Modal
+        isOpen={Boolean(cancelTarget)}
+        onClose={closeDialogs}
+        title={businessLabels.prepaid.cancelPurchase}
+        maxWidth="max-w-lg"
+      >
+        {cancelTarget && (
+          <CancelDebtDialog
+            customerId={cancelTarget.customer.id}
+            debt={toDebtPaymentTarget(cancelTarget)}
+            onSuccess={finishMutation}
+          />
+        )}
       </Modal>
     </div>
   );
 };
 
 export default PrepaidPurchasesPage;
+
+function toDebtPaymentTarget(item: PrepaidPurchase): DebtPaymentTarget {
+  const status =
+    item.status === 'CANCELLED'
+      ? 'CANCELLED'
+      : item.isFullyPaid
+        ? 'PAID'
+        : item.amountPaid === '0.00'
+          ? 'UNPAID'
+          : 'PARTIALLY_PAID';
+
+  return {
+    id: item.debtId,
+    description: item.itemName,
+    originalAmount: item.fullAmount,
+    totalPaid: item.amountPaid,
+    remainingBalance: item.remainingToCollect,
+    dueDate: item.dueDate,
+    status,
+    calculatedStatus: status,
+    kind: 'PREPAID_PURCHASE',
+  };
+}

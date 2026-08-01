@@ -13,6 +13,9 @@ interface PrepaidMobileCardProps {
   onDeliver: (item: PrepaidPurchase) => void;
   onRevertDelivery: (item: PrepaidPurchase) => void;
   onViewDetails: (item: PrepaidPurchase) => void;
+  onEdit: (item: PrepaidPurchase) => void;
+  onRecordPayment: (item: PrepaidPurchase) => void;
+  onCancel: (item: PrepaidPurchase) => void;
 }
 
 export const PrepaidMobileCard: React.FC<PrepaidMobileCardProps> = ({
@@ -23,6 +26,9 @@ export const PrepaidMobileCard: React.FC<PrepaidMobileCardProps> = ({
   onDeliver,
   onRevertDelivery,
   onViewDetails,
+  onEdit,
+  onRecordPayment,
+  onCancel,
 }) => {
   const owesNothing = Number(item.adminDebt) === 0;
 
@@ -46,6 +52,9 @@ export const PrepaidMobileCard: React.FC<PrepaidMobileCardProps> = ({
           onDeliver={onDeliver}
           onRevertDelivery={onRevertDelivery}
           onViewDetails={onViewDetails}
+          onEdit={onEdit}
+          onRecordPayment={onRecordPayment}
+          onCancel={onCancel}
         />
       </div>
 

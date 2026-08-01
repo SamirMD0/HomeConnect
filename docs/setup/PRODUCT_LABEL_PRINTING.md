@@ -1,12 +1,12 @@
 # Product Label Printing
 
-HomeConnect product labels contain only brand, product name, model, SKU, barcode, and an optional internal staff code. They never contain a monetary price, cost, percentage, stock quantity, or specification.
+HomeConnect product labels contain brand, product name, model, stable SKU, barcode, and optional selling-price and employee-code lines. They never contain cost, percentages, stock quantity, or specifications.
 
 ## Printer setup
 
 1. Open a product and select **Print label**.
-2. Enter the physical sticker width and height in millimeters. The default is 50 x 30 mm.
-3. Leave **Show internal code** off unless staff need the derived memory aid.
+2. Keep **Auto fit** enabled to expand the label around its content. Enable manual sizing only for fixed sticker stock.
+3. Choose whether to show the buffered selling price and employee code.
 4. In the Windows print dialog, select the label printer, use 100% scale, disable margins, and select the matching paper size.
 5. Print one test label before printing a batch.
 
@@ -21,6 +21,6 @@ Configure the scanner as a keyboard device that sends `Enter` after each scan. F
 - Print on the real label roll and confirm that no content is clipped.
 - Scan the HomeConnect barcode using the real scanner.
 - Scan an original manufacturer barcode and verify product lookup.
-- Confirm that the sticker exposes no price information.
+- Confirm the selected selling-price visibility matches the business workflow.
 
 If scanning fails, verify print contrast, 100% scale, clean printer hardware, and the scanner's CODE128 support.

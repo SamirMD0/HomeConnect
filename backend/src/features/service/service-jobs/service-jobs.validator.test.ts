@@ -1,6 +1,6 @@
 import { ServiceRequestType, ServiceRoutingDecision } from '@prisma/client';
 import { describe, expect, it } from 'vitest';
-import { createServiceJobSchema } from './service-jobs.validator';
+import { createServiceJobSchema, serviceJobListQuerySchema } from './service-jobs.validator';
 
 const base = {
   customerId: '11111111-1111-4111-8111-111111111111',
@@ -20,5 +20,10 @@ describe('service job validation', () => {
     expect(() => createServiceJobSchema.parse({ ...base, productId: '22222222-2222-4222-8222-222222222222', manualProductName: 'Fan' })).toThrow();
     expect(() => createServiceJobSchema.parse({ ...base, manualProductName: 'Fan', requestType: ServiceRequestType.PART_REPLACEMENT })).toThrow('Requested part');
     expect(() => createServiceJobSchema.parse({ ...base, manualProductName: 'Fan', routingDecision: ServiceRoutingDecision.COMPANY })).toThrow('Company name');
+  });
+
+  it('parses the delivered visibility flag without making it the default', () => {
+    expect(serviceJobListQuerySchema.parse({}).includeDelivered).toBe(false);
+    expect(serviceJobListQuerySchema.parse({ includeDelivered: 'true' }).includeDelivered).toBe(true);
   });
 });

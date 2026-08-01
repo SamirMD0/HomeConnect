@@ -20,6 +20,16 @@ describe('product validation', () => {
     expect(() => createProductSchema.parse({ name: 'AC', model: 'A1', costPrice: '300.00', useCustomPricing: true })).toThrow('Required');
   });
 
+  it('allows cash-only custom pricing and requires installment fields only when enabled', () => {
+    const cashOnly = {
+      name: 'Accessory', model: 'A15', costPrice: '10.00', useCustomPricing: true,
+      installmentEnabled: false, customExpensePercent: '5', customProfitPercent: '20',
+      customDiscountBufferPercent: '5', customCalculationMode: 'COMPOUND',
+    };
+    expect(createProductSchema.parse(cashOnly)).toMatchObject({ installmentEnabled: false });
+    expect(() => createProductSchema.parse({ ...cashOnly, installmentEnabled: true })).toThrow('Required');
+  });
+
   it('rejects invalid barcode and discount above price', () => {
     expect(() => createProductSchema.parse({ name: 'Fan', model: 'F1', barcode: 'bad value' })).toThrow();
     expect(() => createProductSchema.parse({ name: 'Fan', model: 'F1', price: '10.00', discount: '11.00' })).toThrow('Discount');

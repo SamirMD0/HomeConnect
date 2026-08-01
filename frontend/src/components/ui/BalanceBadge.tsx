@@ -1,37 +1,44 @@
 import React from 'react';
+import { ArrowDownRight, ArrowUpRight, Check } from 'lucide-react';
+import { Badge } from './Badge';
 
 interface BalanceBadgeProps {
   balance: number;
 }
 
+/**
+ * Customer balance state.
+ *
+ * NOTE: the currency here is hardcoded to USD and the balance arrives as a
+ * `number`, which does not match the decimal-string money convention used on
+ * the backend. Both are pre-existing and deliberately left unchanged — money
+ * display is a business decision, not a styling one. See the UI plan (R8).
+ */
 export const BalanceBadge: React.FC<BalanceBadgeProps> = ({ balance }) => {
-  const isDebt = balance > 0;
-  const isCredit = balance < 0; // if overpaid
-
   const formattedBalance = Math.abs(balance).toLocaleString('en-US', {
     style: 'currency',
     currency: 'USD',
   });
 
-  if (isDebt) {
+  if (balance > 0) {
     return (
-      <span className="inline-flex items-center rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10">
+      <Badge tone="danger" icon={<ArrowUpRight />}>
         Debt: {formattedBalance}
-      </span>
+      </Badge>
     );
   }
 
-  if (isCredit) {
+  if (balance < 0) {
     return (
-      <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
+      <Badge tone="info" icon={<ArrowDownRight />}>
         Credit: {formattedBalance}
-      </span>
+      </Badge>
     );
   }
 
   return (
-    <span className="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
+    <Badge tone="success" icon={<Check />}>
       Settled
-    </span>
+    </Badge>
   );
 };

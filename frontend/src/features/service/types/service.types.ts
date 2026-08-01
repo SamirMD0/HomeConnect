@@ -1,8 +1,8 @@
 export type ServiceRequestType = 'ON_CALL' | 'WORKSHOP_DROP_OFF' | 'PART_REPLACEMENT';
 export type ServiceJobStatus =
-  | 'RECEIVED' | 'INSPECTION_PENDING' | 'IN_WORKSHOP_REPAIR' | 'SENT_TO_COMPANY'
+  | 'RECEIVED' | 'INSPECTION_PENDING' | 'IN_WORKSHOP_REPAIR' | 'SENT_TO_COMPANY' | 'COMPANY_HOME_MAINTENANCE'
   | 'WAITING_FOR_PART' | 'WAITING_CUSTOMER_APPROVAL' | 'READY_FOR_PICKUP'
-  | 'DELIVERED_TO_CUSTOMER' | 'CANCELLED' | 'NOT_REPAIRABLE';
+  | 'DELIVERED_TO_CUSTOMER' | 'PRODUCT_EXCHANGE' | 'CANCELLED' | 'NOT_REPAIRABLE';
 export type ServiceRoutingDecision = 'WORKSHOP' | 'COMPANY' | 'CUSTOMER_DECISION' | 'NOT_REPAIRABLE';
 export type WarrantyStatus = 'UNDER_WARRANTY' | 'NO_WARRANTY' | 'UNKNOWN';
 
@@ -67,7 +67,7 @@ export interface ServiceSummary {
 
 export interface PaginationMeta { page: number; pageSize: number; totalItems: number; totalPages: number }
 export interface ServiceJobFilters {
-  search?: string; status?: string[]; requestType?: ServiceRequestType[];
+  search?: string; status?: string[]; includeDelivered?: boolean; requestType?: ServiceRequestType[];
   routingDecision?: ServiceRoutingDecision[]; warrantyStatus?: WarrantyStatus[];
   customerId?: string; productId?: string; dateFrom?: string; dateTo?: string;
   sort?: 'createdDesc' | 'createdAsc' | 'statusAsc' | 'customerAsc'; page?: number; pageSize?: number;

@@ -22,6 +22,7 @@ const pendingItem: PrepaidPurchase = {
   amountPaid: '200.00',
   adminDebt: '-200.00',
   remainingToCollect: '200.00',
+  dueDate: '2026-07-30',
   isFullyPaid: false,
   status: 'PENDING',
   notes: null,
@@ -69,6 +70,9 @@ function renderTable(items: PrepaidPurchase[], canMutate = true) {
       onDeliver={noop}
       onRevertDelivery={noop}
       onViewDetails={noop}
+      onEdit={noop}
+      onRecordPayment={noop}
+      onCancel={noop}
     />
   );
 }
@@ -104,6 +108,48 @@ describe('PrepaidTable', () => {
     const markup = renderTable([pendingItem]);
     expect(markup).toContain('علينا');
     expect(markup).toContain('المتبقي');
+  });
+
+  it('offers every pending prepaid mutation to financial admins', () => {
+    const markup = renderToStaticMarkup(
+      <PrepaidTable
+        items={[pendingItem]}
+        canMutate
+        openMenuKey="p1"
+        onOpenMenuChange={noop}
+        onDeliver={noop}
+        onRevertDelivery={noop}
+        onViewDetails={noop}
+        onEdit={noop}
+        onRecordPayment={noop}
+        onCancel={noop}
+      />
+    );
+
+    expect(markup).toContain('Edit Purchase');
+    expect(markup).toContain('Record Payment');
+    expect(markup).toContain('Cancel Purchase');
+  });
+
+  it('does not expose prepaid mutations to non-admin users', () => {
+    const markup = renderToStaticMarkup(
+      <PrepaidTable
+        items={[pendingItem]}
+        canMutate={false}
+        openMenuKey="p1"
+        onOpenMenuChange={noop}
+        onDeliver={noop}
+        onRevertDelivery={noop}
+        onViewDetails={noop}
+        onEdit={noop}
+        onRecordPayment={noop}
+        onCancel={noop}
+      />
+    );
+
+    expect(markup).not.toContain('Edit Purchase');
+    expect(markup).not.toContain('Record Payment');
+    expect(markup).not.toContain('Cancel Purchase');
   });
 });
 

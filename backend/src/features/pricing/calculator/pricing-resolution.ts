@@ -54,8 +54,10 @@ export function resolveProductPricing(product: ProductPricingRecord, defaultPres
 }
 
 function resolveCustom(product: ProductPricingRecord, defaultPreset: PricingPreset | null, months?: number) {
-  const values = [product.customExpensePercent, product.customProfitPercent, product.customDiscountBufferPercent, product.customInstallmentMarkupPercent, product.customDownPaymentPercent];
-  if (values.some((value) => value == null) || !product.customInstallmentMonths || !product.customCalculationMode) {
+  const cashValues = [product.customExpensePercent, product.customProfitPercent, product.customDiscountBufferPercent];
+  const installmentValues = [product.customInstallmentMarkupPercent, product.customDownPaymentPercent];
+  if (cashValues.some((value) => value == null) || !product.customCalculationMode ||
+      (product.installmentEnabled && (installmentValues.some((value) => value == null) || !product.customInstallmentMonths))) {
     return unavailable('INCOMPLETE_CUSTOM_PRICING');
   }
   const roundingPreset = product.pricingPreset ?? defaultPreset;
@@ -64,8 +66,10 @@ function resolveCustom(product: ProductPricingRecord, defaultPreset: PricingPres
     preset: product.pricingPreset ?? null,
     config: {
       expensePercent: decimal(product.customExpensePercent!), profitPercent: decimal(product.customProfitPercent!),
-      discountBufferPercent: decimal(product.customDiscountBufferPercent!), installmentMarkupPercent: decimal(product.customInstallmentMarkupPercent!),
-      downPaymentPercent: decimal(product.customDownPaymentPercent!), installmentMonths: months ?? product.customInstallmentMonths,
+      discountBufferPercent: decimal(product.customDiscountBufferPercent!),
+      installmentMarkupPercent: product.installmentEnabled ? decimal(product.customInstallmentMarkupPercent!) : new Decimal(0),
+      downPaymentPercent: product.installmentEnabled ? decimal(product.customDownPaymentPercent!) : new Decimal(100),
+      installmentMonths: product.installmentEnabled ? (months ?? product.customInstallmentMonths!) : 1,
       calculationMode: product.customCalculationMode as PricingCalculationMode,
       roundingMode: (roundingPreset?.roundingMode ?? PricingRoundingMode.NONE) as PricingRoundingMode,
     } satisfies PricingConfig,

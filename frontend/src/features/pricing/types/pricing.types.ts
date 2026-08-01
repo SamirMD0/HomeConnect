@@ -43,7 +43,7 @@ export interface PricingPreviewUnavailable { pricingAvailable:false; reason:Pric
 export type PricingPreview = PricingPreviewAvailable | PricingPreviewUnavailable;
 
 export interface ProductPricingConfigurationInput {
-  costPrice?:string|null; pricingPresetId?:string|null; useCustomPricing?:boolean;
+  costPrice?:string|null; pricingPresetId?:string|null; useCustomPricing?:boolean; installmentEnabled?:boolean;
   customExpensePercent?:string|null; customProfitPercent?:string|null; customDiscountBufferPercent?:string|null;
   customInstallmentMarkupPercent?:string|null; customDownPaymentPercent?:string|null;
   customInstallmentMonths?:number|null; customCalculationMode?:PricingCalculationMode|null;

@@ -3,9 +3,14 @@ import { PrepaidPurchase } from '../types/prepaid.types';
 import { PrepaidStatusBadge } from './PrepaidStatusBadge';
 import { formatBusinessDate, formatMoney } from '../../customer-financial/utils/financial-format';
 import { businessLabels } from '../../../shared/labels/business-labels';
+import { Banknote, Pencil, Trash2 } from 'lucide-react';
 
 interface PrepaidDetailsDialogProps {
   item: PrepaidPurchase;
+  canMutate: boolean;
+  onEdit: () => void;
+  onRecordPayment: () => void;
+  onCancel: () => void;
 }
 
 const Row: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
@@ -15,7 +20,13 @@ const Row: React.FC<{ label: string; children: React.ReactNode }> = ({ label, ch
   </div>
 );
 
-export const PrepaidDetailsDialog: React.FC<PrepaidDetailsDialogProps> = ({ item }) => (
+export const PrepaidDetailsDialog: React.FC<PrepaidDetailsDialogProps> = ({
+  item,
+  canMutate,
+  onEdit,
+  onRecordPayment,
+  onCancel,
+}) => (
   <div>
     <div className="mb-3 flex items-center justify-between gap-3">
       <div className="min-w-0">
@@ -74,5 +85,36 @@ export const PrepaidDetailsDialog: React.FC<PrepaidDetailsDialogProps> = ({ item
         </Row>
       )}
     </dl>
+
+    {canMutate && item.status === 'PENDING' && (
+      <div className="mt-5 flex flex-wrap gap-2 border-t border-slate-200 pt-4">
+        <button
+          type="button"
+          onClick={onEdit}
+          className="inline-flex items-center gap-2 rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+        >
+          <Pencil className="h-4 w-4" aria-hidden="true" />
+          {businessLabels.prepaid.editPurchase}
+        </button>
+        {!item.isFullyPaid && (
+          <button
+            type="button"
+            onClick={onRecordPayment}
+            className="inline-flex items-center gap-2 rounded-md border border-emerald-300 px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50"
+          >
+            <Banknote className="h-4 w-4" aria-hidden="true" />
+            {businessLabels.prepaid.recordPayment}
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={onCancel}
+          className="inline-flex items-center gap-2 rounded-md border border-red-300 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
+        >
+          <Trash2 className="h-4 w-4" aria-hidden="true" />
+          {businessLabels.prepaid.cancelPurchase}
+        </button>
+      </div>
+    )}
   </div>
 );

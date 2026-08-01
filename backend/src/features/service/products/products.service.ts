@@ -35,6 +35,7 @@ import { serializeServiceJob } from '../service-jobs/service-jobs.service';
 import { resolveProductPricing } from '../../pricing/calculator/pricing-resolution';
 import { Role } from '@prisma/client';
 import { parsePricingPercent, percentToApiString } from '../../pricing/domain/pricing-percent';
+import { formatStaffLabelCode } from '../../pricing/domain/internal-price-code';
 import { generateProductSku } from './product-sku';
 import { deriveProductStockStatus } from './product-stock';
 
@@ -300,9 +301,10 @@ export class ProductsService {
     const product = await ProductsRepository.findById(id);
     if (!product) throw new NotFoundError('Product not found');
     const usesManufacturer = product.labelBarcodeSource === 'MANUFACTURER' && Boolean(product.barcode);
-    const preview = query.includePriceCode
+    const preview = query.includePriceCode || query.includePrice
       ? resolveProductPricing(product, await ProductsRepository.findActiveDefaultPricingPreset())
       : null;
+    const internalPriceCode = preview?.pricingAvailable ? preview.internalPriceCode : null;
     return {
       id: product.id,
       name: product.name,
@@ -311,7 +313,11 @@ export class ProductsService {
       sku: product.sku,
       barcodeValue: usesManufacturer ? product.barcode! : product.sku,
       barcodeSource: usesManufacturer ? 'MANUFACTURER' as const : 'SKU' as const,
-      ...(query.includePriceCode ? { internalPriceCode: preview?.pricingAvailable ? preview.internalPriceCode : null } : {}),
+      ...(query.includePriceCode ? {
+        internalPriceCode,
+        staffLabelCode: internalPriceCode ? formatStaffLabelCode(product.sku, internalPriceCode) : null,
+      } : {}),
+      ...(query.includePrice ? { cashPrice: preview?.pricingAvailable ? preview.cashPrice : null } : {}),
     };
   }
 
@@ -510,15 +516,18 @@ function serializeProduct(product: ProductRecord, defaultPreset: Prisma.PricingP
   const pricing = preview.pricingAvailable ? {
     pricingAvailable: true, source: preview.source, pricingPresetId: product.pricingPresetId,
     presetName: preview.preset?.name ?? null, useCustomPricing: product.useCustomPricing,
+    installmentEnabled: product.installmentEnabled,
     cashPrice: preview.cashPrice,
-    installmentPrice: preview.installment.installmentPrice,
-    downPayment: preview.installment.downPayment,
-    remaining: preview.installment.remaining,
-    monthlyPayment: preview.installment.monthlyPayment,
-    lastInstallmentPayment: preview.installment.lastInstallmentPayment,
-    installmentMonths: preview.installment.installmentMonths,
+    ...(product.installmentEnabled ? {
+      installmentPrice: preview.installment.installmentPrice,
+      downPayment: preview.installment.downPayment,
+      remaining: preview.installment.remaining,
+      monthlyPayment: preview.installment.monthlyPayment,
+      lastInstallmentPayment: preview.installment.lastInstallmentPayment,
+      installmentMonths: preview.installment.installmentMonths,
+    } : {}),
     ...(isAdmin ? { costPrice: preview.inputs.costPrice, configuration: pricingConfiguration(product) } : {}), warnings: preview.warnings,
-  } : { ...preview, pricingPresetId: product.pricingPresetId, presetName: product.pricingPreset?.name ?? null, useCustomPricing: product.useCustomPricing, ...(isAdmin ? { costPrice: product.costPrice ? moneyToApiString(product.costPrice) : null, configuration: pricingConfiguration(product) } : {}) };
+  } : { ...preview, pricingPresetId: product.pricingPresetId, presetName: product.pricingPreset?.name ?? null, useCustomPricing: product.useCustomPricing, installmentEnabled: product.installmentEnabled, ...(isAdmin ? { costPrice: product.costPrice ? moneyToApiString(product.costPrice) : null, configuration: pricingConfiguration(product) } : {}) };
   return {
     id: product.id,
     name: product.name,
@@ -556,6 +565,7 @@ function pricingConfiguration(product: Product) {
   return {
     costPrice: product.costPrice ? moneyToApiString(product.costPrice) : null,
     pricingPresetId: product.pricingPresetId, useCustomPricing: product.useCustomPricing,
+    installmentEnabled: product.installmentEnabled,
     customExpensePercent: product.customExpensePercent ? percentToApiString(product.customExpensePercent) : null,
     customProfitPercent: product.customProfitPercent ? percentToApiString(product.customProfitPercent) : null,
     customDiscountBufferPercent: product.customDiscountBufferPercent ? percentToApiString(product.customDiscountBufferPercent) : null,
@@ -577,6 +587,7 @@ function productSnapshot(product: Product): Prisma.InputJsonObject {
     specificationNotes: product.specificationNotes,
     costPrice: product.costPrice ? moneyToApiString(product.costPrice) : null,
     pricingPresetId: product.pricingPresetId, useCustomPricing: product.useCustomPricing,
+    installmentEnabled: product.installmentEnabled,
     customExpensePercent: product.customExpensePercent ? percentToApiString(product.customExpensePercent) : null,
     customProfitPercent: product.customProfitPercent ? percentToApiString(product.customProfitPercent) : null,
     customDiscountBufferPercent: product.customDiscountBufferPercent ? percentToApiString(product.customDiscountBufferPercent) : null,
@@ -591,6 +602,7 @@ function pricingUpdateData(input: UpdateProductPricingInput, updatedById: string
   if (input.costPrice !== undefined) data.costPrice = input.costPrice == null ? null : parseMoney(input.costPrice);
   if (input.pricingPresetId !== undefined) data.pricingPresetId = input.pricingPresetId;
   if (input.useCustomPricing !== undefined) data.useCustomPricing = input.useCustomPricing;
+  if (input.installmentEnabled !== undefined) data.installmentEnabled = input.installmentEnabled;
   for (const field of ['customExpensePercent','customProfitPercent','customDiscountBufferPercent','customInstallmentMarkupPercent','customDownPaymentPercent'] as const) if (input[field] !== undefined) data[field] = input[field] == null ? null : parsePricingPercent(input[field]!);
   if (input.customInstallmentMonths !== undefined) data.customInstallmentMonths = input.customInstallmentMonths;
   if (input.customCalculationMode !== undefined) data.customCalculationMode = input.customCalculationMode;
@@ -598,7 +610,7 @@ function pricingUpdateData(input: UpdateProductPricingInput, updatedById: string
 }
 
 const productPricingFields = [
-  'costPrice', 'pricingPresetId', 'useCustomPricing', 'customExpensePercent',
+  'costPrice', 'pricingPresetId', 'useCustomPricing', 'installmentEnabled', 'customExpensePercent',
   'customProfitPercent', 'customDiscountBufferPercent', 'customInstallmentMarkupPercent',
   'customDownPaymentPercent', 'customInstallmentMonths', 'customCalculationMode',
 ] as const;
@@ -617,6 +629,7 @@ function pricingCreateData(input: CreateProductInput): ProductPricingCreateData 
   if (input.costPrice != null) data.costPrice = parseMoney(input.costPrice);
   if (input.pricingPresetId != null) data.pricingPresetId = input.pricingPresetId;
   if (input.useCustomPricing !== undefined) data.useCustomPricing = input.useCustomPricing;
+  if (input.installmentEnabled !== undefined) data.installmentEnabled = input.installmentEnabled;
   for (const field of ['customExpensePercent','customProfitPercent','customDiscountBufferPercent','customInstallmentMarkupPercent','customDownPaymentPercent'] as const) {
     if (input[field] != null) data[field] = parsePricingPercent(input[field]!);
   }
@@ -634,7 +647,9 @@ function assertActivePricingPreset(preset: Awaited<ReturnType<typeof ProductsRep
 
 function assertCompleteCustomPricing(product: Record<string, unknown>) {
   if (!product.useCustomPricing) return;
-  for (const field of ['customExpensePercent','customProfitPercent','customDiscountBufferPercent','customInstallmentMarkupPercent','customDownPaymentPercent','customInstallmentMonths','customCalculationMode']) {
+  const fields = ['customExpensePercent','customProfitPercent','customDiscountBufferPercent','customCalculationMode',
+    ...(product.installmentEnabled ? ['customInstallmentMarkupPercent','customDownPaymentPercent','customInstallmentMonths'] : [])];
+  for (const field of fields) {
     if (product[field] == null) throw new ValidationError('All custom pricing fields are required when custom pricing is enabled', { field });
   }
 }

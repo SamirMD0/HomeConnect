@@ -25,6 +25,7 @@ export interface PrepaidPurchase {
   /** Negative while awaiting delivery: the cash the business is holding. */
   adminDebt: string;
   remainingToCollect: string;
+  dueDate: string;
   isFullyPaid: boolean;
   status: PrepaidStatus;
   notes: string | null;

@@ -18,6 +18,7 @@ interface RecordDebtPaymentDialogProps {
   customerId: string;
   debt: DebtPaymentTarget;
   onSuccess: () => void;
+  contextVariant?: 'debt' | 'prepaid';
 }
 
 export interface DebtPaymentTarget {
@@ -36,6 +37,7 @@ export const RecordDebtPaymentDialog: React.FC<RecordDebtPaymentDialogProps> = (
   customerId,
   debt,
   onSuccess,
+  contextVariant = 'debt',
 }) => {
   const idempotencyKeyRef = useRef(createClientIdempotencyKey('debt-payment'));
   const recordPayment = useRecordDebtPayment(customerId, debt.id);
@@ -81,7 +83,7 @@ export const RecordDebtPaymentDialog: React.FC<RecordDebtPaymentDialogProps> = (
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-      <DebtPaymentContext debt={debt} />
+      <DebtPaymentContext debt={debt} variant={contextVariant} />
       {serverError && (
         <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">
           {serverError}
@@ -119,17 +121,25 @@ export const RecordDebtPaymentDialog: React.FC<RecordDebtPaymentDialogProps> = (
   );
 };
 
-const DebtPaymentContext: React.FC<{ debt: DebtPaymentTarget }> = ({ debt }) => (
+const DebtPaymentContext: React.FC<{
+  debt: DebtPaymentTarget;
+  variant: 'debt' | 'prepaid';
+}> = ({ debt, variant }) => (
   <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm">
     <div className="flex flex-wrap items-center gap-2">
       <p className="user-text font-semibold text-slate-900" dir="auto">{debt.description}</p>
       <FinancialStatusBadge type="debt" status={debt.calculatedStatus ?? debt.status ?? 'UNPAID'} />
     </div>
-    <dl className="grid grid-cols-2 gap-3 text-slate-600 sm:grid-cols-4">
-      <ContextTerm label="Original / الأصلي" value={formatMoney(debt.originalAmount)} />
+    <dl className={`grid grid-cols-2 gap-3 text-slate-600 ${variant === 'debt' ? 'sm:grid-cols-4' : 'sm:grid-cols-3'}`}>
+      <ContextTerm
+        label={variant === 'prepaid' ? businessLabels.prepaid.fullPrice : 'Original / الأصلي'}
+        value={formatMoney(debt.originalAmount)}
+      />
       <ContextTerm label={businessLabels.financial.paid} value={formatMoney(debt.totalPaid)} />
       <ContextTerm label={businessLabels.financial.remaining} value={formatMoney(debt.remainingBalance)} />
-      <ContextTerm label={businessLabels.financial.dueDate} value={formatBusinessDate(debt.dueDate)} />
+      {variant === 'debt' && (
+        <ContextTerm label={businessLabels.financial.dueDate} value={formatBusinessDate(debt.dueDate)} />
+      )}
     </dl>
   </div>
 );
