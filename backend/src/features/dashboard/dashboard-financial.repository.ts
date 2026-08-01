@@ -1,5 +1,6 @@
 import { DebtStatus, InstallmentPlanStatus, Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
+import { businessDateToPrisma, todayInBusinessTimezone } from '../financial';
 
 const customerSelect = {
   id: true,
@@ -57,7 +58,9 @@ export interface DashboardFinancialRecordSet {
 
 export class DashboardFinancialRepository {
   static async loadFinancialRecords(): Promise<DashboardFinancialRecordSet> {
-    const [totalCustomers, debts, plans, payments] = await Promise.all([
+    const businessDate = todayInBusinessTimezone();
+    const monthStart = businessDateToPrisma(`${businessDate.slice(0, 7)}-01`);
+    const [totalCustomers, debts, plans, monthlyPayments, recentPayments] = await Promise.all([
       prisma.customer.count({
         where: {
           deletedAt: null,
@@ -71,6 +74,10 @@ export class DashboardFinancialRepository {
             isActive: true,
           },
           status: { not: DebtStatus.CANCELLED },
+          OR: [
+            { status: { notIn: [DebtStatus.PAID, DebtStatus.CANCELLED] } },
+            { createdAt: { gte: monthStart } },
+          ],
         },
         include: dashboardDebtInclude,
         orderBy: [{ dueDate: 'asc' }, { createdAt: 'desc' }, { id: 'asc' }],
@@ -82,6 +89,10 @@ export class DashboardFinancialRepository {
             isActive: true,
           },
           status: { not: InstallmentPlanStatus.CANCELLED },
+          OR: [
+            { status: { notIn: [InstallmentPlanStatus.COMPLETED, InstallmentPlanStatus.CANCELLED] } },
+            { createdAt: { gte: monthStart } },
+          ],
         },
         include: dashboardPlanInclude,
         orderBy: [{ startDate: 'asc' }, { createdAt: 'desc' }, { id: 'asc' }],
@@ -93,9 +104,19 @@ export class DashboardFinancialRepository {
             isActive: true,
           },
           voidedAt: null,
+          paymentDate: { gte: monthStart },
         },
         include: dashboardPaymentInclude,
         orderBy: [{ paymentDate: 'desc' }, { createdAt: 'desc' }, { id: 'asc' }],
+      }),
+      prisma.payment.findMany({
+        where: {
+          customer: { deletedAt: null, isActive: true },
+          voidedAt: null,
+        },
+        include: dashboardPaymentInclude,
+        orderBy: [{ paymentDate: 'desc' }, { createdAt: 'desc' }, { id: 'asc' }],
+        take: 5,
       }),
     ]);
 
@@ -103,7 +124,7 @@ export class DashboardFinancialRepository {
       totalCustomers,
       debts,
       plans,
-      payments,
+      payments: [...new Map([...monthlyPayments, ...recentPayments].map((payment) => [payment.id, payment])).values()],
     };
   }
 }

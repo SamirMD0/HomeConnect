@@ -3,7 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { useRecordDebtPayment } from '../hooks/useFinancialMutations';
 import { DebtPaymentFormValues, debtPaymentSchema } from '../schemas/financial-mutation.schemas';
-import { DebtStatus } from '../types/customer-financial.types';
+import { DebtKind, DebtStatus } from '../types/customer-financial.types';
 import { todayAsBusinessDate } from '../utils/business-date';
 import { normalizeFinancialError } from '../utils/financial-form-errors';
 import { formatBusinessDate, formatMoney } from '../utils/financial-format';
@@ -11,6 +11,8 @@ import { createClientIdempotencyKey } from '../utils/idempotency-key';
 import { canonicalMoneyInput } from '../utils/money-input';
 import { inputClass, SubmitButton, TextField } from './CreateDebtForm';
 import { FinancialStatusBadge } from './FinancialStatusBadge';
+import { businessLabels } from '../../../shared/labels/business-labels';
+import { paymentMethodLabels } from '../utils/financial-labels';
 
 interface RecordDebtPaymentDialogProps {
   customerId: string;
@@ -27,6 +29,7 @@ export interface DebtPaymentTarget {
   dueDate: string;
   status?: DebtStatus;
   calculatedStatus?: DebtStatus;
+  kind?: DebtKind;
 }
 
 export const RecordDebtPaymentDialog: React.FC<RecordDebtPaymentDialogProps> = ({
@@ -84,7 +87,7 @@ export const RecordDebtPaymentDialog: React.FC<RecordDebtPaymentDialogProps> = (
           {serverError}
         </div>
       )}
-      <TextField label="Amount" error={errors.amount?.message}>
+      <TextField label={businessLabels.financial.amount} error={errors.amount?.message}>
         <input
           {...register('amount')}
           inputMode="decimal"
@@ -93,28 +96,24 @@ export const RecordDebtPaymentDialog: React.FC<RecordDebtPaymentDialogProps> = (
           placeholder="200.00"
         />
       </TextField>
-      <TextField label="Payment date" error={errors.paymentDate?.message}>
+      <TextField label={businessLabels.financial.paymentDate} error={errors.paymentDate?.message}>
         <input {...register('paymentDate')} type="date" className={inputClass(Boolean(errors.paymentDate))} />
       </TextField>
-      <TextField label="Payment method" error={errors.paymentMethod?.message}>
+      <TextField label={businessLabels.financial.paymentMethod} error={errors.paymentMethod?.message}>
         <select {...register('paymentMethod')} className={inputClass(Boolean(errors.paymentMethod))}>
-          <option value="CASH">Cash</option>
-          <option value="CARD">Card</option>
-          <option value="BANK_TRANSFER">Bank transfer</option>
-          <option value="CHECK">Check</option>
-          <option value="OTHER">Other</option>
+          {Object.entries(paymentMethodLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
         </select>
       </TextField>
-      <TextField label="Reference" error={errors.reference?.message}>
+      <TextField label={businessLabels.financial.reference} error={errors.reference?.message}>
         <input {...register('reference')} dir="auto" className={inputClass(Boolean(errors.reference))} placeholder="Optional" />
       </TextField>
-      <TextField label="Notes" error={errors.notes?.message}>
+      <TextField label={businessLabels.common.notes} error={errors.notes?.message}>
         <textarea {...register('notes')} dir="auto" rows={3} className={inputClass(Boolean(errors.notes))} placeholder="Optional" />
       </TextField>
       <SubmitButton
         isPending={recordPayment.isPending}
-        label="Record payment"
-        pendingLabel="Recording payment..."
+        label={businessLabels.financial.recordPayment}
+        pendingLabel="Recording payment... / جارٍ تسجيل الدفعة..."
       />
     </form>
   );
@@ -127,10 +126,10 @@ const DebtPaymentContext: React.FC<{ debt: DebtPaymentTarget }> = ({ debt }) => 
       <FinancialStatusBadge type="debt" status={debt.calculatedStatus ?? debt.status ?? 'UNPAID'} />
     </div>
     <dl className="grid grid-cols-2 gap-3 text-slate-600 sm:grid-cols-4">
-      <ContextTerm label="Original" value={formatMoney(debt.originalAmount)} />
-      <ContextTerm label="Paid" value={formatMoney(debt.totalPaid)} />
-      <ContextTerm label="Remaining" value={formatMoney(debt.remainingBalance)} />
-      <ContextTerm label="Due" value={formatBusinessDate(debt.dueDate)} />
+      <ContextTerm label="Original / الأصلي" value={formatMoney(debt.originalAmount)} />
+      <ContextTerm label={businessLabels.financial.paid} value={formatMoney(debt.totalPaid)} />
+      <ContextTerm label={businessLabels.financial.remaining} value={formatMoney(debt.remainingBalance)} />
+      <ContextTerm label={businessLabels.financial.dueDate} value={formatBusinessDate(debt.dueDate)} />
     </dl>
   </div>
 );

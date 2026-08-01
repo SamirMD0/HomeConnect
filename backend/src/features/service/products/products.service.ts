@@ -1,0 +1,541 @@
+import {
+  Prisma,
+  Product,
+  ServiceAuditAction,
+  ServiceAuditRecordType,
+} from '@prisma/client';
+import { compareMoney, moneyToApiString, parseMoney, subtractMoney } from '../../financial/domain/money';
+import { runFinancialTransaction } from '../../financial/infrastructure/transaction';
+import { verifyAdminPassword } from '../../../lib/admin-verification';
+import { NotFoundError, ValidationError } from '../../../lib/errors';
+import { writeServiceAudit } from '../audit/service-audit';
+import { ServiceAuditRepository } from '../audit/service-audit.repository';
+import { ServiceConflictError } from '../domain/service-errors';
+import { RequestContext, ServiceMutationUser } from '../domain/service-types';
+import {
+  assertServiceAdmin,
+  containsSensitiveProductFields,
+} from '../authorization/service-policy';
+import {
+  CreateProductInput,
+  ProductActionInput,
+  ProductAuditQueryInput,
+  ProductDuplicateQueryInput,
+  ProductListQueryInput,
+  ProductServiceJobsQueryInput,
+  UpdateProductPricingInput,
+  ProductPricingPreviewQueryInput,
+  UpdateProductInput,
+} from './products.validator';
+import { ProductsRepository } from './products.repository';
+import { serializeServiceJob } from '../service-jobs/service-jobs.service';
+import { resolveProductPricing } from '../../pricing/calculator/pricing-resolution';
+import { Role } from '@prisma/client';
+import { parsePricingPercent, percentToApiString } from '../../pricing/domain/pricing-percent';
+
+export class ProductsService {
+  static async create(input: CreateProductInput, user: ServiceMutationUser, context: RequestContext) {
+    const includesPricing = hasProductPricingInput(input);
+    if (includesPricing) assertServiceAdmin(user);
+    try {
+      return await runFinancialTransaction(async (tx) => {
+        if (input.barcode && (await ProductsRepository.findByBarcode(input.barcode, tx))) {
+          throw barcodeConflict();
+        }
+        if (input.pricingPresetId) {
+          const preset = await ProductsRepository.findPricingPreset(input.pricingPresetId, tx);
+          assertActivePricingPreset(preset);
+        }
+        const product = await ProductsRepository.create(
+          {
+            name: input.name,
+            model: input.model,
+            barcode: input.barcode ?? null,
+            brand: input.brand ?? null,
+            price: moneyOrNull(input.price),
+            discount: moneyOrNull(input.discount),
+            notes: input.notes ?? null,
+            createdById: user.userId,
+            ...pricingCreateData(input),
+          },
+          tx
+        );
+        const actor = await loadActor(user.userId, tx);
+        await writeServiceAudit({
+          recordType: ServiceAuditRecordType.PRODUCT,
+          recordId: product.id,
+          action: ServiceAuditAction.CREATE,
+          changedById: user.userId,
+          changedByName: actor.fullName,
+          changedByUsername: actor.username,
+          reason: 'Product created',
+          beforeValues: {},
+          afterValues: productSnapshot(product),
+          requestId: context.requestId,
+          ipAddress: context.ipAddress,
+        }, tx);
+        return serializeProduct(product, await ProductsRepository.findActiveDefaultPricingPreset(tx), user.role === Role.ADMIN);
+      });
+    } catch (error) {
+      throw mapProductError(error);
+    }
+  }
+
+  static async list(query: ProductListQueryInput, viewer?: { role: string }) {
+    const result = await ProductsRepository.list({
+      search: query.search,
+      isActive: query.isActive,
+      brand: query.brand,
+      hasBarcode: query.hasBarcode,
+      sortBy: query.sortBy,
+      sortOrder: query.sortOrder,
+      skip: (query.page - 1) * query.pageSize,
+      take: query.pageSize,
+    });
+    const defaultPreset = await ProductsRepository.findActiveDefaultPricingPreset();
+    return { ...result, items: result.items.map((item) => serializeProduct(item, defaultPreset, viewer?.role === Role.ADMIN)), page: query.page, pageSize: query.pageSize };
+  }
+
+  static async get(id: string, viewer?: { role: string }) {
+    const product = await ProductsRepository.findById(id);
+    if (!product) throw new NotFoundError('Product not found');
+    const defaultPreset = await ProductsRepository.findActiveDefaultPricingPreset();
+    return serializeProduct(product, defaultPreset, viewer?.role === Role.ADMIN);
+  }
+
+  static async getPricingPreview(id: string, query: ProductPricingPreviewQueryInput, viewer?: { role: string }) {
+    const product = await ProductsRepository.findById(id);
+    if (!product) throw new NotFoundError('Product not found');
+    const preview = resolveProductPricing(product, await ProductsRepository.findActiveDefaultPricingPreset(), query.installmentMonths);
+    if (preview.pricingAvailable && viewer?.role !== Role.ADMIN) {
+      const inputs = Object.fromEntries(Object.entries(preview.inputs).filter(([key]) => key !== 'costPrice'));
+      return { ...preview, inputs };
+    }
+    return preview;
+  }
+
+  static async updatePricing(id: string, input: UpdateProductPricingInput, user: ServiceMutationUser, context: RequestContext) {
+    assertServiceAdmin(user);
+    const fields = Object.keys(input).filter((field) => !['reason', 'accountPassword'].includes(field));
+    return runFinancialTransaction(async (tx) => {
+      const existing = await ProductsRepository.findById(id, tx);
+      if (!existing) throw new NotFoundError('Product not found');
+      await verifyAdminPassword(user.userId, input.accountPassword, { action: 'UPDATE_PRODUCT_PRICING', recordType: 'PRODUCT', recordId: id, ipAddress: context.ipAddress, domainLabel: 'product pricing changes' }, tx);
+      if (input.pricingPresetId) {
+        const preset = await ProductsRepository.findPricingPreset(input.pricingPresetId, tx);
+        assertActivePricingPreset(preset);
+      }
+      const data = pricingUpdateData(input, user.userId);
+      assertCompleteCustomPricing({ ...existing, ...data });
+      const updated = await ProductsRepository.update(id, data, tx);
+      const actor = await loadActor(user.userId, tx);
+      await writeServiceAudit({ recordType: ServiceAuditRecordType.PRODUCT, recordId: id, action: ServiceAuditAction.CHANGE_PRICE,
+        changedById: user.userId, changedByName: actor.fullName, changedByUsername: actor.username, reason: input.reason,
+        beforeValues: changedSnapshot(existing, fields), afterValues: changedSnapshot(updated, fields), requestId: context.requestId, ipAddress: context.ipAddress,
+      }, tx);
+      return serializeProduct(updated, await ProductsRepository.findActiveDefaultPricingPreset(tx), true);
+    });
+  }
+
+  static async update(
+    id: string,
+    input: UpdateProductInput,
+    user: ServiceMutationUser,
+    context: RequestContext
+  ) {
+    const fields = Object.keys(input).filter((field) => !['reason', 'accountPassword'].includes(field));
+    if (fields.length === 0) throw new ValidationError('At least one product field is required');
+    const sensitive = containsSensitiveProductFields(fields);
+    if (sensitive) {
+      assertServiceAdmin(user);
+      if (!input.reason) throw new ValidationError('Reason is required for sensitive product changes');
+      if (!input.accountPassword) throw new ValidationError('Account password is required');
+    }
+
+    try {
+      return await runFinancialTransaction(async (tx) => {
+        const existing = await ProductsRepository.findById(id, tx);
+        if (!existing) throw new NotFoundError('Product not found');
+        if (sensitive) {
+          await verifyAdminPassword(user.userId, input.accountPassword!, {
+            action: 'UPDATE_PRODUCT',
+            recordType: 'PRODUCT',
+            recordId: id,
+            ipAddress: context.ipAddress,
+            domainLabel: 'service and product changes',
+          }, tx);
+        }
+        if (input.barcode && input.barcode !== existing.barcode) {
+          const duplicate = await ProductsRepository.findByBarcode(input.barcode, tx);
+          if (duplicate) throw barcodeConflict();
+        }
+        const data = productUpdateData(input, user.userId);
+        assertDiscountWithinPrice(
+          input.price === undefined ? existing.price : input.price,
+          input.discount === undefined ? existing.discount : input.discount
+        );
+        // A product carries one image source: pointing at a URL drops uploaded bytes.
+        if (input.imageUrl) await ProductsRepository.deleteImage(id, tx);
+        const updated = await ProductsRepository.update(id, data, tx);
+        const actor = await loadActor(user.userId, tx);
+        await writeServiceAudit({
+          recordType: ServiceAuditRecordType.PRODUCT,
+          recordId: id,
+          action: ServiceAuditAction.UPDATE_DETAILS,
+          changedById: user.userId,
+          changedByName: actor.fullName,
+          changedByUsername: actor.username,
+          reason: input.reason ?? 'Product notes updated',
+          beforeValues: changedSnapshot(existing, fields),
+          afterValues: changedSnapshot(updated, fields),
+          requestId: context.requestId,
+          ipAddress: context.ipAddress,
+        }, tx);
+        return serializeProduct(updated);
+      });
+    } catch (error) {
+      throw mapProductError(error);
+    }
+  }
+
+  static async getImage(id: string) {
+    const image = await ProductsRepository.findImageBytes(id);
+    if (!image) throw new NotFoundError('Product image not found');
+    return image;
+  }
+
+  /**
+   * Uploading bytes clears any external image URL, and vice versa, so a product
+   * always has exactly one image source.
+   */
+  static async uploadImage(
+    id: string,
+    file: { data: Buffer; mimeType: string },
+    user: ServiceMutationUser,
+    context: RequestContext
+  ) {
+    return runFinancialTransaction(async (tx) => {
+      const existing = await ProductsRepository.findById(id, tx);
+      if (!existing) throw new NotFoundError('Product not found');
+
+      await ProductsRepository.upsertImage(
+        id,
+        { data: file.data, mimeType: file.mimeType, byteSize: file.data.length },
+        tx
+      );
+      const updated = await ProductsRepository.update(id, { imageUrl: null, updatedById: user.userId }, tx);
+      const actor = await loadActor(user.userId, tx);
+      await writeServiceAudit({
+        recordType: ServiceAuditRecordType.PRODUCT,
+        recordId: id,
+        action: ServiceAuditAction.UPDATE_DETAILS,
+        changedById: user.userId,
+        changedByName: actor.fullName,
+        changedByUsername: actor.username,
+        reason: 'Product image uploaded',
+        beforeValues: { imageUrl: existing.imageUrl, hasUploadedImage: Boolean(existing.image) },
+        afterValues: { imageUrl: null, hasUploadedImage: true, mimeType: file.mimeType, byteSize: file.data.length },
+        requestId: context.requestId,
+        ipAddress: context.ipAddress,
+      }, tx);
+      return serializeProduct(updated, await ProductsRepository.findActiveDefaultPricingPreset(tx), user.role === Role.ADMIN);
+    });
+  }
+
+  static async removeImage(id: string, user: ServiceMutationUser, context: RequestContext) {
+    return runFinancialTransaction(async (tx) => {
+      const existing = await ProductsRepository.findById(id, tx);
+      if (!existing) throw new NotFoundError('Product not found');
+      if (!existing.imageUrl && !existing.image) throw new NotFoundError('Product image not found');
+
+      await ProductsRepository.deleteImage(id, tx);
+      const updated = await ProductsRepository.update(id, { imageUrl: null, updatedById: user.userId }, tx);
+      const actor = await loadActor(user.userId, tx);
+      await writeServiceAudit({
+        recordType: ServiceAuditRecordType.PRODUCT,
+        recordId: id,
+        action: ServiceAuditAction.UPDATE_DETAILS,
+        changedById: user.userId,
+        changedByName: actor.fullName,
+        changedByUsername: actor.username,
+        reason: 'Product image removed',
+        beforeValues: { imageUrl: existing.imageUrl, hasUploadedImage: Boolean(existing.image) },
+        afterValues: { imageUrl: null, hasUploadedImage: false },
+        requestId: context.requestId,
+        ipAddress: context.ipAddress,
+      }, tx);
+      return serializeProduct(updated, await ProductsRepository.findActiveDefaultPricingPreset(tx), user.role === Role.ADMIN);
+    });
+  }
+
+  static archive(id: string, input: ProductActionInput, user: ServiceMutationUser, context: RequestContext) {
+    return this.setActive(id, false, ServiceAuditAction.ARCHIVE, input, user, context);
+  }
+
+  static restore(id: string, input: ProductActionInput, user: ServiceMutationUser, context: RequestContext) {
+    return this.setActive(id, true, ServiceAuditAction.RESTORE, input, user, context);
+  }
+
+  static async label(id: string) {
+    const product = await ProductsRepository.findById(id);
+    if (!product) throw new NotFoundError('Product not found');
+    return {
+      id: product.id,
+      name: product.name,
+      model: product.model,
+      brand: product.brand,
+      barcode: product.barcode,
+      price: product.price ? moneyToApiString(product.price) : null,
+    };
+  }
+
+  static async audit(id: string, query: ProductAuditQueryInput) {
+    await this.get(id);
+    return ServiceAuditRepository.list(
+      ServiceAuditRecordType.PRODUCT,
+      id,
+      (query.page - 1) * query.pageSize,
+      query.pageSize
+    );
+  }
+
+  static async checkDuplicate(query: ProductDuplicateQueryInput) {
+    const matches = await ProductsRepository.findDuplicates(query.name, query.model, query.brand);
+    return { matches };
+  }
+
+  static async serviceJobs(id: string, query: ProductServiceJobsQueryInput) {
+    await this.get(id);
+    const result = await ProductsRepository.serviceJobs(
+      id,
+      (query.page - 1) * query.pageSize,
+      query.pageSize
+    );
+    return {
+      items: result.items.map(serializeServiceJob),
+      total: result.total,
+      page: query.page,
+      pageSize: query.pageSize,
+    };
+  }
+
+  private static async setActive(
+    id: string,
+    isActive: boolean,
+    action: ServiceAuditAction,
+    input: ProductActionInput,
+    user: ServiceMutationUser,
+    context: RequestContext
+  ) {
+    assertServiceAdmin(user);
+    return runFinancialTransaction(async (tx) => {
+      const existing = await ProductsRepository.findById(id, tx);
+      if (!existing) throw new NotFoundError('Product not found');
+      if (existing.isActive === isActive) throw new ValidationError(`Product is already ${isActive ? 'active' : 'archived'}`);
+      await verifyAdminPassword(user.userId, input.accountPassword, {
+        action: action === ServiceAuditAction.ARCHIVE ? 'ARCHIVE_PRODUCT' : 'RESTORE_PRODUCT',
+        recordType: 'PRODUCT', recordId: id, ipAddress: context.ipAddress,
+        domainLabel: 'service and product changes',
+      }, tx);
+      const updated = await ProductsRepository.update(id, { isActive, updatedById: user.userId }, tx);
+      const actor = await loadActor(user.userId, tx);
+      await writeServiceAudit({
+        recordType: ServiceAuditRecordType.PRODUCT, recordId: id, action,
+        changedById: user.userId, changedByName: actor.fullName,
+        changedByUsername: actor.username, reason: input.reason,
+        beforeValues: { isActive: existing.isActive }, afterValues: { isActive },
+        requestId: context.requestId, ipAddress: context.ipAddress,
+      }, tx);
+      return serializeProduct(updated);
+    });
+  }
+}
+
+function productUpdateData(input: UpdateProductInput, updatedById: string): Prisma.ProductUncheckedUpdateInput {
+  const data: Prisma.ProductUncheckedUpdateInput = { updatedById };
+  if (input.name !== undefined) data.name = input.name;
+  if (input.model !== undefined) data.model = input.model;
+  if (input.barcode !== undefined) data.barcode = input.barcode;
+  if (input.brand !== undefined) data.brand = input.brand;
+  if (input.price !== undefined) data.price = moneyOrNull(input.price);
+  if (input.discount !== undefined) data.discount = moneyOrNull(input.discount);
+  if (input.imageUrl !== undefined) data.imageUrl = input.imageUrl;
+  if (input.notes !== undefined) data.notes = input.notes;
+  return data;
+}
+
+function moneyOrNull(value?: string | null) {
+  return value == null ? null : parseMoney(value);
+}
+
+function assertDiscountWithinPrice(price: { toString(): string } | string | null, discount: { toString(): string } | string | null) {
+  if (price != null && discount != null && compareMoney(discount, price) > 0) {
+    throw new ValidationError('Discount cannot exceed price', { field: 'discount' });
+  }
+}
+
+type ProductRecord = Product & {
+  createdBy?: { fullName: string; username: string };
+  updatedBy?: { fullName: string; username: string } | null;
+  pricingPreset?: Prisma.PricingPresetGetPayload<Record<string, never>> | null;
+  image?: { mimeType: string; byteSize: number; updatedAt: Date } | null;
+};
+
+/**
+ * One shape for both image sources so the client can render without branching on
+ * storage. Uploaded images expose `updatedAt` as a cache key for the bytes endpoint.
+ */
+function serializeProductImage(product: ProductRecord) {
+  if (product.imageUrl) return { source: 'URL' as const, url: product.imageUrl };
+  if (product.image) {
+    return {
+      source: 'UPLOAD' as const,
+      mimeType: product.image.mimeType,
+      byteSize: product.image.byteSize,
+      updatedAt: product.image.updatedAt.toISOString(),
+    };
+  }
+  return null;
+}
+
+function serializeProduct(product: ProductRecord, defaultPreset: Prisma.PricingPresetGetPayload<Record<string, never>> | null = null, isAdmin = false) {
+  const preview = resolveProductPricing(product, defaultPreset);
+  const pricing = preview.pricingAvailable ? {
+    pricingAvailable: true, source: preview.source, pricingPresetId: product.pricingPresetId,
+    presetName: preview.preset?.name ?? null, useCustomPricing: product.useCustomPricing,
+    cashPrice: preview.cashPrice,
+    installmentPrice: preview.installment.installmentPrice,
+    downPayment: preview.installment.downPayment,
+    remaining: preview.installment.remaining,
+    monthlyPayment: preview.installment.monthlyPayment,
+    lastInstallmentPayment: preview.installment.lastInstallmentPayment,
+    installmentMonths: preview.installment.installmentMonths,
+    ...(isAdmin ? { costPrice: preview.inputs.costPrice, configuration: pricingConfiguration(product) } : {}), warnings: preview.warnings,
+  } : { ...preview, pricingPresetId: product.pricingPresetId, presetName: product.pricingPreset?.name ?? null, useCustomPricing: product.useCustomPricing, ...(isAdmin ? { costPrice: product.costPrice ? moneyToApiString(product.costPrice) : null, configuration: pricingConfiguration(product) } : {}) };
+  return {
+    id: product.id,
+    name: product.name,
+    model: product.model,
+    barcode: product.barcode,
+    brand: product.brand,
+    price: product.price ? moneyToApiString(product.price) : null,
+    discount: product.discount ? moneyToApiString(product.discount) : null,
+    netPrice: product.price && product.discount
+      ? moneyToApiString(subtractMoney(product.price, product.discount))
+      : product.price ? moneyToApiString(product.price) : null,
+    isActive: product.isActive,
+    notes: product.notes,
+    imageUrl: product.imageUrl,
+    image: serializeProductImage(product),
+    createdById: product.createdById,
+    updatedById: product.updatedById,
+    createdAt: product.createdAt,
+    updatedAt: product.updatedAt,
+    pricing,
+    ...(product.createdBy ? { createdBy: product.createdBy } : {}),
+    ...(product.updatedBy !== undefined ? { updatedBy: product.updatedBy } : {}),
+  };
+}
+
+function pricingConfiguration(product: Product) {
+  return {
+    costPrice: product.costPrice ? moneyToApiString(product.costPrice) : null,
+    pricingPresetId: product.pricingPresetId, useCustomPricing: product.useCustomPricing,
+    customExpensePercent: product.customExpensePercent ? percentToApiString(product.customExpensePercent) : null,
+    customProfitPercent: product.customProfitPercent ? percentToApiString(product.customProfitPercent) : null,
+    customDiscountBufferPercent: product.customDiscountBufferPercent ? percentToApiString(product.customDiscountBufferPercent) : null,
+    customInstallmentMarkupPercent: product.customInstallmentMarkupPercent ? percentToApiString(product.customInstallmentMarkupPercent) : null,
+    customDownPaymentPercent: product.customDownPaymentPercent ? percentToApiString(product.customDownPaymentPercent) : null,
+    customInstallmentMonths: product.customInstallmentMonths, customCalculationMode: product.customCalculationMode,
+  };
+}
+
+function productSnapshot(product: Product): Prisma.InputJsonObject {
+  return {
+    name: product.name, model: product.model, barcode: product.barcode,
+    brand: product.brand, price: product.price ? moneyToApiString(product.price) : null,
+    discount: product.discount ? moneyToApiString(product.discount) : null,
+    isActive: product.isActive, notes: product.notes, imageUrl: product.imageUrl,
+    costPrice: product.costPrice ? moneyToApiString(product.costPrice) : null,
+    pricingPresetId: product.pricingPresetId, useCustomPricing: product.useCustomPricing,
+    customExpensePercent: product.customExpensePercent ? percentToApiString(product.customExpensePercent) : null,
+    customProfitPercent: product.customProfitPercent ? percentToApiString(product.customProfitPercent) : null,
+    customDiscountBufferPercent: product.customDiscountBufferPercent ? percentToApiString(product.customDiscountBufferPercent) : null,
+    customInstallmentMarkupPercent: product.customInstallmentMarkupPercent ? percentToApiString(product.customInstallmentMarkupPercent) : null,
+    customDownPaymentPercent: product.customDownPaymentPercent ? percentToApiString(product.customDownPaymentPercent) : null,
+    customInstallmentMonths: product.customInstallmentMonths, customCalculationMode: product.customCalculationMode,
+  };
+}
+
+function pricingUpdateData(input: UpdateProductPricingInput, updatedById: string): Prisma.ProductUncheckedUpdateInput {
+  const data: Prisma.ProductUncheckedUpdateInput = { updatedById };
+  if (input.costPrice !== undefined) data.costPrice = input.costPrice == null ? null : parseMoney(input.costPrice);
+  if (input.pricingPresetId !== undefined) data.pricingPresetId = input.pricingPresetId;
+  if (input.useCustomPricing !== undefined) data.useCustomPricing = input.useCustomPricing;
+  for (const field of ['customExpensePercent','customProfitPercent','customDiscountBufferPercent','customInstallmentMarkupPercent','customDownPaymentPercent'] as const) if (input[field] !== undefined) data[field] = input[field] == null ? null : parsePricingPercent(input[field]!);
+  if (input.customInstallmentMonths !== undefined) data.customInstallmentMonths = input.customInstallmentMonths;
+  if (input.customCalculationMode !== undefined) data.customCalculationMode = input.customCalculationMode;
+  return data;
+}
+
+const productPricingFields = [
+  'costPrice', 'pricingPresetId', 'useCustomPricing', 'customExpensePercent',
+  'customProfitPercent', 'customDiscountBufferPercent', 'customInstallmentMarkupPercent',
+  'customDownPaymentPercent', 'customInstallmentMonths', 'customCalculationMode',
+] as const;
+
+function hasProductPricingInput(input: CreateProductInput): boolean {
+  return productPricingFields.some((field) => input[field] !== undefined && input[field] !== null);
+}
+
+type ProductPricingCreateData = Partial<Pick<
+  Prisma.ProductUncheckedCreateInput,
+  typeof productPricingFields[number]
+>>;
+
+function pricingCreateData(input: CreateProductInput): ProductPricingCreateData {
+  const data: ProductPricingCreateData = {};
+  if (input.costPrice != null) data.costPrice = parseMoney(input.costPrice);
+  if (input.pricingPresetId != null) data.pricingPresetId = input.pricingPresetId;
+  if (input.useCustomPricing !== undefined) data.useCustomPricing = input.useCustomPricing;
+  for (const field of ['customExpensePercent','customProfitPercent','customDiscountBufferPercent','customInstallmentMarkupPercent','customDownPaymentPercent'] as const) {
+    if (input[field] != null) data[field] = parsePricingPercent(input[field]!);
+  }
+  if (input.customInstallmentMonths != null) data.customInstallmentMonths = input.customInstallmentMonths;
+  if (input.customCalculationMode != null) data.customCalculationMode = input.customCalculationMode;
+  return data;
+}
+
+function assertActivePricingPreset(preset: Awaited<ReturnType<typeof ProductsRepository.findPricingPreset>>) {
+  if (!preset) throw new ValidationError('Pricing preset not found', { field: 'pricingPresetId' });
+  if (!preset.isActive || preset.archivedAt) {
+    throw new ValidationError('Pricing preset must be active', { field: 'pricingPresetId' });
+  }
+}
+
+function assertCompleteCustomPricing(product: Record<string, unknown>) {
+  if (!product.useCustomPricing) return;
+  for (const field of ['customExpensePercent','customProfitPercent','customDiscountBufferPercent','customInstallmentMarkupPercent','customDownPaymentPercent','customInstallmentMonths','customCalculationMode']) {
+    if (product[field] == null) throw new ValidationError('All custom pricing fields are required when custom pricing is enabled', { field });
+  }
+}
+
+function changedSnapshot(product: Product, fields: string[]): Prisma.InputJsonObject {
+  const snapshot = productSnapshot(product);
+  return Object.fromEntries(fields.map((field) => [field, snapshot[field] ?? null]));
+}
+
+async function loadActor(userId: string, tx: Prisma.TransactionClient) {
+  const actor = await tx.user.findUnique({ where: { id: userId }, select: { fullName: true, username: true } });
+  if (!actor) throw new NotFoundError('User not found');
+  return actor;
+}
+
+function barcodeConflict() {
+  return new ServiceConflictError('A product with this barcode already exists', { field: 'barcode' });
+}
+
+function mapProductError(error: unknown): unknown {
+  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') return barcodeConflict();
+  return error;
+}

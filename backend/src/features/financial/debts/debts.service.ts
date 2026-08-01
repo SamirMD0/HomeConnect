@@ -1,4 +1,5 @@
 import {
+  DebtKind,
   DebtStatus,
   FinancialCorrectionAction,
   FinancialCorrectionRecordType,
@@ -11,6 +12,7 @@ import {
   assertPositiveMoney,
   businessDateToPrisma,
   calculateDebtBalance,
+  calculatePrepaidAdminDebt,
   createIdempotencyFingerprint,
   determineDebtStatus,
   FinancialRecordAlreadyPaidError,
@@ -26,12 +28,14 @@ import {
   ZERO_MONEY,
 } from '../index';
 import { DebtsRepository, DebtWithDetails } from './debts.repository';
+import { PrepaidRepository } from '../prepaid/prepaid.repository';
 import { verifyAccountPassword, verifyAdminPasswordForCorrection } from '../authorization/account-password';
 import { writeFinancialCorrectionAudit } from '../corrections/correction-audit';
 import {
   CancelDebtInput,
   CreateDebtInput,
   CreateDebtPaymentInput,
+  CreatePrepaidPurchaseInput,
   ListCustomerDebtsQueryInput,
   UpdateDebtInput,
 } from './debts.validator';
@@ -50,6 +54,7 @@ interface DebtListResult {
 
 interface DebtView {
   id: string;
+  kind: DebtKind;
   customer: {
     id: string;
     name: string;
@@ -59,6 +64,7 @@ interface DebtView {
   originalAmount: string;
   totalPaid: string;
   remainingBalance: string;
+  adminDebt: string;
   dueDate: string;
   status: DebtStatus;
   storedStatus: DebtStatus;
@@ -113,6 +119,73 @@ interface DebtPaymentView {
 }
 
 export class DebtsService {
+  static async createPrepaidPurchase(
+    customerId: string,
+    input: CreatePrepaidPurchaseInput,
+    user: AuthenticatedUser
+  ): Promise<DebtView> {
+    const customer = await DebtsRepository.findActiveCustomerById(customerId);
+    if (!customer) {
+      throw new NotFoundError('Customer not found');
+    }
+
+    const fullAmount = assertPositiveMoney(input.fullAmount);
+    const paymentAmount = assertPositiveMoney(input.paymentAmount);
+    if (paymentAmount.greaterThan(fullAmount)) {
+      throw new ValidationError('Payment cannot exceed the full amount');
+    }
+    const businessDate = todayInBusinessTimezone();
+
+    return runFinancialTransaction(async (tx) => {
+      const debt = await DebtsRepository.createDebt({
+        customerId,
+        description: input.itemName,
+        kind: DebtKind.PREPAID_PURCHASE,
+        originalAmount: fullAmount,
+        dueDate: businessDateToPrisma(businessDate),
+        status: DebtStatus.UNPAID,
+        notes: input.notes ?? null,
+        createdById: user.userId,
+      }, tx);
+
+      // Companion row carrying delivery state. Part of the same atomic write so a
+      // prepaid debt can never exist without one.
+      await PrepaidRepository.createForDebt(tx, { debtId: debt.id });
+
+      const payment = await DebtsRepository.createPayment(tx, {
+        customerId,
+        totalAmount: paymentAmount,
+        paymentDate: businessDateToPrisma(businessDate),
+        paymentMethod: PaymentMethod.CASH,
+        reference: null,
+        notes: null,
+        idempotencyKey: null,
+        createdById: user.userId,
+      });
+
+      await DebtsRepository.createDebtPaymentAllocation(tx, {
+        paymentId: payment.id,
+        debtId: debt.id,
+        amount: paymentAmount,
+      });
+
+      const refreshedDebt = await DebtsRepository.findDebtById(debt.id, tx);
+      if (!refreshedDebt) {
+        throw new NotFoundError('Prepaid purchase not found after creation');
+      }
+      const balance = this.calculateBalance(refreshedDebt);
+      const status = determineDebtStatus({
+        isCancelled: false,
+        dueDate: businessDate,
+        businessDate,
+        balance,
+        overdueEligible: false,
+      });
+
+      return this.toDebtView(await DebtsRepository.updateDebtStatus(tx, debt.id, status));
+    });
+  }
+
   static async createDebt(
     customerId: string,
     input: CreateDebtInput,
@@ -131,6 +204,7 @@ export class DebtsService {
       dueDate,
       businessDate: todayInBusinessTimezone(),
       balance: initialBalance,
+      overdueEligible: true,
     });
 
     const debt = await DebtsRepository.createDebt({
@@ -240,6 +314,7 @@ export class DebtsService {
             isVoided: isPaymentAllocationVoided(allocation),
           })),
         }),
+        overdueEligible: debt.kind !== DebtKind.PREPAID_PURCHASE,
       });
       const beforeValues = this.toDebtAuditValues(debt);
 
@@ -371,6 +446,7 @@ export class DebtsService {
         dueDate: prismaDateToBusinessDate(refreshedDebt.dueDate),
         businessDate: todayInBusinessTimezone(),
         balance: refreshedBalance,
+        overdueEligible: refreshedDebt.kind !== DebtKind.PREPAID_PURCHASE,
       });
 
       const updatedDebt = await DebtsRepository.updateDebtStatus(tx, debtId, status);
@@ -396,6 +472,7 @@ export class DebtsService {
       assertCanCancelDebt({
         status: debt.status,
         hasPayments: balance.totalPaid.greaterThan(ZERO_MONEY),
+        allowPaidOrPaymentCancellation: debt.kind === DebtKind.PREPAID_PURCHASE,
         reason: input.reason,
         cancelledById: user.userId,
       });
@@ -418,15 +495,25 @@ export class DebtsService {
       dueDate,
       businessDate: todayInBusinessTimezone(),
       balance,
+      overdueEligible: debt.kind !== DebtKind.PREPAID_PURCHASE,
     });
 
     return {
       id: debt.id,
+      kind: debt.kind,
       customer: debt.customer,
       description: debt.description,
       originalAmount: moneyToApiString(debt.originalAmount),
       totalPaid: moneyToApiString(balance.totalPaid),
       remainingBalance: moneyToApiString(balance.remainingBalance),
+      adminDebt: moneyToApiString(
+        calculatePrepaidAdminDebt({
+          kind: debt.kind,
+          prepaidStatus: debt.prepaidPurchase?.status,
+          isCancelled: debt.status === DebtStatus.CANCELLED || Boolean(debt.cancelledAt),
+          totalPaid: balance.totalPaid,
+        })
+      ),
       dueDate,
       status,
       storedStatus: debt.status,
@@ -514,6 +601,7 @@ export class DebtsService {
 
   private static toDebtAuditValues(debt: DebtWithDetails) {
     return {
+      kind: debt.kind,
       description: debt.description,
       originalAmount: moneyToApiString(debt.originalAmount),
       dueDate: prismaDateToBusinessDate(debt.dueDate),

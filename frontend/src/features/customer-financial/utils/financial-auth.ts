@@ -1,3 +1,5 @@
+import { DebtKind } from '../types/customer-financial.types';
+
 type FinancialUserRole = 'ADMIN' | 'EMPLOYEE' | string | null | undefined;
 
 export function isFinancialAdmin(role: FinancialUserRole): boolean {
@@ -8,8 +10,10 @@ export function canRecordDebtPayment(status: string): boolean {
   return status !== 'PAID' && status !== 'CANCELLED';
 }
 
-export function canCancelDebt(status: string, totalPaid: string): boolean {
-  return status !== 'PAID' && status !== 'CANCELLED' && totalPaid === '0.00';
+export function canCancelDebt(status: string, totalPaid: string, kind: DebtKind = 'STANDARD'): boolean {
+  if (status === 'CANCELLED') return false;
+  if (kind === 'PREPAID_PURCHASE') return true;
+  return status !== 'PAID' && totalPaid === '0.00';
 }
 
 export function canRecordInstallmentPlanPayment(status: string): boolean {

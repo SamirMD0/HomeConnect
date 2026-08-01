@@ -5,12 +5,30 @@ import {
   CreateDebtInput,
   CreateDebtPaymentInput,
   CustomerDebtParamsInput,
+  CreatePrepaidPurchaseInput,
   DebtParamsInput,
   ListCustomerDebtsQueryInput,
   UpdateDebtInput,
 } from './debts.validator';
 
 export class DebtsController {
+  static async createPrepaidPurchase(
+    req: Request<CustomerDebtParamsInput, unknown, CreatePrepaidPurchaseInput>,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const debt = await DebtsService.createPrepaidPurchase(req.params.customerId, req.body, req.user!);
+      res.status(201).json({
+        success: true,
+        data: debt,
+        meta: { timestamp: new Date().toISOString() },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async createDebt(
     req: Request<CustomerDebtParamsInput, unknown, CreateDebtInput>,
     res: Response,

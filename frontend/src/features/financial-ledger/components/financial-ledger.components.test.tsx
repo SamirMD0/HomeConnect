@@ -23,12 +23,14 @@ import {
 const items: FinancialLedgerItem[] = [
   {
     type: 'DEBT',
+    kind: 'STANDARD',
     id: 'debt-1',
     customer: { id: 'customer-1', name: 'Ali Ahmad', phone: '70123456' },
     description: 'Television',
     originalAmount: '600.00',
     totalPaid: '200.00',
     remainingBalance: '400.00',
+    adminDebt: '0.00',
     dueDate: '2026-08-10',
     status: 'PARTIALLY_PAID',
     storedStatus: 'PARTIALLY_PAID',
@@ -143,10 +145,12 @@ describe('financial ledger components', () => {
 
     expect(html).toContain('$850.00');
     expect(html).toContain('$350.00');
-    expect(html).toContain('Active Customers');
-    expect(html).toContain('Overdue Items');
+    expect(html).toContain('Customers');
+    expect(html).toContain('Overdue');
     expect(html).toContain('3');
-    expect(html.match(/For current filters/g)).toHaveLength(6);
+    expect(html.match(/Current filters/g)).toHaveLength(6);
+    // Prepaid moved to its own section; the ledger no longer surfaces it.
+    expect(html).not.toContain('Pre-paid');
   });
 
   it('renders debt, plan, and payment rows in the compact ledger table structure', () => {
@@ -174,7 +178,7 @@ describe('financial ledger components', () => {
     expect(html).toContain('Completed');
     expect(html).toContain('Amount');
     expect(html).toContain('Remaining');
-    expect(html).toContain('Financial ledger');
+    expect(html).toContain('Financial Ledger / دفتر الحسابات');
     expect(html).toContain('aria-expanded="false"');
     expect(html).toContain('Show payments for Ali Ahmad - Television');
     expect(html).toContain('Payments');
@@ -323,12 +327,14 @@ describe('financial ledger components', () => {
       <LedgerEmptyState filtered canIncludeCompleted onIncludeCompleted={() => undefined} />
     );
 
-    expect(filtersHtml).toContain('Ledger view');
-    expect(filtersHtml).toContain('Customer search');
-    expect(filtersHtml).toContain('Include completed');
-    expect(filtersHtml).toContain('Paid debts and completed plans are hidden by default.');
-    expect(filtersHtml).toContain('More filters (4)');
-    expect(filtersHtml).toContain('Clear filters');
+    expect(filtersHtml).toContain('Ledger View');
+    expect(filtersHtml).toContain('دفتر الحسابات');
+    expect(filtersHtml).toContain('Customer Search');
+    expect(filtersHtml).toContain('Include Completed');
+    expect(filtersHtml).toContain('إظهار المكتمل');
+    expect(filtersHtml).toContain('Hidden by default');
+    expect(filtersHtml).toContain('More Filters (4)');
+    expect(filtersHtml).toContain('Clear');
     expect(loadingHtml).toContain('animate-pulse');
     expect(errorHtml).toContain('Ledger failed to load');
     expect(emptyHtml).toContain('No matching financial records');

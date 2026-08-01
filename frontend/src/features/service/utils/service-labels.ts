@@ -1,0 +1,6 @@
+import { ServiceJobStatus, ServiceRequestType, ServiceRoutingDecision, WarrantyStatus } from '../types/service.types';
+
+export const REQUEST_TYPE_LABELS: Record<ServiceRequestType, string> = { ON_CALL: 'On-call Visit / زيارة منزلية', WORKSHOP_DROP_OFF: 'Workshop Drop-off / تسليم للمحل', PART_REPLACEMENT: 'Part Replacement / تبديل قطعة' };
+export const STATUS_LABELS: Record<ServiceJobStatus, string> = { RECEIVED: 'Received / تم الاستلام', INSPECTION_PENDING: 'Inspection Pending / بانتظار الفحص', IN_WORKSHOP_REPAIR: 'In Workshop Repair / قيد الإصلاح', SENT_TO_COMPANY: 'Sent to Company / أرسل إلى الشركة', WAITING_FOR_PART: 'Waiting for Part / بانتظار القطعة', WAITING_CUSTOMER_APPROVAL: 'Awaiting Customer / بانتظار موافقة الزبون', READY_FOR_PICKUP: 'Ready for Pickup / جاهز للاستلام', DELIVERED_TO_CUSTOMER: 'Delivered / سلّم للزبون', CANCELLED: 'Cancelled / ملغى', NOT_REPAIRABLE: 'Not Repairable / غير قابل للإصلاح' };
+export const ROUTING_LABELS: Record<ServiceRoutingDecision, string> = { WORKSHOP: 'Workshop / الورشة', COMPANY: 'Company / الشركة', CUSTOMER_DECISION: 'Customer Decision / قرار الزبون', NOT_REPAIRABLE: 'Not Repairable / غير قابل للإصلاح' };
+export const WARRANTY_LABELS: Record<WarrantyStatus, string> = { UNDER_WARRANTY: 'Under Warranty / ضمن الكفالة', NO_WARRANTY: 'No Warranty / من دون كفالة', UNKNOWN: 'Unknown / غير معروف' };

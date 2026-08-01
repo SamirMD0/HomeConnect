@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertTriangle, CalendarClock, CreditCard, Landmark, ReceiptText, WalletCards } from 'lucide-react';
+import { AlertTriangle, CalendarClock, CreditCard, HandCoins, Landmark, ReceiptText, WalletCards } from 'lucide-react';
 import { FinancialSummaryTotals } from '../types/customer-financial.types';
 import { formatBusinessDate, formatMoney } from '../utils/financial-format';
 
@@ -13,7 +13,7 @@ export const FinancialSummaryCards: React.FC<FinancialSummaryCardsProps> = ({ su
     {
       label: 'Total Outstanding',
       value: formatMoney(summary.totalOutstanding),
-      detail: 'All active financial obligations',
+      detail: 'Customer debts and installment plans',
       icon: WalletCards,
       tone: 'text-red-600 bg-red-50',
     },
@@ -30,6 +30,13 @@ export const FinancialSummaryCards: React.FC<FinancialSummaryCardsProps> = ({ su
       detail: `${summary.activePlanCount} active plan${summary.activePlanCount === 1 ? '' : 's'}`,
       icon: Landmark,
       tone: 'text-indigo-600 bg-indigo-50',
+    },
+    {
+      label: 'Admin Pre-paid Debt / دين مسبق على الإدارة',
+      value: formatMoney(summary.totalPrepaidAdminDebt),
+      detail: `${summary.activePrepaidCount} active pre-paid purchase${summary.activePrepaidCount === 1 ? '' : 's'}`,
+      icon: HandCoins,
+      tone: 'text-red-700 bg-red-50',
     },
     {
       label: 'Total Paid',

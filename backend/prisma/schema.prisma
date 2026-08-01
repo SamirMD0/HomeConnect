@@ -36,6 +36,17 @@ enum DebtStatus {
   CANCELLED
 }
 
+enum DebtKind {
+  STANDARD
+  PREPAID_PURCHASE
+}
+
+enum PrepaidPurchaseStatus {
+  PENDING
+  DELIVERED
+  CANCELLED
+}
+
 enum InstallmentPlanFrequency {
   MONTHLY
 }
@@ -69,6 +80,7 @@ enum FinancialCorrectionRecordType {
   PAYMENT
   PAYMENT_ALLOCATION
   CUSTOMER_BILLING
+  PREPAID_PURCHASE
 }
 
 enum FinancialCorrectionAction {
@@ -79,6 +91,8 @@ enum FinancialCorrectionAction {
   REISSUE_PAYMENT
   REALLOCATE_PAYMENT
   CANCEL_RECORD
+  DELIVER_PREPAID
+  REVERT_PREPAID_DELIVERY
 }
 
 enum FinancialCorrectionSourceScreen {
@@ -87,12 +101,110 @@ enum FinancialCorrectionSourceScreen {
   PLAN_DETAILS
   REPORTS
   API
+  PREPAID
 }
 
 enum AdminVerificationOutcome {
   SUCCESS
   FAILURE
   LOCKED
+}
+
+enum ServiceRequestType {
+  ON_CALL
+  WORKSHOP_DROP_OFF
+  PART_REPLACEMENT
+}
+
+enum ServiceJobStatus {
+  RECEIVED
+  INSPECTION_PENDING
+  IN_WORKSHOP_REPAIR
+  SENT_TO_COMPANY
+  WAITING_FOR_PART
+  WAITING_CUSTOMER_APPROVAL
+  READY_FOR_PICKUP
+  DELIVERED_TO_CUSTOMER
+  CANCELLED
+  NOT_REPAIRABLE
+}
+
+enum ServiceRoutingDecision {
+  WORKSHOP
+  COMPANY
+  CUSTOMER_DECISION
+  NOT_REPAIRABLE
+}
+
+enum WarrantyStatus {
+  UNDER_WARRANTY
+  NO_WARRANTY
+  UNKNOWN
+}
+
+enum ServiceAuditRecordType {
+  PRODUCT
+  SERVICE_JOB
+  PRICING_PRESET
+}
+
+enum ServiceAuditAction {
+  CREATE
+  UPDATE_DETAILS
+  CHANGE_STATUS
+  CHANGE_ROUTING
+  CHANGE_WARRANTY
+  CHANGE_PRICE
+  CHANGE_DATES
+  CANCEL
+  REOPEN
+  ARCHIVE
+  RESTORE
+  SET_DEFAULT
+}
+
+enum PricingCalculationMode {
+  COMPOUND
+  SIMPLE
+}
+
+enum PricingRoundingMode {
+  NONE
+  NEAREST_0_50
+  NEAREST_1
+  CEIL_1
+}
+
+enum SupplierTransactionType {
+  SUPPLIER_DEBT
+  SUPPLIER_PAYMENT
+  SUPPLIER_CREDIT
+  SUPPLIER_ADJUSTMENT
+}
+
+enum SupplierTransactionDirection {
+  INCREASE_OWED
+  DECREASE_OWED
+}
+
+enum SupplierTransactionStatus {
+  ACTIVE
+  REMOVED
+}
+
+enum SupplierAuditRecordType {
+  SUPPLIER
+  SUPPLIER_TRANSACTION
+}
+
+enum SupplierAuditAction {
+  CREATE
+  UPDATE
+  ARCHIVE
+  RESTORE
+  REMOVE
+  RESTORE_TRANSACTION
+  DELETE
 }
 
 model User {
@@ -109,17 +221,32 @@ model User {
   deletedAt           DateTime?
   branchId            String?   @db.Uuid
 
-  transactions              Transaction[]
-  activityLogs              ActivityLog[]
-  debtsCreated              Debt[]            @relation("DebtCreatedBy")
-  debtsCancelled            Debt[]            @relation("DebtCancelledBy")
-  installmentPlansCreated   InstallmentPlan[] @relation("InstallmentPlanCreatedBy")
-  installmentPlansCancelled InstallmentPlan[] @relation("InstallmentPlanCancelledBy")
-  paymentsCreated           Payment[]         @relation("PaymentCreatedBy")
-  paymentsVoided            Payment[]         @relation("PaymentVoidedBy")
-  financialCorrections      FinancialCorrectionAudit[] @relation("FinancialCorrectionCorrectedBy")
-  adminVerificationLogs     AdminVerificationLog[]
-  paymentAllocationsVoided  PaymentAllocation[] @relation("PaymentAllocationVoidedBy")
+  transactions                Transaction[]
+  activityLogs                ActivityLog[]
+  debtsCreated                Debt[]                     @relation("DebtCreatedBy")
+  debtsCancelled              Debt[]                     @relation("DebtCancelledBy")
+  installmentPlansCreated     InstallmentPlan[]          @relation("InstallmentPlanCreatedBy")
+  installmentPlansCancelled   InstallmentPlan[]          @relation("InstallmentPlanCancelledBy")
+  paymentsCreated             Payment[]                  @relation("PaymentCreatedBy")
+  paymentsVoided              Payment[]                  @relation("PaymentVoidedBy")
+  financialCorrections        FinancialCorrectionAudit[] @relation("FinancialCorrectionCorrectedBy")
+  adminVerificationLogs       AdminVerificationLog[]
+  paymentAllocationsVoided    PaymentAllocation[]        @relation("PaymentAllocationVoidedBy")
+  productsCreated             Product[]                  @relation("ProductCreatedBy")
+  productsUpdated             Product[]                  @relation("ProductUpdatedBy")
+  serviceJobsCreated          ServiceJob[]               @relation("ServiceJobCreatedBy")
+  serviceJobsUpdated          ServiceJob[]               @relation("ServiceJobUpdatedBy")
+  serviceJobsCancelled        ServiceJob[]               @relation("ServiceJobCancelledBy")
+  serviceAudits               ServiceAudit[]             @relation("ServiceAuditChangedBy")
+  suppliersCreated            Supplier[]                 @relation("SupplierCreatedBy")
+  suppliersUpdated            Supplier[]                 @relation("SupplierUpdatedBy")
+  supplierTransactionsCreated SupplierTransaction[]      @relation("SupplierTxCreatedBy")
+  supplierTransactionsUpdated SupplierTransaction[]      @relation("SupplierTxUpdatedBy")
+  supplierTransactionsRemoved SupplierTransaction[]      @relation("SupplierTxRemovedBy")
+  supplierAudits              SupplierAudit[]            @relation("SupplierAuditChangedBy")
+  prepaidDeliveries           PrepaidPurchase[]          @relation("PrepaidDeliveredBy")
+  pricingPresetsCreated       PricingPreset[]             @relation("PricingPresetCreatedBy")
+  pricingPresetsUpdated       PricingPreset[]             @relation("PricingPresetUpdatedBy")
 
   @@map("users")
 }
@@ -137,11 +264,12 @@ model Customer {
   createdBy String    @db.Uuid
   branchId  String?   @db.Uuid
 
-  transactions     Transaction[]
-  debts            Debt[]
-  installmentPlans InstallmentPlan[]
-  payments         Payment[]
+  transactions         Transaction[]
+  debts                Debt[]
+  installmentPlans     InstallmentPlan[]
+  payments             Payment[]
   financialCorrections FinancialCorrectionAudit[]
+  serviceJobs          ServiceJob[]
 
   @@index([name])
   @@index([phone])
@@ -201,6 +329,7 @@ model Debt {
   customerId     String     @db.Uuid
   customer       Customer   @relation(fields: [customerId], references: [id], onDelete: Restrict)
   description    String
+  kind           DebtKind   @default(STANDARD)
   originalAmount Decimal    @db.Decimal(12, 2)
   dueDate        DateTime   @db.Date
   status         DebtStatus @default(UNPAID)
@@ -216,11 +345,48 @@ model Debt {
 
   paymentAllocations PaymentAllocation[]
 
+  prepaidPurchase     PrepaidPurchase? @relation("PrepaidPurchaseDebt")
+  prepaidRemainderFor PrepaidPurchase? @relation("PrepaidRemainderDebt")
+
   @@index([customerId])
   @@index([dueDate])
   @@index([status])
+  @@index([kind])
   @@index([customerId, status])
   @@map("debts")
+}
+
+/// Companion record for a Debt with kind = PREPAID_PURCHASE.
+/// Holds delivery state only; the Debt, Payment, and PaymentAllocation rows
+/// remain the immutable financial record and are never rewritten here.
+model PrepaidPurchase {
+  id String @id @default(uuid()) @db.Uuid
+
+  debtId String @unique @db.Uuid
+  debt   Debt   @relation("PrepaidPurchaseDebt", fields: [debtId], references: [id], onDelete: Restrict)
+
+  status PrepaidPurchaseStatus @default(PENDING)
+
+  deliveredAt   DateTime? @db.Date
+  deliveredById String?   @db.Uuid
+  deliveredBy   User?     @relation("PrepaidDeliveredBy", fields: [deliveredById], references: [id], onDelete: Restrict)
+  deliveryNotes String?   @db.Text
+
+  /// STANDARD debt created for the unpaid remainder when the item is delivered.
+  remainderDebtId String? @unique @db.Uuid
+  remainderDebt   Debt?   @relation("PrepaidRemainderDebt", fields: [remainderDebtId], references: [id], onDelete: Restrict)
+
+  /// Optional catalog reference. Carries no stock effect.
+  productId String?  @db.Uuid
+  product   Product? @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([deliveredAt])
+  @@index([productId])
+  @@map("prepaid_purchases")
 }
 
 model InstallmentPlan {
@@ -300,19 +466,19 @@ model Payment {
 }
 
 model PaymentAllocation {
-  id            String       @id @default(uuid()) @db.Uuid
-  paymentId     String       @db.Uuid
-  payment       Payment      @relation(fields: [paymentId], references: [id], onDelete: Restrict)
-  debtId        String?      @db.Uuid
-  debt          Debt?        @relation(fields: [debtId], references: [id], onDelete: Restrict)
-  installmentId String?      @db.Uuid
-  installment   Installment? @relation(fields: [installmentId], references: [id], onDelete: Restrict)
-  amount        Decimal      @db.Decimal(12, 2)
-  createdAt     DateTime     @default(now())
+  id            String                    @id @default(uuid()) @db.Uuid
+  paymentId     String                    @db.Uuid
+  payment       Payment                   @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  debtId        String?                   @db.Uuid
+  debt          Debt?                     @relation(fields: [debtId], references: [id], onDelete: Restrict)
+  installmentId String?                   @db.Uuid
+  installment   Installment?              @relation(fields: [installmentId], references: [id], onDelete: Restrict)
+  amount        Decimal                   @db.Decimal(12, 2)
+  createdAt     DateTime                  @default(now())
   voidedAt      DateTime?
-  voidedById    String?      @db.Uuid
-  voidedBy      User?        @relation("PaymentAllocationVoidedBy", fields: [voidedById], references: [id], onDelete: Restrict)
-  correctionId  String?      @db.Uuid
+  voidedById    String?                   @db.Uuid
+  voidedBy      User?                     @relation("PaymentAllocationVoidedBy", fields: [voidedById], references: [id], onDelete: Restrict)
+  correctionId  String?                   @db.Uuid
   correction    FinancialCorrectionAudit? @relation("PaymentAllocationCorrection", fields: [correctionId], references: [id], onDelete: Restrict)
 
   @@index([paymentId])
@@ -363,4 +529,266 @@ model AdminVerificationLog {
   @@index([userId, attemptedAt])
   @@index([attemptedAt])
   @@map("admin_verification_logs")
+}
+
+model Product {
+  id                                     String                  @id @default(uuid()) @db.Uuid
+  name                                   String
+  model                                  String
+  barcode                                String?                 @unique
+  brand                                  String?
+  price                                  Decimal?                @db.Decimal(12, 2)
+  discount                               Decimal?                @db.Decimal(12, 2)
+  costPrice                              Decimal?                @db.Decimal(12, 2)
+  pricingPresetId                        String?                 @db.Uuid
+  pricingPreset                          PricingPreset?          @relation(fields: [pricingPresetId], references: [id], onDelete: Restrict)
+  useCustomPricing                       Boolean                 @default(false)
+  customExpensePercent                   Decimal?                @db.Decimal(6, 3)
+  customProfitPercent                    Decimal?                @db.Decimal(6, 3)
+  customDiscountBufferPercent            Decimal?                @db.Decimal(6, 3)
+  customInstallmentMarkupPercent         Decimal?                @db.Decimal(6, 3)
+  customDownPaymentPercent               Decimal?                @db.Decimal(6, 3)
+  customInstallmentMonths                Int?
+  customCalculationMode                  PricingCalculationMode?
+  imageUrl                               String?                 @db.Text
+  isActive                               Boolean                 @default(true)
+  notes                                  String?                 @db.Text
+  createdById                            String                  @db.Uuid
+  createdBy                              User                    @relation("ProductCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedById                            String?                 @db.Uuid
+  updatedBy                              User?                   @relation("ProductUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  createdAt                              DateTime                @default(now())
+  updatedAt                              DateTime                @updatedAt
+
+  serviceJobs      ServiceJob[]
+  prepaidPurchases PrepaidPurchase[]
+  image            ProductImage?
+
+  @@index([name])
+  @@index([model])
+  @@index([brand])
+  @@index([isActive])
+  @@index([pricingPresetId])
+  @@map("products")
+}
+
+/// Uploaded product image bytes. Kept in a separate table so product queries
+/// never load image payloads unless the bytes are explicitly requested.
+model ProductImage {
+  productId String   @id @db.Uuid
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  data      Bytes
+  mimeType  String
+  byteSize  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("product_images")
+}
+
+model PricingPreset {
+  id                           String                 @id @default(uuid()) @db.Uuid
+  name                         String
+  productType                  String?
+  expensePercent               Decimal                @db.Decimal(6, 3)
+  profitPercent                Decimal                @db.Decimal(6, 3)
+  discountBufferPercent        Decimal                @db.Decimal(6, 3)
+  installmentMarkupPercent     Decimal                @db.Decimal(6, 3)
+  downPaymentPercent           Decimal                @db.Decimal(6, 3)
+  defaultInstallmentMonths     Int
+  calculationMode              PricingCalculationMode @default(COMPOUND)
+  roundingMode                 PricingRoundingMode    @default(NONE)
+  isDefault                    Boolean                @default(false)
+  isActive                     Boolean                @default(true)
+  notes                        String?                @db.Text
+  archivedAt                   DateTime?
+  archivedReason               String?                @db.Text
+  createdById                  String                 @db.Uuid
+  createdBy                    User                   @relation("PricingPresetCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedById                  String?                @db.Uuid
+  updatedBy                    User?                  @relation("PricingPresetUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  createdAt                    DateTime               @default(now())
+  updatedAt                    DateTime               @updatedAt
+  products                     Product[]
+
+  @@index([name])
+  @@index([productType])
+  @@index([isActive])
+  @@map("pricing_presets")
+}
+
+model ServiceJob {
+  id        String @id @default(uuid()) @db.Uuid
+  jobNumber String @unique
+
+  customerId String   @db.Uuid
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+
+  productId          String?  @db.Uuid
+  product            Product? @relation(fields: [productId], references: [id], onDelete: Restrict)
+  manualProductName  String?
+  manualProductModel String?
+  manualProductBrand String?
+  manualProductNotes String?  @db.Text
+
+  requestType       ServiceRequestType
+  issueDescription  String             @db.Text
+  requestedPartName String?
+
+  routingDecision         ServiceRoutingDecision?
+  companyName             String?
+  sentToCompanyDate       DateTime?               @db.Date
+  receivedFromCompanyDate DateTime?               @db.Date
+
+  warrantyStatus    WarrantyStatus @default(UNKNOWN)
+  warrantyNotes     String?        @db.Text
+  warrantyProvider  String?
+  warrantyExpiresAt DateTime?      @db.Date
+
+  estimatedPrice Decimal? @db.Decimal(12, 2)
+  finalPrice     Decimal? @db.Decimal(12, 2)
+  priceNotes     String?  @db.Text
+
+  serviceCreatedDate     DateTime  @db.Date
+  homeVisitScheduledDate DateTime? @db.Date
+  returnedToCustomerDate DateTime? @db.Date
+
+  status ServiceJobStatus @default(RECEIVED)
+  notes  String?          @db.Text
+
+  createdById String   @db.Uuid
+  createdBy   User     @relation("ServiceJobCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedById String?  @db.Uuid
+  updatedBy   User?    @relation("ServiceJobUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  completedAt     DateTime?
+  cancelledAt     DateTime?
+  cancelledById   String?   @db.Uuid
+  cancelledBy     User?     @relation("ServiceJobCancelledBy", fields: [cancelledById], references: [id], onDelete: Restrict)
+  cancelledReason String?   @db.Text
+
+  audits ServiceAudit[]
+
+  @@index([customerId])
+  @@index([productId])
+  @@index([status])
+  @@index([customerId, status])
+  @@index([serviceCreatedDate])
+  @@index([status, serviceCreatedDate])
+  @@index([requestType])
+  @@map("service_jobs")
+}
+
+model ServiceAudit {
+  id                String                 @id @default(uuid()) @db.Uuid
+  recordType        ServiceAuditRecordType
+  recordId          String                 @db.Uuid
+  serviceJobId      String?                @db.Uuid
+  serviceJob        ServiceJob?            @relation(fields: [serviceJobId], references: [id], onDelete: Restrict)
+  action            ServiceAuditAction
+  changedById       String                 @db.Uuid
+  changedBy         User                   @relation("ServiceAuditChangedBy", fields: [changedById], references: [id], onDelete: Restrict)
+  changedByName     String
+  changedByUsername String
+  changedAt         DateTime               @default(now())
+  reason            String                 @db.Text
+  beforeValues      Json
+  afterValues       Json
+  requestId         String?
+  ipAddress         String?
+
+  @@index([recordType, recordId, changedAt])
+  @@index([serviceJobId, changedAt])
+  @@index([changedAt])
+  @@map("service_audits")
+}
+
+model Supplier {
+  id             String    @id @default(uuid()) @db.Uuid
+  name           String
+  phone          String
+  companyName    String?
+  secondaryPhone String?
+  email          String?
+  notes          String?   @db.Text
+  isActive       Boolean   @default(true)
+  archivedAt     DateTime?
+  archivedReason String?   @db.Text
+  createdById    String    @db.Uuid
+  createdBy      User      @relation("SupplierCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedById    String?   @db.Uuid
+  updatedBy      User?     @relation("SupplierUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  transactions SupplierTransaction[]
+  audits       SupplierAudit[]
+
+  @@index([name])
+  @@index([phone])
+  @@index([companyName])
+  @@index([isActive])
+  @@map("suppliers")
+}
+
+model SupplierTransaction {
+  id              String                       @id @default(uuid()) @db.Uuid
+  supplierId      String                       @db.Uuid
+  supplier        Supplier                     @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  type            SupplierTransactionType
+  direction       SupplierTransactionDirection
+  amount          Decimal                      @db.Decimal(12, 2)
+  transactionDate DateTime                     @db.Date
+  description     String
+  reference       String?
+  notes           String?                      @db.Text
+  status          SupplierTransactionStatus    @default(ACTIVE)
+  removedAt       DateTime?
+  removedById     String?                      @db.Uuid
+  removedBy       User?                        @relation("SupplierTxRemovedBy", fields: [removedById], references: [id], onDelete: Restrict)
+  removedReason   String?                      @db.Text
+  createdById     String                       @db.Uuid
+  createdBy       User                         @relation("SupplierTxCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedById     String?                      @db.Uuid
+  updatedBy       User?                        @relation("SupplierTxUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  createdAt       DateTime                     @default(now())
+  updatedAt       DateTime                     @updatedAt
+
+  audits SupplierAudit[]
+
+  @@index([supplierId])
+  @@index([supplierId, status])
+  @@index([transactionDate])
+  @@index([type])
+  @@index([status])
+  @@map("supplier_transactions")
+}
+
+model SupplierAudit {
+  id                    String                  @id @default(uuid()) @db.Uuid
+  recordType            SupplierAuditRecordType
+  recordId              String                  @db.Uuid
+  supplierId            String?                 @db.Uuid
+  supplier              Supplier?               @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  supplierTransactionId String?                 @db.Uuid
+  supplierTransaction   SupplierTransaction?    @relation(fields: [supplierTransactionId], references: [id], onDelete: Restrict)
+  action                SupplierAuditAction
+  changedById           String                  @db.Uuid
+  changedBy             User                    @relation("SupplierAuditChangedBy", fields: [changedById], references: [id], onDelete: Restrict)
+  changedByName         String
+  changedByUsername     String
+  changedAt             DateTime                @default(now())
+  reason                String                  @db.Text
+  beforeValues          Json
+  afterValues           Json
+  affectedTotals        Json?
+  requestId             String?
+  ipAddress             String?
+
+  @@index([recordType, recordId, changedAt])
+  @@index([supplierId, changedAt])
+  @@index([changedAt])
+  @@map("supplier_audits")
 }

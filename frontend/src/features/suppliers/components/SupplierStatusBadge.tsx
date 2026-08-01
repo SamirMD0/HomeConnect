@@ -1,0 +1,3 @@
+import React from 'react';
+export const SupplierStatusBadge:React.FC<{active:boolean}>=({active})=><span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ring-1 ${active?'bg-emerald-50 text-emerald-700 ring-emerald-600/20':'bg-slate-100 text-slate-600 ring-slate-400/20'}`}>{active?'Active / نشط':'Archived / مؤرشف'}</span>;
+export const SupplierTransactionStatusBadge:React.FC<{status:'ACTIVE'|'REMOVED'}>=({status})=><span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${status==='ACTIVE'?'bg-emerald-50 text-emerald-700':'bg-slate-200 text-slate-600'}`}>{status==='ACTIVE'?'Active / نشط':'Removed / محذوف'}</span>;

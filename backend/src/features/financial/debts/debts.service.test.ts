@@ -1,4 +1,5 @@
 import {
+  DebtKind,
   DebtStatus,
   FinancialCorrectionAction,
   FinancialCorrectionRecordType,
@@ -19,8 +20,17 @@ import { DebtsService } from './debts.service';
 
 const tx = { id: 'tx' };
 
-const { correctionAuditMock, repositoryMock, verifyAccountPasswordMock, verifyAdminPasswordMock } = vi.hoisted(() => ({
+const {
+  correctionAuditMock,
+  repositoryMock,
+  prepaidRepositoryMock,
+  verifyAccountPasswordMock,
+  verifyAdminPasswordMock,
+} = vi.hoisted(() => ({
   correctionAuditMock: vi.fn(),
+  prepaidRepositoryMock: {
+    createForDebt: vi.fn(),
+  },
   repositoryMock: {
     findActiveCustomerById: vi.fn(),
     createDebt: vi.fn(),
@@ -36,6 +46,10 @@ const { correctionAuditMock, repositoryMock, verifyAccountPasswordMock, verifyAd
   },
   verifyAccountPasswordMock: vi.fn(),
   verifyAdminPasswordMock: vi.fn(),
+}));
+
+vi.mock('../prepaid/prepaid.repository', () => ({
+  PrepaidRepository: prepaidRepositoryMock,
 }));
 
 vi.mock('./debts.repository', () => ({
@@ -198,6 +212,80 @@ describe('DebtsService', () => {
       )
     ).rejects.toThrow(NotFoundError);
     expect(repositoryMock.createDebt).not.toHaveBeenCalled();
+  });
+
+  it('creates a prepaid purchase and initial payment atomically', async () => {
+    const allocation = makeAllocation('100.00');
+    const prepaidDebt = makeDebt({
+      kind: DebtKind.PREPAID_PURCHASE,
+      description: 'Air conditioner',
+      originalAmount: new Decimal('400.00'),
+      dueDate: new Date(Date.UTC(2026, 6, 24)),
+      paymentAllocations: [allocation],
+      status: DebtStatus.PARTIALLY_PAID,
+    });
+    repositoryMock.findActiveCustomerById.mockResolvedValue(customer);
+    repositoryMock.createDebt.mockResolvedValue(makeDebt({
+      id: prepaidDebt.id,
+      kind: DebtKind.PREPAID_PURCHASE,
+      description: 'Air conditioner',
+      originalAmount: new Decimal('400.00'),
+      dueDate: new Date(Date.UTC(2026, 6, 24)),
+    }));
+    repositoryMock.createPayment.mockResolvedValue(allocation.payment);
+    repositoryMock.createDebtPaymentAllocation.mockResolvedValue(allocation);
+    repositoryMock.findDebtById.mockResolvedValue(prepaidDebt);
+    repositoryMock.updateDebtStatus.mockResolvedValue(prepaidDebt);
+
+    const result = await DebtsService.createPrepaidPurchase(customer.id, {
+      itemName: 'Air conditioner',
+      paymentAmount: '100.00',
+      fullAmount: '400.00',
+      notes: 'Customer will collect later',
+    }, adminUser);
+
+    expect(repositoryMock.createDebt).toHaveBeenCalledWith(expect.objectContaining({
+      kind: DebtKind.PREPAID_PURCHASE,
+      originalAmount: expect.any(Decimal),
+      status: DebtStatus.UNPAID,
+    }), tx);
+    expect(repositoryMock.createPayment).toHaveBeenCalledWith(tx, expect.objectContaining({
+      totalAmount: expect.any(Decimal),
+      paymentMethod: PaymentMethod.CASH,
+    }));
+    expect(repositoryMock.createDebtPaymentAllocation).toHaveBeenCalledWith(tx, expect.objectContaining({
+      debtId: prepaidDebt.id,
+      amount: expect.any(Decimal),
+    }));
+    // The delivery companion row is part of the same atomic write.
+    expect(prepaidRepositoryMock.createForDebt).toHaveBeenCalledWith(
+      tx,
+      expect.objectContaining({ debtId: prepaidDebt.id })
+    );
+    expect(result).toMatchObject({
+      kind: DebtKind.PREPAID_PURCHASE,
+      originalAmount: '400.00',
+      totalPaid: '100.00',
+      remainingBalance: '300.00',
+      // Admin debt is the cash the business is holding (100), not the unpaid
+      // remainder (300). If the customer walks away, 100 is the refund.
+      adminDebt: '-100.00',
+      status: DebtStatus.PARTIALLY_PAID,
+    });
+  });
+
+  it('does not mark a prepaid purchase overdue', async () => {
+    repositoryMock.findDebtById.mockResolvedValue(makeDebt({
+      kind: DebtKind.PREPAID_PURCHASE,
+      originalAmount: new Decimal('400.00'),
+      dueDate: new Date(Date.UTC(2026, 5, 1)),
+      status: DebtStatus.PARTIALLY_PAID,
+      paymentAllocations: [makeAllocation('100.00')],
+    }));
+
+    const result = await DebtsService.getDebt('33333333-3333-4333-8333-333333333333');
+
+    expect(result.status).toBe(DebtStatus.PARTIALLY_PAID);
   });
 
   it('calculates overdue status on reads without mutating stored status', async () => {
@@ -503,5 +591,41 @@ describe('DebtsService', () => {
         adminUser
       )
     ).rejects.toThrow('Debt with payments requires a dedicated reversal workflow');
+  });
+
+  it('allows admins to cancel prepaid purchases with payment history after account-password verification', async () => {
+    const prepaidDebt = makeDebt({
+      kind: DebtKind.PREPAID_PURCHASE,
+      status: DebtStatus.PARTIALLY_PAID,
+      paymentAllocations: [makeAllocation('100.00')],
+    });
+    repositoryMock.findDebtById.mockResolvedValue(prepaidDebt);
+    repositoryMock.cancelDebt.mockResolvedValue(
+      makeDebt({
+        ...prepaidDebt,
+        status: DebtStatus.CANCELLED,
+        cancelledAt: new Date('2026-07-24T11:00:00.000Z'),
+        cancelledBy: {
+          id: adminUser.userId,
+          fullName: 'Admin User',
+          username: 'admin',
+        },
+        cancelReason: 'Customer cancelled reserved item',
+      })
+    );
+
+    const cancelled = await DebtsService.cancelDebt(
+      prepaidDebt.id,
+      { reason: 'Customer cancelled reserved item', accountPassword: 'admin-password' },
+      adminUser
+    );
+
+    expect(verifyAccountPasswordMock).toHaveBeenCalledWith(adminUser.userId, 'admin-password');
+    expect(repositoryMock.cancelDebt).toHaveBeenCalledWith(tx, prepaidDebt.id, expect.objectContaining({
+      cancelledById: adminUser.userId,
+      cancelReason: 'Customer cancelled reserved item',
+    }));
+    expect(cancelled.status).toBe(DebtStatus.CANCELLED);
+    expect(cancelled.kind).toBe(DebtKind.PREPAID_PURCHASE);
   });
 });

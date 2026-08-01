@@ -39,6 +39,7 @@ import {
   FinancialLedgerPaymentItem,
   FinancialLedgerPlanItem,
 } from '../features/financial-ledger/types/financial-ledger.types';
+import { businessLabels } from '../shared/labels/business-labels';
 
 type DebtMutationTarget = DebtPaymentTarget & { customer: { id: string } };
 type PlanMutationTarget = PlanPaymentTarget & { customer: { id: string } };
@@ -129,31 +130,31 @@ export const LedgerPage: React.FC = () => {
   };
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="mx-auto max-w-7xl space-y-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Ledger</h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <h1 className="text-xl font-bold text-slate-900">{businessLabels.ledger.title}</h1>
+          <p className="mt-0.5 text-sm text-slate-500">
             Global financial view for debts, installment plans, payments, and allocations.
           </p>
         </div>
         {canMutate && (
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-2">
             <button
               type="button"
               onClick={() => setIsAddDialogOpen(true)}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md bg-emerald-600 px-3.5 text-sm font-semibold text-white hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
             >
               <Plus className="h-4 w-4" />
-              Add financial obligation
+              Add Obligation / إضافة التزام مالي
             </button>
             <button
               type="button"
               onClick={() => setIsReceivePaymentDialogOpen(true)}
-              className="inline-flex items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-emerald-200 bg-white px-3.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
             >
               <WalletCards className="h-4 w-4" />
-              Receive payment
+              {businessLabels.financial.receivePayment}
             </button>
           </div>
         )}
@@ -194,7 +195,7 @@ export const LedgerPage: React.FC = () => {
               />
               {!filters.includeCompleted && (
                 <p className="px-1 text-xs text-slate-500">
-                  Completed debts and plans are hidden. Include completed to show them.
+                  Completed debts and plans are hidden / الديون والخطط المكتملة مخفية. استخدم إظهار المكتمل لعرضها.
                 </p>
               )}
             </div>
@@ -212,7 +213,7 @@ export const LedgerPage: React.FC = () => {
                 className="inline-flex items-center rounded-md border border-slate-200 px-3 py-2 font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <ChevronLeft className="mr-1 h-4 w-4" />
-                Previous
+                Previous / السابق
               </button>
               <button
                 type="button"
@@ -220,7 +221,7 @@ export const LedgerPage: React.FC = () => {
                 disabled={data.pagination.page >= data.pagination.totalPages}
                 className="inline-flex items-center rounded-md border border-slate-200 px-3 py-2 font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Next
+                Next / التالي
                 <ChevronRight className="ml-1 h-4 w-4" />
               </button>
             </div>
@@ -231,7 +232,7 @@ export const LedgerPage: React.FC = () => {
       <Modal
         isOpen={isAddDialogOpen}
         onClose={() => setIsAddDialogOpen(false)}
-        title="Add financial obligation"
+        title="Add Obligation / إضافة التزام مالي"
         maxWidth="max-w-3xl"
       >
         <GlobalAddObligationDialog onSuccess={closeMutationDialogsAndRefresh} />
@@ -240,7 +241,7 @@ export const LedgerPage: React.FC = () => {
       <Modal
         isOpen={isReceivePaymentDialogOpen}
         onClose={() => setIsReceivePaymentDialogOpen(false)}
-        title="Receive payment"
+        title={businessLabels.financial.receivePayment}
         maxWidth="max-w-3xl"
       >
         <GlobalReceivePaymentDialog onSuccess={closeMutationDialogsAndRefresh} />
@@ -249,7 +250,7 @@ export const LedgerPage: React.FC = () => {
       <Modal
         isOpen={Boolean(selectedDebtId)}
         onClose={() => setSelectedDebtId(null)}
-        title="Debt details"
+        title="Debt Details / تفاصيل الدين"
         maxWidth="max-w-4xl"
       >
         <DebtDetails
@@ -267,7 +268,7 @@ export const LedgerPage: React.FC = () => {
       <Modal
         isOpen={Boolean(debtForEdit)}
         onClose={() => setDebtForEdit(null)}
-        title="Edit debt"
+        title="Edit Debt / تعديل الدين"
         maxWidth="max-w-2xl"
       >
         {debtForEdit && (
@@ -282,7 +283,7 @@ export const LedgerPage: React.FC = () => {
       <Modal
         isOpen={Boolean(selectedPlanId)}
         onClose={() => setSelectedPlanId(null)}
-        title="Installment plan details"
+        title="Installment Plan Details / تفاصيل خطة التقسيط"
         maxWidth="max-w-5xl"
       >
         <InstallmentPlanDetails
@@ -300,7 +301,7 @@ export const LedgerPage: React.FC = () => {
       <Modal
         isOpen={Boolean(planForEdit)}
         onClose={() => setPlanForEdit(null)}
-        title="Edit installment plan"
+        title="Edit Installment Plan / تعديل خطة التقسيط"
         maxWidth="max-w-2xl"
       >
         {planForEdit && (
@@ -315,7 +316,7 @@ export const LedgerPage: React.FC = () => {
       <Modal
         isOpen={Boolean(debtForPayment)}
         onClose={() => setDebtForPayment(null)}
-        title="Record debt payment"
+        title="Record Debt Payment / تسجيل دفعة دين"
         maxWidth="max-w-2xl"
       >
         {debtForPayment && (
@@ -330,7 +331,7 @@ export const LedgerPage: React.FC = () => {
       <Modal
         isOpen={Boolean(debtForCancellation)}
         onClose={() => setDebtForCancellation(null)}
-        title="Cancel debt"
+        title="Cancel Debt / إلغاء الدين"
         maxWidth="max-w-xl"
       >
         {debtForCancellation && (
@@ -345,7 +346,7 @@ export const LedgerPage: React.FC = () => {
       <Modal
         isOpen={Boolean(planForPayment)}
         onClose={() => setPlanForPayment(null)}
-        title="Record installment payment"
+        title="Record Installment Payment / تسجيل دفعة قسط"
         maxWidth="max-w-2xl"
       >
         {planForPayment && (
@@ -360,7 +361,7 @@ export const LedgerPage: React.FC = () => {
       <Modal
         isOpen={Boolean(planForCancellation)}
         onClose={() => setPlanForCancellation(null)}
-        title="Cancel installment plan"
+        title="Cancel Installment Plan / إلغاء خطة التقسيط"
         maxWidth="max-w-xl"
       >
         {planForCancellation && (
@@ -375,7 +376,7 @@ export const LedgerPage: React.FC = () => {
       <Modal
         isOpen={Boolean(paymentForVoid)}
         onClose={() => setPaymentForVoid(null)}
-        title="Void payment"
+        title="Void Payment / إبطال الدفعة"
         maxWidth="max-w-xl"
       >
         {paymentForVoid && (

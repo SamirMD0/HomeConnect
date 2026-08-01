@@ -4,6 +4,7 @@ import {
   cancelDebtSchema,
   createDebtPaymentSchema,
   createDebtSchema,
+  createPrepaidPurchaseSchema,
   debtParamsSchema,
   listCustomerDebtsQuerySchema,
 } from './debts.validator';
@@ -67,6 +68,26 @@ describe('debt validators', () => {
         createdById: 'client-owned',
       })
     ).toThrow();
+  });
+
+  it('validates prepaid purchase amounts and rejects overpayment', () => {
+    expect(createPrepaidPurchaseSchema.parse({
+      itemName: ' Air conditioner ',
+      paymentAmount: '100.00',
+      fullAmount: '400.00',
+      notes: ' Reserved ',
+    })).toEqual({
+      itemName: 'Air conditioner',
+      paymentAmount: '100.00',
+      fullAmount: '400.00',
+      notes: 'Reserved',
+    });
+
+    expect(() => createPrepaidPurchaseSchema.parse({
+      itemName: 'Air conditioner',
+      paymentAmount: '401.00',
+      fullAmount: '400.00',
+    })).toThrow('Payment cannot exceed the full amount');
   });
 
   it('validates payment bodies with payment method enum and idempotency key shape delegated to service', () => {

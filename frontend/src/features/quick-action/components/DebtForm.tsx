@@ -9,8 +9,8 @@ import { ArrowLeft, DollarSign, FileText } from 'lucide-react';
 
 const debtSchema = z.object({
   type: z.enum(['ONE_TIME', 'INSTALLMENT']),
-  amount: z.number().positive('Amount must be positive'),
-  description: z.string().min(1, 'Description is required'),
+  amount: z.number().positive('Amount must be positive / يجب أن يكون المبلغ أكبر من صفر'),
+  description: z.string().min(1, 'Description is required / الوصف مطلوب'),
 });
 
 type FormData = z.infer<typeof debtSchema>;
@@ -76,7 +76,7 @@ export const DebtForm: React.FC<DebtFormProps> = ({ customer, onSuccess, onBack 
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <h2 className="text-xl font-bold text-slate-800">Record Debt</h2>
+          <h2 className="text-xl font-bold text-slate-800">Record Debt / تسجيل دين</h2>
         </div>
         
         {/* Customer Header Card */}
@@ -95,15 +95,15 @@ export const DebtForm: React.FC<DebtFormProps> = ({ customer, onSuccess, onBack 
       <div className="flex-1 overflow-y-auto p-6">
         <form id="debt-form" onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Debt Type</label>
+            <label className="block text-sm font-medium text-slate-700 mb-2">Debt Type / نوع الدين</label>
             <div className="flex gap-4">
               <label className={`flex-1 flex flex-col items-center justify-center p-3 rounded-xl border-2 cursor-pointer transition-colors ${selectedType === 'ONE_TIME' ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-slate-200 hover:border-indigo-200 text-slate-600'}`}>
                 <input type="radio" value="ONE_TIME" {...register('type')} className="sr-only" />
-                <span className="font-semibold text-sm">One-Time Debt</span>
+                <span className="font-semibold text-sm">One-Time Debt / دين مفرد</span>
               </label>
               <label className={`flex-1 flex flex-col items-center justify-center p-3 rounded-xl border-2 cursor-pointer transition-colors ${selectedType === 'INSTALLMENT' ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-slate-200 hover:border-indigo-200 text-slate-600'}`}>
                 <input type="radio" value="INSTALLMENT" {...register('type')} className="sr-only" />
-                <span className="font-semibold text-sm text-center">6-Month Installment</span>
+                <span className="font-semibold text-sm text-center">6-Month Installment / تقسيط 6 أشهر</span>
               </label>
             </div>
             {selectedType === 'INSTALLMENT' && (
@@ -114,7 +114,7 @@ export const DebtForm: React.FC<DebtFormProps> = ({ customer, onSuccess, onBack 
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Debt Amount *</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Debt Amount / مبلغ الدين *</label>
             <div className="relative">
               <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                 <DollarSign className="h-4 w-4 text-slate-400" />
@@ -131,7 +131,7 @@ export const DebtForm: React.FC<DebtFormProps> = ({ customer, onSuccess, onBack 
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Description / Items *</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Description / الوصف *</label>
             <div className="relative">
               <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                 <FileText className="h-4 w-4 text-slate-400" />
@@ -156,7 +156,7 @@ export const DebtForm: React.FC<DebtFormProps> = ({ customer, onSuccess, onBack 
             disabled={createTransaction.isPending}
             className="w-full inline-flex justify-center items-center rounded-xl bg-red-600 px-3 py-3 text-sm font-semibold text-white shadow-sm hover:bg-red-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 disabled:opacity-50 transition-colors"
           >
-            {createTransaction.isPending ? 'Recording...' : 'Add Debt to Customer'}
+            {createTransaction.isPending ? 'Recording... / جارٍ التسجيل...' : 'Add Debt / إضافة دين'}
           </button>
       </div>
     </motion.div>

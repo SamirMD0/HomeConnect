@@ -1,4 +1,5 @@
 import {
+  DebtKind,
   DebtStatus,
   InstallmentPlanFrequency,
   InstallmentPlanStatus,
@@ -254,6 +255,31 @@ describe('ReceivablesService', () => {
 
     expect(row.totalPaid).toBe('200.00');
     expect(row.outstanding).toBe('300.00');
+  });
+
+  it('excludes prepaid purchases from customer receivables', async () => {
+    repositoryMock.loadReceivableRecords.mockResolvedValue({
+      customers: [alice],
+      debts: [
+        makeDebt({
+          kind: DebtKind.PREPAID_PURCHASE,
+          originalAmount: new Decimal('400.00'),
+          paymentAllocations: [makePaymentAllocation('100.00')],
+        }),
+      ],
+      plans: [],
+      payments: [makePayment(alice.id, '2026-07-05', '100.00')],
+    });
+
+    const result = await ReceivablesService.getReceivables(query());
+    expect(result.items[0]).toMatchObject({
+      totalObligated: '0.00',
+      totalPaid: '0.00',
+      outstanding: '0.00',
+      openDebtCount: 0,
+      tier: 'NO_ACTIVITY',
+    });
+    expect(result.summary.totalOutstanding).toBe('0.00');
   });
 
   it('excludes cancelled installments from the bill count', async () => {

@@ -24,6 +24,12 @@ const debtInclude = {
   cancelledBy: {
     select: userSelect,
   },
+  prepaidPurchase: {
+    select: {
+      id: true,
+      status: true,
+    },
+  },
   paymentAllocations: {
     include: {
       payment: {

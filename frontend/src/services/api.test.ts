@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import axios from 'axios';
-import { api, setAccessToken } from './api';
+import { api, refreshAccessToken, setAccessToken } from './api';
 
 describe('API Interceptors', () => {
   let responseInterceptor: any;
@@ -41,6 +41,21 @@ describe('API Interceptors', () => {
     const postCalls = vi.mocked(axios.post).mock.calls;
     const reportCalls = postCalls.filter(call => call[0].includes('report-error'));
     expect(reportCalls.length).toBe(0);
+  });
+
+  it('coalesces concurrent refresh attempts into one request', async () => {
+    let resolveRefresh: ((value: { data: object }) => void) | undefined;
+    vi.mocked(axios.post).mockImplementationOnce(() => new Promise(resolve => {
+      resolveRefresh = resolve;
+    }));
+
+    const first = refreshAccessToken();
+    const second = refreshAccessToken();
+
+    expect(axios.post).toHaveBeenCalledTimes(1);
+    resolveRefresh?.({ data: {} });
+
+    await expect(Promise.all([first, second])).resolves.toEqual([null, null]);
   });
 
   it('reports unexpected API failures without exposing request bodies', async () => {

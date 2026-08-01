@@ -1,4 +1,5 @@
 import {
+  DebtKind,
   DebtStatus,
   InstallmentPlanFrequency,
   InstallmentPlanStatus,
@@ -50,6 +51,7 @@ function makeDebt(overrides: Record<string, unknown> = {}): FinancialLedgerDebtR
     customerId: customer.id,
     customer,
     description: 'Television',
+    kind: DebtKind.STANDARD,
     originalAmount: new Decimal('600.00'),
     dueDate: businessDate('2026-08-10'),
     status: DebtStatus.UNPAID,
@@ -339,6 +341,42 @@ describe('FinancialLedgerService', () => {
         expect.objectContaining({ amount: '50.00' }),
       ]),
     });
+  });
+
+  it('no longer exposes prepaid metrics: prepaid purchases live in their own section', async () => {
+    const standardDebt = makeDebt({
+      id: '33333333-3333-4333-8333-333333333331',
+      description: 'Standard bill',
+      originalAmount: new Decimal('500.00'),
+    });
+    mockRecordSet({ debts: [standardDebt] });
+
+    const allResult = await FinancialLedgerService.getFinancialLedger(
+      baseQuery({ includeCompleted: true })
+    );
+
+    expect(allResult.summary.activeDebtCount).toBe(1);
+    expect(allResult.summary.activeCustomerCount).toBe(1);
+    expect(allResult.summary).not.toHaveProperty('totalPrepaidAdminDebt');
+    expect(allResult.summary).not.toHaveProperty('activePrepaidCount');
+    // Standard debts carry no admin debt; that concept belongs to prepaid only.
+    expect(allResult.items[0]).toMatchObject({ adminDebt: '0.00' });
+  });
+
+  it('asks the repository for debts when the type filter selects them', async () => {
+    mockRecordSet({ debts: [makeDebt({ id: '33333333-3333-4333-8333-333333333334' })] });
+
+    await FinancialLedgerService.getFinancialLedger(
+      baseQuery({ type: 'DEBT', includeCompleted: true })
+    );
+
+    expect(repositoryMock.loadFinancialLedger).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        includeDebts: true,
+        includePlans: false,
+        includePayments: false,
+      })
+    );
   });
 
   it('uses month-filtered installment paid amounts for total paid when due dates are filtered', async () => {

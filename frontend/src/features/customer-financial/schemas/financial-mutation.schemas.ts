@@ -1,17 +1,18 @@
 import { z } from 'zod';
 import { isStrictBusinessDate } from '../utils/business-date';
 import { isValidMoneyInput, isMoneyLessThanOrEqual } from '../utils/money-input';
+import { businessValidationMessages } from '../../../shared/labels/business-labels';
 
 const moneySchema = z
   .string()
   .trim()
-  .min(1, 'Amount is required')
+  .min(1, businessValidationMessages.amountRequired)
   .refine(isValidMoneyInput, 'Enter a positive amount with up to two decimals');
 
 const businessDateSchema = z
   .string()
   .trim()
-  .min(1, 'Date is required')
+  .min(1, businessValidationMessages.dateRequired)
   .refine(isStrictBusinessDate, 'Use a valid YYYY-MM-DD date');
 
 const optionalTextSchema = z
@@ -25,6 +26,18 @@ export const createDebtSchema = z.object({
   dueDate: businessDateSchema,
   notes: optionalTextSchema,
 });
+
+export const createPrepaidPurchaseSchema = z
+  .object({
+    itemName: z.string().trim().min(1, 'Item name is required'),
+    paymentAmount: moneySchema,
+    fullAmount: moneySchema,
+    notes: optionalTextSchema,
+  })
+  .refine((value) => isMoneyLessThanOrEqual(value.paymentAmount, value.fullAmount), {
+    path: ['paymentAmount'],
+    message: 'Payment cannot exceed the full amount',
+  });
 
 export const debtPaymentSchema = (remainingBalance: string) =>
   z.object({
@@ -97,6 +110,7 @@ export const installmentPlanPaymentSchema = (remainingBalance: string) =>
   });
 
 export type CreateDebtFormValues = z.infer<typeof createDebtSchema>;
+export type CreatePrepaidPurchaseFormValues = z.infer<typeof createPrepaidPurchaseSchema>;
 export type DebtPaymentFormValues = z.infer<ReturnType<typeof debtPaymentSchema>>;
 export type UpdateDebtFormValues = z.infer<typeof updateDebtSchema>;
 export type CancelFinancialRecordFormValues = z.infer<typeof cancelFinancialRecordSchema>;

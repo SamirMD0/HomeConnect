@@ -1,4 +1,5 @@
 export type DebtStatus = 'UNPAID' | 'PARTIALLY_PAID' | 'OVERDUE' | 'PAID' | 'CANCELLED';
+export type DebtKind = 'STANDARD' | 'PREPAID_PURCHASE';
 export type InstallmentPlanStatus = 'ACTIVE' | 'OVERDUE' | 'COMPLETED' | 'CANCELLED';
 export type InstallmentStatus = 'PENDING' | 'PARTIALLY_PAID' | 'OVERDUE' | 'PAID' | 'CANCELLED';
 export type PaymentMethod = 'CASH' | 'CARD' | 'BANK_TRANSFER' | 'CHECK' | 'OTHER';
@@ -44,8 +45,10 @@ export interface FinancialSummaryTotals {
   totalOutstanding: string;
   singleDebtOutstanding: string;
   installmentPlanOutstanding: string;
+  totalPrepaidAdminDebt: string;
   totalPaid: string;
   activeDebtCount: number;
+  activePrepaidCount: number;
   activePlanCount: number;
   overdueDebtCount: number;
   overdueInstallmentCount: number;
@@ -67,10 +70,12 @@ export interface FinancialCancellationSummary {
 
 export interface DebtSummaryItem {
   id: string;
+  kind: DebtKind;
   description: string;
   originalAmount: string;
   totalPaid: string;
   remainingBalance: string;
+  adminDebt: string;
   dueDate: string;
   status: DebtStatus;
   calculatedStatus: DebtStatus;
@@ -211,6 +216,13 @@ export interface CreateDebtRequest {
   amount: string;
   description: string;
   dueDate: string;
+  notes?: string | null;
+}
+
+export interface CreatePrepaidPurchaseRequest {
+  itemName: string;
+  paymentAmount: string;
+  fullAmount: string;
   notes?: string | null;
 }
 

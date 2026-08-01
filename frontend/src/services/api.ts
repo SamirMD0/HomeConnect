@@ -15,6 +15,7 @@ export const api = axios.create({
 
 // Variable to hold the current access token
 let currentAccessToken: string | null = null;
+let refreshRequest: Promise<string | null> | null = null;
 
 export const setAccessToken = (token: string | null) => {
   currentAccessToken = token;
@@ -37,20 +38,28 @@ api.interceptors.request.use(
  * Returns null when there is no usable session — callers treat that as
  * "signed out", not as an error worth reporting.
  */
-export const refreshAccessToken = async (): Promise<string | null> => {
-  try {
-    const response = await axios.post(`${API_URL}/auth/refresh`, {}, {
-      withCredentials: true,
-    });
-    const newAccessToken: string | null = response.data?.data?.accessToken ?? null;
-    if (!newAccessToken) return null;
+export const refreshAccessToken = (): Promise<string | null> => {
+  if (refreshRequest) return refreshRequest;
 
-    setAccessToken(newAccessToken);
-    window.dispatchEvent(new CustomEvent('token_refreshed', { detail: newAccessToken }));
-    return newAccessToken;
-  } catch {
-    return null;
-  }
+  refreshRequest = (async () => {
+    try {
+      const response = await axios.post(`${API_URL}/auth/refresh`, {}, {
+        withCredentials: true,
+      });
+      const newAccessToken: string | null = response.data?.data?.accessToken ?? null;
+      if (!newAccessToken) return null;
+
+      setAccessToken(newAccessToken);
+      window.dispatchEvent(new CustomEvent('token_refreshed', { detail: newAccessToken }));
+      return newAccessToken;
+    } catch {
+      return null;
+    }
+  })().finally(() => {
+    refreshRequest = null;
+  });
+
+  return refreshRequest;
 };
 
 // Requests that must never trigger a refresh attempt: a rejected login is a

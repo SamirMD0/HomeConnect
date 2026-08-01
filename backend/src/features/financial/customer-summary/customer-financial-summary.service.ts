@@ -1,4 +1,5 @@
 import {
+  DebtKind,
   DebtStatus,
   InstallmentPlanFrequency,
   InstallmentPlanStatus,
@@ -11,6 +12,8 @@ import {
   BusinessDate,
   businessDateToPrisma,
   calculateDebtBalance,
+  calculatePrepaidAdminDebt,
+  isPrepaidAdminDebtActive,
   calculateInstallmentBalance,
   compareBusinessDates,
   determineDebtStatus,
@@ -52,10 +55,12 @@ interface CustomerView {
 
 interface DebtSummaryView {
   id: string;
+  kind: DebtKind;
   description: string;
   originalAmount: string;
   totalPaid: string;
   remainingBalance: string;
+  adminDebt: string;
   dueDate: string;
   status: DebtStatus;
   calculatedStatus: DebtStatus;
@@ -163,8 +168,10 @@ interface CustomerFinancialSummaryView {
     totalOutstanding: string;
     singleDebtOutstanding: string;
     installmentPlanOutstanding: string;
+    totalPrepaidAdminDebt: string;
     totalPaid: string;
     activeDebtCount: number;
+    activePrepaidCount: number;
     activePlanCount: number;
     overdueDebtCount: number;
     overdueInstallmentCount: number;
@@ -184,6 +191,9 @@ interface DebtComputation {
   remainingBalance: Decimal;
   dueDate: BusinessDate;
   isCancelled: boolean;
+  isPrepaid: boolean;
+  /** Prepaid item still held by the business, so its paid cash is a liability. */
+  awaitsDelivery: boolean;
 }
 
 interface InstallmentComputation {
@@ -233,8 +243,12 @@ export class CustomerFinancialSummaryService {
     ]);
 
     const activeDebts = debtComputations.filter(
-      (debt) => debt.view.calculatedStatus !== DebtStatus.PAID && debt.view.calculatedStatus !== DebtStatus.CANCELLED
+      (debt) =>
+        !debt.isPrepaid &&
+        debt.view.calculatedStatus !== DebtStatus.PAID &&
+        debt.view.calculatedStatus !== DebtStatus.CANCELLED
     );
+    const activePrepaid = debtComputations.filter((debt) => debt.awaitsDelivery);
     const activePlans = planComputations.filter(
       (plan) => plan.status !== InstallmentPlanStatus.COMPLETED && plan.status !== InstallmentPlanStatus.CANCELLED
     );
@@ -243,8 +257,18 @@ export class CustomerFinancialSummaryService {
     );
     const singleDebtOutstanding = sumMoney(
       debtComputations
-        .filter((debt) => !debt.isCancelled)
+        .filter((debt) => !debt.isCancelled && !debt.isPrepaid)
         .map((debt) => debt.remainingBalance)
+    );
+    // The liability is the cash the business is holding, i.e. what was paid, and
+    // only while the item is still awaiting delivery.
+    const totalPrepaidAdminDebt = subtractMoney(
+      ZERO_MONEY,
+      sumMoney(
+        debtComputations
+          .filter((debt) => debt.awaitsDelivery)
+          .map((debt) => debt.totalPaid)
+      )
     );
     const installmentPlanOutstanding = sumMoney(
       planComputations
@@ -266,8 +290,10 @@ export class CustomerFinancialSummaryService {
         totalOutstanding: moneyToApiString(sumMoney([singleDebtOutstanding, installmentPlanOutstanding])),
         singleDebtOutstanding: moneyToApiString(singleDebtOutstanding),
         installmentPlanOutstanding: moneyToApiString(installmentPlanOutstanding),
+        totalPrepaidAdminDebt: moneyToApiString(totalPrepaidAdminDebt),
         totalPaid: moneyToApiString(totalPaid),
         activeDebtCount: activeDebts.length,
+        activePrepaidCount: activePrepaid.length,
         activePlanCount: activePlans.length,
         overdueDebtCount: debtComputations.filter(
           (debt) => debt.view.calculatedStatus === DebtStatus.OVERDUE
@@ -301,15 +327,25 @@ export class CustomerFinancialSummaryService {
       dueDate,
       businessDate,
       balance,
+      overdueEligible: debt.kind !== DebtKind.PREPAID_PURCHASE,
     });
 
     return {
       view: {
         id: debt.id,
+        kind: debt.kind,
         description: debt.description,
         originalAmount: moneyToApiString(debt.originalAmount),
         totalPaid: moneyToApiString(balance.totalPaid),
         remainingBalance: moneyToApiString(balance.remainingBalance),
+        adminDebt: moneyToApiString(
+          calculatePrepaidAdminDebt({
+            kind: debt.kind,
+            prepaidStatus: debt.prepaidPurchase?.status,
+            isCancelled,
+            totalPaid: balance.totalPaid,
+          })
+        ),
         dueDate,
         status: calculatedStatus,
         calculatedStatus,
@@ -324,6 +360,12 @@ export class CustomerFinancialSummaryService {
       remainingBalance: balance.remainingBalance,
       dueDate,
       isCancelled,
+      isPrepaid: debt.kind === DebtKind.PREPAID_PURCHASE,
+      awaitsDelivery: isPrepaidAdminDebtActive({
+        kind: debt.kind,
+        prepaidStatus: debt.prepaidPurchase?.status,
+        isCancelled,
+      }),
     };
   }
 
@@ -461,7 +503,7 @@ export class CustomerFinancialSummaryService {
     debts: DebtComputation[],
     plans: PlanComputation[]
   ): NextDueView | null {
-    const debtItems = debts.map((debt) => ({
+    const debtItems = debts.filter((debt) => !debt.isPrepaid).map((debt) => ({
       type: 'DEBT' as const,
       id: debt.view.id,
       planId: null,

@@ -33,3 +33,14 @@ export function isMoneyLessThanOrEqual(left: string, right: string): boolean {
   const rightCents = moneyToCents(right);
   return leftCents >= 0n && rightCents >= 0n && leftCents <= rightCents;
 }
+
+export function subtractMoneyInput(total: string, paid: string): string | null {
+  const totalCents = moneyToCents(total);
+  const paidCents = moneyToCents(paid);
+  if (totalCents < 0n || paidCents < 0n || paidCents > totalCents) return null;
+  return centsToMoney(totalCents - paidCents);
+}
+
+export function negativeMoneyInput(value: string): string {
+  return value === '0.00' ? value : `-${value}`;
+}

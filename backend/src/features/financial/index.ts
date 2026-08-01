@@ -7,6 +7,7 @@ export * from './domain/immutable-policy';
 export * from './domain/installment-schedule';
 export * from './domain/money';
 export * from './domain/payment-allocation';
+export * from './domain/prepaid-balance';
 export * from './domain/statuses';
 export * from './corrections/correction-audit';
 export * from './infrastructure/idempotency';

@@ -17,6 +17,8 @@ import { createClientIdempotencyKey } from '../utils/idempotency-key';
 import { canonicalMoneyInput } from '../utils/money-input';
 import { inputClass, SubmitButton, TextField } from './CreateDebtForm';
 import { FinancialStatusBadge } from './FinancialStatusBadge';
+import { businessLabels } from '../../../shared/labels/business-labels';
+import { paymentMethodLabels } from '../utils/financial-labels';
 
 interface RecordPlanPaymentDialogProps {
   customerId: string;
@@ -99,7 +101,7 @@ export const RecordPlanPaymentDialog: React.FC<RecordPlanPaymentDialogProps> = (
           {serverError}
         </div>
       )}
-      <TextField label="Amount" error={errors.amount?.message}>
+      <TextField label={businessLabels.financial.amount} error={errors.amount?.message}>
         <input
           {...register('amount')}
           inputMode="decimal"
@@ -108,28 +110,24 @@ export const RecordPlanPaymentDialog: React.FC<RecordPlanPaymentDialogProps> = (
           placeholder="150.00"
         />
       </TextField>
-      <TextField label="Payment date" error={errors.paymentDate?.message}>
+      <TextField label={businessLabels.financial.paymentDate} error={errors.paymentDate?.message}>
         <input {...register('paymentDate')} type="date" className={inputClass(Boolean(errors.paymentDate))} />
       </TextField>
-      <TextField label="Payment method" error={errors.paymentMethod?.message}>
+      <TextField label={businessLabels.financial.paymentMethod} error={errors.paymentMethod?.message}>
         <select {...register('paymentMethod')} className={inputClass(Boolean(errors.paymentMethod))}>
-          <option value="CASH">Cash</option>
-          <option value="CARD">Card</option>
-          <option value="BANK_TRANSFER">Bank transfer</option>
-          <option value="CHECK">Check</option>
-          <option value="OTHER">Other</option>
+          {Object.entries(paymentMethodLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
         </select>
       </TextField>
-      <TextField label="Reference" error={errors.reference?.message}>
+      <TextField label={businessLabels.financial.reference} error={errors.reference?.message}>
         <input {...register('reference')} dir="auto" className={inputClass(Boolean(errors.reference))} placeholder="Optional" />
       </TextField>
-      <TextField label="Notes" error={errors.notes?.message}>
+      <TextField label={businessLabels.common.notes} error={errors.notes?.message}>
         <textarea {...register('notes')} dir="auto" rows={3} className={inputClass(Boolean(errors.notes))} placeholder="Optional" />
       </TextField>
       <SubmitButton
         isPending={recordPayment.isPending}
-        label="Record payment"
-        pendingLabel="Recording payment..."
+        label={businessLabels.financial.recordPayment}
+        pendingLabel="Recording payment... / جارٍ تسجيل الدفعة..."
       />
     </form>
   );
@@ -144,12 +142,12 @@ const PlanPaymentContext: React.FC<{ plan: PlanPaymentTarget }> = ({
       <FinancialStatusBadge type="plan" status={plan.calculatedStatus ?? plan.status ?? 'ACTIVE'} />
     </div>
     <dl className="grid grid-cols-2 gap-3 text-slate-600 sm:grid-cols-4">
-      <ContextTerm label="Total" value={formatMoney(plan.totalAmount)} />
-      <ContextTerm label="Paid" value={formatMoney(plan.totalPaid)} />
-      <ContextTerm label="Remaining" value={formatMoney(plan.remainingBalance)} />
-      <ContextTerm label="Next due" value={formatBusinessDate(plan.nextDueDate)} />
+      <ContextTerm label={businessLabels.financial.total} value={formatMoney(plan.totalAmount)} />
+      <ContextTerm label={businessLabels.financial.paid} value={formatMoney(plan.totalPaid)} />
+      <ContextTerm label={businessLabels.financial.remaining} value={formatMoney(plan.remainingBalance)} />
+      <ContextTerm label="Next Due / الاستحقاق التالي" value={formatBusinessDate(plan.nextDueDate)} />
       <ContextTerm
-        label="Next amount"
+        label="Next Amount / الدفعة التالية"
         value={
           plan.scheduleSummary?.nextInstallment
             ? formatMoney(plan.scheduleSummary.nextInstallment.remainingAmount)

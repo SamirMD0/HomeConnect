@@ -5,9 +5,11 @@ import {
   addMoney,
   assertPositiveMoney,
   compareMoney,
+  divideMoney,
   equalMoney,
   moneyToApiString,
   parseMoney,
+  multiplyMoney,
   subtractMoney,
   sumMoney,
 } from './money';
@@ -36,6 +38,12 @@ describe('financial money helpers', () => {
     expect(moneyToApiString(subtractMoney('100.00', '33.33'))).toBe('66.67');
     expect(moneyToApiString(sumMoney(['10.00', new Decimal('0.25'), '0.75']))).toBe('11.00');
     expect(equalMoney('1.20', new Decimal('1.2'))).toBe(true);
+  });
+
+  it('multiplies and divides using Decimal factors and explicit rounding', () => {
+    expect(moneyToApiString(multiplyMoney('0.07', '1.33333'))).toBe('0.09');
+    expect(moneyToApiString(divideMoney('10.00', '3', Decimal.ROUND_FLOOR))).toBe('3.33');
+    expect(() => divideMoney('10.00', '0')).toThrow(InvalidMoneyError);
   });
 
   it('compares values correctly', () => {

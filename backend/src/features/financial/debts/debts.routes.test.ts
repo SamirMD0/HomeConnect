@@ -6,6 +6,7 @@ import { app } from '../../../app';
 const { debtsServiceMock } = vi.hoisted(() => ({
   debtsServiceMock: {
     createDebt: vi.fn(),
+    createPrepaidPurchase: vi.fn(),
     listCustomerDebts: vi.fn(),
     getDebt: vi.fn(),
     listDebtPayments: vi.fn(),
@@ -36,6 +37,7 @@ const employeeToken = jwt.sign({ userId: '44444444-4444-4444-8444-444444444444',
 
 const debtResponse = {
   id: debtId,
+  kind: 'STANDARD',
   customer: {
     id: customerId,
     name: 'Ali Ahmad',
@@ -64,6 +66,15 @@ describe('debt routes', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     debtsServiceMock.createDebt.mockResolvedValue(debtResponse);
+    debtsServiceMock.createPrepaidPurchase.mockResolvedValue({
+      ...debtResponse,
+      kind: 'PREPAID_PURCHASE',
+      description: 'Air conditioner',
+      originalAmount: '400.00',
+      totalPaid: '100.00',
+      remainingBalance: '300.00',
+      status: 'PARTIALLY_PAID',
+    });
     debtsServiceMock.listCustomerDebts.mockResolvedValue({
       debts: [debtResponse],
       total: 1,
@@ -153,6 +164,37 @@ describe('debt routes', () => {
         description: 'Refrigerator',
         dueDate: '2026-08-10',
         status: 'PAID',
+      });
+
+    expect(invalidResponse.status).toBe(400);
+  });
+
+  it('allows admins to create prepaid purchases and validates overpayment', async () => {
+    const response = await request(app)
+      .post(`/api/v1/customers/${customerId}/prepaid-purchases`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        itemName: 'Air conditioner',
+        paymentAmount: '100.00',
+        fullAmount: '400.00',
+        notes: 'Customer will collect later',
+      });
+
+    expect(response.status).toBe(201);
+    expect(response.body.data).toMatchObject({
+      kind: 'PREPAID_PURCHASE',
+      totalPaid: '100.00',
+      remainingBalance: '300.00',
+    });
+    expect(debtsServiceMock.createPrepaidPurchase).toHaveBeenCalledTimes(1);
+
+    const invalidResponse = await request(app)
+      .post(`/api/v1/customers/${customerId}/prepaid-purchases`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        itemName: 'Air conditioner',
+        paymentAmount: '500.00',
+        fullAmount: '400.00',
       });
 
     expect(invalidResponse.status).toBe(400);

@@ -1,11 +1,17 @@
 import {
   DebtStatus,
+  DebtKind,
   InstallmentPlanStatus,
   InstallmentStatus,
   PaymentMethod,
 } from '../../customer-financial/types/customer-financial.types';
 
-export type FinancialLedgerTypeFilter = 'ALL' | 'DEBT' | 'INSTALLMENT_PLAN' | 'PAYMENT' | 'OVERDUE';
+export type FinancialLedgerTypeFilter =
+  | 'ALL'
+  | 'DEBT'
+  | 'INSTALLMENT_PLAN'
+  | 'PAYMENT'
+  | 'OVERDUE';
 export type FinancialLedgerStatusFilter = 'ACTIVE' | 'OVERDUE' | 'PAID_COMPLETED' | 'CANCELLED';
 export type FinancialLedgerSortBy = 'date' | 'createdAt' | 'customer' | 'amount';
 export type FinancialLedgerSortOrder = 'asc' | 'desc';
@@ -53,12 +59,14 @@ export interface FinancialLedgerCorrection {
 
 export interface FinancialLedgerDebtItem {
   type: 'DEBT';
+  kind: DebtKind;
   id: string;
   customer: FinancialLedgerCustomer;
   description: string;
   originalAmount: string;
   totalPaid: string;
   remainingBalance: string;
+  adminDebt: string;
   dueDate: string;
   status: DebtStatus;
   storedStatus: DebtStatus;

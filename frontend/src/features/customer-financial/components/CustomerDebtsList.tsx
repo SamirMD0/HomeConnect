@@ -23,8 +23,8 @@ export const CustomerDebtsList: React.FC<CustomerDebtsListProps> = ({
   if (debts.length === 0) {
     return (
       <FinancialEmptyState
-        title="No single debts"
-        description="This customer has no single-debt records in the financial profile."
+        title="No debts or prepaid purchases"
+        description="This customer has no debt or prepaid-purchase records in the financial profile."
       />
     );
   }
@@ -32,7 +32,7 @@ export const CustomerDebtsList: React.FC<CustomerDebtsListProps> = ({
   return (
     <section aria-labelledby="customer-debts-heading">
       <h2 id="customer-debts-heading" className="mb-4 text-lg font-semibold text-slate-900">
-        Single debts
+        Debts & prepaid purchases / الديون والمشتريات المسبقة
       </h2>
       <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
         <table className="min-w-full divide-y divide-slate-200 text-sm">
@@ -41,7 +41,7 @@ export const CustomerDebtsList: React.FC<CustomerDebtsListProps> = ({
               <th className="px-4 py-3">Debt</th>
               <th className="px-4 py-3 text-right">Original</th>
               <th className="px-4 py-3 text-right">Paid</th>
-              <th className="px-4 py-3 text-right">Remaining</th>
+              <th className="px-4 py-3 text-right">Remaining / Admin debt</th>
               <th className="px-4 py-3">Due date</th>
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Created</th>
@@ -53,14 +53,21 @@ export const CustomerDebtsList: React.FC<CustomerDebtsListProps> = ({
               <tr key={debt.id} className="align-top">
                 <td className="px-4 py-3">
                   <p className="user-text font-medium text-slate-900" dir="auto">{debt.description}</p>
+                  {debt.kind === 'PREPAID_PURCHASE' && (
+                    <span className="mt-1 inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-600/20">
+                      Prepaid / مدفوع مسبقاً
+                    </span>
+                  )}
                   {debt.cancellation && (
                     <p className="user-text mt-1 text-xs text-slate-500" dir="auto">Cancelled: {debt.cancellation.reason || 'No reason recorded'}</p>
                   )}
                 </td>
                 <td className="px-4 py-3 text-right text-slate-700">{formatMoney(debt.originalAmount)}</td>
                 <td className="px-4 py-3 text-right text-slate-700">{formatMoney(debt.totalPaid)}</td>
-                <td className="px-4 py-3 text-right font-semibold text-slate-900">{formatMoney(debt.remainingBalance)}</td>
-                <td className="px-4 py-3 text-slate-600">{formatBusinessDate(debt.dueDate)}</td>
+                <td className={`px-4 py-3 text-right font-semibold ${debt.kind === 'PREPAID_PURCHASE' ? 'text-red-700' : 'text-slate-900'}`}>
+                  {formatMoney(debt.kind === 'PREPAID_PURCHASE' ? debt.adminDebt : debt.remainingBalance)}
+                </td>
+                <td className="px-4 py-3 text-slate-600">{debt.kind === 'PREPAID_PURCHASE' ? 'Reserved / محجوز' : formatBusinessDate(debt.dueDate)}</td>
                 <td className="px-4 py-3">
                   <FinancialStatusBadge type="debt" status={debt.calculatedStatus} />
                 </td>
@@ -76,13 +83,13 @@ export const CustomerDebtsList: React.FC<CustomerDebtsListProps> = ({
                         Payment
                       </button>
                     )}
-                    {canMutate && canCancelDebt(debt.calculatedStatus, debt.totalPaid) && onCancelDebt && (
+                    {canMutate && canCancelDebt(debt.calculatedStatus, debt.totalPaid, debt.kind) && onCancelDebt && (
                       <button
                         type="button"
                         onClick={() => onCancelDebt(debt)}
                         className="rounded-md border border-amber-200 px-3 py-1.5 text-sm font-medium text-amber-700 hover:bg-amber-50 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
                       >
-                        Cancel
+                        {debt.kind === 'PREPAID_PURCHASE' ? 'Cancel pre-paid' : 'Cancel'}
                       </button>
                     )}
                   <button

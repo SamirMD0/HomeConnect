@@ -22,7 +22,7 @@ export const InstallmentSchedulePreview: React.FC<InstallmentSchedulePreviewProp
   if (!preview) {
     return (
       <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-500">
-        Enter a valid amount, start date, and count to preview the schedule.
+        Enter a valid amount, start date, and count / أدخل المبلغ وتاريخ البدء وعدد الأقساط.
       </div>
     );
   }
@@ -31,7 +31,7 @@ export const InstallmentSchedulePreview: React.FC<InstallmentSchedulePreviewProp
     <section aria-labelledby="installment-preview-heading" className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 id="installment-preview-heading" className="text-sm font-semibold text-slate-800">
-          Schedule preview
+          Schedule Preview / معاينة جدول الأقساط
         </h3>
         <p className="text-sm text-slate-600">
           {preview.rows.length} installments, scheduled {formatMoney(preview.totalScheduled)} of{' '}
@@ -48,8 +48,8 @@ export const InstallmentSchedulePreview: React.FC<InstallmentSchedulePreviewProp
           <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
             <tr>
               <th className="px-3 py-2">#</th>
-              <th className="px-3 py-2">Due date</th>
-              <th className="px-3 py-2 text-right">Amount</th>
+              <th className="px-3 py-2">Due Date / تاريخ الاستحقاق</th>
+              <th className="px-3 py-2 text-right">Amount / المبلغ</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 bg-white">

@@ -4,7 +4,7 @@ Use this file first. It exists to avoid re-analyzing the whole repository.
 
 ## Project Summary
 
-HomeConnect is a local Windows business management application for customers, debts, installment plans, payments, a unified financial ledger, reports, backups, diagnostics, and Electron desktop packaging.
+HomeConnect is a local Windows business management application for customers, debts, installment plans, payments, a unified customer financial ledger, receivables, prepaid purchases, suppliers, a separate supplier ledger, reports, backups, diagnostics, products, maintenance/service jobs, and Electron desktop packaging.
 
 The app stack is:
 
@@ -19,11 +19,7 @@ The repository is intentionally phase-heavy and contains many docs. Do not scan 
 
 ## Current Important Version Context
 
-- `1.0.1`: fixed packaged Ledger runtime Decimal issue.
-- `1.0.2`: attempted error/startup monitor work.
-- `1.0.3`: startup monitor appears and fast-fails database connection errors.
-- `1.0.4`: financial corrections, ledger UI improvements, dashboard financial rewrite, and packaged Windows release.
-- `1.0.5`: Accounts Receivable, backup restore button, docs cleanup, and partial Phase 12 migration repair artifact.
+- `1.1.0`
 
 Generated release folders live under:
 
@@ -154,6 +150,28 @@ Customers:
 - `backend/src/validators/customers.validator.ts`
 - `frontend/src/features/customers`
 - `frontend/src/pages/customers`
+
+Products and service jobs:
+
+- `backend/src/features/service`
+- `frontend/src/features/service`
+- `frontend/src/pages/service`
+
+Suppliers and supplier ledger:
+
+- `backend/src/features/suppliers`
+- `frontend/src/features/suppliers`
+- `frontend/src/pages/suppliers`
+- `docs/phases/phase-1-0-8`
+
+Prepaid purchases (items paid for but not yet handed over):
+
+- `backend/src/features/financial/prepaid`
+- `frontend/src/features/prepaid`
+- `frontend/src/pages/PrepaidPurchasesPage.tsx`
+- `docs/phases/phase-1-0-7/PREPAID_PURCHASE_DESIGN.md`
+
+Admin debt is the cash the business holds for an undelivered item, i.e. the amount PAID, shown negative. It is non-zero only while awaiting delivery. Prepaid is excluded from the global Ledger and from receivables; delivering an unpaid item converts the remainder into a `STANDARD` debt.
 
 Financial domain:
 

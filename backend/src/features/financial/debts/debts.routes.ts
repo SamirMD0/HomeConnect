@@ -6,6 +6,7 @@ import {
   cancelDebtSchema,
   createDebtPaymentSchema,
   createDebtSchema,
+  createPrepaidPurchaseSchema,
   customerDebtParamsSchema,
   debtParamsSchema,
   listCustomerDebtsQuerySchema,
@@ -28,6 +29,14 @@ customerDebtsRoutes.post(
   requireFinancialAdmin,
   validate(createDebtSchema),
   DebtsController.createDebt
+);
+
+customerDebtsRoutes.post(
+  '/:customerId/prepaid-purchases',
+  validate(customerDebtParamsSchema, 'params'),
+  requireFinancialAdmin,
+  validate(createPrepaidPurchaseSchema),
+  DebtsController.createPrepaidPurchase
 );
 
 debtsRoutes.get(

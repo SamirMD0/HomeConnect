@@ -1,10 +1,12 @@
 import {
+  DebtKind,
   DebtStatus,
   FinancialCorrectionRecordType,
   InstallmentPlanStatus,
   Prisma,
 } from '@prisma/client';
 import { prisma } from '../../../lib/prisma';
+import { findSearchMatchIds } from '../../../lib/search-query';
 
 const customerSelect = {
   id: true,
@@ -110,10 +112,30 @@ export interface FinancialLedgerCorrectionMarkers {
 
 export class FinancialLedgerRepository {
   static async loadFinancialLedger(params: LoadFinancialLedgerParams): Promise<FinancialLedgerRecordSet> {
-    const customerWhere = this.customerWhere(params);
+    const customerWhere = this.customerWhere();
+    const searchIds = await this.resolveSearchIds(params);
+    // Customer name/phone as before, now also the obligation description.
+    const debtSearchWhere: Prisma.DebtWhereInput = searchIds
+      ? {
+          OR: [
+            { customerId: { in: searchIds.customerIds } },
+            { id: { in: searchIds.debtIds } },
+          ],
+        }
+      : {};
+    // Plans and payments have no description of their own in the ledger, so they
+    // keep matching on the customer only.
+    const customerSearchWhere = searchIds
+      ? { customerId: { in: searchIds.customerIds } }
+      : {};
+
     const debtWhere: Prisma.DebtWhereInput = {
       ...customerWhere,
+      ...debtSearchWhere,
       ...(params.customerId ? { customerId: params.customerId } : {}),
+      // Prepaid purchases have their own section. Excluding them here (rather than
+      // when mapping) keeps the ledger's pagination totals correct.
+      kind: DebtKind.STANDARD,
       ...(!params.includeCancelled ? { status: { not: DebtStatus.CANCELLED } } : {}),
       ...(params.dueFrom || params.dueTo
         ? {
@@ -126,6 +148,7 @@ export class FinancialLedgerRepository {
     };
     const planWhere: Prisma.InstallmentPlanWhereInput = {
       ...customerWhere,
+      ...customerSearchWhere,
       ...(params.customerId ? { customerId: params.customerId } : {}),
       ...(!params.includeCancelled ? { status: { not: InstallmentPlanStatus.CANCELLED } } : {}),
       ...(params.dueFrom || params.dueTo
@@ -143,6 +166,7 @@ export class FinancialLedgerRepository {
     };
     const paymentWhere: Prisma.PaymentWhereInput = {
       ...customerWhere,
+      ...customerSearchWhere,
       ...(params.customerId ? { customerId: params.customerId } : {}),
       ...(!params.includeCancelled ? { voidedAt: null } : {}),
       ...(params.paymentFrom || params.paymentTo
@@ -248,22 +272,25 @@ export class FinancialLedgerRepository {
     return markers;
   }
 
-  private static customerWhere(params: LoadFinancialLedgerParams) {
-    const search = params.search?.trim();
+  /** Live-customer scope. Applied to every ledger record type, search or not. */
+  private static customerWhere() {
+    return { customer: { deletedAt: null } } satisfies Pick<Prisma.DebtWhereInput, 'customer'>;
+  }
 
-    return {
-      customer: {
-        deletedAt: null,
-        ...(search
-          ? {
-              OR: [
-                { name: { contains: search, mode: Prisma.QueryMode.insensitive } },
-                { phone: { contains: search, mode: Prisma.QueryMode.insensitive } },
-              ],
-            }
-          : {}),
-      },
-    } satisfies Pick<Prisma.DebtWhereInput, 'customer'>;
+  /**
+   * Resolves the ledger search term to matching customer ids and debt ids.
+   * Returns null when there is no search, meaning "apply no search filter".
+   */
+  private static async resolveSearchIds(params: LoadFinancialLedgerParams) {
+    const search = params.search?.trim();
+    if (!search) return null;
+
+    const [customerIds, debtIds] = await Promise.all([
+      findSearchMatchIds('customer', search),
+      findSearchMatchIds('debt', search),
+    ]);
+
+    return { customerIds: customerIds ?? [], debtIds: debtIds ?? [] };
   }
 
   private static correctionMapForRecordType(

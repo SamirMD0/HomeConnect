@@ -2,10 +2,11 @@ import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { businessLabels, businessValidationMessages } from '../../../shared/labels/business-labels';
 
-const customerSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters').max(100, 'Name is too long'),
-  phone: z.string().min(5, 'Phone number is required').max(20, 'Phone is too long'),
+export const customerSchema = z.object({
+  name: z.string().min(1, businessValidationMessages.customerNameRequired).min(2, 'Name must be at least 2 characters / يجب أن يتكون الاسم من حرفين على الأقل').max(100, 'Name is too long / الاسم طويل جداً'),
+  phone: z.string().min(1, businessValidationMessages.phoneRequired).min(5, 'Phone number is too short / رقم الهاتف قصير جداً').max(20, 'Phone is too long / رقم الهاتف طويل جداً'),
   address: z.string().max(255, 'Address is too long').optional(),
   notes: z.string().optional(),
 });
@@ -55,7 +56,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSubmi
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div>
         <label className="block text-sm font-medium text-slate-700 mb-1">
-          Customer Name / اسم الزبون *
+          {businessLabels.customer.name} *
         </label>
         <input
           type="text"
@@ -71,7 +72,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSubmi
 
       <div>
         <label className="block text-sm font-medium text-slate-700 mb-1">
-          Phone Number / رقم الهاتف *
+          {businessLabels.customer.phone} *
         </label>
         <input
           type="text"
@@ -86,7 +87,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSubmi
 
       <div>
         <label className="block text-sm font-medium text-slate-700 mb-1">
-          Address / العنوان <span className="font-normal text-slate-500">(Optional)</span>
+          {businessLabels.customer.address} <span className="font-normal text-slate-500">(Optional / اختياري)</span>
         </label>
         <input
           type="text"
@@ -102,7 +103,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSubmi
 
       <div>
         <label className="block text-sm font-medium text-slate-700 mb-1">
-          Notes / ملاحظات <span className="font-normal text-slate-500">(Optional)</span>
+          {businessLabels.common.notes} <span className="font-normal text-slate-500">(Optional / اختياري)</span>
         </label>
         <textarea
           {...register('notes')}
@@ -123,7 +124,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSubmi
           disabled={isSubmitting}
           className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50"
         >
-          Cancel / إلغاء
+          {businessLabels.common.cancel}
         </button>
         <button
           type="submit"

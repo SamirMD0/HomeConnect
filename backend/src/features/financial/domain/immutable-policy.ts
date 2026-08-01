@@ -18,6 +18,7 @@ export const FINANCIAL_IMMUTABILITY_RULES = {
 export function assertCanCancelDebt(input: {
   status: DebtStatus;
   hasPayments: boolean;
+  allowPaidOrPaymentCancellation?: boolean;
   reason?: string | null;
   cancelledById?: string | null;
 }): void {
@@ -25,10 +26,10 @@ export function assertCanCancelDebt(input: {
   if (input.status === DebtStatus.CANCELLED) {
     throw new FinancialRecordCancelledError('Debt is already cancelled');
   }
-  if (input.status === DebtStatus.PAID) {
+  if (input.status === DebtStatus.PAID && !input.allowPaidOrPaymentCancellation) {
     throw new FinancialRecordAlreadyPaidError('Paid debt cannot be cancelled');
   }
-  if (input.hasPayments) {
+  if (input.hasPayments && !input.allowPaidOrPaymentCancellation) {
     throw new FinancialInvariantError('Debt with payments requires a dedicated reversal workflow');
   }
 }

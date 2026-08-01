@@ -1,4 +1,5 @@
 import {
+  DebtKind,
   DebtStatus,
   InstallmentPlanFrequency,
   InstallmentPlanStatus,
@@ -231,5 +232,25 @@ describe('DashboardFinancialService', () => {
       paymentDate: '2026-07-27',
       allocationCount: 1,
     });
+  });
+
+  it('excludes prepaid purchase remainders from dashboard customer outstanding', async () => {
+    repositoryMock.loadFinancialRecords.mockResolvedValue({
+      totalCustomers: 1,
+      debts: [
+        makeDebt({
+          kind: DebtKind.PREPAID_PURCHASE,
+          originalAmount: new Decimal('400.00'),
+          paymentAllocations: [makePaymentAllocation('100.00')],
+        }),
+      ],
+      plans: [],
+      payments: [],
+    });
+
+    const summary = await DashboardFinancialService.getFinancialSummary();
+    expect(summary.counts.customersWithOutstanding).toBe(0);
+    expect(summary.money.totalOutstanding).toBe('0.00');
+    expect(summary.money.obligationsCreatedThisMonth).toBe('0.00');
   });
 });

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Search } from 'lucide-react';
 import { Customer } from '../../customers/api/customers.api';
 import { useCustomers } from '../../customers/hooks/useCustomers';
+import { businessLabels } from '../../../shared/labels/business-labels';
 
 interface CustomerPickerProps {
   selectedCustomer: Customer | null;
@@ -17,12 +18,12 @@ export const CustomerPicker: React.FC<CustomerPickerProps> = ({ selectedCustomer
     <section aria-labelledby="customer-picker-heading" className="space-y-3">
       <div>
         <h3 id="customer-picker-heading" className="text-sm font-semibold text-slate-900">
-          Select existing customer
+          Select Existing Customer / اختيار زبون
         </h3>
-        <p className="mt-1 text-sm text-slate-500">Search by customer name or phone number.</p>
+        <p className="mt-1 text-sm text-slate-500">Search by name or phone / ابحث بالاسم أو رقم الهاتف.</p>
       </div>
       <label className="block text-sm font-medium text-slate-700">
-        Customer search
+        {businessLabels.ledger.customerSearch}
         <span className="relative mt-1 block">
           <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
           <input
@@ -30,7 +31,7 @@ export const CustomerPicker: React.FC<CustomerPickerProps> = ({ selectedCustomer
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             className="block w-full rounded-lg border border-slate-300 py-2 pl-10 pr-3 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-            placeholder="Name or phone"
+            placeholder="Name or phone / الاسم أو الهاتف"
           />
         </span>
       </label>

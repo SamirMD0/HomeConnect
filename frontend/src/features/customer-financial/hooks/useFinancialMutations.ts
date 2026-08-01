@@ -5,6 +5,7 @@ import {
   CancelFinancialRecordRequest,
   CreateDebtRequest,
   CreateInstallmentPlanRequest,
+  CreatePrepaidPurchaseRequest,
   RecordDebtPaymentRequest,
   ReallocatePaymentRequest,
   RecordInstallmentPlanPaymentRequest,
@@ -31,6 +32,24 @@ export const useCreateDebt = (customerId: string) => {
         queryKey: customerFinancialSummaryMutationQueryKey(customerId),
       });
       toast.success('Debt created successfully');
+    },
+    onError: (error) => {
+      toast.error(normalizeFinancialError(error).message);
+    },
+  });
+};
+
+export const useCreatePrepaidPurchase = (customerId: string) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: CreatePrepaidPurchaseRequest) =>
+      financialMutationsApi.createPrepaidPurchase(customerId, data),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: customerFinancialSummaryMutationQueryKey(customerId),
+      });
+      toast.success('Prepaid purchase created successfully');
     },
     onError: (error) => {
       toast.error(normalizeFinancialError(error).message);

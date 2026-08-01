@@ -1,4 +1,4 @@
-import { DebtStatus, InstallmentPlanStatus, InstallmentStatus } from '@prisma/client';
+import { DebtKind, DebtStatus, InstallmentPlanStatus, InstallmentStatus } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import {
   businessDateToPrisma,
@@ -156,6 +156,8 @@ export class ReceivablesService {
     let overdueItemCount = 0;
 
     for (const debt of debts) {
+      if (debt.kind === DebtKind.PREPAID_PURCHASE) continue;
+
       const balance = calculateDebtBalance({
         originalAmount: debt.originalAmount,
         allocations: debt.paymentAllocations.map((allocation) => ({
@@ -169,6 +171,7 @@ export class ReceivablesService {
         dueDate,
         businessDate,
         balance,
+        overdueEligible: true,
       });
 
       billsTotal += 1;

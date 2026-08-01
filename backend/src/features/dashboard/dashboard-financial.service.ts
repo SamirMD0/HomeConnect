@@ -1,4 +1,4 @@
-import { DebtStatus, InstallmentPlanStatus, InstallmentStatus } from '@prisma/client';
+import { DebtKind, DebtStatus, InstallmentPlanStatus, InstallmentStatus } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import {
   calculateDebtBalance,
@@ -61,7 +61,11 @@ export class DashboardFinancialService {
     const outstandingCustomerIds = new Set<string>();
 
     for (const debt of debtComputations) {
-      if (debt.remainingBalance.greaterThan(ZERO_MONEY) && debt.status !== DebtStatus.CANCELLED) {
+      if (
+        debt.record.kind !== DebtKind.PREPAID_PURCHASE &&
+        debt.remainingBalance.greaterThan(ZERO_MONEY) &&
+        debt.status !== DebtStatus.CANCELLED
+      ) {
         outstandingCustomerIds.add(debt.record.customer.id);
       }
     }
@@ -91,7 +95,9 @@ export class DashboardFinancialService {
       money: {
         totalOutstanding: moneyToApiString(
           sumMoney([
-            ...debtComputations.map((debt) => debt.remainingBalance),
+            ...debtComputations
+              .filter((debt) => debt.record.kind !== DebtKind.PREPAID_PURCHASE)
+              .map((debt) => debt.remainingBalance),
             ...planComputations.map((plan) => plan.remainingBalance),
           ])
         ),
@@ -122,6 +128,7 @@ export class DashboardFinancialService {
       dueDate,
       businessDate,
       balance,
+      overdueEligible: debt.kind !== DebtKind.PREPAID_PURCHASE,
     });
 
     return {
@@ -211,7 +218,11 @@ export class DashboardFinancialService {
   ): Decimal {
     return sumMoney([
       ...debts
-        .filter((debt) => this.createdWithinRange(debt.createdAt, fromBusinessDate, toBusinessDate))
+        .filter(
+          (debt) =>
+            debt.kind !== DebtKind.PREPAID_PURCHASE &&
+            this.createdWithinRange(debt.createdAt, fromBusinessDate, toBusinessDate)
+        )
         .map((debt) => debt.originalAmount),
       ...plans
         .filter((plan) => this.createdWithinRange(plan.createdAt, fromBusinessDate, toBusinessDate))
@@ -235,6 +246,7 @@ export class DashboardFinancialService {
     const debtItems: DashboardUpcomingDueItem[] = debts
       .filter(
         (debt) =>
+          debt.record.kind !== DebtKind.PREPAID_PURCHASE &&
           debt.remainingBalance.greaterThan(ZERO_MONEY) &&
           debt.status !== DebtStatus.CANCELLED &&
           compareBusinessDates(debt.dueDate, businessDate) >= 0

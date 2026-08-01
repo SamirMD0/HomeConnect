@@ -1,4 +1,5 @@
 import {
+  DebtKind,
   DebtStatus,
   InstallmentPlanFrequency,
   InstallmentPlanStatus,
@@ -6,7 +7,12 @@ import {
   PaymentMethod,
 } from '@prisma/client';
 
-export type FinancialLedgerTypeFilter = 'ALL' | 'DEBT' | 'INSTALLMENT_PLAN' | 'PAYMENT' | 'OVERDUE';
+export type FinancialLedgerTypeFilter =
+  | 'ALL'
+  | 'DEBT'
+  | 'INSTALLMENT_PLAN'
+  | 'PAYMENT'
+  | 'OVERDUE';
 export type FinancialLedgerStatusFilter = 'ACTIVE' | 'OVERDUE' | 'PAID_COMPLETED' | 'CANCELLED';
 export type FinancialLedgerSortBy = 'date' | 'createdAt' | 'customer' | 'amount';
 export type FinancialLedgerSortOrder = 'asc' | 'desc';
@@ -36,12 +42,14 @@ export interface FinancialLedgerCorrectionView {
 
 export interface FinancialLedgerDebtItem {
   type: 'DEBT';
+  kind: DebtKind;
   id: string;
   customer: FinancialLedgerCustomerView;
   description: string;
   originalAmount: string;
   totalPaid: string;
   remainingBalance: string;
+  adminDebt: string;
   dueDate: string;
   status: DebtStatus;
   storedStatus: DebtStatus;

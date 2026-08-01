@@ -37,6 +37,22 @@ describe('financialMutationsApi', () => {
     expect(apiMock.post.mock.calls[0][1]).not.toHaveProperty('phone');
   });
 
+  it('creates a prepaid purchase with the initial and full amounts', async () => {
+    await financialMutationsApi.createPrepaidPurchase('customer-1', {
+      itemName: 'Air conditioner',
+      paymentAmount: '100.00',
+      fullAmount: '400.00',
+      notes: 'Collect later',
+    });
+
+    expect(apiMock.post).toHaveBeenCalledWith('/customers/customer-1/prepaid-purchases', {
+      itemName: 'Air conditioner',
+      paymentAmount: '100.00',
+      fullAmount: '400.00',
+      notes: 'Collect later',
+    });
+  });
+
   it('records debt payments with a client idempotency key', async () => {
     await financialMutationsApi.recordDebtPayment('debt-1', {
       amount: '200.00',

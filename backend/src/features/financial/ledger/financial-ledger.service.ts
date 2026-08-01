@@ -1,4 +1,4 @@
-import { DebtStatus, InstallmentPlanStatus, InstallmentStatus } from '@prisma/client';
+import { DebtKind, DebtStatus, InstallmentPlanStatus, InstallmentStatus } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import {
   businessDateToPrisma,
@@ -98,8 +98,9 @@ export class FinancialLedgerService {
     const filteredPayments = paymentItems.filter((payment) => this.matchesPaymentFilters(payment, query));
     const summaryDebts = filteredDebts;
     const summaryPlans = filteredPlans;
-    const activeDebts = summaryDebts.filter(
-      (debt) => debt.item.status !== DebtStatus.PAID && debt.item.status !== DebtStatus.CANCELLED
+    const activeStandardDebts = summaryDebts.filter(
+      (debt) =>
+        debt.item.status !== DebtStatus.PAID && debt.item.status !== DebtStatus.CANCELLED
     );
     const activePlans = summaryPlans.filter(
       (plan) =>
@@ -109,17 +110,18 @@ export class FinancialLedgerService {
     const hasDueDateFilter = Boolean(query.dueFrom || query.dueTo);
     const hasPaymentDateFilter = Boolean(query.paymentFrom || query.paymentTo);
     const summaryPayments = paymentItems.filter((payment) => this.matchesPaymentSummaryFilters(payment, query));
+    const summaryStandardDebts = summaryDebts;
     const summaryTotalPaid =
       hasDueDateFilter
         ? sumMoney([
-            ...summaryDebts.map((debt) => debt.totalPaid),
+            ...summaryStandardDebts.map((debt) => debt.totalPaid),
             ...summaryPlans.map((plan) => this.planPaidForSummary(plan, query)),
           ])
         : hasPaymentDateFilter
         ? sumMoney(summaryPayments.map((payment) => this.paymentAllocationTotal(payment)))
         : summaryDebts.length > 0 || summaryPlans.length > 0
         ? sumMoney([
-            ...summaryDebts.map((debt) => debt.totalPaid),
+            ...summaryStandardDebts.map((debt) => debt.totalPaid),
             ...summaryPlans.map((plan) => plan.totalPaid),
           ])
         : sumMoney(filteredPayments.map((payment) => this.paymentAllocationTotal(payment)));
@@ -149,10 +151,10 @@ export class FinancialLedgerService {
           ])
         ),
         totalPaid: moneyToApiString(summaryTotalPaid),
-        activeDebtCount: activeDebts.length,
+        activeDebtCount: activeStandardDebts.length,
         activePlanCount: activePlans.length,
         activeCustomerCount: new Set([
-          ...activeDebts.map((debt) => debt.item.customer.id),
+          ...activeStandardDebts.map((debt) => debt.item.customer.id),
           ...activePlans.map((plan) => plan.item.customer.id),
         ]).size,
         overdueDebtCount: summaryDebts.filter((debt) => debt.item.status === DebtStatus.OVERDUE)
@@ -190,17 +192,20 @@ export class FinancialLedgerService {
       dueDate,
       businessDate,
       balance,
+      overdueEligible: true,
     });
 
     return {
       item: {
         type: 'DEBT',
+        kind: debt.kind,
         id: debt.id,
         customer: debt.customer,
         description: debt.description,
         originalAmount: moneyToApiString(debt.originalAmount),
         totalPaid: moneyToApiString(balance.totalPaid),
         remainingBalance: moneyToApiString(balance.remainingBalance),
+        adminDebt: moneyToApiString(ZERO_MONEY),
         dueDate,
         status,
         storedStatus: debt.status,

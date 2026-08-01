@@ -70,6 +70,7 @@ export interface DebtStatusInput {
   dueDate: BusinessDate;
   businessDate: BusinessDate;
   balance: ObligationBalance;
+  overdueEligible?: boolean;
 }
 
 export interface InstallmentStatusInput {

@@ -126,7 +126,11 @@ export const LedgerObligationRow: React.FC<LedgerObligationRowProps> = ({
       </td>
       <MoneyCell value={formatMoney(amount)} weight="medium" />
       <MoneyCell value={formatMoney(totalPaid)} className="hidden xl:table-cell" />
-      <MoneyCell value={formatMoney(remainingBalance)} weight="semibold" muteZero />
+      <MoneyCell
+        value={formatMoney(remainingBalance)}
+        weight="semibold"
+        muteZero
+      />
       <td className="px-4 py-3">
         <FinancialStatusBadge type={statusType} status={item.status} />
       </td>
@@ -141,7 +145,7 @@ export const LedgerObligationRow: React.FC<LedgerObligationRowProps> = ({
             }}
             className="inline-flex min-h-9 items-center rounded-md border border-slate-200 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-950 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
           >
-            Edit
+            Edit / تعديل
           </button>
           <LedgerRowActions
             menuKey={`${item.type}-${item.id}`}
@@ -178,29 +182,35 @@ function buildObligationActions({
 }: BuildObligationActionsArgs): LedgerActionItem[] {
   if (item.type === 'DEBT') {
     return [
-      { label: 'View details', onClick: () => onViewDebt(item.id) },
+      { label: 'View Details / عرض التفاصيل', onClick: () => onViewDebt(item.id) },
       ...(canMutate && canRecordDebtPayment(item.status)
-        ? [{ label: 'Record payment', onClick: () => onRecordDebtPayment(item), tone: 'pay' as const }]
+        ? [{ label: 'Record Payment / تسجيل دفعة', onClick: () => onRecordDebtPayment(item), tone: 'pay' as const }]
         : []),
       ...(LEDGER_CORRECTION_ENABLED && canMutate
         ? [{ label: 'Correct...', onClick: () => onViewDebt(item.id) }]
         : []),
-      ...(canMutate && canCancelDebt(item.status, item.totalPaid)
-        ? [{ label: 'Cancel debt', onClick: () => onCancelDebt(item), tone: 'cancel' as const }]
+      ...(canMutate && canCancelDebt(item.status, item.totalPaid, item.kind)
+        ? [
+            {
+              label: 'Cancel Debt / إلغاء الدين',
+              onClick: () => onCancelDebt(item),
+              tone: 'cancel' as const,
+            },
+          ]
         : []),
     ];
   }
 
   return [
-    { label: 'View details', onClick: () => onViewPlan(item.id) },
+    { label: 'View Details / عرض التفاصيل', onClick: () => onViewPlan(item.id) },
     ...(canMutate && canRecordInstallmentPlanPayment(item.status)
-      ? [{ label: 'Record payment', onClick: () => onRecordPlanPayment(item), tone: 'pay' as const }]
+      ? [{ label: 'Record Payment / تسجيل دفعة', onClick: () => onRecordPlanPayment(item), tone: 'pay' as const }]
       : []),
     ...(LEDGER_CORRECTION_ENABLED && canMutate
       ? [{ label: 'Correct...', onClick: () => onViewPlan(item.id) }]
       : []),
     ...(canMutate && canCancelInstallmentPlan(item.status, item.totalPaid)
-      ? [{ label: 'Cancel plan', onClick: () => onCancelPlan(item), tone: 'cancel' as const }]
+      ? [{ label: 'Cancel Plan / إلغاء الخطة', onClick: () => onCancelPlan(item), tone: 'cancel' as const }]
       : []),
   ];
 }
@@ -216,7 +226,8 @@ export const MoneyCell: React.FC<{
   weight?: 'medium' | 'semibold';
   muteZero?: boolean;
   className?: string;
-}> = ({ value, weight, muteZero = false, className = '' }) => {
+  tone?: 'default' | 'liability';
+}> = ({ value, weight, muteZero = false, className = '', tone = 'default' }) => {
   const isEmpty = value === '—';
   const isZero = muteZero && (value === '$0.00' || value === '0.00');
   const weightClass = weight === 'semibold' ? 'font-semibold' : weight === 'medium' ? 'font-medium' : '';
@@ -224,7 +235,9 @@ export const MoneyCell: React.FC<{
   return (
     <td
       className={`px-4 py-3 text-right tabular-nums ${className} ${
-        isEmpty || isZero ? 'text-slate-400' : `${weightClass} text-slate-900`
+        isEmpty || isZero
+          ? 'text-slate-400'
+          : `${weightClass} ${tone === 'liability' ? 'text-red-700' : 'text-slate-900'}`
       }`}
     >
       {value}

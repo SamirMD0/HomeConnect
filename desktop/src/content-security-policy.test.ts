@@ -48,10 +48,17 @@ describe('production content security policy', () => {
     expect(policy).not.toContain('localhost');
   });
 
-  it('allows inline style attributes only, plus local images and fonts', () => {
+  it('allows inline style attributes only, plus local fonts', () => {
     expect(directive(policy, 'style-src')).toBe("style-src 'self' 'unsafe-inline'");
-    expect(directive(policy, 'img-src')).toBe("img-src 'self' data: blob:");
     expect(directive(policy, 'font-src')).toBe("font-src 'self' data:");
+  });
+
+  it('allows remote product images without widening any other directive', () => {
+    expect(directive(policy, 'img-src')).toBe("img-src 'self' data: blob: https: http:");
+    // The relaxation must stay scoped to images.
+    expect(directive(policy, 'default-src')).toBe("default-src 'self'");
+    expect(directive(policy, 'script-src')).toBe("script-src 'self'");
+    expect(directive(policy, 'connect-src')).not.toContain('https:');
   });
 });
 

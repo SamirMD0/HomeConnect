@@ -1,116 +1,56 @@
-import React from 'react';
-import { useFinancialSummary, useRecentActivity } from '../hooks/useDashboard';
-import { StatCard } from '../components/StatCard';
-import { RecentActivity } from '../components/RecentActivity';
+import { useMemo, useState } from 'react';
+import { Gauge, Zap } from 'lucide-react';
+import { useAuth } from '../../../hooks/useAuth';
+import { dashboardLabels } from '../config/dashboard-labels';
 import { QuickActions } from '../components/QuickActions';
-import { UpcomingDueList } from '../components/UpcomingDueList';
-import { OverdueCustomersList } from '../components/OverdueCustomersList';
-import { RecentPaymentsPanel } from '../components/RecentPaymentsPanel';
-import { formatMoney } from '../../customer-financial/utils/financial-format';
+import { DashboardFilterBar } from '../components/layout/DashboardFilterBar';
+import { BilingualLabel } from '../components/layout/BilingualLabel';
+import { DashboardSection } from '../components/layout/DashboardSection';
+import { KpiStrip } from '../components/kpi/KpiStrip';
+import { DashboardSectionBoundary } from '../components/layout/DashboardSectionBoundary';
+import { ActivityFeed } from '../components/sections/ActivityFeed';
+import { AlertsCenter } from '../components/sections/AlertsCenter';
+import { CustomerAnalytics } from '../components/sections/CustomerAnalytics';
+import { ProductAnalytics } from '../components/sections/ProductAnalytics';
+import { ServiceAnalytics } from '../components/sections/ServiceAnalytics';
+import { SupplierAnalytics } from '../components/sections/SupplierAnalytics';
+import { MonthEndSnapshot } from '../components/sections/MonthEndSnapshot';
+import { ErpModuleMap } from '../components/sections/ErpModuleMap';
+import {
+  useCustomerAnalytics, useDashboardActivity, useDashboardAlerts, useDashboardOverview,
+  useMonthEnd, useProductAnalytics, useRefreshDashboard, useServiceAnalytics, useSupplierAnalytics,
+} from '../hooks/useDashboard';
+import type { DashboardQueryParams } from '../types';
 
-export const DashboardPage: React.FC = () => {
-  const { data: summary, isLoading: isLoadingSummary } = useFinancialSummary();
-  const { data: recentActivity, isLoading: isLoadingActivity } = useRecentActivity();
-  const netChangeTodayIsIncrease = summary ? !summary.money.netChangeToday.startsWith('-') : false;
+export function DashboardPage() {
+  const { user } = useAuth();
+  const [query, setQuery] = useState<DashboardQueryParams>({ range: 'month', includeArchived: false });
+  const [selectedMonth, setSelectedMonth] = useState('');
+  const effectiveQuery = useMemo(() => query.range === 'custom' && (!query.from || !query.to) ? { ...query, range: 'month' as const, from: undefined, to: undefined } : query, [query]);
+  const overview = useDashboardOverview(effectiveQuery);
+  const customer = useCustomerAnalytics(effectiveQuery);
+  const supplier = useSupplierAnalytics(effectiveQuery);
+  const service = useServiceAnalytics(effectiveQuery);
+  const product = useProductAnalytics(effectiveQuery);
+  const alerts = useDashboardAlerts(effectiveQuery);
+  const activity = useDashboardActivity();
+  const businessDate = overview.data?.meta.businessDate ?? new Date().toISOString().slice(0, 10);
+  const month = selectedMonth || businessDate.slice(0, 7);
+  const monthEnd = useMonthEnd(month, user?.role === 'ADMIN');
+  const refresh = useRefreshDashboard();
+  const refreshing = [overview, customer, supplier, service, product, alerts, activity, monthEnd].some((result) => result.isFetching);
 
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-end">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Overview of your business's financial position and recent activity.
-          </p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="Total Outstanding Debt"
-          value={isLoadingSummary || !summary ? '...' : formatMoney(summary.money.totalOutstanding)}
-          color="danger"
-          icon={
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          }
-        />
-        <StatCard
-          title="Customers in Debt"
-          value={isLoadingSummary || !summary ? '...' : summary.counts.customersWithOutstanding}
-          color="warning"
-          icon={
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
-          }
-        />
-        <StatCard
-          title="Payments This Month"
-          value={isLoadingSummary || !summary ? '...' : formatMoney(summary.money.paymentsThisMonth)}
-          color="success"
-          icon={
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          }
-        />
-        <StatCard
-          title="Total Customers"
-          value={isLoadingSummary || !summary ? '...' : summary.counts.totalCustomers}
-          color="info"
-          icon={
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-            </svg>
-          }
-        />
-      </div>
-
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-        <UpcomingDueList items={summary?.upcomingDue ?? []} isLoading={isLoadingSummary} />
-        <OverdueCustomersList customers={summary?.overdueCustomers ?? []} isLoading={isLoadingSummary} />
-        <RecentPaymentsPanel payments={summary?.recentPayments ?? []} isLoading={isLoadingSummary} />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 h-[500px]">
-          <RecentActivity logs={recentActivity || []} isLoading={isLoadingActivity} />
-        </div>
-        <div className="space-y-6">
-          <QuickActions />
-          
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Today's Summary</h3>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center py-2 border-b border-gray-50">
-                <span className="text-gray-500">Sales (New Debt)</span>
-                <span className="font-semibold text-gray-900">
-                  {isLoadingSummary || !summary ? '...' : formatMoney(summary.money.obligationsCreatedToday)}
-                </span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-gray-50">
-                <span className="text-gray-500">Payments Received</span>
-                <span className="font-semibold text-green-600">
-                  {isLoadingSummary || !summary ? '...' : formatMoney(summary.money.paymentsToday)}
-                </span>
-              </div>
-              <div className="flex justify-between items-center py-2 pt-4">
-                <span className="text-gray-700 font-medium">Net Change</span>
-                <span className={`font-bold ${netChangeTodayIsIncrease ? 'text-red-600' : 'text-green-600'}`}>
-                  {isLoadingSummary || !summary ? '...' : formatSignedMoney(summary.money.netChangeToday)}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-function formatSignedMoney(value: string): string {
-  if (value.startsWith('-')) return formatMoney(value);
-  if (value === '0.00') return formatMoney(value);
-  return `+${formatMoney(value)}`;
+  return <div className="dashboard-shell">
+    <header className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end"><div><div className="flex items-center gap-2"><Gauge className="h-6 w-6 text-emerald-600" /><h1 className="text-2xl font-bold text-slate-950"><BilingualLabel label={dashboardLabels.pageTitle} compact /></h1></div><p className="mt-1 text-sm text-slate-500"><BilingualLabel label={dashboardLabels.pageSubtitle} compact /></p></div></header>
+    <DashboardFilterBar query={query} onChange={setQuery} onRefresh={refresh} isRefreshing={refreshing} generatedAt={overview.data?.meta.generatedAt} />
+    <DashboardSectionBoundary><KpiStrip kpis={overview.data?.data.kpis} isLoading={overview.isLoading} isError={overview.isError} onRetry={() => overview.refetch()} /></DashboardSectionBoundary>
+    <DashboardSectionBoundary><DashboardSection title={dashboardLabels.quickActions} icon={Zap}><QuickActions /></DashboardSection></DashboardSectionBoundary>
+    <DashboardSectionBoundary><AlertsCenter data={alerts.data?.data} isLoading={alerts.isLoading} isError={alerts.isError} onRetry={() => alerts.refetch()} /></DashboardSectionBoundary>
+    <DashboardSectionBoundary><CustomerAnalytics data={customer.data?.data} isLoading={customer.isLoading} isError={customer.isError} onRetry={() => customer.refetch()} /></DashboardSectionBoundary>
+    <DashboardSectionBoundary><SupplierAnalytics data={supplier.data?.data} isLoading={supplier.isLoading} isError={supplier.isError} onRetry={() => supplier.refetch()} /></DashboardSectionBoundary>
+    <DashboardSectionBoundary><ServiceAnalytics data={service.data?.data} isLoading={service.isLoading} isError={service.isError} onRetry={() => service.refetch()} /></DashboardSectionBoundary>
+    <DashboardSectionBoundary><ProductAnalytics data={product.data?.data} isLoading={product.isLoading} isError={product.isError} onRetry={() => product.refetch()} /></DashboardSectionBoundary>
+    {user?.role === 'ADMIN' && <DashboardSectionBoundary><MonthEndSnapshot month={month} onMonthChange={setSelectedMonth} data={monthEnd.data?.data} isLoading={monthEnd.isLoading} isError={monthEnd.isError} onRetry={() => monthEnd.refetch()} /></DashboardSectionBoundary>}
+    <div className="grid grid-cols-1 gap-5 xl:grid-cols-[7fr_5fr]"><DashboardSectionBoundary><ActivityFeed data={activity.data?.data} isLoading={activity.isLoading} isError={activity.isError} onRetry={() => activity.refetch()} businessDate={businessDate} /></DashboardSectionBoundary><DashboardSectionBoundary><ErpModuleMap counts={overview.data?.data.moduleCounts} /></DashboardSectionBoundary></div>
+  </div>;
 }

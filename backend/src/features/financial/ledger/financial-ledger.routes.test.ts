@@ -33,6 +33,8 @@ const ledgerResponse = {
     totalOutstanding: '0.00',
     totalPaid: '0.00',
     activeDebtCount: 0,
+    totalPrepaidAdminDebt: '0.00',
+    activePrepaidCount: 0,
     activePlanCount: 0,
     activeCustomerCount: 0,
     overdueDebtCount: 0,
@@ -51,6 +53,15 @@ describe('financial ledger routes', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     ledgerServiceMock.getFinancialLedger.mockResolvedValue(ledgerResponse);
+  });
+
+  it('rejects the prepaid purchase ledger type filter now that prepaid has its own section', async () => {
+    const response = await request(app)
+      .get('/api/v1/financial-ledger?type=PREPAID_PURCHASE')
+      .set('Authorization', `Bearer ${employeeToken}`);
+
+    expect(response.status).toBe(400);
+    expect(ledgerServiceMock.getFinancialLedger).not.toHaveBeenCalled();
   });
 
   it('requires authentication', async () => {

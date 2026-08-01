@@ -1,4 +1,5 @@
 import {
+  DebtKind,
   DebtStatus,
   FinancialCorrectionAction,
   FinancialCorrectionRecordType,
@@ -522,6 +523,7 @@ export class PaymentsService {
         dueDate: prismaDateToBusinessDate(debt.dueDate),
         businessDate,
         balance,
+        overdueEligible: debt.kind !== DebtKind.PREPAID_PURCHASE,
       });
       await DebtsRepository.updateDebtStatus(tx, debtId, status);
     }

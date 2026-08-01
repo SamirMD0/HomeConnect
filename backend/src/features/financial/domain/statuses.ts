@@ -11,6 +11,7 @@ export function determineDebtStatus(input: DebtStatusInput): DebtStatus {
   if (input.isCancelled) return DebtStatus.CANCELLED;
   if (input.balance.remainingBalance.equals(ZERO_MONEY)) return DebtStatus.PAID;
   if (
+    input.overdueEligible !== false &&
     input.balance.remainingBalance.greaterThan(ZERO_MONEY) &&
     compareBusinessDates(input.dueDate, input.businessDate) < 0
   ) {

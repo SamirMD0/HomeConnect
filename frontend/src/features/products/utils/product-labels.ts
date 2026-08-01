@@ -1,0 +1,17 @@
+export const productLabels = {
+  searchPlaceholder: 'Search name, model, brand, or barcode / بحث بالاسم أو الموديل أو الماركة أو الباركود',
+  allBrands: 'All Brands / كل الماركات',
+  anyBarcode: 'Any Barcode / أي باركود',
+  withBarcode: 'With Barcode / مع باركود',
+  withoutBarcode: 'Without Barcode / بدون باركود',
+  activeProducts: 'Active / النشطة',
+  archivedProducts: 'Archived / المؤرشفة',
+  viewDetails: 'View Details / عرض التفاصيل',
+  noProducts: 'No products match these filters / لا توجد منتجات مطابقة',
+  relatedJobs: 'Related Service Jobs / طلبات الصيانة المرتبطة',
+  auditHistory: 'Audit History / سجل التعديلات',
+  createdBy: 'Created By / أنشأه',
+  updatedBy: 'Updated By / عدّله',
+  reason: 'Reason / السبب',
+  accountPassword: 'Account Password / كلمة مرور الحساب',
+} as const;

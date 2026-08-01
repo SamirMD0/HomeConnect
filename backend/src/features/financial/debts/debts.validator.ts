@@ -30,6 +30,25 @@ export const createDebtSchema = z
   })
   .strict();
 
+export const createPrepaidPurchaseSchema = z
+  .object({
+    itemName: userTextSchema({ field: 'Item name', min: 1, max: 200 }),
+    paymentAmount: moneyStringSchema,
+    fullAmount: moneyStringSchema,
+    notes: userTextSchema({ field: 'Notes', max: 1000 }).optional().nullable(),
+  })
+  .superRefine((input, context) => {
+    const paymentCents = moneyToCents(input.paymentAmount);
+    const fullCents = moneyToCents(input.fullAmount);
+    if (paymentCents > fullCents) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['paymentAmount'],
+        message: 'Payment cannot exceed the full amount',
+      });
+    }
+  });
+
 export const updateDebtSchema = z
   .object({
     originalAmount: moneyStringSchema.optional(),
@@ -77,7 +96,13 @@ export const cancelDebtSchema = z
 export type CustomerDebtParamsInput = z.infer<typeof customerDebtParamsSchema>;
 export type DebtParamsInput = z.infer<typeof debtParamsSchema>;
 export type CreateDebtInput = z.infer<typeof createDebtSchema>;
+export type CreatePrepaidPurchaseInput = z.infer<typeof createPrepaidPurchaseSchema>;
 export type UpdateDebtInput = z.infer<typeof updateDebtSchema>;
 export type ListCustomerDebtsQueryInput = z.infer<typeof listCustomerDebtsQuerySchema>;
 export type CreateDebtPaymentInput = z.infer<typeof createDebtPaymentSchema>;
 export type CancelDebtInput = z.infer<typeof cancelDebtSchema>;
+
+function moneyToCents(value: string): bigint {
+  const [whole, fraction = ''] = value.split('.');
+  return BigInt(whole) * 100n + BigInt(fraction.padEnd(2, '0'));
+}

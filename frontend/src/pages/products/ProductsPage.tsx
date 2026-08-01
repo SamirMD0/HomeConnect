@@ -1,0 +1,101 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import { Package, Plus, Printer } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { Pagination } from '../../components/ui/Pagination';
+import { ProductArchiveDialog } from '../../features/products/components/ProductArchiveDialog';
+import { ProductDetailsDrawer } from '../../features/products/components/ProductDetailsDrawer';
+import { ProductFilters } from '../../features/products/components/ProductFilters';
+import { ProductFormDialog } from '../../features/products/components/ProductFormDialog';
+import { ProductRestoreDialog } from '../../features/products/components/ProductRestoreDialog';
+import { ProductsTable } from '../../features/products/components/ProductsTable';
+import { useProducts } from '../../features/products/hooks/useProducts';
+import { Product, ProductFilters as ProductFilterValues, ProductSortBy, ProductSortOrder } from '../../features/products/types/product.types';
+import { productLabels } from '../../features/products/utils/product-labels';
+import { businessLabels } from '../../shared/labels/business-labels';
+import { useAuth } from '../../hooks/useAuth';
+
+export const ProductsPage: React.FC = () => {
+  const { user } = useAuth();
+  const [params, setParams] = useSearchParams();
+  const [search, setSearch] = useState(params.get('search') ?? '');
+  const [debouncedSearch, setDebouncedSearch] = useState(search);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [archiveProduct, setArchiveProduct] = useState<Product | null>(null);
+  const [restoreProduct, setRestoreProduct] = useState<Product | null>(null);
+
+  useEffect(() => { const timer = window.setTimeout(() => setDebouncedSearch(search.trim()), 300); return () => window.clearTimeout(timer); }, [search]);
+  useEffect(() => {
+    const next = new URLSearchParams(params);
+    if (debouncedSearch) next.set('search', debouncedSearch); else next.delete('search');
+    next.delete('page');
+    if (next.toString() !== params.toString()) setParams(next, { replace: true });
+  }, [debouncedSearch, params, setParams]);
+
+  const filters = useMemo<ProductFilterValues>(() => ({
+    search: params.get('search') || undefined,
+    isActive: params.get('status') !== 'archived',
+    brand: params.get('brand') || undefined,
+    hasBarcode: params.has('hasBarcode') ? params.get('hasBarcode') === 'true' : undefined,
+    sortBy: (params.get('sortBy') as ProductSortBy | null) ?? 'name',
+    sortOrder: (params.get('sortOrder') as ProductSortOrder | null) ?? 'asc',
+    page: Math.max(1, Number(params.get('page') || 1)),
+    pageSize: 25,
+  }), [params]);
+  const products = useProducts(filters);
+  const focusedId = params.get('focus');
+
+  const updateFilters = (patch: Partial<ProductFilterValues>) => {
+    const next = new URLSearchParams(params);
+    for (const [key, value] of Object.entries(patch)) {
+      if (value === undefined || value === '') next.delete(key);
+      else next.set(key, String(value));
+    }
+    setParams(next);
+  };
+  const setStatus = (status: 'active' | 'archived') => {
+    const next = new URLSearchParams(params);
+    next.set('status', status);
+    next.delete('page');
+    setSelectedIds(new Set());
+    setParams(next);
+  };
+  const focus = (id: string | null) => {
+    const next = new URLSearchParams(params);
+    if (id) next.set('focus', id); else next.delete('focus');
+    setParams(next, { replace: true });
+  };
+  const openEdit = (product: Product) => { focus(null); setEditingProduct(product); setFormOpen(true); };
+  const openArchive = (product: Product) => { focus(null); setArchiveProduct(product); };
+  const openRestore = (product: Product) => { focus(null); setRestoreProduct(product); };
+  const closeForm = () => { setFormOpen(false); setEditingProduct(null); };
+  const visible = products.data?.items ?? [];
+
+  return <div className="space-y-5">
+    <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div><div className="flex items-center gap-3"><Package className="h-7 w-7 text-emerald-600" /><h1 className="text-2xl font-bold text-slate-900">{businessLabels.product.products}</h1></div><p className="mt-1 text-sm text-slate-500">Manage the product catalogue and printable labels / إدارة دليل المنتجات والملصقات.</p></div>
+      <button type="button" onClick={() => { setEditingProduct(null); setFormOpen(true); }} className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white"><Plus className="h-4 w-4" /> {businessLabels.product.addProduct}</button>
+    </header>
+
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200">
+      <div className="flex gap-1">
+        <button type="button" onClick={() => setStatus('active')} className={`border-b-2 px-4 py-2 text-sm font-semibold ${filters.isActive ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-slate-500'}`}>{productLabels.activeProducts}</button>
+        <button type="button" onClick={() => setStatus('archived')} className={`border-b-2 px-4 py-2 text-sm font-semibold ${!filters.isActive ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-slate-500'}`}>{productLabels.archivedProducts}</button>
+      </div>
+      {selectedIds.size > 0 && <Link to={`/products/labels?ids=${encodeURIComponent([...selectedIds].slice(0, 40).join(','))}`} className="mb-2 inline-flex items-center gap-2 rounded-lg border border-emerald-300 px-3 py-2 text-sm font-semibold text-emerald-700"><Printer className="h-4 w-4" /> Print Labels ({selectedIds.size}) / طباعة الملصقات</Link>}
+    </div>
+
+    <ProductFilters filters={filters} search={search} onSearchChange={setSearch} onChange={updateFilters} />
+
+    {products.isLoading ? <div className="p-12 text-center text-slate-500">Loading products / جارٍ تحميل المنتجات…</div>
+      : products.isError ? <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">Unable to load products / تعذر تحميل المنتجات.</div>
+      : visible.length ? <><ProductsTable products={visible} selectedIds={selectedIds} canAdmin={user?.role === 'ADMIN'} onSelect={(id, selected) => setSelectedIds((current) => { const next = new Set(current); if (selected) next.add(id); else next.delete(id); return next; })} onSelectAll={(selected) => setSelectedIds((current) => { const next = new Set(current); visible.forEach((product) => selected ? next.add(product.id) : next.delete(product.id)); return next; })} onView={(product) => focus(product.id)} onEdit={openEdit} onArchive={openArchive} onRestore={openRestore} /><div className="overflow-hidden rounded-lg border border-slate-200"><Pagination currentPage={filters.page ?? 1} totalPages={products.data?.pagination.totalPages ?? 1} onPageChange={(page) => updateFilters({ page })} /></div></>
+      : <div className="rounded-lg border border-dashed border-slate-300 bg-white p-12 text-center"><Package className="mx-auto h-8 w-8 text-slate-300" /><p className="mt-3 font-medium text-slate-700">{productLabels.noProducts}</p></div>}
+
+    <ProductFormDialog open={formOpen} product={editingProduct} onClose={closeForm} onViewDuplicate={(id) => { closeForm(); focus(id); }} />
+    <ProductDetailsDrawer productId={focusedId} onClose={() => focus(null)} onEdit={openEdit} onArchive={openArchive} onRestore={openRestore} />
+    <ProductArchiveDialog key={archiveProduct?.id ?? 'archive'} product={archiveProduct} onClose={() => setArchiveProduct(null)} />
+    <ProductRestoreDialog key={restoreProduct?.id ?? 'restore'} product={restoreProduct} onClose={() => setRestoreProduct(null)} />
+  </div>;
+};

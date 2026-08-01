@@ -4,6 +4,7 @@ import {
   CancelFinancialRecordRequest,
   CreateDebtRequest,
   CreateInstallmentPlanRequest,
+  CreatePrepaidPurchaseRequest,
   DebtDetail,
   InstallmentPlanDetail,
   RecordDebtPaymentRequest,
@@ -17,6 +18,17 @@ import {
 export const financialMutationsApi = {
   createDebt: async (customerId: string, data: CreateDebtRequest): Promise<DebtDetail> => {
     const response = await api.post<ApiEnvelope<DebtDetail>>(`/customers/${customerId}/debts`, data);
+    return response.data.data;
+  },
+
+  createPrepaidPurchase: async (
+    customerId: string,
+    data: CreatePrepaidPurchaseRequest
+  ): Promise<DebtDetail> => {
+    const response = await api.post<ApiEnvelope<DebtDetail>>(
+      `/customers/${customerId}/prepaid-purchases`,
+      data
+    );
     return response.data.data;
   },
 

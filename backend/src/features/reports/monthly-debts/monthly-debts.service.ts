@@ -1,4 +1,5 @@
 import { Decimal } from '@prisma/client/runtime/library';
+import { DebtKind } from '@prisma/client';
 import {
   businessDateToPrisma,
   compareBusinessDates,
@@ -82,11 +83,12 @@ export class MonthlyDebtsService {
       nextDayAfterEnd: boundaries.nextDayAfterEnd,
     });
 
+    const standardDebts = records.debts.filter((debt) => debt.kind !== DebtKind.PREPAID_PURCHASE);
     const validPayments = records.payments.filter((payment) =>
       this.paymentValidAtCutoff(payment, boundaries.nextDayAfterEnd)
     );
     const items = [
-      ...records.debts.map((debt) => this.activityDebtItem(debt)),
+      ...standardDebts.map((debt) => this.activityDebtItem(debt)),
       ...records.plans.map((plan) => this.activityPlanItem(plan)),
       ...validPayments.map((payment) => this.activityPaymentItem(payment)),
     ].sort((left, right) => {
@@ -95,7 +97,7 @@ export class MonthlyDebtsService {
       return left.id.localeCompare(right.id);
     });
 
-    const newSingleDebtAmount = sumMoney(records.debts.map((debt) => debt.originalAmount));
+    const newSingleDebtAmount = sumMoney(standardDebts.map((debt) => debt.originalAmount));
     const newInstallmentPlanAmount = sumMoney(records.plans.map((plan) => plan.totalAmount));
     const paymentsReceived = sumMoney(validPayments.map((payment) => payment.totalAmount));
     const netFinancialChange = subtractMoney(
@@ -103,7 +105,7 @@ export class MonthlyDebtsService {
       paymentsReceived
     );
     const affectedCustomerIds = new Set<string>([
-      ...records.debts.map((debt) => debt.customer.id),
+      ...standardDebts.map((debt) => debt.customer.id),
       ...records.plans.map((plan) => plan.customer.id),
       ...validPayments.map((payment) => payment.customer.id),
     ]);
@@ -123,7 +125,7 @@ export class MonthlyDebtsService {
         newInstallmentPlanAmount: moneyToApiString(newInstallmentPlanAmount),
         paymentsReceived: moneyToApiString(paymentsReceived),
         netFinancialChange: moneyToApiString(netFinancialChange),
-        debtsCreated: records.debts.length,
+        debtsCreated: standardDebts.length,
         plansCreated: records.plans.length,
         payments: validPayments.length,
         customerCountAffected: affectedCustomerIds.size,
@@ -226,6 +228,7 @@ export class MonthlyDebtsService {
     boundaries: MonthBoundaries,
     includeCancelled: boolean
   ) {
+    if (debt.kind === DebtKind.PREPAID_PURCHASE) return;
     const cancelledByCutoff = this.cancelledOnOrBeforeCutoff(debt.cancelledAt, boundaries.nextDayAfterEnd);
     if (cancelledByCutoff && !includeCancelled) return;
 

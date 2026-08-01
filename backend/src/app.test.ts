@@ -96,14 +96,19 @@ describe('Express app smoke tests', () => {
     expect(response.body.error.code).toBe('UNAUTHORIZED');
   });
 
-  it('returns a quiet 401 for auth refresh without a refresh cookie', async () => {
+  it('returns no content for auth refresh without a refresh cookie', async () => {
     const response = await request(app).post('/api/v1/auth/refresh');
 
+    expect(response.status).toBe(204);
+    expect(response.body).toEqual({});
+  });
+
+  it('still rejects an invalid refresh cookie', async () => {
+    const response = await request(app)
+      .post('/api/v1/auth/refresh')
+      .set('Cookie', 'refreshToken=not-a-valid-token');
+
     expect(response.status).toBe(401);
-    expect(response.body.success).toBe(false);
-    expect(response.body.error).toEqual({
-      code: 'UNAUTHORIZED',
-      message: 'Session expired. Please log in again.',
-    });
+    expect(response.body.error.code).toBe('UNAUTHORIZED');
   });
 });

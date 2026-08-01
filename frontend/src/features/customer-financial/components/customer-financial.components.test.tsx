@@ -12,6 +12,8 @@ import { InstallmentPlansList } from './InstallmentPlansList';
 import { NextDueCard } from './NextDueCard';
 import { OverdueItemsList } from './OverdueItemsList';
 import { RecentPaymentsList } from './RecentPaymentsList';
+import { createPrepaidPurchaseSchema } from '../schemas/financial-mutation.schemas';
+import { negativeMoneyInput, subtractMoneyInput } from '../utils/money-input';
 
 const { authHookMock, debtDetailHookMock, planDetailHookMock, summaryHookMock } = vi.hoisted(() => ({
   authHookMock: vi.fn(),
@@ -47,8 +49,10 @@ const summary: CustomerFinancialSummary = {
     totalOutstanding: '850.00',
     singleDebtOutstanding: '400.00',
     installmentPlanOutstanding: '450.00',
+    totalPrepaidAdminDebt: '0.00',
     totalPaid: '350.00',
     activeDebtCount: 1,
+    activePrepaidCount: 0,
     activePlanCount: 1,
     overdueDebtCount: 1,
     overdueInstallmentCount: 1,
@@ -58,10 +62,12 @@ const summary: CustomerFinancialSummary = {
   debts: [
     {
       id: 'debt-1',
+      kind: 'STANDARD',
       description: 'Television',
       originalAmount: '600.00',
       totalPaid: '200.00',
       remainingBalance: '400.00',
+      adminDebt: '0.00',
       dueDate: '2026-08-10',
       status: 'PARTIALLY_PAID',
       calculatedStatus: 'PARTIALLY_PAID',
@@ -74,10 +80,12 @@ const summary: CustomerFinancialSummary = {
     },
     {
       id: 'debt-2',
+      kind: 'STANDARD',
       description: 'Cancelled phone',
       originalAmount: '100.00',
       totalPaid: '0.00',
       remainingBalance: '100.00',
+      adminDebt: '0.00',
       dueDate: '2026-09-10',
       status: 'CANCELLED',
       calculatedStatus: 'CANCELLED',
@@ -244,6 +252,7 @@ describe('customer financial profile components', () => {
     expect(html).toContain('$400.00');
     expect(html).toContain('$450.00');
     expect(html).toContain('$350.00');
+    expect(html).toContain('Admin Pre-paid Debt');
     expect(html).toContain('1 debts, 1 installments');
   });
 
@@ -276,7 +285,7 @@ describe('customer financial profile components', () => {
     expect(html).toContain('Partially paid');
     expect(html).toContain('Cancelled');
     expect(html).toContain('Returned');
-    expect(emptyHtml).toContain('No single debts');
+    expect(emptyHtml).toContain('No debts or prepaid purchases');
   });
 
   it('renders an unknown financial status as a neutral badge instead of crashing', () => {
@@ -293,9 +302,19 @@ describe('customer financial profile components', () => {
   });
 
   it('renders eligible debt mutation actions for admins only', () => {
+    const prepaidDebt = {
+      ...summary.debts[0],
+      id: 'prepaid-1',
+      kind: 'PREPAID_PURCHASE' as const,
+      description: 'Reserved AC',
+      totalPaid: '100.00',
+      remainingBalance: '300.00',
+      calculatedStatus: 'PARTIALLY_PAID' as const,
+      status: 'PARTIALLY_PAID' as const,
+    };
     const adminHtml = renderToStaticMarkup(
       <CustomerDebtsList
-        debts={summary.debts}
+        debts={[...summary.debts, prepaidDebt]}
         onOpenDebt={() => undefined}
         canMutate
         onRecordPayment={() => undefined}
@@ -313,8 +332,10 @@ describe('customer financial profile components', () => {
     );
 
     expect(adminHtml).toContain('Payment');
+    expect(adminHtml).toContain('Cancel pre-paid');
     expect(adminHtml).not.toContain('Cancel</button>');
     expect(readOnlyHtml).not.toContain('Payment');
+    expect(readOnlyHtml).not.toContain('Cancel pre-paid');
     expect(readOnlyHtml).not.toContain('Cancel</button>');
   });
 
@@ -472,6 +493,39 @@ describe('customer financial profile components', () => {
     expect(html).not.toContain('Delete debt');
   });
 
+  it('shows prepaid cancellation for admins even when the prepaid bill has payments', () => {
+    debtDetailHookMock.mockReturnValue({
+      data: {
+        ...summary.debts[0],
+        kind: 'PREPAID_PURCHASE',
+        description: 'Reserved AC',
+        totalPaid: '100.00',
+        remainingBalance: '300.00',
+        calculatedStatus: 'PARTIALLY_PAID',
+        status: 'PARTIALLY_PAID',
+        customer: { id: 'customer-1', name: 'Ali Ahmad', phone: '70123456' },
+        payments: [summary.recentPayments[1]],
+      },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+
+    const html = renderToStaticMarkup(
+      <DebtDetails
+        debtId="prepaid-1"
+        canMutate
+        onEditDebt={() => undefined}
+        onRecordPayment={() => undefined}
+        onCancelDebt={() => undefined}
+      />
+    );
+
+    expect(html).toContain('Prepaid purchase');
+    expect(html).toContain('Cancel pre-paid');
+    expect(html).not.toContain('Void or reverse payments before deleting this debt.');
+  });
+
   it('renders installment plan details with missing statuses instead of crashing', () => {
     planDetailHookMock.mockReturnValue({
       data: {
@@ -624,7 +678,25 @@ describe('customer financial profile components', () => {
     expect(html).toContain('Ali Ahmad');
     expect(html).toContain('70123456');
     expect(html).toContain('Single debt');
-    expect(html).toContain('Installment plan');
+    expect(html).toContain('Installment Plan');
+    expect(html).toContain('Prepaid Purchase');
+    expect(html).toContain('دين مفرد');
+    expect(html).toContain('خطة تقسيط');
+    expect(html).toContain('شراء بالدفع المسبق');
+    expect(html).toContain('dir="auto"');
     expect(html).not.toContain('customerName');
+  });
+
+  it('calculates prepaid remaining balance in cents and rejects overpayment', () => {
+    expect(subtractMoneyInput('400.00', '100.00')).toBe('300.00');
+    expect(negativeMoneyInput('300.00')).toBe('-300.00');
+    expect(negativeMoneyInput('0.00')).toBe('0.00');
+    expect(subtractMoneyInput('400.00', '400.01')).toBeNull();
+    expect(() => createPrepaidPurchaseSchema.parse({
+      itemName: 'AC',
+      paymentAmount: '400.01',
+      fullAmount: '400.00',
+      notes: '',
+    })).toThrow('Payment cannot exceed the full amount');
   });
 });

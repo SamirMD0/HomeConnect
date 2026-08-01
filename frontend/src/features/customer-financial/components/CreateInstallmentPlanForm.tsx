@@ -13,6 +13,7 @@ import { generateInstallmentPreview } from '../utils/installment-preview';
 import { canonicalMoneyInput } from '../utils/money-input';
 import { CustomerContext, inputClass, SubmitButton, TextField } from './CreateDebtForm';
 import { InstallmentSchedulePreview } from './InstallmentSchedulePreview';
+import { businessLabels } from '../../../shared/labels/business-labels';
 
 interface CreateInstallmentPlanFormProps {
   customer: FinancialSummaryCustomer;
@@ -124,7 +125,7 @@ export const CreateInstallmentPlanForm: React.FC<CreateInstallmentPlanFormProps>
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
       <button type="button" onClick={onBack} className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900">
         <ArrowLeft className="h-4 w-4" />
-        Back
+        Back / رجوع
       </button>
 
       <CustomerContext customer={customer} />
@@ -135,7 +136,7 @@ export const CreateInstallmentPlanForm: React.FC<CreateInstallmentPlanFormProps>
         </div>
       )}
 
-      <TextField label="Total amount" error={errors.totalAmount?.message}>
+      <TextField label="Total Amount / المبلغ الإجمالي" error={errors.totalAmount?.message}>
         <input
           {...register('totalAmount')}
           inputMode="decimal"
@@ -147,15 +148,15 @@ export const CreateInstallmentPlanForm: React.FC<CreateInstallmentPlanFormProps>
         />
       </TextField>
 
-      <TextField label="Description" error={errors.description?.message}>
+      <TextField label={businessLabels.financial.description} error={errors.description?.message}>
         <input {...register('description')} dir="auto" className={inputClass(Boolean(errors.description))} placeholder="Refrigerator" />
       </TextField>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <TextField label="Start date" error={errors.startDate?.message}>
+        <TextField label="Start Date / تاريخ البدء" error={errors.startDate?.message}>
           <input {...register('startDate')} type="date" className={inputClass(Boolean(errors.startDate))} />
         </TextField>
-        <TextField label="Number of installments" error={errors.installmentCount?.message}>
+        <TextField label="Number of Installments / عدد الأقساط" error={errors.installmentCount?.message}>
           <input
             {...register('installmentCount', { valueAsNumber: true })}
             type="number"
@@ -166,13 +167,13 @@ export const CreateInstallmentPlanForm: React.FC<CreateInstallmentPlanFormProps>
         </TextField>
       </div>
 
-      <TextField label="Frequency" error={errors.frequency?.message}>
+      <TextField label="Frequency / التكرار" error={errors.frequency?.message}>
         <select {...register('frequency')} className={inputClass(Boolean(errors.frequency))}>
-          <option value="MONTHLY">Monthly</option>
+          <option value="MONTHLY">Monthly / شهري</option>
         </select>
       </TextField>
 
-      <TextField label="Notes" error={errors.notes?.message}>
+      <TextField label={businessLabels.common.notes} error={errors.notes?.message}>
         <textarea {...register('notes')} dir="auto" rows={3} className={inputClass(Boolean(errors.notes))} placeholder="Optional" />
       </TextField>
 
@@ -183,7 +184,7 @@ export const CreateInstallmentPlanForm: React.FC<CreateInstallmentPlanFormProps>
             onClick={() => setScheduleMode('AUTO')}
             className={scheduleModeClass(scheduleMode === 'AUTO')}
           >
-            Auto
+            Auto / تلقائي
           </button>
           <button
             type="button"
@@ -195,7 +196,7 @@ export const CreateInstallmentPlanForm: React.FC<CreateInstallmentPlanFormProps>
             }}
             className={scheduleModeClass(scheduleMode === 'MANUAL')}
           >
-            Manual
+            Manual / يدوي
           </button>
         </div>
 
@@ -203,7 +204,7 @@ export const CreateInstallmentPlanForm: React.FC<CreateInstallmentPlanFormProps>
           <div className="rounded-lg border border-slate-200">
             <div className="grid grid-cols-[72px_minmax(0,1fr)] border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-600">
               <span>#</span>
-              <span>Amount</span>
+              <span>{businessLabels.financial.amount}</span>
             </div>
             <div className="divide-y divide-slate-100">
               {manualAmounts.map((amount, index) => (
@@ -236,8 +237,8 @@ export const CreateInstallmentPlanForm: React.FC<CreateInstallmentPlanFormProps>
 
       <SubmitButton
         isPending={createPlan.isPending}
-        label="Create installment plan"
-        pendingLabel="Creating plan..."
+        label="Create Installment Plan / إنشاء خطة تقسيط"
+        pendingLabel="Creating plan... / جارٍ إنشاء الخطة..."
       />
     </form>
   );

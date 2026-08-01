@@ -6,6 +6,11 @@ export function formatMoney(value: string): string {
   return `${sign}$${withSeparators}.${decimalPart.padEnd(2, '0').slice(0, 2)}`;
 }
 
+export function formatSignedMoney(value: string): string {
+  if (value.startsWith('-') || value === '0.00') return formatMoney(value);
+  return `+${formatMoney(value)}`;
+}
+
 export function formatBusinessDate(value: string | null): string {
   if (!value) return '—';
   const [year, month, day] = value.split('-');

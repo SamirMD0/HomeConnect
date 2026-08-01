@@ -51,6 +51,28 @@ describe('financial immutability policy', () => {
     ).toThrow(FinancialRecordAlreadyPaidError);
   });
 
+  it('allows prepaid debt cancellation with payments when the caller explicitly permits it', () => {
+    expect(() =>
+      assertCanCancelDebt({
+        status: DebtStatus.PARTIALLY_PAID,
+        hasPayments: true,
+        allowPaidOrPaymentCancellation: true,
+        reason: 'customer cancelled reserved item',
+        cancelledById: 'admin-id',
+      })
+    ).not.toThrow();
+
+    expect(() =>
+      assertCanCancelDebt({
+        status: DebtStatus.PAID,
+        hasPayments: true,
+        allowPaidOrPaymentCancellation: true,
+        reason: 'customer cancelled reserved item',
+        cancelledById: 'admin-id',
+      })
+    ).not.toThrow();
+  });
+
   it('blocks completed installment plan cancellation and repeated payment voiding', () => {
     expect(() =>
       assertCanCancelInstallmentPlan({

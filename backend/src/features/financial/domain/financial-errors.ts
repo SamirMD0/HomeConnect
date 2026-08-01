@@ -48,6 +48,26 @@ export class PaymentIdempotencyConflictError extends AppError {
   }
 }
 
+export class PrepaidNotPendingError extends AppError {
+  constructor(message = 'Prepaid purchase is not awaiting delivery') {
+    super(message, 409, 'PREPAID_NOT_PENDING');
+  }
+}
+
+export class PrepaidNotDeliveredError extends AppError {
+  constructor(message = 'Prepaid purchase has not been delivered') {
+    super(message, 409, 'PREPAID_NOT_DELIVERED');
+  }
+}
+
+export class PrepaidRemainderHasPaymentsError extends AppError {
+  constructor(
+    message = 'The remaining balance debt already has payments. Correct those payments before reverting the delivery.'
+  ) {
+    super(message, 409, 'REMAINDER_DEBT_HAS_PAYMENTS');
+  }
+}
+
 export class FinancialInvariantError extends AppError {
   constructor(message = 'Financial invariant failed') {
     super(message, 500, 'FINANCIAL_INVARIANT_ERROR');

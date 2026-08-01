@@ -1,4 +1,5 @@
 import {
+  DebtKind,
   DebtStatus,
   InstallmentPlanFrequency,
   InstallmentPlanStatus,
@@ -354,6 +355,42 @@ describe('CustomerFinancialSummaryService', () => {
     expect(result.recentPayments).toHaveLength(2);
     expect(result.recentPayments[0].voidedAt).not.toBeNull();
     expect(result.recentPayments[1].allocations).toHaveLength(2);
+  });
+
+  it('reports prepaid remainder as negative admin debt without inflating customer receivables', async () => {
+    const prepaidDebt = makeDebt({
+      kind: DebtKind.PREPAID_PURCHASE,
+      originalAmount: new Decimal('400.00'),
+      paymentAllocations: [
+        makeDebtAllocation('33333333-3333-4333-8333-333333333333', '100.00'),
+      ],
+    });
+    repositoryMock.loadCustomerFinancialSummary.mockResolvedValue({
+      customer,
+      debts: [prepaidDebt],
+      plans: [],
+      recentPayments: [],
+    });
+
+    const result = await CustomerFinancialSummaryService.getCustomerFinancialSummary(customerId, {
+      includeCancelled: false,
+      includePayments: true,
+      paymentLimit: 10,
+      debtLimit: 10,
+      planLimit: 10,
+    });
+
+    expect(result.summary.totalOutstanding).toBe('0.00');
+    expect(result.summary.singleDebtOutstanding).toBe('0.00');
+    // 400 item with 100 paid: the business is holding 100, so the liability is
+    // -100.00 (the refund amount), not the -300.00 unpaid remainder.
+    expect(result.summary.totalPrepaidAdminDebt).toBe('-100.00');
+    expect(result.summary.activeDebtCount).toBe(0);
+    expect(result.summary.activePrepaidCount).toBe(1);
+    expect(result.debts[0]).toMatchObject({
+      remainingBalance: '300.00',
+      adminDebt: '-100.00',
+    });
   });
 
   it('combines debt and installment amounts when they share the earliest due date', async () => {

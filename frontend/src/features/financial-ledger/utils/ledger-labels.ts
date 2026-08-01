@@ -4,16 +4,16 @@ import {
 } from '../types/financial-ledger.types';
 
 export const ledgerTypeLabels: Record<FinancialLedgerTypeFilter, string> = {
-  ALL: 'All',
-  DEBT: 'Debts',
-  INSTALLMENT_PLAN: 'Installment Plans',
-  PAYMENT: 'Payments',
-  OVERDUE: 'Overdue',
+  ALL: 'All / الكل',
+  DEBT: 'Debts / ديون',
+  INSTALLMENT_PLAN: 'Installment Plans / خطط تقسيط',
+  PAYMENT: 'Payments / دفعات',
+  OVERDUE: 'Overdue / متأخر',
 };
 
 export const ledgerStatusLabels: Record<FinancialLedgerStatusFilter, string> = {
-  ACTIVE: 'Active',
-  OVERDUE: 'Overdue',
-  PAID_COMPLETED: 'Paid / Completed',
-  CANCELLED: 'Cancelled',
+  ACTIVE: 'Active / نشط',
+  OVERDUE: 'Overdue / متأخر',
+  PAID_COMPLETED: 'Paid or Completed / مدفوع أو مكتمل',
+  CANCELLED: 'Cancelled / ملغى',
 };

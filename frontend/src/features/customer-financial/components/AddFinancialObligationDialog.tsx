@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { FinancialSummaryCustomer } from '../types/customer-financial.types';
 import { CreateDebtForm } from './CreateDebtForm';
 import { CreateInstallmentPlanForm } from './CreateInstallmentPlanForm';
+import { CreatePrepaidPurchaseForm } from './CreatePrepaidPurchaseForm';
 import {
   FinancialObligationType,
   FinancialObligationTypeStep,
 } from './FinancialObligationTypeStep';
+import { businessLabels } from '../../../shared/labels/business-labels';
 
 interface AddFinancialObligationDialogProps {
   customer: FinancialSummaryCustomer;
@@ -38,11 +40,21 @@ export const AddFinancialObligationDialog: React.FC<AddFinancialObligationDialog
     );
   }
 
+  if (selectedType === 'prepaid-purchase') {
+    return (
+      <CreatePrepaidPurchaseForm
+        customer={customer}
+        onBack={() => setSelectedType(null)}
+        onSuccess={onSuccess}
+      />
+    );
+  }
+
   return (
     <div className="space-y-5">
       <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Customer</p>
-        <p className="mt-1 font-semibold text-slate-900">{customer.name}</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{businessLabels.common.customer}</p>
+        <p className="user-text mt-1 font-semibold text-slate-900" dir="auto">{customer.name}</p>
         <p className="text-sm text-slate-600">{customer.phone}</p>
       </div>
       <FinancialObligationTypeStep selectedType={selectedType} onSelect={setSelectedType} />

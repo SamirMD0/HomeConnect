@@ -45,4 +45,14 @@ describe('dashboardApi', () => {
     expect(apiMock.get).toHaveBeenCalledWith('/dashboard/financial-summary');
     expect(result.money.totalOutstanding).toBe('500.00');
   });
+
+  it('fetches a typed dashboard slice with query parameters and bypass header', async () => {
+    apiMock.get.mockResolvedValue({ data: { success: true, data: { meta: { currency: 'USD' }, data: { kpis: [] } } } });
+    const result = await dashboardApi.getOverview({ range: 'week' }, true);
+    expect(apiMock.get).toHaveBeenCalledWith('/dashboard/overview', {
+      params: { range: 'week' },
+      headers: { 'x-dashboard-refresh': 'true' },
+    });
+    expect(result.data.kpis).toEqual([]);
+  });
 });

@@ -72,13 +72,13 @@ export const InlineCustomerForm: React.FC<InlineCustomerFormProps> = ({ initialS
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <h2 className="text-xl font-bold text-slate-800">New Customer</h2>
+        <h2 className="text-xl font-bold text-slate-800">New Customer / زبون جديد</h2>
       </div>
 
       <div className="flex-1 overflow-y-auto p-6">
         <form id="inline-customer-form" onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Full Name *</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Customer Name / اسم الزبون *</label>
             <div className="relative">
               <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                 <User className="h-4 w-4 text-slate-400" />
@@ -95,7 +95,7 @@ export const InlineCustomerForm: React.FC<InlineCustomerFormProps> = ({ initialS
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Phone Number *</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Phone / رقم الهاتف *</label>
             <div className="relative">
               <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                 <Phone className="h-4 w-4 text-slate-400" />
@@ -111,7 +111,7 @@ export const InlineCustomerForm: React.FC<InlineCustomerFormProps> = ({ initialS
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Address (Optional)</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Address / العنوان (Optional / اختياري)</label>
             <div className="relative">
               <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                 <MapPin className="h-4 w-4 text-slate-400" />
@@ -135,7 +135,7 @@ export const InlineCustomerForm: React.FC<InlineCustomerFormProps> = ({ initialS
             disabled={createCustomer.isPending}
             className="w-full inline-flex justify-center items-center rounded-xl bg-indigo-600 px-3 py-3 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50 transition-colors"
           >
-            {createCustomer.isPending ? 'Creating...' : 'Create & Continue'}
+            {createCustomer.isPending ? 'Creating... / جارٍ الإنشاء...' : 'Create & Continue / إنشاء ومتابعة'}
           </button>
       </div>
     </motion.div>

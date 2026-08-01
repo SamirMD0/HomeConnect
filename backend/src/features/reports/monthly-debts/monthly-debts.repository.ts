@@ -43,6 +43,7 @@ const activityDebtSelect = {
   id: true,
   customer: { select: customerSelect },
   description: true,
+  kind: true,
   originalAmount: true,
   createdAt: true,
 } satisfies Prisma.DebtSelect;

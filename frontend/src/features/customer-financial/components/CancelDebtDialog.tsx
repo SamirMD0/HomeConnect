@@ -26,7 +26,8 @@ export const CancelDebtDialog: React.FC<CancelDebtDialogProps> = ({
 }) => {
   const cancelDebt = useCancelDebt(customerId, debt.id);
   const [serverError, setServerError] = useState<string | null>(null);
-  const canCancel = canCancelDebt(debt.calculatedStatus ?? debt.status ?? '', debt.totalPaid);
+  const isPrepaid = debt.kind === 'PREPAID_PURCHASE';
+  const canCancel = canCancelDebt(debt.calculatedStatus ?? debt.status ?? '', debt.totalPaid, debt.kind);
   const {
     register,
     handleSubmit,
@@ -66,6 +67,11 @@ export const CancelDebtDialog: React.FC<CancelDebtDialogProps> = ({
           This will cancel {debt.description}. Original amount {formatMoney(debt.originalAmount)},
           remaining balance {formatMoney(debt.remainingBalance)}. No payment or obligation history is deleted.
         </p>
+        {isPrepaid && (
+          <p className="mt-2 font-medium">
+            Existing prepaid payments stay recorded. This only cancels the reserved purchase record.
+          </p>
+        )}
       </div>
       {serverError && (
         <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">
@@ -89,7 +95,11 @@ export const CancelDebtDialog: React.FC<CancelDebtDialogProps> = ({
           className={inputClass(Boolean(errors.accountPassword))}
         />
       </TextField>
-      <SubmitButton isPending={cancelDebt.isPending} label="Cancel debt" pendingLabel="Cancelling debt..." />
+      <SubmitButton
+        isPending={cancelDebt.isPending}
+        label={isPrepaid ? 'Cancel pre-paid purchase' : 'Cancel debt'}
+        pendingLabel={isPrepaid ? 'Cancelling pre-paid purchase...' : 'Cancelling debt...'}
+      />
         </>
       )}
     </form>

@@ -47,4 +47,12 @@ describe('financial ledger query helpers', () => {
       page: 3,
     });
   });
+
+  it('keeps the debt ledger type in request params', () => {
+    expect(buildFinancialLedgerParams({ type: 'DEBT' })).toMatchObject({
+      type: 'DEBT',
+      includeCancelled: false,
+      includeCompleted: false,
+    });
+  });
 });

@@ -1,0 +1,12 @@
+import { CalendarRange, RefreshCw } from 'lucide-react';
+import type { DashboardQueryParams, DashboardRangePreset } from '../../types';
+
+const presets: Array<{ value: Exclude<DashboardRangePreset, 'custom'>; label: string }> = [
+  { value: 'today', label: 'Today' }, { value: 'week', label: 'Week' }, { value: 'month', label: 'Month' },
+  { value: 'quarter', label: 'Quarter' }, { value: 'year', label: 'Year' },
+];
+
+export function DashboardFilterBar({ query, onChange, onRefresh, isRefreshing, generatedAt }: { query: DashboardQueryParams; onChange: (query: DashboardQueryParams) => void; onRefresh: () => void; isRefreshing: boolean; generatedAt?: string }) {
+  const range = query.range ?? 'month';
+  return <div className="dashboard-filter-bar"><div className="flex min-w-0 flex-wrap items-center gap-2"><CalendarRange className="h-4 w-4 shrink-0 text-slate-500" aria-hidden="true" /><div className="dashboard-segmented" aria-label="Dashboard range">{presets.map((preset) => <button key={preset.value} type="button" aria-pressed={range === preset.value} onClick={() => onChange({ ...query, range: preset.value, from: undefined, to: undefined })}>{preset.label}</button>)}<button type="button" aria-pressed={range === 'custom'} onClick={() => onChange({ ...query, range: 'custom' })}>Custom</button></div>{range === 'custom' && <div className="flex flex-wrap items-center gap-2"><input aria-label="From date" type="date" value={query.from ?? ''} onChange={(event) => onChange({ ...query, from: event.target.value })} className="dashboard-date-input" /><span className="text-xs text-slate-500">to</span><input aria-label="To date" type="date" value={query.to ?? ''} onChange={(event) => onChange({ ...query, to: event.target.value })} className="dashboard-date-input" /></div>}</div><div className="flex items-center gap-3"><label className="inline-flex items-center gap-2 whitespace-nowrap text-xs text-slate-600"><input type="checkbox" checked={query.includeArchived ?? false} onChange={(event) => onChange({ ...query, includeArchived: event.target.checked })} />Include archived</label>{generatedAt && <span className="hidden whitespace-nowrap text-[11px] text-slate-400 xl:inline">Updated {new Date(generatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}<button type="button" onClick={onRefresh} className="dashboard-icon-button" title="Refresh dashboard" aria-label="Refresh dashboard"><RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} /></button></div></div>;
+}

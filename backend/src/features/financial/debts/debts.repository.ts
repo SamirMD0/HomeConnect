@@ -1,4 +1,4 @@
-import { DebtStatus, PaymentMethod, Prisma } from '@prisma/client';
+import { DebtKind, DebtStatus, PaymentMethod, Prisma } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { prisma } from '../../../lib/prisma';
 import { FinancialTransactionClient } from '../infrastructure/transaction';
@@ -23,6 +23,14 @@ const debtInclude = {
       id: true,
       fullName: true,
       username: true,
+    },
+  },
+  prepaidPurchase: {
+    select: {
+      id: true,
+      status: true,
+      deliveredAt: true,
+      remainderDebtId: true,
     },
   },
   paymentAllocations: {
@@ -68,6 +76,7 @@ export interface ListDebtsParams {
 export interface CreateDebtData {
   customerId: string;
   description: string;
+  kind?: DebtKind;
   originalAmount: Decimal;
   dueDate: Date;
   status: DebtStatus;
@@ -108,8 +117,9 @@ export class DebtsRepository {
     });
   }
 
-  static async createDebt(data: CreateDebtData): Promise<DebtWithDetails> {
-    return prisma.debt.create({
+  static async createDebt(data: CreateDebtData, tx?: FinancialTransactionClient): Promise<DebtWithDetails> {
+    const client = tx ?? prisma;
+    return client.debt.create({
       data,
       include: debtInclude,
     });

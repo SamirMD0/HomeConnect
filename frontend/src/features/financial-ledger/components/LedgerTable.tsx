@@ -10,6 +10,7 @@ import { LedgerObligationRow } from './LedgerObligationRow';
 import { LedgerMobileCard } from './LedgerMobileCard';
 import { LedgerPaymentChildRows } from './LedgerPaymentChildRows';
 import { LedgerPaymentRow } from './LedgerPaymentRow';
+import { businessLabels } from '../../../shared/labels/business-labels';
 
 interface LedgerTableProps {
   items: FinancialLedgerItem[];
@@ -75,21 +76,21 @@ export const LedgerTable: React.FC<LedgerTableProps> = ({
       <div className="hidden overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm md:block">
         <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-slate-200 text-sm">
-          <caption className="sr-only">Financial ledger</caption>
+          <caption className="sr-only">Financial Ledger / دفتر الحسابات</caption>
           <thead className="sticky top-0 z-10 bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
             <tr>
               <th scope="col" className="w-10 px-2 py-3">
                 <span className="sr-only">Expand</span>
               </th>
-              <th scope="col" className="px-4 py-3">Due date</th>
-              <th scope="col" className="px-4 py-3">Customer</th>
-              <th scope="col" className="hidden px-4 py-3 lg:table-cell">Type</th>
-              <th scope="col" className="px-4 py-3">Description</th>
-              <th scope="col" className="px-4 py-3 text-right">Amount</th>
-              <th scope="col" className="hidden px-4 py-3 text-right xl:table-cell">Paid</th>
-              <th scope="col" className="px-4 py-3 text-right">Remaining</th>
-              <th scope="col" className="px-4 py-3">Status</th>
-              <th scope="col" className="px-4 py-3 text-right">Actions</th>
+              <th scope="col" className="px-4 py-3">{businessLabels.financial.dueDate}</th>
+              <th scope="col" className="px-4 py-3">{businessLabels.common.customer}</th>
+              <th scope="col" className="hidden px-4 py-3 lg:table-cell">{businessLabels.ledger.type}</th>
+              <th scope="col" className="px-4 py-3">{businessLabels.financial.description}</th>
+              <th scope="col" className="px-4 py-3 text-right">{businessLabels.financial.amount}</th>
+              <th scope="col" className="hidden px-4 py-3 text-right xl:table-cell">{businessLabels.financial.paid}</th>
+              <th scope="col" className="px-4 py-3 text-right">{businessLabels.financial.balance}</th>
+              <th scope="col" className="px-4 py-3">{businessLabels.common.status}</th>
+              <th scope="col" className="px-4 py-3 text-right">{businessLabels.common.actions}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">

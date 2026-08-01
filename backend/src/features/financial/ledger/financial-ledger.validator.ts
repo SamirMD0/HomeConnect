@@ -11,7 +11,9 @@ const businessDateQuerySchema = z
   .optional();
 
 export const financialLedgerQuerySchema = z.object({
-  type: z.enum(['ALL', 'DEBT', 'INSTALLMENT_PLAN', 'PAYMENT', 'OVERDUE']).default('ALL'),
+  type: z
+    .enum(['ALL', 'DEBT', 'INSTALLMENT_PLAN', 'PAYMENT', 'OVERDUE'])
+    .default('ALL'),
   status: z.enum(['ACTIVE', 'OVERDUE', 'PAID_COMPLETED', 'CANCELLED']).optional(),
   customerId: z.string().uuid('Invalid customer ID').optional(),
   search: z.string().trim().max(100).optional(),

@@ -120,8 +120,12 @@ export const LedgerMobileCard: React.FC<LedgerMobileCardProps> = ({
       </div>
 
       <p className="user-text mt-3 line-clamp-2 text-sm font-medium text-slate-800" dir="auto">{item.description}</p>
-      <p className="mt-4 text-xs font-medium uppercase tracking-wide text-slate-500">Remaining</p>
-      <p className="text-2xl font-semibold tabular-nums text-slate-900">{formatMoney(remainingBalance)}</p>
+      <p className="mt-4 text-xs font-medium uppercase tracking-wide text-slate-500">
+        Remaining
+      </p>
+      <p className="text-2xl font-semibold tabular-nums text-slate-900">
+        {formatMoney(remainingBalance)}
+      </p>
 
       <dl className="mt-3 grid grid-cols-3 gap-2 text-xs">
         <MobileAmountTerm label="Amount" value={formatMoney(amount)} />
@@ -219,8 +223,14 @@ function buildMobileObligationActions({
       ...(LEDGER_CORRECTION_ENABLED && canMutate
         ? [{ label: 'Correct...', onClick: () => onViewDebt(item.id) }]
         : []),
-      ...(canMutate && canCancelDebt(item.status, item.totalPaid)
-        ? [{ label: 'Cancel debt', onClick: () => onCancelDebt(item), tone: 'cancel' as const }]
+      ...(canMutate && canCancelDebt(item.status, item.totalPaid, item.kind)
+        ? [
+            {
+              label: 'Cancel debt',
+              onClick: () => onCancelDebt(item),
+              tone: 'cancel' as const,
+            },
+          ]
         : []),
     ];
   }

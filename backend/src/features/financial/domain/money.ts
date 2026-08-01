@@ -55,6 +55,25 @@ export function subtractMoney(left: MoneyInput, right: MoneyInput): Decimal {
   return parseMoney(left).minus(parseMoney(right)).toDecimalPlaces(2);
 }
 
+export function multiplyMoney(
+  amount: MoneyInput,
+  multiplier: string | Decimal,
+  roundingMode: Decimal.Rounding = Decimal.ROUND_HALF_UP
+): Decimal {
+  const factor = parseFiniteDecimal(multiplier, 'Money multiplier');
+  return parseMoney(amount).mul(factor).toDecimalPlaces(2, roundingMode);
+}
+
+export function divideMoney(
+  amount: MoneyInput,
+  divisor: string | Decimal,
+  roundingMode: Decimal.Rounding = Decimal.ROUND_HALF_UP
+): Decimal {
+  const value = parseFiniteDecimal(divisor, 'Money divisor');
+  if (value.isZero()) throw new InvalidMoneyError('Money divisor cannot be zero');
+  return parseMoney(amount).div(value).toDecimalPlaces(2, roundingMode);
+}
+
 export function sumMoney(values: MoneyInput[]): Decimal {
   return values
     .reduce<Decimal>((total, value) => total.plus(parseMoney(value)), ZERO_MONEY)
@@ -118,4 +137,10 @@ function parseMoneyString(input: string): Decimal {
 
 function isDecimalLike(input: MoneyInput): input is Decimal | DecimalLike {
   return typeof input === 'object' && input !== null && typeof input.toString === 'function';
+}
+
+function parseFiniteDecimal(input: string | Decimal, label: string): Decimal {
+  const value = new Decimal(input.toString());
+  if (!value.isFinite()) throw new InvalidMoneyError(`${label} must be finite`);
+  return value;
 }

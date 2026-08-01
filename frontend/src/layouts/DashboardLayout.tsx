@@ -1,7 +1,7 @@
 import React from 'react';
 import { Outlet, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { LayoutDashboard, Users, LogOut, FileText, Menu, X, Settings, BookOpen, Wallet } from 'lucide-react';
+import { LayoutDashboard, Users, LogOut, FileText, Menu, X, Settings, BookOpen, Wallet, Wrench, Package, Truck, Landmark, HandCoins, Calculator } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export const DashboardLayout: React.FC = () => {
@@ -17,11 +17,17 @@ export const DashboardLayout: React.FC = () => {
 
   const navItems = [
     { name: 'Dashboard', path: '/', icon: LayoutDashboard },
-    { name: 'Customers', path: '/customers', icon: Users },
-    { name: 'Ledger', path: '/ledger', icon: BookOpen },
-    { name: 'Accounts Receivable', path: '/receivables', icon: Wallet },
-    { name: 'Reports', path: '/reports', icon: FileText },
-    ...(user?.role === 'ADMIN' ? [{ name: 'Settings', path: '/settings', icon: Settings }] : []),
+    { name: 'Customers / الزبائن', path: '/customers', icon: Users },
+    { name: 'Ledger / دفتر الحسابات', path: '/ledger', icon: BookOpen },
+    { name: 'Receivables / الذمم', path: '/receivables', icon: Wallet },
+    { name: 'Prepaid / المدفوع مسبقاً', path: '/prepaid', icon: HandCoins },
+    { name: 'Service / الصيانة', path: '/service', icon: Wrench },
+    { name: 'Products / المنتجات', path: '/products', icon: Package },
+    { name: 'Pricing Presets / صيغ التسعير', path: '/pricing-presets', icon: Calculator },
+    { name: 'Suppliers / المورّدون', path: '/suppliers', icon: Truck },
+    { name: 'Supplier Ledger / حسابات المورّدين', path: '/supplier-ledger', icon: Landmark },
+    { name: 'Reports / التقارير', path: '/reports', icon: FileText },
+    ...(user?.role === 'ADMIN' ? [{ name: 'Settings / الإعدادات', path: '/settings', icon: Settings }] : []),
   ];
 
   return (
@@ -56,14 +62,15 @@ export const DashboardLayout: React.FC = () => {
                   <Link
                     key={item.name}
                     to={item.path}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm ${
                       isActive 
                         ? 'bg-sky-600 text-white shadow-md shadow-sky-950/30 font-medium'
                         : 'text-blue-100/75 hover:bg-blue-900/70 hover:text-white'
                     }`}
+                    title={item.name}
                   >
-                    <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-blue-200/75'}`} />
-                    <span className="whitespace-nowrap">{item.name}</span>
+                    <Icon className={`h-5 w-5 shrink-0 ${isActive ? 'text-white' : 'text-blue-200/75'}`} />
+                    <span className="min-w-0 flex-1 truncate leading-tight">{item.name}</span>
                   </Link>
                 );
               })}

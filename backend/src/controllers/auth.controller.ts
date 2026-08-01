@@ -93,15 +93,9 @@ export class AuthController {
       const refreshToken = req.cookies?.refreshToken;
       
       if (!refreshToken) {
-        res.clearCookie('refreshToken');
-        return res.status(401).json({
-          success: false,
-          error: {
-            code: 'UNAUTHORIZED',
-            message: 'Session expired. Please log in again.',
-          },
-          meta: { timestamp: new Date().toISOString() },
-        });
+        // A missing cookie means there is no session to restore. This is a
+        // normal cold-start state, not a failed authentication attempt.
+        return res.status(204).send();
       }
 
       const tokens = await AuthService.refreshToken(refreshToken);

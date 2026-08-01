@@ -51,7 +51,13 @@ export function buildContentSecurityPolicy(mode: CspMode): string {
     // width inline. It carries far less risk than inline script and does not
     // trigger Electron's insecure-CSP warning.
     ['style-src', ["'self'", "'unsafe-inline'"]],
-    ['img-src', ["'self'", 'data:', 'blob:']],
+    // Product images may point at any supplier or CDN the user pastes in, so the
+    // scheme is allowed rather than an allowlist of hosts. Images are passive
+    // content and cannot execute; the alternative — proxying every external image
+    // through the backend — would trade this for a server-side request forgery
+    // surface. 'blob:' covers uploaded images, which are fetched with the auth
+    // token and shown as object URLs.
+    ['img-src', ["'self'", 'data:', 'blob:', 'https:', 'http:']],
     ['font-src', ["'self'", 'data:']],
     ['connect-src', connectSrc],
     ['object-src', ["'none'"]],
