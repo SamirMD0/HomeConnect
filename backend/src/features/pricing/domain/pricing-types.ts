@@ -25,4 +25,6 @@ export interface PricingResult {
   expensesAmount: string;
   profitAmount: string;
   discountBufferAmount: string;
+  priceWithoutDiscountBuffer: string;
+  internalPriceCode: string | null;
 }

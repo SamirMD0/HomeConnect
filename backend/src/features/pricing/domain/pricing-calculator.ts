@@ -3,6 +3,7 @@ import { divideMoney, moneyToApiString, multiplyMoney, parseMoney, subtractMoney
 import { PricingCalculationError } from './pricing-errors';
 import { percentFactor } from './pricing-percent';
 import { PricingConfig, PricingResult, PricingRoundingModeValue } from './pricing-types';
+import { formatInternalPriceCode } from './internal-price-code';
 
 export function calculatePricing(costPrice: Decimal, config: PricingConfig): PricingResult {
   if (!Number.isInteger(config.installmentMonths) || config.installmentMonths < 1) {
@@ -43,6 +44,8 @@ export function calculatePricing(costPrice: Decimal, config: PricingConfig): Pri
     expensesAmount: displayMoney(stages.expensesRaw),
     profitAmount: displayMoney(stages.profitRaw),
     discountBufferAmount: displayMoney(stages.bufferRaw),
+    priceWithoutDiscountBuffer: displayMoney(stages.beforeBufferRaw),
+    internalPriceCode: formatInternalPriceCode(stages.beforeBufferRaw),
   };
 }
 
@@ -51,7 +54,8 @@ function rawCashStages(cost: Decimal, config: PricingConfig) {
     const expensesRaw = cost.mul(config.expensePercent.div(100));
     const profitRaw = cost.mul(config.profitPercent.div(100));
     const bufferRaw = cost.mul(config.discountBufferPercent.div(100));
-    return { expensesRaw, profitRaw, bufferRaw, cashRaw: cost.plus(expensesRaw).plus(profitRaw).plus(bufferRaw) };
+    const beforeBufferRaw = cost.plus(expensesRaw).plus(profitRaw);
+    return { expensesRaw, profitRaw, bufferRaw, beforeBufferRaw, cashRaw: beforeBufferRaw.plus(bufferRaw) };
   }
 
   const afterExpenses = cost.mul(percentFactor(config.expensePercent));
@@ -61,6 +65,7 @@ function rawCashStages(cost: Decimal, config: PricingConfig) {
     expensesRaw: afterExpenses.minus(cost),
     profitRaw: afterProfit.minus(afterExpenses),
     bufferRaw: cashRaw.minus(afterProfit),
+    beforeBufferRaw: afterProfit,
     cashRaw,
   };
 }
