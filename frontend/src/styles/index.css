@@ -52,30 +52,31 @@
 
 .product-label-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(50mm, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(var(--label-width, 50mm), 1fr));
   gap: 4mm;
 }
 
 .product-label {
   box-sizing: border-box;
-  width: 50mm;
-  min-height: 30mm;
+  width: var(--label-width, 50mm);
+  height: var(--label-height, 30mm);
   overflow: hidden;
   border: 1px solid #cbd5e1;
   background: white;
   padding: 2mm;
-  color: #0f172a;
+  color: #000;
   break-inside: avoid;
   page-break-inside: avoid;
   font-family: Tahoma, Arial, sans-serif;
 }
 
-.product-label h2 { margin: 0; font-size: 12pt; line-height: 1.1; }
+.product-label h2 { display: -webkit-box; margin: 0; overflow: hidden; font-size: 12pt; line-height: 1.1; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .product-label p { margin: 1mm 0 0; font-size: 8pt; }
 .product-label-brand { text-transform: uppercase; font-weight: 700; color: #475569; }
 .product-label-barcode { display: block; width: 100%; max-height: 12mm; margin-top: 1mm; }
 .product-label-barcode-text { font-family: monospace; text-align: center; overflow-wrap: anywhere; }
-.product-label-price { font-size: 10pt !important; font-weight: 700; }
+.product-label-sku { font-family: 'Courier New', monospace; font-weight: 700; }
+.product-label-code { margin-top: 0.5mm !important; text-align: right; font-size: 8pt !important; font-weight: 700; }
 
 @layer components {
   .dashboard-shell { @apply mx-auto max-w-[1600px] space-y-5 pb-8; }
@@ -110,6 +111,6 @@
 }
 
 @media print {
-  .product-label-grid { display: grid; grid-template-columns: 50mm; gap: 0; }
-  .product-label { border: 0; font-family: Tahoma, Arial, 'Segoe UI', sans-serif; }
+  .product-label-grid { display: grid; grid-template-columns: var(--label-width, 50mm); gap: 0; }
+  .product-label { border: 0; font-family: Tahoma, Arial, 'Segoe UI', sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }

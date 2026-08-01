@@ -11,6 +11,7 @@ import { ProductsTable } from './ProductsTable';
 
 const product: Product = {
   id: '11111111-1111-4111-8111-111111111111',
+  sku: 'HC-000001',
   name: 'مروحة سقف',
   model: 'CF-52',
   brand: 'Ariete',
@@ -22,6 +23,8 @@ const product: Product = {
   imageUrl: null,
   image: null,
   notes: 'منتج تجريبي',
+  labelBarcodeSource: 'SKU', trackStock: true, stockQuantity: 4, lowStockThreshold: 2,
+  stockStatus: 'IN_STOCK', specifications: [{ label: 'Capacity', value: '52 in' }], specificationNotes: null,
   createdAt: '2026-07-29T10:00:00.000Z',
   updatedAt: '2026-07-29T10:00:00.000Z',
   pricing: {
@@ -111,10 +114,12 @@ describe('product management frontend', () => {
     expect(() => productFormSchema.parse({ ...base, imageUrl: 'not a url' })).toThrow('valid http');
   });
 
-  it('omits a missing barcode block from printable labels', () => {
-    const html = renderToStaticMarkup(<ProductLabel product={{ id: product.id, name: product.name, model: product.model, brand: product.brand, barcode: null, price: product.price }} />);
+  it('prints SKU identity without exposing prices or direction attributes', () => {
+    const html = renderToStaticMarkup(<ProductLabel product={{ id: product.id, name: product.name, model: product.model, brand: product.brand, sku: product.sku, barcodeValue: product.sku, barcodeSource: 'SKU', internalPriceCode: null }} />);
     expect(html).toContain('مروحة سقف');
-    expect(html).not.toContain('product-label-barcode');
+    expect(html).toContain('SKU: HC-000001');
+    expect(html).not.toContain('$450.00');
+    expect(html).not.toContain('dir=');
   });
 
   it('shows barcode values in the active service product picker', () => {

@@ -10,11 +10,11 @@ import { ServiceJobStatusChip } from './ServiceJobStatusChip';
 describe('service frontend components', () => {
   it('renders readable status text and printable label values', () => {
     const status = renderToStaticMarkup(<ServiceJobStatusChip status="READY_FOR_PICKUP" />);
-    const label = renderToStaticMarkup(<ProductLabel product={{ id: 'p1', name: 'براد', model: 'RT28', brand: 'Samsung', barcode: '8801643123456', price: '450.00' }} />);
+    const label = renderToStaticMarkup(<ProductLabel product={{ id: 'p1', name: 'براد', model: 'RT28', brand: 'Samsung', sku: 'HC-000001', barcodeValue: '8801643123456', barcodeSource: 'MANUFACTURER', internalPriceCode: null }} />);
     expect(status).toContain('Ready for Pickup / جاهز للاستلام');
-    expect(label).toContain('براد'); expect(label).toContain('RT28'); expect(label).toContain('Price / السعر');
-    expect(label).toContain('Model / الموديل');
-    expect(label).toContain('dir="auto"');
+    expect(label).toContain('براد'); expect(label).toContain('RT28'); expect(label).not.toContain('Price');
+    expect(label).toContain('Model:');
+    expect(label).not.toContain('dir=');
     expect(label).toContain('aria-label="Barcode 8801643123456"');
   });
 

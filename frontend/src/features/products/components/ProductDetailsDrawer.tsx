@@ -14,6 +14,7 @@ import { PricingPreviewCard } from '../../pricing/components/PricingPreviewCard'
 import { ProductStockBadge } from './ProductStockBadge';
 import { ProductSpecificationsView } from './ProductSpecificationsView';
 import { ProductSkuEditDialog } from './ProductSkuEditDialog';
+import { ProductLabelPanel } from './ProductLabelPanel';
 
 interface ProductDetailsDrawerProps {
   productId: string | null;
@@ -89,6 +90,8 @@ export const ProductDetailsDrawer: React.FC<ProductDetailsDrawerProps> = ({ prod
           <Section title="Stock / المخزون"><div className="space-y-3"><ProductStockBadge status={item.stockStatus} /><dl className="grid gap-4 sm:grid-cols-2"><Value label="Quantity / الكمية" value={String(item.stockQuantity)} /><Value label="Low-stock threshold / الحد" value={item.lowStockThreshold == null ? '—' : String(item.lowStockThreshold)} /></dl></div></Section>
 
           <Section title="Specifications / المواصفات"><ProductSpecificationsView specifications={item.specifications} notes={item.specificationNotes} /></Section>
+
+          <Section title="Label / الملصق"><ProductLabelPanel product={item} /></Section>
 
           <Section title="Pricing / التسعير"><div className="space-y-4"><PricingPreviewCard preview={pricing.data} loading={pricing.isLoading} />{user?.role === 'ADMIN' && <ProductPricingSection product={item} />}</div></Section>
 
