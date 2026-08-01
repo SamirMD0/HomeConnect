@@ -19,6 +19,10 @@ export class ProductsRepository {
     return (tx ?? prisma).product.findUnique({ where: { barcode } });
   }
 
+  static findBySku(sku: string, tx?: Prisma.TransactionClient) {
+    return (tx ?? prisma).product.findUnique({ where: { sku } });
+  }
+
   static async list(params: {
     search?: string;
     isActive?: boolean;
@@ -37,6 +41,7 @@ export class ProductsRepository {
         ? {
             OR: [
               { name: { contains: params.search, mode: 'insensitive' } },
+              { sku: { contains: params.search, mode: 'insensitive' } },
               { model: { contains: params.search, mode: 'insensitive' } },
               { brand: { contains: params.search, mode: 'insensitive' } },
               { barcode: { startsWith: params.search, mode: 'insensitive' } },

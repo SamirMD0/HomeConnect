@@ -25,6 +25,13 @@ export const PRODUCT_FIELD_POLICY = {
   // Cosmetic catalogue fields any authenticated user may maintain.
   imageUrl: false,
   notes: false,
+  sku: true,
+  labelBarcodeSource: true,
+  trackStock: true,
+  stockQuantity: true,
+  lowStockThreshold: true,
+  specifications: false,
+  specificationNotes: false,
 } as const;
 
 export const SERVICE_JOB_FIELD_POLICY = {

@@ -38,6 +38,8 @@ export function resolveProductPricing(product: ProductPricingRecord, defaultPres
       profitAmount: result.profitAmount,
       discountBufferAmount: result.discountBufferAmount,
     },
+    priceWithoutDiscountBuffer: result.priceWithoutDiscountBuffer,
+    internalPriceCode: result.internalPriceCode,
     cashPrice: result.cashPrice,
     installment: {
       installmentPrice: result.installmentPrice,

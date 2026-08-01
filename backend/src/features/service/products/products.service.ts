@@ -32,6 +32,8 @@ import { serializeServiceJob } from '../service-jobs/service-jobs.service';
 import { resolveProductPricing } from '../../pricing/calculator/pricing-resolution';
 import { Role } from '@prisma/client';
 import { parsePricingPercent, percentToApiString } from '../../pricing/domain/pricing-percent';
+import { generateProductSku } from './product-sku';
+import { deriveProductStockStatus } from './product-stock';
 
 export class ProductsService {
   static async create(input: CreateProductInput, user: ServiceMutationUser, context: RequestContext) {
@@ -48,6 +50,7 @@ export class ProductsService {
         }
         const product = await ProductsRepository.create(
           {
+            sku: await generateProductSku(tx),
             name: input.name,
             model: input.model,
             barcode: input.barcode ?? null,
@@ -55,6 +58,12 @@ export class ProductsService {
             price: moneyOrNull(input.price),
             discount: moneyOrNull(input.discount),
             notes: input.notes ?? null,
+            labelBarcodeSource: input.labelBarcodeSource,
+            trackStock: input.trackStock ?? false,
+            stockQuantity: input.stockQuantity ?? 0,
+            lowStockThreshold: input.lowStockThreshold ?? null,
+            specifications: input.specifications == null ? Prisma.JsonNull : specificationsJson(input.specifications),
+            specificationNotes: input.specificationNotes ?? null,
             createdById: user.userId,
             ...pricingCreateData(input),
           },
@@ -93,7 +102,16 @@ export class ProductsService {
       take: query.pageSize,
     });
     const defaultPreset = await ProductsRepository.findActiveDefaultPricingPreset();
-    return { ...result, items: result.items.map((item) => serializeProduct(item, defaultPreset, viewer?.role === Role.ADMIN)), page: query.page, pageSize: query.pageSize };
+    const normalizedSearch = query.search?.trim().toUpperCase();
+    return {
+      ...result,
+      items: result.items.map((item) => ({
+        ...serializeProduct(item, defaultPreset, viewer?.role === Role.ADMIN),
+        exactMatch: Boolean(normalizedSearch && (item.sku.toUpperCase() === normalizedSearch || item.barcode?.toUpperCase() === normalizedSearch)),
+      })).sort((a, b) => Number(b.exactMatch) - Number(a.exactMatch)),
+      page: query.page,
+      pageSize: query.pageSize,
+    };
   }
 
   static async get(id: string, viewer?: { role: string }) {
@@ -361,11 +379,18 @@ function productUpdateData(input: UpdateProductInput, updatedById: string): Pris
   if (input.discount !== undefined) data.discount = moneyOrNull(input.discount);
   if (input.imageUrl !== undefined) data.imageUrl = input.imageUrl;
   if (input.notes !== undefined) data.notes = input.notes;
+  if (input.labelBarcodeSource !== undefined) data.labelBarcodeSource = input.labelBarcodeSource;
+  if (input.specifications !== undefined) data.specifications = specificationsJson(input.specifications);
+  if (input.specificationNotes !== undefined) data.specificationNotes = input.specificationNotes;
   return data;
 }
 
 function moneyOrNull(value?: string | null) {
   return value == null ? null : parseMoney(value);
+}
+
+function specificationsJson(entries: Array<{ label: string; value: string }>): Prisma.InputJsonArray {
+  return entries.map(({ label, value }) => ({ label, value }));
 }
 
 function assertDiscountWithinPrice(price: { toString(): string } | string | null, discount: { toString(): string } | string | null) {
@@ -417,6 +442,7 @@ function serializeProduct(product: ProductRecord, defaultPreset: Prisma.PricingP
     name: product.name,
     model: product.model,
     barcode: product.barcode,
+    sku: product.sku,
     brand: product.brand,
     price: product.price ? moneyToApiString(product.price) : null,
     discount: product.discount ? moneyToApiString(product.discount) : null,
@@ -425,6 +451,13 @@ function serializeProduct(product: ProductRecord, defaultPreset: Prisma.PricingP
       : product.price ? moneyToApiString(product.price) : null,
     isActive: product.isActive,
     notes: product.notes,
+    labelBarcodeSource: product.labelBarcodeSource,
+    trackStock: product.trackStock,
+    stockQuantity: product.stockQuantity,
+    lowStockThreshold: product.lowStockThreshold,
+    stockStatus: deriveProductStockStatus(product),
+    specifications: product.specifications ?? [],
+    specificationNotes: product.specificationNotes,
     imageUrl: product.imageUrl,
     image: serializeProductImage(product),
     createdById: product.createdById,
@@ -452,10 +485,14 @@ function pricingConfiguration(product: Product) {
 
 function productSnapshot(product: Product): Prisma.InputJsonObject {
   return {
-    name: product.name, model: product.model, barcode: product.barcode,
+    sku: product.sku, name: product.name, model: product.model, barcode: product.barcode,
     brand: product.brand, price: product.price ? moneyToApiString(product.price) : null,
     discount: product.discount ? moneyToApiString(product.discount) : null,
     isActive: product.isActive, notes: product.notes, imageUrl: product.imageUrl,
+    labelBarcodeSource: product.labelBarcodeSource, trackStock: product.trackStock,
+    stockQuantity: product.stockQuantity, lowStockThreshold: product.lowStockThreshold,
+    specifications: (product.specifications ?? []) as Prisma.InputJsonValue,
+    specificationNotes: product.specificationNotes,
     costPrice: product.costPrice ? moneyToApiString(product.costPrice) : null,
     pricingPresetId: product.pricingPresetId, useCustomPricing: product.useCustomPricing,
     customExpensePercent: product.customExpensePercent ? percentToApiString(product.customExpensePercent) : null,

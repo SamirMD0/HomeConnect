@@ -1,9 +1,11 @@
-import { PricingCalculationMode } from '@prisma/client';
+import { LabelBarcodeSource, PricingCalculationMode } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { z } from 'zod';
 import { compareMoney } from '../../financial/domain/money';
 import { userTextSchema } from '../../../validators/user-text';
 import { containsSensitiveProductFields } from '../authorization/service-policy';
+import { MAX_PRODUCT_SPECIFICATIONS, MAX_PRODUCT_SPECIFICATIONS_BYTES, normalizeProductSpecifications, serializedSpecificationsSize } from './product-specifications';
+import { PRODUCT_SKU_PATTERN } from './product-sku';
 
 const uuidSchema = z.string().uuid('Invalid product ID');
 const moneyPattern = /^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/;
@@ -68,7 +70,20 @@ const productValues = {
   discount: optionalMoneySchema,
   imageUrl: imageUrlSchema,
   notes: optionalUserText('Notes', 2000),
+  labelBarcodeSource: z.nativeEnum(LabelBarcodeSource).optional(),
+  trackStock: z.boolean().optional(),
+  stockQuantity: z.number().int('Stock quantity must be an integer').min(0).optional(),
+  lowStockThreshold: z.preprocess(emptyToNull, z.number().int('Low stock threshold must be an integer').min(0).optional().nullable()),
+  specifications: z.array(z.object({
+    label: userTextSchema({ field: 'Specification label', max: 64 }),
+    value: userTextSchema({ field: 'Specification value', max: 256 }),
+  })).max(MAX_PRODUCT_SPECIFICATIONS).transform(normalizeProductSpecifications)
+    .refine((entries) => serializedSpecificationsSize(entries) <= MAX_PRODUCT_SPECIFICATIONS_BYTES, 'Specifications cannot exceed 8 KB').optional(),
+  specificationNotes: optionalUserText('Specification notes', 4000),
 };
+
+export const productSkuSchema = z.string().trim().toUpperCase().min(4).max(32)
+  .regex(PRODUCT_SKU_PATTERN, 'SKU may contain only uppercase letters, numbers, and hyphens');
 
 function validateDiscount(
   values: { price?: string | null; discount?: string | null },
@@ -83,7 +98,7 @@ function validateDiscount(
   }
 }
 
-export const createProductSchema = z.object({ ...productValues, ...productPricingValues }).superRefine((values, context) => {
+export const createProductSchema = z.object({ ...productValues, ...productPricingValues }).strict().superRefine((values, context) => {
   validateDiscount(values, context);
   validateCustomPricing(values, context);
 });
@@ -98,6 +113,9 @@ export const updateProductSchema = z
     discount: productValues.discount,
     imageUrl: productValues.imageUrl,
     notes: productValues.notes,
+    labelBarcodeSource: productValues.labelBarcodeSource,
+    specifications: productValues.specifications,
+    specificationNotes: productValues.specificationNotes,
     reason: userTextSchema({ field: 'Reason', min: 5, max: 1000 }).optional(),
     accountPassword: z.string().min(1, 'Account password is required').optional(),
   })
@@ -114,6 +132,13 @@ export const updateProductSchema = z
 export const productActionSchema = z.object({
   reason: userTextSchema({ field: 'Reason', min: 5, max: 1000 }),
   accountPassword: z.string().min(1, 'Account password is required'),
+});
+
+export const updateProductSkuSchema = productActionSchema.extend({ sku: productSkuSchema });
+export const updateProductStockSchema = productActionSchema.extend({
+  trackStock: z.boolean(),
+  stockQuantity: z.number().int('Stock quantity must be an integer').min(0),
+  lowStockThreshold: z.number().int('Low stock threshold must be an integer').min(0).nullable(),
 });
 
 export const productParamsSchema = z.object({ productId: uuidSchema });
@@ -167,6 +192,7 @@ function validateCustomPricing(values: Record<string, unknown>, context: z.Refin
 }
 
 export const productPricingPreviewQuerySchema = z.object({ installmentMonths: z.coerce.number().int().min(1).max(120).optional() });
+export const productLabelQuerySchema = z.object({ includePriceCode: z.enum(['true', 'false']).optional().transform((value) => value === 'true') });
 
 export type CreateProductInput = z.infer<typeof createProductSchema>;
 export type UpdateProductInput = z.infer<typeof updateProductSchema>;
@@ -178,3 +204,6 @@ export type ProductDuplicateQueryInput = z.infer<typeof productDuplicateQuerySch
 export type ProductServiceJobsQueryInput = z.infer<typeof productServiceJobsQuerySchema>;
 export type UpdateProductPricingInput = z.infer<typeof updateProductPricingSchema>;
 export type ProductPricingPreviewQueryInput = z.infer<typeof productPricingPreviewQuerySchema>;
+export type UpdateProductSkuInput = z.infer<typeof updateProductSkuSchema>;
+export type UpdateProductStockInput = z.infer<typeof updateProductStockSchema>;
+export type ProductLabelQueryInput = z.infer<typeof productLabelQuerySchema>;
