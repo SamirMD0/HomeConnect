@@ -1,10 +1,12 @@
 # Home Connects
 
-Local Windows business management system built with React, Electron, Express, Prisma, and PostgreSQL. It covers customers, financial obligations, receivables, reporting, backups, product identity, and maintenance/service jobs.
+Local Windows business management system built with React, Electron, Express, Prisma, and PostgreSQL. It covers customers, financial obligations, receivables, reporting, backups, product identity, sales orders, and maintenance/service jobs.
 
 The backend-authoritative ERP dashboard adds customer, supplier, maintenance, and product analytics; an exception center; live-recomputed month-end controls; recent activity; bilingual labels; and an ERP module roadmap. See [Dashboard Information Architecture](docs/ERP_DASHBOARD_INFORMATION_ARCHITECTURE.md) and [Analytics Data Flow](docs/DASHBOARD_ANALYTICS_DATA_FLOW.md).
 
 Products support sequence-generated SKUs, scanner lookup, auto-fit labels with optional selling price and staff code, basic recorded stock fields, and ordered specifications. See [Product Label Printing](docs/setup/PRODUCT_LABEL_PRINTING.md) and [Product SKU Policy](docs/project/PRODUCT_SKU_POLICY.md).
+
+Sales orders record shop, delivery, and phone sales with multi-line items, a fulfillment workflow, and a date-scoped day/month view. Backend-calculated totals stay Decimal-safe, and any unpaid balance becomes a Debt on the ledger from terms the user supplies — never silently.
 
 ## Prerequisites
 - Node.js (v20 or higher)
