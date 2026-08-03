@@ -69,6 +69,10 @@ export interface FinancialLedgerDebtItem {
   adminDebt: string;
   dueDate: string;
   status: DebtStatus;
+  /** Added in 1.1.4. Optional so a cached or older API response cannot crash the row. */
+  displayStatus?: DebtStatus;
+  /** Added in 1.1.4. Counter deposit on the linked sale; display only, never a payment. */
+  saleDepositAmount?: string | null;
   storedStatus: DebtStatus;
   notes: string | null;
   createdAt: string;

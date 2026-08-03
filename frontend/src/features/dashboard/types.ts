@@ -124,6 +124,22 @@ export interface ServiceAnalyticsData {
   agingJobs: Array<{ id: string; jobNumber: string; customerName: string; status: string; ageDays: number }>;
 }
 
+export interface SalesAnalyticsData {
+  totals: {
+    salesToday: string;
+    ordersToday: number;
+    pendingDelivery: number;
+    unpaidOrders: number;
+    partialPayments: number;
+    installmentOrders: number;
+  };
+  salesByDay: Array<{ date: string; amount: string; orderCount: number }>;
+  paymentStatusDistribution: Array<{ status: string; count: number }>;
+  fulfillmentStatusDistribution: Array<{ status: string; count: number }>;
+  deliveryPipeline: Array<{ status: string; count: number }>;
+  topProducts: Array<{ productId: string; productName: string; quantity: number }>;
+}
+
 export interface ProductAnalyticsData {
   totals: { active: number; archived: number; missingBarcode: number; missingCost: number; missingPricing: number; ready: number; readinessPercent: number };
   presetUsage: Array<{ presetId: string; presetName: string; productCount: number }>;

@@ -12,6 +12,7 @@ graph TD
   Page --> Alerts[Exception center]
   Page --> Customer[Customer analytics]
   Page --> Supplier[Supplier analytics]
+  Page --> Sales[Sales analytics]
   Page --> Service[Maintenance analytics]
   Page --> Product[Product analytics]
   Page --> MonthEnd[Month-end control]
@@ -32,7 +33,7 @@ graph TD
 | Ready for pickup | Service analytics | `READY_FOR_PICKUP` count |
 | Active products | Product analytics | Products with `isActive = true` |
 
-Seven charts are shipped: collections vs new debt, six-month comparison, top debtors, debt age distribution, supplier payment trend, service status distribution, and month-end debt movement. Every chart has direct labels, a tooltip, and a table-view toggle.
+Twelve charts are shipped: collections vs new debt, six-month comparison, top debtors, debt age distribution, supplier payment trend, five sales charts, service status distribution, and month-end debt movement. The sales charts cover sales by day, payment and fulfillment distributions, the delivery pipeline, and catalog-backed top products. Every chart has a tooltip and a table-view toggle.
 
 ```mermaid
 graph LR
@@ -43,11 +44,16 @@ graph LR
   CustomerAPI --> Payments[(Payment)]
   SupplierCharts[Supplier chart] --> SupplierAPI[/dashboard/supplier-financial]
   SupplierAPI --> SupplierTx[(SupplierTransaction)]
+  SalesCharts[Sales charts] --> SalesAPI[/dashboard/sales-summary]
+  SalesAPI --> SalesOrders[(SalesOrder)]
+  SalesAPI --> SalesItems[(SalesOrderItem)]
   ServiceCharts[Service chart] --> ServiceAPI[/dashboard/service-summary]
   ServiceAPI --> Jobs[(ServiceJob)]
   ProductSection[Product readiness] --> ProductAPI[/dashboard/product-summary]
   MonthControl[Month-end] --> MonthAPI[/dashboard/month-end]
 ```
+
+Sales value and receivables are deliberately separate metric families. Sales cards aggregate `SalesOrder.totalAmount`; outstanding, collected, and overdue figures continue to come only from Debt, Installment, and Payment Allocation data. The dashboard never adds those families together.
 
 ## Responsive And Language Rules
 
@@ -58,4 +64,3 @@ graph LR
 | Below 768px | 2 columns | Stacked | Stacked |
 
 The interface stays LTR. Arabic labels apply `dir="rtl"` only to the Arabic text span. User-entered text uses `dir="auto"`.
-

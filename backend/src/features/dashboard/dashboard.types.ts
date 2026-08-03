@@ -1,4 +1,5 @@
 import type { BusinessDate } from '../financial';
+export type { SalesAnalyticsData } from './sales/sales-analytics.types';
 
 export type DashboardRangePreset = 'today' | 'week' | 'month' | 'quarter' | 'year' | 'custom';
 export type DashboardGranularity = 'day' | 'week' | 'month';
@@ -34,4 +35,3 @@ export interface DashboardEnvelope<T> {
   meta: DashboardMeta;
   data: T;
 }
-

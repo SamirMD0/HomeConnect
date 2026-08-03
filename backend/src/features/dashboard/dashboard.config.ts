@@ -11,6 +11,7 @@ export const DASHBOARD_CACHE_TTL_MS = {
   supplierFinancial: 45_000,
   serviceSummary: 45_000,
   productSummary: 300_000,
+  salesSummary: 45_000,
   alerts: 45_000,
   activity: 20_000,
   currentMonthEnd: 60_000,
@@ -19,4 +20,3 @@ export const DASHBOARD_CACHE_TTL_MS = {
 
 export const DASHBOARD_ACTIVITY_LIMIT = 15;
 export const DASHBOARD_TOP_RECORD_LIMIT = 8;
-

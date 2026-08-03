@@ -19,6 +19,10 @@ export function useServiceAnalytics(query: DashboardQueryParams) {
   return useQuery({ queryKey: dashboardQueryKeys.service(query), queryFn: () => dashboardApi.getServiceSummary(query), refetchInterval: 60_000 });
 }
 
+export function useSalesAnalytics(query: DashboardQueryParams) {
+  return useQuery({ queryKey: dashboardQueryKeys.sales(query), queryFn: () => dashboardApi.getSalesSummary(query), refetchInterval: 60_000 });
+}
+
 export function useProductAnalytics(query: DashboardQueryParams) {
   return useQuery({ queryKey: dashboardQueryKeys.product(query), queryFn: () => dashboardApi.getProductSummary(query), refetchInterval: 300_000 });
 }

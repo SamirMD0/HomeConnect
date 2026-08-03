@@ -6,6 +6,7 @@ import {
   normalizePhoneTerm,
   normalizeSearchTerm,
   supportsTrigramSearch,
+  tokenizeSearchTerm,
 } from './search-normalize';
 
 /**
@@ -70,6 +71,20 @@ describe('normalizePhoneTerm', () => {
 
   it('returns empty for text with no digits', () => {
     expect(normalizePhoneTerm('ahmad')).toBe('');
+  });
+});
+
+describe('tokenizeSearchTerm', () => {
+  it('normalizes Arabic and collapses extra whitespace into ordered tokens', () => {
+    expect(tokenizeSearchTerm('  مُحَمَّـد   أحمَد  ')).toEqual(['محمد', 'احمد']);
+  });
+
+  it('normalizes alef and yeh variants without changing stored text', () => {
+    expect(tokenizeSearchTerm('إبراهيم مصطفى')).toEqual(['ابراهيم', 'مصطفي']);
+  });
+
+  it('returns no empty tokens for blank input', () => {
+    expect(tokenizeSearchTerm('   ')).toEqual([]);
   });
 });
 

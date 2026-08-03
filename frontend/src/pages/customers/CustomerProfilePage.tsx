@@ -8,6 +8,7 @@ import { useCustomer, useDeleteCustomer, useUpdateCustomer } from '../../feature
 import { CustomerFinancialProfile } from '../../features/customer-financial/components/CustomerFinancialProfile';
 import { TransactionList } from '../../features/transactions/components/TransactionList';
 import { CustomerServiceJobsSection } from '../../features/service/components/CustomerServiceJobsSection';
+import { CustomerSalesOrdersSection } from '../../features/sales-orders/components/CustomerSalesOrdersSection';
 import { businessLabels } from '../../shared/labels/business-labels';
 
 interface CustomerFormData {
@@ -178,6 +179,7 @@ export const CustomerProfilePage: React.FC = () => {
       />
 
       <CustomerServiceJobsSection customerId={customer.id} />
+      <CustomerSalesOrdersSection customerId={customer.id} />
 
       <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title={businessLabels.customer.edit}>
         <CustomerForm

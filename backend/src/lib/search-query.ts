@@ -6,6 +6,7 @@ import {
   normalizePhoneTerm,
   normalizeSearchTerm,
   supportsTrigramSearch,
+  tokenizeSearchTerm,
 } from './search-normalize';
 
 /**
@@ -16,10 +17,12 @@ import {
  * pagination, sorting, includes, and serialization all stay in Prisma — the
  * search change cannot alter how a record is shaped or ordered.
  *
- * The matcher is deliberately a UNION of two conditions:
+ * Each token deliberately unions two conditions:
  *   * normalized LIKE   -- a strict superset of the ILIKE '%term%' this
  *                          replaces, so nothing that matched before stops
  *   * trigram `%`       -- adds Arabic-variant and typo tolerance
+ * Customer searches AND those token groups, so every query word must match
+ * at least one allowed customer field. Other targets keep phrase semantics.
  *
  * SAFETY RULES (see claude/plans/v1.0.9-postgres-pgtrgm-search-plan.md):
  *   * Every identifier comes from the frozen SEARCH_TARGETS map below. User
@@ -94,40 +97,50 @@ export async function findSearchMatchIds(
   if (!trimmed) return null;
 
   const config = SEARCH_TARGETS[target];
-  const term = normalizeSearchTerm(trimmed);
-  const likeTerm = escapeLikePattern(term);
-  const phoneTerm = normalizePhoneTerm(trimmed);
-  const useTrigram = supportsTrigramSearch(term);
+  // Customer names use token AND matching: every query word must match at
+  // least one searchable field, while words may appear in any order. Other
+  // search targets intentionally retain their existing phrase semantics.
+  // A phone-only query remains one token so separators/spaces normalize as a
+  // single phone number rather than becoming several unrelated requirements.
+  const searchTokens = target === 'customer' && !looksLikePhoneQuery(trimmed)
+    ? tokenizeSearchTerm(trimmed)
+    : [trimmed];
+  const tokenMatchers: Prisma.Sql[] = [];
 
-  const conditions: Prisma.Sql[] = [];
+  for (const rawToken of searchTokens) {
+    const term = normalizeSearchTerm(rawToken);
+    const conditions: Prisma.Sql[] = [];
 
-  for (const column of config.textColumns) {
-    // Substring match on the normalized column: a superset of the previous ILIKE.
-    conditions.push(
-      Prisma.sql`hc_search_normalize(${column}) LIKE '%' || ${likeTerm} || '%' ESCAPE '\\'`
-    );
-    // Similarity match: Arabic variants and typos. Needs >= 3 characters to be
-    // meaningful, and uses pg_trgm's default 0.3 threshold.
-    if (useTrigram) {
-      conditions.push(Prisma.sql`hc_search_normalize(${column}) % ${term}`);
-    }
-  }
-
-  // Phone is substring-only, never fuzzy: a digit typo must not surface a
-  // different customer's record. It is also only probed when the term actually
-  // looks like a phone number, so a text search containing digits does not
-  // return everyone whose number happens to share them.
-  if (phoneTerm && looksLikePhoneQuery(trimmed)) {
-    for (const column of config.phoneColumns) {
+    for (const column of config.textColumns) {
+      // Substring match on the normalized column: a superset of the previous ILIKE.
       conditions.push(
-        Prisma.sql`hc_phone_normalize(${column}) LIKE '%' || ${escapeLikePattern(phoneTerm)} || '%' ESCAPE '\\'`
+        Prisma.sql`hc_search_normalize(${column}) LIKE '%' || ${escapeLikePattern(term)} || '%' ESCAPE '\\'`
       );
+      // Similarity match preserves the existing Arabic-variant and typo tolerance.
+      if (supportsTrigramSearch(term)) {
+        conditions.push(Prisma.sql`hc_search_normalize(${column}) % ${term}`);
+      }
+    }
+
+    // Phone is substring-only, never fuzzy: a digit typo must not surface a
+    // different customer's record. It is only probed for phone-shaped tokens.
+    const phoneTerm = normalizePhoneTerm(rawToken);
+    if (phoneTerm && looksLikePhoneQuery(rawToken)) {
+      for (const column of config.phoneColumns) {
+        conditions.push(
+          Prisma.sql`hc_phone_normalize(${column}) LIKE '%' || ${escapeLikePattern(phoneTerm)} || '%' ESCAPE '\\'`
+        );
+      }
+    }
+
+    if (conditions.length > 0) {
+      tokenMatchers.push(Prisma.sql`(${Prisma.join(conditions, ' OR ')})`);
     }
   }
 
-  if (conditions.length === 0) return [];
+  if (tokenMatchers.length === 0) return [];
 
-  const matcher = Prisma.join(conditions, ' OR ');
+  const matcher = Prisma.join(tokenMatchers, target === 'customer' ? ' AND ' : ' OR ');
   const where = config.baseFilter
     ? Prisma.sql`${config.baseFilter} AND (${matcher})`
     : Prisma.sql`(${matcher})`;

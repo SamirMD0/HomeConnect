@@ -52,6 +52,8 @@ export interface FinancialLedgerDebtItem {
   adminDebt: string;
   dueDate: string;
   status: DebtStatus;
+  displayStatus: DebtStatus;
+  saleDepositAmount: string | null;
   storedStatus: DebtStatus;
   notes: string | null;
   createdAt: string;

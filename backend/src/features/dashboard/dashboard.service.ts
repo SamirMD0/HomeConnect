@@ -11,6 +11,7 @@ import { dashboardCache, dashboardCacheKey } from './shared/dashboard-cache';
 import { createDashboardMeta, resolveDashboardRange } from './shared/dashboard-range';
 import { ServiceAnalyticsService } from './service/service-analytics.service';
 import { SupplierAnalyticsService } from './supplier/supplier-analytics.service';
+import { SalesAnalyticsService } from './sales/sales-analytics.service';
 
 export interface DashboardRequestOptions {
   role: string;
@@ -44,6 +45,12 @@ export class DashboardAnalyticsService {
 
   static productSummary(query: DashboardQueryInput, options: DashboardRequestOptions) {
     return this.ranged('product-summary', DASHBOARD_CACHE_TTL_MS.productSummary, query, options, () => ProductAnalyticsService.get());
+  }
+
+  static salesSummary(query: DashboardQueryInput, options: DashboardRequestOptions) {
+    return this.ranged('sales-summary', DASHBOARD_CACHE_TTL_MS.salesSummary, query, options, (range, businessDate) =>
+      SalesAnalyticsService.get(range, businessDate)
+    );
   }
 
   static alerts(query: DashboardQueryInput, options: DashboardRequestOptions) {
@@ -89,4 +96,3 @@ export class DashboardAnalyticsService {
     }), options.bypassCache);
   }
 }
-

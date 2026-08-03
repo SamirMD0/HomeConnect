@@ -12,19 +12,21 @@ graph TB
     Suppliers --> SupplierLedger
     Products --> Pricing
     Customers --> Service
+    Customers --> SalesOrders
+    Products --> SalesOrders
+    SalesOrders --> Debts
+    SalesOrders --> InstallmentPlans
     Reports
   end
   subgraph NEXT
     Inventory
-    Orders
   end
   subgraph PLANNED
     Sales
     Finance
   end
-  Inventory --> Orders
-  Customers --> Orders
-  Orders --> Sales
+  Inventory -. future stock ownership .-> SalesOrders
+  SalesOrders --> Sales
   Ledger --> Finance
 ```
 
@@ -42,3 +44,4 @@ graph TB
 
 Future modules remain non-clickable until their workflow exists.
 
+Sales Orders is a live commercial and fulfillment module at `/sales-orders`. It snapshots customer/product details, owns order totals and counter-sale cash facts, and may link to exactly one Debt or Installment Plan. Receivable balances and allocations remain owned by the financial modules; v1 sales never writes stock.

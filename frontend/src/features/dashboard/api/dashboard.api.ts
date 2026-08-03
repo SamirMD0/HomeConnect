@@ -10,6 +10,7 @@ import type {
   DashboardQueryParams,
   MonthEndData,
   ProductAnalyticsData,
+  SalesAnalyticsData,
   ServiceAnalyticsData,
   SupplierAnalyticsData,
 } from '../types';
@@ -26,6 +27,7 @@ export const dashboardApi = {
   getCustomerFinancial: (query: DashboardQueryParams, refresh = false) => getSection<CustomerAnalyticsData>('customer-financial', query, refresh),
   getSupplierFinancial: (query: DashboardQueryParams, refresh = false) => getSection<SupplierAnalyticsData>('supplier-financial', query, refresh),
   getServiceSummary: (query: DashboardQueryParams, refresh = false) => getSection<ServiceAnalyticsData>('service-summary', query, refresh),
+  getSalesSummary: (query: DashboardQueryParams, refresh = false) => getSection<SalesAnalyticsData>('sales-summary', query, refresh),
   getProductSummary: (query: DashboardQueryParams, refresh = false) => getSection<ProductAnalyticsData>('product-summary', query, refresh),
   getAlerts: (query: DashboardQueryParams, refresh = false) => getSection<DashboardAlertsData>('alerts', query, refresh),
   getMonthEnd: (month: string, refresh = false) => getSection<MonthEndData>('month-end', { month }, refresh),

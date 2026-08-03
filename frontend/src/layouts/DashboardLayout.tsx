@@ -1,7 +1,7 @@
 import React from 'react';
 import { Outlet, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { LayoutDashboard, Users, LogOut, FileText, Menu, X, Settings, BookOpen, Wallet, Wrench, Package, Truck, Landmark, HandCoins, Calculator } from 'lucide-react';
+import { LayoutDashboard, Users, LogOut, FileText, Menu, X, Settings, BookOpen, Wallet, Wrench, Package, Truck, Landmark, HandCoins, Calculator, ShoppingCart } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export const DashboardLayout: React.FC = () => {
@@ -21,6 +21,7 @@ export const DashboardLayout: React.FC = () => {
     { name: 'Ledger / دفتر الحسابات', path: '/ledger', icon: BookOpen },
     { name: 'Receivables / الذمم', path: '/receivables', icon: Wallet },
     { name: 'Prepaid / المدفوع مسبقاً', path: '/prepaid', icon: HandCoins },
+    { name: 'Sales Orders / طلبات البيع', path: '/sales-orders', icon: ShoppingCart },
     { name: 'Service / الصيانة', path: '/service', icon: Wrench },
     { name: 'Products / المنتجات', path: '/products', icon: Package },
     { name: 'Pricing Presets / صيغ التسعير', path: '/pricing-presets', icon: Calculator },

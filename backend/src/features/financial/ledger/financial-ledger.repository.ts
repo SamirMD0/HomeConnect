@@ -21,6 +21,12 @@ const paymentAllocationPaymentSelect = {
 
 const debtInclude = {
   customer: { select: customerSelect },
+  salesOrder: {
+    select: {
+      paymentStatus: true,
+      paidAmount: true,
+    },
+  },
   paymentAllocations: {
     include: {
       payment: {

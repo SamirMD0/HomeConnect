@@ -1,0 +1,112 @@
+import { renderToStaticMarkup } from 'react-dom/server';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { describe, expect, it, vi } from 'vitest';
+import { CreateSalesOrderDialog } from './CreateSalesOrderDialog';
+import { PaymentStatusChip } from './PaymentStatusChip';
+import { ProductLinePicker } from './ProductLinePicker';
+import { SalesChannelChip } from './SalesChannelChip';
+import { SalesOrderStatusChip } from './SalesOrderStatusChip';
+import { SalesOrderSummaryCards } from './SalesOrderSummaryCards';
+import { SalesOrderDateNavigator } from './SalesOrderDateNavigator';
+import {
+  salesOrderDisplayPaymentStatus,
+  shouldShowSalesOrderSettlement,
+} from '../utils/sales-order-status';
+import {
+  isAtLatest,
+  monthBounds,
+  periodCardLabels,
+  rangeLabel,
+  resolveRange,
+  shiftDays,
+  stepRange,
+  todayString,
+} from '../utils/sales-order-dates';
+
+vi.mock('../../products/hooks/useProducts', () => ({ useProducts: () => ({ data: { items: [] } }) }));
+vi.mock('../../../hooks/useAuth', () => ({ useAuth: () => ({ user: { role: 'ADMIN' } }) }));
+
+describe('sales order presentation components', () => {
+  it('renders bilingual order, payment, and channel labels', () => {
+    const html = renderToStaticMarkup(<div><SalesOrderStatusChip status="OUT_FOR_DELIVERY" /><PaymentStatusChip status="PARTIALLY_PAID" /><SalesChannelChip channel="PHONE_ORDER" /></div>);
+    expect(html).toContain('Out for Delivery / في الطريق');
+    expect(html).toContain('Partially Paid / مدفوع جزئياً');
+    expect(html).toContain('Phone Order / طلب عبر الهاتف');
+  });
+
+  it('keeps list summaries focused on status while formatting sales money', () => {
+    const html = renderToStaticMarkup(
+      <SalesOrderSummaryCards
+        loading={false}
+        period={periodCardLabels(resolveRange('day', todayString()))}
+        data={{ periodSales: '1234.50', periodOrders: 4, pendingDelivery: 2, unpaidOrders: 1, partialPayments: 1 }}
+      />
+    );
+    expect(html).toContain('Sales Today / مبيعات اليوم');
+    expect(html).toContain('$1,234.50');
+    expect(html).toContain('Pending Delivery / بانتظار التوصيل');
+    expect(html).not.toContain('Remaining');
+  });
+
+  it('removes a paid linked debt from the order list payment state', () => {
+    const order = {
+      paymentStatus: 'PARTIALLY_PAID',
+      settlement: 'DEBT',
+      debt: { id: 'debt-1', status: 'PAID', originalAmount: '80.00', dueDate: '2026-09-03' },
+    } as const;
+
+    expect(salesOrderDisplayPaymentStatus(order)).toBe('PAID');
+    expect(shouldShowSalesOrderSettlement(order)).toBe(false);
+  });
+
+  it('starts the creation wizard with payment and does not show a discount input', () => {
+    const queryClient = new QueryClient();
+    const wizard = renderToStaticMarkup(<QueryClientProvider client={queryClient}><CreateSalesOrderDialog isOpen onClose={() => undefined} /></QueryClientProvider>);
+    expect(wizard).toContain('Step 1 of 6');
+    expect(wizard).toContain('Payment / الدفع');
+    expect(wizard).not.toContain('Search customer / البحث عن زبون');
+
+    const line = renderToStaticMarkup(<ProductLinePicker value={{ productId: null, manualProductName: '', manualProductModel: '', quantity: 1, unitPrice: '10.00', discountAmount: '0.00' }} onChange={() => undefined} />);
+    expect(line).not.toContain('Discount amount / مبلغ الحسم');
+  });
+
+  it('resolves day, month, and all ranges for the list and the summary', () => {
+    expect(resolveRange('day', '2026-08-03')).toMatchObject({ dateFrom: '2026-08-03', dateTo: '2026-08-03' });
+    expect(resolveRange('month', '2026-08-03')).toMatchObject({ dateFrom: '2026-08-01', dateTo: '2026-08-31' });
+    expect(resolveRange('all', '2026-08-03').dateFrom).toBeUndefined();
+    expect(monthBounds('2026-02-14')).toEqual({ dateFrom: '2026-02-01', dateTo: '2026-02-28' });
+  });
+
+  it('steps whole days and months without drifting across month or year ends', () => {
+    expect(shiftDays('2026-01-01', -1)).toBe('2025-12-31');
+    expect(shiftDays('2026-02-28', 1)).toBe('2026-03-01');
+    expect(stepRange(resolveRange('month', '2026-01-15'), -1)).toBe('2025-12-01');
+    expect(stepRange(resolveRange('day', '2026-08-03'), -1)).toBe('2026-08-02');
+  });
+
+  it('never steps past today and names the recent days', () => {
+    const today = todayString();
+    expect(isAtLatest(resolveRange('day', today))).toBe(true);
+    expect(isAtLatest(resolveRange('day', shiftDays(today, -1)))).toBe(false);
+    expect(rangeLabel(resolveRange('day', today)).startsWith('Today')).toBe(true);
+    expect(rangeLabel(resolveRange('day', shiftDays(today, -1))).startsWith('Yesterday')).toBe(true);
+    expect(rangeLabel(resolveRange('all', today))).toBe('All dates');
+  });
+
+  it('labels the period cards for the range being shown', () => {
+    expect(periodCardLabels(resolveRange('day', todayString())).sales.en).toBe('Sales Today');
+    expect(periodCardLabels(resolveRange('month', todayString())).orders.en).toBe('Orders this month');
+    expect(periodCardLabels(resolveRange('all', todayString())).sales.ar).toContain('كل التواريخ');
+  });
+
+  it('renders the navigator with a disabled next step while showing today', () => {
+    const html = renderToStaticMarkup(
+      <SalesOrderDateNavigator range={resolveRange('day', todayString())} onAnchorChange={() => undefined} onModeChange={() => undefined} />
+    );
+    expect(html).toContain('Previous / السابق');
+    expect(html).toContain('Day / يوم');
+    expect(html).toContain('Month / شهر');
+    expect(html).toContain('disabled');
+    expect(html).not.toContain('Today / اليوم');
+  });
+});

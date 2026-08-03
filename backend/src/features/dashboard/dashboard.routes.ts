@@ -11,9 +11,9 @@ dashboardAnalyticsRoutes.get('/customer-financial', validate(dashboardQuerySchem
 dashboardAnalyticsRoutes.get('/supplier-financial', validate(dashboardQuerySchema, 'query'), DashboardAnalyticsController.supplierFinancial);
 dashboardAnalyticsRoutes.get('/service-summary', validate(dashboardQuerySchema, 'query'), DashboardAnalyticsController.serviceSummary);
 dashboardAnalyticsRoutes.get('/product-summary', validate(dashboardQuerySchema, 'query'), DashboardAnalyticsController.productSummary);
+dashboardAnalyticsRoutes.get('/sales-summary', validate(dashboardQuerySchema, 'query'), DashboardAnalyticsController.salesSummary);
 dashboardAnalyticsRoutes.get('/alerts', validate(dashboardQuerySchema, 'query'), DashboardAnalyticsController.alerts);
 dashboardAnalyticsRoutes.get('/activity', validate(dashboardActivityQuerySchema, 'query'), DashboardAnalyticsController.activity);
 // Deprecated alias retained for compatibility.
 dashboardAnalyticsRoutes.get('/recent-activity', validate(dashboardActivityQuerySchema, 'query'), DashboardAnalyticsController.activity);
 dashboardAnalyticsRoutes.get('/month-end', requireRole(['ADMIN']), validate(dashboardMonthEndQuerySchema, 'query'), DashboardAnalyticsController.monthEnd);
-

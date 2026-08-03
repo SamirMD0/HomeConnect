@@ -107,8 +107,9 @@ export class DebtsRepository {
     });
   }
 
-  static async findActiveCustomerById(customerId: string) {
-    return prisma.customer.findFirst({
+  static async findActiveCustomerById(customerId: string, tx?: FinancialTransactionClient) {
+    const client = tx ?? prisma;
+    return client.customer.findFirst({
       where: {
         id: customerId,
         deletedAt: null,

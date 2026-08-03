@@ -124,11 +124,19 @@ describe('product management frontend', () => {
     expect(html).not.toContain('dir=');
   });
 
-  it('renders the optional selling price and employee code before the barcode', () => {
+  it('prints the staff code under the SKU caption and never labels it "Staff"', () => {
     const html = renderToStaticMarkup(<ProductLabel product={{ id: product.id, name: 'Coffee grinder', model: 'KA3083', brand: 'DSL', sku: 'HC-000003', barcodeValue: 'HC-000003', barcodeSource: 'SKU', internalPriceCode: 'P27', staffLabelCode: 'HC-000003-K27Z', cashPrice: '29.00' }} />);
-    expect(html).toContain('Staff: HC-000003-K27Z');
+    expect(html).toContain('SKU: HC-000003-K27Z');
+    expect(html).not.toContain('Staff');
+    expect(html).not.toContain('SKU: HC-000003<');
     expect(html).toContain('Price: $29');
     expect(html.indexOf('Price: $29')).toBeLessThan(html.indexOf('product-label-barcode'));
+  });
+
+  it('falls back to the plain SKU when no staff code is available', () => {
+    const html = renderToStaticMarkup(<ProductLabel product={{ id: product.id, name: 'Coffee grinder', model: 'KA3083', brand: 'DSL', sku: 'HC-000003', barcodeValue: 'HC-000003', barcodeSource: 'SKU', internalPriceCode: null, staffLabelCode: null, cashPrice: '29.00' }} />);
+    expect(html).toContain('SKU: HC-000003');
+    expect(html).not.toContain('Staff');
   });
 
   it('rounds label prices to whole dollars using half-up rules', async () => {

@@ -46,6 +46,7 @@ import {
   InstallmentPlanWithDetails,
   InstallmentPlansRepository,
 } from './installment-plans.repository';
+import type { FinancialTransactionClient } from '../infrastructure/transaction';
 import { verifyAccountPassword, verifyAdminPasswordForCorrection } from '../authorization/account-password';
 import { writeFinancialCorrectionAudit } from '../corrections/correction-audit';
 
@@ -147,7 +148,8 @@ export class InstallmentPlansService {
   static async createPlan(
     customerId: string,
     input: CreateInstallmentPlanInput,
-    user: AuthenticatedUser
+    user: AuthenticatedUser,
+    tx?: FinancialTransactionClient
   ): Promise<InstallmentPlanView> {
     const totalAmount = assertPositiveMoney(input.totalAmount);
     const startDate = parseBusinessDate(input.startDate);
@@ -165,8 +167,8 @@ export class InstallmentPlansService {
       throw new FinancialInvariantError('Generated schedule total does not match plan total');
     }
 
-    return runFinancialTransaction(async (tx) => {
-      const customer = await InstallmentPlansRepository.findActiveCustomerById(customerId, tx);
+    const create = async (transaction: FinancialTransactionClient) => {
+      const customer = await InstallmentPlansRepository.findActiveCustomerById(customerId, transaction);
       if (!customer) {
         throw new NotFoundError('Customer not found');
       }
@@ -186,7 +188,7 @@ export class InstallmentPlansService {
       });
 
       const plan = await InstallmentPlansRepository.createPlanWithInstallments(
-        tx,
+        transaction,
         {
           customerId,
           description: input.description,
@@ -207,7 +209,9 @@ export class InstallmentPlansService {
       );
 
       return this.toPlanView(plan);
-    });
+    };
+
+    return tx ? create(tx) : runFinancialTransaction(create);
   }
 
   static async listCustomerPlans(

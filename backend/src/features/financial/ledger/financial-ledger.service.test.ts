@@ -5,6 +5,7 @@ import {
   InstallmentPlanStatus,
   InstallmentStatus,
   PaymentMethod,
+  SalesOrderPaymentStatus,
 } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -62,6 +63,7 @@ function makeDebt(overrides: Record<string, unknown> = {}): FinancialLedgerDebtR
     cancelledAt: null,
     cancelledById: null,
     cancelReason: null,
+    salesOrder: null,
     paymentAllocations: [],
     ...overrides,
   } as unknown as FinancialLedgerDebtRecord;
@@ -220,6 +222,27 @@ describe('FinancialLedgerService', () => {
     expect(result.summary.totalPaid).toBe('0.00');
     expect(result.items).toEqual([]);
     expect(result.pagination.totalPages).toBe(1);
+  });
+
+  it('displays a linked partially-paid sale as partial without counting counter cash as a debt payment', async () => {
+    const debt = makeDebt({
+      salesOrder: {
+        paymentStatus: SalesOrderPaymentStatus.PARTIALLY_PAID,
+        paidAmount: new Decimal('180.00'),
+      },
+    });
+    mockRecordSet({ debts: [debt] });
+
+    const result = await FinancialLedgerService.getFinancialLedger(baseQuery());
+
+    expect(result.items[0]).toMatchObject({
+      type: 'DEBT',
+      status: DebtStatus.UNPAID,
+      displayStatus: DebtStatus.PARTIALLY_PAID,
+      saleDepositAmount: '180.00',
+      totalPaid: '0.00',
+      remainingBalance: '600.00',
+    });
   });
 
   it('hides completed rows by default and places them after active rows when included', async () => {

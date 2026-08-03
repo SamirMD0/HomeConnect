@@ -1,10 +1,16 @@
-import { DebtKind, DebtStatus, InstallmentPlanStatus, InstallmentStatus } from '@prisma/client';
+import {
+  DebtStatus,
+  InstallmentPlanStatus,
+  InstallmentStatus,
+  SalesOrderPaymentStatus,
+} from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import {
   businessDateToPrisma,
   calculateDebtBalance,
   calculateInstallmentBalance,
   compareBusinessDates,
+  compareMoney,
   determineDebtStatus,
   determineInstallmentPlanStatus,
   determineInstallmentStatus,
@@ -194,6 +200,11 @@ export class FinancialLedgerService {
       balance,
       overdueEligible: true,
     });
+    const displayStatus =
+      status === DebtStatus.UNPAID &&
+      debt.salesOrder?.paymentStatus === SalesOrderPaymentStatus.PARTIALLY_PAID
+        ? DebtStatus.PARTIALLY_PAID
+        : status;
 
     return {
       item: {
@@ -208,6 +219,13 @@ export class FinancialLedgerService {
         adminDebt: moneyToApiString(ZERO_MONEY),
         dueDate,
         status,
+        displayStatus,
+        // Display only. Null when there is no linked sale or no deposit was taken,
+        // so the row never shows a "Deposit at sale: $0.00" line.
+        saleDepositAmount:
+          debt.salesOrder && compareMoney(debt.salesOrder.paidAmount, ZERO_MONEY) > 0
+            ? moneyToApiString(debt.salesOrder.paidAmount)
+            : null,
         storedStatus: debt.status,
         notes: debt.notes,
         createdAt: debt.createdAt.toISOString(),

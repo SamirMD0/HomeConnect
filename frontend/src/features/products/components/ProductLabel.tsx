@@ -17,8 +17,11 @@ export const ProductLabel: React.FC<{ product: ProductLabelData; dimensions?: Pr
   const height = dimensions.autoFit ? 'auto' : `${dimensions.heightMm}mm`;
   return <article className={`product-label ${dimensions.autoFit ? 'product-label-auto' : ''}`} style={{ '--label-width': `${widthMm}mm`, '--label-height': height } as React.CSSProperties}>
     {product.brand && <p className="product-label-brand">{product.brand}</p>}
-    <h2>{product.name}</h2><p>Model: <span>{product.model}</span></p><p className="product-label-sku">SKU: {product.sku}</p>
-    {product.staffLabelCode && <p className="product-label-code">Staff: {product.staffLabelCode}</p>}
+    <h2>{product.name}</h2><p>Model: <span>{product.model}</span></p>
+    {/* The staff code is the SKU plus an encoded price suffix. It prints under the
+        plain "SKU:" caption so it reads as an ordinary product code to customers;
+        only staff know the suffix carries the price. Never label it "Staff". */}
+    <p className="product-label-sku">SKU: {product.staffLabelCode ?? product.sku}</p>
     {product.cashPrice && <p className="product-label-price">Price: {formatLabelPrice(product.cashPrice)}</p>}
     {barcodeFailed ? <p className="product-label-barcode-text">{product.barcodeValue}</p> : <svg ref={svgRef} className="product-label-barcode" aria-label={`Barcode ${product.barcodeValue}`} />}
   </article>;

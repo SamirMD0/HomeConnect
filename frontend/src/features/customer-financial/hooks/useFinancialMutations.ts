@@ -22,6 +22,8 @@ import {
 export const customerFinancialSummaryMutationQueryKey = (customerId: string) =>
   ['customers', customerId, 'financial-summary'] as const;
 
+export const salesOrdersMutationQueryKey = ['sales-orders'] as const;
+
 export const useCreateDebt = (customerId: string) => {
   const queryClient = useQueryClient();
 
@@ -69,6 +71,7 @@ export const useRecordDebtPayment = (customerId: string, debtId: string) => {
           queryKey: customerFinancialSummaryMutationQueryKey(customerId),
         }),
         queryClient.invalidateQueries({ queryKey: debtDetailQueryKey(debtId) }),
+        queryClient.invalidateQueries({ queryKey: salesOrdersMutationQueryKey }),
       ]);
       toast.success('Debt payment recorded');
     },

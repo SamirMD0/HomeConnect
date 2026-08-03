@@ -40,6 +40,12 @@ export function normalizeSearchTerm(input: string | null | undefined): string {
   return withoutDiacritics.replace(FOLDABLE, (char) => LETTER_FOLD[char] ?? char);
 }
 
+/** Normalizes a text query and splits it on collapsed whitespace. */
+export function tokenizeSearchTerm(input: string | null | undefined): string[] {
+  const normalized = normalizeSearchTerm(input).trim();
+  return normalized ? normalized.split(/\s+/).filter(Boolean) : [];
+}
+
 export function normalizePhoneTerm(input: string | null | undefined): string {
   return (input ?? '').replace(/[^0-9]/g, '');
 }

@@ -25,6 +25,8 @@ import { SuppliersPage } from './pages/suppliers/SuppliersPage';
 import { SupplierProfilePage } from './pages/suppliers/SupplierProfilePage';
 import { SupplierLedgerPage } from './pages/suppliers/SupplierLedgerPage';
 import { PricingPresetsPage } from './pages/pricing/PricingPresetsPage';
+import { SalesOrdersPage } from './pages/sales-orders/SalesOrdersPage';
+import { SalesOrderDetailsPage } from './pages/sales-orders/SalesOrderDetailsPage';
 
 const queryClient = new QueryClient();
 
@@ -58,6 +60,8 @@ const App: React.FC = () => {
               <Route path="prepaid" element={<PrepaidPurchasesPage />} />
               <Route path="service" element={<ServiceJobsPage />} />
               <Route path="service/:id" element={<ServiceJobDetailsPage />} />
+              <Route path="sales-orders" element={<SalesOrdersPage />} />
+              <Route path="sales-orders/:id" element={<SalesOrderDetailsPage />} />
               <Route path="products" element={<ProductsPage />} />
               <Route path="pricing-presets" element={<PricingPresetsPage />} />
               <Route path="products/labels" element={<ProductLabelsPage />} />

@@ -31,6 +31,8 @@ sequenceDiagram
 - `PREPAID_PURCHASE` never contributes to customer debt totals.
 - Supplier credits and payments reduce owed according to transaction direction.
 - Money leaves the API through `moneyToApiString`.
+- Sales totals exclude draft, cancelled, and returned orders; product rankings include catalog-backed lines only.
+- Sales value comes from `SalesOrder.totalAmount` and is never combined with receivables or collection metrics.
 - Month-end is recomputed live; retroactive corrections can restate a closed month.
 
 ## Endpoint Cache And Access
@@ -40,6 +42,7 @@ sequenceDiagram
 | `/overview` | 20 seconds | Authenticated |
 | `/customer-financial` | 45 seconds | Authenticated; top debtors ADMIN only |
 | `/supplier-financial` | 45 seconds | Authenticated |
+| `/sales-summary` | 45 seconds | Authenticated |
 | `/service-summary` | 45 seconds | Authenticated |
 | `/product-summary` | 5 minutes | Authenticated |
 | `/alerts` | 45 seconds | Authenticated; offender identities role-filtered |
@@ -47,4 +50,3 @@ sequenceDiagram
 | `/month-end` | 60 seconds current, 15 minutes closed | ADMIN only |
 
 Send `x-dashboard-refresh: true` to bypass cache. A section error stays local and does not unmount the rest of the page.
-

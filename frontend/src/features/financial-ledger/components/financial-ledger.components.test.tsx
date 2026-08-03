@@ -33,6 +33,8 @@ const items: FinancialLedgerItem[] = [
     adminDebt: '0.00',
     dueDate: '2026-08-10',
     status: 'PARTIALLY_PAID',
+    displayStatus: 'PARTIALLY_PAID',
+    saleDepositAmount: '180.00',
     storedStatus: 'PARTIALLY_PAID',
     notes: null,
     createdAt: '2026-07-24T09:00:00.000Z',
@@ -171,6 +173,8 @@ describe('financial ledger components', () => {
     );
 
     expect(html).toContain('Television');
+    expect(html).toContain('Deposit at sale:');
+    expect(html).toContain('$180.00');
     expect(html).toContain('Refrigerator');
     expect(html).toContain('Partial');
     expect(html).toContain('Plan · 1 of 6');
@@ -225,7 +229,11 @@ describe('financial ledger components', () => {
     const html = renderToStaticMarkup(
       <LedgerTable
         items={[
-          { ...items[0], status: 'WRITTEN_OFF' as never },
+          {
+            ...(items[0] as FinancialLedgerDebtItem),
+            status: 'WRITTEN_OFF' as never,
+            displayStatus: 'WRITTEN_OFF' as never,
+          },
           { ...items[1], status: 'PAUSED' as never },
         ]}
         canMutate

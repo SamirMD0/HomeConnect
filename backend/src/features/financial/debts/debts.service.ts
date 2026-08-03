@@ -27,6 +27,7 @@ import {
   todayInBusinessTimezone,
   ZERO_MONEY,
 } from '../index';
+import type { FinancialTransactionClient } from '../infrastructure/transaction';
 import { DebtsRepository, DebtWithDetails } from './debts.repository';
 import { PrepaidRepository } from '../prepaid/prepaid.repository';
 import { verifyAccountPassword, verifyAdminPasswordForCorrection } from '../authorization/account-password';
@@ -189,9 +190,12 @@ export class DebtsService {
   static async createDebt(
     customerId: string,
     input: CreateDebtInput,
-    user: AuthenticatedUser
+    user: AuthenticatedUser,
+    tx?: FinancialTransactionClient
   ): Promise<DebtView> {
-    const customer = await DebtsRepository.findActiveCustomerById(customerId);
+    const customer = tx
+      ? await DebtsRepository.findActiveCustomerById(customerId, tx)
+      : await DebtsRepository.findActiveCustomerById(customerId);
     if (!customer) {
       throw new NotFoundError('Customer not found');
     }
@@ -207,7 +211,7 @@ export class DebtsService {
       overdueEligible: true,
     });
 
-    const debt = await DebtsRepository.createDebt({
+    const data = {
       customerId,
       description: input.description,
       originalAmount: amount,
@@ -215,7 +219,10 @@ export class DebtsService {
       status,
       notes: input.notes ?? null,
       createdById: user.userId,
-    });
+    };
+    const debt = tx
+      ? await DebtsRepository.createDebt(data, tx)
+      : await DebtsRepository.createDebt(data);
 
     return this.toDebtView(debt);
   }

@@ -7,7 +7,7 @@ import {
   canRecordDebtPayment,
   canRecordInstallmentPlanPayment,
 } from '../../customer-financial/utils/financial-auth';
-import { formatBusinessDate, formatDateTime, formatMoney } from '../../customer-financial/utils/financial-format';
+import { formatBusinessDate, formatDateTime, formatMoney, positiveMoneyOrNull } from '../../customer-financial/utils/financial-format';
 import {
   FinancialLedgerDebtItem,
   FinancialLedgerPlanItem,
@@ -56,6 +56,9 @@ export const LedgerObligationRow: React.FC<LedgerObligationRowProps> = ({
   const totalPaid = periodSummary?.totalPaid ?? item.totalPaid;
   const remainingBalance = periodSummary?.totalRemaining ?? item.remainingBalance;
   const statusType = isDebt ? 'debt' : 'plan';
+  // Both fields are optional in practice: a client can outlive the server build that added them.
+  const displayStatus = (isDebt ? item.displayStatus : item.status) ?? item.status;
+  const saleDeposit = isDebt ? positiveMoneyOrNull(item.saleDepositAmount) : null;
   const isOverdue = item.status === 'OVERDUE';
   const openEdit = () => {
     if (isDebt) {
@@ -117,6 +120,11 @@ export const LedgerObligationRow: React.FC<LedgerObligationRowProps> = ({
           <p className="user-text line-clamp-2" dir="auto" title={item.description}>
             {item.description}
           </p>
+          {isDebt && saleDeposit && (
+            <p className="text-xs text-slate-500">
+              Deposit at sale: {formatMoney(saleDeposit)}
+            </p>
+          )}
           {item.correction.hasCorrections && (
             <span className="inline-flex rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700 ring-1 ring-blue-600/20">
               Corrected
@@ -132,7 +140,7 @@ export const LedgerObligationRow: React.FC<LedgerObligationRowProps> = ({
         muteZero
       />
       <td className="px-4 py-3">
-        <FinancialStatusBadge type={statusType} status={item.status} />
+        <FinancialStatusBadge type={statusType} status={displayStatus} />
       </td>
       <td className="px-4 py-3 text-right">
         <div className="inline-flex items-center justify-end gap-2">
@@ -216,8 +224,9 @@ function buildObligationActions({
 }
 
 function debtProgressLabel(item: FinancialLedgerDebtItem): string {
-  if (item.status === 'PAID') return '1 of 1';
-  if (item.status === 'PARTIALLY_PAID') return 'Partial';
+  const status = item.displayStatus ?? item.status;
+  if (status === 'PAID') return '1 of 1';
+  if (status === 'PARTIALLY_PAID') return 'Partial';
   return '0 of 1';
 }
 

@@ -13,12 +13,13 @@ import { AlertsCenter } from '../components/sections/AlertsCenter';
 import { CustomerAnalytics } from '../components/sections/CustomerAnalytics';
 import { ProductAnalytics } from '../components/sections/ProductAnalytics';
 import { ServiceAnalytics } from '../components/sections/ServiceAnalytics';
+import { SalesAnalytics } from '../components/sections/SalesAnalytics';
 import { SupplierAnalytics } from '../components/sections/SupplierAnalytics';
 import { MonthEndSnapshot } from '../components/sections/MonthEndSnapshot';
 import { ErpModuleMap } from '../components/sections/ErpModuleMap';
 import {
   useCustomerAnalytics, useDashboardActivity, useDashboardAlerts, useDashboardOverview,
-  useMonthEnd, useProductAnalytics, useRefreshDashboard, useServiceAnalytics, useSupplierAnalytics,
+  useMonthEnd, useProductAnalytics, useRefreshDashboard, useSalesAnalytics, useServiceAnalytics, useSupplierAnalytics,
 } from '../hooks/useDashboard';
 import type { DashboardQueryParams } from '../types';
 
@@ -30,6 +31,7 @@ export function DashboardPage() {
   const overview = useDashboardOverview(effectiveQuery);
   const customer = useCustomerAnalytics(effectiveQuery);
   const supplier = useSupplierAnalytics(effectiveQuery);
+  const sales = useSalesAnalytics(effectiveQuery);
   const service = useServiceAnalytics(effectiveQuery);
   const product = useProductAnalytics(effectiveQuery);
   const alerts = useDashboardAlerts(effectiveQuery);
@@ -38,7 +40,7 @@ export function DashboardPage() {
   const month = selectedMonth || businessDate.slice(0, 7);
   const monthEnd = useMonthEnd(month, user?.role === 'ADMIN');
   const refresh = useRefreshDashboard();
-  const refreshing = [overview, customer, supplier, service, product, alerts, activity, monthEnd].some((result) => result.isFetching);
+  const refreshing = [overview, customer, supplier, sales, service, product, alerts, activity, monthEnd].some((result) => result.isFetching);
 
   return <div className="dashboard-shell">
     <header className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end"><div><div className="flex items-center gap-2"><Gauge className="h-6 w-6 text-emerald-600" /><h1 className="text-2xl font-bold text-slate-950"><BilingualLabel label={dashboardLabels.pageTitle} compact /></h1></div><p className="mt-1 text-sm text-slate-500"><BilingualLabel label={dashboardLabels.pageSubtitle} compact /></p></div></header>
@@ -48,6 +50,7 @@ export function DashboardPage() {
     <DashboardSectionBoundary><AlertsCenter data={alerts.data?.data} isLoading={alerts.isLoading} isError={alerts.isError} onRetry={() => alerts.refetch()} /></DashboardSectionBoundary>
     <DashboardSectionBoundary><CustomerAnalytics data={customer.data?.data} isLoading={customer.isLoading} isError={customer.isError} onRetry={() => customer.refetch()} /></DashboardSectionBoundary>
     <DashboardSectionBoundary><SupplierAnalytics data={supplier.data?.data} isLoading={supplier.isLoading} isError={supplier.isError} onRetry={() => supplier.refetch()} /></DashboardSectionBoundary>
+    <DashboardSectionBoundary><SalesAnalytics data={sales.data?.data} isLoading={sales.isLoading} isError={sales.isError} onRetry={() => sales.refetch()} /></DashboardSectionBoundary>
     <DashboardSectionBoundary><ServiceAnalytics data={service.data?.data} isLoading={service.isLoading} isError={service.isError} onRetry={() => service.refetch()} /></DashboardSectionBoundary>
     <DashboardSectionBoundary><ProductAnalytics data={product.data?.data} isLoading={product.isLoading} isError={product.isError} onRetry={() => product.refetch()} /></DashboardSectionBoundary>
     {user?.role === 'ADMIN' && <DashboardSectionBoundary><MonthEndSnapshot month={month} onMonthChange={setSelectedMonth} data={monthEnd.data?.data} isLoading={monthEnd.isLoading} isError={monthEnd.isError} onRetry={() => monthEnd.refetch()} /></DashboardSectionBoundary>}

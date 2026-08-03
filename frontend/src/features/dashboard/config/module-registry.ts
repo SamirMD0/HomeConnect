@@ -22,7 +22,7 @@ export const erpModules: ErpModule[] = [
   module('service', 'Service Jobs', 'طلبات الصيانة', Wrench, 'LIVE', '/service', '#e87ba4', 'service'),
   module('reports', 'Reports', 'التقارير', FileBarChart, 'LIVE', '/reports', '#2a78d6'),
   module('inventory', 'Inventory', 'المخزون', Warehouse, 'NEXT', undefined, '#898781'),
-  module('orders', 'Orders', 'الطلبات', ShoppingCart, 'NEXT', undefined, '#898781'),
+  module('orders', 'Sales Orders', 'طلبات البيع', ShoppingCart, 'LIVE', '/sales-orders', '#2a78d6', 'salesOrders'),
   module('sales', 'Sales Management', 'إدارة المبيعات', TrendingUp, 'PLANNED', undefined, '#898781'),
   module('finance', 'Finance Tracking', 'التتبع المالي', Landmark, 'PLANNED', undefined, '#898781'),
 ];
@@ -36,6 +36,7 @@ export const dashboardQuickActions: QuickActionDefinition[] = [
   action('supplierTransaction', 'Supplier Transaction', 'حركة مورّد', ArrowLeftRight, '/suppliers?action=add-transaction', true),
   action('addProduct', 'Add Product', 'إضافة منتج', PackagePlus, '/products?action=add', true),
   action('addService', 'Add Service Job', 'طلب صيانة جديد', Wrench, '/service?action=add', true),
+  action('addSale', 'New Sales Order', 'طلب بيع جديد', ShoppingCart, '/sales-orders?action=add'),
   action('ledger', 'View Ledger', 'عرض دفتر الحسابات', BookOpen, '/ledger'),
   action('reports', 'View Reports', 'عرض التقارير', FileBarChart, '/reports'),
 ];

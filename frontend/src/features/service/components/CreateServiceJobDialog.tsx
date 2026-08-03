@@ -5,7 +5,7 @@ import { Modal } from '../../../components/ui/Modal';
 import { useCreateServiceJob } from '../hooks/useServiceJobs';
 import { CreateServiceJobInput, ServiceRequestType, WarrantyStatus } from '../types/service.types';
 import { REQUEST_TYPE_LABELS, WARRANTY_LABELS } from '../utils/service-labels';
-import { CustomerPicker } from './CustomerPicker';
+import { CustomerPicker } from '../../customers/components/CustomerPicker';
 import { ProductPicker, ProductSelection } from '../../products/components/ProductPicker';
 import { businessLabels } from '../../../shared/labels/business-labels';
 

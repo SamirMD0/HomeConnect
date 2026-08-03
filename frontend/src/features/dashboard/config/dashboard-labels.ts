@@ -7,6 +7,7 @@ export const dashboardLabels = {
   alerts: { en: 'Alerts', ar: 'التنبيهات' },
   customerAnalytics: { en: 'Customer Analytics', ar: 'تحليلات الزبائن' },
   supplierAnalytics: { en: 'Supplier Analytics', ar: 'تحليلات المورّدين' },
+  salesAnalytics: { en: 'Sales Analytics', ar: 'تحليلات المبيعات' },
   serviceAnalytics: { en: 'Maintenance Analytics', ar: 'تحليلات الصيانة' },
   productAnalytics: { en: 'Product Analytics', ar: 'تحليلات المنتجات' },
   monthEnd: { en: 'End of Month Status', ar: 'حالة نهاية الشهر' },

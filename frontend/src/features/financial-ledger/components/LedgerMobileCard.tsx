@@ -7,7 +7,7 @@ import {
   canRecordDebtPayment,
   canRecordInstallmentPlanPayment,
 } from '../../customer-financial/utils/financial-auth';
-import { formatBusinessDate, formatDateTime, formatMoney } from '../../customer-financial/utils/financial-format';
+import { formatBusinessDate, formatDateTime, formatMoney, positiveMoneyOrNull } from '../../customer-financial/utils/financial-format';
 import {
   FinancialLedgerDebtItem,
   FinancialLedgerItem,
@@ -98,6 +98,8 @@ export const LedgerMobileCard: React.FC<LedgerMobileCardProps> = ({
 
     onEditPlan(item);
   };
+  // Optional display-only field: a client can outlive the server build that added it.
+  const saleDeposit = isDebt ? positiveMoneyOrNull(item.saleDepositAmount) : null;
   const actions = buildMobileObligationActions({
     item,
     canMutate,
@@ -116,10 +118,18 @@ export const LedgerMobileCard: React.FC<LedgerMobileCardProps> = ({
           <p className="user-text font-semibold text-slate-900" dir="auto">{item.customer.name}</p>
           <p className="text-xs text-slate-500">{item.customer.phone}</p>
         </div>
-        <FinancialStatusBadge type={isDebt ? 'debt' : 'plan'} status={item.status} />
+        <FinancialStatusBadge
+          type={isDebt ? 'debt' : 'plan'}
+          status={(isDebt ? item.displayStatus : item.status) ?? item.status}
+        />
       </div>
 
       <p className="user-text mt-3 line-clamp-2 text-sm font-medium text-slate-800" dir="auto">{item.description}</p>
+      {saleDeposit && (
+        <p className="mt-1 text-xs text-slate-500">
+          Deposit at sale: {formatMoney(saleDeposit)}
+        </p>
+      )}
       <p className="mt-4 text-xs font-medium uppercase tracking-wide text-slate-500">
         Remaining
       </p>

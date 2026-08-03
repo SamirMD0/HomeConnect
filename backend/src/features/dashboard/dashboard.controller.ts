@@ -8,6 +8,7 @@ export class DashboardAnalyticsController {
   static supplierFinancial = handler((req, options) => DashboardAnalyticsService.supplierFinancial(req.query as unknown as DashboardQueryInput, options));
   static serviceSummary = handler((req, options) => DashboardAnalyticsService.serviceSummary(req.query as unknown as DashboardQueryInput, options));
   static productSummary = handler((req, options) => DashboardAnalyticsService.productSummary(req.query as unknown as DashboardQueryInput, options));
+  static salesSummary = handler((req, options) => DashboardAnalyticsService.salesSummary(req.query as unknown as DashboardQueryInput, options));
   static alerts = handler((req, options) => DashboardAnalyticsService.alerts(req.query as unknown as DashboardQueryInput, options));
   static activity = handler((req, options) => DashboardAnalyticsService.activity((req.query as unknown as DashboardActivityQueryInput).limit, options));
   static monthEnd = handler((req, options) => DashboardAnalyticsService.monthEnd((req.query as unknown as DashboardMonthEndQueryInput).month, options));
@@ -26,4 +27,3 @@ function handler(load: (req: Request, options: { role: string; bypassCache: bool
     }
   };
 }
-
