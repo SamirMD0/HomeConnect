@@ -1,20 +1,25 @@
--- HomeConnect 1.2.0 business-PC repair: Sales Orders schema.
+-- HomeConnect 1.2.0 business-PC repair: Sales Orders + customer search.
 --
--- Fixes: PostgreSQL error "table public.sales_orders does not exist".
+-- Fixes:
+--   - PostgreSQL error "table public.sales_orders does not exist".
+--   - Missing PostgreSQL prerequisites for normalized customer search.
 -- Covers Prisma migration: 20260804120000_add_sales_orders
 --
 -- Before running:
 --   1. Close HomeConnect on the business PC.
 --   2. Back up the homeconnect database.
---   3. Run with ON_ERROR_STOP enabled against the homeconnect database.
+--   3. Run as PostgreSQL superuser `postgres` with ON_ERROR_STOP enabled.
+--   4. Install/reinstall HomeConnect 1.2.0 and restart it after this finishes.
 --
 -- Example:
 --   psql -h localhost -p 5433 -U postgres -d homeconnect \
 --     -v ON_ERROR_STOP=1 -f 1.2.0-repair.sql
 --
 -- This script is additive and idempotent. It creates missing Sales Orders
--- structures and records the covered Prisma migration. It does not delete,
--- truncate, update, or backfill business data.
+-- structures, customer-search functions/indexes, and records the covered
+-- Sales Orders migration. It does not delete, truncate, or backfill business
+-- data. Token splitting is application code in HomeConnect 1.2.0; SQL cannot
+-- add that behavior to an older installed executable.
 
 BEGIN;
 
@@ -40,6 +45,41 @@ BEGIN
     RAISE EXCEPTION 'installment_plans table is missing. Apply the financial-domain database upgrade first.';
   END IF;
 END $$;
+
+-- ---------------------------------------------------------------------------
+-- Customer search prerequisites
+-- ---------------------------------------------------------------------------
+-- The 1.2.0 backend performs token-AND matching, but its parameterized query
+-- depends on these database functions. Include the customer subset of the
+-- v1.0.9 search upgrade so a business PC does not have to run an older repair
+-- file first. Stored customer data is never changed.
+
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+-- Keep this body byte-for-byte aligned with migration
+-- 20260801091000_add_search_normalization and backend search-normalize.ts.
+CREATE OR REPLACE FUNCTION hc_search_normalize(input text)
+RETURNS text AS $$
+  SELECT translate(
+    regexp_replace(lower(coalesce(input, '')), U&'[\064B-\0652\0640]', '', 'g'),
+    U&'\0623\0625\0622\0671\0649\0629',
+    U&'\0627\0627\0627\0627\064A\0647'
+  );
+$$ LANGUAGE SQL IMMUTABLE PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION hc_phone_normalize(input text)
+RETURNS text AS $$
+  SELECT regexp_replace(coalesce(input, ''), '[^0-9]', '', 'g');
+$$ LANGUAGE SQL IMMUTABLE PARALLEL SAFE;
+
+CREATE INDEX IF NOT EXISTS customers_name_trgm_idx
+  ON customers USING gin (name gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS customers_phone_trgm_idx
+  ON customers USING gin (phone gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS customers_name_norm_trgm_idx
+  ON customers USING gin (hc_search_normalize(name) gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS customers_phone_norm_trgm_idx
+  ON customers USING gin (hc_phone_normalize(phone) gin_trgm_ops);
 
 -- ---------------------------------------------------------------------------
 -- Sales Orders enums
@@ -287,11 +327,27 @@ COMMIT;
 
 -- ---------------------------------------------------------------------------
 -- Verification
--- Expected: all three *_ready values are true, migration_rows is 1, and every
--- *_columns count matches the expected value shown in its alias.
+-- Expected: every *_ready value is true, migration_rows is 1, the search index
+-- count is 4, and every *_columns count matches the expected value shown.
 -- ---------------------------------------------------------------------------
 
 SELECT
+  EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_trgm') AS pg_trgm_ready,
+  to_regprocedure('public.hc_search_normalize(text)') IS NOT NULL AS search_normalize_ready,
+  to_regprocedure('public.hc_phone_normalize(text)') IS NOT NULL AS phone_normalize_ready,
+  (SELECT count(*) FROM pg_indexes
+    WHERE schemaname = 'public'
+      AND indexname IN (
+        'customers_name_trgm_idx', 'customers_phone_trgm_idx',
+        'customers_name_norm_trgm_idx', 'customers_phone_norm_trgm_idx'
+      )) AS customer_search_indexes_expected_4,
+  (
+    hc_search_normalize(U&'\0645\062D\0645\062F \0633\0627\0644\0645 \0639\0645\0627\0631')
+      LIKE '%' || hc_search_normalize(U&'\0645\062D\0645\062F') || '%'
+    AND
+    hc_search_normalize(U&'\0645\062D\0645\062F \0633\0627\0644\0645 \0639\0645\0627\0631')
+      LIKE '%' || hc_search_normalize(U&'\0639\0645\0627\0631') || '%'
+  ) AS arabic_nonadjacent_tokens_ready,
   to_regclass('public.sales_orders') IS NOT NULL AS sales_orders_ready,
   to_regclass('public.sales_order_items') IS NOT NULL AS sales_order_items_ready,
   to_regclass('public.sales_audits') IS NOT NULL AS sales_audits_ready,

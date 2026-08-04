@@ -20,6 +20,10 @@ vi.mock('../../features/diagnostics/components/DiagnosticsPanel', () => ({
   DiagnosticsPanel: () => <section>Diagnostics panel rendered</section>,
 }));
 
+vi.mock('../../features/maintenance/components/MaintenancePanel', () => ({
+  MaintenancePanel: () => <section>Maintenance panel rendered</section>,
+}));
+
 describe('SettingsPage', () => {
   beforeEach(() => {
     authMock.user = { id: 'admin', username: 'admin', fullName: 'Admin', role: 'ADMIN' };
@@ -30,14 +34,16 @@ describe('SettingsPage', () => {
 
     expect(html).toContain('Settings');
     expect(html).toContain('Backup panel rendered');
+    expect(html).toContain('Maintenance panel rendered');
   });
 
-  it('hides backup controls from non-admin users', () => {
+  it('hides backup and maintenance controls from non-admin users', () => {
     authMock.user = { id: 'employee', username: 'employee', fullName: 'Employee', role: 'EMPLOYEE' };
 
     const html = renderToStaticMarkup(<SettingsPage />);
 
     expect(html).toContain('Settings are admin-only');
     expect(html).not.toContain('Backup panel rendered');
+    expect(html).not.toContain('Maintenance panel rendered');
   });
 });

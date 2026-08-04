@@ -31,7 +31,7 @@ describe('preload', () => {
     // Check surface area
     const allowedMethods = [
       'ping', 'selectBackupDirectory', 'openBackupDirectory', 'selectBackupFile', 'openLogsFolder', 'copyDiagnostics',
-      'retryStartup', 'closeApp', 'onStartupLog', 'onStartupState'
+      'exportLabelsPdf', 'retryStartup', 'closeApp', 'onStartupLog', 'onStartupState'
     ];
     const actualMethods = Object.keys(apiObj as object);
     
@@ -59,6 +59,10 @@ describe('preload', () => {
 
     (apiObj as any).openBackupDirectory('D:/Backups/HomeConnect');
     expect(ipcRenderer.invoke).toHaveBeenCalledWith('backup:openDirectory', 'D:/Backups/HomeConnect');
+
+    const exportOptions = { suggestedName: 'product-labels-2026-08-04-12.pdf', paper: 'A4' };
+    (apiObj as any).exportLabelsPdf(exportOptions);
+    expect(ipcRenderer.invoke).toHaveBeenCalledWith('labels:exportPdf', exportOptions);
 
     // Verify onStartupLog returns an unsubscribe function
     const onStartupLogFn = (apiObj as any).onStartupLog;

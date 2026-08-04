@@ -101,6 +101,23 @@ export class BackupService {
     return this.toPublicRecord(record);
   }
 
+  /**
+   * Safety backup taken immediately before a repair or migration is applied.
+   *
+   * Deliberately does **not** take the operation lock or drive maintenance
+   * state: the repair runner already holds the 'REPAIR' lock for the whole
+   * pipeline, and taking 'BACKUP' inside it would deadlock against itself.
+   * Verification is not skipped — `createBackupInternal` still checks the file
+   * size, records a checksum, and reads the archive with `pg_restore --list`,
+   * throwing if any of that fails.
+   */
+  static async createPreRepairBackup(createdBy: string | null) {
+    // Returns the internal record, not the public shape: the repair history row
+    // stores the absolute path so an operator knows exactly what to roll back
+    // to, and `toPublicRecord` deliberately strips it.
+    return this.createBackupInternal('PRE_REPAIR', createdBy, false);
+  }
+
   static async importExternalBackup(sourcePath: string, createdBy: string | null) {
     const settings = await BackupSettingsStore.load();
     await ensureDirectory(settings.backupDirectory);

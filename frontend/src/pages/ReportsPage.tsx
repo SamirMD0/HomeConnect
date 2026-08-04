@@ -248,6 +248,7 @@ function tabClass(active: boolean) {
 }
 
 const printStyles = `
+  @page { size: A4 portrait; margin: 12mm; }
   body { background: white !important; font-family: Tahoma, Arial, sans-serif !important; }
   aside, header, .print\\:hidden { display: none !important; }
   main { padding: 0 !important; overflow: visible !important; }

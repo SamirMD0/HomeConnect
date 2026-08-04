@@ -1,0 +1,13 @@
+# SQL files are checksummed byte-for-byte:
+#   - Prisma stores a SHA-256 of each migration.sql in _prisma_migrations
+#   - backend/prisma/repair/manifest.json stores one per repair file
+#
+# core.autocrlf is true on the Windows dev machines, so without this rule a
+# fresh checkout would rewrite these files to CRLF. That changes their bytes,
+# which changes every hash, which would make the migration runner report each
+# applied migration as a checksum mismatch and the repair registry refuse to
+# run all 17 repairs — on files that are in fact untouched and correct.
+#
+# Pin them to LF on every platform.
+*.sql text eol=lf
+backend/prisma/repair/manifest.json text eol=lf

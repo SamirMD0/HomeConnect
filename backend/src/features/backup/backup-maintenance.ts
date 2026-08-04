@@ -22,7 +22,11 @@ class BackupMaintenanceState {
   }
 
   isWriteBlocked() {
-    return this.status === 'RESTORE_IN_PROGRESS' || this.status === 'RESTART_REQUIRED';
+    // A repair rewrites schema while the app is live, so financial writes must
+    // be held off for the same reason they are during a restore.
+    return this.status === 'RESTORE_IN_PROGRESS'
+      || this.status === 'REPAIR_IN_PROGRESS'
+      || this.status === 'RESTART_REQUIRED';
   }
 }
 

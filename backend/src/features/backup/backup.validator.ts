@@ -7,7 +7,7 @@ export const createBackupSchema = z
   .strict();
 
 export const backupListQuerySchema = z.object({
-  type: z.enum(['MANUAL', 'AUTO', 'PRE_RESTORE']).optional(),
+  type: z.enum(['MANUAL', 'AUTO', 'PRE_RESTORE', 'PRE_REPAIR']).optional(),
   status: z.enum(['IN_PROGRESS', 'COMPLETED', 'FAILED', 'DELETED', 'RESTORED']).optional(),
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(100).default(25),

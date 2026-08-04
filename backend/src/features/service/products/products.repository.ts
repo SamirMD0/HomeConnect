@@ -15,6 +15,18 @@ export class ProductsRepository {
     return (tx ?? prisma).product.findUnique({ where: { id }, include: productActorInclude });
   }
 
+  /**
+   * Bulk label lookup. Only `pricingPreset` is included: the price code needs it
+   * (a product with `pricingPresetId` set but the relation unloaded resolves as
+   * MISSING_PRESET), while actor and image metadata never reach a label.
+   */
+  static findManyForLabels(ids: string[], tx?: Prisma.TransactionClient) {
+    return (tx ?? prisma).product.findMany({
+      where: { id: { in: ids } },
+      include: { pricingPreset: true },
+    });
+  }
+
   static findByBarcode(barcode: string, tx?: Prisma.TransactionClient) {
     return (tx ?? prisma).product.findUnique({ where: { barcode } });
   }

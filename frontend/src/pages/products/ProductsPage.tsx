@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Package, Plus, Printer } from 'lucide-react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Package, Plus } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { Pagination } from '../../components/ui/Pagination';
 import { ProductArchiveDialog } from '../../features/products/components/ProductArchiveDialog';
+import { ProductBulkActionsBar } from '../../features/products/components/ProductBulkActionsBar';
 import { ProductDetailsDrawer } from '../../features/products/components/ProductDetailsDrawer';
 import { ProductFilters } from '../../features/products/components/ProductFilters';
 import { ProductFormDialog } from '../../features/products/components/ProductFormDialog';
@@ -102,8 +103,9 @@ export const ProductsPage: React.FC = () => {
         <button type="button" onClick={() => setStatus('active')} className={`border-b-2 px-4 py-2 text-sm font-semibold ${filters.isActive ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-slate-500'}`}>{productLabels.activeProducts}</button>
         <button type="button" onClick={() => setStatus('archived')} className={`border-b-2 px-4 py-2 text-sm font-semibold ${!filters.isActive ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-slate-500'}`}>{productLabels.archivedProducts}</button>
       </div>
-      {selectedIds.size > 0 && <Link to={`/products/labels?ids=${encodeURIComponent([...selectedIds].slice(0, 40).join(','))}`} className="mb-2 inline-flex items-center gap-2 rounded-lg border border-emerald-300 px-3 py-2 text-sm font-semibold text-emerald-700"><Printer className="h-4 w-4" /> Print Labels ({selectedIds.size}) / طباعة الملصقات</Link>}
     </div>
+
+    <ProductBulkActionsBar selectedIds={[...selectedIds]} visibleIds={visible.map((product) => product.id)} onClear={() => setSelectedIds(new Set())} />
 
     <ProductFilters filters={filters} search={search} onSearchChange={(value) => { setSearch(value); setScannedValue(null); }} onSearchSubmit={submitScan} searchInputRef={searchInputRef} onChange={updateFilters} />
     {scannedValue && !products.isFetching && !visible.some((item) => item.exactMatch) && <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-medium text-amber-900">No product found for <span className="font-mono">{scannedValue}</span> / لم يتم العثور على المنتج</p>}

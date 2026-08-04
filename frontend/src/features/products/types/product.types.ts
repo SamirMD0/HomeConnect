@@ -55,6 +55,23 @@ export interface ProductLabelData {
   cashPrice?: string | null;
 }
 
+export type ProductLabelWarningCode =
+  | 'NOT_FOUND'
+  | 'ARCHIVED_EXCLUDED'
+  | 'NO_PRICING'
+  | 'MANUFACTURER_BARCODE_MISSING';
+
+export interface ProductLabelWarning {
+  productId: string;
+  code: ProductLabelWarningCode;
+  name?: string;
+}
+
+export interface ProductLabelsResult {
+  labels: ProductLabelData[];
+  warnings: ProductLabelWarning[];
+}
+
 export type LabelBarcodeSource = 'SKU' | 'MANUFACTURER';
 export type ProductStockStatus = 'NOT_TRACKED' | 'OUT_OF_STOCK' | 'LOW_STOCK' | 'IN_STOCK';
 export interface ProductSpecification { label: string; value: string }

@@ -1,9 +1,15 @@
 import { BackupConflictError } from './backup.errors';
 
-export class BackupOperationLock {
-  private static activeOperation: 'BACKUP' | 'RESTORE' | null = null;
+/**
+ * Backup, restore and repair all move the database underneath the running app,
+ * so a single lock covers all three — they must never overlap.
+ */
+export type BackupOperation = 'BACKUP' | 'RESTORE' | 'REPAIR';
 
-  static async runExclusive<T>(operation: 'BACKUP' | 'RESTORE', callback: () => Promise<T>): Promise<T> {
+export class BackupOperationLock {
+  private static activeOperation: BackupOperation | null = null;
+
+  static async runExclusive<T>(operation: BackupOperation, callback: () => Promise<T>): Promise<T> {
     if (this.activeOperation) {
       throw new BackupConflictError(`${this.activeOperation.toLowerCase()} operation already running`);
     }

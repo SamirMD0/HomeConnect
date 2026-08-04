@@ -1,6 +1,6 @@
-export type BackupType = 'MANUAL' | 'AUTO' | 'PRE_RESTORE';
+export type BackupType = 'MANUAL' | 'AUTO' | 'PRE_RESTORE' | 'PRE_REPAIR';
 export type BackupStatus = 'IN_PROGRESS' | 'COMPLETED' | 'FAILED' | 'DELETED' | 'RESTORED';
-export type SystemStatus = 'NORMAL' | 'BACKUP_IN_PROGRESS' | 'RESTORE_IN_PROGRESS' | 'RESTART_REQUIRED' | 'FAILED';
+export type SystemStatus = 'NORMAL' | 'BACKUP_IN_PROGRESS' | 'RESTORE_IN_PROGRESS' | 'REPAIR_IN_PROGRESS' | 'RESTART_REQUIRED' | 'FAILED';
 
 export interface BackupSettings {
   backupDirectory: string;

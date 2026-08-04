@@ -4,11 +4,11 @@ import { ProductLabelDimensions, saveProductLabelDimensions } from '../utils/pro
 export const ProductLabelPrintSettings: React.FC<{
   dimensions: ProductLabelDimensions;
   onChange: (value: ProductLabelDimensions) => void;
-  showCode: boolean;
-  onShowCodeChange: (value: boolean) => void;
   showPrice: boolean;
   onShowPriceChange: (value: boolean) => void;
-}> = ({ dimensions, onChange, showCode, onShowCodeChange, showPrice, onShowPriceChange }) => {
+  showCode: boolean;
+  onShowCodeChange: (value: boolean) => void;
+}> = ({ dimensions, onChange, showPrice, onShowPriceChange, showCode, onShowCodeChange }) => {
   const change = (field: keyof ProductLabelDimensions, raw: string) => {
     const value = Number(raw); if (!Number.isFinite(value)) return;
     const next = { ...dimensions, [field]: value }; onChange(next); saveProductLabelDimensions(next);

@@ -8,7 +8,7 @@ import {
   productDuplicateQuerySchema, productListQuerySchema, productParamsSchema,
   productServiceJobsQuerySchema, updateProductSchema,
   updateProductPricingSchema, productPricingPreviewQuerySchema,
-  productLabelQuerySchema, updateProductSkuSchema, updateProductStockSchema,
+  productLabelQuerySchema, productLabelsQuerySchema, updateProductSkuSchema, updateProductStockSchema,
 } from './products.validator';
 
 export const productsRoutes = Router();
@@ -16,6 +16,8 @@ export const productsRoutes = Router();
 productsRoutes.get('/', validate(productListQuerySchema, 'query'), ProductsController.list);
 productsRoutes.post('/', validate(createProductSchema), ProductsController.create);
 productsRoutes.get('/check-duplicate', validate(productDuplicateQuerySchema, 'query'), ProductsController.checkDuplicate);
+// Must stay above `GET /:productId`, or "labels" is parsed as a product id.
+productsRoutes.get('/labels', validate(productLabelsQuerySchema, 'query'), ProductsController.labels);
 productsRoutes.get('/:productId/label', validate(productParamsSchema, 'params'), validate(productLabelQuerySchema, 'query'), ProductsController.label);
 
 // Raw binary upload: the file is PUT as-is with an image Content-Type, so no

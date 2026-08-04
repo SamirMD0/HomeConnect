@@ -9,7 +9,8 @@ import { BACKEND_HEALTH_URL, FRONTEND_ORIGIN, READY_TIMEOUT_MS } from './runtime
 import { startStaticFrontendServer } from './static-frontend-server';
 import { waitForUrl } from './readiness';
 import { createWindow, createStartupMonitorWindow, DEFAULT_DEV_SERVER_URL } from './window';
-import { focusExistingWindow, startupErrorMessage, shouldQuitAfterChildExit, cleanupRuntime as performCleanup } from './lifecycle';
+import { focusExistingWindow, shouldQuitAfterChildExit, cleanupRuntime as performCleanup } from './lifecycle';
+import { describeStartupFailure, startupFailureText } from './startup-failure-messages';
 import { writeStartupDiagnostics } from './startup-diagnostics';
 import { BACKEND_PORT, FRONTEND_PORT } from './runtime-config';
 
@@ -57,6 +58,42 @@ if (!gotTheLock) {
     ipcMain.handle('backup:openDirectory', async (_event, directory: string) => {
       if (!directory || typeof directory !== 'string') return '';
       return shell.openPath(directory);
+    });
+
+    /**
+     * Exports whatever the window is currently showing as a PDF.
+     *
+     * `printToPDF` runs the page through the same print stylesheet the printer
+     * would use, so the PDF and the paper come out identical, and the CODE128
+     * barcode stays vector — rasterising it (the html2canvas route) measurably
+     * hurts scanning off a printed sheet.
+     */
+    ipcMain.handle('labels:exportPdf', async (event, options: { suggestedName?: string; paper?: string } = {}) => {
+      const contents = event.sender;
+      const paper = options.paper === 'LETTER' ? 'Letter' : 'A4';
+      const suggestedName = typeof options.suggestedName === 'string' && options.suggestedName.trim()
+        ? options.suggestedName.trim()
+        : 'product-labels.pdf';
+
+      const result = await dialog.showSaveDialog({
+        title: 'Save product labels as PDF',
+        defaultPath: suggestedName,
+        filters: [{ name: 'PDF', extensions: ['pdf'] }],
+      });
+      // Cancelling is an ordinary outcome, not an error.
+      if (result.canceled || !result.filePath) return { saved: false };
+
+      try {
+        const pdf = await contents.printToPDF({
+          pageSize: paper,
+          printBackground: true,
+          margins: { marginType: 'none' },
+        });
+        await fs.promises.writeFile(result.filePath, pdf);
+        return { saved: true, path: result.filePath };
+      } catch (error) {
+        return { saved: false, error: error instanceof Error ? error.message : 'PDF export failed' };
+      }
     });
 
     ipcMain.handle('diagnostics:openLogsFolder', async () => {
@@ -178,22 +215,21 @@ if (!gotTheLock) {
           createWindow(FRONTEND_ORIGIN);
         }
       } catch (error) {
-        const errorMsg = startupErrorMessage(error);
-        sendLog(`[ERROR] ${errorMsg}`);
+        // Raw text goes to the log for diagnostics; the operator sees the
+        // plain-English summary and the fix (see startup-failure-messages.ts).
+        const failure = describeStartupFailure(error);
+        const errorMsg = startupFailureText(failure);
+        sendLog(`[ERROR] ${failure.raw}`);
+        sendLog(`[WHAT TO DO] ${failure.fix}`);
 
-        if (errorMsg.includes('frontend')) {
-          updateStep('step-frontend', 'error', errorMsg);
-        } else if (errorMsg.includes('backend') || errorMsg.includes('DATABASE_UNAVAILABLE') || errorMsg.includes('fast-failed')) {
-          if (errorMsg.includes('DATABASE_UNAVAILABLE') || errorMsg.includes('fast-failed')) {
-             updateStep('step-db', 'error', errorMsg);
-          } else {
-             updateStep('step-backend', 'error', errorMsg);
-          }
-        } else {
-          updateStep('step-config', 'error', errorMsg);
-        }
+        monitorWindow?.webContents.send('diagnostics:startupState', {
+          step: failure.step,
+          status: 'error',
+          error: failure.summary,
+          fix: failure.fix,
+        });
 
-        await recordDiagnostic(false, errorMsg);
+        await recordDiagnostic(false, `${failure.summary} (${failure.raw})`);
 
         if (!monitorWindow || monitorWindow.isDestroyed()) {
           dialog.showErrorBox('HomeConnect failed to start', errorMsg);

@@ -1,0 +1,348 @@
+{
+  "$comment": "Generated. Every entry is a repair that was actually applied on a business PC. Do not remove entries.",
+  "schemaVersion": 1,
+  "repairs": [
+    {
+      "repairId": "phase12-corrections",
+      "title": "Add financial correction audit tables and payment void columns",
+      "version": "1.0.4",
+      "description": "Creates financial_correction_audits and admin_verification_logs, and adds the void columns to payment_allocations.",
+      "file": "1.0.4-repair-phase12-corrections.sql",
+      "checksum": "sha256:f9c3e8ea19d11fd94f625d46f206f803a33132abf6d55ed10ee440350809c3e1",
+      "requiresBackup": true,
+      "idempotent": true,
+      "requiresSuperuser": false,
+      "affectedTables": [
+        "payment_allocations",
+        "financial_correction_audits",
+        "admin_verification_logs"
+      ],
+      "detectionQuery": "SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='payment_allocations' AND column_name='voidedAt'",
+      "detectionExpects": "empty",
+      "verificationQuery": "SELECT count(*)::int AS count FROM information_schema.columns WHERE table_schema='public' AND table_name='payment_allocations' AND column_name IN ('voidedAt', 'voidedById', 'correctionId')",
+      "verificationExpects": 3
+    },
+    {
+      "repairId": "phase12-partial-migration",
+      "title": "Finish a partially applied Phase 12 corrections migration",
+      "version": "1.0.5",
+      "description": "Completes migration 20260727130000 when it stopped half-way and left payment_allocations.voidedAt missing.",
+      "file": "1.0.5-repair-partial-phase12-migration.sql",
+      "checksum": "sha256:9111612f74394c02de63f7d7da78e44a2c30a8f20f7f206fd9adf269663c40ac",
+      "requiresBackup": true,
+      "idempotent": true,
+      "requiresSuperuser": false,
+      "affectedTables": [
+        "payment_allocations",
+        "financial_correction_audits",
+        "admin_verification_logs",
+        "_prisma_migrations"
+      ],
+      "detectionQuery": "SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='payment_allocations' AND column_name='voidedAt'",
+      "detectionExpects": "empty",
+      "verificationQuery": "SELECT count(*)::int AS count FROM information_schema.columns WHERE table_schema='public' AND table_name='payment_allocations' AND column_name IN ('voidedAt', 'voidedById', 'correctionId')",
+      "verificationExpects": 3
+    },
+    {
+      "repairId": "phase12-business-pc-safe",
+      "title": "Business-PC safe form of the Phase 12 corrections repair",
+      "version": "1.0.5",
+      "description": "Additive-only variant used on a live business PC.",
+      "file": "1.0.5-repair-phase12-business-pc-safe.sql",
+      "checksum": "sha256:6b8cde6033bcd3ec58e28e6ef7ca6b9ebfe9a0cc988783bc0d4eb17ae77d6690",
+      "requiresBackup": true,
+      "idempotent": true,
+      "requiresSuperuser": false,
+      "affectedTables": [
+        "payment_allocations",
+        "financial_correction_audits",
+        "admin_verification_logs"
+      ],
+      "detectionQuery": "SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='payment_allocations' AND column_name='voidedAt'",
+      "detectionExpects": "empty",
+      "verificationQuery": "SELECT count(*)::int AS count FROM information_schema.columns WHERE table_schema='public' AND table_name='payment_allocations' AND column_name IN ('voidedAt', 'voidedById', 'correctionId')",
+      "verificationExpects": 3
+    },
+    {
+      "repairId": "prepaid-purchase-debt-kind",
+      "title": "Add the debt kind column for prepaid purchases",
+      "version": "1.0.7",
+      "description": "Creates the DebtKind enum and backfills debts.kind for rows that predate it.",
+      "file": "1.0.7-upgrade-prepaid-purchase-business-pc-safe.sql",
+      "checksum": "sha256:de9e7807e4424e35dc3d8dd261f4af10a3f9cc81d969fc9c93c53891687d545a",
+      "requiresBackup": true,
+      "idempotent": true,
+      "requiresSuperuser": false,
+      "affectedTables": [
+        "debts"
+      ],
+      "detectionQuery": "SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='debts' AND column_name='kind'",
+      "detectionExpects": "empty",
+      "verificationQuery": "SELECT count(*)::int AS count FROM information_schema.columns WHERE table_schema='public' AND table_name='debts' AND column_name IN ('kind')",
+      "verificationExpects": 1
+    },
+    {
+      "repairId": "service-and-product-foundation",
+      "title": "Create the service jobs and products tables",
+      "version": "1.0.7",
+      "description": "Adds service_jobs, products and service_audits with their enums.",
+      "file": "1.0.7-upgrade-service-product-business-pc-safe.sql",
+      "checksum": "sha256:3c58f4cedb374a297bd591799635275f20bbe45d2f101e76cdb211941a68a286",
+      "requiresBackup": true,
+      "idempotent": true,
+      "requiresSuperuser": false,
+      "affectedTables": [
+        "service_jobs",
+        "products",
+        "service_audits"
+      ],
+      "detectionQuery": "SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='service_jobs'",
+      "detectionExpects": "empty",
+      "verificationQuery": "SELECT count(*)::int AS count FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('service_jobs', 'products', 'service_audits')",
+      "verificationExpects": 3
+    },
+    {
+      "repairId": "prepaid-delivery",
+      "title": "Create the prepaid purchases table",
+      "version": "1.0.8",
+      "description": "Adds prepaid_purchases and the PrepaidPurchaseStatus enum.",
+      "file": "1.0.8-repair-prepaid-delivery.sql",
+      "checksum": "sha256:bc29d668ae1951090c6513704563c361d8f34c743eb49f4c413b8a4b2d14e852",
+      "requiresBackup": true,
+      "idempotent": true,
+      "requiresSuperuser": false,
+      "affectedTables": [
+        "prepaid_purchases"
+      ],
+      "detectionQuery": "SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='prepaid_purchases'",
+      "detectionExpects": "empty",
+      "verificationQuery": "SELECT count(*)::int AS count FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('prepaid_purchases')",
+      "verificationExpects": 1
+    },
+    {
+      "repairId": "supplier-ledger",
+      "title": "Create the supplier and supplier ledger tables",
+      "version": "1.0.8",
+      "description": "Adds suppliers, supplier_transactions and supplier_audits with their enums.",
+      "file": "1.0.8-repair-supplier-ledger.sql",
+      "checksum": "sha256:3a1d5d76fe614e6fc64e6f86d880275096bb543b0df5abb3f5657d70ce216f5e",
+      "requiresBackup": true,
+      "idempotent": true,
+      "requiresSuperuser": false,
+      "affectedTables": [
+        "suppliers",
+        "supplier_transactions",
+        "supplier_audits"
+      ],
+      "detectionQuery": "SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='suppliers'",
+      "detectionExpects": "empty",
+      "verificationQuery": "SELECT count(*)::int AS count FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('suppliers', 'supplier_transactions', 'supplier_audits')",
+      "verificationExpects": 3
+    },
+    {
+      "repairId": "search-pg-trgm",
+      "title": "Install the pg_trgm extension for customer search",
+      "version": "1.0.9",
+      "description": "Installs pg_trgm. This is an untrusted extension and needs a superuser connection.",
+      "file": "1.0.9-upgrade-search-business-pc-safe.sql",
+      "checksum": "sha256:d6155a7baa578df988b7876f91ff2caf7fbf10237421dd554bf07702da0fe88a",
+      "requiresBackup": true,
+      "idempotent": true,
+      "requiresSuperuser": true,
+      "affectedTables": [],
+      "detectionQuery": "SELECT 1 FROM pg_extension WHERE extname = 'pg_trgm'",
+      "detectionExpects": "empty",
+      "verificationQuery": "SELECT count(*)::int AS count FROM pg_extension WHERE extname = 'pg_trgm'",
+      "verificationExpects": 1
+    },
+    {
+      "repairId": "product-image-1-1-0",
+      "title": "Create the product images table",
+      "version": "1.1.0",
+      "description": "Adds product_images and products.imageUrl.",
+      "file": "1.1.0-repair-product-image-business-pc-safe.sql",
+      "checksum": "sha256:e859b66fa3ee650b2d469c5fdbf3fa0f5729d1082c7fbcbe7c0d283cefd50c9e",
+      "requiresBackup": true,
+      "idempotent": true,
+      "requiresSuperuser": false,
+      "affectedTables": [
+        "product_images",
+        "products"
+      ],
+      "detectionQuery": "SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='product_images'",
+      "detectionExpects": "empty",
+      "verificationQuery": "SELECT count(*)::int AS count FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('product_images')",
+      "verificationExpects": 1
+    },
+    {
+      "repairId": "pricing-presets-1-1-0",
+      "title": "Create pricing presets and product pricing columns",
+      "version": "1.1.0",
+      "description": "Adds pricing_presets, the PricingCalculationMode enum, and the custom pricing columns on products.",
+      "file": "1.1.0-upgrade-pricing-presets-business-pc-safe.sql",
+      "checksum": "sha256:abb5d7e6cf8a58b348c661c2d1a09cc7d98e2d18b37a5101feb02d569d75ce0d",
+      "requiresBackup": true,
+      "idempotent": true,
+      "requiresSuperuser": false,
+      "affectedTables": [
+        "pricing_presets",
+        "products"
+      ],
+      "detectionQuery": "SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='pricing_presets'",
+      "detectionExpects": "empty",
+      "verificationQuery": "SELECT count(*)::int AS count FROM information_schema.columns WHERE table_schema='public' AND table_name='products' AND column_name IN ('pricingPresetId', 'useCustomPricing', 'costPrice')",
+      "verificationExpects": 3
+    },
+    {
+      "repairId": "product-image-1-1-1",
+      "title": "Create the product images table (1.1.1 reissue)",
+      "version": "1.1.1",
+      "description": "Reissued form of the product image repair, applied on a machine that had not taken the 1.1.0 file.",
+      "file": "1.1.1-repair-product-image-business-pc-safe.sql",
+      "checksum": "sha256:2174752c89aed02bae1598cea6dde3ab7ab4a2a498d50e35bb2e9f0d7206d7dc",
+      "requiresBackup": true,
+      "idempotent": true,
+      "requiresSuperuser": false,
+      "affectedTables": [
+        "product_images",
+        "products"
+      ],
+      "detectionQuery": "SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='product_images'",
+      "detectionExpects": "empty",
+      "verificationQuery": "SELECT count(*)::int AS count FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('product_images')",
+      "verificationExpects": 1
+    },
+    {
+      "repairId": "pricing-presets-1-1-1",
+      "title": "Create pricing presets and product pricing columns (1.1.1 reissue)",
+      "version": "1.1.1",
+      "description": "Reissued form of the pricing presets upgrade, applied on a machine that had not taken the 1.1.0 file.",
+      "file": "1.1.1-upgrade-pricing-presets-business-pc-safe.sql",
+      "checksum": "sha256:9f8e2bb6f463ead308bdb95ff599724dc80465b94001ed15c536f93c2432a02e",
+      "requiresBackup": true,
+      "idempotent": true,
+      "requiresSuperuser": false,
+      "affectedTables": [
+        "pricing_presets",
+        "products"
+      ],
+      "detectionQuery": "SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='pricing_presets'",
+      "detectionExpects": "empty",
+      "verificationQuery": "SELECT count(*)::int AS count FROM information_schema.columns WHERE table_schema='public' AND table_name='products' AND column_name IN ('pricingPresetId', 'useCustomPricing', 'costPrice')",
+      "verificationExpects": 3
+    },
+    {
+      "repairId": "business-pc-rollup-1-1-2",
+      "title": "Combined 1.1.2 business-PC roll-up",
+      "version": "1.1.2",
+      "description": "Roll-up covering pricing presets and product images in a single file.",
+      "file": "1.1.2-repair-business-pc-safe.sql",
+      "checksum": "sha256:cae3876b99ceceeaf33fc222c504c0433e78ee2b034b13a60fe70777e7d41a6e",
+      "requiresBackup": true,
+      "idempotent": true,
+      "requiresSuperuser": false,
+      "affectedTables": [
+        "pricing_presets",
+        "products",
+        "product_images"
+      ],
+      "detectionQuery": "SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='products' AND column_name='pricingPresetId'",
+      "detectionExpects": "empty",
+      "verificationQuery": "SELECT count(*)::int AS count FROM information_schema.columns WHERE table_schema='public' AND table_name='products' AND column_name IN ('pricingPresetId', 'useCustomPricing', 'costPrice', 'imageUrl')",
+      "verificationExpects": 4
+    },
+    {
+      "repairId": "product-installment-option",
+      "title": "Add the product installment option column",
+      "version": "1.1.2",
+      "description": "Adds products.installmentEnabled and backfills existing rows to true.",
+      "file": "1.1.2-repair-product-installment-option.sql",
+      "checksum": "sha256:8316456a017c6791bb5bd846cce4ee44221bf1209b6e9c2d52b4fb0fee3deabf",
+      "requiresBackup": true,
+      "idempotent": true,
+      "requiresSuperuser": false,
+      "affectedTables": [
+        "products"
+      ],
+      "detectionQuery": "SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='products' AND column_name='installmentEnabled'",
+      "detectionExpects": "empty",
+      "verificationQuery": "SELECT count(*)::int AS count FROM information_schema.columns WHERE table_schema='public' AND table_name='products' AND column_name IN ('installmentEnabled')",
+      "verificationExpects": 1
+    },
+    {
+      "repairId": "product-sku-stock-specifications",
+      "title": "Add product SKU, stock and specification columns",
+      "version": "1.1.2",
+      "description": "Adds sku, stock tracking, specifications and the LabelBarcodeSource enum to products.",
+      "file": "1.1.2-repair-product-sku-stock-specifications.sql",
+      "checksum": "sha256:62beb9f9e7388cf5a99c4495b2ce6ea0bf1ac8a5b1778d191890f56f26865670",
+      "requiresBackup": true,
+      "idempotent": true,
+      "requiresSuperuser": false,
+      "affectedTables": [
+        "products"
+      ],
+      "detectionQuery": "SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='products' AND column_name='sku'",
+      "detectionExpects": "empty",
+      "verificationQuery": "SELECT count(*)::int AS count FROM information_schema.columns WHERE table_schema='public' AND table_name='products' AND column_name IN ('sku', 'trackStock', 'stockQuantity', 'lowStockThreshold', 'specifications', 'labelBarcodeSource')",
+      "verificationExpects": 6
+    },
+    {
+      "repairId": "service-exchange-and-company-home-status",
+      "title": "Add two service job status values",
+      "version": "1.1.2",
+      "description": "Adds PRODUCT_EXCHANGE and COMPANY_HOME_MAINTENANCE to the ServiceJobStatus enum.",
+      "file": "1.1.2-repair-service-exchange-and-company-home-status.sql",
+      "checksum": "sha256:38c61b7e5993c9cb582767d3d8091b2388b773bd61590f309710296e9802769c",
+      "requiresBackup": true,
+      "idempotent": true,
+      "requiresSuperuser": false,
+      "affectedTables": [
+        "service_jobs"
+      ],
+      "detectionQuery": "SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid WHERE t.typname = 'ServiceJobStatus' AND e.enumlabel = 'PRODUCT_EXCHANGE'",
+      "detectionExpects": "empty",
+      "verificationQuery": "SELECT count(*)::int AS count FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid WHERE t.typname = 'ServiceJobStatus' AND e.enumlabel IN ('PRODUCT_EXCHANGE', 'COMPANY_HOME_MAINTENANCE')",
+      "verificationExpects": 2
+    },
+    {
+      "repairId": "sales-orders-and-search",
+      "title": "Create the sales orders tables and search prerequisites",
+      "version": "1.2.0",
+      "description": "Adds sales_orders, sales_order_items and sales_audits, and the search prerequisites they depend on.",
+      "file": "1.2.0-repair.sql",
+      "checksum": "sha256:1a2e99027cf142bf7b2573bb798bc6f7a462568b95e6982a6a820e0008ff5bd2",
+      "requiresBackup": true,
+      "idempotent": true,
+      "requiresSuperuser": true,
+      "affectedTables": [
+        "sales_orders",
+        "sales_order_items",
+        "sales_audits"
+      ],
+      "detectionQuery": "SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='sales_orders'",
+      "detectionExpects": "empty",
+      "verificationQuery": "SELECT count(*)::int AS count FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('sales_orders', 'sales_order_items', 'sales_audits')",
+      "verificationExpects": 3
+    },
+    {
+      "repairId": "repair-history",
+      "title": "Create the repair history table",
+      "version": "1.3.0",
+      "description": "Adds repair_history and its two enums, so Settings → Maintenance can record every update applied to this PC.",
+      "file": "1.3.0-repair.sql",
+      "checksum": "sha256:bdb06bfd5a1f2209c2b3daf3977491d2d3a5c54d20eff7512fa784eba9596f82",
+      "requiresBackup": true,
+      "idempotent": true,
+      "requiresSuperuser": false,
+      "affectedTables": [
+        "repair_history",
+        "_prisma_migrations"
+      ],
+      "detectionQuery": "SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='repair_history'",
+      "detectionExpects": "empty",
+      "verificationQuery": "SELECT count(*)::int AS count FROM information_schema.columns WHERE table_schema='public' AND table_name='repair_history' AND column_name IN ('id', 'repairId', 'version', 'kind', 'checksum', 'status', 'appliedAt', 'appliedById', 'appliedByName', 'backupPath', 'durationMs', 'errorMessage')",
+      "verificationExpects": 12
+    }
+  ]
+}

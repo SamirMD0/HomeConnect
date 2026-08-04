@@ -268,6 +268,19 @@ enum SupplierAuditAction {
   DELETE
 }
 
+enum RepairKind {
+  MIGRATION
+  REPAIR
+}
+
+enum RepairStatus {
+  APPLIED
+  SKIPPED_NOT_NEEDED
+  FAILED
+  BLOCKED_NO_BACKUP
+  VERIFY_FAILED
+}
+
 model User {
   id                  String    @id @default(uuid()) @db.Uuid
   username            String    @unique
@@ -312,6 +325,7 @@ model User {
   prepaidDeliveries           PrepaidPurchase[]          @relation("PrepaidDeliveredBy")
   pricingPresetsCreated       PricingPreset[]             @relation("PricingPresetCreatedBy")
   pricingPresetsUpdated       PricingPreset[]             @relation("PricingPresetUpdatedBy")
+  repairsApplied              RepairHistory[]             @relation("RepairHistoryAppliedBy")
 
   @@map("users")
 }
@@ -982,4 +996,34 @@ model SupplierAudit {
   @@index([supplierId, changedAt])
   @@index([changedAt])
   @@map("supplier_audits")
+}
+
+/// Append-only record of every migration and repair applied to this database.
+///
+/// The plan specified @@unique([repairId, checksum, status]). That is deliberately
+/// NOT used: it would reject a second row with the same outcome, so a repair that
+/// failed twice could not record its second failure — the history write would throw
+/// inside the very failure path this table exists to document. Likewise every
+/// repeated SKIPPED_NOT_NEEDED would collide. History is append-only; duplicates
+/// here are information, not corruption. Indexes give the lookup speed instead.
+model RepairHistory {
+  id            String       @id @default(uuid()) @db.Uuid
+  repairId      String
+  version       String
+  kind          RepairKind
+  checksum      String
+  status        RepairStatus
+  appliedAt     DateTime     @default(now())
+  appliedById   String?      @db.Uuid
+  appliedByName String
+  /// Path of the PRE_REPAIR backup, so the operator knows what to roll back to.
+  backupPath    String?
+  durationMs    Int?
+  errorMessage  String?
+
+  appliedBy User? @relation("RepairHistoryAppliedBy", fields: [appliedById], references: [id])
+
+  @@index([appliedAt])
+  @@index([repairId, appliedAt])
+  @@map("repair_history")
 }

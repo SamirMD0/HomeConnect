@@ -6,7 +6,7 @@ import {
   ProductDuplicateQueryInput, ProductListQueryInput, ProductParamsInput,
   ProductServiceJobsQueryInput, UpdateProductInput,
   UpdateProductPricingInput, ProductPricingPreviewQueryInput,
-  ProductLabelQueryInput, UpdateProductSkuInput, UpdateProductStockInput,
+  ProductLabelQueryInput, ProductLabelsQueryInput, UpdateProductSkuInput, UpdateProductStockInput,
 } from './products.validator';
 
 const contextFrom = (req: { headers: Request['headers']; ip?: string }) => ({
@@ -76,6 +76,10 @@ export class ProductsController {
   }
   static async label(req: Request<ProductParamsInput>, res: Response, next: NextFunction) {
     try { res.json({ success: true, data: await ProductsService.label(req.params.productId, req.query as unknown as ProductLabelQueryInput) }); }
+    catch (error) { next(error); }
+  }
+  static async labels(req: Request, res: Response, next: NextFunction) {
+    try { res.json({ success: true, data: await ProductsService.labels(req.query as unknown as ProductLabelsQueryInput) }); }
     catch (error) { next(error); }
   }
   static async updateSku(req: Request<ProductParamsInput, unknown, UpdateProductSkuInput>, res: Response, next: NextFunction) {

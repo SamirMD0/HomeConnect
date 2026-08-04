@@ -61,10 +61,9 @@
       font-family: Tahoma, Arial, sans-serif !important;
     }
 
-    @page {
-      size: 50mm 30mm;
-      margin: 2mm;
-    }
+    /* No global @page rule: it is document-level and cannot be scoped, so a
+       label size here would follow every other printable screen. Each print
+       surface injects its own (see LabelSheetLayoutControls, ReportsPage). */
 
     aside,
     header,
@@ -141,7 +140,41 @@
   .dashboard-kpi-card p.text-2xl { font-size: 1.15rem; }
 }
 
+/* Label sheet: many labels tiled onto one page of ordinary paper, cut by hand.
+   One .label-page per printed page, sized in millimetres, so the preview and the
+   printed output are the same DOM rather than two stylesheets kept in sync. */
+.label-sheet-viewport { overflow-x: auto; }
+.label-sheet-preview { transform: scale(var(--preview-scale, 1)); transform-origin: top left; }
+
+.label-page {
+  box-sizing: border-box;
+  width: var(--paper-width, 210mm);
+  height: var(--paper-height, 297mm);
+  padding: var(--page-margin, 8mm);
+  display: grid;
+  grid-template-columns: repeat(var(--label-columns, 3), var(--label-width, 50mm));
+  grid-auto-rows: var(--label-height, 30mm);
+  gap: var(--label-gap, 3mm);
+  align-content: start;
+  justify-content: start;
+  background: #fff;
+}
+
+/* On screen each page reads as a sheet of paper; in print the chrome is dropped. */
+.label-sheet-preview .label-page { margin: 0 0 6mm; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgb(15 23 42 / 0.12); }
+
+.product-label-guides { border: 1px dashed #cbd5e1; }
+
 @media print {
   .product-label-grid { display: grid; grid-template-columns: var(--label-width, 50mm); gap: 0; }
   .product-label { border: 0; font-family: Tahoma, Arial, 'Segoe UI', sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  /* Cut guides are opt-in, so this must win over the blanket border reset above. */
+  .product-label-guides { border: 1px dashed #94a3b8; }
+
+  .label-sheet-viewport { overflow: visible; }
+  .label-sheet-preview { transform: none; }
+  .label-sheet-preview .label-page { margin: 0; border: 0; box-shadow: none; }
+  .label-page { break-after: page; page-break-after: always; }
+  .label-page:last-child { break-after: auto; page-break-after: auto; }
+  .product-label { break-inside: avoid; page-break-inside: avoid; }
 }

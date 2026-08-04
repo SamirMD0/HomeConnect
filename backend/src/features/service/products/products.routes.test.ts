@@ -3,7 +3,7 @@ import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { app } from '../../../app';
 
-const { service } = vi.hoisted(() => ({ service: { create: vi.fn(), list: vi.fn(), get: vi.fn(), update: vi.fn(), archive: vi.fn(), restore: vi.fn(), label: vi.fn(), audit: vi.fn(), checkDuplicate: vi.fn(), serviceJobs: vi.fn(), updateSku: vi.fn(), regenerateSku: vi.fn(), updateStock: vi.fn() } }));
+const { service } = vi.hoisted(() => ({ service: { create: vi.fn(), list: vi.fn(), get: vi.fn(), update: vi.fn(), archive: vi.fn(), restore: vi.fn(), label: vi.fn(), labels: vi.fn(), audit: vi.fn(), checkDuplicate: vi.fn(), serviceJobs: vi.fn(), updateSku: vi.fn(), regenerateSku: vi.fn(), updateStock: vi.fn() } }));
 vi.mock('./products.service', () => ({ ProductsService: service }));
 vi.mock('../../../lib/prisma', () => ({ prisma: { $queryRaw: vi.fn().mockResolvedValue([{ result: 1 }]) }, transactionModel: {}, activityLogModel: {} }));
 
@@ -23,6 +23,7 @@ describe('product routes', () => {
     service.checkDuplicate.mockResolvedValue({ matches: [] });
     service.serviceJobs.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 10 });
     service.label.mockResolvedValue({ id: productId, sku: 'HC-000001', barcodeValue: 'HC-000001', barcodeSource: 'SKU', internalPriceCode: null });
+    service.labels.mockResolvedValue({ labels: [], warnings: [] });
     service.updateSku.mockResolvedValue(product);
     service.regenerateSku.mockResolvedValue(product);
     service.updateStock.mockResolvedValue(product);
@@ -73,5 +74,34 @@ describe('product routes', () => {
       .set('Authorization', `Bearer ${admin}`)
       .send({ price: '20.00' });
     expect(update.status).toBe(400);
+  });
+  it('registers the bulk label sheet before the product id route', async () => {
+    const response = await request(app)
+      .get(`/api/v1/products/labels?ids=${productId}`)
+      .set('Authorization', `Bearer ${employee}`);
+    expect(response.status).toBe(200);
+    expect(service.labels).toHaveBeenCalled();
+    // "labels" must not be swallowed as a product id by GET /:productId.
+    expect(service.get).not.toHaveBeenCalled();
+  });
+  it('rejects an empty or oversized label selection', async () => {
+    const empty = await request(app).get('/api/v1/products/labels?ids=').set('Authorization', `Bearer ${employee}`);
+    expect(empty.status).toBe(400);
+
+    const tooMany = Array.from({ length: 101 }, (_, index) => `${index.toString().padStart(8, '0')}-3333-4333-8333-333333333333`);
+    const oversized = await request(app).get(`/api/v1/products/labels?ids=${tooMany.join(',')}`).set('Authorization', `Bearer ${employee}`);
+    expect(oversized.status).toBe(400);
+    expect(service.labels).not.toHaveBeenCalled();
+  });
+  it('rejects a label selection containing a non-uuid id', async () => {
+    const response = await request(app).get('/api/v1/products/labels?ids=not-a-uuid').set('Authorization', `Bearer ${employee}`);
+    expect(response.status).toBe(400);
+    expect(service.labels).not.toHaveBeenCalled();
+  });
+  it('dedupes repeated ids before reaching the service', async () => {
+    await request(app)
+      .get(`/api/v1/products/labels?ids=${productId},${productId}`)
+      .set('Authorization', `Bearer ${employee}`);
+    expect(service.labels).toHaveBeenCalledWith(expect.objectContaining({ ids: [productId] }));
   });
 });

@@ -34,13 +34,16 @@ Then run:
 CREATE DATABASE homeconnect;
 ```
 
-Apply migrations from the repository before using the desktop app:
-
-```powershell
-$env:DATABASE_URL = "postgresql://postgres:YOUR_PASSWORD@localhost:5433/homeconnect"
-npx prisma migrate deploy --schema backend/prisma/schema.prisma
-npx prisma generate --schema backend/prisma/schema.prisma
-```
+> **Do not apply migrations from a cloned repository.** A business PC has no
+> Node.js, no repository and no Prisma CLI, and the earlier instructions here
+> assumed all three. The installer now ships the migration and repair SQL, and
+> the app applies it itself:
+>
+> - **Setting up a new PC:** follow [NEW_BUSINESS_PC_SETUP.md](NEW_BUSINESS_PC_SETUP.md).
+>   `Setup-HomeConnect.ps1` creates the database and writes the configuration.
+> - **Applying database changes:** sign in as an administrator and open
+>   **Settings → Maintenance**. A verified backup is taken first, and nothing is
+>   applied if that backup fails. See [MAINTENANCE_AND_REPAIRS.md](MAINTENANCE_AND_REPAIRS.md).
 
 Do not run database reset on a business PC with real data.
 

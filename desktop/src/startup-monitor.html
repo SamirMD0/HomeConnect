@@ -143,6 +143,30 @@
       background-color: currentColor;
     }
     
+    /* Shown only when a step fails: what happened, then what to do about it. */
+    .guidance {
+      display: none;
+      margin-bottom: 1rem;
+      padding: 0.75rem;
+      border: 1px solid #b45309;
+      border-left-width: 4px;
+      border-radius: 4px;
+      background: rgba(180, 83, 9, 0.12);
+    }
+
+    .guidance-summary {
+      margin: 0;
+      font-weight: 600;
+      font-size: 0.85rem;
+    }
+
+    .guidance-fix {
+      margin: 0.4rem 0 0;
+      font-size: 0.8rem;
+      line-height: 1.4;
+      opacity: 0.9;
+    }
+
     .actions {
       display: flex;
       flex-direction: column;
@@ -216,7 +240,12 @@
         <li id="step-db"><span class="icon"></span>Checking PostgreSQL</li>
         <li id="step-frontend"><span class="icon"></span>Starting Frontend</li>
       </ul>
-      
+
+      <div class="guidance" id="guidance">
+        <p class="guidance-summary" id="guidance-summary"></p>
+        <p class="guidance-fix" id="guidance-fix"></p>
+      </div>
+
       <div class="actions">
         <button id="btn-retry" style="display: none;" class="primary">Retry Startup</button>
         <button id="btn-copy">Copy Diagnostics</button>
@@ -257,6 +286,15 @@
       if (el) {
         el.className = status; // active, success, error, or empty
       }
+    }
+
+    // A failed step must say what to do next, not just turn red.
+    function showGuidance(summary, fix) {
+      const box = document.getElementById('guidance');
+      if (!box) return;
+      document.getElementById('guidance-summary').textContent = summary || 'HomeConnect could not start.';
+      document.getElementById('guidance-fix').textContent = fix || 'Press Copy Diagnostics and send the result.';
+      box.style.display = 'block';
     }
 
     // Set up button handlers
@@ -305,7 +343,7 @@
                 statusBadge.textContent = 'Startup Failed';
                 statusBadge.className = 'status-badge error';
                 retryBtn.style.display = 'block';
-                appendLog(`[SYSTEM] Startup failed during: ${state.step}`);
+                showGuidance(state.error, state.fix);
                 if (state.error) appendLog(`[ERROR] ${state.error}`);
               } else if (state.status === 'success') {
                 updateStep(id, 'success');

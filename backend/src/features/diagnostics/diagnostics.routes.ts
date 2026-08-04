@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { requireRole } from '../../middleware/role.middleware';
-import { getHealth, getErrors, clearErrors, reportFrontendError } from './diagnostics.controller';
+import { getHealth, getErrors, clearErrors, exportDiagnostics, reportFrontendError } from './diagnostics.controller';
 import { requireAuth } from '../../middleware/auth.middleware';
 
 const router = Router();
@@ -13,6 +13,7 @@ router.use(requireRole(['ADMIN']));
 
 router.get('/health', getHealth);
 router.get('/errors', getErrors);
+router.get('/export', exportDiagnostics);
 router.post('/clear-errors', clearErrors);
 
 export const diagnosticsRoutes = router;

@@ -198,6 +198,26 @@ export const productLabelQuerySchema = z.object({
   includePrice: z.enum(['true', 'false']).optional().transform((value) => value === 'true'),
 });
 
+/**
+ * One print run is capped so a stray "select everything" cannot turn into a
+ * thousand-label query string. The frontend caps first and says so; this is the
+ * backstop.
+ */
+export const MAX_LABEL_SELECTION = 100;
+
+export const productLabelsQuerySchema = z.object({
+  ids: z.string()
+    .transform((csv) => [...new Set(csv.split(',').map((value) => value.trim()).filter(Boolean))])
+    .pipe(
+      z.array(uuidSchema)
+        .min(1, 'Select at least one product')
+        .max(MAX_LABEL_SELECTION, `Select at most ${MAX_LABEL_SELECTION} products`)
+    ),
+  includePriceCode: z.enum(['true', 'false']).optional().transform((value) => value === 'true'),
+  includePrice: z.enum(['true', 'false']).optional().transform((value) => value === 'true'),
+  includeArchived: z.enum(['true', 'false']).optional().transform((value) => value === 'true'),
+});
+
 export type CreateProductInput = z.infer<typeof createProductSchema>;
 export type UpdateProductInput = z.infer<typeof updateProductSchema>;
 export type ProductActionInput = z.infer<typeof productActionSchema>;
@@ -211,3 +231,4 @@ export type ProductPricingPreviewQueryInput = z.infer<typeof productPricingPrevi
 export type UpdateProductSkuInput = z.infer<typeof updateProductSkuSchema>;
 export type UpdateProductStockInput = z.infer<typeof updateProductStockSchema>;
 export type ProductLabelQueryInput = z.infer<typeof productLabelQuerySchema>;
+export type ProductLabelsQueryInput = z.infer<typeof productLabelsQuerySchema>;

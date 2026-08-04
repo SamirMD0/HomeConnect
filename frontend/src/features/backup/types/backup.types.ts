@@ -85,6 +85,7 @@ declare global {
       openBackupDirectory?: (directory: string) => Promise<string>;
       openLogsFolder?: () => Promise<void>;
       copyDiagnostics?: (data: string) => Promise<void>;
+      exportLabelsPdf?: (options: { suggestedName: string; paper: 'A4' | 'LETTER' }) => Promise<{ saved: boolean; path?: string; error?: string }>;
     };
   }
 }

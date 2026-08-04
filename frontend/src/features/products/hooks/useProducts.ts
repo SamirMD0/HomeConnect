@@ -16,6 +16,8 @@ export const productKeys = {
   list: (filters: ProductFilters) => [...productKeys.all, 'list', filters] as const,
   detail: (id: string) => [...productKeys.all, 'detail', id] as const,
   label: (id: string, includePriceCode = false, includePrice = true) => [...productKeys.all, 'label', id, includePriceCode, includePrice] as const,
+  labels: (ids: string[], includePriceCode = false, includePrice = false) =>
+    [...productKeys.all, 'labels', [...ids].sort().join(','), includePriceCode, includePrice] as const,
   audit: (id: string) => [...productKeys.all, 'audit', id] as const,
   serviceJobs: (id: string, page: number) => [...productKeys.all, 'service-jobs', id, page] as const,
   pricing: (id:string,months?:number)=>[...productKeys.all,'pricing',id,months] as const,
@@ -72,6 +74,18 @@ export function useProduct(id: string) {
 }
 export function useProductLabel(id: string, includePriceCode = false, includePrice = true) {
   return useQuery({ queryKey: productKeys.label(id, includePriceCode, includePrice), queryFn: () => productsApi.label(id, includePriceCode, includePrice), enabled: Boolean(id) });
+}
+/**
+ * One request for the whole sheet, replacing a per-product fan-out.
+ * Ids are sorted in the key so reordering a selection reuses the cache.
+ */
+export function useProductLabels(ids: string[], includePriceCode = false, includePrice = false) {
+  return useQuery({
+    queryKey: productKeys.labels(ids, includePriceCode, includePrice),
+    queryFn: () => productsApi.labels(ids, includePriceCode, includePrice),
+    enabled: ids.length > 0,
+    retry: false,
+  });
 }
 export function useCreateProduct() {
   const queryClient = useQueryClient();

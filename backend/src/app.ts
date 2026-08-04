@@ -27,6 +27,8 @@ import { monthlyDebtsRoutes } from './features/reports/monthly-debts/monthly-deb
 import { backupRoutes } from './features/backup/backup.routes';
 import { blockWritesDuringRestore } from './features/backup/backup.middleware';
 import { diagnosticsRoutes } from './features/diagnostics/diagnostics.routes';
+import { preflightRoutes } from './features/preflight/preflight.routes';
+import { maintenanceRoutes } from './features/maintenance/maintenance.routes';
 import { productsRoutes } from './features/service/products/products.routes';
 import { customerServiceJobsRoutes, serviceJobsRoutes } from './features/service/service-jobs/service-jobs.routes';
 import { customerSalesOrdersRoutes, salesOrdersRoutes } from './features/sales';
@@ -107,6 +109,8 @@ app.use('/api/v1/corrections', requireAuth, correctionsRoutes);
 app.use('/api/v1/reports', requireAuth, monthlyDebtsRoutes);
 app.use('/api/v1/admin/backups', requireAuth, backupRoutes);
 app.use('/api/v1/admin/diagnostics', requireAuth, diagnosticsRoutes);
+app.use('/api/v1/admin/preflight', requireAuth, preflightRoutes);
+app.use('/api/v1/admin/maintenance', requireAuth, maintenanceRoutes);
 app.use('/api/v1/transactions', requireAuth, transactionsRoutes);
 app.use('/api/v1/dashboard', requireAuth, dashboardRoutes);
 

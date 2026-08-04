@@ -1,4 +1,5 @@
 import {
+  PricingPreset,
   Prisma,
   Product,
   ServiceAuditAction,
@@ -26,13 +27,14 @@ import {
   UpdateProductPricingInput,
   ProductPricingPreviewQueryInput,
   ProductLabelQueryInput,
+  ProductLabelsQueryInput,
   UpdateProductSkuInput,
   UpdateProductStockInput,
   UpdateProductInput,
 } from './products.validator';
 import { ProductsRepository } from './products.repository';
 import { serializeServiceJob } from '../service-jobs/service-jobs.service';
-import { resolveProductPricing } from '../../pricing/calculator/pricing-resolution';
+import { ProductPricingRecord, resolveProductPricing } from '../../pricing/calculator/pricing-resolution';
 import { Role } from '@prisma/client';
 import { parsePricingPercent, percentToApiString } from '../../pricing/domain/pricing-percent';
 import { formatStaffLabelCode } from '../../pricing/domain/internal-price-code';
@@ -300,25 +302,39 @@ export class ProductsService {
   static async label(id: string, query: ProductLabelQueryInput) {
     const product = await ProductsRepository.findById(id);
     if (!product) throw new NotFoundError('Product not found');
-    const usesManufacturer = product.labelBarcodeSource === 'MANUFACTURER' && Boolean(product.barcode);
-    const preview = query.includePriceCode || query.includePrice
-      ? resolveProductPricing(product, await ProductsRepository.findActiveDefaultPricingPreset())
-      : null;
-    const internalPriceCode = preview?.pricingAvailable ? preview.internalPriceCode : null;
-    return {
-      id: product.id,
-      name: product.name,
-      model: product.model,
-      brand: product.brand,
-      sku: product.sku,
-      barcodeValue: usesManufacturer ? product.barcode! : product.sku,
-      barcodeSource: usesManufacturer ? 'MANUFACTURER' as const : 'SKU' as const,
-      ...(query.includePriceCode ? {
-        internalPriceCode,
-        staffLabelCode: internalPriceCode ? formatStaffLabelCode(product.sku, internalPriceCode) : null,
-      } : {}),
-      ...(query.includePrice ? { cashPrice: preview?.pricingAvailable ? preview.cashPrice : null } : {}),
-    };
+    const defaultPreset = labelNeedsPricing(query) ? await ProductsRepository.findActiveDefaultPricingPreset() : null;
+    // Warnings are a bulk-sheet affordance; the single-label contract is unchanged.
+    return toLabelPayload(product, defaultPreset, query).payload;
+  }
+
+  /**
+   * Bulk label payload for the print sheet. One product query and one preset
+   * lookup regardless of selection size, and a missing or archived product
+   * degrades to a warning rather than failing the whole print run.
+   */
+  static async labels(query: ProductLabelsQueryInput) {
+    const products = await ProductsRepository.findManyForLabels(query.ids);
+    const byId = new Map(products.map((product) => [product.id, product]));
+    const defaultPreset = labelNeedsPricing(query) ? await ProductsRepository.findActiveDefaultPricingPreset() : null;
+
+    const labels: ProductLabelPayload[] = [];
+    const warnings: ProductLabelWarning[] = [];
+
+    // Iterate the requested ids, not the query result, so the sheet order matches
+    // what the user selected instead of whatever order the database returned.
+    for (const id of query.ids) {
+      const product = byId.get(id);
+      if (!product) { warnings.push({ productId: id, code: 'NOT_FOUND' }); continue; }
+      if (!product.isActive && !query.includeArchived) {
+        warnings.push({ productId: id, code: 'ARCHIVED_EXCLUDED', name: product.name });
+        continue;
+      }
+      const { payload, warnings: itemWarnings } = toLabelPayload(product, defaultPreset, query);
+      labels.push(payload);
+      warnings.push(...itemWarnings);
+    }
+
+    return { labels, warnings };
   }
 
   static updateSku(id: string, input: UpdateProductSkuInput, user: ServiceMutationUser, context: RequestContext) {
@@ -472,6 +488,54 @@ function productUpdateData(input: UpdateProductInput, updatedById: string): Pris
   if (input.specificationNotes !== undefined) data.specificationNotes = input.specificationNotes;
   return data;
 }
+
+export type ProductLabelWarningCode = 'NOT_FOUND' | 'ARCHIVED_EXCLUDED' | 'NO_PRICING' | 'MANUFACTURER_BARCODE_MISSING';
+export interface ProductLabelWarning { productId: string; code: ProductLabelWarningCode; name?: string }
+
+interface LabelFieldFlags { includePriceCode: boolean; includePrice: boolean }
+
+const labelNeedsPricing = (query: LabelFieldFlags) => query.includePriceCode || query.includePrice;
+
+/**
+ * The single source of truth for what may leave the server on a label.
+ *
+ * Everything commercial — cost, supplier cost, installment price, profit,
+ * expenses, and the discount buffer — is absent by construction: this builds an
+ * allow-list rather than stripping fields off a product. A label the renderer
+ * never receives is a label that cannot leak through the network tab or an
+ * exported PDF. `products.routes.test.ts` asserts the exact key set.
+ */
+function toLabelPayload(product: ProductPricingRecord, defaultPreset: PricingPreset | null, query: LabelFieldFlags) {
+  const warnings: ProductLabelWarning[] = [];
+  const wantsManufacturer = product.labelBarcodeSource === 'MANUFACTURER';
+  const usesManufacturer = wantsManufacturer && Boolean(product.barcode);
+  // Falling back to the SKU is correct, but silently is not: the sticker would
+  // scan as something other than the barcode the product was configured for.
+  if (wantsManufacturer && !usesManufacturer) warnings.push({ productId: product.id, code: 'MANUFACTURER_BARCODE_MISSING', name: product.name });
+
+  const preview = labelNeedsPricing(query) ? resolveProductPricing(product, defaultPreset) : null;
+  if (preview && !preview.pricingAvailable) warnings.push({ productId: product.id, code: 'NO_PRICING', name: product.name });
+  const internalPriceCode = preview?.pricingAvailable ? preview.internalPriceCode : null;
+
+  const payload = {
+    id: product.id,
+    name: product.name,
+    model: product.model,
+    brand: product.brand,
+    sku: product.sku,
+    barcodeValue: usesManufacturer ? product.barcode! : product.sku,
+    barcodeSource: usesManufacturer ? 'MANUFACTURER' as const : 'SKU' as const,
+    ...(query.includePriceCode ? {
+      internalPriceCode,
+      staffLabelCode: internalPriceCode ? formatStaffLabelCode(product.sku, internalPriceCode) : null,
+    } : {}),
+    ...(query.includePrice ? { cashPrice: preview?.pricingAvailable ? preview.cashPrice : null } : {}),
+  };
+
+  return { payload, warnings };
+}
+
+export type ProductLabelPayload = ReturnType<typeof toLabelPayload>['payload'];
 
 function moneyOrNull(value?: string | null) {
   return value == null ? null : parseMoney(value);
