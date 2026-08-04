@@ -4,7 +4,9 @@ Local Windows business management system built with React, Electron, Express, Pr
 
 The backend-authoritative ERP dashboard adds customer, supplier, maintenance, and product analytics; an exception center; live-recomputed month-end controls; recent activity; bilingual labels; and an ERP module roadmap. See [Dashboard Information Architecture](docs/ERP_DASHBOARD_INFORMATION_ARCHITECTURE.md) and [Analytics Data Flow](docs/DASHBOARD_ANALYTICS_DATA_FLOW.md).
 
-Products support sequence-generated SKUs, scanner lookup, auto-fit labels with optional selling price and staff code, basic recorded stock fields, and ordered specifications. See [Product Label Printing](docs/setup/PRODUCT_LABEL_PRINTING.md) and [Product SKU Policy](docs/project/PRODUCT_SKU_POLICY.md).
+Products support sequence-generated SKUs, scanner lookup, auto-fit labels with optional selling price and staff code, basic recorded stock fields, and ordered specifications. Labels can be printed in bulk: select several products, preview them tiled on an A4 sheet for cutting by hand, and print or export the sheet as a PDF. See [Product Label Printing](docs/setup/PRODUCT_LABEL_PRINTING.md) and [Product SKU Policy](docs/project/PRODUCT_SKU_POLICY.md).
+
+Database updates and repairs are applied from inside the app. **Settings → Maintenance** reports pending updates, runs a read-only preflight check, and applies bundled migrations and repair SQL behind a verified backup — no pasting SQL into pgAdmin. See [Maintenance and Repairs](docs/setup/MAINTENANCE_AND_REPAIRS.md) and [New Business PC Setup](docs/setup/NEW_BUSINESS_PC_SETUP.md).
 
 Sales orders record shop, delivery, and phone sales with multi-line items, a fulfillment workflow, and a date-scoped day/month view. Backend-calculated totals stay Decimal-safe, and any unpaid balance becomes a Debt on the ledger from terms the user supplies — never silently.
 

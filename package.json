@@ -1,6 +1,6 @@
 {
   "name": "home-connect",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "main": "dist/electron/desktop/src/index.js",
   "build": {
     "appId": "com.homeconnect.desktop",
@@ -56,6 +56,22 @@
         "filter": [
           "**/*"
         ]
+      },
+      {
+        "from": "backend/prisma/migrations",
+        "to": "prisma/migrations",
+        "filter": [
+          "**/*.sql",
+          "**/migration_lock.toml"
+        ]
+      },
+      {
+        "from": "backend/prisma/repair",
+        "to": "repair",
+        "filter": [
+          "**/*.sql",
+          "manifest.json"
+        ]
       }
     ],
     "win": {
@@ -88,6 +104,8 @@
     "typecheck:electron": "tsc -p tsconfig.electron.json --noEmit",
     "build:electron-main": "tsc -p tsconfig.electron.json && node -e \"const fs=require('fs');fs.mkdirSync('dist/electron/desktop/src',{recursive:true});fs.mkdirSync('dist/electron/desktop/assets',{recursive:true});fs.copyFileSync('desktop/src/startup-monitor.html','dist/electron/desktop/src/startup-monitor.html');for(const file of ['homeconnects-logo.png','homeconnects-logo.ico'])fs.copyFileSync('desktop/assets/'+file,'dist/electron/desktop/assets/'+file);\"",
     "check:electron-production-runtime": "tsx desktop/scripts/check-production-runtime.ts",
+    "bundle:setup": "powershell -ExecutionPolicy Bypass -File scripts/Build-SetupBundle.ps1",
+    "rehearse:migrations": "tsx scripts/rehearse-migrations.ts",
     "pack:win": "npm run build && npm run build:electron-main && electron-builder --win --dir --config.npmRebuild=false --publish=never",
     "dist:win": "npm run build && npm run build:electron-main && electron-builder --win --config.npmRebuild=false --publish=never",
     "dev": "concurrently \"npm run dev:vite\" \"npm run dev:server\"",
@@ -98,7 +116,8 @@
     "test": "vitest run",
     "prisma:validate": "tsx backend/prisma/validate.ts",
     "lint": "eslint frontend/src backend/src desktop/src --ext ts,tsx",
-    "format": "prettier --write \"{frontend,backend,desktop}/src/**/*.{ts,tsx,css}\""
+    "format": "prettier --write \"{frontend,backend,desktop}/src/**/*.{ts,tsx,css}\"",
+    "scratch:release": "tsx scripts/build-release-scratch.ts"
   },
   "keywords": [],
   "author": "",
