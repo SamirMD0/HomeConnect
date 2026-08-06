@@ -6,7 +6,8 @@ import { BackupService } from '../backup/backup.service';
 import { BackupSettingsStore } from '../backup/backup-settings.store';
 import { PostgresToolDiscovery } from '../backup/postgres-tools';
 import { MigrationExecutor } from './migration-executor';
-import { MigrationRunner } from './migration-runner';
+import { BundledMigration, MigrationRunner } from './migration-runner';
+import { classifyPresence, PresenceVerdict, readSchemaObjects } from './migration-presence';
 import { RepairHistoryRepository, RepairHistoryRow } from './repair-history.repository';
 import { LoadedRepair, RepairRegistry, RepairProblem } from './repair-registry';
 import { RepairActor, RepairEnvironment, RepairExecutionClient, RepairOutcome, RepairRunner } from './repair-runner';
@@ -28,6 +29,16 @@ export interface PendingRepairView {
   requiresSuperuser: boolean;
 }
 
+/** A pending migration plus the evidence for whether its schema is already there. */
+export interface PendingMigrationView {
+  name: string;
+  state: 'PENDING' | 'FAILED';
+  verdict: PresenceVerdict;
+  reason: string;
+  missing: string[];
+  expectedCount: number;
+}
+
 export interface MaintenanceOverview {
   appVersion: string;
   toolsAvailable: boolean;
@@ -39,9 +50,17 @@ export interface MaintenanceOverview {
     mismatched: string[];
     databaseIsNewer: boolean;
   };
+  /** Same migrations as `migrations.pending`/`failed`, with presence evidence. */
+  pendingMigrations: PendingMigrationView[];
   pendingRepairs: PendingRepairView[];
   registryProblems: RepairProblem[];
   history: RepairHistoryRow[];
+}
+
+export interface ResolveMigrationOutcome {
+  name: string;
+  status: 'RESOLVED' | 'REFUSED' | 'FAILED';
+  message: string;
 }
 
 const APP_VERSION = process.env.npm_package_version ?? process.env.APP_VERSION ?? 'unknown';
@@ -66,10 +85,91 @@ export class MaintenanceService {
         ? null
         : 'Cannot back up: PostgreSQL tools were not found. Set the pg_dump path in Settings → Backup. Repairs stay disabled until a backup is possible.',
       migrations,
+      pendingMigrations: await pendingMigrationViews(migrations.pending, migrations.failed),
       pendingRepairs,
       registryProblems: snapshot.problems,
       history: await RepairHistoryRepository.list(client, 20),
     };
+  }
+
+  /**
+   * Records migrations as applied **without running their SQL**, for a database
+   * whose schema was brought up to date by hand.
+   *
+   * This is the counterpart to `applyPendingChanges`. On a database repaired
+   * manually, `_prisma_migrations` never learned about the work, so every later
+   * run of the apply path dies on the first migration re-creating a table that
+   * already exists — and because repairs run after migrations, it never reaches
+   * them. Resolving clears that history so the normal path works again.
+   *
+   * No DDL runs, so no backup is taken; the lock is still held so this cannot
+   * interleave with a repair. A migration whose objects are demonstrably absent
+   * is refused, because resolving it would hide the gap permanently.
+   */
+  static async resolveMigrations(input: {
+    userId: string;
+    accountPassword: string;
+    migrationNames: string[];
+    ipAddress: string | null;
+  }): Promise<ResolveMigrationOutcome[]> {
+    await verifyAdminPassword(input.userId, input.accountPassword, {
+      action: 'RESOLVE_MIGRATION_HISTORY',
+      ipAddress: input.ipAddress,
+      domainLabel: 'database update history',
+    });
+
+    const bundled = MigrationRunner.readBundled();
+    const actor: RepairActor = { id: input.userId, name: await actorName(input.userId) };
+
+    return repairEnvironment().runExclusive(async () => {
+      const summary = await MigrationExecutor.status(client, bundled);
+      const schema = await readSchemaObjects(client);
+      const outcomes: ResolveMigrationOutcome[] = [];
+
+      for (const name of input.migrationNames) {
+        const migration = bundled.find((entry) => entry.name === name);
+        if (!migration) {
+          outcomes.push({ name, status: 'REFUSED', message: 'This update is not part of the installed version.' });
+          continue;
+        }
+
+        const entry = summary.entries.find((candidate) => candidate.name === name);
+        if (!entry || (entry.state !== 'PENDING' && entry.state !== 'FAILED')) {
+          outcomes.push({ name, status: 'REFUSED', message: `Nothing to resolve: it is already recorded as ${entry?.state ?? 'unknown'}.` });
+          continue;
+        }
+
+        const presence = classifyPresence(migration, schema);
+        if (presence.verdict === 'MISSING') {
+          outcomes.push({
+            name,
+            status: 'REFUSED',
+            message: `${presence.reason} Apply it instead of resolving it. Missing: ${presence.missing.join(', ')}.`,
+          });
+          continue;
+        }
+
+        const outcome = await MigrationExecutor.markResolved(client, migration);
+        await RepairHistoryRepository.record(client, {
+          repairId: migration.name,
+          version: APP_VERSION,
+          kind: 'MIGRATION',
+          checksum: migration.checksum,
+          status: outcome.applied ? 'SKIPPED_NOT_NEEDED' : 'FAILED',
+          appliedById: actor.id,
+          appliedByName: actor.name,
+          backupPath: null,
+          durationMs: null,
+          errorMessage: outcome.error ?? null,
+        });
+
+        outcomes.push(outcome.applied
+          ? { name, status: 'RESOLVED', message: `Recorded as already applied. ${presence.reason}` }
+          : { name, status: 'FAILED', message: `Could not record it: ${outcome.error ?? 'unknown error'}` });
+      }
+
+      return outcomes;
+    });
   }
 
   /**
@@ -236,6 +336,36 @@ async function safeMigrationStatus() {
     };
   } catch {
     return { pending: [], failed: [], mismatched: [], databaseIsNewer: false };
+  }
+}
+
+/**
+ * Presence evidence for every pending or failed migration. Read-only, and a
+ * failure here must not take the whole overview down with it.
+ */
+async function pendingMigrationViews(pending: string[], failed: string[]): Promise<PendingMigrationView[]> {
+  const names = [...pending, ...failed];
+  if (names.length === 0) return [];
+
+  try {
+    const bundled = new Map(MigrationRunner.readBundled().map((entry) => [entry.name, entry] as const));
+    const schema = await readSchemaObjects(client);
+
+    return names.flatMap((name) => {
+      const migration: BundledMigration | undefined = bundled.get(name);
+      if (!migration) return [];
+      const presence = classifyPresence(migration, schema);
+      return [{
+        name,
+        state: pending.includes(name) ? 'PENDING' as const : 'FAILED' as const,
+        verdict: presence.verdict,
+        reason: presence.reason,
+        missing: presence.missing,
+        expectedCount: presence.expected.length,
+      }];
+    });
+  } catch {
+    return [];
   }
 }
 

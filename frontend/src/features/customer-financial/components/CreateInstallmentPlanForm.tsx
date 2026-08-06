@@ -59,6 +59,7 @@ export const CreateInstallmentPlanForm: React.FC<CreateInstallmentPlanFormProps>
           totalAmount: values.totalAmount || '',
           startDate: values.startDate || '',
           installmentCount,
+          frequency: values.frequency,
           manualAmounts: scheduleMode === 'MANUAL' ? manualAmounts : undefined,
         }),
         error: null,
@@ -66,7 +67,7 @@ export const CreateInstallmentPlanForm: React.FC<CreateInstallmentPlanFormProps>
     } catch (error) {
       return { preview: null, error: error instanceof Error ? error.message : 'Preview unavailable.' };
     }
-  }, [installmentCount, manualAmounts, scheduleMode, values.startDate, values.totalAmount]);
+  }, [installmentCount, manualAmounts, scheduleMode, values.frequency, values.startDate, values.totalAmount]);
 
   useEffect(() => {
     if (!Number.isInteger(installmentCount) || installmentCount < 1 || installmentCount > 120) {
@@ -95,7 +96,7 @@ export const CreateInstallmentPlanForm: React.FC<CreateInstallmentPlanFormProps>
         description: formValues.description.trim(),
         startDate: formValues.startDate,
         installmentCount: formValues.installmentCount,
-        frequency: 'MONTHLY',
+        frequency: formValues.frequency,
         notes: formValues.notes?.trim() || null,
         schedule:
           scheduleMode === 'MANUAL'
@@ -170,6 +171,7 @@ export const CreateInstallmentPlanForm: React.FC<CreateInstallmentPlanFormProps>
       <TextField label="Frequency / التكرار" error={errors.frequency?.message}>
         <select {...register('frequency')} className={inputClass(Boolean(errors.frequency))}>
           <option value="MONTHLY">Monthly / شهري</option>
+          <option value="WEEKLY">Weekly / أسبوعي</option>
         </select>
       </TextField>
 

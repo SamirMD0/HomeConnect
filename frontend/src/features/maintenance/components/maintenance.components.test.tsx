@@ -1,9 +1,35 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { PendingRepairsList } from './PendingRepairsList';
 import { PreflightReportCard } from './PreflightReportCard';
 import { RepairHistoryTable } from './RepairHistoryTable';
-import { PendingRepair, PreflightReport, RepairHistoryRow } from '../types/maintenance.types';
+import { ResolveMigrationsPanel } from './ResolveMigrationsPanel';
+import { PendingMigration, PendingRepair, PreflightReport, RepairHistoryRow } from '../types/maintenance.types';
+
+const renderPanel = (migrations: PendingMigration[]) => renderToStaticMarkup(
+  <QueryClientProvider client={new QueryClient()}>
+    <ResolveMigrationsPanel migrations={migrations} />
+  </QueryClientProvider>
+);
+
+const present: PendingMigration = {
+  name: '20260803090000_add_product_image',
+  state: 'PENDING',
+  verdict: 'PRESENT',
+  reason: 'All 2 items this update creates are already in the database.',
+  missing: [],
+  expectedCount: 2,
+};
+
+const absent: PendingMigration = {
+  name: '20260804120000_add_sales_orders',
+  state: 'PENDING',
+  verdict: 'MISSING',
+  reason: 'The database is missing 1 of 26 items this update creates.',
+  missing: ['table:sales_orders'],
+  expectedCount: 26,
+};
 
 const repair: PendingRepair = {
   repairId: 'product-sku',
@@ -107,3 +133,43 @@ describe('repair history table', () => {
     expect(html).toContain('verification failed');
   });
 });
+
+describe('ResolveMigrationsPanel', () => {
+  it('renders nothing when no update is outstanding', () => {
+    expect(renderPanel([])).toBe('');
+  });
+
+  it('offers an update whose schema is already in the database', () => {
+    const html = renderPanel([present]);
+    expect(html).toContain('20260803090000_add_product_image');
+    expect(html).toContain('In database');
+    expect(html).toContain('Record as applied');
+    expect(checkboxFor(html, present.name)).not.toContain('disabled=""');
+  });
+
+  /** The safety property: an update the database is missing cannot be recorded. */
+  it('disables an update whose schema is missing and names what is absent', () => {
+    const html = renderPanel([absent]);
+    expect(html).toContain('Not in database');
+    expect(html).toContain('table:sales_orders');
+    expect(checkboxFor(html, absent.name)).toContain('disabled=""');
+  });
+
+  it('states that no update SQL is executed', () => {
+    expect(renderPanel([present])).toContain('none of the update');
+  });
+
+  it('shows an unknown verdict without blocking it', () => {
+    const unknown = { ...present, verdict: 'UNKNOWN' as const, reason: 'No table could be detected.', expectedCount: 0 };
+    const html = renderPanel([unknown]);
+    expect(html).toContain('Cannot check');
+    expect(checkboxFor(html, unknown.name)).not.toContain('disabled=""');
+  });
+});
+
+/** The checkbox tag alone: the surrounding buttons are disabled for other reasons. */
+function checkboxFor(html: string, name: string): string {
+  const match = html.match(new RegExp(`<input[^>]*aria-label="Record ${name} as already applied"[^>]*>`));
+  expect(match, `no checkbox rendered for ${name}`).not.toBeNull();
+  return match![0];
+}

@@ -14,7 +14,7 @@ import {
   canRecordInstallmentPlanPayment,
 } from '../../customer-financial/utils/financial-auth';
 import { formatBusinessDate, formatMoney } from '../../customer-financial/utils/financial-format';
-import { CustomerPicker } from './CustomerPicker';
+import { CustomerPicker } from '../../customers/components/CustomerPicker';
 
 /** Only these fields are needed to record a payment for a known customer. */
 export type ReceivePaymentCustomer = Pick<Customer, 'id' | 'name' | 'phone'>;

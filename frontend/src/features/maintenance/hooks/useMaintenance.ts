@@ -28,3 +28,12 @@ export function useApplyRepairs() {
     onSettled: () => queryClient.invalidateQueries({ queryKey: maintenanceKeys.all }),
   });
 }
+
+export function useResolveMigrations() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ accountPassword, migrationNames }: { accountPassword: string; migrationNames: string[] }) =>
+      maintenanceApi.resolveMigrations(accountPassword, migrationNames),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: maintenanceKeys.all }),
+  });
+}

@@ -2,6 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { generateInstallmentPreview } from './installment-preview';
 
 describe('generateInstallmentPreview', () => {
+  it('previews weekly due dates seven days apart', () => {
+    const preview = generateInstallmentPreview({
+      totalAmount: '300.00', startDate: '2026-08-01', installmentCount: 3, frequency: 'WEEKLY',
+    });
+    expect(preview.rows.map((row) => row.dueDate)).toEqual(['2026-08-01', '2026-08-08', '2026-08-15']);
+  });
   it('uses start date as first due date and splits whole-dollar totals without cents', () => {
     const preview = generateInstallmentPreview({
       totalAmount: '320.00',

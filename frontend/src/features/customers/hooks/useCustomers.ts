@@ -1,14 +1,26 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { customersApi } from '../api/customers.api';
+import { CustomerListParams, customersApi } from '../api/customers.api';
 import toast from 'react-hot-toast';
 
-export const useCustomers = (params?: { page?: number; limit?: number; search?: string; sortBy?: string; sortOrder?: string }) => {
+export const useCustomers = (params?: CustomerListParams) => {
   return useQuery({
     queryKey: ['customers', params],
     queryFn: () => customersApi.getCustomers(params),
     placeholderData: (previousData) => previousData, // keep previous data while fetching new (e.g. for pagination/search)
   });
 };
+
+export const useCustomerSearchSuggestions = (query: string, enabled: boolean) => useQuery({
+  queryKey: ['customer-search-suggestions', query],
+  queryFn: () => customersApi.getSearchSuggestions(query),
+  enabled: enabled && query.trim().length >= 3,
+});
+
+export const useCustomerActivity = (customerId: string) => useQuery({
+  queryKey: ['customer-activity', customerId],
+  queryFn: () => customersApi.getActivity(customerId),
+  enabled: Boolean(customerId),
+});
 
 export const useCustomer = (id: string) => {
   return useQuery({

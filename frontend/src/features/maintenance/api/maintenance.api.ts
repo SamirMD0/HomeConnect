@@ -1,5 +1,5 @@
 import { api } from '../../../services/api';
-import { MaintenanceOverview, PreflightReport, RepairOutcome } from '../types/maintenance.types';
+import { MaintenanceOverview, PreflightReport, RepairOutcome, ResolveMigrationOutcome } from '../types/maintenance.types';
 
 interface ApiResponse<T> { success: boolean; data: T }
 
@@ -22,5 +22,13 @@ export const maintenanceApi = {
     (await api.post<ApiResponse<{ outcomes: RepairOutcome[] }>>('/admin/maintenance/apply', {
       accountPassword,
       confirmation: 'APPLY',
+    })).data.data.outcomes,
+
+  /** Records hand-applied updates as done. Runs none of the update's own SQL. */
+  resolveMigrations: async (accountPassword: string, migrationNames: string[]): Promise<ResolveMigrationOutcome[]> =>
+    (await api.post<ApiResponse<{ outcomes: ResolveMigrationOutcome[] }>>('/admin/maintenance/migrations/resolve', {
+      accountPassword,
+      migrationNames,
+      confirmation: 'RESOLVE',
     })).data.data.outcomes,
 };

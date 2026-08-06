@@ -24,6 +24,7 @@ export interface ApiEnvelope<T> {
 export type CustomerFinancialSummaryResponse = ApiEnvelope<CustomerFinancialSummary>;
 
 export interface CustomerFinancialSummary {
+  businessDate?: string;
   customer: FinancialSummaryCustomer;
   summary: FinancialSummaryTotals;
   debts: DebtSummaryItem[];
@@ -55,6 +56,11 @@ export interface FinancialSummaryTotals {
   overdueInstallmentCount: number;
   nextDueDate: string | null;
   nextDueAmount: string;
+  totalObligated?: string;
+  overdueAmount?: string;
+  lastPaymentDate?: string | null;
+  daysSinceLastPayment?: number | null;
+  month?: { debtAdded: string; paid: string; remaining: string; isSettled: boolean };
 }
 
 export interface FinancialUserSummary {
@@ -96,7 +102,7 @@ export interface InstallmentPlanSummaryItem {
   remainingBalance: string;
   startDate: string;
   installmentCount: number;
-  frequency: 'MONTHLY';
+  frequency: 'MONTHLY' | 'WEEKLY';
   completedInstallmentCount: number;
   overdueInstallmentCount: number;
   nextDueDate: string | null;
@@ -180,6 +186,7 @@ export interface CustomerFinancialSummaryOptions {
   paymentLimit?: number;
   debtLimit?: number;
   planLimit?: number;
+  month?: string;
 }
 
 export interface DebtDetail extends DebtSummaryItem {
@@ -272,7 +279,7 @@ export interface CreateInstallmentPlanRequest {
   description: string;
   startDate: string;
   installmentCount: number;
-  frequency: 'MONTHLY';
+  frequency: 'MONTHLY' | 'WEEKLY';
   notes?: string | null;
   schedule?: Array<{
     amountDue: string;

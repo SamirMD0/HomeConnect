@@ -17,6 +17,7 @@ export const customerFinancialSummaryQuerySchema = z.object({
   paymentLimit: z.coerce.number().int().positive().max(100).default(20),
   debtLimit: z.coerce.number().int().positive().max(100).default(50),
   planLimit: z.coerce.number().int().positive().max(100).default(50),
+  month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/).optional(),
 });
 
 export type CustomerFinancialSummaryParamsInput = z.infer<

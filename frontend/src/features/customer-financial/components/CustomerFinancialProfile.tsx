@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Modal } from '../../../components/ui/Modal';
 import { useAuth } from '../../../hooks/useAuth';
 import { useCustomerFinancialSummary } from '../hooks/useCustomerFinancialSummary';
@@ -30,12 +30,18 @@ import { RecentPaymentsList } from './RecentPaymentsList';
 import { RecordDebtPaymentDialog } from './RecordDebtPaymentDialog';
 import { RecordPlanPaymentDialog } from './RecordPlanPaymentDialog';
 import { VoidPaymentDialog } from './VoidPaymentDialog';
+import { useCustomerActivity } from '../../customers/hooks/useCustomers';
+import { CustomerActivityTimeline } from '../../../pages/customers/components/CustomerActivityTimeline';
+import { CustomerAttentionPanel } from '../../../pages/customers/components/CustomerAttentionPanel';
+import { CustomerMonthStatusCard } from '../../../pages/customers/components/CustomerMonthStatusCard';
 
-type FinancialProfileTab = 'overview' | 'debts' | 'plans' | 'payments' | 'overdue' | 'legacy';
+export type FinancialProfileTab = 'overview' | 'debts' | 'plans' | 'payments' | 'overdue' | 'legacy' | 'activity';
 
 interface CustomerFinancialProfileProps {
   customerId: string;
   legacyLedger: React.ReactNode;
+  activeTab?: FinancialProfileTab;
+  onTabChange?: (tab: FinancialProfileTab) => void;
 }
 
 const tabs: Array<{ id: FinancialProfileTab; label: string }> = [
@@ -45,15 +51,21 @@ const tabs: Array<{ id: FinancialProfileTab; label: string }> = [
   { id: 'payments', label: 'Payments' },
   { id: 'overdue', label: 'Overdue' },
   { id: 'legacy', label: 'Legacy Ledger' },
+  { id: 'activity', label: 'Activity / النشاط' },
 ];
 
 export const CustomerFinancialProfile: React.FC<CustomerFinancialProfileProps> = ({
   customerId,
   legacyLedger,
+  activeTab: controlledTab,
+  onTabChange,
 }) => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<FinancialProfileTab>('overview');
+  const [internalTab, setInternalTab] = useState<FinancialProfileTab>('overview');
+  const activeTab = controlledTab ?? internalTab;
+  const setActiveTab = (tab: FinancialProfileTab) => { setInternalTab(tab); onTabChange?.(tab); };
   const [includeCancelled, setIncludeCancelled] = useState(false);
+  const [month, setMonth] = useState<string>();
   const [selectedDebtId, setSelectedDebtId] = useState<string | null>(null);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -76,7 +88,11 @@ export const CustomerFinancialProfile: React.FC<CustomerFinancialProfileProps> =
     paymentLimit: 20,
     debtLimit: 50,
     planLimit: 50,
+    month,
   });
+  useEffect(() => {
+    if (!month && data?.businessDate) setMonth(data.businessDate.slice(0, 7));
+  }, [data?.businessDate, month]);
   const canMutateFinancialRecords = isFinancialAdmin(user?.role);
 
   if (isLoading) {
@@ -132,6 +148,8 @@ export const CustomerFinancialProfile: React.FC<CustomerFinancialProfileProps> =
       </div>
 
       <FinancialSummaryCards summary={data.summary} />
+      <CustomerAttentionPanel data={data} />
+      {data.summary.month && <CustomerMonthStatusCard month={data.summary.month} />}
 
       {hasNoFinancialData && (
         <FinancialEmptyState
@@ -175,6 +193,7 @@ export const CustomerFinancialProfile: React.FC<CustomerFinancialProfileProps> =
             onRecordPlanPayment={setPlanForPayment}
             onCancelPlan={setPlanForCancellation}
             onVoidPayment={setPaymentForVoid}
+            customerId={customerId}
           />
         </div>
       </div>
@@ -353,6 +372,7 @@ interface FinancialTabPanelProps {
   onRecordPlanPayment: (plan: InstallmentPlanSummaryItem) => void;
   onCancelPlan: (plan: InstallmentPlanSummaryItem) => void;
   onVoidPayment: (payment: RecentFinancialPayment) => void;
+  customerId: string;
 }
 
 const FinancialTabPanel: React.FC<FinancialTabPanelProps> = ({
@@ -367,7 +387,9 @@ const FinancialTabPanel: React.FC<FinancialTabPanelProps> = ({
   onRecordPlanPayment,
   onCancelPlan,
   onVoidPayment,
+  customerId,
 }) => {
+  if (activeTab === 'activity') return <CustomerActivityPanel customerId={customerId} />;
   if (activeTab === 'debts') {
     return (
       <CustomerDebtsList
@@ -445,6 +467,13 @@ const FinancialTabPanel: React.FC<FinancialTabPanelProps> = ({
       />
     </div>
   );
+};
+
+const CustomerActivityPanel: React.FC<{ customerId: string }> = ({ customerId }) => {
+  const activity = useCustomerActivity(customerId);
+  if (activity.isLoading) return <p className="text-sm text-slate-500">Loading activity...</p>;
+  if (activity.isError) return <p className="text-sm text-red-700">Activity could not be loaded.</p>;
+  return <CustomerActivityTimeline items={activity.data ?? []} />;
 };
 
 function getErrorTitle(error: unknown): string {

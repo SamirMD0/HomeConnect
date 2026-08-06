@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { CustomersService } from '../services/customers.service';
 import { TransactionsService } from '../services/transactions.service';
+import { CustomerSuggestionsService } from '../features/customers/customer-suggestions.service';
 
 export class CustomersController {
   static async createCustomer(req: Request, res: Response, next: NextFunction) {
@@ -21,17 +22,19 @@ export class CustomersController {
 
   static async listCustomers(req: Request, res: Response, next: NextFunction) {
     try {
-      const { search, sortBy, sortOrder } = req.query as any;
+      const { search, sortBy, sortOrder, include, filter } = req.query as any;
       const pageNum = Number(req.query.page) || 1;
       const limitNum = Number(req.query.limit) || 10;
       const skip = (pageNum - 1) * limitNum;
-      
+
       const { customers, total } = await CustomersService.listCustomers({
         skip,
         take: limitNum,
         search,
         sortBy,
         sortOrder,
+        includeFinancial: include === 'financial',
+        filter,
       });
 
       res.status(200).json({
@@ -47,6 +50,16 @@ export class CustomersController {
           timestamp: new Date().toISOString()
         }
       });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async searchSuggestions(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { q, limit } = req.query as unknown as { q: string; limit: number };
+      const suggestions = await CustomerSuggestionsService.suggest(q, Number(limit));
+      res.status(200).json({ success: true, data: { suggestions } });
     } catch (error) {
       next(error);
     }

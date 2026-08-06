@@ -12,7 +12,6 @@ import {
   assertCanCancelInstallmentPlan,
   assertIdempotentReplay,
   assertPositiveMoney,
-  addMonthsToBusinessDate,
   businessDateToPrisma,
   calculateInstallmentBalance,
   calculateInstallmentPlanSummary,
@@ -24,6 +23,7 @@ import {
   FinancialRecordAlreadyPaidError,
   FinancialRecordCancelledError,
   generateMonthlyInstallmentSchedule,
+  installmentDueDate,
   isPaymentAllocationVoided,
   moneyToApiString,
   moneyToCents,
@@ -585,7 +585,7 @@ export class InstallmentPlansService {
 
     return amounts.map((amountDue, index) => ({
       installmentNumber: index + 1,
-      dueDate: addMonthsToBusinessDate(startDate, index),
+      dueDate: installmentDueDate(startDate, index, input.frequency),
       amountDue,
     }));
   }
@@ -626,7 +626,7 @@ export class InstallmentPlansService {
 
     return amounts.map((amountDue, index) => ({
       installmentNumber: index + 1,
-      dueDate: addMonthsToBusinessDate(input.startDate, index),
+      dueDate: installmentDueDate(input.startDate, index, input.frequency),
       amountDue,
     }));
   }
@@ -638,10 +638,6 @@ export class InstallmentPlansService {
     frequency: InstallmentPlanFrequency;
     existingPlan: InstallmentPlanWithDetails;
   }) {
-    if (input.frequency !== InstallmentPlanFrequency.MONTHLY) {
-      throw new FinancialInvariantError('Only monthly installment schedules are supported');
-    }
-
     const fixedAmounts = input.existingPlan.installments.map((installment) => {
       const paidAmount = this.installmentNonVoidedPaymentTotal(installment);
       return paidAmount.greaterThan(new Decimal('0.00')) ? installment.amountDue : new Decimal('0.00');
@@ -682,7 +678,7 @@ export class InstallmentPlansService {
 
     return amounts.map((amountDue, index) => ({
       installmentNumber: index + 1,
-      dueDate: addMonthsToBusinessDate(input.startDate, index),
+      dueDate: installmentDueDate(input.startDate, index, input.frequency),
       amountDue,
     }));
   }

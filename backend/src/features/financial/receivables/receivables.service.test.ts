@@ -8,6 +8,12 @@ import {
 import { Decimal } from '@prisma/client/runtime/library';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  looksLikePhoneQuery,
+  normalizePhoneTerm,
+  normalizeSearchTerm,
+  tokenizeSearchTerm,
+} from '../../../lib/search-normalize';
+import {
   ReceivableCustomerRecord,
   ReceivableDebtRecord,
   ReceivablePaymentRecord,
@@ -26,6 +32,32 @@ vi.mock('./receivables.repository', () => ({
   ReceivablesRepository: repositoryMock,
 }));
 
+// This fake approximates the SQL matcher so the service tests stay isolated
+// from Prisma. Authoritative match semantics remain in search-query.customer.test.ts;
+// if this fake and the SQL-shape coverage disagree, the SQL test is right.
+vi.mock('../../../lib/search-query', () => ({
+  findSearchMatchIds: vi.fn(async (_target: string, rawTerm: string | null | undefined) => {
+    const trimmed = (rawTerm ?? '').trim();
+    if (!trimmed) return null;
+
+    const customers = [alice, bilal, carla, ahmad, mohammad];
+    if (looksLikePhoneQuery(trimmed)) {
+      const phoneTerm = normalizePhoneTerm(trimmed);
+      return customers
+        .filter((customer) => normalizePhoneTerm(customer.phone).includes(phoneTerm))
+        .map((customer) => customer.id);
+    }
+
+    const tokens = tokenizeSearchTerm(trimmed);
+    return customers
+      .filter((customer) => {
+        const normalizedName = normalizeSearchTerm(customer.name);
+        return tokens.every((token) => normalizedName.includes(token));
+      })
+      .map((customer) => customer.id);
+  }),
+}));
+
 vi.mock('../../financial', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../financial')>();
   return {
@@ -40,6 +72,8 @@ const adminUserId = '11111111-1111-4111-8111-111111111111';
 const alice = makeCustomer('22222222-2222-4222-8222-222222222222', 'Alice Karam', '70111111');
 const bilal = makeCustomer('33333333-3333-4333-8333-333333333333', 'Bilal Nassar', '71222222');
 const carla = makeCustomer('44444444-4444-4444-8444-444444444444', 'Carla Rizk', '76333333');
+const ahmad = makeCustomer('99999999-9999-4999-8999-999999999998', 'احمد', '70999998');
+const mohammad = makeCustomer('99999999-9999-4999-8999-999999999999', 'محمد سالم عمار', '70999999');
 
 function makeCustomer(id: string, name: string, phone: string): ReceivableCustomerRecord {
   return { id, name, phone, isActive: true };
@@ -310,7 +344,7 @@ describe('ReceivablesService', () => {
     expect(row.tier).toBe('CURRENT');
   });
 
-  it('marks an overdue customer who never paid as CRITICAL', async () => {
+  it('keeps a customer who is one day overdue in WATCH even when they never paid', async () => {
     repositoryMock.loadReceivableRecords.mockResolvedValue({
       customers: [alice],
       debts: [makeDebt({ dueDate: businessDate('2026-07-27') })],
@@ -320,7 +354,7 @@ describe('ReceivablesService', () => {
 
     const [row] = (await ReceivablesService.getReceivables(query())).items;
 
-    expect(row.tier).toBe('CRITICAL');
+    expect(row.tier).toBe('WATCH');
     expect(row.paymentCount).toBe(0);
     expect(row.tierReason).toBe('1 day late · never paid anything');
   });
@@ -487,5 +521,67 @@ describe('ReceivablesService', () => {
     expect(tierFiltered.items).toHaveLength(1);
     expect(tierFiltered.tierCounts.WATCH).toBe(1);
     expect(tierFiltered.summary.customerCount).toBe(1);
+  });
+
+  it('matches Arabic spelling variants through the shared search result ids', async () => {
+    repositoryMock.loadReceivableRecords.mockResolvedValue({
+      customers: [ahmad],
+      debts: [],
+      plans: [],
+      payments: [],
+    });
+
+    const result = await ReceivablesService.getReceivables(query({ search: 'أحمد' }));
+
+    expect(result.items.map((item) => item.customer.name)).toEqual(['احمد']);
+  });
+
+  it('matches non-contiguous customer-name tokens through the shared search result ids', async () => {
+    repositoryMock.loadReceivableRecords.mockResolvedValue({
+      customers: [mohammad, bilal],
+      debts: [],
+      plans: [],
+      payments: [],
+    });
+
+    const result = await ReceivablesService.getReceivables(query({ search: 'محمد عمار' }));
+
+    expect(result.items.map((item) => item.customer.name)).toEqual(['محمد سالم عمار']);
+  });
+
+  it.each([undefined, '   '])('does not filter for a blank search term (%j)', async (search) => {
+    repositoryMock.loadReceivableRecords.mockResolvedValue({
+      customers: [alice, bilal, carla],
+      debts: [],
+      plans: [],
+      payments: [],
+    });
+
+    const result = await ReceivablesService.getReceivables(query({ search }));
+
+    expect(result.items).toHaveLength(3);
+  });
+
+  it('returns no items and computes zero tier counts for an unmatched base search', async () => {
+    repositoryMock.loadReceivableRecords.mockResolvedValue({
+      customers: [alice, bilal, carla],
+      debts: [],
+      plans: [],
+      payments: [],
+    });
+
+    const result = await ReceivablesService.getReceivables(
+      query({ search: 'لا يوجد', tier: ['NO_ACTIVITY'] })
+    );
+
+    expect(result.items).toEqual([]);
+    expect(result.tierCounts).toEqual({
+      NO_ACTIVITY: 0,
+      CURRENT: 0,
+      WATCH: 0,
+      LATE: 0,
+      SEVERE: 0,
+      CRITICAL: 0,
+    });
   });
 });

@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../../lib/prisma';
+import { findSearchMatchIds } from '../../../lib/search-query';
 import { serviceJobInclude } from '../service-jobs/service-jobs.repository';
 
 const productActorInclude = {
@@ -45,24 +46,16 @@ export class ProductsRepository {
     skip: number;
     take: number;
   }) {
+    const searchMatchIds = await findSearchMatchIds('product', params.search);
+    if (searchMatchIds?.length === 0) return { items: [], total: 0 };
     const where: Prisma.ProductWhereInput = {
       ...(params.isActive === undefined ? {} : { isActive: params.isActive }),
       ...(params.brand ? { brand: { equals: params.brand, mode: 'insensitive' } } : {}),
       ...(params.hasBarcode === undefined ? {} : params.hasBarcode ? { barcode: { not: null } } : { barcode: null }),
-      ...(params.search
-        ? {
-            OR: [
-              { name: { contains: params.search, mode: 'insensitive' } },
-              { sku: { contains: params.search, mode: 'insensitive' } },
-              { model: { contains: params.search, mode: 'insensitive' } },
-              { brand: { contains: params.search, mode: 'insensitive' } },
-              { barcode: { startsWith: params.search, mode: 'insensitive' } },
-            ],
-          }
-        : {}),
+      ...(searchMatchIds ? { id: { in: searchMatchIds } } : {}),
     };
     const [exact, total] = await Promise.all([
-      params.search && params.skip === 0 ? prisma.product.findFirst({
+      params.search ? prisma.product.findFirst({
         where: {
           AND: [where, { OR: [
             { sku: { equals: params.search, mode: 'insensitive' } },
@@ -73,14 +66,15 @@ export class ProductsRepository {
       }) : Promise.resolve(null),
       prisma.product.count({ where }),
     ]);
+    const hoistExact = exact != null && params.skip === 0;
     const remaining = await prisma.product.findMany({
       where: exact ? { AND: [where, { id: { not: exact.id } }] } : where,
       include: productActorInclude,
-      skip: params.skip,
-      take: Math.max(0, params.take - (exact ? 1 : 0)),
+      skip: exact ? Math.max(0, params.skip - 1) : params.skip,
+      take: Math.max(0, params.take - (hoistExact ? 1 : 0)),
       orderBy: [{ [params.sortBy]: params.sortOrder }, { id: 'asc' }],
     });
-    const items = exact ? [exact, ...remaining] : remaining;
+    const items = hoistExact ? [exact, ...remaining] : remaining;
     return { items, total };
   }
 

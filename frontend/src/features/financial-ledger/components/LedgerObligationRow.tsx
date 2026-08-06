@@ -14,6 +14,9 @@ import {
 } from '../types/financial-ledger.types';
 import { LEDGER_CORRECTION_ENABLED, LedgerActionItem, LedgerRowActions } from './LedgerRowActions';
 
+const ledgerCellHover =
+  'bg-white transition-all duration-200 group-hover:bg-gray-600 group-hover:text-yellow-300 group-hover:[text-shadow:0_0_8px_rgba(250,204,21,0.8)]';
+
 interface LedgerObligationRowProps {
   item: FinancialLedgerDebtItem | FinancialLedgerPlanItem;
   isExpanded: boolean;
@@ -80,14 +83,14 @@ export const LedgerObligationRow: React.FC<LedgerObligationRowProps> = ({
   });
 
   return (
-    <tr className={`h-14 align-middle hover:bg-slate-50 ${isExpanded ? 'bg-slate-50' : 'bg-white'}`}>
-      <td className="w-10 px-2 py-3 text-center">
+    <tr className="group align-middle [filter:drop-shadow(0_1px_1px_rgba(15,23,42,0.05))]">
+      <td className={`w-10 rounded-l-md px-2 py-2 text-center ${ledgerCellHover}`}>
         <button
           type="button"
           aria-expanded={isExpanded}
           aria-controls={childRegionId}
           onClick={onToggleExpanded}
-          className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-md text-slate-500 hover:bg-white hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+          className="inline-flex min-h-8 min-w-8 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-yellow-300 hover:text-slate-950 focus:outline-none focus:ring-2 focus:ring-yellow-300/50 group-hover:text-yellow-300"
         >
           <ChevronRight
             className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
@@ -98,16 +101,16 @@ export const LedgerObligationRow: React.FC<LedgerObligationRowProps> = ({
           </span>
         </button>
       </td>
-      <td className={`whitespace-nowrap px-4 py-3 ${isOverdue ? 'font-medium text-red-700' : 'text-slate-600'}`}>
+      <td className={`whitespace-nowrap px-4 py-2 ${ledgerCellHover} ${isOverdue ? 'font-medium text-red-700' : 'text-slate-600'}`}>
         <p>{formatBusinessDate(dueDate)}</p>
-        <p className="text-xs font-normal text-slate-400">Created {formatDateTime(item.createdAt)}</p>
+        <p className="text-[11px] font-normal text-slate-400 transition-colors group-hover:text-yellow-200">Created {formatDateTime(item.createdAt)}</p>
       </td>
-      <td className="px-4 py-3">
-        <p className="user-text font-medium text-slate-900" dir="auto">{item.customer.name}</p>
-        <p className="text-xs text-slate-500">{item.customer.phone}</p>
+      <td className={`px-4 py-2 ${ledgerCellHover}`}>
+        <p className="user-text font-medium text-slate-900 transition-colors group-hover:text-yellow-300" dir="auto">{item.customer.name}</p>
+        <p className="text-[11px] text-slate-500 transition-colors group-hover:text-yellow-200">{item.customer.phone}</p>
       </td>
-      <td className="hidden px-4 py-3 lg:table-cell">
-        <span className="inline-flex rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700">
+      <td className={`hidden px-4 py-2 lg:table-cell ${ledgerCellHover}`}>
+        <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700 transition-colors group-hover:bg-yellow-300 group-hover:text-slate-950">
           {isDebt
             ? `Debt · ${debtProgressLabel(item)}`
             : periodSummary
@@ -115,13 +118,13 @@ export const LedgerObligationRow: React.FC<LedgerObligationRowProps> = ({
               : `Plan · ${item.completedInstallmentCount} of ${item.installmentCount}`}
         </span>
       </td>
-      <td className="max-w-xs px-4 py-3 text-slate-700">
+      <td className={`max-w-xs px-4 py-2 text-slate-700 ${ledgerCellHover}`}>
         <div className="space-y-1">
           <p className="user-text line-clamp-2" dir="auto" title={item.description}>
             {item.description}
           </p>
           {isDebt && saleDeposit && (
-            <p className="text-xs text-slate-500">
+            <p className="text-[11px] text-slate-500 transition-colors group-hover:text-yellow-200">
               Deposit at sale: {formatMoney(saleDeposit)}
             </p>
           )}
@@ -139,10 +142,10 @@ export const LedgerObligationRow: React.FC<LedgerObligationRowProps> = ({
         weight="semibold"
         muteZero
       />
-      <td className="px-4 py-3">
+      <td className={`px-4 py-2 ${ledgerCellHover}`}>
         <FinancialStatusBadge type={statusType} status={displayStatus} />
       </td>
-      <td className="px-4 py-3 text-right">
+      <td className={`rounded-r-md px-4 py-2 text-right ${ledgerCellHover}`}>
         <div className="inline-flex items-center justify-end gap-2">
           <button
             type="button"
@@ -151,9 +154,9 @@ export const LedgerObligationRow: React.FC<LedgerObligationRowProps> = ({
               event.stopPropagation();
               openEdit();
             }}
-            className="inline-flex min-h-9 items-center rounded-md border border-slate-200 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-950 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+            className="inline-flex min-h-8 items-center rounded-md border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-600 transition-all hover:border-yellow-300 hover:bg-gray-600 hover:text-yellow-300 hover:shadow-[0_0_12px_rgba(250,204,21,0.4)] focus:outline-none focus:ring-2 focus:ring-yellow-300/50"
           >
-            Edit / تعديل
+            Edit
           </button>
           <LedgerRowActions
             menuKey={`${item.type}-${item.id}`}
@@ -190,9 +193,9 @@ function buildObligationActions({
 }: BuildObligationActionsArgs): LedgerActionItem[] {
   if (item.type === 'DEBT') {
     return [
-      { label: 'View Details / عرض التفاصيل', onClick: () => onViewDebt(item.id) },
+      { label: 'View details', onClick: () => onViewDebt(item.id) },
       ...(canMutate && canRecordDebtPayment(item.status)
-        ? [{ label: 'Record Payment / تسجيل دفعة', onClick: () => onRecordDebtPayment(item), tone: 'pay' as const }]
+        ? [{ label: 'Record payment', onClick: () => onRecordDebtPayment(item), tone: 'pay' as const }]
         : []),
       ...(LEDGER_CORRECTION_ENABLED && canMutate
         ? [{ label: 'Correct...', onClick: () => onViewDebt(item.id) }]
@@ -200,7 +203,7 @@ function buildObligationActions({
       ...(canMutate && canCancelDebt(item.status, item.totalPaid, item.kind)
         ? [
             {
-              label: 'Cancel Debt / إلغاء الدين',
+              label: 'Cancel debt',
               onClick: () => onCancelDebt(item),
               tone: 'cancel' as const,
             },
@@ -210,15 +213,15 @@ function buildObligationActions({
   }
 
   return [
-    { label: 'View Details / عرض التفاصيل', onClick: () => onViewPlan(item.id) },
+    { label: 'View details', onClick: () => onViewPlan(item.id) },
     ...(canMutate && canRecordInstallmentPlanPayment(item.status)
-      ? [{ label: 'Record Payment / تسجيل دفعة', onClick: () => onRecordPlanPayment(item), tone: 'pay' as const }]
+      ? [{ label: 'Record payment', onClick: () => onRecordPlanPayment(item), tone: 'pay' as const }]
       : []),
     ...(LEDGER_CORRECTION_ENABLED && canMutate
       ? [{ label: 'Correct...', onClick: () => onViewPlan(item.id) }]
       : []),
     ...(canMutate && canCancelInstallmentPlan(item.status, item.totalPaid)
-      ? [{ label: 'Cancel Plan / إلغاء الخطة', onClick: () => onCancelPlan(item), tone: 'cancel' as const }]
+      ? [{ label: 'Cancel plan', onClick: () => onCancelPlan(item), tone: 'cancel' as const }]
       : []),
   ];
 }
@@ -243,7 +246,7 @@ export const MoneyCell: React.FC<{
 
   return (
     <td
-      className={`px-4 py-3 text-right tabular-nums ${className} ${
+      className={`bg-white px-4 py-2 text-right tabular-nums transition-all duration-200 group-hover:bg-gray-600 group-hover:text-yellow-300 group-hover:[text-shadow:0_0_8px_rgba(250,204,21,0.8)] ${className} ${
         isEmpty || isZero
           ? 'text-slate-400'
           : `${weightClass} ${tone === 'liability' ? 'text-red-700' : 'text-slate-900'}`

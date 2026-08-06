@@ -3,7 +3,9 @@ import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { app } from '../../app';
 
-const { service } = vi.hoisted(() => ({ service: { overview: vi.fn(), applyPendingChanges: vi.fn() } }));
+const { service } = vi.hoisted(() => ({
+  service: { overview: vi.fn(), applyPendingChanges: vi.fn(), resolveMigrations: vi.fn() },
+}));
 vi.mock('./maintenance.service', () => ({ MaintenanceService: service }));
 vi.mock('../../lib/prisma', () => ({
   prisma: { $queryRaw: vi.fn().mockResolvedValue([{ result: 1 }]) },
@@ -20,18 +22,64 @@ const overview = {
   toolsAvailable: true,
   blockedReason: null,
   migrations: { pending: [], failed: [], mismatched: [], databaseIsNewer: false },
+  pendingMigrations: [],
   pendingRepairs: [],
   registryProblems: [],
   history: [],
 };
 
 const credentials = { accountPassword: 'pass', confirmation: 'APPLY' };
+const resolveBody = {
+  accountPassword: 'pass',
+  confirmation: 'RESOLVE',
+  migrationNames: ['20260803090000_add_product_image'],
+};
+const resolveUrl = '/api/v1/admin/maintenance/migrations/resolve';
 
 describe('maintenance routes', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     service.overview.mockResolvedValue(overview);
     service.applyPendingChanges.mockResolvedValue([]);
+    service.resolveMigrations.mockResolvedValue([]);
+  });
+
+  describe('resolving hand-applied updates', () => {
+    it('requires authentication and admin role', async () => {
+      expect((await request(app).post(resolveUrl).send(resolveBody)).status).toBe(401);
+
+      const asEmployee = await request(app).post(resolveUrl).set('Authorization', `Bearer ${employee}`).send(resolveBody);
+      expect(asEmployee.status).toBe(403);
+      expect(service.resolveMigrations).not.toHaveBeenCalled();
+    });
+
+    it('rejects a missing password, a missing confirmation, and an empty selection', async () => {
+      const cases = [
+        { ...resolveBody, accountPassword: undefined },
+        { ...resolveBody, confirmation: 'APPLY' },
+        { ...resolveBody, migrationNames: [] },
+      ];
+      for (const body of cases) {
+        const response = await request(app).post(resolveUrl).set('Authorization', `Bearer ${admin}`).send(body);
+        expect(response.status).toBe(400);
+      }
+      expect(service.resolveMigrations).not.toHaveBeenCalled();
+    });
+
+    it('passes the named updates through to the service', async () => {
+      service.resolveMigrations.mockResolvedValue([
+        { name: '20260803090000_add_product_image', status: 'RESOLVED', message: 'Recorded as already applied.' },
+      ]);
+
+      const response = await request(app).post(resolveUrl).set('Authorization', `Bearer ${admin}`).send(resolveBody);
+
+      expect(response.status).toBe(200);
+      expect(response.body.data.outcomes[0].status).toBe('RESOLVED');
+      expect(service.resolveMigrations).toHaveBeenCalledWith(expect.objectContaining({
+        migrationNames: ['20260803090000_add_product_image'],
+        accountPassword: 'pass',
+      }));
+    });
   });
 
   it('requires authentication', async () => {

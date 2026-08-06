@@ -4,8 +4,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ExportPdfButton } from '../../features/products/components/ExportPdfButton';
 import { LabelSheetLayoutControls } from '../../features/products/components/LabelSheetLayoutControls';
 import { ProductLabelSheet } from '../../features/products/components/ProductLabelSheet';
+import { ProductLabelWarnings } from '../../features/products/components/ProductLabelWarnings';
 import { useProductLabels } from '../../features/products/hooks/useProducts';
-import { ProductLabelWarning } from '../../features/products/types/product.types';
 import { MAX_LABEL_SELECTION, parseLabelIds } from '../../features/products/utils/label-selection';
 import { calculateLabelSheetLayout } from '../../features/products/utils/label-sheet-layout';
 import { loadProductLabelSheetSettings } from '../../features/products/utils/product-label-settings';
@@ -82,39 +82,9 @@ export const ProductLabelsPage: React.FC = () => {
         </div>
       )}
 
-      <LabelWarnings warnings={labels.data?.warnings ?? []} />
+      <ProductLabelWarnings warnings={labels.data?.warnings ?? []} />
 
       <ProductLabelSheet labels={items} settings={settings} layout={layout} />
     </div>
   );
 };
-
-/**
- * Groups warnings by cause so a print run that partly failed says what happened
- * instead of quietly printing fewer labels than the user selected.
- */
-const LabelWarnings: React.FC<{ warnings: ProductLabelWarning[] }> = ({ warnings }) => {
-  if (!warnings.length) return null;
-
-  const archived = warnings.filter((warning) => warning.code === 'ARCHIVED_EXCLUDED');
-  const missing = warnings.filter((warning) => warning.code === 'NOT_FOUND');
-  const noPricing = warnings.filter((warning) => warning.code === 'NO_PRICING');
-  const noBarcode = warnings.filter((warning) => warning.code === 'MANUFACTURER_BARCODE_MISSING');
-
-  const messages: string[] = [];
-  if (archived.length) messages.push(`${archived.length} archived product${plural(archived.length)} excluded: ${names(archived)}`);
-  if (missing.length) messages.push(`${missing.length} selected product${plural(missing.length)} no longer available.`);
-  if (noPricing.length) messages.push(`No pricing available for ${names(noPricing)} — the price code is blank.`);
-  if (noBarcode.length) messages.push(`No manufacturer barcode for ${names(noBarcode)} — the SKU was encoded instead.`);
-
-  return (
-    <div role="status" className="no-print rounded-lg border border-amber-200 bg-amber-50 p-3">
-      <ul className="space-y-1 text-sm text-amber-900">
-        {messages.map((message) => <li key={message}>{message}</li>)}
-      </ul>
-    </div>
-  );
-};
-
-const plural = (count: number) => (count === 1 ? '' : 's');
-const names = (warnings: ProductLabelWarning[]) => warnings.map((warning) => warning.name ?? warning.productId).join(', ');

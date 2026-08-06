@@ -28,12 +28,14 @@ import {
 import { determineReceivableTier } from './receivables.tier';
 import { ReceivablesQueryInput } from './receivables.validator';
 import {
+  ReceivableCustomerProjection,
   ReceivableItemView,
   ReceivablesResponseView,
   ReceivableTier,
   ReceivableTierCounts,
   ReceivablesSummaryView,
 } from './receivables.types';
+import { findSearchMatchIds } from '../../../lib/search-query';
 
 const MILLISECONDS_PER_DAY = 86_400_000;
 
@@ -72,6 +74,8 @@ function isWithinRange(businessDate: string, range: MonthRange | null): boolean 
 
 export class ReceivablesService {
   static async getReceivables(query: ReceivablesQueryInput): Promise<ReceivablesResponseView> {
+    const matchedIds = await findSearchMatchIds('customer', query.search);
+    const matchedCustomerIds = matchedIds === null ? null : new Set(matchedIds);
     const records = await ReceivablesRepository.loadReceivableRecords({
       includeInactive: query.includeInactive,
     });
@@ -94,7 +98,7 @@ export class ReceivablesService {
     );
 
     const baseFiltered = computations.filter((computation) =>
-      this.matchesBaseFilters(computation, query)
+      this.matchesBaseFilters(computation, query, matchedCustomerIds)
     );
     // Tier counts intentionally ignore the tier filter so the filter chips keep
     // showing how many customers sit in each tier while a tier is selected.
@@ -122,6 +126,71 @@ export class ReceivablesService {
         totalPages,
       },
     };
+  }
+
+  /**
+   * Financial figures for a specific set of customers, keyed by customer id.
+   *
+   * This exists so a list screen can show outstanding/overdue/next-due beside a
+   * name with ONE request instead of one request per row, while still getting
+   * its numbers from the same computation that powers the receivables page.
+   *
+   * Two deliberate differences from `getReceivables`:
+   *   * inactive customers are included — the caller has already decided which
+   *     customers it is showing, and a projection that silently omitted one
+   *     would render a blank money column rather than the truth;
+   *   * no month scoping — these are lifetime figures, matching what the
+   *     customer profile shows.
+   *
+   * Customers with no financial records still get an entry (all zeros,
+   * NO_ACTIVITY), so callers never have to distinguish "owes nothing" from
+   * "missing from the map".
+   */
+  static async computeReceivableProjections(params: {
+    customerIds: string[];
+  }): Promise<Map<string, ReceivableCustomerProjection>> {
+    const projections = new Map<string, ReceivableCustomerProjection>();
+    if (params.customerIds.length === 0) return projections;
+
+    const records = await ReceivablesRepository.loadReceivableRecords({
+      includeInactive: true,
+      customerIds: params.customerIds,
+    });
+    const businessDate = todayInBusinessTimezone();
+
+    const debtsByCustomer = groupBy(records.debts, (debt) => debt.customerId);
+    const plansByCustomer = groupBy(records.plans, (plan) => plan.customerId);
+    const paymentsByCustomer = groupBy(records.payments, (payment) => payment.customerId);
+
+    for (const customer of records.customers) {
+      const { item } = this.computeCustomer(
+        customer,
+        debtsByCustomer.get(customer.id) ?? [],
+        plansByCustomer.get(customer.id) ?? [],
+        paymentsByCustomer.get(customer.id) ?? [],
+        businessDate,
+        null
+      );
+
+      projections.set(customer.id, {
+        customerId: customer.id,
+        tier: item.tier,
+        tierReason: item.tierReason,
+        totalObligated: item.totalObligated,
+        totalPaid: item.totalPaid,
+        outstanding: item.outstanding,
+        overdueAmount: item.overdueAmount,
+        openDebtCount: item.openDebtCount,
+        activePlanCount: item.activePlanCount,
+        overdueItemCount: item.overdueItemCount,
+        maxOverdueDays: item.maxOverdueDays,
+        nextDueDate: item.nextDueDate,
+        lastPaymentDate: item.lastPaymentDate,
+        daysSinceLastPayment: item.daysSinceLastPayment,
+      });
+    }
+
+    return projections;
   }
 
   private static computeCustomer(
@@ -339,17 +408,14 @@ export class ReceivablesService {
 
   private static matchesBaseFilters(
     computation: ReceivableComputation,
-    query: ReceivablesQueryInput
+    query: ReceivablesQueryInput,
+    matchedCustomerIds: Set<string> | null
   ): boolean {
     if (query.onlyWithBalance && !computation.outstanding.greaterThan(ZERO_MONEY)) {
       return false;
     }
 
-    if (query.search) {
-      const needle = query.search.toLowerCase();
-      const haystack = `${computation.item.customer.name} ${computation.item.customer.phone}`.toLowerCase();
-      if (!haystack.includes(needle)) return false;
-    }
+    if (matchedCustomerIds && !matchedCustomerIds.has(computation.item.customer.id)) return false;
 
     return true;
   }

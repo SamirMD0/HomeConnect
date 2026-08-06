@@ -61,7 +61,7 @@ export const LedgerRowActions: React.FC<LedgerRowActionsProps> = ({
         aria-haspopup="menu"
         aria-expanded={isOpen}
         onClick={() => onOpenChange(isOpen ? null : menuKey)}
-        className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-md border border-slate-200 bg-white p-2 text-slate-600 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+        className="inline-flex min-h-8 min-w-8 items-center justify-center rounded-md border border-slate-200 bg-white p-1.5 text-slate-600 transition-all hover:border-yellow-300 hover:bg-gray-600 hover:text-yellow-300 hover:shadow-[0_0_12px_rgba(250,204,21,0.4)] focus:outline-none focus:ring-2 focus:ring-yellow-300/50"
       >
         <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
         <span className="sr-only">Open row actions</span>

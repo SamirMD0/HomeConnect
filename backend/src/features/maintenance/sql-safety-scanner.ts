@@ -65,6 +65,8 @@ const RULES: Rule[] = [
  * perform *is* an UPDATE against it, so it cannot be treated as business data.
  */
 const BOOKKEEPING_TABLE = /^\s*UPDATE\s+"?_prisma_migrations"?\s/i;
+const PRODUCT_LABEL_AUTO_BACKFILL = /^\s*UPDATE\s+"?products"?\s+SET\s+"?labelBarcodeSource"?\s*=\s*''\s+WHERE\s+"?labelBarcodeSource"?\s*=\s*''\s+AND\s+"?barcode"?\s+IS\s+NOT\s+NULL\s*$/i;
+const PRODUCT_LABEL_AUTO_VALUES = /\bSET\s+"?labelBarcodeSource"?\s*=\s*'AUTO'\s+WHERE\s+"?labelBarcodeSource"?\s*=\s*'SKU'\s+AND\s+"?barcode"?\s+IS\s+NOT\s+NULL\b/i;
 
 export function scanSqlForUnsafeStatements(sql: string): SqlSafetyResult {
   return scanStatements(sql, false);
@@ -90,7 +92,7 @@ function scanStatements(sql: string, insideDoBlock: boolean): SqlSafetyResult {
 
     for (const rule of RULES) {
       if (!rule.test.test(cleaned)) continue;
-      if (rule.code === 'UPDATE_STATEMENT' && isPermittedUpdate(cleaned)) continue;
+      if (rule.code === 'UPDATE_STATEMENT' && isPermittedUpdate(cleaned, statement)) continue;
       violations.push({
         code: rule.code,
         message: rule.message,
@@ -116,8 +118,12 @@ function scanStatements(sql: string, insideDoBlock: boolean): SqlSafetyResult {
  *         UPDATE "debts" SET "kind" = 'STANDARD' WHERE "kind" IS NULL;
  *         ALTER COLUMN "kind" SET NOT NULL;
  */
-function isPermittedUpdate(cleaned: string): boolean {
+function isPermittedUpdate(cleaned: string, original: string): boolean {
   if (BOOKKEEPING_TABLE.test(cleaned)) return true;
+  // Product label AUTO is a reviewed preference migration, not a financial
+  // rewrite: it touches only rows still carrying the old SKU default and only
+  // when a saved barcode exists. Keep this allow-list exact.
+  if (PRODUCT_LABEL_AUTO_BACKFILL.test(cleaned) && PRODUCT_LABEL_AUTO_VALUES.test(original)) return true;
 
   const match = /\bSET\b([\s\S]+?)\bWHERE\b([\s\S]+)$/i.exec(cleaned);
   if (!match) return false;

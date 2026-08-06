@@ -24,15 +24,22 @@ export const customerFinancialSummaryMutationQueryKey = (customerId: string) =>
 
 export const salesOrdersMutationQueryKey = ['sales-orders'] as const;
 
+const invalidateCustomerSurfaces = (queryClient: ReturnType<typeof useQueryClient>, customerId: string) =>
+  Promise.all([
+    queryClient.invalidateQueries({ queryKey: ['customer', customerId] }),
+    queryClient.invalidateQueries({ queryKey: customerFinancialSummaryMutationQueryKey(customerId) }),
+    queryClient.invalidateQueries({ queryKey: ['customers'] }),
+    queryClient.invalidateQueries({ queryKey: ['receivables'] }),
+    queryClient.invalidateQueries({ queryKey: ['customer-activity', customerId] }),
+  ]);
+
 export const useCreateDebt = (customerId: string) => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (data: CreateDebtRequest) => financialMutationsApi.createDebt(customerId, data),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: customerFinancialSummaryMutationQueryKey(customerId),
-      });
+      await invalidateCustomerSurfaces(queryClient, customerId);
       toast.success('Debt created successfully');
     },
     onError: (error) => {
@@ -48,9 +55,7 @@ export const useCreatePrepaidPurchase = (customerId: string) => {
     mutationFn: (data: CreatePrepaidPurchaseRequest) =>
       financialMutationsApi.createPrepaidPurchase(customerId, data),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: customerFinancialSummaryMutationQueryKey(customerId),
-      });
+      await invalidateCustomerSurfaces(queryClient, customerId);
       toast.success('Prepaid purchase created successfully');
     },
     onError: (error) => {
@@ -67,9 +72,7 @@ export const useRecordDebtPayment = (customerId: string, debtId: string) => {
       financialMutationsApi.recordDebtPayment(debtId, data),
     onSuccess: async () => {
       await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: customerFinancialSummaryMutationQueryKey(customerId),
-        }),
+        invalidateCustomerSurfaces(queryClient, customerId),
         queryClient.invalidateQueries({ queryKey: debtDetailQueryKey(debtId) }),
         queryClient.invalidateQueries({ queryKey: salesOrdersMutationQueryKey }),
       ]);
@@ -89,9 +92,7 @@ export const useUpdateDebt = (customerId: string, debtId: string) => {
       financialMutationsApi.updateDebt(debtId, data),
     onSuccess: async () => {
       await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: customerFinancialSummaryMutationQueryKey(customerId),
-        }),
+        invalidateCustomerSurfaces(queryClient, customerId),
         queryClient.invalidateQueries({ queryKey: debtDetailQueryKey(debtId) }),
       ]);
       toast.success('Debt updated');
@@ -129,9 +130,7 @@ export const useVoidPayment = (customerId: string, paymentId: string) => {
   return useMutation({
     mutationFn: (data: VoidPaymentRequest) => financialMutationsApi.voidPayment(paymentId, data),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: customerFinancialSummaryMutationQueryKey(customerId),
-      });
+      await invalidateCustomerSurfaces(queryClient, customerId);
       toast.success('Payment voided');
     },
     onError: (error) => {
@@ -148,9 +147,7 @@ export const useReallocatePayment = (customerId: string, paymentId: string, plan
       financialMutationsApi.reallocatePayment(paymentId, data),
     onSuccess: async () => {
       await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: customerFinancialSummaryMutationQueryKey(customerId),
-        }),
+        invalidateCustomerSurfaces(queryClient, customerId),
         queryClient.invalidateQueries({ queryKey: installmentPlanDetailQueryKey(planId) }),
       ]);
       toast.success('Payment allocation updated');
@@ -168,9 +165,7 @@ export const useCreateInstallmentPlan = (customerId: string) => {
     mutationFn: (data: CreateInstallmentPlanRequest) =>
       financialMutationsApi.createInstallmentPlan(customerId, data),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: customerFinancialSummaryMutationQueryKey(customerId),
-      });
+      await invalidateCustomerSurfaces(queryClient, customerId);
       toast.success('Installment plan created');
     },
     onError: (error) => {
@@ -187,9 +182,7 @@ export const useUpdateInstallmentPlan = (customerId: string, planId: string) => 
       financialMutationsApi.updateInstallmentPlan(planId, data),
     onSuccess: async () => {
       await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: customerFinancialSummaryMutationQueryKey(customerId),
-        }),
+        invalidateCustomerSurfaces(queryClient, customerId),
         queryClient.invalidateQueries({ queryKey: installmentPlanDetailQueryKey(planId) }),
       ]);
       toast.success('Installment plan updated');
@@ -208,9 +201,7 @@ export const useRecordInstallmentPlanPayment = (customerId: string, planId: stri
       financialMutationsApi.recordInstallmentPlanPayment(planId, data),
     onSuccess: async () => {
       await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: customerFinancialSummaryMutationQueryKey(customerId),
-        }),
+        invalidateCustomerSurfaces(queryClient, customerId),
         queryClient.invalidateQueries({ queryKey: installmentPlanDetailQueryKey(planId) }),
       ]);
       toast.success('Installment payment recorded');

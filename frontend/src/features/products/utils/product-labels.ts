@@ -1,5 +1,5 @@
 export const productLabels = {
-  searchPlaceholder: 'Search name, model, brand, or barcode / بحث بالاسم أو الموديل أو الماركة أو الباركود',
+  searchPlaceholder: 'Search products, notes, or specifications / بحث في المنتجات أو الملاحظات أو المواصفات',
   allBrands: 'All Brands / كل الماركات',
   anyBarcode: 'Any Barcode / أي باركود',
   withBarcode: 'With Barcode / مع باركود',

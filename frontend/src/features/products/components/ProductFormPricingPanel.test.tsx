@@ -35,31 +35,39 @@ function renderPanel(value: ProductFormPricingValues, preview = result) {
   if (input) client.setQueryData(['pricing', 'calculate', input], preview);
   return renderToStaticMarkup(
     <MemoryRouter><QueryClientProvider client={client}>
-      <ProductFormPricingPanel value={value} onChange={() => undefined} />
+      <ProductFormPricingPanel value={value} onChange={() => undefined} manualPrice="" manualDiscount="" onManualPriceChange={() => undefined} onManualDiscountChange={() => undefined} />
     </QueryClientProvider></MemoryRouter>
   );
 }
 
 describe('product form pricing integration', () => {
   it('shows the active preset selector and bilingual product pricing fields', () => {
-    const html = renderPanel(emptyProductFormPricing);
+    const html = renderPanel({ ...emptyProductFormPricing, mode: 'PRESET' });
     expect(html).toContain('Pricing Preset / صيغة التسعير');
     expect(html).toContain('Real Cost Price / السعر الحقيقي');
-    expect(html).toContain('Use Custom Pricing / تسعير مخصص');
+    expect(html).toContain('Pricing mode / طريقة التسعير');
     expect(html).toContain('Offer installment payment / إتاحة الدفع بالتقسيط');
     expect(html).not.toContain('Preview Installment Months / عدد أشهر التقسيط للمعاينة');
+    expect(html).toContain('Installments not offered / التقسيط غير متاح');
     expect(html).not.toContain('Save the product, then edit it to configure cost and pricing');
   });
 
+  it('keeps cash pricing visible and hides installment overrides when installments are off', () => {
+    const html = renderPanel({ ...emptyProductFormPricing, mode: 'PRESET', costPrice: '300.00', pricingPresetId: preset.id, installmentEnabled: false, previewInstallmentMonths: '0' });
+    expect(html).toContain('Cash Price / السعر النقدي');
+    expect(html).toContain('Installments not offered / التقسيط غير متاح');
+    expect(html).not.toContain('Preview Installment Months / عدد أشهر التقسيط للمعاينة');
+  });
+
   it('shows a pricing preview when cost and preset are supplied', () => {
-    const html = renderPanel({ ...emptyProductFormPricing, costPrice: '300.00', pricingPresetId: preset.id, installmentEnabled: true });
+    const html = renderPanel({ ...emptyProductFormPricing, mode: 'PRESET', costPrice: '300.00', pricingPresetId: preset.id, installmentEnabled: true });
     expect(html).toContain('Cash Price / السعر النقدي');
     expect(html).toContain('$377.82');
     expect(html).toContain('Monthly Payment / القسط الشهري');
   });
 
   it('uses a free-form month override and renders the updated monthly payment', () => {
-    const value = { ...emptyProductFormPricing, costPrice: '300.00', pricingPresetId: preset.id, installmentEnabled: true, previewInstallmentMonths: '6' };
+    const value = { ...emptyProductFormPricing, mode: 'PRESET' as const, costPrice: '300.00', pricingPresetId: preset.id, installmentEnabled: true, previewInstallmentMonths: '6' };
     expect(buildProductPricingCalculationInput(value, preset)?.installmentMonths).toBe(6);
     const html = renderPanel(value, { ...result, installmentMonths: 6, monthlyPayment: '45.33', lastInstallmentPayment: '45.38' });
     expect(html).toContain('× 6');

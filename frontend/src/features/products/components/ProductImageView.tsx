@@ -58,7 +58,7 @@ export const ProductImagePlaceholder: React.FC<{ className?: string }> = ({ clas
   </div>
 );
 
-const ProductImageBroken: React.FC<{ className?: string }> = ({ className = '' }) => (
+export const ProductImageBroken: React.FC<{ className?: string }> = ({ className = '' }) => (
   <div
     className={`flex items-center justify-center bg-slate-100 text-slate-400 ${className}`}
     title="Image could not be loaded / تعذر تحميل الصورة"

@@ -1,7 +1,11 @@
 import React from 'react';
 import { formatBusinessDate, formatMoney } from '../../customer-financial/utils/financial-format';
 import { SupplierTransaction } from '../types/supplier.types';
-import { supplierDirectionLabels, supplierTransactionStatusLabels, supplierTransactionTypeLabels } from '../utils/supplier-labels';
+import {
+  supplierDirectionLabels,
+  supplierTransactionStatusLabels,
+  supplierTransactionTypeLabels,
+} from '../utils/supplier-labels';
 
 interface Props {
   items: SupplierTransaction[];
@@ -12,36 +16,181 @@ interface Props {
   onRestore: (transaction: SupplierTransaction) => void;
 }
 
-export const SupplierTransactionTable: React.FC<Props> = ({ items, canMutate, showSupplier = true, onEdit, onRemove, onRestore }) => (
+const cellHover =
+  'bg-white transition-all duration-200 group-hover:bg-gray-600 group-hover:text-yellow-300 group-hover:[text-shadow:0_0_8px_rgba(250,204,21,0.8)]';
+
+export const SupplierTransactionTable: React.FC<Props> = ({
+  items,
+  canMutate,
+  showSupplier = true,
+  onEdit,
+  onRemove,
+  onRestore,
+}) => (
   <>
-    <div className="space-y-3 lg:hidden">
-      {items.map((transaction) => <TransactionCard key={transaction.id} {...{ transaction, canMutate, showSupplier, onEdit, onRemove, onRestore }} />)}
+    <div className="space-y-2 lg:hidden">
+      {items.map((transaction) => (
+        <TransactionCard
+          key={transaction.id}
+          {...{ transaction, canMutate, showSupplier, onEdit, onRemove, onRestore }}
+        />
+      ))}
     </div>
-    <div className="hidden overflow-x-auto rounded-lg border border-slate-200 bg-white lg:block">
-      <table className="min-w-full text-sm">
-        <thead className="bg-slate-50 text-left text-xs uppercase text-slate-600"><tr><th className="px-4 py-3">Date / التاريخ</th>{showSupplier && <th className="px-4 py-3">Supplier / المورّد</th>}<th className="px-4 py-3">Type / النوع</th><th className="px-4 py-3">Description / الوصف</th><th className="px-4 py-3 text-right">Amount / المبلغ</th><th className="px-4 py-3">Effect / الأثر</th><th className="px-4 py-3">Status / الحالة</th><th className="px-4 py-3 text-right">Actions / الإجراءات</th></tr></thead>
-        <tbody className="divide-y divide-slate-100">{items.map((transaction) => <tr key={transaction.id} className={transaction.status === 'REMOVED' ? 'bg-slate-50 text-slate-500' : ''}>
-          <td className="whitespace-nowrap px-4 py-3">{formatBusinessDate(transaction.transactionDate)}</td>
-          {showSupplier && <td className="px-4 py-3"><p className="user-text font-semibold" dir="auto">{transaction.supplier.name}</p><p className="text-xs text-slate-500">{transaction.supplier.phone}</p></td>}
-          <td className="px-4 py-3">{supplierTransactionTypeLabels[transaction.type]}</td>
-          <td className="max-w-xs px-4 py-3"><p className="user-text truncate font-medium" dir="auto" title={transaction.description}>{transaction.description}</p>{transaction.reference && <p className="user-text text-xs text-slate-500" dir="auto">Ref: {transaction.reference}</p>}</td>
-          <td className="px-4 py-3 text-right font-semibold tabular-nums">{formatMoney(transaction.amount)}</td>
-          <td className={`px-4 py-3 font-medium ${transaction.direction === 'INCREASE_OWED' ? 'text-red-700' : 'text-emerald-700'}`}>{transaction.direction === 'INCREASE_OWED' ? '+ Owed / مستحق' : '- Owed / مسدّد'}</td>
-          <td className="px-4 py-3">{supplierTransactionStatusLabels[transaction.status]}</td>
-          <td className="px-4 py-3 text-right"><Actions {...{ transaction, canMutate, onEdit, onRemove, onRestore }} /></td>
-        </tr>)}</tbody>
+
+    <div
+      className="hidden max-h-[22rem] overflow-auto overscroll-contain rounded-lg bg-slate-100 px-3 pb-3 lg:block"
+      data-testid="supplier-ledger-scroll-table"
+    >
+      <table className="min-w-full border-separate border-spacing-y-1.5 text-xs text-slate-600">
+        <thead className="sticky top-0 z-10 bg-slate-100 text-left text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600">
+          <tr>
+            <Header>Date</Header>
+            {showSupplier && <Header>Supplier</Header>}
+            <Header>Type</Header>
+            <Header>Description</Header>
+            <Header right>Amount</Header>
+            <Header>Effect</Header>
+            <Header>Status</Header>
+            <Header right>Actions</Header>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((transaction) => (
+            <tr
+              key={transaction.id}
+              className={`group [filter:drop-shadow(0_1px_1px_rgba(15,23,42,0.05))] ${transaction.status === 'REMOVED' ? 'opacity-70' : ''}`}
+            >
+              <td className={`whitespace-nowrap rounded-l-md px-4 py-2 ${cellHover}`}>
+                {formatBusinessDate(transaction.transactionDate)}
+              </td>
+              {showSupplier && (
+                <td className={`px-4 py-2 ${cellHover}`}>
+                  <p className="user-text font-semibold text-slate-900 transition-colors group-hover:text-yellow-300" dir="auto">
+                    {transaction.supplier.name}
+                  </p>
+                  <p className="text-[11px] text-slate-500 transition-colors group-hover:text-yellow-200">
+                    {transaction.supplier.phone}
+                  </p>
+                </td>
+              )}
+              <td className={`px-4 py-2 ${cellHover}`}>
+                {englishLabel(supplierTransactionTypeLabels[transaction.type])}
+              </td>
+              <td className={`max-w-xs px-4 py-2 ${cellHover}`}>
+                <p className="user-text truncate font-medium" dir="auto" title={transaction.description}>
+                  {transaction.description}
+                </p>
+                {transaction.reference && (
+                  <p className="user-text text-[11px] text-slate-500 transition-colors group-hover:text-yellow-200" dir="auto">
+                    Ref: {transaction.reference}
+                  </p>
+                )}
+              </td>
+              <td className={`px-4 py-2 text-right font-semibold tabular-nums ${cellHover}`}>
+                {formatMoney(transaction.amount)}
+              </td>
+              <td className={`px-4 py-2 font-medium ${cellHover} ${transaction.direction === 'INCREASE_OWED' ? 'text-red-700' : 'text-emerald-700'}`}>
+                {transaction.direction === 'INCREASE_OWED' ? '+ Owed' : '- Owed'}
+              </td>
+              <td className={`px-4 py-2 ${cellHover}`}>
+                {englishLabel(supplierTransactionStatusLabels[transaction.status])}
+              </td>
+              <td className={`rounded-r-md px-4 py-2 text-right ${cellHover}`}>
+                <Actions {...{ transaction, canMutate, onEdit, onRemove, onRestore }} />
+              </td>
+            </tr>
+          ))}
+        </tbody>
       </table>
     </div>
   </>
 );
 
-const TransactionCard: React.FC<Omit<Props, 'items'> & { transaction: SupplierTransaction }> = ({ transaction, canMutate, showSupplier, onEdit, onRemove, onRestore }) => <article className={`rounded-lg border p-4 shadow-sm ${transaction.status === 'REMOVED' ? 'bg-slate-50 text-slate-500' : 'bg-white'}`}>
-  <div className="flex items-start justify-between gap-3"><div>{showSupplier && <><p className="user-text font-semibold" dir="auto">{transaction.supplier.name}</p><p className="text-xs text-slate-500">{transaction.supplier.phone}</p></>}<p className="mt-1 text-xs text-slate-500">{formatBusinessDate(transaction.transactionDate)}</p></div><p className="font-bold tabular-nums">{formatMoney(transaction.amount)}</p></div>
-  <p className="mt-3 text-sm font-semibold">{supplierTransactionTypeLabels[transaction.type]}</p><p className="user-text mt-1 text-sm" dir="auto">{transaction.description}</p>
-  <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t pt-3 text-xs"><span>{supplierDirectionLabels[transaction.direction]}</span><span>{supplierTransactionStatusLabels[transaction.status]}</span><Actions {...{ transaction, canMutate, onEdit, onRemove, onRestore }} /></div>
-</article>;
+const Header: React.FC<{ children: React.ReactNode; right?: boolean }> = ({ children, right }) => (
+  <th className={`whitespace-nowrap px-4 py-2.5 ${right ? 'text-right' : ''}`}>{children}</th>
+);
 
-const Actions: React.FC<Omit<Props, 'items'|'showSupplier'> & { transaction: SupplierTransaction }> = ({ transaction, canMutate, onEdit, onRemove, onRestore }) => {
+const TransactionCard: React.FC<Omit<Props, 'items'> & { transaction: SupplierTransaction }> = ({
+  transaction,
+  canMutate,
+  showSupplier,
+  onEdit,
+  onRemove,
+  onRestore,
+}) => (
+  <article
+    className={`group rounded-lg border p-3 shadow-sm transition-all duration-200 hover:border-yellow-300 hover:bg-gray-600 hover:shadow-[0_0_14px_rgba(250,204,21,0.3)] ${transaction.status === 'REMOVED' ? 'bg-slate-50 opacity-70' : 'bg-white'}`}
+  >
+    <div className="flex items-start justify-between gap-3">
+      <div>
+        {showSupplier && (
+          <>
+            <p className="user-text font-semibold text-slate-900 transition-colors group-hover:text-yellow-300" dir="auto">
+              {transaction.supplier.name}
+            </p>
+            <p className="text-xs text-slate-500 transition-colors group-hover:text-yellow-200">
+              {transaction.supplier.phone}
+            </p>
+          </>
+        )}
+        <p className="mt-1 text-xs text-slate-500 transition-colors group-hover:text-yellow-200">
+          {formatBusinessDate(transaction.transactionDate)}
+        </p>
+      </div>
+      <p className="font-bold tabular-nums text-slate-900 transition-colors group-hover:text-yellow-300">
+        {formatMoney(transaction.amount)}
+      </p>
+    </div>
+    <p className="mt-2 text-sm font-semibold text-slate-800 transition-colors group-hover:text-yellow-300">
+      {englishLabel(supplierTransactionTypeLabels[transaction.type])}
+    </p>
+    <p className="user-text mt-1 text-sm text-slate-600 transition-colors group-hover:text-yellow-200" dir="auto">
+      {transaction.description}
+    </p>
+    <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-2 text-xs transition-colors group-hover:border-gray-500">
+      <span className="transition-colors group-hover:text-yellow-200">
+        {englishLabel(supplierDirectionLabels[transaction.direction])}
+      </span>
+      <span className="transition-colors group-hover:text-yellow-200">
+        {englishLabel(supplierTransactionStatusLabels[transaction.status])}
+      </span>
+      <Actions {...{ transaction, canMutate, onEdit, onRemove, onRestore }} />
+    </div>
+  </article>
+);
+
+const Actions: React.FC<Omit<Props, 'items' | 'showSupplier'> & { transaction: SupplierTransaction }> = ({
+  transaction,
+  canMutate,
+  onEdit,
+  onRemove,
+  onRestore,
+}) => {
   if (!canMutate) return null;
-  return <div className="inline-flex gap-2">{transaction.status === 'ACTIVE' ? <><button onClick={() => onEdit(transaction)} className="rounded border px-2.5 py-1.5 hover:bg-slate-50">Edit / تعديل</button><button onClick={() => onRemove(transaction)} className="rounded border border-red-200 px-2.5 py-1.5 text-red-700 hover:bg-red-50">Remove / حذف</button></> : <button onClick={() => onRestore(transaction)} className="rounded border border-emerald-200 px-2.5 py-1.5 text-emerald-700 hover:bg-emerald-50">Restore / استعادة</button>}</div>;
+
+  const buttonClass =
+    'rounded border bg-white px-2.5 py-1.5 text-xs font-semibold transition-all hover:border-yellow-300 hover:bg-gray-600 hover:text-yellow-300 hover:shadow-[0_0_12px_rgba(250,204,21,0.4)] focus:outline-none focus:ring-2 focus:ring-yellow-300/50';
+
+  return (
+    <div className="inline-flex gap-2">
+      {transaction.status === 'ACTIVE' ? (
+        <>
+          <button type="button" onClick={() => onEdit(transaction)} className={`${buttonClass} border-slate-200 text-slate-600`}>
+            Edit
+          </button>
+          <button type="button" onClick={() => onRemove(transaction)} className={`${buttonClass} border-red-200 text-red-700`}>
+            Remove
+          </button>
+        </>
+      ) : (
+        <button type="button" onClick={() => onRestore(transaction)} className={`${buttonClass} border-emerald-200 text-emerald-700`}>
+          Restore
+        </button>
+      )}
+    </div>
+  );
 };
+
+function englishLabel(label: string): string {
+  return label.split(' / ')[0];
+}

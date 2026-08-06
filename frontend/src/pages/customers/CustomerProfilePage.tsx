@@ -1,15 +1,20 @@
 import React, { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Calendar, Edit2, MapPin, Phone, Trash2, User as UserIcon } from 'lucide-react';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { ArrowLeft, Calendar, Copy, Edit2, MapPin, Phone, Trash2, User as UserIcon } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { Modal } from '../../components/ui/Modal';
 import { CustomerDeleteModal } from '../../features/customers/components/CustomerDeleteModal';
 import { CustomerForm } from '../../features/customers/components/CustomerForm';
 import { useCustomer, useDeleteCustomer, useUpdateCustomer } from '../../features/customers/hooks/useCustomers';
-import { CustomerFinancialProfile } from '../../features/customer-financial/components/CustomerFinancialProfile';
+import { CustomerFinancialProfile, FinancialProfileTab } from '../../features/customer-financial/components/CustomerFinancialProfile';
 import { TransactionList } from '../../features/transactions/components/TransactionList';
 import { CustomerServiceJobsSection } from '../../features/service/components/CustomerServiceJobsSection';
 import { CustomerSalesOrdersSection } from '../../features/sales-orders/components/CustomerSalesOrdersSection';
 import { businessLabels } from '../../shared/labels/business-labels';
+import { useAuth } from '../../hooks/useAuth';
+import { isFinancialAdmin } from '../../features/customer-financial/utils/financial-auth';
+import { AddFinancialObligationDialog } from '../../features/customer-financial/components/AddFinancialObligationDialog';
+import { GlobalReceivePaymentDialog } from '../../features/financial-ledger/components/GlobalReceivePaymentDialog';
 
 interface CustomerFormData {
   name: string;
@@ -21,9 +26,13 @@ interface CustomerFormData {
 export const CustomerProfilePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [financialAction, setFinancialAction] = useState<'add' | 'payment' | null>(null);
+  const { user } = useAuth();
+  const canMutateFinancial = isFinancialAdmin(user?.role);
 
   const { data: customer, isLoading, isError } = useCustomer(id || '');
   const updateCustomer = useUpdateCustomer();
@@ -74,7 +83,7 @@ export const CustomerProfilePage: React.FC = () => {
         <button
           type="button"
           onClick={() => navigate('/customers')}
-          className="rounded-full p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
+          className="rounded-full bg-slate-100 p-2 text-slate-600 transition-colors hover:bg-emerald-100 hover:text-emerald-700"
           aria-label="Back to customers"
         >
           <ArrowLeft className="h-5 w-5" aria-hidden="true" />
@@ -82,7 +91,7 @@ export const CustomerProfilePage: React.FC = () => {
         <h1 className="text-2xl font-bold text-slate-800">{businessLabels.customer.profile}</h1>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:sticky lg:top-4 lg:z-10">
         <div className="flex flex-col gap-6 p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8">
           <div className="flex items-center gap-5">
             <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
@@ -105,6 +114,7 @@ export const CustomerProfilePage: React.FC = () => {
                 <span className="flex items-center">
                   <Phone className="mr-1.5 h-4 w-4" aria-hidden="true" />
                   {customer.phone}
+                  <button type="button" className="ml-2 rounded-md bg-emerald-50 p-1.5 text-emerald-600 transition-colors hover:bg-emerald-600 hover:text-white" aria-label={businessLabels.customer.copyPhone} onClick={() => { void navigator.clipboard?.writeText(customer.phone); toast.success('Phone copied / تم نسخ الهاتف'); }}><Copy className="h-4 w-4" /></button>
                 </span>
                 {customer.address && (
                   <span className="user-text flex items-center" dir="auto">
@@ -117,18 +127,21 @@ export const CustomerProfilePage: React.FC = () => {
           </div>
 
           <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
+            {canMutateFinancial && <><button type="button" onClick={() => setFinancialAction('add')} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700">{businessLabels.customer.addDebt}</button><button type="button" onClick={() => setFinancialAction('payment')} className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 transition-colors hover:border-emerald-600 hover:bg-emerald-600 hover:text-white">{businessLabels.customer.recordPayment}</button><button type="button" onClick={() => setFinancialAction('add')} className="rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 transition-colors hover:border-indigo-600 hover:bg-indigo-600 hover:text-white">{businessLabels.customer.addInstallmentPlan}</button></>}
+            <button type="button" onClick={() => setSearchParams({ tab: 'legacy' })} className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-800 transition-colors hover:border-amber-500 hover:bg-amber-500 hover:text-white">{businessLabels.customer.viewLedger}</button>
             <button
               type="button"
               onClick={() => setIsEditModalOpen(true)}
-              className="inline-flex flex-1 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 font-medium text-slate-700 transition-colors hover:bg-slate-50 focus:ring-2 focus:ring-emerald-500/20 sm:flex-none"
+              className="inline-flex flex-1 items-center justify-center rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 font-medium text-blue-700 transition-colors hover:border-blue-600 hover:bg-blue-600 hover:text-white focus:ring-2 focus:ring-blue-500/20 sm:flex-none"
             >
-              <Edit2 className="mr-2 h-4 w-4 text-slate-500" aria-hidden="true" />
+              <Edit2 className="mr-2 h-4 w-4" aria-hidden="true" />
               {businessLabels.common.edit}
             </button>
+            <button type="button" onClick={() => setSearchParams({ tab: 'details' })} className="rounded-lg border border-violet-200 bg-violet-50 px-4 py-2 text-sm font-medium text-violet-700 transition-colors hover:border-violet-600 hover:bg-violet-600 hover:text-white">Details &amp; Notes</button>
             <button
               type="button"
               onClick={() => setIsDeleteModalOpen(true)}
-              className="inline-flex flex-1 items-center justify-center rounded-lg border border-red-200 bg-white px-4 py-2 font-medium text-red-600 transition-colors hover:border-red-300 hover:bg-red-50 focus:ring-2 focus:ring-red-500/20 sm:flex-none"
+              className="inline-flex flex-1 items-center justify-center rounded-lg border border-red-200 bg-red-50 px-4 py-2 font-medium text-red-700 transition-colors hover:border-red-600 hover:bg-red-600 hover:text-white focus:ring-2 focus:ring-red-500/20 sm:flex-none"
             >
               <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
               Delete / حذف
@@ -137,7 +150,7 @@ export const CustomerProfilePage: React.FC = () => {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+      {searchParams.get('tab') === 'details' && <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
           <div>
             <h3 className="mb-4 text-lg font-semibold text-slate-800">{businessLabels.customer.contactDetails}</h3>
@@ -171,12 +184,14 @@ export const CustomerProfilePage: React.FC = () => {
             </dl>
           </div>
         </div>
-      </div>
+      </div>}
 
-      <CustomerFinancialProfile
+      {searchParams.get('tab') !== 'details' && <CustomerFinancialProfile
         customerId={customer.id}
         legacyLedger={<TransactionList customerId={customer.id} />}
-      />
+        activeTab={(searchParams.get('tab') as FinancialProfileTab | null) ?? 'overview'}
+        onTabChange={(tab) => setSearchParams({ tab })}
+      />}
 
       <CustomerServiceJobsSection customerId={customer.id} />
       <CustomerSalesOrdersSection customerId={customer.id} />
@@ -197,6 +212,9 @@ export const CustomerProfilePage: React.FC = () => {
         customerName={customer.name}
         isDeleting={deleteCustomer.isPending}
       />
+      <Modal isOpen={financialAction !== null} onClose={() => setFinancialAction(null)} title={financialAction === 'payment' ? businessLabels.customer.recordPayment : businessLabels.customer.addDebt} maxWidth="max-w-3xl">
+        {financialAction === 'add' ? <AddFinancialObligationDialog customer={customer} onSuccess={() => setFinancialAction(null)} /> : financialAction === 'payment' ? <GlobalReceivePaymentDialog initialCustomer={customer} onSuccess={() => setFinancialAction(null)} /> : null}
+      </Modal>
     </div>
   );
 };

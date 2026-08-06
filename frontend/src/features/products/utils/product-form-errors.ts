@@ -21,6 +21,14 @@ export function normalizeProductError(error: unknown): NormalizedProductError {
   return { message: message || 'Something went wrong. Try again.', fieldErrors, status };
 }
 
+export function firstUnrenderedProductFieldError(
+  fieldErrors: Record<string, string>,
+  renderedFields: ReadonlySet<string>
+): string | null {
+  const hidden = Object.entries(fieldErrors).find(([field]) => !renderedFields.has(field));
+  return hidden ? hidden[1] : null;
+}
+
 function serverMessage(data: unknown): string | null {
   if (!isObject(data)) return null;
   const error = data.error;

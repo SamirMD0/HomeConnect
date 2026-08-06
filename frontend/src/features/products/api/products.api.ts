@@ -7,7 +7,7 @@ import {
   ProductDuplicateMatch,
   ProductDuplicateQuery,
   ProductFilters,
-  ProductLabelData,
+  ProductLabelResult,
   ProductLabelsResult,
   ProductPaginationMeta,
   ProductServiceJobsResult,
@@ -30,7 +30,7 @@ export const productsApi = {
   update: async (id: string, input: UpdateProductInput): Promise<Product> => (await api.patch(`/products/${id}`, input)).data.data,
   archive: async (id: string, input: ProductActionInput): Promise<Product> => (await api.post(`/products/${id}/archive`, input)).data.data,
   restore: async (id: string, input: ProductActionInput): Promise<Product> => (await api.post(`/products/${id}/restore`, input)).data.data,
-  label: async (id: string, includePriceCode = false, includePrice = true): Promise<ProductLabelData> => (await api.get(`/products/${id}/label`, { params: { includePriceCode, includePrice } })).data.data,
+  label: async (id: string, includePriceCode = false, includePrice = true): Promise<ProductLabelResult> => (await api.get(`/products/${id}/label`, { params: { includePriceCode, includePrice } })).data.data,
   // Bulk sheet printing. `includePrice` defaults to false: a shelf label must not
   // carry the cash price, and a field never requested cannot be leaked.
   labels: async (ids: string[], includePriceCode = false, includePrice = false): Promise<ProductLabelsResult> =>

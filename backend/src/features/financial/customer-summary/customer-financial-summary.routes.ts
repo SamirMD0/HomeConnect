@@ -9,6 +9,12 @@ import {
 export const customerFinancialSummaryRoutes = Router();
 
 customerFinancialSummaryRoutes.get(
+  '/:customerId/activity',
+  validate(customerFinancialSummaryParamsSchema, 'params'),
+  CustomerFinancialSummaryController.getCustomerActivity
+);
+
+customerFinancialSummaryRoutes.get(
   '/:customerId/financial-summary',
   validate(customerFinancialSummaryParamsSchema, 'params'),
   validate(customerFinancialSummaryQuerySchema, 'query'),

@@ -22,7 +22,7 @@ describe('product routes', () => {
     service.archive.mockResolvedValue({ ...product, isActive: false });
     service.checkDuplicate.mockResolvedValue({ matches: [] });
     service.serviceJobs.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 10 });
-    service.label.mockResolvedValue({ id: productId, sku: 'HC-000001', barcodeValue: 'HC-000001', barcodeSource: 'SKU', internalPriceCode: null });
+    service.label.mockResolvedValue({ payload: { id: productId, sku: 'HC-000001', barcodeValue: 'HC-000001', barcodeSource: 'SKU', internalPriceCode: null }, warnings: [] });
     service.labels.mockResolvedValue({ labels: [], warnings: [] });
     service.updateSku.mockResolvedValue(product);
     service.regenerateSku.mockResolvedValue(product);
@@ -39,14 +39,43 @@ describe('product routes', () => {
     const response = await request(app).get(`/api/v1/products/${productId}/label?includePriceCode=true`).set('Authorization', `Bearer ${employee}`);
     expect(response.status).toBe(200);
     for (const forbidden of ['price', 'costPrice', 'cashPrice', 'installmentPrice', 'discount']) {
-      expect(Object.keys(response.body.data)).not.toContain(forbidden);
+      expect(Object.keys(response.body.data.payload)).not.toContain(forbidden);
     }
+  });
+  it('carries automatic barcode fallback warnings on the single-label endpoint', async () => {
+    service.label.mockResolvedValueOnce({
+      payload: { id: productId, sku: 'HC-000001', barcodeValue: 'HC-000001', barcodeSource: 'SKU' },
+      warnings: [{ productId, code: 'FALLBACK_TO_SKU', name: 'Fan' }],
+    });
+    const response = await request(app).get(`/api/v1/products/${productId}/label`).set('Authorization', `Bearer ${employee}`);
+    expect(response.status).toBe(200);
+    expect(response.body.data.warnings).toContainEqual({ productId, code: 'FALLBACK_TO_SKU', name: 'Fan' });
   });
   it('requires auth and lets employees create/list products', async () => {
     expect((await request(app).get('/api/v1/products')).status).toBe(401);
     const create = await request(app).post('/api/v1/products').set('Authorization', `Bearer ${employee}`).send({ name: 'Fan', model: 'F1' });
     expect(create.status).toBe(201); expect(service.create).toHaveBeenCalled();
     expect((await request(app).get('/api/v1/products').set('Authorization', `Bearer ${employee}`)).status).toBe(200);
+  });
+  it('creates a product with both pricing booleans off and no cost price', async () => {
+    const response = await request(app).post('/api/v1/products').set('Authorization', `Bearer ${admin}`).send({
+      name: 'Fan', model: 'F1', useCustomPricing: false, installmentEnabled: false,
+    });
+    expect(response.status).toBe(201);
+    expect(service.create).toHaveBeenCalled();
+  });
+  it('creates cash-only custom pricing without installment fields', async () => {
+    const response = await request(app).post('/api/v1/products').set('Authorization', `Bearer ${admin}`).send({
+      name: 'Accessory', model: 'A1', costPrice: '10.00', useCustomPricing: true, installmentEnabled: false,
+      customExpensePercent: '5', customProfitPercent: '20', customDiscountBufferPercent: '5', customCalculationMode: 'COMPOUND',
+    });
+    expect(response.status).toBe(201);
+  });
+  it('accepts a manual-price-only product', async () => {
+    service.create.mockResolvedValueOnce({ ...product, price: '125.00', pricing: { pricingAvailable: false, mode: 'MANUAL' } });
+    const response = await request(app).post('/api/v1/products').set('Authorization', `Bearer ${admin}`).send({ name: 'Manual Fan', model: 'M1', price: '125.00' });
+    expect(response.status).toBe(201);
+    expect(response.body.data).toMatchObject({ price: '125.00', pricing: { mode: 'MANUAL' } });
   });
   it('protects archive and registers no delete route', async () => {
     expect((await request(app).post(`/api/v1/products/${productId}/archive`).set('Authorization', `Bearer ${employee}`).send({ reason: 'Archive duplicate', accountPassword: 'pass' })).status).toBe(403);

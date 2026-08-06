@@ -56,18 +56,18 @@ export const LedgerMobileCard: React.FC<LedgerMobileCardProps> = ({
 }) => {
   if (item.type === 'PAYMENT') {
     return (
-      <article className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      <article className="group rounded-lg border border-slate-200 bg-white p-3 shadow-sm transition-all duration-200 hover:border-yellow-300 hover:bg-gray-600 hover:shadow-[0_0_14px_rgba(250,204,21,0.3)]">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="user-text font-semibold text-slate-900" dir="auto">{item.customer.name}</p>
-            <p className="text-xs text-slate-500">{formatBusinessDate(item.paymentDate)} · Payment</p>
+            <p className="user-text font-semibold text-slate-900 transition-colors group-hover:text-yellow-300" dir="auto">{item.customer.name}</p>
+            <p className="text-xs text-slate-500 transition-colors group-hover:text-yellow-200">{formatBusinessDate(item.paymentDate)} · Payment</p>
           </div>
           <PaymentStatus status={item.status} />
         </div>
-        <p className="mt-3 text-2xl font-semibold tabular-nums text-slate-900">{formatMoney(item.amount)}</p>
-        <p className="mt-1 line-clamp-2 text-sm text-slate-600">{paymentDescription(item)}</p>
+        <p className="mt-2 text-xl font-semibold tabular-nums text-slate-900 transition-colors group-hover:text-yellow-300">{formatMoney(item.amount)}</p>
+        <p className="mt-1 line-clamp-2 text-sm text-slate-600 transition-colors group-hover:text-yellow-200">{paymentDescription(item)}</p>
         <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
-          <p className="text-xs text-slate-500">Created {formatDateTime(item.createdAt)}</p>
+          <p className="text-xs text-slate-500 transition-colors group-hover:text-yellow-200">Created {formatDateTime(item.createdAt)}</p>
           <LedgerRowActions
             menuKey={`${item.type}-${item.id}`}
             openMenuKey={openMenuKey}
@@ -112,11 +112,11 @@ export const LedgerMobileCard: React.FC<LedgerMobileCardProps> = ({
   });
 
   return (
-    <article className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+    <article className="group rounded-lg border border-slate-200 bg-white p-3 shadow-sm transition-all duration-200 hover:border-yellow-300 hover:bg-gray-600 hover:shadow-[0_0_14px_rgba(250,204,21,0.3)]">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="user-text font-semibold text-slate-900" dir="auto">{item.customer.name}</p>
-          <p className="text-xs text-slate-500">{item.customer.phone}</p>
+          <p className="user-text font-semibold text-slate-900 transition-colors group-hover:text-yellow-300" dir="auto">{item.customer.name}</p>
+          <p className="text-xs text-slate-500 transition-colors group-hover:text-yellow-200">{item.customer.phone}</p>
         </div>
         <FinancialStatusBadge
           type={isDebt ? 'debt' : 'plan'}
@@ -124,16 +124,16 @@ export const LedgerMobileCard: React.FC<LedgerMobileCardProps> = ({
         />
       </div>
 
-      <p className="user-text mt-3 line-clamp-2 text-sm font-medium text-slate-800" dir="auto">{item.description}</p>
+      <p className="user-text mt-2 line-clamp-2 text-sm font-medium text-slate-800 transition-colors group-hover:text-yellow-300" dir="auto">{item.description}</p>
       {saleDeposit && (
-        <p className="mt-1 text-xs text-slate-500">
+        <p className="mt-1 text-xs text-slate-500 transition-colors group-hover:text-yellow-200">
           Deposit at sale: {formatMoney(saleDeposit)}
         </p>
       )}
-      <p className="mt-4 text-xs font-medium uppercase tracking-wide text-slate-500">
+      <p className="mt-3 text-xs font-medium uppercase tracking-wide text-slate-500 transition-colors group-hover:text-yellow-200">
         Remaining
       </p>
-      <p className="text-2xl font-semibold tabular-nums text-slate-900">
+      <p className="text-xl font-semibold tabular-nums text-slate-900 transition-colors group-hover:text-yellow-300">
         {formatMoney(remainingBalance)}
       </p>
 
@@ -148,7 +148,7 @@ export const LedgerMobileCard: React.FC<LedgerMobileCardProps> = ({
         aria-expanded={isExpanded}
         aria-controls={childRegionId}
         onClick={onToggleExpanded}
-        className="mt-4 flex min-h-10 w-full items-center justify-between rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+        className="mt-3 flex min-h-9 w-full items-center justify-between rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 transition-all hover:border-yellow-300 hover:bg-gray-600 hover:text-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-300/50"
       >
         <span>Payments</span>
         <ChevronDown className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
@@ -159,7 +159,7 @@ export const LedgerMobileCard: React.FC<LedgerMobileCardProps> = ({
       )}
 
       <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
-        <p className="text-xs text-slate-500">Created {formatDateTime(item.createdAt)}</p>
+        <p className="text-xs text-slate-500 transition-colors group-hover:text-yellow-200">Created {formatDateTime(item.createdAt)}</p>
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -168,7 +168,7 @@ export const LedgerMobileCard: React.FC<LedgerMobileCardProps> = ({
               event.stopPropagation();
               openEdit();
             }}
-            className="inline-flex min-h-9 items-center rounded-md border border-slate-200 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-950 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+            className="inline-flex min-h-8 items-center rounded-md border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-600 transition-all hover:border-yellow-300 hover:bg-gray-600 hover:text-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-300/50"
           >
             Edit
           </button>
@@ -185,9 +185,9 @@ export const LedgerMobileCard: React.FC<LedgerMobileCardProps> = ({
 };
 
 const MobileAmountTerm: React.FC<{ label: string; value: string }> = ({ label, value }) => (
-  <div className="rounded-md bg-slate-50 px-2 py-2">
-    <dt className="text-slate-500">{label}</dt>
-    <dd className="mt-1 font-semibold tabular-nums text-slate-900">{value}</dd>
+  <div className="rounded-md bg-slate-50 px-2 py-2 transition-colors group-hover:bg-gray-700">
+    <dt className="text-slate-500 transition-colors group-hover:text-yellow-200">{label}</dt>
+    <dd className="mt-1 font-semibold tabular-nums text-slate-900 transition-colors group-hover:text-yellow-300">{value}</dd>
   </div>
 );
 

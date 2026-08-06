@@ -11,6 +11,7 @@ async function main() {
     where: { role: Role.ADMIN },
   });
 
+  
   if (!existingAdmin) {
     const hashedPassword = await bcrypt.hash('admin123', 12);
     const admin = await prisma.user.create({

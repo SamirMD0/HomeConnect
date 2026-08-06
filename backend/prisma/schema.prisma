@@ -49,6 +49,7 @@ enum PrepaidPurchaseStatus {
 
 enum InstallmentPlanFrequency {
   MONTHLY
+  WEEKLY
 }
 
 enum InstallmentPlanStatus {
@@ -220,6 +221,7 @@ enum SalesAuditAction {
 }
 
 enum LabelBarcodeSource {
+  AUTO
   SKU
   MANUFACTURER
 }
@@ -637,7 +639,7 @@ model Product {
   imageUrl                               String?                 @db.Text
   isActive                               Boolean                 @default(true)
   notes                                  String?                 @db.Text
-  labelBarcodeSource                     LabelBarcodeSource      @default(SKU)
+  labelBarcodeSource                     LabelBarcodeSource      @default(AUTO)
   trackStock                             Boolean                 @default(false)
   stockQuantity                          Int                     @default(0)
   lowStockThreshold                      Int?

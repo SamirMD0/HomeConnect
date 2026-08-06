@@ -59,6 +59,30 @@ describe('customer token search', () => {
   });
 
   it.each([
+    ['address', 'طرابلس'],
+    ['notes', 'ضمان'],
+  ])('builds a parameterized customer matcher for %s', async (column, rawTerm) => {
+    await expect(findSearchMatchIds('customer', rawTerm)).resolves.toEqual(['customer-1']);
+
+    const statement = queryRawMock.mock.calls[0][0] as SqlShape;
+    const sql = statementText(statement);
+    expect(sql).toContain(`hc_search_normalize(${column})`);
+    expect(sql).not.toContain(rawTerm);
+    expect(statement.values).toContain(normalizeSearchTerm(rawTerm));
+  });
+
+  it('keeps the provenance target restricted to customer name and phone', async () => {
+    await findSearchMatchIds('customerNamePhone', '7012');
+
+    const statement = queryRawMock.mock.calls[0][0] as SqlShape;
+    const sql = statementText(statement);
+    expect(sql).toContain('hc_search_normalize(name)');
+    expect(sql).toContain('hc_phone_normalize(phone)');
+    expect(sql).not.toContain('hc_search_normalize(address)');
+    expect(sql).not.toContain('hc_search_normalize(notes)');
+  });
+
+  it.each([
     ['123456', '123456'],
     ['+961 (70) 123456', '96170123456'],
   ])('keeps phone query %j whole and searches digit substring %j', async (query, digits) => {
@@ -67,6 +91,7 @@ describe('customer token search', () => {
     const statement = queryRawMock.mock.calls[0][0] as SqlShape;
     expect(statement.values).toContain(digits);
     expect(statementText(statement)).toContain('hc_phone_normalize');
+    expect(statementText(statement)).not.toMatch(/hc_phone_normalize\([^)]*\)\s+%/);
   });
 
   it('binds injection-like input instead of interpolating it into SQL', async () => {

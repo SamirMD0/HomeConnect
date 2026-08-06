@@ -1,6 +1,6 @@
 import { InstallmentPlanFrequency } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
-import { addMonthsToBusinessDate, parseBusinessDate } from './business-date';
+import { addMonthsToBusinessDate, addWeeksToBusinessDate, parseBusinessDate } from './business-date';
 import { InstallmentScheduleError, InvalidInstallmentCountError } from './financial-errors';
 import { assertPositiveMoney, centsToMoney, moneyToCents, sumMoney } from './money';
 import { GeneratedInstallment, GenerateMonthlyInstallmentScheduleInput } from './financial-types';
@@ -8,10 +8,6 @@ import { GeneratedInstallment, GenerateMonthlyInstallmentScheduleInput } from '.
 export function generateMonthlyInstallmentSchedule(
   input: GenerateMonthlyInstallmentScheduleInput
 ): GeneratedInstallment[] {
-  if (input.frequency !== InstallmentPlanFrequency.MONTHLY) {
-    throw new InstallmentScheduleError('Only monthly installment schedules are supported');
-  }
-
   if (!Number.isInteger(input.installmentCount) || input.installmentCount <= 0) {
     throw new InvalidInstallmentCountError('Installment count must be a positive integer');
   }
@@ -49,7 +45,7 @@ export function generateMonthlyInstallmentSchedule(
 
     installments.push({
       installmentNumber: index + 1,
-      dueDate: addMonthsToBusinessDate(startDate, index),
+      dueDate: installmentDueDate(startDate, index, input.frequency),
       amountDue: centsToMoney(amountCents),
     });
 
@@ -62,4 +58,18 @@ export function generateMonthlyInstallmentSchedule(
   }
 
   return installments;
+}
+
+export function installmentDueDate(
+  startDate: string,
+  installmentIndex: number,
+  frequency: InstallmentPlanFrequency
+): string {
+  if (frequency === InstallmentPlanFrequency.MONTHLY) {
+    return addMonthsToBusinessDate(startDate, installmentIndex);
+  }
+  if (frequency === InstallmentPlanFrequency.WEEKLY) {
+    return addWeeksToBusinessDate(startDate, installmentIndex);
+  }
+  throw new InstallmentScheduleError('Unsupported installment frequency');
 }

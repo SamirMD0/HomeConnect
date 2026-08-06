@@ -87,6 +87,12 @@ describe('sql safety scanner — allows legitimate repair SQL', () => {
     expect(scanSqlForUnsafeStatements(sql).safe).toBe(true);
   });
 
+  it('allows only the reviewed product label AUTO preference flip', () => {
+    const safe = `UPDATE products SET "labelBarcodeSource" = 'AUTO' WHERE "labelBarcodeSource" = 'SKU' AND barcode IS NOT NULL;`;
+    expect(scanSqlForUnsafeStatements(safe).safe).toBe(true);
+    expect(scanSqlForUnsafeStatements(`UPDATE products SET "labelBarcodeSource" = 'AUTO' WHERE "labelBarcodeSource" = 'SKU';`).safe).toBe(false);
+  });
+
   it('still rejects an UPDATE that could overwrite existing values', () => {
     expect(scanSqlForUnsafeStatements(`UPDATE "debts" SET "amount" = 0;`).safe).toBe(false);
     expect(scanSqlForUnsafeStatements(`UPDATE "debts" SET "amount" = 0 WHERE "id" = 'x';`).safe).toBe(false);
@@ -103,8 +109,8 @@ describe('sql safety scanner — allows legitimate repair SQL', () => {
 describe('sql safety scanner — real bundled files', () => {
   const repairFiles = fs.readdirSync(REPAIR_DIR).filter((name) => name.endsWith('.sql'));
 
-  it('finds all 18 repair files', () => {
-    expect(repairFiles).toHaveLength(18);
+  it('finds all 21 repair files', () => {
+    expect(repairFiles).toHaveLength(21);
   });
 
   it.each(repairFiles)('accepts %s', (name) => {

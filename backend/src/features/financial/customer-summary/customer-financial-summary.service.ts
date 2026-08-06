@@ -34,6 +34,7 @@ import {
   FinancialSummaryPlan,
 } from './customer-financial-summary.repository';
 import { CustomerFinancialSummaryQueryInput } from './customer-financial-summary.validator';
+import { monthToRange } from '../receivables/receivables.service';
 
 type DueItemType = 'DEBT' | 'INSTALLMENT';
 type PaymentAllocationTargetType = DueItemType | 'UNKNOWN';
@@ -163,6 +164,7 @@ interface RecentPaymentView {
 }
 
 interface CustomerFinancialSummaryView {
+  businessDate: string;
   customer: CustomerView;
   summary: {
     totalOutstanding: string;
@@ -177,6 +179,11 @@ interface CustomerFinancialSummaryView {
     overdueInstallmentCount: number;
     nextDueDate: string | null;
     nextDueAmount: string;
+    totalObligated: string;
+    overdueAmount: string;
+    lastPaymentDate: string | null;
+    daysSinceLastPayment: number | null;
+    month?: { debtAdded: string; paid: string; remaining: string; isSettled: boolean };
   };
   debts: DebtSummaryView[];
   installmentPlans: InstallmentPlanSummaryView[];
@@ -276,8 +283,27 @@ export class CustomerFinancialSummaryService {
         .map((plan) => plan.remainingBalance)
     );
     const nextDue = this.calculateNextDue(activeDebts, activePlans);
+    const totalObligated = sumMoney([
+      ...debtComputations.filter((debt) => !debt.isCancelled && !debt.isPrepaid).map((debt) => new Decimal(debt.view.originalAmount)),
+      ...planComputations.filter((plan) => !plan.isCancelled).map((plan) => new Decimal(plan.view.totalAmount)),
+    ]);
+    const overdueAmount = sumMoney([
+      ...debtComputations.filter((debt) => debt.view.calculatedStatus === DebtStatus.OVERDUE).map((debt) => debt.remainingBalance),
+      ...overdueInstallments.map((installment) => installment.remainingAmount),
+    ]);
+    const lastPayment = records.recentPayments.find((payment) => !payment.voidedAt) ?? null;
+    const lastPaymentDate = lastPayment ? prismaDateToBusinessDate(lastPayment.paymentDate) : null;
+    const monthRange = query.month ? monthToRange(query.month) : null;
+    const monthDebtAdded = monthRange
+      ? sumMoney(debtComputations.filter((debt) => { const date = debt.view.createdAt.slice(0, 10); return date >= monthRange.from && date <= monthRange.to; }).map((debt) => new Decimal(debt.view.originalAmount)))
+      : ZERO_MONEY;
+    const monthPaid = monthRange
+      ? sumMoney(records.recentPayments.filter((payment) => { const date = prismaDateToBusinessDate(payment.paymentDate); return !payment.voidedAt && date >= monthRange.from && date <= monthRange.to; }).map((payment) => payment.totalAmount))
+      : ZERO_MONEY;
+    const monthRemaining = monthDebtAdded.greaterThan(monthPaid) ? subtractMoney(monthDebtAdded, monthPaid) : ZERO_MONEY;
 
     return {
+      businessDate,
       customer: {
         id: records.customer.id,
         name: records.customer.name,
@@ -301,6 +327,16 @@ export class CustomerFinancialSummaryService {
         overdueInstallmentCount: overdueInstallments.length,
         nextDueDate: nextDue?.date ?? null,
         nextDueAmount: nextDue?.totalAmount ?? moneyToApiString(ZERO_MONEY),
+        totalObligated: moneyToApiString(totalObligated),
+        overdueAmount: moneyToApiString(overdueAmount),
+        lastPaymentDate,
+        daysSinceLastPayment: lastPaymentDate ? this.calculateDaysOverdue(lastPaymentDate, businessDate) : null,
+        ...(monthRange ? { month: {
+          debtAdded: moneyToApiString(monthDebtAdded),
+          paid: moneyToApiString(monthPaid),
+          remaining: moneyToApiString(monthRemaining),
+          isSettled: !monthRemaining.greaterThan(ZERO_MONEY),
+        } } : {}),
       },
       debts: debtComputations.slice(0, query.debtLimit).map((debt) => debt.view),
       installmentPlans: planComputations.slice(0, query.planLimit).map((plan) => plan.view),

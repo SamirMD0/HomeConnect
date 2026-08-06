@@ -2,17 +2,22 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
-import { productFormSchema } from '../schemas/product.schemas';
+import { productFormSchema, productPricingModeFormSchema } from '../schemas/product.schemas';
 import { Product, ProductLabelData } from '../types/product.types';
 import { productKeys } from '../hooks/useProducts';
 import { MAX_LABEL_SELECTION } from '../utils/label-selection';
 import { calculateLabelSheetLayout } from '../utils/label-sheet-layout';
 import { ProductLabelSheetSettings } from '../utils/product-label-settings';
 import { ProductBulkActionsBar } from './ProductBulkActionsBar';
-import { barcodeOptions, ProductLabel } from './ProductLabel';
+import { barcodeFormat, barcodeOptions, ProductLabel } from './ProductLabel';
 import { ProductLabelSheet } from './ProductLabelSheet';
+import { ProductMobileCard } from './ProductMobileCard';
 import { ProductPicker } from './ProductPicker';
 import { ProductsTable } from './ProductsTable';
+import { ProductCard } from './ProductCard';
+import { ProductImageBroken } from './ProductImageView';
+import { buildProductPricingConfigurationInput, shouldRemoveStagedProductImage, shouldUpdateProductPricing } from './ProductFormDialog';
+import { emptyProductFormPricing } from './ProductFormPricingPanel';
 
 const product: Product = {
   id: '11111111-1111-4111-8111-111111111111',
@@ -33,7 +38,7 @@ const product: Product = {
   createdAt: '2026-07-29T10:00:00.000Z',
   updatedAt: '2026-07-29T10:00:00.000Z',
   pricing: {
-    pricingAvailable: true, source: 'PRESET', pricingPresetId: '33333333-3333-4333-8333-333333333333', installmentEnabled: true,
+    pricingAvailable: true, mode: 'PRESET', source: 'PRESET', pricingPresetId: '33333333-3333-4333-8333-333333333333', installmentEnabled: true,
     presetName: 'Standard AC', useCustomPricing: false, costPrice: '300.00', cashPrice: '377.82',
     installmentPrice: '453.38', downPayment: '181.35', remaining: '272.03', monthlyPayment: '90.67',
     lastInstallmentPayment: '90.69', installmentMonths: 3, warnings: [],
@@ -41,6 +46,11 @@ const product: Product = {
 };
 
 describe('product management frontend', () => {
+  it('keeps the mobile product list card markup stable', () => {
+    const html = renderToStaticMarkup(<MemoryRouter><ProductMobileCard product={product} selected={false} canAdmin onSelect={() => undefined} onView={() => undefined} onEdit={() => undefined} onArchive={() => undefined} onRestore={() => undefined} /></MemoryRouter>);
+    expect(html).toMatchSnapshot();
+  });
+
   it('accepts Arabic text and validates discount amounts using cents', () => {
     expect(productFormSchema.parse({ name: 'مروحة', model: 'F1', brand: 'العربية', barcode: '', price: '100.00', discount: '99.99', imageUrl: '', notes: 'ملاحظة' }).name).toBe('مروحة');
     expect(() => productFormSchema.parse({ name: 'Fan', model: 'F1', brand: '', barcode: '', price: '100.00', discount: '100.01', imageUrl: '', notes: '' })).toThrow('Discount');
@@ -69,7 +79,7 @@ describe('product management frontend', () => {
     const large: Product = {
       ...product, price: null, discount: null, netPrice: null,
       pricing: {
-        pricingAvailable: true, source: 'PRESET', pricingPresetId: '33333333-3333-4333-8333-333333333333', installmentEnabled: true,
+        pricingAvailable: true, mode: 'PRESET', source: 'PRESET', pricingPresetId: '33333333-3333-4333-8333-333333333333', installmentEnabled: true,
         presetName: 'White', useCustomPricing: false, costPrice: '670.00', cashPrice: '844.00',
         installmentPrice: '1013.00', downPayment: '405.20', remaining: '607.80', monthlyPayment: '202.60',
         lastInstallmentPayment: '202.60', installmentMonths: 3, warnings: [],
@@ -85,7 +95,7 @@ describe('product management frontend', () => {
     const cachedProduct: Product = {
       ...product,
       pricing: {
-        pricingAvailable: true, source: 'PRESET', pricingPresetId: '33333333-3333-4333-8333-333333333333', installmentEnabled: false,
+        pricingAvailable: true, mode: 'PRESET', source: 'PRESET', pricingPresetId: '33333333-3333-4333-8333-333333333333', installmentEnabled: false,
         presetName: 'Standard AC', useCustomPricing: false, cashPrice: '377.82', warnings: [],
       },
     };
@@ -121,6 +131,36 @@ describe('product management frontend', () => {
     expect(() => productFormSchema.parse({ ...base, imageUrl: 'not a url' })).toThrow('valid http');
   });
 
+  it('validates manual mode and submits the pricing null pattern', () => {
+    expect(productPricingModeFormSchema.safeParse({ mode: 'MANUAL', price: '', costPrice: '' }).success).toBe(false);
+    expect(productPricingModeFormSchema.safeParse({ mode: 'MANUAL', price: '125.00', costPrice: '' }).success).toBe(true);
+    expect(buildProductPricingConfigurationInput({ ...emptyProductFormPricing, mode: 'MANUAL' })).toEqual({
+      costPrice: null, pricingPresetId: null, useCustomPricing: false, installmentEnabled: false,
+      customExpensePercent: null, customProfitPercent: null, customDiscountBufferPercent: null,
+      customInstallmentMarkupPercent: null, customDownPaymentPercent: null,
+      customInstallmentMonths: null, customCalculationMode: null,
+    });
+  });
+
+  it('never routes an employee notes edit through the pricing mutation', () => {
+    const emptyPricing = buildProductPricingConfigurationInput(emptyProductFormPricing);
+    expect(product.pricing?.installmentEnabled).toBe(true);
+    expect(shouldUpdateProductPricing(false, product, emptyPricing)).toBe(false);
+  });
+
+  it('does not delete an uploaded image unless staged removal reaches submit', () => {
+    const uploaded: Product = { ...product, image: { source: 'UPLOAD', mimeType: 'image/png', byteSize: 10, updatedAt: '2026-08-05T00:00:00Z' } };
+    expect(shouldRemoveStagedProductImage(uploaded, false)).toBe(false);
+    expect(shouldRemoveStagedProductImage(uploaded, true)).toBe(true);
+  });
+
+  it('renders grid cards with images, placeholders, and the broken-image tile', () => {
+    const grid = (item: Product) => renderToStaticMarkup(<MemoryRouter><ProductCard product={item} variant="grid" selected={false} canAdmin onSelect={() => undefined} onView={() => undefined} onEdit={() => undefined} onArchive={() => undefined} onRestore={() => undefined} /></MemoryRouter>);
+    expect(grid({ ...product, image: { source: 'URL', url: 'https://cdn.example.com/fan.png' } })).toContain('https://cdn.example.com/fan.png');
+    expect(grid({ ...product, image: null })).toContain('lucide-package');
+    expect(renderToStaticMarkup(<ProductImageBroken className="broken-tile" />)).toContain('Image could not be loaded / تعذر تحميل الصورة');
+  });
+
   it('prints SKU identity without exposing direction attributes', () => {
     const html = renderToStaticMarkup(<ProductLabel product={{ id: product.id, name: product.name, model: product.model, brand: product.brand, sku: product.sku, barcodeValue: product.sku, barcodeSource: 'SKU', internalPriceCode: null }} />);
     expect(html).toContain('مروحة سقف');
@@ -152,6 +192,14 @@ describe('product management frontend', () => {
     // human-readable caption differs.
     expect(barcodeOptions('MANUFACTURER').displayValue).toBe(true);
     expect(barcodeOptions('SKU').displayValue).toBe(false);
+  });
+
+  it('selects native retail barcode formats and falls back to CODE128', () => {
+    expect(barcodeFormat('6291041500213')).toBe('EAN13');
+    expect(barcodeFormat('123456789012')).toBe('UPC');
+    expect(barcodeFormat('12345670')).toBe('EAN8');
+    expect(barcodeFormat('6291041500214')).toBe('CODE128');
+    expect(barcodeFormat('HC-000001')).toBe('CODE128');
   });
 
   it('omits the price row entirely when no price was requested', () => {

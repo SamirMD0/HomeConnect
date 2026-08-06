@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Package, Plus } from 'lucide-react';
+import { LayoutGrid, List, Package, Plus } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { Pagination } from '../../components/ui/Pagination';
 import { ProductArchiveDialog } from '../../features/products/components/ProductArchiveDialog';
@@ -7,11 +7,13 @@ import { ProductBulkActionsBar } from '../../features/products/components/Produc
 import { ProductDetailsDrawer } from '../../features/products/components/ProductDetailsDrawer';
 import { ProductFilters } from '../../features/products/components/ProductFilters';
 import { ProductFormDialog } from '../../features/products/components/ProductFormDialog';
+import { ProductGrid, ProductGridSkeleton } from '../../features/products/components/ProductGrid';
 import { ProductRestoreDialog } from '../../features/products/components/ProductRestoreDialog';
 import { ProductsTable } from '../../features/products/components/ProductsTable';
 import { useProducts } from '../../features/products/hooks/useProducts';
 import { Product, ProductFilters as ProductFilterValues, ProductSortBy, ProductSortOrder } from '../../features/products/types/product.types';
 import { productLabels } from '../../features/products/utils/product-labels';
+import { productViewSearchParams, resolveProductView } from '../../features/products/utils/product-view';
 import { businessLabels } from '../../shared/labels/business-labels';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -27,6 +29,7 @@ export const ProductsPage: React.FC = () => {
   const [restoreProduct, setRestoreProduct] = useState<Product | null>(null);
   const [scannedValue, setScannedValue] = useState<string | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const view = resolveProductView(params, typeof window !== 'undefined' ? window.localStorage.getItem('products:view') : null);
 
   useEffect(() => { const timer = window.setTimeout(() => setDebouncedSearch(search.trim()), 300); return () => window.clearTimeout(timer); }, [search]);
   useEffect(() => {
@@ -76,6 +79,11 @@ export const ProductsPage: React.FC = () => {
     setSelectedIds(new Set());
     setParams(next);
   };
+  const setView = (nextView: 'table' | 'grid') => {
+    const next = productViewSearchParams(params, nextView);
+    window.localStorage.setItem('products:view', nextView);
+    setParams(next, { replace: true });
+  };
   const focus = (id: string | null) => {
     const next = new URLSearchParams(params);
     if (id) next.set('focus', id); else next.delete('focus');
@@ -103,6 +111,10 @@ export const ProductsPage: React.FC = () => {
         <button type="button" onClick={() => setStatus('active')} className={`border-b-2 px-4 py-2 text-sm font-semibold ${filters.isActive ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-slate-500'}`}>{productLabels.activeProducts}</button>
         <button type="button" onClick={() => setStatus('archived')} className={`border-b-2 px-4 py-2 text-sm font-semibold ${!filters.isActive ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-slate-500'}`}>{productLabels.archivedProducts}</button>
       </div>
+      <div className="mb-1 inline-flex rounded-lg border border-slate-300 bg-white p-1" aria-label="Product view / طريقة عرض المنتجات">
+        <button type="button" aria-pressed={view === 'table'} onClick={() => setView('table')} className={`inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-semibold ${view === 'table' ? 'bg-emerald-50 text-emerald-700' : 'text-slate-500'}`}><List className="h-4 w-4" />Table / جدول</button>
+        <button type="button" aria-pressed={view === 'grid'} onClick={() => setView('grid')} className={`inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-semibold ${view === 'grid' ? 'bg-emerald-50 text-emerald-700' : 'text-slate-500'}`}><LayoutGrid className="h-4 w-4" />Grid / شبكة</button>
+      </div>
     </div>
 
     <ProductBulkActionsBar selectedIds={[...selectedIds]} visibleIds={visible.map((product) => product.id)} onClear={() => setSelectedIds(new Set())} />
@@ -110,9 +122,11 @@ export const ProductsPage: React.FC = () => {
     <ProductFilters filters={filters} search={search} onSearchChange={(value) => { setSearch(value); setScannedValue(null); }} onSearchSubmit={submitScan} searchInputRef={searchInputRef} onChange={updateFilters} />
     {scannedValue && !products.isFetching && !visible.some((item) => item.exactMatch) && <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-medium text-amber-900">No product found for <span className="font-mono">{scannedValue}</span> / لم يتم العثور على المنتج</p>}
 
-    {products.isLoading ? <div className="p-12 text-center text-slate-500">Loading products / جارٍ تحميل المنتجات…</div>
+    {products.isLoading ? view === 'grid' ? <ProductGridSkeleton /> : <div className="p-12 text-center text-slate-500">Loading products / جارٍ تحميل المنتجات…</div>
       : products.isError ? <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">Unable to load products / تعذر تحميل المنتجات.</div>
-      : visible.length ? <><ProductsTable products={visible} selectedIds={selectedIds} canAdmin={user?.role === 'ADMIN'} onSelect={(id, selected) => setSelectedIds((current) => { const next = new Set(current); if (selected) next.add(id); else next.delete(id); return next; })} onSelectAll={(selected) => setSelectedIds((current) => { const next = new Set(current); visible.forEach((product) => selected ? next.add(product.id) : next.delete(product.id)); return next; })} onView={(product) => focus(product.id)} onEdit={openEdit} onArchive={openArchive} onRestore={openRestore} /><div className="overflow-hidden rounded-lg border border-slate-200"><Pagination currentPage={filters.page ?? 1} totalPages={products.data?.pagination.totalPages ?? 1} onPageChange={(page) => updateFilters({ page })} /></div></>
+      : visible.length ? <>{view === 'grid'
+        ? <ProductGrid products={visible} selectedIds={selectedIds} canAdmin={user?.role === 'ADMIN'} onSelect={(id, selected) => setSelectedIds((current) => { const next = new Set(current); if (selected) next.add(id); else next.delete(id); return next; })} onSelectAll={(selected) => setSelectedIds((current) => { const next = new Set(current); visible.forEach((product) => selected ? next.add(product.id) : next.delete(product.id)); return next; })} onView={(product) => focus(product.id)} onEdit={openEdit} onArchive={openArchive} onRestore={openRestore} />
+        : <ProductsTable products={visible} selectedIds={selectedIds} canAdmin={user?.role === 'ADMIN'} onSelect={(id, selected) => setSelectedIds((current) => { const next = new Set(current); if (selected) next.add(id); else next.delete(id); return next; })} onSelectAll={(selected) => setSelectedIds((current) => { const next = new Set(current); visible.forEach((product) => selected ? next.add(product.id) : next.delete(product.id)); return next; })} onView={(product) => focus(product.id)} onEdit={openEdit} onArchive={openArchive} onRestore={openRestore} />}<div className="overflow-hidden rounded-lg border border-slate-200"><Pagination currentPage={filters.page ?? 1} totalPages={products.data?.pagination.totalPages ?? 1} onPageChange={(page) => updateFilters({ page })} /></div></>
       : <div className="rounded-lg border border-dashed border-slate-300 bg-white p-12 text-center"><Package className="mx-auto h-8 w-8 text-slate-300" /><p className="mt-3 font-medium text-slate-700">{productLabels.noProducts}</p></div>}
 
     <ProductFormDialog open={formOpen} product={editingProduct} onClose={closeForm} onViewDuplicate={(id) => { closeForm(); focus(id); }} />

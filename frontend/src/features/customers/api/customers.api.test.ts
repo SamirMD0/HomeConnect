@@ -21,4 +21,16 @@ describe('customers API search', () => {
       params: { search: 'محمد عمار' },
     });
   });
+
+  it('asks for financial figures alongside the page so rows need no follow-up request', async () => {
+    apiMock.get.mockResolvedValue({
+      data: { success: true, data: [], meta: { pagination: {} } },
+    });
+
+    await customersApi.getCustomers({ page: 1, limit: 10, include: 'financial' });
+
+    expect(apiMock.get).toHaveBeenCalledWith('/customers', {
+      params: { page: 1, limit: 10, include: 'financial' },
+    });
+  });
 });

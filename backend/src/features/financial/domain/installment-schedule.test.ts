@@ -5,6 +5,20 @@ import { generateMonthlyInstallmentSchedule } from './installment-schedule';
 import { moneyToApiString, sumMoney } from './money';
 
 describe('monthly installment schedule generation', () => {
+  it('generates weekly installments seven days apart', () => {
+    const schedule = generateMonthlyInstallmentSchedule({
+      totalAmount: '300.00',
+      startDate: '2026-08-01',
+      installmentCount: 3,
+      frequency: InstallmentPlanFrequency.WEEKLY,
+    });
+
+    expect(schedule.map((installment) => installment.dueDate)).toEqual([
+      '2026-08-01',
+      '2026-08-08',
+      '2026-08-15',
+    ]);
+  });
   it('generates six monthly installments with the first due on the start date', () => {
     const schedule = generateMonthlyInstallmentSchedule({
       totalAmount: '600.00',

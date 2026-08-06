@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { repository, pricing } = vi.hoisted(() => ({
-  repository: { findManyForLabels: vi.fn(), findActiveDefaultPricingPreset: vi.fn() },
+  repository: { findManyForLabels: vi.fn(), findById: vi.fn(), findActiveDefaultPricingPreset: vi.fn() },
   pricing: { resolveProductPricing: vi.fn() },
 }));
 
@@ -150,6 +150,29 @@ describe('bulk product labels', () => {
     const label = (await ProductsService.labels(query)).labels[0];
 
     expect(label).toMatchObject({ barcodeValue: '8901643123456', barcodeSource: 'MANUFACTURER' });
+  });
+
+  it('uses a saved barcode automatically', async () => {
+    repository.findManyForLabels.mockResolvedValue([productOf({ labelBarcodeSource: 'AUTO', barcode: '6291041500213' })]);
+
+    const result = await ProductsService.labels(query);
+
+    expect(result.labels[0]).toMatchObject({ barcodeValue: '6291041500213', barcodeSource: 'MANUFACTURER' });
+    expect(result.warnings).toHaveLength(0);
+  });
+
+  it('warns about AUTO fallback on both single and bulk label responses', async () => {
+    const product = productOf({ labelBarcodeSource: 'AUTO', barcode: null });
+    repository.findManyForLabels.mockResolvedValue([product]);
+    repository.findById.mockResolvedValue(product);
+
+    const bulk = await ProductsService.labels(query);
+    const single = await ProductsService.label(FAN, { includePriceCode: false, includePrice: false });
+
+    expect(bulk.labels[0]).toMatchObject({ barcodeValue: 'HC-000001', barcodeSource: 'SKU' });
+    expect(bulk.warnings).toContainEqual({ productId: FAN, code: 'FALLBACK_TO_SKU', name: 'Ceiling Fan' });
+    expect(single.payload).toMatchObject({ barcodeValue: 'HC-000001', barcodeSource: 'SKU' });
+    expect(single.warnings).toContainEqual({ productId: FAN, code: 'FALLBACK_TO_SKU', name: 'Ceiling Fan' });
   });
 
   it('falls back to the SKU when a manufacturer barcode is missing, and warns rather than doing it silently', async () => {

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { CustomersController } from '../controllers/customers.controller';
 import { requireAuth } from '../middleware/auth.middleware';
 import { validate } from '../middleware/validate.middleware';
-import { createCustomerSchema, updateCustomerSchema, customerQuerySchema } from '../validators/customers.validator';
+import { createCustomerSchema, updateCustomerSchema, customerQuerySchema, customerSuggestionsQuerySchema } from '../validators/customers.validator';
 
 const router = Router();
 
@@ -14,6 +14,7 @@ router.get('/', validate(customerQuerySchema, 'query'), CustomersController.list
 
 // Search customers (alias for list with search param, or separate endpoint if desired)
 router.get('/search', validate(customerQuerySchema, 'query'), CustomersController.listCustomers);
+router.get('/search-suggestions', validate(customerSuggestionsQuerySchema, 'query'), CustomersController.searchSuggestions);
 
 // Create customer
 router.post('/', validate(createCustomerSchema), CustomersController.createCustomer);

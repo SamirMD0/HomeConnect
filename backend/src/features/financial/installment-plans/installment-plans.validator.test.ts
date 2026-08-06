@@ -75,15 +75,13 @@ describe('installment plan validators', () => {
       })
     ).toThrow();
 
-    expect(() =>
-      createInstallmentPlanSchema.parse({
-        totalAmount: '600.00',
-        description: 'Refrigerator',
-        startDate: '2026-08-01',
-        installmentCount: 6,
-        frequency: 'WEEKLY',
-      })
-    ).toThrow();
+    expect(createInstallmentPlanSchema.parse({
+      totalAmount: '600.00',
+      description: 'Refrigerator',
+      startDate: '2026-08-01',
+      installmentCount: 6,
+      frequency: 'WEEKLY',
+    }).frequency).toBe('WEEKLY');
 
     expect(() =>
       createInstallmentPlanSchema.parse({

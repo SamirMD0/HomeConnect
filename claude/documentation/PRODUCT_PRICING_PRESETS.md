@@ -6,6 +6,19 @@ Pricing presets derive quotation values from a product's real supplier cost. Thi
 
 Existing `Product.price` remains the manual selling price and `Product.discount` remains a subtractive discount. The calculated cash price is derived on read and is not stored. An administrator may explicitly copy it into the manual price.
 
+## Product Pricing Modes / طرق تسعير المنتج
+
+Pricing mode is derived from the existing product columns at read time. It is not stored as an enum or database column:
+
+| API mode | Raw product state | Behaviour |
+|---|---|---|
+| `PRESET` | `costPrice` is set and `useCustomPricing` is false | Uses the selected active preset, or the active default preset. |
+| `CUSTOM` | `costPrice` is set and `useCustomPricing` is true | Uses the product's stored cash percentages and calculation mode. Installment values are required only when installments are enabled. |
+| `MANUAL` | `costPrice` is null and legacy `price` is set | Uses the manually entered selling price. Pricing preset and custom fields are cleared. |
+| `NONE` | Both `costPrice` and legacy `price` are null | No product price is configured. |
+
+The Products form exposes Preset, Custom, and Manual choices. Existing `price` and `discount` values remain visible when a calculated mode is selected so a legacy value is never hidden. The API continues to return money as decimal strings.
+
 ## Formula
 
 COMPOUND mode:
@@ -55,6 +68,16 @@ Do not copy one formula across these product families without reviewing margins 
 - Formula, cost, assignment, custom pricing, archive, restore, and default changes require administrator authorization, reason, and account password.
 - Descriptive preset edits require administrator authorization and reason; formula edits additionally require password verification.
 - Passwords are excluded from API responses and audit values.
+
+## Label Barcode Source / مصدر باركود الملصق
+
+New products default to `AUTO`. Label rendering resolves the stored preference before sending the strict label payload:
+
+- `AUTO` uses the saved manufacturer barcode when present; otherwise it encodes the HomeConnect SKU and returns `FALLBACK_TO_SKU`.
+- `MANUFACTURER` requires a saved barcode. Create and update requests without one are rejected.
+- `SKU` always encodes the HomeConnect SKU.
+
+The payload reports only the resolved `MANUFACTURER` or `SKU` source. A valid 13-digit EAN uses EAN-13, a 12-digit value uses UPC, an 8-digit value uses EAN-8, and other values use CODE128. Rendering retries CODE128 if a native symbology rejects the value. Label payloads do not expose cost, expense, profit, discount-buffer, or installment data.
 
 ## Deployment
 

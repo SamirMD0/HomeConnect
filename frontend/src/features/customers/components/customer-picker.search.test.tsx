@@ -1,14 +1,16 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
-const { useCustomersMock, useCreateCustomerMock } = vi.hoisted(() => ({
+const { useCustomersMock, useCreateCustomerMock, useCustomerSearchSuggestionsMock } = vi.hoisted(() => ({
   useCustomersMock: vi.fn(),
   useCreateCustomerMock: vi.fn(),
+  useCustomerSearchSuggestionsMock: vi.fn(() => ({ data: undefined })),
 }));
 
 vi.mock('../hooks/useCustomers', () => ({
   useCustomers: useCustomersMock,
   useCreateCustomer: useCreateCustomerMock,
+  useCustomerSearchSuggestions: useCustomerSearchSuggestionsMock,
 }));
 
 import { CustomerPicker } from './CustomerPicker';

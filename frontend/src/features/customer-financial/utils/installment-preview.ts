@@ -1,4 +1,4 @@
-import { addMonthsToBusinessDate, isStrictBusinessDate } from './business-date';
+import { addMonthsToBusinessDate, addWeeksToBusinessDate, isStrictBusinessDate } from './business-date';
 import { centsToMoney, isValidMoneyInput, moneyToCents } from './money-input';
 
 export interface InstallmentPreviewInput {
@@ -6,6 +6,7 @@ export interface InstallmentPreviewInput {
   startDate: string;
   installmentCount: number;
   manualAmounts?: string[];
+  frequency?: 'MONTHLY' | 'WEEKLY';
 }
 
 export interface InstallmentPreviewRow {
@@ -51,7 +52,9 @@ export function generateInstallmentPreview(input: InstallmentPreviewInput): Inst
 
       rows.push({
         installmentNumber: index + 1,
-        dueDate: addMonthsToBusinessDate(input.startDate, index),
+        dueDate: input.frequency === 'WEEKLY'
+          ? addWeeksToBusinessDate(input.startDate, index)
+          : addMonthsToBusinessDate(input.startDate, index),
         amountDue: centsToMoney(moneyToCents(amount)),
       });
     }
@@ -73,7 +76,9 @@ export function generateInstallmentPreview(input: InstallmentPreviewInput): Inst
 
       rows.push({
         installmentNumber: index + 1,
-        dueDate: addMonthsToBusinessDate(input.startDate, index),
+        dueDate: input.frequency === 'WEEKLY'
+          ? addWeeksToBusinessDate(input.startDate, index)
+          : addMonthsToBusinessDate(input.startDate, index),
         amountDue: centsToMoney(amountDue),
       });
     }

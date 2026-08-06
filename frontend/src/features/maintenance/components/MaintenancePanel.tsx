@@ -5,6 +5,7 @@ import { maintenanceApi } from '../api/maintenance.api';
 import { useApplyRepairs, useMaintenanceOverview, usePreflightReport } from '../hooks/useMaintenance';
 import { PreflightReportCard } from './PreflightReportCard';
 import { PendingRepairsList } from './PendingRepairsList';
+import { ResolveMigrationsPanel } from './ResolveMigrationsPanel';
 import { RepairHistoryTable } from './RepairHistoryTable';
 
 /**
@@ -128,6 +129,8 @@ export const MaintenancePanel: React.FC = () => {
           {preflightRequested && <PreflightReportCard report={preflight.data} loading={preflight.isFetching} />}
 
           <PendingRepairsList repairs={data.pendingRepairs} />
+
+          <ResolveMigrationsPanel migrations={data.pendingMigrations ?? []} />
 
           {pendingWork > 0 && (
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">

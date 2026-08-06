@@ -39,7 +39,7 @@ export interface Product {
   updatedById?: string | null;
   createdBy?: ProductActor;
   updatedBy?: ProductActor | null;
-  pricing?: ({pricingAvailable:true;source:PricingSource;pricingPresetId:string|null;presetName:string|null;useCustomPricing:boolean;installmentEnabled:boolean;cashPrice:string;installmentPrice?:string;downPayment?:string;remaining?:string;monthlyPayment?:string;lastInstallmentPayment?:string;installmentMonths?:number;costPrice?:string;configuration?:ProductPricingFields;warnings:string[]} | ({pricingAvailable:false;reason:string;pricingPresetId:string|null;presetName:string|null;useCustomPricing:boolean;installmentEnabled:boolean;costPrice?:string|null;configuration?:ProductPricingFields}));
+  pricing?: ({pricingAvailable:true;mode:ProductPricingMode;source:PricingSource;pricingPresetId:string|null;presetName:string|null;useCustomPricing:boolean;installmentEnabled:boolean;cashPrice:string;installmentPrice?:string;downPayment?:string;remaining?:string;monthlyPayment?:string;lastInstallmentPayment?:string;installmentMonths?:number;costPrice?:string;configuration?:ProductPricingFields;warnings:string[]} | ({pricingAvailable:false;mode:ProductPricingMode;reason:string;pricingPresetId:string|null;presetName:string|null;useCustomPricing:boolean;installmentEnabled:boolean;costPrice?:string|null;configuration?:ProductPricingFields}));
 }
 
 export interface ProductLabelData {
@@ -49,7 +49,7 @@ export interface ProductLabelData {
   brand: string | null;
   sku: string;
   barcodeValue: string;
-  barcodeSource: LabelBarcodeSource;
+  barcodeSource: Exclude<LabelBarcodeSource, 'AUTO'>;
   internalPriceCode?: string | null;
   staffLabelCode?: string | null;
   cashPrice?: string | null;
@@ -59,7 +59,8 @@ export type ProductLabelWarningCode =
   | 'NOT_FOUND'
   | 'ARCHIVED_EXCLUDED'
   | 'NO_PRICING'
-  | 'MANUFACTURER_BARCODE_MISSING';
+  | 'MANUFACTURER_BARCODE_MISSING'
+  | 'FALLBACK_TO_SKU';
 
 export interface ProductLabelWarning {
   productId: string;
@@ -72,7 +73,13 @@ export interface ProductLabelsResult {
   warnings: ProductLabelWarning[];
 }
 
-export type LabelBarcodeSource = 'SKU' | 'MANUFACTURER';
+export interface ProductLabelResult {
+  payload: ProductLabelData;
+  warnings: ProductLabelWarning[];
+}
+
+export type LabelBarcodeSource = 'AUTO' | 'SKU' | 'MANUFACTURER';
+export type ProductPricingMode = 'PRESET' | 'CUSTOM' | 'MANUAL' | 'NONE';
 export type ProductStockStatus = 'NOT_TRACKED' | 'OUT_OF_STOCK' | 'LOW_STOCK' | 'IN_STOCK';
 export interface ProductSpecification { label: string; value: string }
 export interface ProductStockInput {

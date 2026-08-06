@@ -37,6 +37,32 @@ export interface ReceivableItemView {
   paymentCount: number;
 }
 
+/**
+ * The financial slice of one customer, for list-style screens that show money
+ * next to a name.
+ *
+ * Deliberately a subset of `ReceivableItemView` rather than a parallel shape:
+ * the customers list and the receivables page must never disagree about what a
+ * customer owes, so both are produced by the same computation. Add fields here
+ * by widening the projection, never by computing a second answer.
+ */
+export interface ReceivableCustomerProjection {
+  customerId: string;
+  tier: ReceivableTier;
+  tierReason: string;
+  totalObligated: string;
+  totalPaid: string;
+  outstanding: string;
+  overdueAmount: string;
+  openDebtCount: number;
+  activePlanCount: number;
+  overdueItemCount: number;
+  maxOverdueDays: number;
+  nextDueDate: string | null;
+  lastPaymentDate: string | null;
+  daysSinceLastPayment: number | null;
+}
+
 export interface ReceivablesSummaryView {
   customerCount: number;
   customersWithBalance: number;

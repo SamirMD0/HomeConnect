@@ -94,7 +94,7 @@ export interface FinancialLedgerPlanItem {
   remainingBalance: string;
   startDate: string;
   installmentCount: number;
-  frequency: 'MONTHLY';
+  frequency: 'MONTHLY' | 'WEEKLY';
   completedInstallmentCount: number;
   overdueInstallmentCount: number;
   nextDueDate: string | null;

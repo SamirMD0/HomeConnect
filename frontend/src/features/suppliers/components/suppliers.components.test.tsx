@@ -13,15 +13,21 @@ const transaction: SupplierTransaction = { id: 'transaction-1', supplierId: supp
 const noop = () => undefined;
 
 describe('supplier components', () => {
-  it('renders bilingual, direction-aware directory and transaction views', () => {
+  it('renders a bilingual directory and an English compact transaction table', () => {
     const directory = renderToStaticMarkup(<MemoryRouter><SupplierTable items={[supplier]} canMutate onEdit={noop} onArchive={noop} onRestore={noop} /></MemoryRouter>);
     expect(directory).toContain('شركة النور');
     expect(directory).toContain('Archive / أرشفة');
     expect(directory).toContain('dir="auto"');
     const ledger = renderToStaticMarkup(<SupplierTransactionTable items={[transaction]} canMutate onEdit={noop} onRemove={noop} onRestore={noop} />);
-    expect(ledger).toContain('Supplier Debt / دين للمورّد');
-    expect(ledger).toContain('+ Owed / مستحق');
-    expect(ledger).toContain('Remove / حذف');
+    expect(ledger).toContain('Supplier Debt');
+    expect(ledger).toContain('+ Owed');
+    expect(ledger).toContain('Remove');
+    expect(ledger).not.toContain('Supplier Debt / دين للمورّد');
+    expect(ledger).not.toContain('Remove / حذف');
+    expect(ledger).toContain('data-testid="supplier-ledger-scroll-table"');
+    expect(ledger).toContain('overflow-auto');
+    expect(ledger).toContain('group-hover:bg-gray-600');
+    expect(ledger).toContain('group-hover:text-yellow-300');
   });
 
   it('renders authoritative summary amounts and removed-record filter', () => {

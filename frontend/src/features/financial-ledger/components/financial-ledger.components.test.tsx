@@ -189,6 +189,11 @@ describe('financial ledger components', () => {
     expect(html).toContain('md:hidden');
     expect(html).toContain('Corrected');
     expect(html).toContain('Edit');
+    expect(html).not.toContain('Edit / تعديل');
+    expect(html).toContain('data-testid="ledger-scroll-table"');
+    expect(html).toContain('overflow-auto');
+    expect(html).toContain('group-hover:text-yellow-300');
+    expect(html).toContain('text-shadow:0_0_8px');
     expect(html).toContain('$400.00');
     expect(html).toContain('$450.00');
     expect(html).not.toContain('Correct record');

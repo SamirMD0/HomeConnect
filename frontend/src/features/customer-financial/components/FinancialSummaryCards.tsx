@@ -46,8 +46,15 @@ export const FinancialSummaryCards: React.FC<FinancialSummaryCardsProps> = ({ su
       tone: 'text-emerald-600 bg-emerald-50',
     },
     {
-      label: 'Overdue Items',
-      value: String(overdueTotal),
+      label: 'Total Debt Created / إجمالي الديون',
+      value: formatMoney(summary.totalObligated ?? '0'),
+      detail: 'Lifetime obligations',
+      icon: ReceiptText,
+      tone: 'text-slate-700 bg-slate-50',
+    },
+    {
+      label: 'Overdue / متأخر',
+      value: formatMoney(summary.overdueAmount ?? '0'),
       detail: `${summary.overdueDebtCount} debts, ${summary.overdueInstallmentCount} installments`,
       icon: AlertTriangle,
       tone: overdueTotal > 0 ? 'text-red-600 bg-red-50' : 'text-slate-600 bg-slate-50',
@@ -59,6 +66,13 @@ export const FinancialSummaryCards: React.FC<FinancialSummaryCardsProps> = ({ su
       icon: CalendarClock,
       tone: 'text-amber-700 bg-amber-50',
     },
+    {
+      label: 'Last Payment / آخر دفعة',
+      value: summary.lastPaymentDate ? formatBusinessDate(summary.lastPaymentDate) : '—',
+      detail: summary.daysSinceLastPayment == null ? 'No payments' : `${summary.daysSinceLastPayment} days ago`,
+      icon: CreditCard,
+      tone: 'text-emerald-600 bg-emerald-50',
+    },
   ];
 
   return (
@@ -66,7 +80,7 @@ export const FinancialSummaryCards: React.FC<FinancialSummaryCardsProps> = ({ su
       <h2 id="financial-summary-heading" className="sr-only">
         Financial summary
       </h2>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {cards.map((card) => {
           const Icon = card.icon;
           return (

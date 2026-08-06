@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { customerQuerySchema } from './customers.validator';
 
 describe('customerQuerySchema', () => {
+  it('accepts financial list controls', () => {
+    expect(customerQuerySchema.parse({ sortBy: 'outstanding', filter: 'overdue', include: 'financial' })).toMatchObject({ sortBy: 'outstanding', filter: 'overdue', include: 'financial' });
+  });
   it('coerces page and limit query strings to numbers', () => {
     const result = customerQuerySchema.parse({
       page: '1',

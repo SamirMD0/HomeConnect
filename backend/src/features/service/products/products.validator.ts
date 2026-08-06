@@ -1,7 +1,7 @@
 import { LabelBarcodeSource, PricingCalculationMode } from '@prisma/client';
-import { Decimal } from '@prisma/client/runtime/library';
 import { z } from 'zod';
 import { compareMoney } from '../../financial/domain/money';
+import { isDecimalAtMost } from '../../../validators/decimal-bounds';
 import { userTextSchema } from '../../../validators/user-text';
 import { containsSensitiveProductFields } from '../authorization/service-policy';
 import { MAX_PRODUCT_SPECIFICATIONS, MAX_PRODUCT_SPECIFICATIONS_BYTES, normalizeProductSpecifications, serializedSpecificationsSize } from './product-specifications';
@@ -41,12 +41,15 @@ const percentPattern = /^(?:0|[1-9]\d*)(?:\.\d{1,3})?$/;
 const pricingPercent = (maximum = '999.999') => z.preprocess(
   emptyToNull,
   z.string().trim().regex(percentPattern, 'Use a non-negative percentage with up to 3 decimal places')
-    .refine((value) => new Decimal(value).lessThanOrEqualTo(maximum), `Percentage cannot exceed ${maximum}`).optional().nullable()
+    .refine((value) => isDecimalAtMost(value, maximum), `Percentage cannot exceed ${maximum}`).optional().nullable()
 );
 const positiveCost = z.preprocess(
   emptyToNull,
   z.string().trim().regex(moneyPattern, 'Cost must have up to 2 decimal places')
-    .refine((value) => compareMoney(value, '0.00') > 0, 'Cost price must be greater than zero').optional().nullable()
+    // parseMoney throws on malformed input, and a throw escapes safeParse — so the
+    // comparison is guarded and a bad value falls through to the regex message.
+    .refine((value) => { try { return compareMoney(value, '0.00') > 0; } catch { return false; } },
+      'Cost price must be greater than zero').optional().nullable()
 );
 const productPricingValues = {
   costPrice: positiveCost,
@@ -61,6 +64,12 @@ const productPricingValues = {
   customInstallmentMonths: z.preprocess(emptyToNull, z.coerce.number().int().min(1).max(120).optional().nullable()),
   customCalculationMode: z.preprocess(emptyToNull, z.nativeEnum(PricingCalculationMode).optional().nullable()),
 };
+
+const PRICING_VALUE_FIELDS = [
+  'costPrice', 'pricingPresetId', 'customExpensePercent', 'customProfitPercent',
+  'customDiscountBufferPercent', 'customInstallmentMarkupPercent',
+  'customDownPaymentPercent', 'customInstallmentMonths', 'customCalculationMode',
+] as const;
 
 const productValues = {
   name: userTextSchema({ field: 'Product name', min: 1, max: 200 }),
@@ -99,6 +108,7 @@ function validateDiscount(
 export const createProductSchema = z.object({ ...productValues, ...productPricingValues }).strict().superRefine((values, context) => {
   validateDiscount(values, context);
   validateCustomPricing(values, context);
+  validateLabelBarcodeSource(values, context);
 });
 
 export const updateProductSchema = z
@@ -179,8 +189,9 @@ export const updateProductPricingSchema = z.object({
 });
 
 function validateCustomPricing(values: Record<string, unknown>, context: z.RefinementCtx) {
-  const hasPricingConfiguration = Object.keys(productPricingValues)
-    .some((field) => field === 'installmentEnabled' ? values[field] === true : values[field] != null);
+  const hasPricingConfiguration = PRICING_VALUE_FIELDS.some((field) => values[field] != null)
+    || values.useCustomPricing === true
+    || values.installmentEnabled === true;
   if (hasPricingConfiguration && values.costPrice == null) {
     context.addIssue({ code: 'custom', path: ['costPrice'], message: 'Cost price is required for product pricing' });
   }
@@ -189,6 +200,19 @@ function validateCustomPricing(values: Record<string, unknown>, context: z.Refin
     ...(values.installmentEnabled === true ? ['customInstallmentMarkupPercent','customDownPaymentPercent','customInstallmentMonths'] as const : [])];
   for (const field of fields) {
     if (values[field] == null) context.addIssue({ code: 'custom', path: [field], message: 'Required when custom pricing is enabled' });
+  }
+}
+
+function validateLabelBarcodeSource(
+  values: { labelBarcodeSource?: LabelBarcodeSource; barcode?: string | null },
+  context: z.RefinementCtx
+) {
+  if (values.labelBarcodeSource === LabelBarcodeSource.MANUFACTURER && !values.barcode) {
+    context.addIssue({
+      code: 'custom',
+      path: ['barcode'],
+      message: 'A manufacturer barcode is required when it is selected for the label',
+    });
   }
 }
 

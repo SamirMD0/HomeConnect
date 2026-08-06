@@ -16,6 +16,7 @@ export const customerFinancialSummaryQueryKey = (
     paymentLimit: options?.paymentLimit ?? 20,
     debtLimit: options?.debtLimit ?? 50,
     planLimit: options?.planLimit ?? 50,
+    month: options?.month,
   },
 ] as const;
 
@@ -38,6 +39,7 @@ export const useCustomerFinancialSummary = (
       paymentLimit: options?.paymentLimit ?? 20,
       debtLimit: options?.debtLimit ?? 50,
       planLimit: options?.planLimit ?? 50,
+      month: options?.month,
     }),
     [
       options?.includeCancelled,
@@ -45,6 +47,7 @@ export const useCustomerFinancialSummary = (
       options?.paymentLimit,
       options?.debtLimit,
       options?.planLimit,
+      options?.month,
     ]
   );
 

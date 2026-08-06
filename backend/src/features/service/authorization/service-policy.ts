@@ -14,6 +14,7 @@ export const PRODUCT_FIELD_POLICY = {
   costPrice: true,
   pricingPresetId: true,
   useCustomPricing: true,
+  installmentEnabled: true,
   customExpensePercent: true,
   customProfitPercent: true,
   customDiscountBufferPercent: true,

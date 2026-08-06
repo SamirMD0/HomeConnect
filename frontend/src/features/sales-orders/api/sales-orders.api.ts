@@ -34,7 +34,7 @@ export const salesOrdersApi = {
   restore: async (id: string, input: { status: string; reason: string; accountPassword: string }): Promise<SalesOrder> => (await api.post(`/sales-orders/${id}/restore`, input)).data.data,
   returnOrder: async (id: string, input: { reason: string; accountPassword: string }): Promise<SalesOrder> => (await api.post(`/sales-orders/${id}/return`, input)).data.data,
   createDebt: async (id: string, input: { dueDate: string; description?: string; notes?: string | null }): Promise<SalesOrder> => (await api.post(`/sales-orders/${id}/create-debt`, input)).data.data,
-  createInstallmentPlan: async (id: string, input: { startDate: string; installmentCount: number; frequency?: 'MONTHLY'; description?: string; notes?: string | null }): Promise<SalesOrder> => (await api.post(`/sales-orders/${id}/create-installment-plan`, input)).data.data,
+  createInstallmentPlan: async (id: string, input: { startDate: string; installmentCount: number; frequency?: 'MONTHLY' | 'WEEKLY'; description?: string; notes?: string | null }): Promise<SalesOrder> => (await api.post(`/sales-orders/${id}/create-installment-plan`, input)).data.data,
   unlinkFinancial: async (id: string, input: { reason: string; accountPassword: string }): Promise<SalesOrder> => (await api.post(`/sales-orders/${id}/unlink-financial`, input)).data.data,
   audit: async (id: string): Promise<SalesAudit[]> => (await api.get(`/sales-orders/${id}/audit`)).data.data,
 };

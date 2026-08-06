@@ -48,13 +48,20 @@ describe('determineReceivableTier', () => {
     expect(result.tier).toBe(expected);
   });
 
-  it('forces CRITICAL when an overdue customer has never paid anything', () => {
+  it('keeps a newly overdue customer who never paid in WATCH', () => {
     const result = determineReceivableTier(
       tierInput({ maxOverdueDays: 3, paidRatioPercent: 0, paymentCount: 0 })
     );
 
-    expect(result.tier).toBe('CRITICAL');
+    expect(result.tier).toBe('WATCH');
     expect(result.tierReason).toBe('3 days late · never paid anything');
+  });
+
+  it('does not escalate the 1-30 day WATCH band for a low paid ratio', () => {
+    const result = determineReceivableTier(tierInput({ maxOverdueDays: 1, paidRatioPercent: 10 }));
+
+    expect(result.tier).toBe('WATCH');
+    expect(result.tierReason).toBe('1 day late · 10% paid');
   });
 
   it('escalates one tier when less than 25% has been paid', () => {

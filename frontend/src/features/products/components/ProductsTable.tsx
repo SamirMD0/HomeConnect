@@ -179,14 +179,15 @@ const SelectAllCheckbox: React.FC<{
 const PricingFormulaCell: React.FC<{ product: Product }> = ({ product }) => {
   const pricing = product.pricing;
   const archivedPreset = pricing?.pricingAvailable && pricing.warnings.includes('PRESET_ARCHIVED');
+  const mode = pricing?.mode ?? (pricing?.useCustomPricing ? 'CUSTOM' : pricing?.presetName ? 'PRESET' : product.price ? 'MANUAL' : 'NONE');
 
-  if (pricing?.useCustomPricing) {
+  if (mode === 'CUSTOM') {
     return <Chip tone="blue">Custom / مخصص</Chip>;
   }
-  if (pricing?.presetName) {
+  if (mode === 'PRESET') {
     return (
       <div className="flex min-w-0 items-center gap-1.5">
-        <Chip>{pricing.presetName}</Chip>
+        <Chip>{pricing?.presetName ?? 'Preset / صيغة جاهزة'}</Chip>
         {archivedPreset && (
           <TriangleAlert
             className="h-3.5 w-3.5 shrink-0 text-amber-500"
@@ -196,6 +197,7 @@ const PricingFormulaCell: React.FC<{ product: Product }> = ({ product }) => {
       </div>
     );
   }
+  if (mode === 'MANUAL') return <Chip tone="amber">Manual / يدوي</Chip>;
   return <span className="text-xs text-slate-400">No formula / دون صيغة</span>;
 };
 
@@ -261,11 +263,11 @@ const Empty: React.FC<{ title?: string }> = ({ title }) => (
   <span className="block text-slate-300" title={title}>—</span>
 );
 
-const Chip: React.FC<{ children: React.ReactNode; tone?: 'slate' | 'blue' }> = ({ children, tone = 'slate' }) => (
+const Chip: React.FC<{ children: React.ReactNode; tone?: 'slate' | 'blue' | 'amber' }> = ({ children, tone = 'slate' }) => (
   <span
     dir="auto"
     className={`inline-block max-w-44 truncate align-middle rounded px-2 py-0.5 text-[11px] font-medium ${
-      tone === 'blue' ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-600'
+      tone === 'blue' ? 'bg-blue-50 text-blue-700' : tone === 'amber' ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-600'
     }`}
   >
     {children}

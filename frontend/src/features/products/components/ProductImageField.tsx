@@ -12,13 +12,13 @@ interface ProductImageFieldProps {
   /** File chosen but not yet uploaded — uploads run after the product is saved. */
   file: File | null;
   onFileChange: (file: File | null) => void;
-  onRemoveSaved: () => void;
-  removing?: boolean;
+  savedImageRemoved: boolean;
+  onSavedImageRemovedChange: (removed: boolean) => void;
   error?: string;
 }
 
 export const ProductImageField: React.FC<ProductImageFieldProps> = ({
-  product, url, onUrlChange, file, onFileChange, onRemoveSaved, removing, error,
+  product, url, onUrlChange, file, onFileChange, savedImageRemoved, onSavedImageRemovedChange, error,
 }) => {
   const [filePreview, setFilePreview] = useState<string | null>(null);
   const [fileError, setFileError] = useState('');
@@ -37,9 +37,10 @@ export const ProductImageField: React.FC<ProductImageFieldProps> = ({
     setFileError('');
     onFileChange(selected);
     onUrlChange('');
+    onSavedImageRemovedChange(false);
   };
 
-  const hasSavedImage = Boolean(product?.image);
+  const hasSavedImage = Boolean(product?.image) && !savedImageRemoved;
   const showRemove = hasSavedImage || Boolean(file) || Boolean(url.trim());
 
   return (
@@ -55,7 +56,7 @@ export const ProductImageField: React.FC<ProductImageFieldProps> = ({
             ? <img src={filePreview} alt="Selected product image preview" className="h-full w-full object-cover" />
             : url.trim()
               ? <ProductImageView productId={product?.id ?? ''} image={{ source: 'URL', url: url.trim() }} alt="" className="h-full w-full" />
-              : <ProductImageView productId={product?.id ?? ''} image={product?.image ?? null} alt="" className="h-full w-full" />}
+              : <ProductImageView productId={product?.id ?? ''} image={savedImageRemoved ? null : product?.image ?? null} alt="" className="h-full w-full" />}
         </div>
 
         <div className="min-w-0 flex-1 space-y-3">
@@ -73,9 +74,8 @@ export const ProductImageField: React.FC<ProductImageFieldProps> = ({
             {showRemove && (
               <button
                 type="button"
-                disabled={removing}
-                onClick={() => { onFileChange(null); onUrlChange(''); setFileError(''); if (hasSavedImage) onRemoveSaved(); }}
-                className="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
+                onClick={() => { onFileChange(null); onUrlChange(''); setFileError(''); if (product?.image) onSavedImageRemovedChange(true); }}
+                className="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50"
               >
                 <Trash2 className="h-4 w-4" />
                 Remove / إزالة
@@ -93,7 +93,7 @@ export const ProductImageField: React.FC<ProductImageFieldProps> = ({
             Image URL / رابط الصورة
             <input
               value={url}
-              onChange={(event) => { onUrlChange(event.target.value); if (event.target.value.trim()) onFileChange(null); }}
+              onChange={(event) => { onUrlChange(event.target.value); if (event.target.value.trim()) { onFileChange(null); onSavedImageRemovedChange(false); } }}
               placeholder="https://…"
               dir="ltr"
               className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"

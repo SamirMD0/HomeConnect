@@ -10,7 +10,6 @@ import { LedgerObligationRow } from './LedgerObligationRow';
 import { LedgerMobileCard } from './LedgerMobileCard';
 import { LedgerPaymentChildRows } from './LedgerPaymentChildRows';
 import { LedgerPaymentRow } from './LedgerPaymentRow';
-import { businessLabels } from '../../../shared/labels/business-labels';
 
 interface LedgerTableProps {
   items: FinancialLedgerItem[];
@@ -73,27 +72,29 @@ export const LedgerTable: React.FC<LedgerTableProps> = ({
         })}
       </div>
 
-      <div className="hidden overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm md:block">
-        <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-slate-200 text-sm">
+      <div
+        className="hidden max-h-[22rem] overflow-auto overscroll-contain rounded-lg bg-slate-100 px-3 pb-3 md:block"
+        data-testid="ledger-scroll-table"
+      >
+        <table className="min-w-full border-separate border-spacing-y-1.5 text-xs text-slate-600">
           <caption className="sr-only">Financial Ledger / دفتر الحسابات</caption>
-          <thead className="sticky top-0 z-10 bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+          <thead className="sticky top-0 z-10 bg-slate-100 text-left text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600">
             <tr>
-              <th scope="col" className="w-10 px-2 py-3">
+              <th scope="col" className="w-10 px-2 py-2.5">
                 <span className="sr-only">Expand</span>
               </th>
-              <th scope="col" className="px-4 py-3">{businessLabels.financial.dueDate}</th>
-              <th scope="col" className="px-4 py-3">{businessLabels.common.customer}</th>
-              <th scope="col" className="hidden px-4 py-3 lg:table-cell">{businessLabels.ledger.type}</th>
-              <th scope="col" className="px-4 py-3">{businessLabels.financial.description}</th>
-              <th scope="col" className="px-4 py-3 text-right">{businessLabels.financial.amount}</th>
-              <th scope="col" className="hidden px-4 py-3 text-right xl:table-cell">{businessLabels.financial.paid}</th>
-              <th scope="col" className="px-4 py-3 text-right">{businessLabels.financial.balance}</th>
-              <th scope="col" className="px-4 py-3">{businessLabels.common.status}</th>
-              <th scope="col" className="px-4 py-3 text-right">{businessLabels.common.actions}</th>
+              <th scope="col" className="whitespace-nowrap px-4 py-2.5">Due date</th>
+              <th scope="col" className="whitespace-nowrap px-4 py-2.5">Customer</th>
+              <th scope="col" className="hidden whitespace-nowrap px-4 py-2.5 lg:table-cell">Type</th>
+              <th scope="col" className="whitespace-nowrap px-4 py-2.5">Description</th>
+              <th scope="col" className="whitespace-nowrap px-4 py-2.5 text-right">Amount</th>
+              <th scope="col" className="hidden whitespace-nowrap px-4 py-2.5 text-right xl:table-cell">Paid</th>
+              <th scope="col" className="whitespace-nowrap px-4 py-2.5 text-right">Balance</th>
+              <th scope="col" className="whitespace-nowrap px-4 py-2.5">Status</th>
+              <th scope="col" className="whitespace-nowrap px-4 py-2.5 text-right">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody>
             {items.map((item) => {
               const rowId = ledgerRowId(item);
               const childRegionId = `ledger-payments-${rowId}`;
@@ -137,7 +138,6 @@ export const LedgerTable: React.FC<LedgerTableProps> = ({
             })}
           </tbody>
         </table>
-        </div>
       </div>
     </div>
   );

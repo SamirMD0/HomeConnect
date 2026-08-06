@@ -30,7 +30,7 @@ export const ProductFilters: React.FC<ProductFiltersProps> = ({ filters, search,
         <option value="name">Name / الاسم</option>
         <option value="model">Model / الموديل</option>
         <option value="brand">Brand / الماركة</option>
-        <option value="price">Price / السعر</option>
+        <option value="price">Manual price / السعر اليدوي</option>
         <option value="createdAt">Recently Added / المضاف حديثاً</option>
         <option value="updatedAt">Recently Updated / المعدل حديثاً</option>
       </select>

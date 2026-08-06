@@ -89,6 +89,15 @@ export function addMonthsToBusinessDate(input: string, monthsToAdd: number): Bus
   return parseBusinessDate(formatDateParts(targetYear, targetMonth, targetDay));
 }
 
+export function addWeeksToBusinessDate(input: string, weeksToAdd: number): BusinessDate {
+  if (!Number.isInteger(weeksToAdd)) {
+    throw new InvalidBusinessDateError('Weeks to add must be an integer');
+  }
+  const date = businessDateToPrisma(input);
+  date.setUTCDate(date.getUTCDate() + weeksToAdd * 7);
+  return prismaDateToBusinessDate(date);
+}
+
 export function splitBusinessDate(input: string): { year: number; month: number; day: number } {
   const businessDate = parseBusinessDate(input);
   const [yearPart, monthPart, dayPart] = businessDate.split('-');

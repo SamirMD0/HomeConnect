@@ -30,6 +30,17 @@ describe('product validation', () => {
     expect(() => createProductSchema.parse({ ...cashOnly, installmentEnabled: true })).toThrow('Required');
   });
 
+  it('treats false pricing booleans as no pricing configuration', () => {
+    expect(createProductSchema.parse({
+      name: 'Fan', model: 'F1', useCustomPricing: false, installmentEnabled: false,
+    })).toMatchObject({ useCustomPricing: false, installmentEnabled: false });
+  });
+
+  it('requires a barcode when manufacturer label mode is selected', () => {
+    expect(() => createProductSchema.parse({ name: 'Fan', model: 'F1', labelBarcodeSource: 'MANUFACTURER' })).toThrow('manufacturer barcode');
+    expect(createProductSchema.parse({ name: 'Fan', model: 'F1', labelBarcodeSource: 'MANUFACTURER', barcode: 'ABCD-1234' }).barcode).toBe('ABCD-1234');
+  });
+
   it('rejects invalid barcode and discount above price', () => {
     expect(() => createProductSchema.parse({ name: 'Fan', model: 'F1', barcode: 'bad value' })).toThrow();
     expect(() => createProductSchema.parse({ name: 'Fan', model: 'F1', price: '10.00', discount: '11.00' })).toThrow('Discount');

@@ -52,6 +52,15 @@ export type ReceivablePaymentRecord = Prisma.PaymentGetPayload<{
 
 export interface LoadReceivableRecordsParams {
   includeInactive: boolean;
+  /**
+   * Restricts the load to these customers instead of the whole book.
+   *
+   * The receivables page still loads everything — it has to, because it ranks
+   * and summarises the full customer base. List-style callers that only need a
+   * financial column for the page they are already showing pass their ids here
+   * so the four queries stay proportional to that page.
+   */
+  customerIds?: string[];
 }
 
 export interface ReceivableRecordSet {
@@ -65,9 +74,13 @@ export class ReceivablesRepository {
   static async loadReceivableRecords(
     params: LoadReceivableRecordsParams
   ): Promise<ReceivableRecordSet> {
+    // The id filter also reaches debts, plans and payments through
+    // `relatedCustomerWhere` below, so scoping happens in the database rather
+    // than by loading the whole book and discarding most of it.
     const customerWhere: Prisma.CustomerWhereInput = {
       deletedAt: null,
       ...(params.includeInactive ? {} : { isActive: true }),
+      ...(params.customerIds ? { id: { in: params.customerIds } } : {}),
     };
     const relatedCustomerWhere = { customer: customerWhere };
 

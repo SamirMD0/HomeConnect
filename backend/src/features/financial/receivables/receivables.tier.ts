@@ -50,12 +50,21 @@ export function determineReceivableTier(input: ReceivableTierInput): ReceivableT
     return result('CURRENT', `Nothing overdue · ${input.paidRatioPercent}% paid`);
   }
 
+  const baseTier = baseTierForOverdueDays(input.maxOverdueDays);
+
+  // Keep the first 30 overdue days in the Watch band. Payment history can
+  // influence older overdue accounts, but should not skip the stated age band.
+  if (baseTier === 'WATCH') {
+    const paymentDetail =
+      input.paymentCount === 0 ? 'never paid anything' : `${input.paidRatioPercent}% paid`;
+    return result('WATCH', `${lateLabel(input.maxOverdueDays)} · ${paymentDetail}`);
+  }
+
   if (input.paymentCount === 0) {
     return result('CRITICAL', `${lateLabel(input.maxOverdueDays)} · never paid anything`);
   }
 
-  const baseTier = baseTierForOverdueDays(input.maxOverdueDays);
-  let tier = baseTier;
+  let tier: ReceivableTier = baseTier;
   let adjustment = '';
 
   if (input.paidRatioPercent < LOW_PAID_RATIO_PERCENT) {

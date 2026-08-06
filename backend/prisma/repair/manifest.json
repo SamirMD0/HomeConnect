@@ -343,6 +343,60 @@
       "detectionExpects": "empty",
       "verificationQuery": "SELECT count(*)::int AS count FROM information_schema.columns WHERE table_schema='public' AND table_name='repair_history' AND column_name IN ('id', 'repairId', 'version', 'kind', 'checksum', 'status', 'appliedAt', 'appliedById', 'appliedByName', 'backupPath', 'durationMs', 'errorMessage')",
       "verificationExpects": 12
+    },
+    {
+      "repairId": "product-label-auto-enum",
+      "title": "Add the AUTO label barcode source",
+      "version": "1.4.0",
+      "description": "Adds the AUTO value to the LabelBarcodeSource enum. Separate from the repair that uses it because PostgreSQL cannot use a new enum value in the transaction that added it.",
+      "file": "1.4.0-repair-product-label-auto-enum.sql",
+      "checksum": "sha256:d5638299a99d5a4c069fca9fdea48b9f1c5d459c50cab6bd788279df99438877",
+      "requiresBackup": true,
+      "idempotent": true,
+      "requiresSuperuser": false,
+      "affectedTables": [
+        "products"
+      ],
+      "detectionQuery": "SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid WHERE t.typname = 'LabelBarcodeSource' AND e.enumlabel = 'AUTO'",
+      "detectionExpects": "empty",
+      "verificationQuery": "SELECT count(*)::int AS count FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid WHERE t.typname = 'LabelBarcodeSource' AND e.enumlabel = 'AUTO'",
+      "verificationExpects": 1
+    },
+    {
+      "repairId": "product-label-auto-apply",
+      "title": "Prefer saved product barcodes on labels",
+      "version": "1.4.0",
+      "description": "Makes AUTO the label barcode default and flips SKU-defaulted products that already have a barcode. Runs after product-label-auto-enum.",
+      "file": "1.4.0-repair-product-label-auto-apply.sql",
+      "checksum": "sha256:e3a85f7d32d8daea7520176725089ea9efdcf6a664cd9b073f2e015c763d0b64",
+      "requiresBackup": true,
+      "idempotent": true,
+      "requiresSuperuser": false,
+      "affectedTables": [
+        "products"
+      ],
+      "detectionQuery": "SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='products' AND column_name='labelBarcodeSource' AND column_default LIKE '%AUTO%'",
+      "detectionExpects": "empty",
+      "verificationQuery": "SELECT count(*)::int AS count FROM information_schema.columns WHERE table_schema='public' AND table_name='products' AND column_name='labelBarcodeSource' AND column_default LIKE '%AUTO%'",
+      "verificationExpects": 1
+    },
+    {
+      "repairId": "product-normalized-search-indexes",
+      "title": "Add normalized product search indexes",
+      "version": "1.4.0",
+      "description": "Adds normalized trigram indexes for product identity, notes, and specifications search.",
+      "file": "1.4.0-repair-product-search-indexes.sql",
+      "checksum": "sha256:de0aadf8695d4172446078a043d6f9075356bfa3ffbb2cbf0c491896d14add07",
+      "requiresBackup": true,
+      "idempotent": true,
+      "requiresSuperuser": false,
+      "affectedTables": [
+        "products"
+      ],
+      "detectionQuery": "SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='products_specifications_norm_trgm_idx'",
+      "detectionExpects": "empty",
+      "verificationQuery": "SELECT count(*)::int AS count FROM pg_indexes WHERE schemaname='public' AND indexname IN ('products_name_norm_trgm_idx','products_model_norm_trgm_idx','products_brand_norm_trgm_idx','products_sku_norm_trgm_idx','products_barcode_norm_trgm_idx','products_notes_norm_trgm_idx','products_specification_notes_norm_trgm_idx','products_specifications_norm_trgm_idx')",
+      "verificationExpects": 8
     }
   ]
 }

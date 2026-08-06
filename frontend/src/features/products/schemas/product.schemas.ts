@@ -43,5 +43,18 @@ export const productCorrectionSchema = z.object({
   accountPassword: z.string().min(1, 'Account password is required'),
 });
 
+export const productPricingModeFormSchema = z.object({
+  mode: z.enum(['PRESET', 'CUSTOM', 'MANUAL', 'NONE']),
+  costPrice: z.string(),
+  price: z.string(),
+}).superRefine((values, context) => {
+  if ((values.mode === 'PRESET' || values.mode === 'CUSTOM') && !values.costPrice.trim()) {
+    context.addIssue({ code: 'custom', path: ['costPrice'], message: 'Cost price is required / سعر التكلفة مطلوب' });
+  }
+  if (values.mode === 'MANUAL' && !values.price.trim()) {
+    context.addIssue({ code: 'custom', path: ['price'], message: 'Manual price is required / السعر اليدوي مطلوب' });
+  }
+});
+
 export type ProductFormValues = z.infer<typeof productFormSchema>;
 export type ProductCorrectionValues = z.infer<typeof productCorrectionSchema>;

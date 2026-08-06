@@ -79,7 +79,7 @@ export const createInstallmentPlanSchema = z.object({
     .int('Installment count must be a whole number')
     .positive('Installment count must be positive')
     .max(120, 'Installment count is too large'),
-  frequency: z.literal('MONTHLY'),
+  frequency: z.enum(['MONTHLY', 'WEEKLY']),
   notes: optionalTextSchema,
 });
 

@@ -1,6 +1,6 @@
 import { PricingCalculationMode, PricingRoundingMode } from '@prisma/client';
-import { Decimal } from '@prisma/client/runtime/library';
 import { z } from 'zod';
+import { isDecimalAtMost } from '../../../validators/decimal-bounds';
 import { userTextSchema } from '../../../validators/user-text';
 import { containsSensitivePricingPresetFields } from '../authorization/pricing-policy';
 
@@ -8,7 +8,7 @@ const emptyToNull = (value: unknown) => typeof value === 'string' && value.trim(
 const percentPattern = /^(?:0|[1-9]\d*)(?:\.\d{1,3})?$/;
 const percent = (field: string, max = 999.999) => z.string().trim()
   .regex(percentPattern, `${field} must be a non-negative decimal with up to 3 decimal places`)
-  .refine((value) => new Decimal(value).lessThanOrEqualTo(max.toString()), `${field} cannot exceed ${max}`);
+  .refine((value) => isDecimalAtMost(value, max.toString()), `${field} cannot exceed ${max}`);
 const optionalText = (field: string, max: number) => z.preprocess(
   emptyToNull,
   userTextSchema({ field, max }).optional().nullable()

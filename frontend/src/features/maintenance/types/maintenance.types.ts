@@ -48,6 +48,18 @@ export interface RepairHistoryRow {
   errorMessage: string | null;
 }
 
+/** Whether the update's tables and columns are already in the database. */
+export type PresenceVerdict = 'PRESENT' | 'MISSING' | 'UNKNOWN';
+
+export interface PendingMigration {
+  name: string;
+  state: 'PENDING' | 'FAILED';
+  verdict: PresenceVerdict;
+  reason: string;
+  missing: string[];
+  expectedCount: number;
+}
+
 export interface MaintenanceOverview {
   appVersion: string;
   toolsAvailable: boolean;
@@ -58,9 +70,16 @@ export interface MaintenanceOverview {
     mismatched: string[];
     databaseIsNewer: boolean;
   };
+  pendingMigrations: PendingMigration[];
   pendingRepairs: PendingRepair[];
   registryProblems: RepairProblem[];
   history: RepairHistoryRow[];
+}
+
+export interface ResolveMigrationOutcome {
+  name: string;
+  status: 'RESOLVED' | 'REFUSED' | 'FAILED';
+  message: string;
 }
 
 export interface RepairOutcome {

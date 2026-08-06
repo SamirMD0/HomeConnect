@@ -45,10 +45,10 @@ function makeRegistry(files: Record<string, string>, entries: Array<Partial<Repa
 }
 
 describe('repair registry — the real bundled manifest', () => {
-  it('loads all 18 repairs with no problems', () => {
+  it('loads all 21 repairs with no problems', () => {
     const snapshot = RepairRegistry.load(REAL_DIR);
     expect(snapshot.problems).toEqual([]);
-    expect(snapshot.repairs).toHaveLength(18);
+    expect(snapshot.repairs).toHaveLength(21);
   });
 
   it('matches every checksum against the file on disk', () => {

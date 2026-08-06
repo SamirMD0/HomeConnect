@@ -63,6 +63,7 @@ export class ProductsService {
             brand: input.brand ?? null,
             price: moneyOrNull(input.price),
             discount: moneyOrNull(input.discount),
+            imageUrl: input.imageUrl ?? null,
             notes: input.notes ?? null,
             labelBarcodeSource: input.labelBarcodeSource,
             specifications: input.specifications == null ? Prisma.JsonNull : specificationsJson(input.specifications),
@@ -191,6 +192,10 @@ export class ProductsService {
           if (duplicate) throw barcodeConflict();
         }
         const data = productUpdateData(input, user.userId);
+        assertValidLabelBarcodeSource({
+          barcode: input.barcode === undefined ? existing.barcode : input.barcode,
+          labelBarcodeSource: input.labelBarcodeSource === undefined ? existing.labelBarcodeSource : input.labelBarcodeSource,
+        });
         assertDiscountWithinPrice(
           input.price === undefined ? existing.price : input.price,
           input.discount === undefined ? existing.discount : input.discount
@@ -214,7 +219,7 @@ export class ProductsService {
           requestId: context.requestId,
           ipAddress: context.ipAddress,
         }, tx);
-        return serializeProduct(updated);
+        return serializeProduct(updated, await ProductsRepository.findActiveDefaultPricingPreset(tx), user.role === Role.ADMIN);
       });
     } catch (error) {
       throw mapProductError(error);
@@ -303,8 +308,7 @@ export class ProductsService {
     const product = await ProductsRepository.findById(id);
     if (!product) throw new NotFoundError('Product not found');
     const defaultPreset = labelNeedsPricing(query) ? await ProductsRepository.findActiveDefaultPricingPreset() : null;
-    // Warnings are a bulk-sheet affordance; the single-label contract is unchanged.
-    return toLabelPayload(product, defaultPreset, query).payload;
+    return toLabelPayload(product, defaultPreset, query);
   }
 
   /**
@@ -429,7 +433,7 @@ export class ProductsService {
         beforeValues: { isActive: existing.isActive }, afterValues: { isActive },
         requestId: context.requestId, ipAddress: context.ipAddress,
       }, tx);
-      return serializeProduct(updated);
+      return serializeProduct(updated, await ProductsRepository.findActiveDefaultPricingPreset(tx), user.role === Role.ADMIN);
     });
   }
 
@@ -489,7 +493,7 @@ function productUpdateData(input: UpdateProductInput, updatedById: string): Pris
   return data;
 }
 
-export type ProductLabelWarningCode = 'NOT_FOUND' | 'ARCHIVED_EXCLUDED' | 'NO_PRICING' | 'MANUFACTURER_BARCODE_MISSING';
+export type ProductLabelWarningCode = 'NOT_FOUND' | 'ARCHIVED_EXCLUDED' | 'NO_PRICING' | 'MANUFACTURER_BARCODE_MISSING' | 'FALLBACK_TO_SKU';
 export interface ProductLabelWarning { productId: string; code: ProductLabelWarningCode; name?: string }
 
 interface LabelFieldFlags { includePriceCode: boolean; includePrice: boolean }
@@ -507,11 +511,17 @@ const labelNeedsPricing = (query: LabelFieldFlags) => query.includePriceCode || 
  */
 function toLabelPayload(product: ProductPricingRecord, defaultPreset: PricingPreset | null, query: LabelFieldFlags) {
   const warnings: ProductLabelWarning[] = [];
-  const wantsManufacturer = product.labelBarcodeSource === 'MANUFACTURER';
+  const wantsManufacturer = product.labelBarcodeSource === 'MANUFACTURER' || product.labelBarcodeSource === 'AUTO';
   const usesManufacturer = wantsManufacturer && Boolean(product.barcode);
   // Falling back to the SKU is correct, but silently is not: the sticker would
   // scan as something other than the barcode the product was configured for.
-  if (wantsManufacturer && !usesManufacturer) warnings.push({ productId: product.id, code: 'MANUFACTURER_BARCODE_MISSING', name: product.name });
+  if (wantsManufacturer && !usesManufacturer) {
+    warnings.push({
+      productId: product.id,
+      code: product.labelBarcodeSource === 'AUTO' ? 'FALLBACK_TO_SKU' : 'MANUFACTURER_BARCODE_MISSING',
+      name: product.name,
+    });
+  }
 
   const preview = labelNeedsPricing(query) ? resolveProductPricing(product, defaultPreset) : null;
   if (preview && !preview.pricingAvailable) warnings.push({ productId: product.id, code: 'NO_PRICING', name: product.name });
@@ -577,8 +587,11 @@ function serializeProductImage(product: ProductRecord) {
 
 function serializeProduct(product: ProductRecord, defaultPreset: Prisma.PricingPresetGetPayload<Record<string, never>> | null = null, isAdmin = false) {
   const preview = resolveProductPricing(product, defaultPreset);
+  const mode = product.costPrice != null
+    ? product.useCustomPricing ? 'CUSTOM' as const : 'PRESET' as const
+    : product.price != null ? 'MANUAL' as const : 'NONE' as const;
   const pricing = preview.pricingAvailable ? {
-    pricingAvailable: true, source: preview.source, pricingPresetId: product.pricingPresetId,
+    pricingAvailable: true, mode, source: preview.source, pricingPresetId: product.pricingPresetId,
     presetName: preview.preset?.name ?? null, useCustomPricing: product.useCustomPricing,
     installmentEnabled: product.installmentEnabled,
     cashPrice: preview.cashPrice,
@@ -591,7 +604,7 @@ function serializeProduct(product: ProductRecord, defaultPreset: Prisma.PricingP
       installmentMonths: preview.installment.installmentMonths,
     } : {}),
     ...(isAdmin ? { costPrice: preview.inputs.costPrice, configuration: pricingConfiguration(product) } : {}), warnings: preview.warnings,
-  } : { ...preview, pricingPresetId: product.pricingPresetId, presetName: product.pricingPreset?.name ?? null, useCustomPricing: product.useCustomPricing, installmentEnabled: product.installmentEnabled, ...(isAdmin ? { costPrice: product.costPrice ? moneyToApiString(product.costPrice) : null, configuration: pricingConfiguration(product) } : {}) };
+  } : { ...preview, mode, pricingPresetId: product.pricingPresetId, presetName: product.pricingPreset?.name ?? null, useCustomPricing: product.useCustomPricing, installmentEnabled: product.installmentEnabled, ...(isAdmin ? { costPrice: product.costPrice ? moneyToApiString(product.costPrice) : null, configuration: pricingConfiguration(product) } : {}) };
   return {
     id: product.id,
     name: product.name,
@@ -667,25 +680,34 @@ function pricingUpdateData(input: UpdateProductPricingInput, updatedById: string
   if (input.pricingPresetId !== undefined) data.pricingPresetId = input.pricingPresetId;
   if (input.useCustomPricing !== undefined) data.useCustomPricing = input.useCustomPricing;
   if (input.installmentEnabled !== undefined) data.installmentEnabled = input.installmentEnabled;
+  if (input.installmentEnabled === false) {
+    data.customInstallmentMarkupPercent = null;
+    data.customDownPaymentPercent = null;
+    data.customInstallmentMonths = null;
+  }
   for (const field of ['customExpensePercent','customProfitPercent','customDiscountBufferPercent','customInstallmentMarkupPercent','customDownPaymentPercent'] as const) if (input[field] !== undefined) data[field] = input[field] == null ? null : parsePricingPercent(input[field]!);
   if (input.customInstallmentMonths !== undefined) data.customInstallmentMonths = input.customInstallmentMonths;
   if (input.customCalculationMode !== undefined) data.customCalculationMode = input.customCalculationMode;
   return data;
 }
 
-const productPricingFields = [
-  'costPrice', 'pricingPresetId', 'useCustomPricing', 'installmentEnabled', 'customExpensePercent',
-  'customProfitPercent', 'customDiscountBufferPercent', 'customInstallmentMarkupPercent',
+function hasProductPricingInput(input: CreateProductInput): boolean {
+  return PRICING_VALUE_FIELDS.some((field) => input[field] != null)
+    || input.useCustomPricing === true
+    || input.installmentEnabled === true;
+}
+
+const PRICING_VALUE_FIELDS = [
+  'costPrice', 'pricingPresetId', 'customExpensePercent', 'customProfitPercent',
+  'customDiscountBufferPercent', 'customInstallmentMarkupPercent',
   'customDownPaymentPercent', 'customInstallmentMonths', 'customCalculationMode',
 ] as const;
 
-function hasProductPricingInput(input: CreateProductInput): boolean {
-  return productPricingFields.some((field) => input[field] !== undefined && input[field] !== null);
-}
+type ProductPricingField = typeof PRICING_VALUE_FIELDS[number] | 'useCustomPricing' | 'installmentEnabled';
 
 type ProductPricingCreateData = Partial<Pick<
   Prisma.ProductUncheckedCreateInput,
-  typeof productPricingFields[number]
+  ProductPricingField
 >>;
 
 function pricingCreateData(input: CreateProductInput): ProductPricingCreateData {
@@ -715,6 +737,12 @@ function assertCompleteCustomPricing(product: Record<string, unknown>) {
     ...(product.installmentEnabled ? ['customInstallmentMarkupPercent','customDownPaymentPercent','customInstallmentMonths'] : [])];
   for (const field of fields) {
     if (product[field] == null) throw new ValidationError('All custom pricing fields are required when custom pricing is enabled', { field });
+  }
+}
+
+function assertValidLabelBarcodeSource(product: { barcode: string | null; labelBarcodeSource: string }) {
+  if (product.labelBarcodeSource === 'MANUFACTURER' && !product.barcode) {
+    throw new ValidationError('A manufacturer barcode is required when it is selected for the label', { field: 'barcode' });
   }
 }
 

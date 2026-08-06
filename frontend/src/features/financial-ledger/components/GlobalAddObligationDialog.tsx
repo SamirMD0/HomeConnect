@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Customer } from '../../customers/api/customers.api';
 import { AddFinancialObligationDialog } from '../../customer-financial/components/AddFinancialObligationDialog';
-import { CustomerPicker } from './CustomerPicker';
+import { CustomerPicker } from '../../customers/components/CustomerPicker';
 
 interface GlobalAddObligationDialogProps {
   onSuccess: () => void;
