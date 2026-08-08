@@ -5,7 +5,7 @@ import { requireServiceAdmin } from '../authorization/service-policy';
 import { ProductsController } from './products.controller';
 import {
   createProductSchema, productActionSchema, productAuditQuerySchema,
-  productDuplicateQuerySchema, productListQuerySchema, productParamsSchema,
+  productDuplicateQuerySchema, productListQuerySchema, productParamsSchema, productScanQuerySchema,
   productServiceJobsQuerySchema, updateProductSchema,
   updateProductPricingSchema, productPricingPreviewQuerySchema,
   productLabelQuerySchema, productLabelsQuerySchema, updateProductSkuSchema, updateProductStockSchema,
@@ -18,6 +18,9 @@ productsRoutes.post('/', validate(createProductSchema), ProductsController.creat
 productsRoutes.get('/check-duplicate', validate(productDuplicateQuerySchema, 'query'), ProductsController.checkDuplicate);
 // Must stay above `GET /:productId`, or "labels" is parsed as a product id.
 productsRoutes.get('/labels', validate(productLabelsQuerySchema, 'query'), ProductsController.labels);
+// Same ordering rule as `/labels`. Any authenticated user may scan: it is a
+// read of the same catalogue the Products page already shows, minus pricing.
+productsRoutes.get('/scan', validate(productScanQuerySchema, 'query'), ProductsController.scan);
 productsRoutes.get('/:productId/label', validate(productParamsSchema, 'params'), validate(productLabelQuerySchema, 'query'), ProductsController.label);
 
 // Raw binary upload: the file is PUT as-is with an image Content-Type, so no

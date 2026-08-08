@@ -1,8 +1,9 @@
 import React from 'react';
 import { Outlet, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { LayoutDashboard, Users, LogOut, FileText, Menu, X, Settings, BookOpen, Wallet, Wrench, Package, Truck, Landmark, HandCoins, Calculator, ShoppingCart } from 'lucide-react';
+import { LayoutDashboard, Users, LogOut, FileText, Menu, X, Settings, BookOpen, Wallet, Wrench, Package, Truck, Landmark, HandCoins, Calculator, ScanLine, ShoppingCart } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { LocalStatusIndicator } from '../features/system/components/LocalStatusIndicator';
 
 export const DashboardLayout: React.FC = () => {
   const { user, logout } = useAuth();
@@ -24,6 +25,7 @@ export const DashboardLayout: React.FC = () => {
     { name: 'Sales Orders / طلبات البيع', path: '/sales-orders', icon: ShoppingCart },
     { name: 'Service / الصيانة', path: '/service', icon: Wrench },
     { name: 'Products / المنتجات', path: '/products', icon: Package },
+    { name: 'Scanner Hub / مركز المسح', path: '/scanner', icon: ScanLine },
     { name: 'Pricing Presets / صيغ التسعير', path: '/pricing-presets', icon: Calculator },
     { name: 'Suppliers / المورّدون', path: '/suppliers', icon: Truck },
     { name: 'Supplier Ledger / حسابات المورّدين', path: '/supplier-ledger', icon: Landmark },
@@ -117,6 +119,7 @@ export const DashboardLayout: React.FC = () => {
           </div>
           
           <div className="hidden items-center gap-2 sm:flex">
+            <LocalStatusIndicator />
             <span className="text-sm font-medium text-slate-600">
               {new Date().toLocaleDateString('en-GB', {
                 weekday: 'long',

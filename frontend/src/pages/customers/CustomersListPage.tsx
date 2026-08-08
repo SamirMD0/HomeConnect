@@ -19,7 +19,7 @@ const emptyCell = <span className="text-slate-400 group-hover:text-yellow-300">â
 export const CustomersListPage: React.FC = () => {
   const navigate = useNavigate();
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(25);
   const [sortBy, setSortBy] = useState('createdAt');
   const [filter, setFilter] = useState<CustomerListFilter | undefined>();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -149,7 +149,7 @@ export const CustomersListPage: React.FC = () => {
         <div className="space-y-4">
           {(data?.data ?? []).length > 0 ? (
             <div
-              className="hidden max-h-[22rem] overflow-y-auto overscroll-contain rounded-lg bg-slate-100 px-3 pb-3 md:block"
+              className="data-table-scroll data-table-scroll-expanded hidden md:block"
               data-testid="customer-scroll-table"
             >
               <table className="w-full border-separate border-spacing-y-1.5 text-left text-xs text-slate-600">

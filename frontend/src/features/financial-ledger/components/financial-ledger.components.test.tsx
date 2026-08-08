@@ -1,4 +1,6 @@
-import { renderToStaticMarkup } from 'react-dom/server';
+import type { ReactNode } from 'react';
+import { renderToStaticMarkup as renderMarkup } from 'react-dom/server';
+import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 import {
   applyLedgerStatusFilter,
@@ -11,6 +13,7 @@ import {
 } from './LedgerFilters';
 import { LedgerSummaryCards } from './LedgerSummaryCards';
 import { LedgerTable } from './LedgerTable';
+import { getLedgerMenuPosition } from './LedgerRowActions';
 import { buildPaymentChildView } from './LedgerPaymentChildRows';
 import { LedgerEmptyState, LedgerErrorState, LedgerLoadingState } from './LedgerStates';
 import { RecentFinancialPayment } from '../../customer-financial/types/customer-financial.types';
@@ -19,6 +22,8 @@ import {
   FinancialLedgerItem,
   FinancialLedgerPlanItem,
 } from '../types/financial-ledger.types';
+
+const renderToStaticMarkup = (node: ReactNode) => renderMarkup(<MemoryRouter>{node}</MemoryRouter>);
 
 const items: FinancialLedgerItem[] = [
   {
@@ -129,6 +134,14 @@ const items: FinancialLedgerItem[] = [
 ];
 
 describe('financial ledger components', () => {
+  it('opens row action menus above bottom-edge rows and below rows with room', () => {
+    expect(
+      getLedgerMenuPosition({ top: 700, right: 1000, bottom: 732 }, 128, { width: 1200, height: 800 })
+    ).toEqual({ top: 564, left: 808 });
+    expect(
+      getLedgerMenuPosition({ top: 100, right: 1000, bottom: 132 }, 128, { width: 1200, height: 800 })
+    ).toEqual({ top: 140, left: 808 });
+  });
   it('renders global summary cards', () => {
     const html = renderToStaticMarkup(
       <LedgerSummaryCards
@@ -191,7 +204,9 @@ describe('financial ledger components', () => {
     expect(html).toContain('Edit');
     expect(html).not.toContain('Edit / تعديل');
     expect(html).toContain('data-testid="ledger-scroll-table"');
-    expect(html).toContain('overflow-auto');
+    expect(html).toContain('href="/customers/customer-1"');
+    expect(html).toContain('data-table-scroll');
+    expect(html).toContain('data-table-scroll-expanded');
     expect(html).toContain('group-hover:text-yellow-300');
     expect(html).toContain('text-shadow:0_0_8px');
     expect(html).toContain('$400.00');

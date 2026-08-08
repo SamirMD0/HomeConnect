@@ -1,6 +1,6 @@
 {
   "name": "home-connect",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "main": "dist/electron/desktop/src/index.js",
   "build": {
     "appId": "com.homeconnect.desktop",
@@ -108,7 +108,8 @@
     "rehearse:migrations": "tsx scripts/rehearse-migrations.ts",
     "pack:win": "npm run build && npm run build:electron-main && electron-builder --win --dir --config.npmRebuild=false --publish=never",
     "dist:win": "npm run build && npm run build:electron-main && electron-builder --win --config.npmRebuild=false --publish=never",
-    "dev": "concurrently \"npm run dev:vite\" \"npm run dev:server\"",
+    "dev:urls": "tsx scripts/dev-urls.ts",
+    "dev": "npm run dev:urls && concurrently \"npm run dev:vite\" \"npm run dev:server\"",
     "build": "vite build frontend && tsc -p tsconfig.server.json",
     "typecheck": "npm run typecheck:frontend && npm run typecheck:backend",
     "typecheck:frontend": "tsc -p tsconfig.json --noEmit",

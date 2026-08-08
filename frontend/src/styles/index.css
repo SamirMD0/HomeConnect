@@ -123,6 +123,31 @@
   .dashboard-action-button { @apply flex min-h-14 items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:border-emerald-300 hover:bg-emerald-50; }
   .dashboard-state { @apply flex min-h-32 flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-5 text-center text-sm text-slate-500; }
   .dashboard-state button { @apply rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700; }
+
+  /* Long lists scroll inside their own pane so the sticky header and the page
+     controls below it stay put. The cap is viewport-relative: a fixed one
+     showed the same six rows on every monitor and left the rest of a shop-floor
+     screen empty. Each page sets --table-chrome to the height of what sits
+     above and below the pane (toolbar, filters, summary cards, pagination);
+     the max() keeps a usable pane on short screens, where the page itself
+     scrolls instead. */
+  .data-table-scroll {
+    @apply overflow-auto overscroll-contain rounded-lg bg-slate-100 px-3 pb-3;
+    max-height: max(22rem, calc(100vh - var(--table-chrome, 26rem)));
+  }
+
+  /* Directory and ledger screens get a taller responsive pane on desktop.
+     Long lists still scroll inside the pane, keeping headers and pagination
+     close by without returning to the old cramped height. */
+  .data-table-scroll.data-table-scroll-expanded {
+    max-height: clamp(30rem, 65vh, 64rem);
+    overflow-y: auto;
+  }
+
+  /* Printing has no viewport to fit — the whole list goes on the paper. */
+  @media print {
+    .data-table-scroll { max-height: none; overflow: visible; }
+  }
 }
 
 .viz-root {

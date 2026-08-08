@@ -397,6 +397,25 @@
       "detectionExpects": "empty",
       "verificationQuery": "SELECT count(*)::int AS count FROM pg_indexes WHERE schemaname='public' AND indexname IN ('products_name_norm_trgm_idx','products_model_norm_trgm_idx','products_brand_norm_trgm_idx','products_sku_norm_trgm_idx','products_barcode_norm_trgm_idx','products_notes_norm_trgm_idx','products_specification_notes_norm_trgm_idx','products_specifications_norm_trgm_idx')",
       "verificationExpects": 8
+    },
+    {
+      "repairId": "weekly-installments-and-customer-search",
+      "title": "Add weekly installments and customer notes/address search",
+      "version": "1.5.0",
+      "description": "Adds WEEKLY to InstallmentPlanFrequency and the normalized trigram indexes for customer notes and address search. Covers migrations 20260806093135 and 20260806101225.",
+      "file": "1.5.0-repair.sql",
+      "checksum": "sha256:a99455cf6b905170fddacd35edc3ad4a1f5d10cc371d94cf6ae6cc0d6754301d",
+      "requiresBackup": true,
+      "idempotent": true,
+      "requiresSuperuser": false,
+      "affectedTables": [
+        "customers",
+        "installment_plans"
+      ],
+      "detectionQuery": "SELECT 1 WHERE (SELECT count(*) FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid WHERE t.typname='InstallmentPlanFrequency' AND e.enumlabel='WEEKLY') = 1 AND (SELECT count(*) FROM pg_indexes WHERE schemaname='public' AND indexname IN ('customers_notes_norm_trgm_idx','customers_address_norm_trgm_idx')) = 2",
+      "detectionExpects": "empty",
+      "verificationQuery": "SELECT ((SELECT count(*) FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid WHERE t.typname='InstallmentPlanFrequency' AND e.enumlabel='WEEKLY') + (SELECT count(*) FROM pg_indexes WHERE schemaname='public' AND indexname IN ('customers_notes_norm_trgm_idx','customers_address_norm_trgm_idx')))::int AS count",
+      "verificationExpects": 3
     }
   ]
 }

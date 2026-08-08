@@ -75,10 +75,10 @@ const customers: Customer[] = [
  */
 function renderPage(): string {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  client.setQueryData(['customers', { page: 1, limit: 10, search: '', include: 'financial' }], {
+  client.setQueryData(['customers', { page: 1, limit: 25, search: '', include: 'financial' }], {
     success: true,
     data: customers,
-    meta: { pagination: { page: 1, pageSize: 10, totalItems: 2, totalPages: 1 } },
+    meta: { pagination: { page: 1, pageSize: 25, totalItems: 2, totalPages: 1 } },
   });
 
   return renderToStaticMarkup(
@@ -147,8 +147,15 @@ describe('CustomersListPage customer table', () => {
     const markup = renderPage();
 
     expect(markup).toContain('data-testid="customer-scroll-table"');
-    expect(markup).toContain('overflow-y-auto');
+    expect(markup).toContain('data-table-scroll');
+    expect(markup).toContain('data-table-scroll-expanded');
     expect(markup).toContain('group-hover:text-yellow-300');
     expect(markup).toContain('text-shadow:0_0_8px');
+  });
+
+  it('requests 25 customer rows by default on the desktop directory', () => {
+    const markup = renderPage();
+
+    expect(markup).toMatch(/<option value="25" selected="">25<\/option>/);
   });
 });

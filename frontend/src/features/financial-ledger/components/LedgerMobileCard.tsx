@@ -16,6 +16,7 @@ import {
 } from '../types/financial-ledger.types';
 import { LedgerPaymentChildPanel } from './LedgerPaymentChildRows';
 import { LEDGER_CORRECTION_ENABLED, LedgerActionItem, LedgerRowActions } from './LedgerRowActions';
+import { LedgerCustomerLink } from './LedgerCustomerLink';
 
 interface LedgerMobileCardProps {
   item: FinancialLedgerItem;
@@ -59,7 +60,7 @@ export const LedgerMobileCard: React.FC<LedgerMobileCardProps> = ({
       <article className="group rounded-lg border border-slate-200 bg-white p-3 shadow-sm transition-all duration-200 hover:border-yellow-300 hover:bg-gray-600 hover:shadow-[0_0_14px_rgba(250,204,21,0.3)]">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="user-text font-semibold text-slate-900 transition-colors group-hover:text-yellow-300" dir="auto">{item.customer.name}</p>
+            <LedgerCustomerLink customer={item.customer} className="font-semibold" />
             <p className="text-xs text-slate-500 transition-colors group-hover:text-yellow-200">{formatBusinessDate(item.paymentDate)} · Payment</p>
           </div>
           <PaymentStatus status={item.status} />
@@ -69,7 +70,7 @@ export const LedgerMobileCard: React.FC<LedgerMobileCardProps> = ({
         <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
           <p className="text-xs text-slate-500 transition-colors group-hover:text-yellow-200">Created {formatDateTime(item.createdAt)}</p>
           <LedgerRowActions
-            menuKey={`${item.type}-${item.id}`}
+            menuKey={`mobile-${item.type}-${item.id}`}
             openMenuKey={openMenuKey}
             actions={
               canMutate && item.status !== 'VOIDED'
@@ -115,7 +116,7 @@ export const LedgerMobileCard: React.FC<LedgerMobileCardProps> = ({
     <article className="group rounded-lg border border-slate-200 bg-white p-3 shadow-sm transition-all duration-200 hover:border-yellow-300 hover:bg-gray-600 hover:shadow-[0_0_14px_rgba(250,204,21,0.3)]">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="user-text font-semibold text-slate-900 transition-colors group-hover:text-yellow-300" dir="auto">{item.customer.name}</p>
+          <LedgerCustomerLink customer={item.customer} className="font-semibold" />
           <p className="text-xs text-slate-500 transition-colors group-hover:text-yellow-200">{item.customer.phone}</p>
         </div>
         <FinancialStatusBadge
@@ -173,7 +174,7 @@ export const LedgerMobileCard: React.FC<LedgerMobileCardProps> = ({
             Edit
           </button>
           <LedgerRowActions
-            menuKey={`${item.type}-${item.id}`}
+            menuKey={`mobile-${item.type}-${item.id}`}
             openMenuKey={openMenuKey}
             actions={actions}
             onOpenChange={onOpenMenuChange}

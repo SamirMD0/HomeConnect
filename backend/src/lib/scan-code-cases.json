@@ -1,0 +1,178 @@
+{
+  "//": "Contract for scanned-code normalization. Both backend/src/lib/scan-code.ts and frontend/src/features/scanner/utils/scan-code.ts are asserted against this same file, so the two copies cannot drift apart unnoticed. `repeat: [char, count]` builds a long input without a long line.",
+  "cases": [
+    {
+      "raw": "HC-000001",
+      "expected": {
+        "ok": true,
+        "code": "HC-000001"
+      }
+    },
+    {
+      "raw": "HC-000001\r\n",
+      "expected": {
+        "ok": true,
+        "code": "HC-000001"
+      }
+    },
+    {
+      "raw": "HC-000001\t",
+      "expected": {
+        "ok": true,
+        "code": "HC-000001"
+      }
+    },
+    {
+      "raw": "  HC-000001  ",
+      "expected": {
+        "ok": true,
+        "code": "HC-000001"
+      }
+    },
+    {
+      "raw": "0012345678905",
+      "expected": {
+        "ok": true,
+        "code": "0012345678905"
+      }
+    },
+    {
+      "raw": "00000000",
+      "expected": {
+        "ok": true,
+        "code": "00000000"
+      }
+    },
+    {
+      "raw": "hc-000001",
+      "expected": {
+        "ok": true,
+        "code": "hc-000001"
+      }
+    },
+    {
+      "raw": "123\u200b4567",
+      "expected": {
+        "ok": true,
+        "code": "1234567"
+      }
+    },
+    {
+      "raw": "\ufeff1234567",
+      "expected": {
+        "ok": true,
+        "code": "1234567"
+      }
+    },
+    {
+      "repeat": [
+        "1",
+        64
+      ],
+      "expected": {
+        "ok": true,
+        "repeatCode": [
+          "1",
+          64
+        ]
+      }
+    },
+    {
+      "raw": "",
+      "expected": {
+        "ok": false,
+        "reason": "EMPTY"
+      }
+    },
+    {
+      "raw": "   ",
+      "expected": {
+        "ok": false,
+        "reason": "EMPTY"
+      }
+    },
+    {
+      "raw": "\r\n",
+      "expected": {
+        "ok": false,
+        "reason": "EMPTY"
+      }
+    },
+    {
+      "raw": "\u200b",
+      "expected": {
+        "ok": false,
+        "reason": "EMPTY"
+      }
+    },
+    {
+      "raw": "123",
+      "expected": {
+        "ok": false,
+        "reason": "TOO_SHORT"
+      }
+    },
+    {
+      "repeat": [
+        "1",
+        65
+      ],
+      "expected": {
+        "ok": false,
+        "reason": "TOO_LONG"
+      }
+    },
+    {
+      "repeat": [
+        "1",
+        5000
+      ],
+      "expected": {
+        "ok": false,
+        "reason": "TOO_LONG"
+      }
+    },
+    {
+      "raw": "HC 000001",
+      "expected": {
+        "ok": false,
+        "reason": "UNSUPPORTED_CHARACTERS"
+      }
+    },
+    {
+      "raw": "HC_000001",
+      "expected": {
+        "ok": false,
+        "reason": "UNSUPPORTED_CHARACTERS"
+      }
+    },
+    {
+      "raw": "HC.000001",
+      "expected": {
+        "ok": false,
+        "reason": "UNSUPPORTED_CHARACTERS"
+      }
+    },
+    {
+      "raw": "HC-000001'; DROP TABLE products--",
+      "expected": {
+        "ok": false,
+        "reason": "UNSUPPORTED_CHARACTERS"
+      }
+    },
+    {
+      "raw": "<script>abcd</script>",
+      "expected": {
+        "ok": false,
+        "reason": "UNSUPPORTED_CHARACTERS"
+      }
+    },
+    {
+      "raw": "\u0645\u0633\u062d-1234",
+      "expected": {
+        "ok": false,
+        "reason": "UNSUPPORTED_CHARACTERS"
+      }
+    }
+  ]
+}

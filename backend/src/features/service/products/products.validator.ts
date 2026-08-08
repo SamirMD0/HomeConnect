@@ -162,6 +162,17 @@ export const productListQuerySchema = z.object({
   pageSize: z.coerce.number().int().positive().max(100).default(25),
 });
 
+/**
+ * Deliberately permissive: it only asserts that a code was sent and that it is
+ * not large enough to be an attack. Whether the code is usable is decided by
+ * `normalizeScanCode`, so a junk scan comes back as a 200 with status
+ * `INVALID_CODE` — a state the scanner UI can show — instead of a 400 the
+ * scanning workflow would have to translate.
+ */
+export const productScanQuerySchema = z.object({
+  code: z.string().min(1, 'Scan code is required').max(1024, 'Scan code is too long'),
+});
+
 export const productDuplicateQuerySchema = z.object({
   name: userTextSchema({ field: 'Product name', min: 1, max: 200 }),
   model: userTextSchema({ field: 'Model', min: 1, max: 120 }),
@@ -249,6 +260,7 @@ export type ProductParamsInput = z.infer<typeof productParamsSchema>;
 export type ProductListQueryInput = z.infer<typeof productListQuerySchema>;
 export type ProductAuditQueryInput = z.infer<typeof productAuditQuerySchema>;
 export type ProductDuplicateQueryInput = z.infer<typeof productDuplicateQuerySchema>;
+export type ProductScanQueryInput = z.infer<typeof productScanQuerySchema>;
 export type ProductServiceJobsQueryInput = z.infer<typeof productServiceJobsQuerySchema>;
 export type UpdateProductPricingInput = z.infer<typeof updateProductPricingSchema>;
 export type ProductPricingPreviewQueryInput = z.infer<typeof productPricingPreviewQuerySchema>;

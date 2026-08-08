@@ -11,6 +11,7 @@ This folder is organized by purpose so project context is easier to find.
 
 - `setup/ELECTRON_BUSINESS_PC_SETUP.md` - business PC installation and environment setup.
 - `setup/BACKUP_RESTORE_RECOVERY_GUIDE.md` - database backup and restore recovery guide.
+- `setup/MOBILE_SCANNER_SETUP.md` - scanning products from a phone on the shop Wi-Fi, and the network setup it needs.
 
 ## Plans
 

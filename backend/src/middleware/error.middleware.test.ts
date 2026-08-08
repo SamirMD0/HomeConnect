@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { AuthenticationError, ValidationError } from '../lib/errors';
-import { errorHandler, isRoutineAuthFailure } from './error.middleware';
+import { AuthenticationError, RateLimitError, ValidationError } from '../lib/errors';
+import { errorHandler, isRoutineClientFailure } from './error.middleware';
 
 const { logBackendErrorMock } = vi.hoisted(() => ({
   logBackendErrorMock: vi.fn(),
@@ -27,25 +27,46 @@ function responseSpy(): Response {
   return res as unknown as Response;
 }
 
-describe('isRoutineAuthFailure', () => {
+describe('isRoutineClientFailure', () => {
   it.each([
     ['/api/v1/auth/me', true],
     ['/api/v1/auth/refresh', true],
     ['/api/v1/financial-ledger', true],
     ['/api/v1/auth/login', false],
   ])('classifies a 401 on %s as routine=%s', (path, expected) => {
-    expect(isRoutineAuthFailure(401, path)).toBe(expected);
+    expect(isRoutineClientFailure(401, path)).toBe(expected);
   });
 
   it('never treats non-401 statuses as routine', () => {
-    expect(isRoutineAuthFailure(403, '/api/v1/auth/me')).toBe(false);
-    expect(isRoutineAuthFailure(500, '/api/v1/auth/me')).toBe(false);
+    expect(isRoutineClientFailure(403, '/api/v1/auth/me')).toBe(false);
+    expect(isRoutineClientFailure(500, '/api/v1/auth/me')).toBe(false);
+  });
+
+  /**
+   * Rate limiting is a working control, not a malfunction. The scanner limiters
+   * are reachable from the shop Wi-Fi, so logging every rejection would let a
+   * device flood the log it is meant to be visible in.
+   */
+  it('treats a rate-limit rejection as routine on any path', () => {
+    expect(isRoutineClientFailure(429, '/api/v1/scanner/pair')).toBe(true);
+    expect(isRoutineClientFailure(429, '/api/v1/auth/login')).toBe(true);
   });
 });
 
 describe('errorHandler diagnostics logging', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it('does not record a rate-limited scanner request', () => {
+    errorHandler(
+      new RateLimitError(),
+      requestFor('/api/v1/scanner/pair'),
+      responseSpy(),
+      vi.fn() as unknown as NextFunction
+    );
+
+    expect(logBackendErrorMock).not.toHaveBeenCalled();
   });
 
   it('does not record an unauthenticated /auth/me poll', () => {

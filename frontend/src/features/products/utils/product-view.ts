@@ -11,3 +11,18 @@ export function productViewSearchParams(params: URLSearchParams, view: ProductVi
   next.set('view', view);
   return next;
 }
+
+export function productSearchParams(params: URLSearchParams, search: string): URLSearchParams {
+  const normalizedSearch = search.trim();
+  const currentSearch = params.get('search') ?? '';
+
+  // Pagination is only invalidated by a real search change. Returning the
+  // existing params preserves `page` when another URL-backed control changes.
+  if (currentSearch === normalizedSearch) return params;
+
+  const next = new URLSearchParams(params);
+  if (normalizedSearch) next.set('search', normalizedSearch);
+  else next.delete('search');
+  next.delete('page');
+  return next;
+}

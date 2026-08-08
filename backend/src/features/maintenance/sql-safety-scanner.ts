@@ -12,9 +12,9 @@ import { doBlockBody, splitSqlStatements, stripSqlNoise } from './sql-statement-
  *   - every file's header comment literally says "No DROP, TRUNCATE, DELETE"
  *
  * So the scanner works on noise-stripped statements and judges the *leading
- * verb*, plus a small set of genuinely destructive clauses. All 17 repair files
- * in `backend/prisma/repair/` are asserted to pass, which is what stops this
- * from being tightened into uselessness later.
+ * verb*, plus a small set of genuinely destructive clauses. Every repair file in
+ * `backend/prisma/repair/` is asserted to pass, which is what stops this from
+ * being tightened into uselessness later.
  */
 
 export type SqlViolationCode =

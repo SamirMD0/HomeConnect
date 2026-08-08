@@ -23,6 +23,7 @@ import {
   ProductAuditQueryInput,
   ProductDuplicateQueryInput,
   ProductListQueryInput,
+  ProductScanQueryInput,
   ProductServiceJobsQueryInput,
   UpdateProductPricingInput,
   ProductPricingPreviewQueryInput,
@@ -33,6 +34,7 @@ import {
   UpdateProductInput,
 } from './products.validator';
 import { ProductsRepository } from './products.repository';
+import { normalizeScanCode } from '../../../lib/scan-code';
 import { serializeServiceJob } from '../service-jobs/service-jobs.service';
 import { ProductPricingRecord, resolveProductPricing } from '../../pricing/calculator/pricing-resolution';
 import { Role } from '@prisma/client';
@@ -40,6 +42,26 @@ import { parsePricingPercent, percentToApiString } from '../../pricing/domain/pr
 import { formatStaffLabelCode } from '../../pricing/domain/internal-price-code';
 import { generateProductSku } from './product-sku';
 import { deriveProductStockStatus } from './product-stock';
+
+export interface ProductScanPayload {
+  id: string;
+  name: string;
+  model: string;
+  sku: string;
+  barcode: string | null;
+  brand: string | null;
+  isActive: boolean;
+}
+
+export interface ProductScanResult {
+  status: 'FOUND' | 'NOT_FOUND' | 'INVALID_CODE';
+  /** The usable code, or null when the scan could not be normalized at all. */
+  normalizedCode: string | null;
+  matchedBy: 'BARCODE' | 'SKU' | null;
+  /** Present only when the code also matched a *different* product's SKU. */
+  alsoMatchedSku?: boolean;
+  product: ProductScanPayload | null;
+}
 
 export class ProductsService {
   static async create(input: CreateProductInput, user: ServiceMutationUser, context: RequestContext) {
@@ -123,6 +145,52 @@ export class ProductsService {
     if (!product) throw new NotFoundError('Product not found');
     const defaultPreset = await ProductsRepository.findActiveDefaultPricingPreset();
     return serializeProduct(product, defaultPreset, viewer?.role === Role.ADMIN);
+  }
+
+  /**
+   * Exact-match lookup for a scanned code, used by the PC scanner today and by
+   * the phone scanner over the LAN listener later.
+   *
+   * Exact-only by design: a fuzzy scan could select the wrong product at the
+   * counter. Typed searching stays on `list`, which already runs trigram search
+   * and hoists exact matches.
+   *
+   * Both printed label sources are covered by barcode + SKU alone — the printed
+   * value is derived from exactly those two fields in `toLabelPayload` — so no
+   * third code column is consulted.
+   *
+   * The result is built by `serializeScanResult`, never `serializeProduct`:
+   * this payload is reachable from a phone that has no user session, so it must
+   * not be able to grow pricing, cost, or stock fields by inheritance.
+   */
+  static async scanLookup(query: ProductScanQueryInput): Promise<ProductScanResult> {
+    const normalized = normalizeScanCode(query.code);
+    if (!normalized.ok) {
+      return { status: 'INVALID_CODE', normalizedCode: null, matchedBy: null, product: null };
+    }
+
+    const code = normalized.code;
+    const matches = await ProductsRepository.findByScanCode(code);
+    const matchedOnBarcode = matches.find((product) => product.barcode?.toLowerCase() === code.toLowerCase());
+    const matchedOnSku = matches.find((product) => product.sku.toLowerCase() === code.toLowerCase());
+    const product = matchedOnBarcode ?? matchedOnSku ?? null;
+
+    if (!product) {
+      return { status: 'NOT_FOUND', normalizedCode: code, matchedBy: null, product: null };
+    }
+
+    // A code can be one product's barcode and a different product's SKU. Barcode
+    // wins so the counter gets a deterministic result, and the flag lets the UI
+    // say so rather than quietly hiding the second product.
+    const crossMatched = Boolean(matchedOnBarcode && matchedOnSku && matchedOnSku.id !== matchedOnBarcode.id);
+
+    return {
+      status: 'FOUND',
+      normalizedCode: code,
+      matchedBy: matchedOnBarcode ? 'BARCODE' : 'SKU',
+      ...(crossMatched ? { alsoMatchedSku: true } : {}),
+      product: serializeScanResult(product),
+    };
   }
 
   static async getPricingPreview(id: string, query: ProductPricingPreviewQueryInput, viewer?: { role: string }) {
@@ -583,6 +651,33 @@ function serializeProductImage(product: ProductRecord) {
     };
   }
   return null;
+}
+
+/**
+ * The only product shape that may leave the building for a scanner.
+ *
+ * Written as an explicit literal rather than a pick or an omit over
+ * `serializeProduct`: a scan result is reachable from a phone on the shop
+ * Wi-Fi with no user session, so adding a field to the product serializer must
+ * never be able to widen it. Anything commercially sensitive — price, discount,
+ * netPrice, the pricing block, costPrice, the internal price code, stock, notes,
+ * specifications, image, actor ids — is absent by construction, and
+ * `products.scan.test.ts` asserts the key set stays exactly this.
+ *
+ * `brand` is here because it is useful for telling near-identical models apart
+ * and is already printed on the shelf label. `isActive` is here so an archived
+ * product reads as archived instead of as missing.
+ */
+function serializeScanResult(product: Product): ProductScanPayload {
+  return {
+    id: product.id,
+    name: product.name,
+    model: product.model,
+    sku: product.sku,
+    barcode: product.barcode,
+    brand: product.brand,
+    isActive: product.isActive,
+  };
 }
 
 function serializeProduct(product: ProductRecord, defaultPreset: Prisma.PricingPresetGetPayload<Record<string, never>> | null = null, isAdmin = false) {

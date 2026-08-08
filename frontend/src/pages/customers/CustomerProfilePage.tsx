@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Calendar, Copy, Edit2, MapPin, Phone, Trash2, User as UserIcon } from 'lucide-react';
+import { ArrowLeft, Calendar, Copy, Edit2, MapPin, Phone, Trash2, User as UserIcon, WalletCards } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Modal } from '../../components/ui/Modal';
 import { CustomerDeleteModal } from '../../features/customers/components/CustomerDeleteModal';
@@ -92,7 +92,7 @@ export const CustomerProfilePage: React.FC = () => {
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:sticky lg:top-4 lg:z-10">
-        <div className="flex flex-col gap-6 p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8">
+        <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
           <div className="flex items-center gap-5">
             <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
               <UserIcon className="h-8 w-8" aria-hidden="true" />
@@ -127,8 +127,6 @@ export const CustomerProfilePage: React.FC = () => {
           </div>
 
           <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
-            {canMutateFinancial && <><button type="button" onClick={() => setFinancialAction('add')} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700">{businessLabels.customer.addDebt}</button><button type="button" onClick={() => setFinancialAction('payment')} className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 transition-colors hover:border-emerald-600 hover:bg-emerald-600 hover:text-white">{businessLabels.customer.recordPayment}</button><button type="button" onClick={() => setFinancialAction('add')} className="rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 transition-colors hover:border-indigo-600 hover:bg-indigo-600 hover:text-white">{businessLabels.customer.addInstallmentPlan}</button></>}
-            <button type="button" onClick={() => setSearchParams({ tab: 'legacy' })} className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-800 transition-colors hover:border-amber-500 hover:bg-amber-500 hover:text-white">{businessLabels.customer.viewLedger}</button>
             <button
               type="button"
               onClick={() => setIsEditModalOpen(true)}
@@ -149,6 +147,37 @@ export const CustomerProfilePage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <section
+        aria-labelledby="customer-financial-actions-title"
+        className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4 shadow-sm sm:p-5"
+      >
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+              <WalletCards className="h-5 w-5" aria-hidden="true" />
+            </div>
+            <div>
+              <h2 id="customer-financial-actions-title" className="font-semibold text-slate-900">
+                Financial Actions / الإجراءات المالية
+              </h2>
+              <p className="mt-0.5 text-sm text-slate-600">
+                Manage debts, payments, installment plans, and ledger history.
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2.5">
+            {canMutateFinancial && (
+              <>
+                <button type="button" onClick={() => setFinancialAction('add')} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700">{businessLabels.customer.addDebt}</button>
+                <button type="button" onClick={() => setFinancialAction('payment')} className="rounded-lg border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 transition-colors hover:border-emerald-600 hover:bg-emerald-600 hover:text-white">{businessLabels.customer.recordPayment}</button>
+                <button type="button" onClick={() => setFinancialAction('add')} className="rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 transition-colors hover:border-indigo-600 hover:bg-indigo-600 hover:text-white">{businessLabels.customer.addInstallmentPlan}</button>
+              </>
+            )}
+            <button type="button" onClick={() => setSearchParams({ tab: 'legacy' })} className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-800 transition-colors hover:border-amber-500 hover:bg-amber-500 hover:text-white">{businessLabels.customer.viewLedger}</button>
+          </div>
+        </div>
+      </section>
 
       {searchParams.get('tab') === 'details' && <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2">

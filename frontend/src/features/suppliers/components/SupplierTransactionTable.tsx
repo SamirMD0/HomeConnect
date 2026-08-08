@@ -38,7 +38,7 @@ export const SupplierTransactionTable: React.FC<Props> = ({
     </div>
 
     <div
-      className="hidden max-h-[22rem] overflow-auto overscroll-contain rounded-lg bg-slate-100 px-3 pb-3 lg:block"
+      className="data-table-scroll data-table-scroll-expanded hidden lg:block"
       data-testid="supplier-ledger-scroll-table"
     >
       <table className="min-w-full border-separate border-spacing-y-1.5 text-xs text-slate-600">

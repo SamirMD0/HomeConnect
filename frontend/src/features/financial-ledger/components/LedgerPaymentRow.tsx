@@ -3,6 +3,7 @@ import { FinancialLedgerPaymentItem } from '../types/financial-ledger.types';
 import { formatBusinessDate, formatDateTime, formatMoney } from '../../customer-financial/utils/financial-format';
 import { LedgerRowActions } from './LedgerRowActions';
 import { MoneyCell } from './LedgerObligationRow';
+import { LedgerCustomerLink } from './LedgerCustomerLink';
 
 interface LedgerPaymentRowProps {
   item: FinancialLedgerPaymentItem;
@@ -26,7 +27,7 @@ export const LedgerPaymentRow: React.FC<LedgerPaymentRowProps> = ({
       <p className="text-[11px] text-slate-400 transition-colors group-hover:text-yellow-200">Created {formatDateTime(item.createdAt)}</p>
     </td>
     <td className="bg-white px-4 py-2 transition-all duration-200 group-hover:bg-gray-600 group-hover:text-yellow-300">
-      <p className="user-text font-medium text-slate-900 transition-colors group-hover:text-yellow-300" dir="auto">{item.customer.name}</p>
+      <LedgerCustomerLink customer={item.customer} className="font-medium" />
       <p className="text-[11px] text-slate-500 transition-colors group-hover:text-yellow-200">{item.customer.phone}</p>
     </td>
     <td className="hidden bg-white px-4 py-2 transition-all duration-200 group-hover:bg-gray-600 lg:table-cell">
@@ -62,7 +63,7 @@ export const LedgerPaymentRow: React.FC<LedgerPaymentRowProps> = ({
     </td>
     <td className="rounded-r-md bg-white px-4 py-2 text-right transition-all duration-200 group-hover:bg-gray-600 group-hover:text-yellow-300">
       <LedgerRowActions
-        menuKey={`${item.type}-${item.id}`}
+        menuKey={`desktop-${item.type}-${item.id}`}
         openMenuKey={openMenuKey}
         actions={
           canMutate && item.status !== 'VOIDED'

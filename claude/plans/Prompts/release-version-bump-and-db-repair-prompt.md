@@ -25,8 +25,10 @@ Work through the phases in order. **Each phase is a gate — do not start the ne
 - `release/` is **gitignored**. Installers and any SQL you drop there are *not* in version control. Anything that must survive a machine wipe has to be committed to a tracked path as well.
 - Release commits in this repo look like `feat: release HomeConnect 1.1.3` and touch only `package.json`, `package-lock.json`, and any docs whose text the release changed.
 - The installer output path is `release/${version}/HomeConnect-Setup-${version}.exe`, configured in `package.json` → `build.directories.output`.
-- The business PC has historically had a **missing or drifted `_prisma_migrations` table** (see `docs/phases/phase-02/`). Never assume Prisma's migration history there is healthy.
-- The shop PC connects on **port 5433**, database `homeconnect`. See `docs/setup/ELECTRON_BUSINESS_PC_SETUP.md`.
+- The business PC has historically had a **missing or drifted `_prisma_migrations` table** (see `docs/phases/phase-02/`). Never assume Prisma's migration history there is healthy. As of the 2026-08-06 diagnostics it held **2 of 25 rows** against a complete schema, because that PC was updated by running repair scripts by hand — only the 1.2.0 and 1.3.0 scripts stamp bookkeeping rows.
+- The shop PC connects to database `homeconnect`. The port has been **5433 on some installs and 5432 on others** — read it from `environment.json` in a diagnostics export rather than assuming. See `docs/setup/ELECTRON_BUSINESS_PC_SETUP.md`.
+- A repair `.sql` file is only usable in-app if it is **listed in `backend/prisma/repair/manifest.json`**. `RepairRegistry` refuses anything whose SHA-256 does not match the manifest, and reports an unlisted `.sql` as an `ORPHAN_FILE`. A file dropped in `release/` alone can only ever be run by hand in psql/pgAdmin — that is what happened with 1.5.0.
+- Bundled repairs run through `RepairRunner`, which wraps **the whole file in one transaction** and then runs the manifest's `verificationQuery` inside it. That constrains what the SQL may contain (see 3.2).
 
 ---
 
@@ -109,11 +111,25 @@ The script must be idempotent, because it will be run by a person under time pre
 - New enums and new enum values wrapped in `DO $$ ... EXCEPTION WHEN duplicate_object THEN NULL; END $$;`.
 - Column names are **camelCase and unquoted in the schema**, so every raw reference must be double-quoted: `"orderNumber"`, `"totalAmount"`, `"createdAt"`.
 - Backfills of new NOT NULL columns must be deterministically ordered (`ORDER BY "createdAt", "id"`) so the shop PC and your machine produce identical data.
-- Wrap the whole thing in `BEGIN; ... COMMIT;`.
 
-### 3.3 Record the migrations as applied
+It must also survive `RepairRunner`, which executes the file as one transaction:
 
-End the script with an insert into `_prisma_migrations` for every migration it covers, guarded with `ON CONFLICT DO NOTHING`, so a later `prisma migrate deploy` on that machine does not try to re-apply them. If the table does not exist on the shop PC, create it first. **Skipping this step is what causes the drift this project has already been bitten by once.**
+- **No `BEGIN;` / `COMMIT;`.** The runner opens the transaction itself; a nested one inside the file fights it. (1.2.0 and 1.3.0 carry them because they predate the bundled path — do not copy that.)
+- **No `CREATE INDEX CONCURRENTLY`** — it cannot run inside a transaction. Say so in a comment, as the existing files do.
+- **A new enum value cannot be used in the same repair that adds it** (SQLSTATE 55P04). Split it in two, as 1.4.0 did with `product-label-auto-enum` then `product-label-auto-apply`, and list them in that order in the manifest. Reading `pg_enum` to verify the value is fine.
+- It must pass `scanSqlForUnsafeStatements`: no `DROP` / `TRUNCATE` / `DELETE`, and no `UPDATE` except a NULL-backfill of a just-added column or `_prisma_migrations` bookkeeping. Anything else is rejected at load time as `UNSAFE_SQL` and the repair silently never appears in Maintenance.
+- A prerequisite `DO $tag$ ... RAISE EXCEPTION ... $tag$;` block at the top is the house style — it turns "wrong database" into a clear message instead of a confusing failure half-way down.
+
+### 3.3 Decide how the migration history gets recorded
+
+The repair brings the *schema* up to date. Something still has to tell `_prisma_migrations` that the migrations it covers are done, or Apply will later try to re-run them.
+
+There are two conventions in this repo. **Pick one deliberately and say which in your report.**
+
+- **Bundled repair + in-app Resolve (current, 1.4.0 onward).** The repair writes no bookkeeping. After it runs, the admin opens Settings → Maintenance → "Already updated by hand?" and records the covered migrations. This is preferred: the covered migrations are almost always idempotent, so Apply re-running them is a harmless no-op that stamps the rows by itself.
+- **Self-stamping standalone script (1.0.5–1.3.0).** The script ends with an `INSERT INTO "_prisma_migrations"` guarded by `WHERE NOT EXISTS`, creating the table first if absent. Use this only for a break-glass file meant to be run in psql on a PC that may never have run Prisma.
+
+Either way the migrations must end up recorded. **Leaving both undone is what causes the drift this project has already been bitten by.**
 
 ### 3.4 Refuse to ship destructive SQL silently
 
@@ -129,13 +145,51 @@ If the generated script contains `DROP TABLE`, `DROP COLUMN`, `ALTER COLUMN ... 
 ### 3.6 Place it in two locations
 
 ```
-backend/prisma/repair/<X.Y.Z>-repair.sql     ← committed, survives a machine wipe
+backend/prisma/repair/<X.Y.Z>-repair.sql     ← committed, bundled into the installer, survives a machine wipe
 release/<X.Y.Z>/<X.Y.Z>-repair.sql           ← ships next to the installer, gitignored
 ```
 
-`release/` is gitignored, so the tracked copy is the real one. The release-folder copy exists so the whole update travels on one USB stick.
+`release/` is gitignored, so the tracked copy is the real one. `package.json` → `build.extraResources` already copies `backend/prisma/repair` to `resources/repair`, so no build config changes. The release-folder copy exists so the whole update travels on one USB stick.
 
-**Gate: empty second diff, clean re-run, both files written.**
+Keep the two byte-identical. The tracked copy is the reviewed artefact and the one whose checksum is in the manifest.
+
+### 3.7 Register it in the repair manifest
+
+**A file in `backend/prisma/repair/` that is not in `manifest.json` is dead weight** — it is reported as an `ORPHAN_FILE` and Settings → Maintenance can never apply it. 1.5.0 shipped this way and the shop had to run the SQL by hand in pgAdmin.
+
+Append an entry to `backend/prisma/repair/manifest.json`:
+
+```
+repairId            stable kebab-case id, never reused, never removed later
+title/description   what an admin sees; name the migrations it covers
+version             <X.Y.Z>
+file                <X.Y.Z>-repair.sql
+checksum            sha256:<hex of the tracked file>
+requiresSuperuser   true only if it installs an untrusted extension (pg_trgm)
+affectedTables      the tables an admin should recognise
+detectionQuery      returns >=1 row when ALL of the repair is already in place
+detectionExpects    "empty"   (i.e. the repair is needed when the query returns nothing)
+verificationQuery   a single column literally aliased `count`
+verificationExpects the number that column must equal, or the repair is rolled back
+```
+
+Compute the checksum from the tracked file:
+
+```
+node -e "const c=require('crypto'),f=require('fs');console.log('sha256:'+c.createHash('sha256').update(f.readFileSync('backend/prisma/repair/<X.Y.Z>-repair.sql')).digest('hex'))"
+```
+
+Then:
+
+1. Run both catalog queries against your dev database and confirm the shapes — detection returning a row on an up-to-date DB, verification returning `count` equal to `verificationExpects`. A query that errors makes the repair unusable and nothing will say so at runtime.
+2. Bump the two hard-coded file counts, which exist to make exactly this step impossible to forget:
+   - `backend/src/features/maintenance/sql-safety-scanner.test.ts` — "finds all N repair files"
+   - `backend/src/features/maintenance/repair-registry.test.ts` — "loads all N repairs with no problems"
+3. `npx vitest run backend/src/features/maintenance/` — the registry test proves the checksum matches and the scanner accepts the file.
+
+Not every SQL file belongs in the manifest. A one-off data fix for a specific incident — `1.5.0-repair-imported-product-ids.sql`, which rewrites imported product IDs — stays a manual break-glass file: it would be rejected by the safety scanner anyway, and it should not be offered to an admin as a routine repair.
+
+**Gate: empty second diff, clean re-run, both files written, manifest entry added, maintenance tests green.**
 
 ---
 
@@ -163,9 +217,16 @@ Optionally run `npm run check:electron-production-runtime` if this release touch
 Commit only the release files — the version bump, any docs you actually corrected, and the tracked repair SQL:
 
 ```
-git add package.json package-lock.json backend/prisma/repair/<X.Y.Z>-repair.sql [docs you changed]
+git add package.json package-lock.json \
+        backend/prisma/repair/<X.Y.Z>-repair.sql \
+        backend/prisma/repair/manifest.json \
+        backend/src/features/maintenance/sql-safety-scanner.test.ts \
+        backend/src/features/maintenance/repair-registry.test.ts \
+        [docs you changed]
 git commit -m "feat: release HomeConnect <X.Y.Z>"
 ```
+
+The manifest and the two count assertions travel with the repair file. A commit with the `.sql` but not the manifest ships a repair nobody can run.
 
 Commit message ends with the co-author trailer this repo uses.
 
@@ -196,12 +257,23 @@ Business PC steps, in this order:
   1. Close HomeConnect on the shop PC.
   2. Back up Postgres first — docs/setup/BACKUP_RESTORE_RECOVERY_GUIDE.md.
      Do not skip this. The repair script is idempotent, not reversible.
-  3. Apply the repair SQL:
-     psql -h localhost -p 5433 -U postgres -d homeconnect -v ON_ERROR_STOP=1 -f <X.Y.Z>-repair.sql
-     It must finish with no error. If it errors, stop and restore the backup.
-  4. Run the installer over the existing install. Do not uninstall first.
-  5. Launch, log in, and check the version in the sidebar reads v<X.Y.Z>.
+  3. Run the installer over the existing install. Do not uninstall first.
+  4. Launch, log in as an admin, open Settings → Maintenance.
+     - Pending updates / Pending repairs show what this PC still needs.
+     - If migrations are listed that this PC already has (schema present, history
+       missing), use "Already updated by hand?" → "Select the N already in the
+       database" → password + RESOLVE first. Apply cannot get past a migration
+       that re-creates an existing table; it stops at the first failure.
+     - Then Apply. A verified backup is taken automatically before anything runs.
+  5. Check the version in the sidebar reads v<X.Y.Z>, and that Pending updates
+     and Pending repairs both read 0.
   6. Smoke check: <the 2–4 checks that actually exercise what this release changed>
+
+Fallback if the in-app path is unavailable (no admin access, backup tools missing,
+older build installed) — apply the SQL by hand between steps 2 and 3:
+  psql -h localhost -p <5432 or 5433> -U postgres -d homeconnect -v ON_ERROR_STOP=1 -f <X.Y.Z>-repair.sql
+  It must finish with no error. If it errors, stop and restore the backup.
+  Doing this leaves the migrations recorded as pending — resolve them in step 4.
 ```
 
 Fill step 6 with real checks tied to this release, not filler.
@@ -214,10 +286,12 @@ Fill step 6 with real checks tied to this release, not filler.
 - **Never** push without explicit confirmation in this session. Approval on a previous release does not carry over.
 - **Never** bump the version before Phase 1 is green. A tagged version that does not build is worse than no release.
 - **Never** ship a repair script whose second `migrate diff` is non-empty.
+- **Never** ship a repair `.sql` without its `manifest.json` entry. An unlisted file cannot be applied from the app, and the shop is left doing surgery in pgAdmin.
+- **Never** hand-edit a manifest checksum. Recompute it from the tracked file, and re-run the maintenance tests.
 - **Never** edit `package-lock.json` by hand.
 - **Never** commit anything from `release/` — it is gitignored for a reason, and the `.exe` is large.
 - **Never** put credentials, connection strings with real passwords, or `.env` contents into a committed file, a report, or a commit message.
-- If the shop PC's `_prisma_migrations` table turns out to be missing or inconsistent, **report it and stop** rather than improvising a fix during an update window.
+- If the shop PC's `_prisma_migrations` table turns out to be missing or inconsistent, use the supported path — Settings → Maintenance → "Already updated by hand?" — which refuses to record anything the database is actually missing. Do not improvise SQL against `_prisma_migrations` during an update window. If Resolve refuses an entry, **report it and stop**: that means the schema really is missing something.
 
 ## Report as you go
 

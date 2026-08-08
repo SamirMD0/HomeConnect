@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { productViewSearchParams, resolveProductView } from './product-view';
+import { productSearchParams, productViewSearchParams, resolveProductView } from './product-view';
 
 describe('product view persistence', () => {
   it('keeps table as the default and uses the sticky preference only without a URL value', () => {
@@ -18,5 +18,21 @@ describe('product view persistence', () => {
     expect(next.get('search')).toBe('fan');
     expect(next.get('status')).toBe('active');
     expect(next.get('focus')).toBe('p1');
+  });
+
+  it('keeps the current page when search has not changed', () => {
+    const current = new URLSearchParams('search=fan&page=2&status=active');
+    const next = productSearchParams(current, 'fan');
+
+    expect(next).toBe(current);
+    expect(next.get('page')).toBe('2');
+  });
+
+  it('resets the current page when search changes', () => {
+    const next = productSearchParams(new URLSearchParams('search=fan&page=2&status=active'), 'fridge');
+
+    expect(next.get('search')).toBe('fridge');
+    expect(next.has('page')).toBe(false);
+    expect(next.get('status')).toBe('active');
   });
 });

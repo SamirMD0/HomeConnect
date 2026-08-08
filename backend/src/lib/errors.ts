@@ -35,3 +35,9 @@ export class AuthorizationError extends AppError {
     super(message, 403, 'FORBIDDEN');
   }
 }
+
+export class RateLimitError extends AppError {
+  constructor(message = 'Too many requests. Try again shortly.') {
+    super(message, 429, 'RATE_LIMITED');
+  }
+}

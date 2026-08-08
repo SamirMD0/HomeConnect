@@ -34,6 +34,8 @@ import { customerServiceJobsRoutes, serviceJobsRoutes } from './features/service
 import { customerSalesOrdersRoutes, salesOrdersRoutes } from './features/sales';
 import { supplierLedgerRoutes, suppliersRoutes, supplierTransactionsGlobalRoutes, supplierTransactionsRoutes } from './features/suppliers';
 import { pricingCalculatorRoutes, pricingPresetsRoutes } from './features/pricing';
+import { systemRoutes } from './features/system/system.routes';
+import { scannerRoutes } from './features/scanner/scanner.routes';
 
 export const app = express();
 
@@ -111,6 +113,8 @@ app.use('/api/v1/admin/backups', requireAuth, backupRoutes);
 app.use('/api/v1/admin/diagnostics', requireAuth, diagnosticsRoutes);
 app.use('/api/v1/admin/preflight', requireAuth, preflightRoutes);
 app.use('/api/v1/admin/maintenance', requireAuth, maintenanceRoutes);
+app.use('/api/v1/system', requireAuth, systemRoutes);
+app.use('/api/v1/scanner', requireAuth, scannerRoutes);
 app.use('/api/v1/transactions', requireAuth, transactionsRoutes);
 app.use('/api/v1/dashboard', requireAuth, dashboardRoutes);
 

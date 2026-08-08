@@ -25,7 +25,8 @@ describe('supplier components', () => {
     expect(ledger).not.toContain('Supplier Debt / دين للمورّد');
     expect(ledger).not.toContain('Remove / حذف');
     expect(ledger).toContain('data-testid="supplier-ledger-scroll-table"');
-    expect(ledger).toContain('overflow-auto');
+    expect(ledger).toContain('data-table-scroll');
+    expect(ledger).toContain('data-table-scroll-expanded');
     expect(ledger).toContain('group-hover:bg-gray-600');
     expect(ledger).toContain('group-hover:text-yellow-300');
   });

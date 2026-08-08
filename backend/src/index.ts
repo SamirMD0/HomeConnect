@@ -16,6 +16,7 @@ for (const envPath of [
 import { app } from './app';
 import { logger } from './lib/logger';
 import { BackupScheduler } from './features/backup/backup.scheduler';
+import { stopLanListener } from './features/scanner/lan-listener';
 import { prisma } from './lib/prisma';
 
 const PORT = process.env.PORT || 3001;
@@ -33,6 +34,9 @@ const startServer = () => {
     const shutdown = async (signal: string) => {
       logger.info(`Server shutting down from ${signal}`);
       BackupScheduler.stop();
+      // Closes the LAN scanner socket if an admin left it enabled, so the port
+      // is not held open past the process.
+      await stopLanListener();
       server.close(async () => {
         await prisma.$disconnect();
         process.exit(0);

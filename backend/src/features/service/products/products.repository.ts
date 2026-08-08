@@ -36,6 +36,30 @@ export class ProductsRepository {
     return (tx ?? prisma).product.findUnique({ where: { sku } });
   }
 
+  /**
+   * Exact scan lookup across both printed code sources.
+   *
+   * `findByBarcode`/`findBySku` above cannot serve this: they are `findUnique`,
+   * and Prisma cannot apply `mode: 'insensitive'` to a unique lookup, so a code
+   * scanned in the other case would miss. This mirrors the insensitive OR the
+   * list query already uses to hoist exact matches.
+   *
+   * `take: 2` is the whole result space, not a page: both columns are unique,
+   * so at most one row can match on barcode and one on SKU. Returning both lets
+   * the caller detect and report that cross-match rather than silently picking.
+   */
+  static findByScanCode(code: string, tx?: Prisma.TransactionClient) {
+    return (tx ?? prisma).product.findMany({
+      where: {
+        OR: [
+          { barcode: { equals: code, mode: 'insensitive' } },
+          { sku: { equals: code, mode: 'insensitive' } },
+        ],
+      },
+      take: 2,
+    });
+  }
+
   static async list(params: {
     search?: string;
     isActive?: boolean;

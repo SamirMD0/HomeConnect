@@ -109,8 +109,8 @@ describe('sql safety scanner — allows legitimate repair SQL', () => {
 describe('sql safety scanner — real bundled files', () => {
   const repairFiles = fs.readdirSync(REPAIR_DIR).filter((name) => name.endsWith('.sql'));
 
-  it('finds all 21 repair files', () => {
-    expect(repairFiles).toHaveLength(21);
+  it('finds all 22 repair files', () => {
+    expect(repairFiles).toHaveLength(22);
   });
 
   it.each(repairFiles)('accepts %s', (name) => {

@@ -13,6 +13,7 @@ import {
   FinancialLedgerPlanItem,
 } from '../types/financial-ledger.types';
 import { LEDGER_CORRECTION_ENABLED, LedgerActionItem, LedgerRowActions } from './LedgerRowActions';
+import { LedgerCustomerLink } from './LedgerCustomerLink';
 
 const ledgerCellHover =
   'bg-white transition-all duration-200 group-hover:bg-gray-600 group-hover:text-yellow-300 group-hover:[text-shadow:0_0_8px_rgba(250,204,21,0.8)]';
@@ -106,7 +107,7 @@ export const LedgerObligationRow: React.FC<LedgerObligationRowProps> = ({
         <p className="text-[11px] font-normal text-slate-400 transition-colors group-hover:text-yellow-200">Created {formatDateTime(item.createdAt)}</p>
       </td>
       <td className={`px-4 py-2 ${ledgerCellHover}`}>
-        <p className="user-text font-medium text-slate-900 transition-colors group-hover:text-yellow-300" dir="auto">{item.customer.name}</p>
+        <LedgerCustomerLink customer={item.customer} className="font-medium" />
         <p className="text-[11px] text-slate-500 transition-colors group-hover:text-yellow-200">{item.customer.phone}</p>
       </td>
       <td className={`hidden px-4 py-2 lg:table-cell ${ledgerCellHover}`}>
@@ -159,7 +160,7 @@ export const LedgerObligationRow: React.FC<LedgerObligationRowProps> = ({
             Edit
           </button>
           <LedgerRowActions
-            menuKey={`${item.type}-${item.id}`}
+            menuKey={`desktop-${item.type}-${item.id}`}
             openMenuKey={openMenuKey}
             actions={actions}
             onOpenChange={onOpenMenuChange}

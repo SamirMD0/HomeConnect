@@ -3,7 +3,7 @@ import { ProductsService } from './products.service';
 import { assertProductImageBytes, assertProductImageMimeType } from './product-image';
 import {
   CreateProductInput, ProductActionInput, ProductAuditQueryInput,
-  ProductDuplicateQueryInput, ProductListQueryInput, ProductParamsInput,
+  ProductDuplicateQueryInput, ProductListQueryInput, ProductParamsInput, ProductScanQueryInput,
   ProductServiceJobsQueryInput, UpdateProductInput,
   UpdateProductPricingInput, ProductPricingPreviewQueryInput,
   ProductLabelQueryInput, ProductLabelsQueryInput, UpdateProductSkuInput, UpdateProductStockInput,
@@ -49,6 +49,10 @@ export class ProductsController {
       const result = await ProductsService.list(req.query as unknown as ProductListQueryInput, req.user);
       res.json({ success: true, data: result.items, meta: { pagination: { page: result.page, pageSize: result.pageSize, totalItems: result.total, totalPages: Math.ceil(result.total / result.pageSize) } } });
     } catch (error) { next(error); }
+  }
+  static async scan(req: Request, res: Response, next: NextFunction) {
+    try { res.json({ success: true, data: await ProductsService.scanLookup(req.query as unknown as ProductScanQueryInput) }); }
+    catch (error) { next(error); }
   }
   static async get(req: Request<ProductParamsInput>, res: Response, next: NextFunction) {
     try { res.json({ success: true, data: await ProductsService.get(req.params.productId, req.user) }); }

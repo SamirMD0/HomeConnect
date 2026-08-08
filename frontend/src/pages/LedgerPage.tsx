@@ -130,7 +130,7 @@ export const LedgerPage: React.FC = () => {
   };
 
   return (
-    <div className="mx-auto max-w-7xl space-y-4">
+    <div className="w-full space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-bold text-slate-900">{businessLabels.ledger.title}</h1>
