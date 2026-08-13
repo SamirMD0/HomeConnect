@@ -125,7 +125,7 @@ export function useUpdateProductSku() {
 }
 export function useRegenerateProductSku() {
   const queryClient = useQueryClient();
-  return useMutation({ mutationFn: ({ id, input }: { id: string; input: ProductActionInput }) => productsApi.regenerateSku(id, input), onSuccess: () => invalidateProducts(queryClient) });
+  return useMutation({ mutationFn: (id: string) => productsApi.regenerateSku(id), onSuccess: () => invalidateProducts(queryClient) });
 }
 export function useUpdateProductStock() {
   const queryClient = useQueryClient();

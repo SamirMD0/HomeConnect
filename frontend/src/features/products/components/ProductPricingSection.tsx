@@ -95,11 +95,10 @@ export const ProductPricingSection: React.FC<{ product: Product; initiallyOpen?:
   };
   const copyCalculated = () => {
     if (!preview.data?.cashPrice) return;
-    if (!form.reason.trim() || !form.accountPassword) {
-      setErrors((current) => ({ ...current, reason: !form.reason.trim() ? 'Reason is required' : current.reason, accountPassword: !form.accountPassword ? 'Password is required' : current.accountPassword }));
-      return;
-    }
-    updateProduct.mutate({ id: product.id, input: { price: preview.data.cashPrice, reason: form.reason, accountPassword: form.accountPassword } }, { onSuccess: () => toast.success('Calculated price copied to manual price') });
+    // Writes the product's own `price` through the relaxed product endpoint, which
+    // no longer takes a reason or a password — unlike the pricing configuration
+    // above it, which still does.
+    updateProduct.mutate({ id: product.id, input: { price: preview.data.cashPrice } }, { onSuccess: () => toast.success('Calculated price copied to manual price') });
   };
 
   return <section className="rounded-lg border border-slate-200 bg-slate-50">

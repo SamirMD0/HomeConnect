@@ -98,19 +98,20 @@ export const updateServiceJobSchema = z.object({
   homeVisitScheduledDate: jobFields.homeVisitScheduledDate,
   returnedToCustomerDate: jobFields.returnedToCustomerDate,
   notes: jobFields.notes,
-  reason: userTextSchema({ field: 'Reason', min: 5, max: 1000 }).optional(),
-  accountPassword: z.string().min(1, 'Account password is required').optional(),
-});
+  // Strict: normal service work is audited with a server-generated reason, so a
+  // stale client still sending `reason` or `accountPassword` fails loudly rather
+  // than having its text silently ignored.
+}).strict();
 
 export const changeServiceStatusSchema = z.object({
   status: z.nativeEnum(ServiceJobStatus),
   sentToCompanyDate: dateSchema.optional().nullable(),
   receivedFromCompanyDate: dateSchema.optional().nullable(),
   returnedToCustomerDate: dateSchema.optional().nullable(),
-  reason: userTextSchema({ field: 'Reason', min: 5, max: 1000 }).optional(),
-  accountPassword: z.string().min(1, 'Account password is required').optional(),
-});
+}).strict();
 
+// Cancel and reopen stay strict. Their `reason` is not only audit text — cancel
+// persists it to ServiceJob.cancelledReason — and they are terminal actions.
 export const cancelServiceJobSchema = z.object({
   reason: userTextSchema({ field: 'Cancellation reason', min: 5, max: 1000 }),
   accountPassword: z.string().min(1, 'Account password is required'),

@@ -90,8 +90,8 @@ export class ProductsController {
     try { res.json({ success: true, data: await ProductsService.updateSku(req.params.productId, req.body, req.user!, contextFrom(req)) }); }
     catch (error) { next(error); }
   }
-  static async regenerateSku(req: Request<ProductParamsInput, unknown, ProductActionInput>, res: Response, next: NextFunction) {
-    try { res.json({ success: true, data: await ProductsService.regenerateSku(req.params.productId, req.body, req.user!, contextFrom(req)) }); }
+  static async regenerateSku(req: Request<ProductParamsInput>, res: Response, next: NextFunction) {
+    try { res.json({ success: true, data: await ProductsService.regenerateSku(req.params.productId, req.user!, contextFrom(req)) }); }
     catch (error) { next(error); }
   }
   static async updateStock(req: Request<ProductParamsInput, unknown, UpdateProductStockInput>, res: Response, next: NextFunction) {

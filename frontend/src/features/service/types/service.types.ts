@@ -87,7 +87,7 @@ export type UpdateServiceJobInput = Partial<Omit<CreateServiceJobInput, 'service
   serviceCreatedDate?: string; finalPrice?: string | null; priceNotes?: string | null;
   warrantyNotes?: string | null; warrantyProvider?: string | null; warrantyExpiresAt?: string | null;
   sentToCompanyDate?: string | null; receivedFromCompanyDate?: string | null;
-  returnedToCustomerDate?: string | null; reason?: string; accountPassword?: string;
+  returnedToCustomerDate?: string | null;
 };
 
 export function resolveProductDisplay(job: ServiceJob) {

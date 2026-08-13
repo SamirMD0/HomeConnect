@@ -29,10 +29,35 @@ describe('product routes', () => {
     service.updateStock.mockResolvedValue(product);
   });
   it('keeps protected SKU and stock routes above the bare product route', async () => {
-    const credentials = { reason: 'Correct product identity', accountPassword: 'pass' };
-    expect((await request(app).patch(`/api/v1/products/${productId}/sku`).set('Authorization', `Bearer ${admin}`).send({ ...credentials, sku: 'HC-009999' })).status).toBe(200);
-    expect((await request(app).post(`/api/v1/products/${productId}/regenerate-sku`).set('Authorization', `Bearer ${admin}`).send(credentials)).status).toBe(200);
-    expect((await request(app).patch(`/api/v1/products/${productId}/stock`).set('Authorization', `Bearer ${admin}`).send({ ...credentials, trackStock: true, lowStockThreshold: 1 })).status).toBe(200);
+    expect((await request(app).patch(`/api/v1/products/${productId}/sku`).set('Authorization', `Bearer ${admin}`).send({ sku: 'HC-009999' })).status).toBe(200);
+    expect((await request(app).post(`/api/v1/products/${productId}/regenerate-sku`).set('Authorization', `Bearer ${admin}`).send({})).status).toBe(200);
+    expect((await request(app).patch(`/api/v1/products/${productId}/stock`).set('Authorization', `Bearer ${admin}`).send({ trackStock: true, lowStockThreshold: 1 })).status).toBe(200);
+    expect(service.update).not.toHaveBeenCalled();
+  });
+
+  it('takes SKU and stock-settings changes without an account password', async () => {
+    expect((await request(app).patch(`/api/v1/products/${productId}/sku`).set('Authorization', `Bearer ${admin}`).send({ sku: 'HC-009999', accountPassword: 'pass' })).status).toBe(400);
+    expect((await request(app).patch(`/api/v1/products/${productId}/stock`).set('Authorization', `Bearer ${admin}`).send({ trackStock: true, lowStockThreshold: 1, reason: 'Because' })).status).toBe(400);
+  });
+
+  it('keeps SKU and stock settings admin-only', async () => {
+    expect((await request(app).patch(`/api/v1/products/${productId}/sku`).set('Authorization', `Bearer ${employee}`).send({ sku: 'HC-009999' })).status).toBe(403);
+    expect((await request(app).post(`/api/v1/products/${productId}/regenerate-sku`).set('Authorization', `Bearer ${employee}`).send({})).status).toBe(403);
+    expect((await request(app).patch(`/api/v1/products/${productId}/stock`).set('Authorization', `Bearer ${employee}`).send({ trackStock: true, lowStockThreshold: 1 })).status).toBe(403);
+  });
+
+  it('rejects pricing fields posted to the relaxed product update route', async () => {
+    for (const body of [{ costPrice: '10.00' }, { customProfitPercent: '20' }, { pricingPresetId: productId }, { useCustomPricing: true }]) {
+      const response = await request(app).patch(`/api/v1/products/${productId}`).set('Authorization', `Bearer ${admin}`).send(body);
+      expect(response.status).toBe(400);
+    }
+    expect(service.update).not.toHaveBeenCalled();
+  });
+
+  it('no longer accepts a typed reason or password on the product update route', async () => {
+    const response = await request(app).patch(`/api/v1/products/${productId}`).set('Authorization', `Bearer ${admin}`)
+      .send({ name: 'Fan', reason: 'Correct product identity', accountPassword: 'pass' });
+    expect(response.status).toBe(400);
     expect(service.update).not.toHaveBeenCalled();
   });
   it('serves a narrow label payload without any price field', async () => {
@@ -91,7 +116,7 @@ describe('product routes', () => {
     expect(service.checkDuplicate).toHaveBeenCalled();
     expect(service.get).not.toHaveBeenCalled();
   });
-  it('returns related service-job pagination and validates sensitive updates', async () => {
+  it('returns related service-job pagination and takes a sensitive update without credentials', async () => {
     const jobs = await request(app)
       .get(`/api/v1/products/${productId}/service-jobs?page=1&pageSize=10`)
       .set('Authorization', `Bearer ${employee}`);
@@ -102,7 +127,8 @@ describe('product routes', () => {
       .patch(`/api/v1/products/${productId}`)
       .set('Authorization', `Bearer ${admin}`)
       .send({ price: '20.00' });
-    expect(update.status).toBe(400);
+    expect(update.status).toBe(200);
+    expect(service.update).toHaveBeenCalled();
   });
   it('registers the bulk label sheet before the product id route', async () => {
     const response = await request(app)

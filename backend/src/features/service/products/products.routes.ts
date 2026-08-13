@@ -9,6 +9,7 @@ import {
   productServiceJobsQuerySchema, updateProductSchema,
   updateProductPricingSchema, productPricingPreviewQuerySchema,
   productLabelQuerySchema, productLabelsQuerySchema, updateProductSkuSchema, updateProductStockSchema,
+  regenerateProductSkuSchema,
 } from './products.validator';
 import { InventoryController } from '../../inventory/inventory.controller';
 import { inventoryProductParamsSchema, stockMovementSchema, verifyOpeningCountSchema } from '../../inventory/inventory.validator';
@@ -42,7 +43,7 @@ productsRoutes.post('/:productId/stock-movements', validate(inventoryProductPara
 productsRoutes.get('/:productId/pricing-preview', validate(productParamsSchema, 'params'), validate(productPricingPreviewQuerySchema, 'query'), ProductsController.pricingPreview);
 productsRoutes.patch('/:productId/pricing', requireServiceAdmin, validate(productParamsSchema, 'params'), validate(updateProductPricingSchema), ProductsController.updatePricing);
 productsRoutes.patch('/:productId/sku', requireServiceAdmin, validate(productParamsSchema, 'params'), validate(updateProductSkuSchema), ProductsController.updateSku);
-productsRoutes.post('/:productId/regenerate-sku', requireServiceAdmin, validate(productParamsSchema, 'params'), validate(productActionSchema), ProductsController.regenerateSku);
+productsRoutes.post('/:productId/regenerate-sku', requireServiceAdmin, validate(productParamsSchema, 'params'), validate(regenerateProductSkuSchema), ProductsController.regenerateSku);
 productsRoutes.patch('/:productId/stock', requireServiceAdmin, validate(productParamsSchema, 'params'), validate(updateProductStockSchema), ProductsController.updateStock);
 productsRoutes.post('/:productId/archive', requireServiceAdmin, validate(productParamsSchema, 'params'), validate(productActionSchema), ProductsController.archive);
 productsRoutes.post('/:productId/restore', requireServiceAdmin, validate(productParamsSchema, 'params'), validate(productActionSchema), ProductsController.restore);

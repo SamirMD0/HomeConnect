@@ -10,6 +10,7 @@ import { runFinancialTransaction } from '../../financial/infrastructure/transact
 import { verifyAdminPassword } from '../../../lib/admin-verification';
 import { NotFoundError, ValidationError } from '../../../lib/errors';
 import { writeServiceAudit } from '../audit/service-audit';
+import { PRODUCT_AUDIT_REASONS, productUpdateReason } from '../audit/audit-reasons';
 import { ServiceAuditRepository } from '../audit/service-audit.repository';
 import { ServiceConflictError } from '../domain/service-errors';
 import { RequestContext, ServiceMutationUser } from '../domain/service-types';
@@ -233,28 +234,17 @@ export class ProductsService {
     user: ServiceMutationUser,
     context: RequestContext
   ) {
-    const fields = Object.keys(input).filter((field) => !['reason', 'accountPassword'].includes(field));
+    const fields = Object.keys(input);
     if (fields.length === 0) throw new ValidationError('At least one product field is required');
-    const sensitive = containsSensitiveProductFields(fields);
-    if (sensitive) {
-      assertServiceAdmin(user);
-      if (!input.reason) throw new ValidationError('Reason is required for sensitive product changes');
-      if (!input.accountPassword) throw new ValidationError('Account password is required');
-    }
+    // The field policy still decides WHO may edit what — it just no longer decides
+    // whether a password is demanded. Cosmetic fields stay open to any authenticated
+    // user exactly as before; everything else stays ADMIN-only.
+    if (containsSensitiveProductFields(fields)) assertServiceAdmin(user);
 
     try {
       return await runFinancialTransaction(async (tx) => {
         const existing = await ProductsRepository.findById(id, tx);
         if (!existing) throw new NotFoundError('Product not found');
-        if (sensitive) {
-          await verifyAdminPassword(user.userId, input.accountPassword!, {
-            action: 'UPDATE_PRODUCT',
-            recordType: 'PRODUCT',
-            recordId: id,
-            ipAddress: context.ipAddress,
-            domainLabel: 'service and product changes',
-          }, tx);
-        }
         if (input.barcode && input.barcode !== existing.barcode) {
           const duplicate = await ProductsRepository.findByBarcode(input.barcode, tx);
           if (duplicate) throw barcodeConflict();
@@ -281,7 +271,7 @@ export class ProductsService {
           changedById: user.userId,
           changedByName: actor.fullName,
           changedByUsername: actor.username,
-          reason: input.reason ?? 'Product notes updated',
+          reason: productUpdateReason(fields),
           beforeValues: changedSnapshot(existing, fields),
           afterValues: changedSnapshot(updated, fields),
           requestId: context.requestId,
@@ -410,11 +400,11 @@ export class ProductsService {
   }
 
   static updateSku(id: string, input: UpdateProductSkuInput, user: ServiceMutationUser, context: RequestContext) {
-    return this.changeSku(id, input.sku, ServiceAuditAction.CHANGE_SKU, input, user, context);
+    return this.changeSku(id, input.sku, ServiceAuditAction.CHANGE_SKU, user, context);
   }
 
-  static regenerateSku(id: string, input: ProductActionInput, user: ServiceMutationUser, context: RequestContext) {
-    return this.changeSku(id, null, ServiceAuditAction.REGENERATE_SKU, input, user, context);
+  static regenerateSku(id: string, user: ServiceMutationUser, context: RequestContext) {
+    return this.changeSku(id, null, ServiceAuditAction.REGENERATE_SKU, user, context);
   }
 
   static async updateStock(id: string, input: UpdateProductStockInput, user: ServiceMutationUser, context: RequestContext) {
@@ -422,10 +412,8 @@ export class ProductsService {
     return runFinancialTransaction(async (tx) => {
       const existing = await ProductsRepository.findById(id, tx);
       if (!existing) throw new NotFoundError('Product not found');
-      await verifyAdminPassword(user.userId, input.accountPassword, {
-        action: 'UPDATE_PRODUCT_STOCK', recordType: 'PRODUCT', recordId: id,
-        ipAddress: context.ipAddress, domainLabel: 'product stock changes',
-      }, tx);
+      // Settings only: this cannot write stockQuantity. Real quantity corrections
+      // live in the inventory ledger and keep their admin-password guard.
       const updated = await ProductsRepository.update(id, {
         trackStock: input.trackStock,
         lowStockThreshold: input.lowStockThreshold,
@@ -435,7 +423,7 @@ export class ProductsService {
       await writeServiceAudit({
         recordType: ServiceAuditRecordType.PRODUCT, recordId: id, action: ServiceAuditAction.CHANGE_STOCK,
         changedById: user.userId, changedByName: actor.fullName, changedByUsername: actor.username,
-        reason: input.reason,
+        reason: PRODUCT_AUDIT_REASONS.stockSettings,
         beforeValues: stockSnapshot(existing), afterValues: stockSnapshot(updated),
         requestId: context.requestId, ipAddress: context.ipAddress,
       }, tx);
@@ -508,7 +496,6 @@ export class ProductsService {
     id: string,
     requestedSku: string | null,
     action: ServiceAuditAction,
-    input: ProductActionInput,
     user: ServiceMutationUser,
     context: RequestContext
   ) {
@@ -517,11 +504,6 @@ export class ProductsService {
       return await runFinancialTransaction(async (tx) => {
         const existing = await ProductsRepository.findById(id, tx);
         if (!existing) throw new NotFoundError('Product not found');
-        await verifyAdminPassword(user.userId, input.accountPassword, {
-          action: action === ServiceAuditAction.REGENERATE_SKU ? 'REGENERATE_PRODUCT_SKU' : 'CHANGE_PRODUCT_SKU',
-          recordType: 'PRODUCT', recordId: id, ipAddress: context.ipAddress,
-          domainLabel: 'product SKU changes',
-        }, tx);
         const sku = requestedSku ?? await generateProductSku(tx);
         if (sku === existing.sku) throw new ValidationError('The new SKU matches the current SKU');
         const updated = await ProductsRepository.update(id, { sku, updatedById: user.userId }, tx);
@@ -529,7 +511,10 @@ export class ProductsService {
         await writeServiceAudit({
           recordType: ServiceAuditRecordType.PRODUCT, recordId: id, action,
           changedById: user.userId, changedByName: actor.fullName, changedByUsername: actor.username,
-          reason: input.reason, beforeValues: { sku: existing.sku }, afterValues: { sku },
+          reason: action === ServiceAuditAction.REGENERATE_SKU
+            ? PRODUCT_AUDIT_REASONS.skuRegenerated
+            : PRODUCT_AUDIT_REASONS.sku,
+          beforeValues: { sku: existing.sku }, afterValues: { sku },
           requestId: context.requestId, ipAddress: context.ipAddress,
         }, tx);
         return serializeProduct(updated, await ProductsRepository.findActiveDefaultPricingPreset(tx), true);

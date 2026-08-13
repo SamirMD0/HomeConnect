@@ -85,11 +85,12 @@ export interface ProductSpecification { label: string; value: string }
 export interface ProductStockInput {
   trackStock: boolean; stockQuantity: number; lowStockThreshold: number | null;
 }
-export interface UpdateProductStockInput extends ProductActionInput {
+// Stock settings and SKU are admin-role work as of v1.8.1: no reason, no password.
+export interface UpdateProductStockInput {
   trackStock: boolean;
   lowStockThreshold: number | null;
 }
-export interface UpdateProductSkuInput extends ProductActionInput { sku: string }
+export interface UpdateProductSkuInput { sku: string }
 
 export interface ProductAudit {
   id: string;
@@ -137,11 +138,14 @@ export interface CreateProductInput extends ProductPricingConfigurationInput {
   specificationNotes?: string | null;
 }
 
-export type UpdateProductInput = Partial<CreateProductInput> & {
-  reason?: string;
-  accountPassword?: string;
-};
+/**
+ * The relaxed product-edit endpoint. Pricing fields are deliberately absent —
+ * they belong to the strict pricing endpoint, and the backend schema is `.strict()`
+ * so sending one here is a 400 rather than a silent no-op.
+ */
+export type UpdateProductInput = Partial<Omit<CreateProductInput, keyof ProductPricingConfigurationInput>>;
 
+/** Archive and restore stay strict: typed reason plus admin password. */
 export interface ProductActionInput {
   reason: string;
   accountPassword: string;

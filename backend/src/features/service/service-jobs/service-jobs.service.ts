@@ -16,6 +16,7 @@ import {
 import { moneyToApiString, parseMoney } from '../../financial/domain/money';
 import { runFinancialTransaction } from '../../financial/infrastructure/transaction';
 import { assertServiceAdmin, containsSensitiveServiceJobFields } from '../authorization/service-policy';
+import { serviceJobUpdateReason, serviceStatusChangeReason } from '../audit/audit-reasons';
 import { writeServiceAudit } from '../audit/service-audit';
 import { ServiceAuditRepository } from '../audit/service-audit.repository';
 import {
@@ -93,36 +94,31 @@ export class ServiceJobsService {
     user: ServiceMutationUser,
     context: RequestContext
   ) {
-    const fields = Object.keys(input).filter((field) => !['reason', 'accountPassword'].includes(field));
+    const fields = Object.keys(input);
     if (!fields.length) throw new ValidationError('At least one service job field is required');
-    const sensitive = containsSensitiveServiceJobFields(fields);
-    if (sensitive) requireSensitiveCredentials(input, user);
+    // The field policy still decides WHO may edit what. It no longer decides
+    // whether a password is demanded, and it no longer decides whether the change
+    // is audited — every update is audited now.
+    if (containsSensitiveServiceJobFields(fields)) requireSensitiveRole(user);
 
     return runFinancialTransaction(async (tx) => {
       const existing = await ServiceJobsRepository.findById(id, tx);
       if (!existing) throw new NotFoundError('Service job not found');
-      if (sensitive) {
-        await verifyAdminPassword(user.userId, input.accountPassword!, {
-          action: 'UPDATE_SERVICE_JOB', recordType: 'SERVICE_JOB', recordId: id,
-          ipAddress: context.ipAddress, domainLabel: 'service and product changes',
-        }, tx);
-      }
       const merged = mergedJobValues(existing, input);
       assertJobBusinessRules(merged);
       validateInputDates(merged);
       await assertReferences(merged.customerId, merged.productId, tx);
       const updated = await ServiceJobsRepository.update(id, updateData(input, user.userId), tx);
-      if (sensitive) {
-        const actor = await loadActor(user.userId, tx);
-        await writeServiceAudit({
-          recordType: ServiceAuditRecordType.SERVICE_JOB, recordId: id, serviceJobId: id,
-          action: actionForFields(fields), changedById: user.userId,
-          changedByName: actor.fullName, changedByUsername: actor.username,
-          reason: input.reason!, beforeValues: changedSnapshot(existing, fields),
-          afterValues: changedSnapshot(updated, fields), requestId: context.requestId,
-          ipAddress: context.ipAddress,
-        }, tx);
-      }
+      const action = actionForFields(fields);
+      const actor = await loadActor(user.userId, tx);
+      await writeServiceAudit({
+        recordType: ServiceAuditRecordType.SERVICE_JOB, recordId: id, serviceJobId: id,
+        action, changedById: user.userId,
+        changedByName: actor.fullName, changedByUsername: actor.username,
+        reason: serviceJobUpdateReason(action), beforeValues: changedSnapshot(existing, fields),
+        afterValues: changedSnapshot(updated, fields), requestId: context.requestId,
+        ipAddress: context.ipAddress,
+      }, tx);
       return serializeServiceJob(updated);
     });
   }
@@ -137,14 +133,10 @@ export class ServiceJobsService {
       const existing = await ServiceJobsRepository.findById(id, tx);
       if (!existing) throw new NotFoundError('Service job not found');
       assertStatusTransitionAllowed(existing.status, input.status);
-      const sensitive = !isRoutineForwardTransition(existing.status, input.status);
-      if (sensitive) {
-        requireSensitiveCredentials(input, user);
-        await verifyAdminPassword(user.userId, input.accountPassword!, {
-          action: 'CHANGE_SERVICE_STATUS', recordType: 'SERVICE_JOB', recordId: id,
-          ipAddress: context.ipAddress, domainLabel: 'service and product changes',
-        }, tx);
-      }
+      // Backward and non-routine transitions stay ADMIN-only; the transition rules
+      // themselves already refuse anything illegal. The password added nothing the
+      // role check and the audit row do not already cover.
+      if (!isRoutineForwardTransition(existing.status, input.status)) requireSensitiveRole(user);
       const dates = {
         serviceCreatedDate: prismaDateToBusinessDate(existing.serviceCreatedDate),
         sentToCompanyDate: input.sentToCompanyDate ?? dateOrNull(existing.sentToCompanyDate),
@@ -171,7 +163,7 @@ export class ServiceJobsService {
         recordType: ServiceAuditRecordType.SERVICE_JOB, recordId: id, serviceJobId: id,
         action: ServiceAuditAction.CHANGE_STATUS, changedById: user.userId,
         changedByName: actor.fullName, changedByUsername: actor.username,
-        reason: input.reason ?? `Status changed from ${existing.status} to ${input.status}`,
+        reason: serviceStatusChangeReason(existing.status, input.status),
         beforeValues: { status: existing.status }, afterValues: { status: input.status },
         requestId: context.requestId, ipAddress: context.ipAddress,
       }, tx);
@@ -317,10 +309,13 @@ async function assertReferences(customerId: string, productId: string | null | u
   }
 }
 
-function requireSensitiveCredentials(input: { reason?: string; accountPassword?: string }, user: ServiceMutationUser) {
+/**
+ * v1.8.1: sensitive service-job work is still ADMIN-only, but it is no longer
+ * gated behind a re-typed password and a written justification. The name says
+ * "role" now because that is all it checks.
+ */
+function requireSensitiveRole(user: ServiceMutationUser) {
   assertServiceAdmin(user);
-  if (!input.reason) throw new ValidationError('Reason is required for sensitive service changes');
-  if (!input.accountPassword) throw new ValidationError('Account password is required');
 }
 
 function actionForFields(fields: string[]): ServiceAuditAction {

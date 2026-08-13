@@ -27,4 +27,24 @@ describe('service job routes', () => {
     expect((await request(app).post(`/api/v1/service-jobs/${jobId}/cancel`).set('Authorization', `Bearer ${admin}`).send({ reason: 'Customer cancelled job', accountPassword: 'pass' })).status).toBe(200);
     expect((await request(app).delete(`/api/v1/service-jobs/${jobId}`).set('Authorization', `Bearer ${admin}`)).status).toBe(404);
   });
+
+  it('takes normal updates and status changes without a reason or password', async () => {
+    service.update.mockResolvedValue(job);
+    service.changeStatus.mockResolvedValue(job);
+    expect((await request(app).patch(`/api/v1/service-jobs/${jobId}`).set('Authorization', `Bearer ${employee}`).send({ notes: 'Left at counter' })).status).toBe(200);
+    expect((await request(app).post(`/api/v1/service-jobs/${jobId}/status`).set('Authorization', `Bearer ${employee}`).send({ status: 'INSPECTION_PENDING' })).status).toBe(200);
+  });
+
+  it('rejects a reason or password sent to the relaxed service routes', async () => {
+    service.update.mockResolvedValue(job);
+    service.changeStatus.mockResolvedValue(job);
+    expect((await request(app).patch(`/api/v1/service-jobs/${jobId}`).set('Authorization', `Bearer ${admin}`).send({ notes: 'x', reason: 'Because of this' })).status).toBe(400);
+    expect((await request(app).patch(`/api/v1/service-jobs/${jobId}`).set('Authorization', `Bearer ${admin}`).send({ notes: 'x', accountPassword: 'pass' })).status).toBe(400);
+    expect((await request(app).post(`/api/v1/service-jobs/${jobId}/status`).set('Authorization', `Bearer ${admin}`).send({ status: 'INSPECTION_PENDING', accountPassword: 'pass' })).status).toBe(400);
+  });
+
+  it('still requires a reason and password to cancel or reopen', async () => {
+    expect((await request(app).post(`/api/v1/service-jobs/${jobId}/cancel`).set('Authorization', `Bearer ${admin}`).send({ reason: 'Customer cancelled job' })).status).toBe(400);
+    expect((await request(app).post(`/api/v1/service-jobs/${jobId}/reopen`).set('Authorization', `Bearer ${admin}`).send({ status: 'RECEIVED', reason: 'Reopened by request' })).status).toBe(400);
+  });
 });

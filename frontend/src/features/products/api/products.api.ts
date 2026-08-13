@@ -36,7 +36,7 @@ export const productsApi = {
   labels: async (ids: string[], includePriceCode = false, includePrice = false): Promise<ProductLabelsResult> =>
     (await api.get('/products/labels', { params: { ids: ids.join(','), includePriceCode, includePrice } })).data.data,
   updateSku: async (id: string, input: UpdateProductSkuInput): Promise<Product> => (await api.patch(`/products/${id}/sku`, input)).data.data,
-  regenerateSku: async (id: string, input: ProductActionInput): Promise<Product> => (await api.post(`/products/${id}/regenerate-sku`, input)).data.data,
+  regenerateSku: async (id: string): Promise<Product> => (await api.post(`/products/${id}/regenerate-sku`, {})).data.data,
   updateStock: async (id: string, input: UpdateProductStockInput): Promise<Product> => (await api.patch(`/products/${id}/stock`, input)).data.data,
   audit: async (id: string, page = 1, pageSize = 50): Promise<ProductAudit[]> =>
     (await api.get(`/products/${id}/audit`, { params: { page, pageSize } })).data.data,

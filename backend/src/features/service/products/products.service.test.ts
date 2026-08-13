@@ -111,7 +111,7 @@ describe('product service workflow', () => {
   it('rejects clearing a persisted manufacturer barcode', async () => {
     const existing = productOf({ labelBarcodeSource: LabelBarcodeSource.MANUFACTURER, barcode: 'ABCD-1234' });
     repository.findById.mockResolvedValue(existing);
-    await expect(ProductsService.update(existing.id, { barcode: null, reason: 'Correct barcode data', accountPassword: 'secret' }, user, context))
+    await expect(ProductsService.update(existing.id, { barcode: null }, user, context))
       .rejects.toMatchObject({ details: { field: 'barcode' } });
     expect(repository.update).not.toHaveBeenCalled();
   });
@@ -133,5 +133,94 @@ describe('product service workflow', () => {
       installmentEnabled: false, customInstallmentMarkupPercent: null,
       customDownPaymentPercent: null, customInstallmentMonths: null,
     });
+  });
+});
+
+// v1.8.1 removed the account-password re-check and the typed reason from normal
+// product editing. The role boundary did NOT move, in either direction, and the
+// audit row is still written — these tests are what prove both.
+describe('product edit security policy', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    tx.user.findUnique.mockResolvedValue({ fullName: 'Admin User', username: 'admin' });
+    const existing = productOf();
+    repository.findById.mockResolvedValue(existing);
+    repository.update.mockImplementation((_id: string, data: Record<string, unknown>) => Promise.resolve({ ...existing, ...data }));
+    repository.findActiveDefaultPricingPreset.mockResolvedValue(null);
+    pricing.resolveProductPricing.mockReturnValue(unavailable);
+  });
+
+  const productId = '22222222-2222-4222-8222-222222222222';
+
+  it('lets an admin edit a sensitive field without an account password', async () => {
+    await ProductsService.update(productId, { name: 'Desk Fan' }, user, context);
+    expect(repository.update).toHaveBeenCalled();
+    expect(verify).not.toHaveBeenCalled();
+  });
+
+  it('still refuses a sensitive field to an employee', async () => {
+    await expect(ProductsService.update(productId, { name: 'Desk Fan' }, employee, context)).rejects.toThrow();
+    expect(repository.update).not.toHaveBeenCalled();
+  });
+
+  it('still lets an employee edit the cosmetic fields they could edit before', async () => {
+    await ProductsService.update(productId, { notes: 'Back shelf' }, employee, context);
+    await ProductsService.update(productId, { specifications: [{ label: 'Color', value: 'Silver' }] }, employee, context);
+    expect(repository.update).toHaveBeenCalledTimes(2);
+    expect(verify).not.toHaveBeenCalled();
+  });
+
+  it('generates the audit reason from the changed fields', async () => {
+    await ProductsService.update(productId, { barcode: 'ABCD-1234' }, user, context);
+    expect(writeAudit.mock.calls.at(-1)?.[0]).toMatchObject({ reason: 'Product barcode updated / تم تحديث باركود المنتج' });
+
+    await ProductsService.update(productId, { specificationNotes: 'Boxed' }, user, context);
+    expect(writeAudit.mock.calls.at(-1)?.[0]).toMatchObject({ reason: 'Product specifications updated / تم تحديث مواصفات المنتج' });
+
+    await ProductsService.update(productId, { name: 'Desk Fan' }, user, context);
+    expect(writeAudit.mock.calls.at(-1)?.[0]).toMatchObject({ reason: 'Product details updated / تم تحديث تفاصيل المنتج' });
+  });
+
+  it('records actor, timestamp source, action and both value snapshots on every edit', async () => {
+    await ProductsService.update(productId, { name: 'Desk Fan' }, user, context);
+    expect(writeAudit.mock.calls.at(-1)?.[0]).toMatchObject({
+      recordType: 'PRODUCT', recordId: productId, action: 'UPDATE_DETAILS',
+      changedById: user.userId, changedByName: 'Admin User', changedByUsername: 'admin',
+      beforeValues: { name: 'Fan' }, afterValues: { name: 'Desk Fan' },
+    });
+  });
+
+  it('changes SKU and stock settings without a password, and audits both', async () => {
+    await ProductsService.updateSku(productId, { sku: 'HC-009999' }, user, context);
+    expect(writeAudit.mock.calls.at(-1)?.[0]).toMatchObject({ action: 'CHANGE_SKU', reason: 'Product SKU updated / تم تحديث رمز المنتج' });
+
+    // generateProductSku is mocked to HC-000001, so start from a different SKU.
+    repository.findById.mockResolvedValue(productOf({ sku: 'HC-000002' }));
+    await ProductsService.regenerateSku(productId, user, context);
+    expect(writeAudit.mock.calls.at(-1)?.[0]).toMatchObject({ action: 'REGENERATE_SKU', reason: 'Product SKU regenerated / تم توليد رمز المنتج من جديد' });
+    repository.findById.mockResolvedValue(productOf());
+
+    await ProductsService.updateStock(productId, { trackStock: true, lowStockThreshold: 2 }, user, context);
+    expect(writeAudit.mock.calls.at(-1)?.[0]).toMatchObject({ action: 'CHANGE_STOCK', reason: 'Product stock settings updated / تم تحديث إعدادات مخزون المنتج' });
+
+    expect(verify).not.toHaveBeenCalled();
+  });
+
+  it('keeps SKU and stock settings admin-only', async () => {
+    await expect(ProductsService.updateSku(productId, { sku: 'HC-009999' }, employee, context)).rejects.toThrow();
+    await expect(ProductsService.regenerateSku(productId, employee, context)).rejects.toThrow();
+    await expect(ProductsService.updateStock(productId, { trackStock: true, lowStockThreshold: 2 }, employee, context)).rejects.toThrow();
+  });
+
+  it('keeps the admin password on pricing, archive and restore', async () => {
+    await ProductsService.updatePricing(productId, { costPrice: '100.00', reason: 'Supplier cost changed', accountPassword: 'secret' }, user, context);
+    expect(verify).toHaveBeenCalledTimes(1);
+
+    await ProductsService.archive(productId, { reason: 'Discontinued line', accountPassword: 'secret' }, user, context);
+    expect(verify).toHaveBeenCalledTimes(2);
+
+    repository.findById.mockResolvedValue(productOf({ isActive: false }));
+    await ProductsService.restore(productId, { reason: 'Back in catalogue', accountPassword: 'secret' }, user, context);
+    expect(verify).toHaveBeenCalledTimes(3);
   });
 });

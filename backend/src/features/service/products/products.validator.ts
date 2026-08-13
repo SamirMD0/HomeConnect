@@ -3,7 +3,6 @@ import { z } from 'zod';
 import { compareMoney } from '../../financial/domain/money';
 import { isDecimalAtMost } from '../../../validators/decimal-bounds';
 import { userTextSchema } from '../../../validators/user-text';
-import { containsSensitiveProductFields } from '../authorization/service-policy';
 import { MAX_PRODUCT_SPECIFICATIONS, MAX_PRODUCT_SPECIFICATIONS_BYTES, normalizeProductSpecifications, serializedSpecificationsSize } from './product-specifications';
 import { PRODUCT_SKU_PATTERN } from './product-sku';
 
@@ -124,26 +123,28 @@ export const updateProductSchema = z
     labelBarcodeSource: productValues.labelBarcodeSource,
     specifications: productValues.specifications,
     specificationNotes: productValues.specificationNotes,
-    reason: userTextSchema({ field: 'Reason', min: 5, max: 1000 }).optional(),
-    accountPassword: z.string().min(1, 'Account password is required').optional(),
   })
-  .superRefine((values, context) => {
-    validateDiscount(values, context);
-    const fields = Object.keys(values).filter(
-      (field) => !['reason', 'accountPassword'].includes(field) && values[field as keyof typeof values] !== undefined
-    );
-    if (!containsSensitiveProductFields(fields)) return;
-    if (!values.reason) context.addIssue({ code: 'custom', path: ['reason'], message: 'Reason is required for sensitive product changes' });
-    if (!values.accountPassword) context.addIssue({ code: 'custom', path: ['accountPassword'], message: 'Account password is required' });
-  });
+  // Strict so that a pricing field posted here is a 400 rather than a silent
+  // strip. Cost and the pricing percentages belong to updateProductPricingSchema,
+  // which keeps the admin-password guard; this endpoint must never look like a
+  // way around it.
+  .strict()
+  .superRefine(validateDiscount);
 
+/**
+ * Archive and restore stay in the strict tier: they are destructive-adjacent and
+ * still demand an explicit justification and an admin password re-check.
+ */
 export const productActionSchema = z.object({
   reason: userTextSchema({ field: 'Reason', min: 5, max: 1000 }),
   accountPassword: z.string().min(1, 'Account password is required'),
 });
 
-export const updateProductSkuSchema = productActionSchema.extend({ sku: productSkuSchema });
-export const updateProductStockSchema = productActionSchema.extend({
+// SKU and stock settings are ordinary admin work as of v1.8.1: role-gated by the
+// route, audited with a server-generated reason, no password, no typed reason.
+export const updateProductSkuSchema = z.object({ sku: productSkuSchema }).strict();
+export const regenerateProductSkuSchema = z.object({}).strict();
+export const updateProductStockSchema = z.object({
   trackStock: z.boolean(),
   lowStockThreshold: z.number().int('Low stock threshold must be an integer').min(0).nullable(),
 }).strict();

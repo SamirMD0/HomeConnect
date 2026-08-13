@@ -24,7 +24,6 @@ interface ProductFormDialogProps {
 }
 
 const emptyForm: ProductFormValues = { name: '', model: '', brand: '', barcode: '', price: '', discount: '', imageUrl: '', notes: '' };
-const sensitiveFields = ['name', 'model', 'brand', 'barcode', 'price', 'discount'] as const;
 
 export const ProductFormDialog: React.FC<ProductFormDialogProps> = ({ open, product, onClose, onViewDuplicate }) => {
   const { user } = useAuth();
@@ -78,7 +77,6 @@ export const ProductFormDialog: React.FC<ProductFormDialogProps> = ({ open, prod
     resetDuplicate();
   }, [open, product, resetDuplicate]);
 
-  const sensitiveChanged = useMemo(() => Boolean(product && (sensitiveFields.some((field) => normalized(form[field]) !== normalized(product[field])) || labelBarcodeSource !== product.labelBarcodeSource)), [form, labelBarcodeSource, product]);
   const stockChanged = useMemo(() => Boolean(product && (
     stock.trackStock !== product.trackStock || stock.lowStockThreshold !== product.lowStockThreshold
   )), [product, stock]);
@@ -124,7 +122,10 @@ export const ProductFormDialog: React.FC<ProductFormDialogProps> = ({ open, prod
       setErrors((current) => ({ ...current, lowStockThreshold: 'Low-stock threshold must be a non-negative whole number' }));
       return;
     }
-    if (product && (sensitiveChanged || pricingChanged || stockChanged)) {
+    // Only the pricing endpoint still asks for a justification and a password.
+    // Product identity and stock settings are audited with a server-generated
+    // reason and need neither.
+    if (product && pricingChanged) {
       const correction = productCorrectionSchema.safeParse({ reason, accountPassword });
       if (!correction.success) {
         setErrors((current) => ({ ...current, ...Object.fromEntries(correction.error.issues.map((issue) => [String(issue.path[0]), issue.message])) }));
@@ -150,15 +151,12 @@ export const ProductFormDialog: React.FC<ProductFormDialogProps> = ({ open, prod
       setServerError('No product changes were entered / لم يتم إدخال أي تعديل');
       return;
     }
-    if (sensitiveChanged) Object.assign(input, { reason: reason.trim(), accountPassword });
     try {
       if (Object.keys(input).length > 0) await updateProduct.mutateAsync({ id: product.id, input });
       if (isAdmin && pricingChanged) await updatePricing.mutateAsync({ id: product.id, input: { ...pricingInput, reason: reason.trim(), accountPassword } });
       if (stockChanged) await updateStock.mutateAsync({ id: product.id, input: {
         trackStock: stock.trackStock,
         lowStockThreshold: stock.lowStockThreshold,
-        reason: reason.trim(),
-        accountPassword,
       } });
       if (imageFile) await uploadImage.mutateAsync({ id: product.id, file: imageFile });
       else if (shouldRemoveStagedProductImage(product, savedImageRemoved)) await removeImage.mutateAsync(product.id);
@@ -212,7 +210,8 @@ export const ProductFormDialog: React.FC<ProductFormDialogProps> = ({ open, prod
 
         {isAdmin && <ProductFormPricingPanel value={pricing} onChange={setPricing} manualPrice={form.price} manualDiscount={form.discount} onManualPriceChange={(value) => set('price', value)} onManualDiscountChange={(value) => set('discount', value)} errors={errors} />}
 
-        {product && (sensitiveChanged || pricingChanged || stockChanged) && <div className="grid gap-4 rounded-lg border border-amber-200 bg-amber-50 p-4 sm:grid-cols-2">
+        {product && pricingChanged && <div className="grid gap-4 rounded-lg border border-amber-200 bg-amber-50 p-4 sm:grid-cols-2">
+          <p className="text-xs text-amber-800 sm:col-span-2">Pricing changes need a reason and your account password / تتطلب تعديلات التسعير سببًا وكلمة مرور حسابك</p>
           <Field label={`${productLabels.reason} *`} value={reason} onChange={setReason} error={errors.reason} textarea />
           <Field label={`${productLabels.accountPassword} *`} value={accountPassword} onChange={setAccountPassword} error={errors.accountPassword} type="password" />
         </div>}

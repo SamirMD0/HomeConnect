@@ -60,8 +60,10 @@ describe('product validation', () => {
     expect(() => productListQuerySchema.parse({ sortBy: 'barcode' })).toThrow();
   });
 
-  it('requires credentials for sensitive updates but not notes-only changes', () => {
-    expect(() => updateProductSchema.parse({ model: 'F2' })).toThrow('Reason');
+  it('takes sensitive and notes-only updates without credentials', () => {
+    // v1.8.1: the field policy still decides WHO may edit a sensitive field, but
+    // the schema no longer demands a reason or a password to do it.
+    expect(updateProductSchema.parse({ model: 'F2' }).model).toBe('F2');
     expect(updateProductSchema.parse({ notes: 'ملاحظة جديدة' }).notes).toBe('ملاحظة جديدة');
   });
 
@@ -76,8 +78,22 @@ describe('product validation', () => {
   it('normalizes ordered specifications and keeps stock settings quantity-free', () => {
     expect(createProductSchema.parse({ name: 'Fan', model: 'F1', specifications: [{ label: ' Color ', value: ' Silver ' }, { label: '', value: '' }] }).specifications)
       .toEqual([{ label: 'Color', value: 'Silver' }]);
-    const protectedFields = { reason: 'Update stock settings', accountPassword: 'secret', trackStock: true, lowStockThreshold: 2 };
-    expect(updateProductStockSchema.parse(protectedFields)).toEqual(protectedFields);
-    expect(() => updateProductStockSchema.parse({ ...protectedFields, stockQuantity: 2 })).toThrow();
+    const stockSettings = { trackStock: true, lowStockThreshold: 2 };
+    expect(updateProductStockSchema.parse(stockSettings)).toEqual(stockSettings);
+    expect(() => updateProductStockSchema.parse({ ...stockSettings, stockQuantity: 2 })).toThrow();
+  });
+  it('rejects a reason or account password on the relaxed stock-settings schema', () => {
+    expect(() => updateProductStockSchema.parse({ trackStock: true, lowStockThreshold: 2, accountPassword: 'secret' })).toThrow();
+    expect(() => updateProductStockSchema.parse({ trackStock: true, lowStockThreshold: 2, reason: 'Update stock settings' })).toThrow();
+  });
+  it('keeps pricing fields off the relaxed product update schema', () => {
+    expect(updateProductSchema.parse({ name: 'Fan' })).toEqual({ name: 'Fan' });
+    for (const pricingField of ['costPrice', 'pricingPresetId', 'useCustomPricing', 'customProfitPercent', 'customCalculationMode']) {
+      expect(() => updateProductSchema.parse({ name: 'Fan', [pricingField]: '10.00' })).toThrow();
+    }
+  });
+  it('no longer accepts a typed reason or account password on a product update', () => {
+    expect(() => updateProductSchema.parse({ name: 'Fan', reason: 'Correct the name' })).toThrow();
+    expect(() => updateProductSchema.parse({ name: 'Fan', accountPassword: 'secret' })).toThrow();
   });
 });

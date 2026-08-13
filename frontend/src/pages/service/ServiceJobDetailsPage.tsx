@@ -279,8 +279,6 @@ const EditDialog: React.FC<{
     sentToCompanyDate: job.sentToCompanyDate ?? '',
     receivedFromCompanyDate: job.receivedFromCompanyDate ?? '',
     returnedToCustomerDate: job.returnedToCustomerDate ?? '',
-    reason: '',
-    accountPassword: '',
   });
   const set = (key: keyof typeof form, value: string) => setForm({ ...form, [key]: value });
   const submit = (event: FormEvent) => {
@@ -300,8 +298,6 @@ const EditDialog: React.FC<{
           sentToCompanyDate: form.sentToCompanyDate || null,
           receivedFromCompanyDate: form.receivedFromCompanyDate || null,
           returnedToCustomerDate: form.returnedToCustomerDate || null,
-          reason: form.reason,
-          accountPassword: form.accountPassword,
         }
       : { requestedPartName: form.requestedPartName || null, notes: form.notes || null };
     mutation.mutate(input, {
@@ -407,18 +403,6 @@ const EditDialog: React.FC<{
               value={form.returnedToCustomerDate}
               onChange={(v) => set('returnedToCustomerDate', v)}
             />
-            <Field
-              label="Reason * / السبب *"
-              value={form.reason}
-              onChange={(v) => set('reason', v)}
-              textarea
-            />
-            <Field
-              label="Account Password * / كلمة مرور الحساب *"
-              type="password"
-              value={form.accountPassword}
-              onChange={(v) => set('accountPassword', v)}
-            />
           </>
         )}
         <div className="sm:col-span-2 flex justify-end gap-2">
@@ -445,8 +429,6 @@ const StatusDialog: React.FC<{
 }> = ({ job, isAdmin, open, onClose }) => {
   const mutation = useChangeServiceStatus(job.id);
   const [status, setStatus] = useState<ServiceJobStatus>('INSPECTION_PENDING');
-  const [reason, setReason] = useState('');
-  const [password, setPassword] = useState('');
   const [date, setDate] = useState('');
   const [error, setError] = useState('');
   const dateField =
@@ -462,12 +444,10 @@ const StatusDialog: React.FC<{
     e.preventDefault();
     const body: {
       status: ServiceJobStatus;
-      reason?: string;
-      accountPassword?: string;
       sentToCompanyDate?: string;
       receivedFromCompanyDate?: string;
       returnedToCustomerDate?: string;
-    } = { status, ...(isAdmin ? { reason, accountPassword: password } : {}) };
+    } = { status };
     if (dateField && date) body[dateField] = date;
     mutation.mutate(body, {
       onSuccess: () => {
@@ -500,17 +480,6 @@ const StatusDialog: React.FC<{
         </label>
         {dateField && (
           <Field label={`${dateField} *`} type="date" value={date} onChange={setDate} />
-        )}{' '}
-        {isAdmin && (
-          <>
-            <Field label="Reason" value={reason} onChange={setReason} textarea />
-            <Field
-              label="Account password"
-              type="password"
-              value={password}
-              onChange={setPassword}
-            />
-          </>
         )}
         <button className="w-full rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-white">
           Update status
