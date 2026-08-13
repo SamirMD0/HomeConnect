@@ -10,6 +10,7 @@ const { hooks } = vi.hoisted(() => ({ hooks: {
 } }));
 vi.mock('./hooks/useDashboard', () => hooks);
 vi.mock('../../hooks/useAuth', () => ({ useAuth: () => ({ user: { role: 'ADMIN' } }) }));
+vi.mock('../inventory/components/InventoryDashboardCards', () => ({ InventoryDashboardCards: () => <section>Inventory / المخزون · Low stock 1 · Out of stock 2</section> }));
 
 const meta = { businessDate: '2026-08-01', range: { from: '2026-08-01', to: '2026-08-01', preset: 'month' }, generatedAt: '2026-08-01T10:00:00Z', currency: 'USD' };
 const result = <T,>(data: T) => ({ data: { meta, data }, isLoading: false, isError: false, isFetching: false, refetch: vi.fn() });

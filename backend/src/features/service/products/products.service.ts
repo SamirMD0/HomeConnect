@@ -428,7 +428,6 @@ export class ProductsService {
       }, tx);
       const updated = await ProductsRepository.update(id, {
         trackStock: input.trackStock,
-        stockQuantity: input.stockQuantity,
         lowStockThreshold: input.lowStockThreshold,
         updatedById: user.userId,
       }, tx);

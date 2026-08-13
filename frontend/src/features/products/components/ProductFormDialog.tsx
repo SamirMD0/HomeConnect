@@ -79,7 +79,9 @@ export const ProductFormDialog: React.FC<ProductFormDialogProps> = ({ open, prod
   }, [open, product, resetDuplicate]);
 
   const sensitiveChanged = useMemo(() => Boolean(product && (sensitiveFields.some((field) => normalized(form[field]) !== normalized(product[field])) || labelBarcodeSource !== product.labelBarcodeSource)), [form, labelBarcodeSource, product]);
-  const stockChanged = useMemo(() => Boolean(product && JSON.stringify(stock) !== JSON.stringify({ trackStock: product.trackStock, stockQuantity: product.stockQuantity, lowStockThreshold: product.lowStockThreshold })), [product, stock]);
+  const stockChanged = useMemo(() => Boolean(product && (
+    stock.trackStock !== product.trackStock || stock.lowStockThreshold !== product.lowStockThreshold
+  )), [product, stock]);
   const pricingInput = useMemo(() => buildProductPricingConfigurationInput(pricing), [pricing]);
   const pricingChanged = useMemo(() => shouldUpdateProductPricing(isAdmin, product, pricingInput), [isAdmin, pricingInput, product]);
   const pending = create.isPending || updateProduct.isPending || updatePricing.isPending || updateStock.isPending || uploadImage.isPending || removeImage.isPending;
@@ -118,8 +120,8 @@ export const ProductFormDialog: React.FC<ProductFormDialogProps> = ({ open, prod
       setErrors((current) => ({ ...current, ...Object.fromEntries([...pricingIssues, ...previewIssues, ...modeIssues].map((issue) => [String(issue.path[0]), issue.message])) }));
       return;
     }
-    if (!Number.isInteger(stock.stockQuantity) || stock.stockQuantity < 0 || (stock.lowStockThreshold != null && (!Number.isInteger(stock.lowStockThreshold) || stock.lowStockThreshold < 0))) {
-      setErrors((current) => ({ ...current, stockQuantity: 'Stock values must be non-negative whole numbers' }));
+    if (stock.lowStockThreshold != null && (!Number.isInteger(stock.lowStockThreshold) || stock.lowStockThreshold < 0)) {
+      setErrors((current) => ({ ...current, lowStockThreshold: 'Low-stock threshold must be a non-negative whole number' }));
       return;
     }
     if (product && (sensitiveChanged || pricingChanged || stockChanged)) {
@@ -152,7 +154,12 @@ export const ProductFormDialog: React.FC<ProductFormDialogProps> = ({ open, prod
     try {
       if (Object.keys(input).length > 0) await updateProduct.mutateAsync({ id: product.id, input });
       if (isAdmin && pricingChanged) await updatePricing.mutateAsync({ id: product.id, input: { ...pricingInput, reason: reason.trim(), accountPassword } });
-      if (stockChanged) await updateStock.mutateAsync({ id: product.id, input: { ...stock, reason: reason.trim(), accountPassword } });
+      if (stockChanged) await updateStock.mutateAsync({ id: product.id, input: {
+        trackStock: stock.trackStock,
+        lowStockThreshold: stock.lowStockThreshold,
+        reason: reason.trim(),
+        accountPassword,
+      } });
       if (imageFile) await uploadImage.mutateAsync({ id: product.id, file: imageFile });
       else if (shouldRemoveStagedProductImage(product, savedImageRemoved)) await removeImage.mutateAsync(product.id);
       toast.success('Product updated / تم تعديل المنتج');
@@ -185,7 +192,7 @@ export const ProductFormDialog: React.FC<ProductFormDialogProps> = ({ open, prod
           <Field label={businessLabels.product.notes} value={form.notes} onChange={(value) => set('notes', value)} error={errors.notes} textarea className="sm:col-span-2" />
         </div>
 
-        {product && <><ProductStockSection value={stock} onChange={setStock} />{errors.stockQuantity && <p className="text-xs text-red-600">{errors.stockQuantity}</p>}</>}
+        {product && <><ProductStockSection value={stock} onChange={setStock} />{errors.lowStockThreshold && <p className="text-xs text-red-600">{errors.lowStockThreshold}</p>}</>}
         <ProductSpecificationsEditor value={specifications} notes={specificationNotes} onChange={setSpecifications} onNotesChange={setSpecificationNotes} />
 
         <ProductImageField
@@ -341,7 +348,7 @@ export function buildProductPricingConfigurationInput(values: ProductFormPricing
 }
 
 function renderedProductFields(isAdmin: boolean, pricing: ProductFormPricingValues): Set<string> {
-  const fields = new Set(['name', 'model', 'brand', 'barcode', 'imageUrl', 'notes', 'labelBarcodeSource', 'stockQuantity', 'reason', 'accountPassword']);
+  const fields = new Set(['name', 'model', 'brand', 'barcode', 'imageUrl', 'notes', 'labelBarcodeSource', 'reason', 'accountPassword']);
   if (!isAdmin) return fields;
   fields.add('price');
   fields.add('discount');

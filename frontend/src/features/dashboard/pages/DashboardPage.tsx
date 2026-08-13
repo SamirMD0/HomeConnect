@@ -22,6 +22,7 @@ import {
   useMonthEnd, useProductAnalytics, useRefreshDashboard, useSalesAnalytics, useServiceAnalytics, useSupplierAnalytics,
 } from '../hooks/useDashboard';
 import type { DashboardQueryParams } from '../types';
+import { InventoryDashboardCards } from '../../inventory/components/InventoryDashboardCards';
 
 export function DashboardPage() {
   const { user } = useAuth();
@@ -48,6 +49,7 @@ export function DashboardPage() {
     <DashboardSectionBoundary><KpiStrip kpis={overview.data?.data.kpis} isLoading={overview.isLoading} isError={overview.isError} onRetry={() => overview.refetch()} /></DashboardSectionBoundary>
     <DashboardSectionBoundary><DashboardSection title={dashboardLabels.quickActions} icon={Zap}><QuickActions /></DashboardSection></DashboardSectionBoundary>
     <DashboardSectionBoundary><AlertsCenter data={alerts.data?.data} isLoading={alerts.isLoading} isError={alerts.isError} onRetry={() => alerts.refetch()} /></DashboardSectionBoundary>
+    <DashboardSectionBoundary><InventoryDashboardCards /></DashboardSectionBoundary>
     <DashboardSectionBoundary><CustomerAnalytics data={customer.data?.data} isLoading={customer.isLoading} isError={customer.isError} onRetry={() => customer.refetch()} /></DashboardSectionBoundary>
     <DashboardSectionBoundary><SupplierAnalytics data={supplier.data?.data} isLoading={supplier.isLoading} isError={supplier.isError} onRetry={() => supplier.refetch()} /></DashboardSectionBoundary>
     <DashboardSectionBoundary><SalesAnalytics data={sales.data?.data} isLoading={sales.isLoading} isError={sales.isError} onRetry={() => sales.refetch()} /></DashboardSectionBoundary>

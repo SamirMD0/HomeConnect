@@ -21,7 +21,7 @@ export const erpModules: ErpModule[] = [
   module('pricing', 'Pricing Presets', 'إعدادات التسعير', Tags, 'LIVE', '/pricing-presets', '#eda100'),
   module('service', 'Service Jobs', 'طلبات الصيانة', Wrench, 'LIVE', '/service', '#e87ba4', 'service'),
   module('reports', 'Reports', 'التقارير', FileBarChart, 'LIVE', '/reports', '#2a78d6'),
-  module('inventory', 'Inventory', 'المخزون', Warehouse, 'NEXT', undefined, '#898781'),
+  module('inventory', 'Inventory', 'المخزون', Warehouse, 'LIVE', '/inventory', '#1baf7a'),
   module('orders', 'Sales Orders', 'طلبات البيع', ShoppingCart, 'LIVE', '/sales-orders', '#2a78d6', 'salesOrders'),
   module('sales', 'Sales Management', 'إدارة المبيعات', TrendingUp, 'PLANNED', undefined, '#898781'),
   module('finance', 'Finance Tracking', 'التتبع المالي', Landmark, 'PLANNED', undefined, '#898781'),

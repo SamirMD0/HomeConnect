@@ -11,6 +11,8 @@ import { classifyPresence, PresenceVerdict, readSchemaObjects } from './migratio
 import { RepairHistoryRepository, RepairHistoryRow } from './repair-history.repository';
 import { LoadedRepair, RepairRegistry, RepairProblem } from './repair-registry';
 import { RepairActor, RepairEnvironment, RepairExecutionClient, RepairOutcome, RepairRunner } from './repair-runner';
+import { InventoryService } from '../inventory/inventory.service';
+import { MaintenanceStockIntegrity } from '../inventory/inventory.types';
 
 /**
  * The read model and the apply action behind Settings → Maintenance.
@@ -55,6 +57,8 @@ export interface MaintenanceOverview {
   pendingRepairs: PendingRepairView[];
   registryProblems: RepairProblem[];
   history: RepairHistoryRow[];
+  /** Read-only four-state inventory reconciliation; safe while its migration is pending. */
+  stockIntegrity: MaintenanceStockIntegrity;
 }
 
 export interface ResolveMigrationOutcome {
@@ -89,6 +93,7 @@ export class MaintenanceService {
       pendingRepairs,
       registryProblems: snapshot.problems,
       history: await RepairHistoryRepository.list(client, 20),
+      stockIntegrity: await InventoryService.getMaintenanceStockIntegrity(),
     };
   }
 

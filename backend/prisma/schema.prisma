@@ -238,6 +238,19 @@ enum PricingRoundingMode {
   CEIL_1
 }
 
+enum StockMovementType {
+  OPENING_BALANCE
+  MANUAL_ADD
+  MANUAL_REMOVE
+  STOCK_COUNT
+  DAMAGE_LOSS
+  RETURN_TO_STOCK
+  PURCHASE_RECEIPT
+  SALE_FULFILLMENT
+  SALE_CANCEL_RESTORE
+  SERVICE_PART_USED
+}
+
 enum SupplierTransactionType {
   SUPPLIER_DEBT
   SUPPLIER_PAYMENT
@@ -328,6 +341,7 @@ model User {
   pricingPresetsCreated       PricingPreset[]             @relation("PricingPresetCreatedBy")
   pricingPresetsUpdated       PricingPreset[]             @relation("PricingPresetUpdatedBy")
   repairsApplied              RepairHistory[]             @relation("RepairHistoryAppliedBy")
+  stockMovements              StockMovement[]             @relation("StockMovementCreatedBy")
 
   @@map("users")
 }
@@ -655,6 +669,7 @@ model Product {
   serviceJobs      ServiceJob[]
   salesOrderItems  SalesOrderItem[]
   prepaidPurchases PrepaidPurchase[]
+  stockMovements   StockMovement[]
   image            ProductImage?
 
   @@index([name])
@@ -664,6 +679,28 @@ model Product {
   @@index([isActive])
   @@index([pricingPresetId])
   @@map("products")
+}
+
+model StockMovement {
+  id             String            @id @default(uuid()) @db.Uuid
+  productId      String            @db.Uuid
+  product        Product           @relation(fields: [productId], references: [id], onDelete: Restrict)
+  movementType   StockMovementType
+  quantityChange Int
+  quantityBefore Int
+  quantityAfter  Int
+  reason         String            @db.Text
+  note           String?           @db.Text
+  referenceType  String?
+  referenceId    String?           @db.Uuid
+  createdById    String?           @db.Uuid
+  createdBy      User?             @relation("StockMovementCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt      DateTime          @default(now())
+
+  @@index([productId, createdAt])
+  @@index([movementType, createdAt])
+  @@index([createdAt])
+  @@map("stock_movements")
 }
 
 /// Uploaded product image bytes. Kept in a separate table so product queries

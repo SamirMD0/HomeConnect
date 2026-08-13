@@ -28,6 +28,7 @@ import { SupplierLedgerPage } from './pages/suppliers/SupplierLedgerPage';
 import { PricingPresetsPage } from './pages/pricing/PricingPresetsPage';
 import { SalesOrdersPage } from './pages/sales-orders/SalesOrdersPage';
 import { SalesOrderDetailsPage } from './pages/sales-orders/SalesOrderDetailsPage';
+import { InventoryPage } from './pages/inventory/InventoryPage';
 
 const queryClient = new QueryClient();
 
@@ -64,6 +65,7 @@ const App: React.FC = () => {
               <Route path="sales-orders" element={<SalesOrdersPage />} />
               <Route path="sales-orders/:id" element={<SalesOrderDetailsPage />} />
               <Route path="products" element={<ProductsPage />} />
+              <Route path="inventory" element={<InventoryPage />} />
               <Route path="scanner" element={<ScannerHubPage />} />
               <Route path="pricing-presets" element={<PricingPresetsPage />} />
               <Route path="products/labels" element={<ProductLabelsPage />} />

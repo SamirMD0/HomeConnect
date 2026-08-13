@@ -32,7 +32,7 @@ describe('product routes', () => {
     const credentials = { reason: 'Correct product identity', accountPassword: 'pass' };
     expect((await request(app).patch(`/api/v1/products/${productId}/sku`).set('Authorization', `Bearer ${admin}`).send({ ...credentials, sku: 'HC-009999' })).status).toBe(200);
     expect((await request(app).post(`/api/v1/products/${productId}/regenerate-sku`).set('Authorization', `Bearer ${admin}`).send(credentials)).status).toBe(200);
-    expect((await request(app).patch(`/api/v1/products/${productId}/stock`).set('Authorization', `Bearer ${admin}`).send({ ...credentials, trackStock: true, stockQuantity: 2, lowStockThreshold: 1 })).status).toBe(200);
+    expect((await request(app).patch(`/api/v1/products/${productId}/stock`).set('Authorization', `Bearer ${admin}`).send({ ...credentials, trackStock: true, lowStockThreshold: 1 })).status).toBe(200);
     expect(service.update).not.toHaveBeenCalled();
   });
   it('serves a narrow label payload without any price field', async () => {

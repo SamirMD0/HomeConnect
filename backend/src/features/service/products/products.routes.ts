@@ -10,6 +10,8 @@ import {
   updateProductPricingSchema, productPricingPreviewQuerySchema,
   productLabelQuerySchema, productLabelsQuerySchema, updateProductSkuSchema, updateProductStockSchema,
 } from './products.validator';
+import { InventoryController } from '../../inventory/inventory.controller';
+import { inventoryProductParamsSchema, stockMovementSchema, verifyOpeningCountSchema } from '../../inventory/inventory.validator';
 
 export const productsRoutes = Router();
 
@@ -34,6 +36,9 @@ productsRoutes.put('/:productId/image', validate(productParamsSchema, 'params'),
 productsRoutes.delete('/:productId/image', validate(productParamsSchema, 'params'), ProductsController.removeImage);
 productsRoutes.get('/:productId/audit', requireServiceAdmin, validate(productParamsSchema, 'params'), validate(productAuditQuerySchema, 'query'), ProductsController.audit);
 productsRoutes.get('/:productId/service-jobs', validate(productParamsSchema, 'params'), validate(productServiceJobsQuerySchema, 'query'), ProductsController.serviceJobs);
+productsRoutes.get('/:productId/inventory', validate(inventoryProductParamsSchema, 'params'), InventoryController.productInventory);
+productsRoutes.post('/:productId/opening-count', requireServiceAdmin, validate(inventoryProductParamsSchema, 'params'), validate(verifyOpeningCountSchema), InventoryController.verifyOpeningCount);
+productsRoutes.post('/:productId/stock-movements', validate(inventoryProductParamsSchema, 'params'), validate(stockMovementSchema), InventoryController.createMovement);
 productsRoutes.get('/:productId/pricing-preview', validate(productParamsSchema, 'params'), validate(productPricingPreviewQuerySchema, 'query'), ProductsController.pricingPreview);
 productsRoutes.patch('/:productId/pricing', requireServiceAdmin, validate(productParamsSchema, 'params'), validate(updateProductPricingSchema), ProductsController.updatePricing);
 productsRoutes.patch('/:productId/sku', requireServiceAdmin, validate(productParamsSchema, 'params'), validate(updateProductSkuSchema), ProductsController.updateSku);

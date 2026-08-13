@@ -145,9 +145,8 @@ export const productActionSchema = z.object({
 export const updateProductSkuSchema = productActionSchema.extend({ sku: productSkuSchema });
 export const updateProductStockSchema = productActionSchema.extend({
   trackStock: z.boolean(),
-  stockQuantity: z.number().int('Stock quantity must be an integer').min(0),
   lowStockThreshold: z.number().int('Low stock threshold must be an integer').min(0).nullable(),
-});
+}).strict();
 
 export const productParamsSchema = z.object({ productId: uuidSchema });
 

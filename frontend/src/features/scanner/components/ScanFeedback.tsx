@@ -8,6 +8,7 @@ interface ScanFeedbackProps {
   isLooking: boolean;
   isError: boolean;
   onOpenProduct?: (productId: string) => void;
+  onManualSearch?: () => void;
 }
 
 const labels = businessLabels.scanner;
@@ -17,7 +18,7 @@ const labels = businessLabels.scanner;
  * `role="status"` so the result is spoken as well as coloured — the counter is
  * often looking at the product, not the screen.
  */
-export const ScanFeedback: React.FC<ScanFeedbackProps> = ({ result, isLooking, isError, onOpenProduct }) => {
+export const ScanFeedback: React.FC<ScanFeedbackProps> = ({ result, isLooking, isError, onOpenProduct, onManualSearch }) => {
   if (isLooking) {
     return (
       <p role="status" className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm font-medium text-slate-700">
@@ -46,10 +47,11 @@ export const ScanFeedback: React.FC<ScanFeedbackProps> = ({ result, isLooking, i
 
   if (result.status === 'NOT_FOUND') {
     return (
-      <p role="status" className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-medium text-amber-900">
+      <div role="status" className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-medium text-amber-900">
         <ScanLine className="h-4 w-4" />
         {labels.productNotFound} — <span className="font-mono">{result.normalizedCode}</span>
-      </p>
+        {onManualSearch && <button type="button" onClick={onManualSearch} className="ml-auto rounded-lg border border-amber-400 bg-white px-3 py-1.5 text-xs">Manual search / بحث يدوي</button>}
+      </div>
     );
   }
 

@@ -85,7 +85,10 @@ export interface ProductSpecification { label: string; value: string }
 export interface ProductStockInput {
   trackStock: boolean; stockQuantity: number; lowStockThreshold: number | null;
 }
-export interface UpdateProductStockInput extends ProductStockInput, ProductActionInput {}
+export interface UpdateProductStockInput extends ProductActionInput {
+  trackStock: boolean;
+  lowStockThreshold: number | null;
+}
 export interface UpdateProductSkuInput extends ProductActionInput { sku: string }
 
 export interface ProductAudit {

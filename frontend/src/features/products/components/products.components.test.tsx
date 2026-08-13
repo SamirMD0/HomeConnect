@@ -18,6 +18,7 @@ import { ProductCard } from './ProductCard';
 import { ProductImageBroken } from './ProductImageView';
 import { buildProductPricingConfigurationInput, shouldRemoveStagedProductImage, shouldUpdateProductPricing } from './ProductFormDialog';
 import { emptyProductFormPricing } from './ProductFormPricingPanel';
+import { ProductStockSection } from './ProductStockSection';
 
 const product: Product = {
   id: '11111111-1111-4111-8111-111111111111',
@@ -46,6 +47,11 @@ const product: Product = {
 };
 
 describe('product management frontend', () => {
+  it('renders stock quantity as read-only settings context', () => {
+    const html = renderToStaticMarkup(<ProductStockSection value={{ trackStock: true, stockQuantity: 4, lowStockThreshold: 2 }} onChange={() => undefined} />);
+    expect(html).toContain('<output');
+    expect(html).not.toContain('value="4"');
+  });
   it('keeps the mobile product list card markup stable', () => {
     const html = renderToStaticMarkup(<MemoryRouter><ProductMobileCard product={product} selected={false} canAdmin onSelect={() => undefined} onView={() => undefined} onEdit={() => undefined} onArchive={() => undefined} onRestore={() => undefined} /></MemoryRouter>);
     expect(html).toMatchSnapshot();

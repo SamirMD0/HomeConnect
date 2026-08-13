@@ -73,11 +73,11 @@ describe('product validation', () => {
     expect(() => createProductSchema.parse({ name: 'Fan', model: 'F1', sku: 'HC-999999' })).toThrow();
     expect(() => createProductSchema.parse({ name: 'Fan', model: 'F1', stockQuantity: 4 })).toThrow();
   });
-  it('normalizes ordered specifications and enforces stock integers', () => {
+  it('normalizes ordered specifications and keeps stock settings quantity-free', () => {
     expect(createProductSchema.parse({ name: 'Fan', model: 'F1', specifications: [{ label: ' Color ', value: ' Silver ' }, { label: '', value: '' }] }).specifications)
       .toEqual([{ label: 'Color', value: 'Silver' }]);
-    const protectedFields = { reason: 'Manual stock count', accountPassword: 'secret', trackStock: true, stockQuantity: 2, lowStockThreshold: 2 };
-    expect(updateProductStockSchema.parse(protectedFields).stockQuantity).toBe(2);
-    expect(() => updateProductStockSchema.parse({ ...protectedFields, stockQuantity: 2.5 })).toThrow('integer');
+    const protectedFields = { reason: 'Update stock settings', accountPassword: 'secret', trackStock: true, lowStockThreshold: 2 };
+    expect(updateProductStockSchema.parse(protectedFields)).toEqual(protectedFields);
+    expect(() => updateProductStockSchema.parse({ ...protectedFields, stockQuantity: 2 })).toThrow();
   });
 });

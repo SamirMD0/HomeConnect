@@ -11,10 +11,10 @@ import { ProductImageView } from './ProductImageView';
 import { ProductStatusBadge } from './ProductStatusBadge';
 import { ProductPricingSection } from './ProductPricingSection';
 import { PricingPreviewCard } from '../../pricing/components/PricingPreviewCard';
-import { ProductStockBadge } from './ProductStockBadge';
 import { ProductSpecificationsView } from './ProductSpecificationsView';
 import { ProductSkuEditDialog } from './ProductSkuEditDialog';
 import { ProductLabelPanel } from './ProductLabelPanel';
+import { ProductInventoryPanel } from '../../inventory/components/ProductInventoryPanel';
 
 interface ProductDetailsDrawerProps {
   productId: string | null;
@@ -88,7 +88,7 @@ export const ProductDetailsDrawer: React.FC<ProductDetailsDrawerProps> = ({ prod
             <Value label={businessLabels.product.netPrice} value={item.netPrice ? formatMoney(item.netPrice) : '—'} />
           </dl></Section>
 
-          <Section title="Stock / المخزون"><div className="space-y-3"><ProductStockBadge status={item.stockStatus} /><dl className="grid gap-4 sm:grid-cols-2"><Value label="Quantity / الكمية" value={String(item.stockQuantity)} /><Value label="Low-stock threshold / الحد" value={item.lowStockThreshold == null ? '—' : String(item.lowStockThreshold)} /></dl></div></Section>
+          <Section title="Stock / المخزون"><ProductInventoryPanel productId={item.id} /></Section>
 
           <Section title="Specifications / المواصفات"><ProductSpecificationsView specifications={item.specifications} notes={item.specificationNotes} /></Section>
 

@@ -36,6 +36,7 @@ import { supplierLedgerRoutes, suppliersRoutes, supplierTransactionsGlobalRoutes
 import { pricingCalculatorRoutes, pricingPresetsRoutes } from './features/pricing';
 import { systemRoutes } from './features/system/system.routes';
 import { scannerRoutes } from './features/scanner/scanner.routes';
+import { inventoryRoutes } from './features/inventory/inventory.routes';
 
 export const app = express();
 
@@ -99,6 +100,7 @@ app.use('/api/v1/financial-ledger', requireAuth, financialLedgerRoutes);
 app.use('/api/v1/receivables', requireAuth, receivablesRoutes);
 app.use('/api/v1/prepaid-purchases', requireAuth, prepaidRoutes);
 app.use('/api/v1/products', requireAuth, productsRoutes);
+app.use('/api/v1/inventory', requireAuth, inventoryRoutes);
 app.use('/api/v1/service-jobs', requireAuth, serviceJobsRoutes);
 app.use('/api/v1/sales-orders', requireAuth, salesOrdersRoutes);
 app.use('/api/v1/suppliers', requireAuth, supplierTransactionsRoutes);
