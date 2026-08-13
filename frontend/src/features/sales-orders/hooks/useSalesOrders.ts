@@ -1,6 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { salesOrdersApi } from '../api/sales-orders.api';
-import type { CreateSalesOrderInput, SalesOrderFilters, UpdateSalesOrderInput } from '../types/sales-orders.types';
+import type {
+  CreateSalesOrderInput,
+  DeductSalesOrderStockInput,
+  RestoreSalesOrderStockInput,
+  SalesOrderFilters,
+  UpdateSalesOrderInput,
+} from '../types/sales-orders.types';
 
 export const salesOrderKeys = {
   all: ['sales-orders'] as const,
@@ -18,3 +24,23 @@ function useRefresh() { const client = useQueryClient(); return () => client.inv
 export function useCreateSalesOrder() { const refresh = useRefresh(); return useMutation({ mutationFn: (input: CreateSalesOrderInput) => salesOrdersApi.create(input), onSuccess: refresh }); }
 export function useUpdateSalesOrder(id: string) { const refresh = useRefresh(); return useMutation({ mutationFn: (input: UpdateSalesOrderInput) => salesOrdersApi.update(id, input), onSuccess: refresh }); }
 export function useSalesOrderAction<T>(action: (id: string, input: T) => Promise<unknown>, id: string) { const refresh = useRefresh(); return useMutation({ mutationFn: (input: T) => action(id, input), onSuccess: refresh }); }
+
+function useRefreshSalesInventory() {
+  const client = useQueryClient();
+  return () => Promise.all([
+    client.invalidateQueries({ queryKey: salesOrderKeys.all }),
+    client.invalidateQueries({ queryKey: ['inventory'] }),
+    client.invalidateQueries({ queryKey: ['products'] }),
+    client.invalidateQueries({ queryKey: ['dashboard'] }),
+  ]);
+}
+
+export function useDeductSalesOrderStock(id: string) {
+  const refresh = useRefreshSalesInventory();
+  return useMutation({ mutationFn: (input: DeductSalesOrderStockInput) => salesOrdersApi.deductStock(id, input), onSuccess: refresh });
+}
+
+export function useRestoreSalesOrderStock(id: string) {
+  const refresh = useRefreshSalesInventory();
+  return useMutation({ mutationFn: (input: RestoreSalesOrderStockInput) => salesOrdersApi.restoreStock(id, input), onSuccess: refresh });
+}

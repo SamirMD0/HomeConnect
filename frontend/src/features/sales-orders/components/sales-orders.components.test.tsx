@@ -1,5 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { CreateSalesOrderDialog } from './CreateSalesOrderDialog';
 import { PaymentStatusChip } from './PaymentStatusChip';
@@ -8,6 +9,8 @@ import { SalesChannelChip } from './SalesChannelChip';
 import { SalesOrderStatusChip } from './SalesOrderStatusChip';
 import { SalesOrderSummaryCards } from './SalesOrderSummaryCards';
 import { SalesOrderDateNavigator } from './SalesOrderDateNavigator';
+import { SalesOrderInventoryPanel, SalesOrderStockActionFields } from './SalesOrderInventoryPanel';
+import type { SalesOrder, SalesOrderInventoryState } from '../types/sales-orders.types';
 import {
   salesOrderDisplayPaymentStatus,
   shouldShowSalesOrderSettlement,
@@ -109,4 +112,49 @@ describe('sales order presentation components', () => {
     expect(html).toContain('disabled');
     expect(html).not.toContain('Today / اليوم');
   });
+
+  it('renders server-provided inventory states and the explicit deduction action', () => {
+    const queryClient = new QueryClient();
+    const html = renderToStaticMarkup(<QueryClientProvider client={queryClient}><MemoryRouter><SalesOrderInventoryPanel order={inventoryOrder([
+      ['AVAILABLE', null],
+      ['NEEDS_OPENING_COUNT', null],
+      ['NOT_INVENTORY_LINE', null],
+    ])} isAdmin /></MemoryRouter></QueryClientProvider>);
+    expect(html).toContain('Deduct Stock / إخراج من المخزون');
+    expect(html).toContain('Available to deduct / متاح للإخراج');
+    expect(html).toContain('This product needs a verified opening count before stock actions');
+    expect(html).toContain('Manual order lines cannot affect inventory');
+    expect(html).not.toContain('type="password"');
+  });
+
+  it('shows restoration only to admins and keeps the restore form password-free', () => {
+    const queryClient = new QueryClient();
+    const order = inventoryOrder([['ALREADY_DEDUCTED', '88888888-8888-4888-8888-888888888888']]);
+    const adminHtml = renderToStaticMarkup(<QueryClientProvider client={queryClient}><MemoryRouter><SalesOrderInventoryPanel order={order} isAdmin /></MemoryRouter></QueryClientProvider>);
+    const employeeHtml = renderToStaticMarkup(<QueryClientProvider client={queryClient}><MemoryRouter><SalesOrderInventoryPanel order={order} isAdmin={false} /></MemoryRouter></QueryClientProvider>);
+    expect(adminHtml).toContain('Restore Stock / إرجاع إلى المخزون');
+    expect(adminHtml).toContain('Restore it before editing, removing, cancelling, or returning');
+    expect(employeeHtml).not.toContain('Restore Stock / إرجاع إلى المخزون');
+
+    const fields = renderToStaticMarkup(<SalesOrderStockActionFields action="restore" note="" reason="" serverError={null} onNote={() => undefined} onReason={() => undefined} />);
+    expect(fields).toContain('Reason / السبب *');
+    expect(fields).toContain('No account password is required');
+    expect(fields).not.toContain('type="password"');
+  });
 });
+
+function inventoryOrder(states: Array<[SalesOrderInventoryState, string | null]>): SalesOrder {
+  return {
+    id: '11111111-1111-4111-8111-111111111111',
+    orderNumber: 'SO-2026-0001',
+    fulfillmentStatus: 'CONFIRMED',
+    items: states.map(([state, activeFulfillmentId], index) => ({
+      id: `33333333-3333-4333-8333-33333333333${index}`,
+      productNameSnapshot: `Product ${index + 1}`,
+      quantity: 2,
+      product: state === 'NOT_INVENTORY_LINE' ? null : { stockQuantity: 10 },
+      inventory: { state, activeFulfillmentId },
+      stockFulfillments: activeFulfillmentId ? [{ id: activeFulfillmentId, status: 'ACTIVE' }] : [],
+    })),
+  } as SalesOrder;
+}

@@ -1,6 +1,7 @@
 import { api } from '../../../services/api';
 import type {
-  CreateSalesOrderInput, SalesAudit, SalesOrder, SalesOrderFilters, SalesOrderPagination, SalesOrderSummary,
+  CreateSalesOrderInput, DeductSalesOrderStockInput, RestoreSalesOrderStockInput, SalesAudit, SalesOrder,
+  SalesOrderFilters, SalesOrderPagination, SalesOrderStockActionResult, SalesOrderSummary,
   UpdateSalesOrderInput,
 } from '../types/sales-orders.types';
 
@@ -28,6 +29,10 @@ export const salesOrdersApi = {
   addItem: async (id: string, input: object): Promise<SalesOrder> => (await api.post(`/sales-orders/${id}/items`, input)).data.data,
   updateItem: async (id: string, itemId: string, input: object): Promise<SalesOrder> => (await api.patch(`/sales-orders/${id}/items/${itemId}`, input)).data.data,
   removeItem: async (id: string, itemId: string, input: object): Promise<SalesOrder> => (await api.post(`/sales-orders/${id}/items/${itemId}/remove`, input)).data.data,
+  deductStock: async (id: string, input: DeductSalesOrderStockInput): Promise<SalesOrderStockActionResult> =>
+    (await api.post(`/sales-orders/${id}/deduct-stock`, input)).data.data,
+  restoreStock: async (id: string, input: RestoreSalesOrderStockInput): Promise<SalesOrderStockActionResult> =>
+    (await api.post(`/sales-orders/${id}/restore-stock`, input)).data.data,
   status: async (id: string, input: { status: string; reason?: string; accountPassword?: string }): Promise<SalesOrder> => (await api.post(`/sales-orders/${id}/fulfillment-status`, input)).data.data,
   payment: async (id: string, input: { paidAmount: string; debtDueDate?: string | null; reason: string; accountPassword: string }): Promise<SalesOrder> => (await api.post(`/sales-orders/${id}/payment`, input)).data.data,
   cancel: async (id: string, input: { reason: string; accountPassword: string }): Promise<SalesOrder> => (await api.post(`/sales-orders/${id}/cancel`, input)).data.data,

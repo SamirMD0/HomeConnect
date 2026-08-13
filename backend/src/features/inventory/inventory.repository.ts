@@ -1,10 +1,21 @@
 import { Prisma, StockMovementType } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
+import { getBusinessTimezone } from '../financial/domain/business-date';
 import { LowStockListInput, MovementListInput, StockIntegrityItem } from './inventory.types';
 
-const movementInclude = {
+const legacyMovementInclude = {
   product: { select: { id: true, sku: true, name: true, trackStock: true, stockQuantity: true } },
   createdBy: { select: { id: true, fullName: true, username: true } },
+} satisfies Prisma.StockMovementInclude;
+
+const movementInclude = {
+  ...legacyMovementInclude,
+  salesFulfillmentMovement: {
+    select: { salesOrder: { select: { id: true, orderNumber: true } } },
+  },
+  salesFulfillmentReversalMovement: {
+    select: { salesOrder: { select: { id: true, orderNumber: true } } },
+  },
 } satisfies Prisma.StockMovementInclude;
 
 const inventoryProductSelect = {
@@ -72,6 +83,13 @@ export class InventoryRepository {
     return (tx ?? prisma).stockMovement.findFirst({
       where: { productId, movementType: StockMovementType.OPENING_BALANCE },
       select: { id: true },
+    });
+  }
+
+  static findOpeningBalance(productId: string, tx?: Prisma.TransactionClient) {
+    return (tx ?? prisma).stockMovement.findFirst({
+      where: { productId, movementType: StockMovementType.OPENING_BALANCE },
+      select: { id: true, createdAt: true },
     });
   }
 
@@ -168,7 +186,10 @@ export class InventoryRepository {
   }
 
   static async summary() {
-    const [counts, recentMovements] = await Promise.all([
+    // The packaged app must start on the old schema so Maintenance can take a backup before
+    // applying pending migrations. Keep the existing dashboard usable during that short window.
+    const fulfillmentTableExists = await this.salesOrderStockFulfillmentTableExists();
+    const [counts, recentMovements, awaitingOrderIds] = await Promise.all([
       prisma.$queryRaw<Array<{
         trackedProducts: bigint;
         lowStockProducts: bigint;
@@ -188,7 +209,10 @@ export class InventoryRepository {
           (SELECT COUNT(*) FROM "stock_movements" m WHERE m."createdAt" >= date_trunc('day', CURRENT_TIMESTAMP)) AS "movementsToday"
         FROM "products" p
       `),
-      prisma.stockMovement.findMany({ include: movementInclude, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 10 }),
+      fulfillmentTableExists
+        ? prisma.stockMovement.findMany({ include: movementInclude, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 10 })
+        : prisma.stockMovement.findMany({ include: legacyMovementInclude, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 10 }),
+      fulfillmentTableExists ? this.querySalesOrderIdsAwaitingStockDeduction() : Promise.resolve([]),
     ]);
     const count = counts[0];
     return {
@@ -197,8 +221,47 @@ export class InventoryRepository {
       outOfStockProducts: Number(count?.outOfStockProducts ?? 0),
       totalUnits: Number(count?.totalUnits ?? 0),
       movementsToday: Number(count?.movementsToday ?? 0),
+      ordersAwaitingStockDeduction: awaitingOrderIds.length,
       recentMovements,
     };
+  }
+
+  static async salesOrderIdsAwaitingStockDeduction(): Promise<string[]> {
+    if (!(await this.salesOrderStockFulfillmentTableExists())) return [];
+    return this.querySalesOrderIdsAwaitingStockDeduction();
+  }
+
+  private static async salesOrderStockFulfillmentTableExists(): Promise<boolean> {
+    const [result] = await prisma.$queryRaw<Array<{ exists: boolean }>>(Prisma.sql`
+      SELECT to_regclass('public.sales_order_stock_fulfillments') IS NOT NULL AS "exists"
+    `);
+    return result?.exists ?? false;
+  }
+
+  private static async querySalesOrderIdsAwaitingStockDeduction(): Promise<string[]> {
+    const timezone = getBusinessTimezone();
+    const rows = await prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT DISTINCT o."id"
+      FROM "sales_orders" o
+      JOIN "sales_order_items" i ON i."salesOrderId" = o."id"
+      JOIN "products" p ON p."id" = i."productId"
+      JOIN "stock_movements" opening
+        ON opening."productId" = p."id"
+       AND opening."movementType" = 'OPENING_BALANCE'
+      WHERE o."fulfillmentStatus"::text IN (
+        'CONFIRMED', 'PREPARING', 'READY_FOR_DELIVERY', 'OUT_FOR_DELIVERY', 'DELIVERED'
+      )
+        AND p."trackStock" = true
+        AND p."stockQuantity" >= i."quantity"
+        AND o."orderDate" >= (opening."createdAt" AT TIME ZONE 'UTC' AT TIME ZONE ${timezone})::date
+        AND NOT EXISTS (
+          SELECT 1
+          FROM "sales_order_stock_fulfillments" f
+          WHERE f."salesOrderItemId" = i."id" AND f."status" = 'ACTIVE'
+        )
+      ORDER BY o."id"
+    `);
+    return rows.map((row) => row.id);
   }
 
   static async stockIntegrity(): Promise<StockIntegrityItem[]> {

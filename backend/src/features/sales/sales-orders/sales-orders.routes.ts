@@ -1,4 +1,6 @@
+import { Role } from '@prisma/client';
 import { Router } from 'express';
+import { requireRole } from '../../../middleware/role.middleware';
 import { validate } from '../../../middleware/validate.middleware';
 import { requireSalesAdmin } from '../authorization/sales-policy';
 import { SalesOrdersController } from './sales-orders.controller';
@@ -10,7 +12,9 @@ import {
   createSalesOrderInstallmentPlanSchema,
   createSalesOrderSchema,
   customerSalesOrdersParamsSchema,
+  deductSalesOrderStockSchema,
   restoreSalesOrderSchema,
+  restoreSalesOrderStockSchema,
   salesAuditQuerySchema,
   salesOrderActionSchema,
   salesOrderItemParamsSchema,
@@ -40,6 +44,8 @@ salesOrdersRoutes.post('/:salesOrderId/unlink-financial', requireSalesAdmin, val
 salesOrdersRoutes.post('/:salesOrderId/items', validate(salesOrderParamsSchema, 'params'), validate(addSalesOrderItemSchema), SalesOrdersController.addItem);
 salesOrdersRoutes.patch('/:salesOrderId/items/:itemId', validate(salesOrderItemParamsSchema, 'params'), validate(updateSalesOrderItemSchema), SalesOrdersController.updateItem);
 salesOrdersRoutes.post('/:salesOrderId/items/:itemId/remove', validate(salesOrderItemParamsSchema, 'params'), validate(salesOrderItemActionSchema), SalesOrdersController.removeItem);
+salesOrdersRoutes.post('/:salesOrderId/deduct-stock', requireRole([Role.ADMIN, Role.EMPLOYEE]), validate(salesOrderParamsSchema, 'params'), validate(deductSalesOrderStockSchema), SalesOrdersController.deductStock);
+salesOrdersRoutes.post('/:salesOrderId/restore-stock', requireRole([Role.ADMIN]), validate(salesOrderParamsSchema, 'params'), validate(restoreSalesOrderStockSchema), SalesOrdersController.restoreStock);
 salesOrdersRoutes.patch('/:salesOrderId', validate(salesOrderParamsSchema, 'params'), validate(updateSalesOrderSchema), SalesOrdersController.update);
 salesOrdersRoutes.get('/:salesOrderId', validate(salesOrderParamsSchema, 'params'), SalesOrdersController.get);
 

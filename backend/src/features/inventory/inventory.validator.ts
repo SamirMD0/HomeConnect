@@ -2,11 +2,12 @@ import { ValidationError } from '../../lib/errors';
 import { INVENTORY_QUANTITY_LIMIT } from './inventory.types';
 import { StockMovementType } from '@prisma/client';
 import { z } from 'zod';
+import { databaseUuidSchema } from '../../validators/database-uuid';
 
 const reasonSchema = z.string().trim().min(1, 'Reason is required').max(1000, 'Reason is too long');
 const optionalText = z.string().trim().max(2000).optional().nullable();
 const expectedBeforeSchema = z.number().int().min(0).optional();
-const uuidSchema = z.string().uuid('Invalid ID');
+const uuidSchema = databaseUuidSchema();
 const wiredMovementSchema = z.enum([
   StockMovementType.MANUAL_ADD,
   StockMovementType.MANUAL_REMOVE,

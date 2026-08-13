@@ -3,10 +3,11 @@ import { z } from 'zod';
 import { compareMoney } from '../../financial/domain/money';
 import { isDecimalAtMost } from '../../../validators/decimal-bounds';
 import { userTextSchema } from '../../../validators/user-text';
+import { databaseUuidSchema } from '../../../validators/database-uuid';
 import { MAX_PRODUCT_SPECIFICATIONS, MAX_PRODUCT_SPECIFICATIONS_BYTES, normalizeProductSpecifications, serializedSpecificationsSize } from './product-specifications';
 import { PRODUCT_SKU_PATTERN } from './product-sku';
 
-const uuidSchema = z.string().uuid('Invalid product ID');
+const uuidSchema = databaseUuidSchema('Invalid product ID');
 const moneyPattern = /^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/;
 const emptyToNull = (value: unknown) => typeof value === 'string' && value.trim() === '' ? null : value;
 const optionalMoneySchema = z.preprocess(

@@ -9,6 +9,21 @@ export interface SalesOrderProduct {
   id: string; name: string; model: string; sku: string; barcode: string | null; isActive: boolean;
   trackStock: boolean; stockQuantity: number; lowStockThreshold: number | null; costPrice: string | null;
 }
+export type SalesOrderInventoryState =
+  | 'NOT_INVENTORY_LINE'
+  | 'STOCK_NOT_TRACKED'
+  | 'NEEDS_OPENING_COUNT'
+  | 'PREDATES_OPENING_COUNT'
+  | 'ORDER_NOT_ELIGIBLE'
+  | 'INSUFFICIENT_STOCK'
+  | 'ALREADY_DEDUCTED'
+  | 'RESTORED'
+  | 'AVAILABLE';
+export interface SalesOrderStockFulfillment {
+  id: string; quantity: number; status: 'ACTIVE' | 'REVERSED'; stockMovementId: string;
+  reversalStockMovementId: string | null; reversedAt: string | null; reversedById: string | null;
+  reversalReason: string | null; createdById: string; createdAt: string;
+}
 export interface SalesOrderItem {
   id: string; salesOrderId: string; productId: string | null; product: SalesOrderProduct | null;
   manualProductName: string | null; manualProductModel: string | null;
@@ -17,6 +32,8 @@ export interface SalesOrderItem {
   // Reserved for a future per-line discount; the current UI always submits zero.
   discountAmount: string; lineTotal: string; notes: string | null;
   createdAt: string; updatedAt: string;
+  stockFulfillments: SalesOrderStockFulfillment[];
+  inventory: { state: SalesOrderInventoryState; activeFulfillmentId: string | null };
 }
 export interface SalesOrder {
   id: string; orderNumber: string; customerId: string | null; customer: SalesOrderCustomer | null;
@@ -44,6 +61,17 @@ export interface SalesOrderFilters {
   search?: string; customerId?: string; salesChannel?: SalesChannel[]; fulfillmentStatus?: SalesOrderFulfillmentStatus[];
   paymentStatus?: SalesOrderPaymentStatus[]; settlement?: SalesOrderSettlement[]; dateFrom?: string; dateTo?: string;
   sort?: 'createdDesc' | 'createdAsc' | 'customerAsc' | 'totalDesc'; page?: number; pageSize?: number;
+  awaitingStockDeduction?: boolean;
+}
+export interface DeductSalesOrderStockInput { itemIds: string[]; note?: string | null }
+export interface RestoreSalesOrderStockInput { fulfillmentIds: string[]; reason: string; note?: string | null }
+export interface SalesOrderStockActionResult {
+  message: string;
+  fulfillments: Array<{
+    fulfillmentId: string; itemId: string; productId: string; quantity: number;
+    quantityBefore: number; quantityAfter: number; movementId?: string;
+    originalMovementId?: string; reversalMovementId?: string;
+  }>;
 }
 export interface SalesOrderLineInput {
   productId?: string | null; manualProductName?: string | null; manualProductModel?: string | null;

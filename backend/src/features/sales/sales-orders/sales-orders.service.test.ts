@@ -13,6 +13,7 @@ const { repository, debtService, audit, verifyAdmin, tx } = vi.hoisted(() => ({
     findActiveCustomer: vi.fn(), findActiveProduct: vi.fn(), nextOrderNumber: vi.fn(),
     create: vi.fn(), update: vi.fn(), findActor: vi.fn(), findById: vi.fn(),
     addItem: vi.fn(), updateItem: vi.fn(), removeItem: vi.fn(), findItemById: vi.fn(),
+    hasActiveStockFulfillmentForItem: vi.fn(), hasActiveStockFulfillmentForOrder: vi.fn(),
   },
   debtService: { createDebt: vi.fn() },
   audit: vi.fn(),
@@ -28,7 +29,7 @@ vi.mock('./sales-orders.repository', async (importOriginal) => {
   return { ...actual, SalesOrdersRepository: repository };
 });
 
-import { SalesOrdersService } from './sales-orders.service';
+import { SalesOrdersService, serializeSalesOrder } from './sales-orders.service';
 
 const user = { userId: '11111111-1111-4111-8111-111111111111', role: 'EMPLOYEE' };
 const input = {
@@ -96,8 +97,36 @@ describe('sales order service transaction boundary', () => {
     repository.updateItem.mockResolvedValue(addedItem);
     repository.removeItem.mockResolvedValue(addedItem);
     repository.findItemById.mockResolvedValue(baseOrder.items[0]);
+    repository.hasActiveStockFulfillmentForItem.mockResolvedValue(null);
+    repository.hasActiveStockFulfillmentForOrder.mockResolvedValue(null);
     debtService.createDebt.mockResolvedValue({ id: '55555555-5555-4555-8555-555555555555' });
     verifyAdmin.mockResolvedValue(undefined);
+  });
+
+  it('serializes authoritative inventory state and active fulfillment id for the frontend', () => {
+    const serialized = serializeSalesOrder({
+      ...baseOrder,
+      items: [{
+        ...baseOrder.items[0],
+        productId: '99999999-9999-4999-8999-999999999999',
+        product: {
+          id: '99999999-9999-4999-8999-999999999999', name: 'Fan', model: null, sku: 'FAN-1', barcode: null,
+          isActive: true, trackStock: true, stockQuantity: 8, lowStockThreshold: null, costPrice: null,
+          stockMovements: [{ createdAt: new Date('2026-08-03T08:00:00.000Z') }],
+        },
+        quantity: 2,
+        stockFulfillments: [{
+          id: '88888888-8888-4888-8888-888888888888', quantity: 2, status: 'ACTIVE',
+          stockMovementId: '77777777-7777-4777-8777-777777777777', reversalStockMovementId: null,
+          reversedAt: null, reversedById: null, reversalReason: null, createdById: user.userId, createdAt: new Date(),
+        }],
+      }],
+    } as never);
+    expect(serialized.items[0].inventory).toEqual({
+      state: 'ALREADY_DEDUCTED',
+      activeFulfillmentId: '88888888-8888-4888-8888-888888888888',
+    });
+    expect(serialized.items[0].product).not.toHaveProperty('stockMovements');
   });
 
   it('creates the debt for the remainder through the caller transaction and audits create plus debt link', async () => {
@@ -152,6 +181,47 @@ describe('sales order service transaction boundary', () => {
     await expect(SalesOrdersService.createDebt(baseOrder.id, { dueDate: '2026-08-10' }, user, {})).rejects.toMatchObject({ statusCode: 409 });
     repository.findById.mockResolvedValueOnce({ ...baseOrder, debtId: '55555555-5555-4555-8555-555555555555' });
     await expect(SalesOrdersService.cancel(baseOrder.id, { reason: 'Cancel linked order', accountPassword: 'password' }, { ...user, role: 'ADMIN' }, {})).rejects.toMatchObject({ statusCode: 409 });
+  });
+
+  it('blocks editing and removing a line while its stock fulfillment is active', async () => {
+    const editable = fullyPaidOrder({
+      items: [fullyPaidOrder().items[0], addedItem],
+    });
+    repository.findById.mockResolvedValue(editable);
+    repository.findItemById.mockResolvedValue(editable.items[0]);
+    repository.hasActiveStockFulfillmentForItem.mockResolvedValue({ id: 'active-fulfillment' });
+
+    await expect(SalesOrdersService.updateItem(editable.id, editable.items[0].id, {
+      quantity: 2, reason: 'Correct line quantity', accountPassword: 'password',
+    }, { ...user, role: 'ADMIN' }, {})).rejects.toMatchObject({ statusCode: 409 });
+    await expect(SalesOrdersService.removeItem(editable.id, editable.items[0].id, {
+      reason: 'Remove incorrect line', accountPassword: 'password',
+    }, { ...user, role: 'ADMIN' }, {})).rejects.toMatchObject({ statusCode: 409 });
+    expect(repository.updateItem).not.toHaveBeenCalled();
+    expect(repository.removeItem).not.toHaveBeenCalled();
+  });
+
+  it('keeps the financial guard before the deducted-line guard', async () => {
+    repository.findById.mockResolvedValue({ ...baseOrder, debtId: 'linked-debt' });
+    repository.hasActiveStockFulfillmentForItem.mockResolvedValue({ id: 'active-fulfillment' });
+    await expect(SalesOrdersService.updateItem(baseOrder.id, baseOrder.items[0].id, {
+      quantity: 2,
+    }, user, {})).rejects.toThrow('Unlink the financial record');
+    expect(repository.findItemById).not.toHaveBeenCalled();
+  });
+
+  it('blocks cancellation and return while any stock fulfillment is active', async () => {
+    repository.hasActiveStockFulfillmentForOrder.mockResolvedValue({ id: 'active-fulfillment' });
+    await expect(SalesOrdersService.cancel(baseOrder.id, {
+      reason: 'Customer changed mind', accountPassword: 'password',
+    }, { ...user, role: 'ADMIN' }, {})).rejects.toThrow('Restore it before cancelling or returning');
+
+    repository.findById.mockResolvedValue({ ...baseOrder, fulfillmentStatus: SalesOrderFulfillmentStatus.DELIVERED });
+    await expect(SalesOrdersService.returnOrder(baseOrder.id, {
+      reason: 'Customer returned order', accountPassword: 'password',
+    }, { ...user, role: 'ADMIN' }, {})).rejects.toThrow('Restore it before cancelling or returning');
+    expect(verifyAdmin).not.toHaveBeenCalled();
+    expect(repository.update).not.toHaveBeenCalled();
   });
 
   it('rejects edits to cancelled orders and sensitive edits without valid admin verification', async () => {

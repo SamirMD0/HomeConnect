@@ -6,13 +6,16 @@ import {
   SalesChannel,
   SalesOrderFulfillmentStatus,
   SalesOrderSettlement,
+  SalesOrderStockFulfillmentStatus,
 } from '@prisma/client';
 import { verifyAdminPassword } from '../../../lib/admin-verification';
 import { NotFoundError, ValidationError } from '../../../lib/errors';
 import {
   businessDateToPrisma,
   compareBusinessDates,
+  getBusinessTimezone,
   prismaDateToBusinessDate,
+  timestampToBusinessDate,
   todayInBusinessTimezone,
 } from '../../financial/domain/business-date';
 import { compareMoney, moneyToApiString } from '../../financial/domain/money';
@@ -51,6 +54,14 @@ import type {
   UpdateSalesOrderInput,
   UpdateSalesOrderItemInput,
 } from './sales-orders.validator';
+
+const INVENTORY_DEDUCTIBLE_STATUSES = new Set<SalesOrderFulfillmentStatus>([
+  SalesOrderFulfillmentStatus.CONFIRMED,
+  SalesOrderFulfillmentStatus.PREPARING,
+  SalesOrderFulfillmentStatus.READY_FOR_DELIVERY,
+  SalesOrderFulfillmentStatus.OUT_FOR_DELIVERY,
+  SalesOrderFulfillmentStatus.DELIVERED,
+]);
 
 export class SalesOrdersService {
   static async create(input: CreateSalesOrderInput, user: SalesMutationUser, context: SalesRequestContext) {
@@ -236,6 +247,9 @@ export class SalesOrdersService {
       assertNoFinancialLink(existing);
       const item = await SalesOrdersRepository.findItemById(itemId, tx);
       if (!item || item.salesOrderId !== orderId) throw new NotFoundError('Sales order item not found');
+      if (await SalesOrdersRepository.hasActiveStockFulfillmentForItem(itemId, tx)) {
+        throw activeStockLineConflict();
+      }
       if (existing.fulfillmentStatus !== SalesOrderFulfillmentStatus.DRAFT) {
         await requireAdminVerification(input, user, context, orderId, 'UPDATE_SALES_ORDER_ITEM', tx);
       }
@@ -271,6 +285,9 @@ export class SalesOrdersService {
       if (existing.items.length <= 1) throw new SalesConflictError('The last item cannot be removed from an order');
       const item = existing.items.find((candidate) => candidate.id === itemId);
       if (!item) throw new NotFoundError('Sales order item not found');
+      if (await SalesOrdersRepository.hasActiveStockFulfillmentForItem(itemId, tx)) {
+        throw activeStockLineConflict();
+      }
       if (existing.fulfillmentStatus !== SalesOrderFulfillmentStatus.DRAFT) {
         await requireAdminVerification(input, user, context, orderId, 'REMOVE_SALES_ORDER_ITEM', tx);
       }
@@ -361,6 +378,11 @@ export class SalesOrdersService {
       const existing = await requiredOrder(id, tx);
       if (existing.debtId || existing.installmentPlanId) {
         throw new SalesConflictError('Unlink or cancel the financial record from the financial screen before changing this order');
+      }
+      if (await SalesOrdersRepository.hasActiveStockFulfillmentForOrder(id, tx)) {
+        throw new SalesConflictError(
+          'Stock is still deducted for this order. Restore it before cancelling or returning it. / لا يزال المخزون مخصومًا لهذا الطلب. أعد المخزون قبل إلغائه أو إرجاعه.'
+        );
       }
       if (status === SalesOrderFulfillmentStatus.RETURNED) {
         if (existing.fulfillmentStatus !== SalesOrderFulfillmentStatus.DELIVERED) {
@@ -551,6 +573,12 @@ function assertNoFinancialLink(order: SalesOrderRecord): void {
   if (order.debtId || order.installmentPlanId) {
     throw new SalesConflictError('Unlink the financial record before changing order money or identity');
   }
+}
+
+function activeStockLineConflict(): SalesConflictError {
+  return new SalesConflictError(
+    'Stock has already been deducted for this line. Restore the stock before editing or removing it. / تم إخراج المخزون لهذا السطر. أعد المخزون قبل تعديله أو حذفه.'
+  );
 }
 
 function assertCanConvert(order: SalesOrderRecord): void {
@@ -770,16 +798,20 @@ export function serializeSalesOrder(order: SalesOrderRecord) {
     totalAmount: moneyToApiString(order.totalAmount),
     paidAmount: moneyToApiString(order.paidAmount),
     remainingAmount: moneyToApiString(order.remainingAmount),
-    items: order.items.map((item) => ({
-      ...item,
-      unitPrice: moneyToApiString(item.unitPrice),
-      discountAmount: moneyToApiString(item.discountAmount ?? '0.00'),
-      lineTotal: moneyToApiString(item.lineTotal),
-      product: item.product ? {
-        ...item.product,
-        costPrice: item.product.costPrice ? moneyToApiString(item.product.costPrice) : null,
-      } : null,
-    })),
+    items: order.items.map((item) => {
+      const stockFulfillments = item.stockFulfillments ?? [];
+      const openingCount = item.product?.stockMovements?.[0] ?? null;
+      const product = item.product ? serializeSalesOrderProduct(item.product) : null;
+      return {
+        ...item,
+        unitPrice: moneyToApiString(item.unitPrice),
+        discountAmount: moneyToApiString(item.discountAmount ?? '0.00'),
+        lineTotal: moneyToApiString(item.lineTotal),
+        product,
+        stockFulfillments,
+        inventory: salesOrderItemInventoryState(order, item, openingCount?.createdAt ?? null, stockFulfillments),
+      };
+    }),
     debt: order.debt ? {
       ...order.debt,
       originalAmount: moneyToApiString(order.debt.originalAmount),
@@ -791,4 +823,58 @@ export function serializeSalesOrder(order: SalesOrderRecord) {
       startDate: prismaDateToBusinessDate(order.installmentPlan.startDate),
     } : null,
   };
+}
+
+function serializeSalesOrderProduct(product: NonNullable<SalesOrderRecord['items'][number]['product']>) {
+  return {
+    id: product.id,
+    name: product.name,
+    model: product.model,
+    sku: product.sku,
+    barcode: product.barcode,
+    isActive: product.isActive,
+    trackStock: product.trackStock,
+    stockQuantity: product.stockQuantity,
+    lowStockThreshold: product.lowStockThreshold,
+    costPrice: product.costPrice ? moneyToApiString(product.costPrice) : null,
+  };
+}
+
+function salesOrderItemInventoryState(
+  order: Pick<SalesOrderRecord, 'orderDate' | 'fulfillmentStatus'>,
+  item: SalesOrderRecord['items'][number],
+  openingCreatedAt: Date | null,
+  stockFulfillments: SalesOrderRecord['items'][number]['stockFulfillments']
+) {
+  const activeFulfillment = stockFulfillments.find(
+    (entry) => entry.status === SalesOrderStockFulfillmentStatus.ACTIVE
+  ) ?? null;
+  const hasReversedFulfillment = stockFulfillments.some(
+    (entry) => entry.status === SalesOrderStockFulfillmentStatus.REVERSED
+  );
+  let state:
+    | 'NOT_INVENTORY_LINE'
+    | 'STOCK_NOT_TRACKED'
+    | 'NEEDS_OPENING_COUNT'
+    | 'PREDATES_OPENING_COUNT'
+    | 'ORDER_NOT_ELIGIBLE'
+    | 'INSUFFICIENT_STOCK'
+    | 'ALREADY_DEDUCTED'
+    | 'RESTORED'
+    | 'AVAILABLE';
+
+  if (!item.productId || !item.product) state = 'NOT_INVENTORY_LINE';
+  else if (!item.product.trackStock) state = 'STOCK_NOT_TRACKED';
+  else if (!openingCreatedAt) state = 'NEEDS_OPENING_COUNT';
+  else if (compareBusinessDates(
+    prismaDateToBusinessDate(order.orderDate),
+    timestampToBusinessDate(getBusinessTimezone(), openingCreatedAt)
+  ) < 0) state = 'PREDATES_OPENING_COUNT';
+  else if (!INVENTORY_DEDUCTIBLE_STATUSES.has(order.fulfillmentStatus)) state = 'ORDER_NOT_ELIGIBLE';
+  else if (activeFulfillment) state = 'ALREADY_DEDUCTED';
+  else if (item.product.stockQuantity < item.quantity) state = 'INSUFFICIENT_STOCK';
+  else if (hasReversedFulfillment) state = 'RESTORED';
+  else state = 'AVAILABLE';
+
+  return { state, activeFulfillmentId: activeFulfillment?.id ?? null };
 }

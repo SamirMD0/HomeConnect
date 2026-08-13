@@ -30,6 +30,8 @@ export interface StockMovement {
   createdBy: (ProductActor & { id: string }) | null;
   createdAt: string;
   product?: Pick<Product, 'id' | 'sku' | 'name' | 'trackStock' | 'stockQuantity'>;
+  salesFulfillmentMovement?: { salesOrder: { id: string; orderNumber: string } } | null;
+  salesFulfillmentReversalMovement?: { salesOrder: { id: string; orderNumber: string } } | null;
 }
 
 export interface ProductInventory {
@@ -46,6 +48,7 @@ export interface InventorySummary {
   outOfStockProducts: number;
   totalUnits: number;
   movementsToday: number;
+  ordersAwaitingStockDeduction: number;
   recentMovements: StockMovement[];
 }
 

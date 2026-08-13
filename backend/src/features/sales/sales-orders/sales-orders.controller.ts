@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from 'express';
 import { SalesOrdersService } from './sales-orders.service';
+import { SalesOrderInventoryService } from './sales-order-inventory.service';
 import type {
   AddSalesOrderItemInput,
   ChangeSalesOrderPaymentInput,
@@ -8,7 +9,9 @@ import type {
   CreateSalesOrderInput,
   CreateSalesOrderInstallmentPlanInput,
   CustomerSalesOrdersParamsInput,
+  DeductSalesOrderStockInput,
   RestoreSalesOrderInput,
+  RestoreSalesOrderStockInput,
   SalesAuditQueryInput,
   SalesOrderActionInput,
   SalesOrderItemParamsInput,
@@ -59,6 +62,12 @@ export class SalesOrdersController {
   }
   static async removeItem(req: Request<SalesOrderItemParamsInput, unknown, SalesOrderItemActionInput>, res: Response, next: NextFunction) {
     try { res.json({ success: true, data: await SalesOrdersService.removeItem(req.params.salesOrderId, req.params.itemId, req.body, req.user!, contextFrom(req)) }); } catch (error) { next(error); }
+  }
+  static async deductStock(req: Request<SalesOrderParamsInput, unknown, DeductSalesOrderStockInput>, res: Response, next: NextFunction) {
+    try { res.status(201).json({ success: true, data: await SalesOrderInventoryService.deductStock(req.params.salesOrderId, req.body, req.user!, contextFrom(req)) }); } catch (error) { next(error); }
+  }
+  static async restoreStock(req: Request<SalesOrderParamsInput, unknown, RestoreSalesOrderStockInput>, res: Response, next: NextFunction) {
+    try { res.status(201).json({ success: true, data: await SalesOrderInventoryService.restoreStock(req.params.salesOrderId, req.body, req.user!, contextFrom(req)) }); } catch (error) { next(error); }
   }
   static async status(req: Request<SalesOrderParamsInput, unknown, ChangeSalesOrderStatusInput>, res: Response, next: NextFunction) {
     try { res.json({ success: true, data: await SalesOrdersService.changeStatus(req.params.salesOrderId, req.body, req.user!, contextFrom(req)) }); } catch (error) { next(error); }

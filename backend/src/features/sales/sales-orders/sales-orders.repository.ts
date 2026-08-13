@@ -3,9 +3,12 @@ import {
   SalesChannel,
   SalesOrderFulfillmentStatus,
   SalesOrderPaymentStatus,
+  SalesOrderStockFulfillmentStatus,
+  StockMovementType,
 } from '@prisma/client';
 import { prisma } from '../../../lib/prisma';
 import { businessDateToPrisma } from '../../financial/domain/business-date';
+import { InventoryRepository } from '../../inventory/inventory.repository';
 import { nextSalesOrderNumber } from '../domain/order-number';
 import type { SalesOrderListQueryInput } from './sales-orders.validator';
 
@@ -25,7 +28,27 @@ export const salesOrderInclude = {
           stockQuantity: true,
           lowStockThreshold: true,
           costPrice: true,
+          stockMovements: {
+            where: { movementType: StockMovementType.OPENING_BALANCE },
+            select: { createdAt: true },
+            take: 1,
+          },
         },
+      },
+      stockFulfillments: {
+        select: {
+          id: true,
+          quantity: true,
+          status: true,
+          stockMovementId: true,
+          reversalStockMovementId: true,
+          reversedAt: true,
+          reversedById: true,
+          reversalReason: true,
+          createdById: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: 'desc' },
       },
     },
     orderBy: { createdAt: 'asc' },
@@ -46,6 +69,20 @@ export class SalesOrdersRepository {
 
   static findItemById(id: string, tx: Prisma.TransactionClient) {
     return tx.salesOrderItem.findUnique({ where: { id }, include: { product: true } });
+  }
+
+  static hasActiveStockFulfillmentForItem(id: string, tx: Prisma.TransactionClient) {
+    return tx.salesOrderStockFulfillment.findFirst({
+      where: { salesOrderItemId: id, status: SalesOrderStockFulfillmentStatus.ACTIVE },
+      select: { id: true },
+    });
+  }
+
+  static hasActiveStockFulfillmentForOrder(id: string, tx: Prisma.TransactionClient) {
+    return tx.salesOrderStockFulfillment.findFirst({
+      where: { salesOrderId: id, status: SalesOrderStockFulfillmentStatus.ACTIVE },
+      select: { id: true },
+    });
   }
 
   static findActiveCustomer(id: string, tx: Prisma.TransactionClient) {
@@ -90,7 +127,10 @@ export class SalesOrdersRepository {
   }
 
   static async list(query: SalesOrderListQueryInput) {
-    const where = buildWhere(query);
+    const awaitingOrderIds = query.awaitingStockDeduction
+      ? await InventoryRepository.salesOrderIdsAwaitingStockDeduction()
+      : undefined;
+    const where = buildWhere(query, awaitingOrderIds);
     const [items, total] = await Promise.all([
       prisma.salesOrder.findMany({
         where,
@@ -142,8 +182,9 @@ export class SalesOrdersRepository {
   }
 }
 
-function buildWhere(query: SalesOrderListQueryInput): Prisma.SalesOrderWhereInput {
+function buildWhere(query: SalesOrderListQueryInput, awaitingOrderIds?: string[]): Prisma.SalesOrderWhereInput {
   return {
+    ...(awaitingOrderIds ? { id: { in: awaitingOrderIds } } : {}),
     ...(query.customerId ? { customerId: query.customerId } : {}),
     ...(query.salesChannel ? { salesChannel: { in: query.salesChannel } } : {}),
     ...(query.fulfillmentStatus ? { fulfillmentStatus: { in: query.fulfillmentStatus } } : {}),

@@ -218,6 +218,13 @@ enum SalesAuditAction {
   CANCEL
   RESTORE
   RETURN
+  DEDUCT_STOCK
+  RESTORE_STOCK
+}
+
+enum SalesOrderStockFulfillmentStatus {
+  ACTIVE
+  REVERSED
 }
 
 enum LabelBarcodeSource {
@@ -342,6 +349,8 @@ model User {
   pricingPresetsUpdated       PricingPreset[]             @relation("PricingPresetUpdatedBy")
   repairsApplied              RepairHistory[]             @relation("RepairHistoryAppliedBy")
   stockMovements              StockMovement[]             @relation("StockMovementCreatedBy")
+  salesStockFulfillmentsCreated  SalesOrderStockFulfillment[] @relation("FulfillmentCreatedBy")
+  salesStockFulfillmentsReversed SalesOrderStockFulfillment[] @relation("FulfillmentReversedBy")
 
   @@map("users")
 }
@@ -670,6 +679,7 @@ model Product {
   salesOrderItems  SalesOrderItem[]
   prepaidPurchases PrepaidPurchase[]
   stockMovements   StockMovement[]
+  salesStockFulfillments SalesOrderStockFulfillment[]
   image            ProductImage?
 
   @@index([name])
@@ -696,6 +706,9 @@ model StockMovement {
   createdById    String?           @db.Uuid
   createdBy      User?             @relation("StockMovementCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
   createdAt      DateTime          @default(now())
+
+  salesFulfillmentMovement         SalesOrderStockFulfillment? @relation("FulfillmentMovement")
+  salesFulfillmentReversalMovement SalesOrderStockFulfillment? @relation("FulfillmentReversalMovement")
 
   @@index([productId, createdAt])
   @@index([movementType, createdAt])
@@ -880,8 +893,9 @@ model SalesOrder {
   cancelledBy     User?     @relation("SalesOrderCancelledBy", fields: [cancelledById], references: [id], onDelete: Restrict)
   cancelledReason String?   @db.Text
 
-  items  SalesOrderItem[]
-  audits SalesAudit[]
+  items             SalesOrderItem[]
+  audits            SalesAudit[]
+  stockFulfillments SalesOrderStockFulfillment[]
 
   @@index([customerId])
   @@index([orderDate])
@@ -920,9 +934,42 @@ model SalesOrderItem {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  stockFulfillments SalesOrderStockFulfillment[]
+
   @@index([salesOrderId])
   @@index([productId])
   @@map("sales_order_items")
+}
+
+model SalesOrderStockFulfillment {
+  id               String                           @id @default(uuid()) @db.Uuid
+  salesOrderId     String                           @db.Uuid
+  salesOrder       SalesOrder                       @relation(fields: [salesOrderId], references: [id], onDelete: Restrict)
+  salesOrderItemId String                           @db.Uuid
+  salesOrderItem   SalesOrderItem                   @relation(fields: [salesOrderItemId], references: [id], onDelete: Restrict)
+  productId        String                           @db.Uuid
+  product          Product                          @relation(fields: [productId], references: [id], onDelete: Restrict)
+  quantity         Int
+  status           SalesOrderStockFulfillmentStatus @default(ACTIVE)
+
+  stockMovementId String        @unique @db.Uuid
+  stockMovement   StockMovement @relation("FulfillmentMovement", fields: [stockMovementId], references: [id], onDelete: Restrict)
+
+  reversalStockMovementId String?        @unique @db.Uuid
+  reversalStockMovement   StockMovement? @relation("FulfillmentReversalMovement", fields: [reversalStockMovementId], references: [id], onDelete: Restrict)
+  reversedAt              DateTime?
+  reversedById            String?        @db.Uuid
+  reversedBy              User?          @relation("FulfillmentReversedBy", fields: [reversedById], references: [id], onDelete: Restrict)
+  reversalReason          String?        @db.Text
+
+  createdById String   @db.Uuid
+  createdBy   User     @relation("FulfillmentCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt   DateTime @default(now())
+
+  @@index([salesOrderId])
+  @@index([productId, createdAt])
+  @@index([status])
+  @@map("sales_order_stock_fulfillments")
 }
 
 model SalesAudit {

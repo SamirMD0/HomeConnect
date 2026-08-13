@@ -35,6 +35,7 @@ export function SalesOrdersPage() {
     salesChannel: params.get('salesChannel') ? [params.get('salesChannel') as never] : undefined,
     paymentStatus: params.get('paymentStatus') ? [params.get('paymentStatus') as never] : undefined,
     fulfillmentStatus: params.get('fulfillmentStatus') ? [params.get('fulfillmentStatus') as never] : undefined,
+    awaitingStockDeduction: params.get('awaitingStockDeduction') === 'true' || undefined,
     dateFrom: range.dateFrom, dateTo: range.dateTo,
     page: Number(params.get('page') || 1), pageSize: 25, sort: 'createdDesc',
   };
@@ -66,6 +67,7 @@ export function SalesOrdersPage() {
     <PageHeader title={{ en: 'Sales Orders', ar: 'طلبات البيع' }} description="Record shop and phone sales with fulfillment and ledger integration." icon={<ShoppingCart />} actions={<Button icon={<Plus />} onClick={() => setCreateOpen(true)}>Add Order / إضافة طلب</Button>} />
     <SalesOrderDateNavigator range={range} onAnchorChange={(anchor) => setParam('date', anchor)} onModeChange={(value) => setParam('mode', value)} />
     <SalesOrderSummaryCards data={summary.data} loading={summary.isLoading} period={period} />
+    {filters.awaitingStockDeduction && <div className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900"><span>Showing orders awaiting stock deduction / عرض الطلبات التي تنتظر إخراج المخزون</span><Button size="sm" variant="ghost" onClick={() => update('awaitingStockDeduction', '')}>Clear / مسح</Button></div>}
     <SalesOrderFilters filters={filters} onChange={update} onReset={reset} />
     {orders.isLoading ? <SkeletonTable rows={6} columns={7} className="rounded-xl border border-slate-200 bg-white" /> : orders.isError ? <div role="alert" className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"><AlertCircle className="h-4 w-4" />Unable to load sales orders. <Button variant="link" onClick={() => orders.refetch()}>Retry</Button></div> : orders.data?.items.length ? <><SalesOrdersTable orders={orders.data.items} /><Pagination currentPage={filters.page ?? 1} totalPages={orders.data.pagination.totalPages} onPageChange={(page) => update('page', String(page))} /></> : <EmptyState title="No sales orders / لا توجد طلبات بيع" description={range.mode === 'all' ? 'Create the first order or adjust the filters.' : 'Nothing recorded here. Step back a day, or switch to All.'} action={<Button icon={<Plus />} onClick={() => setCreateOpen(true)}>Add Order / إضافة طلب</Button>} />}
     <CreateSalesOrderDialog isOpen={createOpen} onClose={() => setCreateOpen(false)} />

@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import fs from 'fs';
+import path from 'path';
 import { classifyStockIntegrity } from './inventory.repository';
 
 const base = {
@@ -24,5 +26,19 @@ describe('inventory integrity classification', () => {
     expect(classifyStockIntegrity({ ...base, trackStock: true, stockQuantity: 3, movementCount: 1, ledgerSum: 3, hasOpeningBalance: true, lastQuantityAfter: 3 })).toBe('OK');
     expect(classifyStockIntegrity({ ...base, trackStock: true, stockQuantity: 3, movementCount: 1, ledgerSum: 2, hasOpeningBalance: true, lastQuantityAfter: 2 })).toBe('MISMATCH');
     expect(classifyStockIntegrity({ ...base, trackStock: true, stockQuantity: 3, movementCount: 1, ledgerSum: 3, hasOpeningBalance: false, lastQuantityAfter: 3 })).toBe('MISMATCH');
+  });
+
+  it('defines awaiting deduction without valuation or financial arithmetic', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, 'inventory.repository.ts'), 'utf8');
+    const query = source.slice(source.indexOf('salesOrderIdsAwaitingStockDeduction'));
+    for (const status of ['CONFIRMED', 'PREPARING', 'READY_FOR_DELIVERY', 'OUT_FOR_DELIVERY', 'DELIVERED']) {
+      expect(query).toContain(status);
+    }
+    expect(query).toContain('OPENING_BALANCE');
+    expect(query).toContain("AT TIME ZONE 'UTC' AT TIME ZONE");
+    expect(query).toContain("to_regclass('public.sales_order_stock_fulfillments')");
+    expect(query).toContain('p."stockQuantity" >= i."quantity"');
+    expect(query).toContain('f."status" = \'ACTIVE\'');
+    expect(query).not.toMatch(/costPrice|COGS|valuation|profit|margin/i);
   });
 });

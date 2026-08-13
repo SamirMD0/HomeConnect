@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ProductStockSection } from '../products/components/ProductStockSection';
 import { ScanFeedback } from '../scanner/components/ScanFeedback';
 import { InventoryPage } from '../../pages/inventory/InventoryPage';
+import { InventoryDashboardCards } from './components/InventoryDashboardCards';
 import { MovementHistory } from './components/MovementHistory';
 import { movementAfter, validateMovementForm } from './utils/stock-movement';
 import { inventoryApi } from './api/inventory.api';
@@ -14,7 +15,7 @@ import { validateOpeningCountForm, VerifyOpeningCountDialog } from './components
 const { apiMock } = vi.hoisted(() => ({ apiMock: { get: vi.fn(), post: vi.fn() } }));
 vi.mock('../../services/api', () => ({ api: apiMock }));
 vi.mock('./hooks/useInventory', () => ({
-  useInventorySummary: () => ({ data: { trackedProducts: 2, lowStockProducts: 1, outOfStockProducts: 1, movementsToday: 2, totalUnits: 4, recentMovements: [] }, isLoading: false }),
+  useInventorySummary: () => ({ data: { trackedProducts: 2, lowStockProducts: 1, outOfStockProducts: 1, movementsToday: 2, ordersAwaitingStockDeduction: 3, totalUnits: 4, recentMovements: [] }, isLoading: false }),
   useLowStockProducts: () => ({ data: { items: [{ id: 'p1', sku: 'HC-1', name: 'Low fan', barcode: null, stockQuantity: 1, lowStockThreshold: 2, stockStatus: 'LOW_STOCK' }] } }),
   useProductInventory: (id: string) => ({ data: {
     product: { id, sku: 'HC-1', name: 'Low fan', isActive: true, trackStock: id !== 'not-in', stockQuantity: id === 'pending' ? 3 : id === 'not-in' ? 0 : 1, lowStockThreshold: 2, stockStatus: id === 'not-in' ? 'NOT_TRACKED' : 'LOW_STOCK' },
@@ -58,6 +59,17 @@ describe('inventory frontend', () => {
     expect(html).toContain('New delivery / تسليم جديد');
     expect(html).toContain('dir="auto"');
     expect(html).toContain('Ali (ali)');
+  });
+
+  it('links sale movements to their authoritative fulfillment order', () => {
+    const saleMovement = {
+      ...movement,
+      movementType: 'SALE_FULFILLMENT' as const,
+      salesFulfillmentMovement: { salesOrder: { id: 'order-1', orderNumber: 'SO-2026-0001' } },
+    };
+    const html = renderToStaticMarkup(<MemoryRouter><MovementHistory movements={[saleMovement]} /></MemoryRouter>);
+    expect(html).toContain('/sales-orders/order-1');
+    expect(html).toContain('Sales order SO-2026-0001');
   });
 
   it('renders the product inventory panel, history, and all five action choices', () => {
@@ -125,6 +137,13 @@ describe('inventory frontend', () => {
     expect(html).toContain('Search or scan product');
     expect(html).toContain('Low fan');
     expect(html).toContain('Recent stock movements');
+  });
+
+  it('adds the awaiting-deduction dashboard counter and filtered sales-order link', () => {
+    const html = renderToStaticMarkup(<MemoryRouter><InventoryDashboardCards /></MemoryRouter>);
+    expect(html).toContain('Orders awaiting stock deduction');
+    expect(html).toContain('>3<');
+    expect(html).toContain('/sales-orders?mode=all&amp;awaitingStockDeduction=true');
   });
 
   it('shows unresolved code and a manual-search action without creating anything', () => {

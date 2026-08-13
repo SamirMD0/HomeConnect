@@ -6,8 +6,9 @@ import {
 } from '@prisma/client';
 import { z } from 'zod';
 import { userTextSchema } from '../../../validators/user-text';
+import { databaseUuidSchema } from '../../../validators/database-uuid';
 
-const uuidSchema = z.string().uuid('Invalid ID');
+const uuidSchema = databaseUuidSchema();
 const dateSchema = z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must use YYYY-MM-DD format');
 const moneySchema = z.string().trim().regex(/^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/, 'Money must be a non-negative decimal string with up to 2 decimal places');
 const optionalText = (field: string, max: number) => userTextSchema({ field, max }).optional().nullable();

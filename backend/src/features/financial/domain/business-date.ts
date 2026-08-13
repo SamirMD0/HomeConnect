@@ -55,6 +55,10 @@ export function todayInBusinessTimezone(
   timezone = getBusinessTimezone(),
   now = new Date()
 ): BusinessDate {
+  return timestampToBusinessDate(timezone, now);
+}
+
+export function timestampToBusinessDate(timezone: string, timestamp: Date): BusinessDate {
   const formatter = new Intl.DateTimeFormat('en-US', {
     timeZone: timezone,
     year: 'numeric',
@@ -62,7 +66,7 @@ export function todayInBusinessTimezone(
     day: '2-digit',
   });
 
-  const parts = formatter.formatToParts(now);
+  const parts = formatter.formatToParts(timestamp);
   const year = parts.find((part) => part.type === 'year')?.value;
   const month = parts.find((part) => part.type === 'month')?.value;
   const day = parts.find((part) => part.type === 'day')?.value;

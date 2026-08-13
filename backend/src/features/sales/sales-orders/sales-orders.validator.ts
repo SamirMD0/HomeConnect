@@ -7,13 +7,19 @@ import {
 } from '@prisma/client';
 import { z } from 'zod';
 import { userTextSchema } from '../../../validators/user-text';
+import { databaseUuidSchema } from '../../../validators/database-uuid';
 
-const uuidSchema = z.string().uuid('Invalid ID');
+const uuidSchema = databaseUuidSchema();
 const dateSchema = z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must use YYYY-MM-DD format');
 const moneySchema = z.string().trim().regex(/^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/, 'Money must be a non-negative decimal string with up to 2 decimal places');
 const positiveMoneySchema = moneySchema.refine((value) => !/^0(?:\.0{1,2})?$/.test(value), 'Amount must be greater than zero');
 const optionalText = (field: string, max: number) => userTextSchema({ field, max }).optional().nullable();
 const reasonSchema = userTextSchema({ field: 'Reason', min: 5, max: 1000 });
+const inventoryActionIds = (field: string) => z.array(uuidSchema).min(1).max(50).superRefine((ids, context) => {
+  if (new Set(ids).size !== ids.length) {
+    context.addIssue({ code: 'custom', message: `${field} must not contain duplicates` });
+  }
+});
 
 const itemSchema = z.object({
   productId: uuidSchema.optional().nullable(),
@@ -103,6 +109,17 @@ export const salesOrderItemActionSchema = z.object({
   accountPassword: z.string().min(1).optional(),
 });
 
+export const deductSalesOrderStockSchema = z.object({
+  itemIds: inventoryActionIds('Item IDs'),
+  note: userTextSchema({ field: 'Note', max: 2000 }).optional().nullable(),
+}).strict();
+
+export const restoreSalesOrderStockSchema = z.object({
+  fulfillmentIds: inventoryActionIds('Fulfillment IDs'),
+  reason: userTextSchema({ field: 'Reason', max: 1000 }).min(1, 'Reason is required / السبب مطلوب'),
+  note: userTextSchema({ field: 'Note', max: 2000 }).optional().nullable(),
+}).strict();
+
 export const changeSalesOrderStatusSchema = z.object({
   status: z.nativeEnum(SalesOrderFulfillmentStatus),
   reason: reasonSchema.optional(),
@@ -160,6 +177,7 @@ export const salesOrderListQuerySchema = z.object({
   settlement: csvEnum(SalesOrderSettlement),
   dateFrom: dateSchema.optional(),
   dateTo: dateSchema.optional(),
+  awaitingStockDeduction: z.enum(['true']).transform(() => true).optional(),
   sort: z.enum(['createdDesc', 'createdAsc', 'customerAsc', 'totalDesc']).default('createdDesc'),
   page: z.coerce.number().int().positive().default(1),
   pageSize: z.coerce.number().int().positive().max(100).default(25),
@@ -185,6 +203,8 @@ export type AddSalesOrderItemInput = z.infer<typeof addSalesOrderItemSchema>;
 export type UpdateSalesOrderItemInput = z.infer<typeof updateSalesOrderItemSchema>;
 export type SalesOrderActionInput = z.infer<typeof salesOrderActionSchema>;
 export type SalesOrderItemActionInput = z.infer<typeof salesOrderItemActionSchema>;
+export type DeductSalesOrderStockInput = z.infer<typeof deductSalesOrderStockSchema>;
+export type RestoreSalesOrderStockInput = z.infer<typeof restoreSalesOrderStockSchema>;
 export type ChangeSalesOrderStatusInput = z.infer<typeof changeSalesOrderStatusSchema>;
 export type RestoreSalesOrderInput = z.infer<typeof restoreSalesOrderSchema>;
 export type ChangeSalesOrderPaymentInput = z.infer<typeof changeSalesOrderPaymentSchema>;

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { MAX_DEVICE_LABEL_LENGTH } from './scanner.service';
+import { databaseUuidSchema } from '../../validators/database-uuid';
 
 export const createPairingCodeSchema = z.object({
   deviceLabel: z.string().trim().min(1).max(MAX_DEVICE_LABEL_LENGTH).optional(),
@@ -21,7 +22,7 @@ export const recentEventsQuerySchema = z.object({
 export const recordEventSchema = z.object({
   code: z.string().trim().min(1).max(64),
   status: z.enum(['FOUND', 'NOT_FOUND', 'INVALID_CODE']),
-  productId: z.string().uuid().optional().nullable(),
+  productId: databaseUuidSchema().optional().nullable(),
 });
 
 /**
