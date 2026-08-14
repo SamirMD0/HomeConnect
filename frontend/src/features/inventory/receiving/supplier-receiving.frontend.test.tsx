@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SupplierReceivingForm, createReceivingAndNavigate, receivingDetailPath, receivingErrorMessage, toCreateReceivingInput, validateReceivingForm, type ReceivingFormValues } from './components/SupplierReceivingForm';
-import { SupplierReceivingDetailPage } from './pages/SupplierReceivingDetailPage';
+import { SupplierReceivingDetailPage, supplierDebtPrefillForReceiving } from './pages/SupplierReceivingDetailPage';
 import { SupplierReceivingListPage } from './pages/SupplierReceivingListPage';
 import { supplierReceivingsApi } from './api/supplier-receivings.api';
 import { SupplierReceivingHistory } from './components/SupplierReceivingHistory';
@@ -17,9 +17,10 @@ const receiving = {
   }],
 };
 
-const { receivingHooks, apiMock } = vi.hoisted(() => ({
+const { receivingHooks, apiMock, authState } = vi.hoisted(() => ({
   receivingHooks: { create: vi.fn(), list: vi.fn(), detail: vi.fn(), duplicate: vi.fn() },
   apiMock: { get: vi.fn(), post: vi.fn() },
+  authState: { role: 'ADMIN' },
 }));
 vi.mock('./hooks/useSupplierReceivings', () => ({
   useCreateSupplierReceiving: () => ({ mutateAsync: receivingHooks.create, isPending: false }),
@@ -28,11 +29,13 @@ vi.mock('./hooks/useSupplierReceivings', () => ({
   useSupplierReceivingDuplicate: () => receivingHooks.duplicate(),
 }));
 vi.mock('../../products/hooks/useProducts', () => ({ useProducts: () => ({ data: { items: [
-  { id: 'product-1', name: 'Tracked fan', sku: 'HC-1', stockQuantity: 5, trackStock: true },
-  { id: 'product-2', name: 'Untracked fan', sku: 'HC-2', stockQuantity: 0, trackStock: false },
-] }, isLoading: false }) }));
+  { id: 'product-1', name: 'Tracked fan', model: 'TF-1', sku: 'HC-1', barcode: null, stockQuantity: 5, trackStock: true },
+  { id: 'product-2', name: 'Untracked fan', model: 'UF-1', sku: 'HC-2', barcode: null, stockQuantity: 0, trackStock: false },
+] }, isLoading: false, isError: false }) }));
+vi.mock('../hooks/useInventory', () => ({ useProductInventory: () => ({ data: { onboardingStatus: 'ONBOARDED' }, isLoading: false, isError: false }) }));
 vi.mock('../../suppliers/hooks/useSuppliers', () => ({ useSuppliers: () => ({ data: { items: [{ id: 'supplier-1', name: 'Supplier One' }] }, isLoading: false }) }));
 vi.mock('../../../services/api', () => ({ api: apiMock }));
+vi.mock('../../../hooks/useAuth', () => ({ useAuth: () => ({ user: { role: authState.role } }) }));
 
 const values = (changes: Partial<ReceivingFormValues> = {}): ReceivingFormValues => ({
   supplierId: '', referenceNumber: '', receivedOn: '2026-08-14', note: '', items: [{ key: 1, productId: 'product-1', quantity: '2' }], ...changes,
@@ -41,6 +44,7 @@ const values = (changes: Partial<ReceivingFormValues> = {}): ReceivingFormValues
 describe('supplier receiving frontend', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    authState.role = 'ADMIN';
     receivingHooks.list.mockReturnValue({ data: { items: [receiving], pagination: { page: 1, pageSize: 25, totalItems: 1, totalPages: 1 } }, isLoading: false, isError: false });
     receivingHooks.detail.mockReturnValue({ data: receiving, isLoading: false, isError: false });
     receivingHooks.duplicate.mockReturnValue({ data: { duplicate: true, match: receiving }, isLoading: false });
@@ -77,6 +81,10 @@ describe('supplier receiving frontend', () => {
     expect(html).toContain('Reference number (optional)');
     expect(html).toContain('Add line / إضافة سطر');
     expect(html).toContain('Search products');
+    expect(html).toContain('Untracked fan');
+    expect(html).toContain('Needs a verified opening count');
+    expect(html).toMatch(/disabled=""[^>]*>[\s\S]*Untracked fan/);
+    expect(html).not.toContain('Only stock-tracked products are shown');
     expect(html).not.toContain('type="password"');
     expect(html).not.toContain('Cost / التكلفة');
     expect(html).not.toContain('Payment / دفعة');
@@ -119,6 +127,19 @@ describe('supplier receiving frontend', () => {
     expect(html).not.toContain('Edit / تعديل');
     expect(html).not.toContain('Delete / حذف');
     expect(html).not.toContain('Reverse / عكس');
+  });
+
+  it('offers an admin-only debt bridge for an active receiving supplier without an amount', () => {
+    const linkedReceiving = { ...receiving, supplierId: 'supplier-1', supplier: { id: 'supplier-1', name: 'Supplier One', isActive: true }, referenceNumber: 'INV-200' };
+    receivingHooks.detail.mockReturnValueOnce({ data: linkedReceiving, isLoading: false, isError: false });
+    const html = renderToStaticMarkup(<MemoryRouter initialEntries={[`/inventory/receiving/${receiving.id}`]}><Routes><Route path="/inventory/receiving/:receivingId" element={<SupplierReceivingDetailPage />} /></Routes></MemoryRouter>);
+    expect(html).toContain('Record supplier debt / تسجيل دين للمورد');
+    expect(supplierDebtPrefillForReceiving(linkedReceiving)).toEqual({ type: 'SUPPLIER_DEBT', transactionDate: '2026-08-14', reference: 'INV-200', description: 'Supplier receiving INV-200' });
+    expect(supplierDebtPrefillForReceiving(linkedReceiving)).not.toHaveProperty('amount');
+
+    authState.role = 'EMPLOYEE';
+    receivingHooks.detail.mockReturnValueOnce({ data: linkedReceiving, isLoading: false, isError: false });
+    expect(renderToStaticMarkup(<MemoryRouter initialEntries={[`/inventory/receiving/${receiving.id}`]}><Routes><Route path="/inventory/receiving/:receivingId" element={<SupplierReceivingDetailPage />} /></Routes></MemoryRouter>)).not.toContain('Record supplier debt');
   });
 
   it('calls list, detail, create, and warning-only duplicate APIs', async () => {

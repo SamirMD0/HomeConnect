@@ -27,7 +27,7 @@ const filterDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must use YYYY-M
 const values = {
   type: z.nativeEnum(SupplierTransactionType), direction: z.nativeEnum(SupplierTransactionDirection).optional(),
   amount, transactionDate: date, description: userTextSchema({ field: 'Description', min: 3, max: 500 }),
-  reference: optionalText('Reference', 100), notes: optionalText('Notes', 2000),
+  reference: optionalText('Reference', 200), notes: optionalText('Notes', 2000),
 };
 const directionCheck = (v: { type?: SupplierTransactionType; direction?: SupplierTransactionDirection }, ctx: z.RefinementCtx) => {
   if (!v.type) return;

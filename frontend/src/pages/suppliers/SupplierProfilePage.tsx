@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ArrowLeft, Plus } from 'lucide-react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Pagination } from '../../components/ui/Pagination';
 import { SupplierActionDialog } from '../../features/suppliers/components/SupplierActionDialog';
 import { SupplierFormDialog } from '../../features/suppliers/components/SupplierFormDialog';
 import { SupplierStatusBadge } from '../../features/suppliers/components/SupplierStatusBadge';
 import { SupplierSummaryCards } from '../../features/suppliers/components/SupplierSummaryCards';
-import { SupplierTransactionFormDialog } from '../../features/suppliers/components/SupplierTransactionFormDialog';
+import { SupplierTransactionFormDialog, type SupplierTransactionPrefill } from '../../features/suppliers/components/SupplierTransactionFormDialog';
 import { SupplierTransactionTable } from '../../features/suppliers/components/SupplierTransactionTable';
 import { useSupplierMutations, useSupplierTransactionMutations } from '../../features/suppliers/hooks/useSupplierMutations';
 import { useSupplier, useSupplierAudit, useSupplierTransactions } from '../../features/suppliers/hooks/useSuppliers';
@@ -19,6 +19,8 @@ type Action = { kind: 'archive'|'restore'|'delete' } | { kind: 'removeTransactio
 export const SupplierProfilePage: React.FC = () => {
   const { id = '' } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const routePrefill = (location.state as { prefillTransaction?: SupplierTransactionPrefill } | null)?.prefillTransaction ?? null;
   const { user } = useAuth();
   const canMutate = user?.role === 'ADMIN';
   const supplier = useSupplier(id);
@@ -30,7 +32,17 @@ export const SupplierProfilePage: React.FC = () => {
   const transactionMutations = useSupplierTransactionMutations();
   const [editSupplier, setEditSupplier] = useState(false);
   const [transactionForm, setTransactionForm] = useState<{ open: boolean; transaction: SupplierTransaction | null }>({ open: false, transaction: null });
+  const [transactionPrefill, setTransactionPrefill] = useState<SupplierTransactionPrefill | null>(routePrefill);
   const [action, setAction] = useState<Action>(null);
+
+  useEffect(() => {
+    if (!routePrefill || supplier.isLoading) return;
+    if (canMutate && supplier.data?.isActive) {
+      setTransactionPrefill(routePrefill);
+      setTransactionForm({ open: true, transaction: null });
+    }
+    navigate(location.pathname, { replace: true, state: null });
+  }, [canMutate, location.pathname, navigate, routePrefill, supplier.data?.isActive, supplier.isLoading]);
 
   if (supplier.isLoading) return <PageState text="Loading supplier... / جارٍ تحميل المورّد" />;
   if (supplier.isError || !supplier.data) return <PageState error text="Supplier not found / المورّد غير موجود" />;
@@ -53,7 +65,7 @@ export const SupplierProfilePage: React.FC = () => {
     <section className="space-y-3"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-bold">Transactions / الحركات</h2><div className="flex items-center gap-3"><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={includeRemoved} onChange={(event) => { setIncludeRemoved(event.target.checked); setPage(1); }} />Include removed / إظهار المحذوف</label>{canMutate && item.isActive && <button onClick={() => setTransactionForm({ open: true, transaction: null })} className="inline-flex items-center gap-2 rounded-md bg-emerald-600 px-3 py-2 text-sm font-semibold text-white"><Plus className="h-4 w-4" />Add Transaction / إضافة حركة</button>}</div></div>{transactions.isLoading ? <PageState text="Loading transactions... / جارٍ تحميل الحركات" /> : transactions.isError ? <PageState error text="Unable to load transactions / تعذر تحميل الحركات" /> : transactions.data?.items.length ? <><SupplierTransactionTable items={transactions.data.items} canMutate={canMutate} showSupplier={false} onEdit={(transaction) => setTransactionForm({ open: true, transaction })} onRemove={(transaction) => setAction({ kind: 'removeTransaction', transaction })} onRestore={(transaction) => setAction({ kind: 'restoreTransaction', transaction })} /><Pagination currentPage={page} totalPages={transactions.data.pagination.totalPages} onPageChange={setPage} /></> : <PageState text="No transactions yet / لا توجد حركات بعد" />}</section>
     {canMutate && <section className="rounded-lg border bg-white p-4"><h2 className="font-bold">Audit history / سجل التدقيق</h2>{audit.isLoading ? <p className="mt-3 text-sm text-slate-500">Loading... / جارٍ التحميل</p> : audit.data?.items.length ? <div className="mt-3 divide-y">{audit.data.items.map((entry) => <div key={entry.id} className="py-3 text-sm"><div className="flex justify-between gap-3"><strong>{entry.action}</strong><span className="text-xs text-slate-500">{new Date(entry.changedAt).toLocaleString()}</span></div><p className="user-text mt-1 text-slate-600" dir="auto">{entry.reason}</p><p className="text-xs text-slate-500">{entry.changedByName}</p></div>)}</div> : <p className="mt-3 text-sm text-slate-500">No audit entries / لا يوجد سجل</p>}</section>}
     <SupplierFormDialog open={editSupplier} supplier={item} onClose={() => setEditSupplier(false)} />
-    <SupplierTransactionFormDialog open={transactionForm.open} supplier={item} transaction={transactionForm.transaction} onClose={() => setTransactionForm({ open: false, transaction: null })} />
+    <SupplierTransactionFormDialog open={transactionForm.open} supplier={item} transaction={transactionForm.transaction} prefill={transactionForm.transaction ? null : transactionPrefill} onClose={() => { setTransactionForm({ open: false, transaction: null }); setTransactionPrefill(null); }} />
     <SupplierActionDialog open={Boolean(action)} title={actionTitle(action)} confirmLabel="Confirm / تأكيد" onClose={() => setAction(null)} onConfirm={runAction} />
   </div>;
 };

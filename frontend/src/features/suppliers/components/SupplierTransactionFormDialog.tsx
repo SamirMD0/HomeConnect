@@ -15,7 +15,16 @@ interface Props {
   open: boolean;
   supplier: SupplierIdentity;
   transaction?: SupplierTransaction | null;
+  prefill?: SupplierTransactionPrefill | null;
   onClose: () => void;
+}
+
+export interface SupplierTransactionPrefill {
+  type?: SupplierTransactionType;
+  transactionDate?: string;
+  description?: string;
+  reference?: string;
+  notes?: string;
 }
 
 const emptyForm = () => ({
@@ -30,15 +39,21 @@ const emptyForm = () => ({
   accountPassword: '',
 });
 
-export const SupplierTransactionFormDialog: React.FC<Props> = ({ open, supplier, transaction, onClose }) => {
+export const supplierTransactionFormFromPrefill = (prefill?: SupplierTransactionPrefill | null) => ({
+  ...emptyForm(),
+  ...prefill,
+  amount: '',
+});
+
+export const SupplierTransactionFormDialog: React.FC<Props> = ({ open, supplier, transaction, prefill, onClose }) => {
   const mutations = useSupplierTransactionMutations();
   const mutation = transaction ? mutations.update : mutations.create;
   const [form, setForm] = useState(emptyForm);
 
   useEffect(() => {
-    if (!transaction) { setForm(emptyForm()); return; }
+    if (!transaction) { setForm(supplierTransactionFormFromPrefill(prefill)); return; }
     setForm({ type: transaction.type, direction: transaction.direction, amount: transaction.amount, transactionDate: transaction.transactionDate, description: transaction.description, reference: transaction.reference ?? '', notes: transaction.notes ?? '', reason: '', accountPassword: '' });
-  }, [transaction, open]);
+  }, [transaction, prefill, open]);
 
   const set = (key: keyof ReturnType<typeof emptyForm>) => (event: React.ChangeEvent<HTMLInputElement|HTMLTextAreaElement|HTMLSelectElement>) => setForm((current) => ({ ...current, [key]: event.target.value }));
   const submit = async (event: React.FormEvent) => {

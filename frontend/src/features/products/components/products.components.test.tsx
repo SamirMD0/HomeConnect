@@ -223,12 +223,24 @@ describe('product management frontend', () => {
 
   it('shows barcode values in the active service product picker', () => {
     const queryClient = new QueryClient();
-    queryClient.setQueryData(productKeys.list({ search: '', isActive: true, pageSize: 10 }), {
+    queryClient.setQueryData(productKeys.list({ isActive: true, sortBy: 'name', sortOrder: 'asc', search: undefined, page: 1, pageSize: 10 }), {
       items: [product], pagination: { page: 1, pageSize: 10, totalItems: 1, totalPages: 1 },
     });
     const html = renderToStaticMarkup(<QueryClientProvider client={queryClient}><ProductPicker value={{ productId: product.id, manualProductName: '', manualProductModel: '', manualProductBrand: '', manualProductNotes: '' }} onChange={() => undefined} /></QueryClientProvider>);
     expect(html).toContain('8901643123456');
     expect(html).toContain('Select Existing / اختيار منتج');
+  });
+
+  it('renders the shared server-search picker without a capped native select', () => {
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(productKeys.list({ isActive: true, sortBy: 'name', sortOrder: 'asc', search: undefined, page: 1, pageSize: 10 }), {
+      items: [{ ...product, id: 'product-after-first-100', name: 'Catalogue item after page 100' }],
+      pagination: { page: 1, pageSize: 10, totalItems: 1, totalPages: 1 },
+    });
+    const html = renderToStaticMarkup(<QueryClientProvider client={queryClient}><ProductPicker selectedProductId={null} onSelect={() => undefined} /></QueryClientProvider>);
+    expect(html).toContain('Catalogue item after page 100');
+    expect(html).toContain('Name, model, SKU or barcode');
+    expect(html).not.toContain('<select');
   });
 });
 

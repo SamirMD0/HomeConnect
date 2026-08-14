@@ -4,7 +4,8 @@ import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { CreateSalesOrderDialog } from './CreateSalesOrderDialog';
 import { PaymentStatusChip } from './PaymentStatusChip';
-import { ProductLinePicker } from './ProductLinePicker';
+import { ProductLinePicker, salesLineForProduct } from './ProductLinePicker';
+import type { Product } from '../../products/types/product.types';
 import { SalesChannelChip } from './SalesChannelChip';
 import { SalesOrderStatusChip } from './SalesOrderStatusChip';
 import { SalesOrderSummaryCards } from './SalesOrderSummaryCards';
@@ -26,7 +27,7 @@ import {
   todayString,
 } from '../utils/sales-order-dates';
 
-vi.mock('../../products/hooks/useProducts', () => ({ useProducts: () => ({ data: { items: [] } }) }));
+vi.mock('../../products/hooks/useProducts', () => ({ useProducts: () => ({ data: { items: [] }, isLoading: false, isError: false }) }));
 vi.mock('../../../hooks/useAuth', () => ({ useAuth: () => ({ user: { role: 'ADMIN' } }) }));
 
 describe('sales order presentation components', () => {
@@ -71,6 +72,19 @@ describe('sales order presentation components', () => {
 
     const line = renderToStaticMarkup(<ProductLinePicker value={{ productId: null, manualProductName: '', manualProductModel: '', quantity: 1, unitPrice: '10.00', discountAmount: '0.00' }} onChange={() => undefined} />);
     expect(line).not.toContain('Discount amount / مبلغ الحسم');
+    expect(line).toContain('Name, model, SKU or barcode');
+    expect(line).not.toContain('<select');
+  });
+
+  it('copies the selected catalog product and its cash price into a sales line', () => {
+    const line = { productId: null, manualProductName: 'Manual', manualProductModel: 'M', quantity: 2, unitPrice: '1.00', discountAmount: '0.00' };
+    const selected = {
+      id: 'product-after-first-100', netPrice: '12.00', price: '15.00',
+      pricing: { pricingAvailable: true, cashPrice: '11.25' },
+    } as Product;
+    expect(salesLineForProduct(line, selected)).toMatchObject({
+      productId: 'product-after-first-100', manualProductName: null, manualProductModel: null, unitPrice: '11.25', quantity: 2,
+    });
   });
 
   it('resolves day, month, and all ranges for the list and the summary', () => {

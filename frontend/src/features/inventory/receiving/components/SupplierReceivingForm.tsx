@@ -1,8 +1,8 @@
 import axios from 'axios';
-import { Plus, Search, Trash2 } from 'lucide-react';
-import React, { useMemo, useState } from 'react';
+import { Plus, Trash2 } from 'lucide-react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useProducts } from '../../../products/hooks/useProducts';
+import { ProductPicker } from '../../../products/components/ProductPicker';
 import { useSuppliers } from '../../../suppliers/hooks/useSuppliers';
 import { useCreateSupplierReceiving, useSupplierReceivingDuplicate } from '../hooks/useSupplierReceivings';
 import type { CreateSupplierReceivingInput } from '../types/supplier-receiving.types';
@@ -64,20 +64,11 @@ export function receivingErrorMessage(error: unknown): string {
 export const SupplierReceivingForm: React.FC = () => {
   const navigate = useNavigate();
   const [values, setValues] = useState<ReceivingFormValues>({ supplierId: '', referenceNumber: '', receivedOn: localToday(), note: '', items: [newLine()] });
-  const [productSearch, setProductSearch] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [serverError, setServerError] = useState('');
   const suppliers = useSuppliers({ isActive: true, pageSize: 100, sortBy: 'name' });
-  const products = useProducts({ isActive: true, pageSize: 100, sortBy: 'name' });
   const create = useCreateSupplierReceiving();
   const duplicate = useSupplierReceivingDuplicate(values.supplierId, values.referenceNumber);
-  const availableProducts = useMemo(() => {
-    const normalizedSearch = productSearch.trim().toLocaleLowerCase();
-    const selected = new Set(values.items.map((line) => line.productId));
-    return (products.data?.items ?? []).filter((product) => product.trackStock && (
-      selected.has(product.id) || !normalizedSearch || product.name.toLocaleLowerCase().includes(normalizedSearch) || product.sku.toLocaleLowerCase().includes(normalizedSearch)
-    ));
-  }, [productSearch, products.data?.items, values.items]);
 
   const updateLine = (key: number, change: Partial<FormLine>) => setValues((current) => ({ ...current, items: current.items.map((line) => line.key === key ? { ...line, ...change } : line) }));
   const submit = async (event: React.FormEvent) => {
@@ -116,16 +107,17 @@ export const SupplierReceivingForm: React.FC = () => {
     {duplicate.data?.duplicate && <div role="status" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">A receiving document with this supplier and reference may already exist / قد يوجد مستند إدخال بنفس المورد والمرجع. You can still submit after checking the existing document / يمكنك المتابعة بعد مراجعة المستند الموجود.</div>}
 
     <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="font-bold">Products / المنتجات</h2><p className="text-xs text-slate-500">Only stock-tracked products are shown / تظهر المنتجات المتتبعة فقط</p></div><button type="button" onClick={() => setValues((current) => ({ ...current, items: [...current.items, newLine()] }))} className="inline-flex items-center gap-2 rounded-lg border border-emerald-600 px-3 py-2 text-sm font-semibold text-emerald-700"><Plus className="h-4 w-4" />Add line / إضافة سطر</button></div>
-      <label className="relative block"><Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" /><input aria-label="Search products / بحث عن المنتجات" value={productSearch} onChange={(event) => setProductSearch(event.target.value)} placeholder="Search by name or SKU / ابحث بالاسم أو الرمز" className="w-full rounded-lg border border-slate-300 py-2.5 pl-9 pr-3" /></label>
+      <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="font-bold">Products / المنتجات</h2><p className="text-xs text-slate-500">Products needing an opening count remain visible but cannot be selected / المنتجات التي تحتاج جردًا افتتاحيًا تبقى ظاهرة ولا يمكن اختيارها</p></div><button type="button" onClick={() => setValues((current) => ({ ...current, items: [...current.items, newLine()] }))} className="inline-flex items-center gap-2 rounded-lg border border-emerald-600 px-3 py-2 text-sm font-semibold text-emerald-700"><Plus className="h-4 w-4" />Add line / إضافة سطر</button></div>
       {values.items.map((line, index) => <div key={line.key} className="grid gap-3 rounded-lg border border-slate-200 p-3 md:grid-cols-[minmax(0,1fr)_180px_auto]">
-        <label className="text-sm font-semibold">Product / المنتج
-          <select aria-label={`Product line ${index + 1}`} value={line.productId} onChange={(event) => updateLine(line.key, { productId: event.target.value })} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5">
-            <option value="">Select product / اختر منتجًا</option>
-            {availableProducts.map((product) => <option key={product.id} value={product.id}>{product.name} · {product.sku} · {product.stockQuantity}</option>)}
-          </select>
+        <div className="text-sm font-semibold">Product / المنتج
+          <div className="mt-1 font-normal"><ProductPicker
+            selectedProductId={line.productId || null}
+            onSelect={(product) => updateLine(line.key, { productId: product?.id ?? '' })}
+            requireOpeningCount
+            disabledProductIds={new Set(values.items.filter((item) => item.key !== line.key).map((item) => item.productId).filter(Boolean))}
+          /></div>
           {errors[`items.${index}.productId`] && <span className="mt-1 block text-xs text-red-700">{errors[`items.${index}.productId`]}</span>}
-        </label>
+        </div>
         <label className="text-sm font-semibold">Quantity / الكمية
           <input aria-label={`Quantity line ${index + 1}`} type="number" inputMode="numeric" min={1} max={100000} step={1} value={line.quantity} onChange={(event) => updateLine(line.key, { quantity: event.target.value })} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5" />
           {errors[`items.${index}.quantity`] && <span className="mt-1 block text-xs text-red-700">{errors[`items.${index}.quantity`]}</span>}

@@ -7,6 +7,10 @@ describe('supplier transaction validation', () => {
   it('accepts decimal strings and bilingual descriptions', () => {
     expect(createSupplierTransactionSchema.parse({ ...valid, description: 'مكيفات مستلمة' }).amount).toBe('500.00');
   });
+  it('accepts receiving references up to 200 characters', () => {
+    expect(createSupplierTransactionSchema.parse({ ...valid, reference: 'R'.repeat(200) }).reference).toHaveLength(200);
+    expect(() => createSupplierTransactionSchema.parse({ ...valid, reference: 'R'.repeat(201) })).toThrow();
+  });
   it('rejects zero, future dates and mismatched directions', () => {
     expect(() => createSupplierTransactionSchema.parse({ ...valid, amount: '0.00' })).toThrow();
     expect(() => createSupplierTransactionSchema.parse({ ...valid, transactionDate: '2999-01-01' })).toThrow();

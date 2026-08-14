@@ -5,6 +5,7 @@ import { SupplierLedgerFilters } from './SupplierLedgerFilters';
 import { SupplierSummaryCards } from './SupplierSummaryCards';
 import { SupplierTable } from './SupplierTable';
 import { SupplierTransactionTable } from './SupplierTransactionTable';
+import { supplierTransactionFormFromPrefill } from './SupplierTransactionFormDialog';
 import { Supplier, SupplierTransaction } from '../types/supplier.types';
 import { applySupplierLedgerMonthFilter, hasActiveSupplierLedgerFilters, resetSupplierLedgerFilters } from '../utils/supplier-query';
 
@@ -42,5 +43,12 @@ describe('supplier components', () => {
     expect(hasActiveSupplierLedgerFilters({ search: 'invoice' })).toBe(true);
     expect(resetSupplierLedgerFilters()).toMatchObject({ page: 1, includeRemoved: false, sortBy: 'transactionDate' });
     expect(applySupplierLedgerMonthFilter({}, '2026-02')).toMatchObject({ dateFrom: '2026-02-01', dateTo: '2026-02-28', page: 1 });
+  });
+
+  it('prefills a supplier debt bridge while always leaving amount blank', () => {
+    const form = supplierTransactionFormFromPrefill({
+      type: 'SUPPLIER_DEBT', transactionDate: '2026-08-14', reference: 'INV-200', description: 'Supplier receiving INV-200',
+    });
+    expect(form).toMatchObject({ type: 'SUPPLIER_DEBT', transactionDate: '2026-08-14', reference: 'INV-200', description: 'Supplier receiving INV-200', amount: '' });
   });
 });

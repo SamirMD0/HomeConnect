@@ -1,17 +1,33 @@
-import { ArrowLeft, LockKeyhole } from 'lucide-react';
+import { ArrowLeft, LockKeyhole, ReceiptText } from 'lucide-react';
 import React from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import type { SupplierTransactionPrefill } from '../../../suppliers/components/SupplierTransactionFormDialog';
+import type { SupplierReceiving } from '../types/supplier-receiving.types';
+import { useAuth } from '../../../../hooks/useAuth';
 import { useSupplierReceiving } from '../hooks/useSupplierReceivings';
+
+export function supplierDebtPrefillForReceiving(receiving: SupplierReceiving): SupplierTransactionPrefill {
+  const identity = receiving.referenceNumber || receiving.receivedOn;
+  return {
+    type: 'SUPPLIER_DEBT',
+    transactionDate: receiving.receivedOn,
+    reference: receiving.referenceNumber ?? '',
+    description: `Supplier receiving ${identity}`,
+  };
+}
 
 export const SupplierReceivingDetailPage: React.FC = () => {
   const { receivingId = '' } = useParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const query = useSupplierReceiving(receivingId);
   if (query.isLoading) return <p className="rounded-xl border bg-white p-8 text-center text-slate-500">Loading receiving… / جارٍ تحميل المستند…</p>;
   if (query.isError || !query.data) return <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">Unable to load receiving document / تعذر تحميل مستند الإدخال</div>;
   const receiving = query.data;
   const totalQuantity = (receiving.items ?? []).reduce((total, item) => total + item.quantity, 0);
+  const canRecordSupplierDebt = user?.role === 'ADMIN' && receiving.supplierId && receiving.supplier?.isActive;
   return <div className="space-y-5">
-    <header><Link to="/inventory/receiving" className="mb-3 inline-flex items-center gap-1 text-sm font-semibold text-emerald-700"><ArrowLeft className="h-4 w-4" />Receiving history / سجل الإدخال</Link><h1 className="text-2xl font-bold">Receiving Document / مستند إدخال المخزون</h1><p className="mt-1 break-all font-mono text-xs text-slate-500">{receiving.id}</p></header>
+    <header><Link to="/inventory/receiving" className="mb-3 inline-flex items-center gap-1 text-sm font-semibold text-emerald-700"><ArrowLeft className="h-4 w-4" />Receiving history / سجل الإدخال</Link><div className="flex flex-wrap items-start justify-between gap-3"><div><h1 className="text-2xl font-bold">Receiving Document / مستند إدخال المخزون</h1><p className="mt-1 break-all font-mono text-xs text-slate-500">{receiving.id}</p></div>{canRecordSupplierDebt && <button type="button" onClick={() => navigate(`/suppliers/${receiving.supplierId}`, { state: { prefillTransaction: supplierDebtPrefillForReceiving(receiving) } })} className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white"><ReceiptText className="h-4 w-4" />Record supplier debt / تسجيل دين للمورد</button>}</div></header>
     <div role="status" className="flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm font-semibold text-blue-900"><LockKeyhole className="h-5 w-5" />This receiving document is immutable / هذا المستند غير قابل للتعديل</div>
     <section className="grid gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:grid-cols-2 lg:grid-cols-3">
       <Detail label="Received on / تاريخ الاستلام" value={receiving.receivedOn} />
