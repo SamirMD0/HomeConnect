@@ -11,6 +11,10 @@ describe('supplier transaction validation', () => {
     expect(createSupplierTransactionSchema.parse({ ...valid, reference: 'R'.repeat(200) }).reference).toHaveLength(200);
     expect(() => createSupplierTransactionSchema.parse({ ...valid, reference: 'R'.repeat(201) })).toThrow();
   });
+  it('accepts an optional receiving link only on create', () => {
+    const supplierReceivingId = '44444444-4444-4444-8444-444444444444';
+    expect(createSupplierTransactionSchema.parse({ ...valid, supplierReceivingId }).supplierReceivingId).toBe(supplierReceivingId);
+  });
   it('rejects zero, future dates and mismatched directions', () => {
     expect(() => createSupplierTransactionSchema.parse({ ...valid, amount: '0.00' })).toThrow();
     expect(() => createSupplierTransactionSchema.parse({ ...valid, transactionDate: '2999-01-01' })).toThrow();

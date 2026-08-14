@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { formatBusinessDate, formatMoney } from '../../customer-financial/utils/financial-format';
 import { SupplierTransaction } from '../types/supplier.types';
 import {
@@ -85,6 +86,7 @@ export const SupplierTransactionTable: React.FC<Props> = ({
                     Ref: {transaction.reference}
                   </p>
                 )}
+                {transaction.supplierReceiving && <ReceivingLink transaction={transaction} />}
               </td>
               <td className={`px-4 py-2 text-right font-semibold tabular-nums ${cellHover}`}>
                 {formatMoney(transaction.amount)}
@@ -147,6 +149,7 @@ const TransactionCard: React.FC<Omit<Props, 'items'> & { transaction: SupplierTr
     <p className="user-text mt-1 text-sm text-slate-600 transition-colors group-hover:text-yellow-200" dir="auto">
       {transaction.description}
     </p>
+    {transaction.supplierReceiving && <ReceivingLink transaction={transaction} />}
     <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-2 text-xs transition-colors group-hover:border-gray-500">
       <span className="transition-colors group-hover:text-yellow-200">
         {englishLabel(supplierDirectionLabels[transaction.direction])}
@@ -194,3 +197,10 @@ const Actions: React.FC<Omit<Props, 'items' | 'showSupplier'> & { transaction: S
 function englishLabel(label: string): string {
   return label.split(' / ')[0];
 }
+
+const ReceivingLink: React.FC<{ transaction: SupplierTransaction }> = ({ transaction }) => {
+  const receiving = transaction.supplierReceiving;
+  if (!receiving) return null;
+  const products = receiving.items.map((item) => `${item.product.name} ×${item.quantity}`).join(', ');
+  return <Link title={products} to={`/inventory/receiving/${receiving.id}`} className="mt-1 block max-w-xs truncate text-[11px] font-semibold text-emerald-700 hover:underline group-hover:text-yellow-200">Receiving: {receiving.referenceNumber || receiving.receivedOn} · {products} / عرض مستند الإدخال</Link>;
+};

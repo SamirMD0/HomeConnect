@@ -26,7 +26,8 @@ export interface SupplierReceiving {
   receivedBy: ReceivingActor;
   createdAt: string;
   items?: SupplierReceivingItem[];
-  _count?: { items: number };
+  _count?: { items: number; transactions?: number };
+  transactions?: Array<{ id: string; type: 'SUPPLIER_DEBT'; status: 'ACTIVE'|'REMOVED'; amount: string }>;
 }
 
 export interface CreateSupplierReceivingInput {

@@ -21,7 +21,8 @@ export class SupplierTransactionsService {
       const supplier = await SuppliersRepository.findById(supplierId, tx);
       if (!supplier) throw new NotFoundError('Supplier not found');
       if (!supplier.isActive) throw new AppError('Archived suppliers cannot receive new transactions', 409, 'SUPPLIER_ARCHIVED');
-      const transaction = await SupplierTransactionsRepository.create({ supplierId, type: input.type, direction, amount, transactionDate: businessDateToPrisma(input.transactionDate), description: input.description, reference: input.reference ?? null, notes: input.notes ?? null, createdById: user.userId }, tx);
+      await validateReceivingLink(supplierId, input, tx);
+      const transaction = await SupplierTransactionsRepository.create({ supplierId, supplierReceivingId: input.supplierReceivingId ?? null, type: input.type, direction, amount, transactionDate: businessDateToPrisma(input.transactionDate), description: input.description, reference: input.reference ?? null, notes: input.notes ?? null, createdById: user.userId }, tx);
       const actor = await loadActor(user.userId, tx);
       await writeSupplierAudit({ recordType: SupplierAuditRecordType.SUPPLIER_TRANSACTION, recordId: transaction.id, supplierId, supplierTransactionId: transaction.id, action: SupplierAuditAction.CREATE, changedById: user.userId, changedByName: actor.fullName, changedByUsername: actor.username, reason: 'Supplier transaction created', beforeValues: {}, afterValues: supplierTransactionSnapshot(transaction), requestId: context.requestId, ipAddress: context.ipAddress }, tx);
       return serializeTransaction(transaction);
@@ -104,4 +105,21 @@ async function requiredTransaction(id: string, tx: Prisma.TransactionClient) { c
 async function loadActor(id: string, tx: Prisma.TransactionClient) { const actor = await tx.user.findUnique({ where: { id }, select: { fullName: true, username: true } }); if (!actor) throw new NotFoundError('User not found'); return actor; }
 async function auditChange(before: NonNullable<Awaited<ReturnType<typeof SupplierTransactionsRepository.findById>>>, after: NonNullable<Awaited<ReturnType<typeof SupplierTransactionsRepository.findById>>>, fields: string[], action: SupplierAuditAction, reason: string, userId: string, context: SupplierRequestContext, tx: Prisma.TransactionClient, balanceBefore: string, balanceAfter: string) { const actor = await loadActor(userId, tx); await writeSupplierAudit({ recordType: SupplierAuditRecordType.SUPPLIER_TRANSACTION, recordId: before.id, supplierId: before.supplierId, supplierTransactionId: before.id, action, changedById: userId, changedByName: actor.fullName, changedByUsername: actor.username, reason, beforeValues: changedSnapshot(supplierTransactionSnapshot(before), fields), afterValues: changedSnapshot(supplierTransactionSnapshot(after), fields), affectedTotals: { balanceBefore, balanceAfter }, requestId: context.requestId, ipAddress: context.ipAddress }, tx); }
 function verify(userId: string, password: string, action: string, id: string, context: SupplierRequestContext, tx: Prisma.TransactionClient) { return verifyAdminPassword(userId, password, { action, recordType: 'SUPPLIER_TRANSACTION', recordId: id, ipAddress: context.ipAddress, domainLabel: 'supplier changes' }, tx); }
-function serializeTransaction(t: NonNullable<Awaited<ReturnType<typeof SupplierTransactionsRepository.findById>>>) { return { ...t, amount: moneyToApiString(t.amount), transactionDate: prismaDateToBusinessDate(t.transactionDate) }; }
+async function validateReceivingLink(supplierId: string, input: CreateSupplierTransactionInput, tx: Prisma.TransactionClient): Promise<void> {
+  if (!input.supplierReceivingId) return;
+  if (input.type !== 'SUPPLIER_DEBT') throw new ValidationError('Only supplier debt can be linked to a receiving document / يمكن ربط دين المورد فقط بمستند إدخال');
+  const receiving = await SupplierTransactionsRepository.findReceiving(input.supplierReceivingId, tx);
+  if (!receiving) throw new NotFoundError('Receiving document not found / مستند الإدخال غير موجود');
+  if (receiving.supplierId !== supplierId) throw new ValidationError('Receiving document belongs to a different supplier / مستند الإدخال تابع لمورد آخر');
+  if (await SupplierTransactionsRepository.findByReceivingId(input.supplierReceivingId, tx)) {
+    throw new AppError('This receiving document is already linked to a supplier transaction / مستند الإدخال مرتبط بحركة مورد بالفعل', 409, 'RECEIVING_ALREADY_LINKED');
+  }
+}
+function serializeTransaction(t: NonNullable<Awaited<ReturnType<typeof SupplierTransactionsRepository.findById>>>) {
+  return {
+    ...t,
+    amount: moneyToApiString(t.amount),
+    transactionDate: prismaDateToBusinessDate(t.transactionDate),
+    supplierReceiving: t.supplierReceiving ? { ...t.supplierReceiving, receivedOn: prismaDateToBusinessDate(t.supplierReceiving.receivedOn) } : null,
+  };
+}

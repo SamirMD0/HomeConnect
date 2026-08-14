@@ -1039,11 +1039,13 @@ model SupplierReceiving {
   receivedBy      User      @relation("SupplierReceivingReceivedBy", fields: [receivedById], references: [id], onDelete: Restrict)
   createdAt       DateTime  @default(now())
 
-  items SupplierReceivingItem[]
+  items        SupplierReceivingItem[]
+  transactions SupplierTransaction[]
 
   @@index([supplierId, receivedOn])
   @@index([receivedOn])
   @@index([receivedById])
+  @@unique([id, supplierId])
   @@map("supplier_receivings")
 }
 
@@ -1067,6 +1069,8 @@ model SupplierTransaction {
   id              String                       @id @default(uuid()) @db.Uuid
   supplierId      String                       @db.Uuid
   supplier        Supplier                     @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  supplierReceivingId String?                   @unique @db.Uuid
+  supplierReceiving   SupplierReceiving?        @relation(fields: [supplierReceivingId, supplierId], references: [id, supplierId], onDelete: Restrict)
   type            SupplierTransactionType
   direction       SupplierTransactionDirection
   amount          Decimal                      @db.Decimal(12, 2)

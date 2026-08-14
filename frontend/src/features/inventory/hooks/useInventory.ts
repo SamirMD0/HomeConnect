@@ -13,7 +13,7 @@ export const inventoryKeys = {
 export const useInventorySummary = () => useQuery({ queryKey: inventoryKeys.summary(), queryFn: inventoryApi.summary, refetchInterval: 30_000 });
 export const useLowStockProducts = (filters: InventoryListFilters = {}) => useQuery({ queryKey: inventoryKeys.lowStock(filters), queryFn: () => inventoryApi.lowStock(filters) });
 export const useStockMovements = (filters: MovementFilters = {}) => useQuery({ queryKey: inventoryKeys.movements(filters), queryFn: () => inventoryApi.movements(filters) });
-export const useProductInventory = (id: string) => useQuery({ queryKey: inventoryKeys.product(id), queryFn: () => inventoryApi.product(id), enabled: Boolean(id) });
+export const useProductInventory = (id: string) => useQuery({ queryKey: inventoryKeys.product(id), queryFn: () => inventoryApi.product(id), enabled: Boolean(id), staleTime: 60_000 });
 
 export function useCreateStockMovement() {
   const queryClient = useQueryClient();

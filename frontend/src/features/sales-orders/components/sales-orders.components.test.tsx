@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
-import { CreateSalesOrderDialog } from './CreateSalesOrderDialog';
+import { CreateSalesOrderDialog, salesOrderLineFromPrefill } from './CreateSalesOrderDialog';
 import { PaymentStatusChip } from './PaymentStatusChip';
 import { ProductLinePicker, salesLineForProduct } from './ProductLinePicker';
 import type { Product } from '../../products/types/product.types';
@@ -27,7 +27,10 @@ import {
   todayString,
 } from '../utils/sales-order-dates';
 
-vi.mock('../../products/hooks/useProducts', () => ({ useProducts: () => ({ data: { items: [] }, isLoading: false, isError: false }) }));
+vi.mock('../../products/hooks/useProducts', () => ({
+  useProducts: () => ({ data: { items: [] }, isLoading: false, isError: false }),
+  useProduct: () => ({ data: undefined, isLoading: false, isError: false, refetch: vi.fn() }),
+}));
 vi.mock('../../../hooks/useAuth', () => ({ useAuth: () => ({ user: { role: 'ADMIN' } }) }));
 
 describe('sales order presentation components', () => {
@@ -84,6 +87,17 @@ describe('sales order presentation components', () => {
     } as Product;
     expect(salesLineForProduct(line, selected)).toMatchObject({
       productId: 'product-after-first-100', manualProductName: null, manualProductModel: null, unitPrice: '11.25', quantity: 2,
+    });
+  });
+
+  it('seeds only the scanned product, quantity one, and the server-derived price', () => {
+    const selected = {
+      id: 'scanned-product', netPrice: '12.00', price: '15.00',
+      pricing: { pricingAvailable: true, cashPrice: '11.25' },
+    } as Product;
+    expect(salesOrderLineFromPrefill(selected)).toEqual({
+      productId: 'scanned-product', manualProductName: null, manualProductModel: null,
+      quantity: 1, unitPrice: '11.25', discountAmount: '0.00',
     });
   });
 

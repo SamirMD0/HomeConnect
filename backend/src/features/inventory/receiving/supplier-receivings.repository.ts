@@ -4,7 +4,7 @@ import { prisma } from '../../../lib/prisma';
 const listInclude = {
   supplier: { select: { id: true, name: true, isActive: true } },
   receivedBy: { select: { id: true, fullName: true, username: true } },
-  _count: { select: { items: true } },
+  _count: { select: { items: true, transactions: true } },
 } satisfies Prisma.SupplierReceivingInclude;
 
 const detailInclude = {
@@ -16,6 +16,10 @@ const detailInclude = {
       stockMovement: true,
     },
     orderBy: [{ createdAt: 'asc' as const }, { id: 'asc' as const }],
+  },
+  transactions: {
+    select: { id: true, type: true, status: true, amount: true },
+    take: 1,
   },
 } satisfies Prisma.SupplierReceivingInclude;
 

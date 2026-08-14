@@ -3,6 +3,7 @@ import { ScanLine } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Modal } from '../../components/ui/Modal';
+import { ProductPreviewModal } from '../../features/products/components/ProductPreviewModal';
 import { MobileScannerPanel } from '../../features/scanner/components/MobileScannerPanel';
 import { RecentScansList } from '../../features/scanner/components/RecentScansList';
 import { ScanFeedback } from '../../features/scanner/components/ScanFeedback';
@@ -14,12 +15,18 @@ import {
 import { useScannerEvents } from '../../features/scanner/hooks/useScannerEvents';
 import { useScannerLookup } from '../../features/scanner/hooks/useScannerLookup';
 import { PairingCode } from '../../features/scanner/types/scanner.types';
+import type { ScanLookupResult } from '../../features/scanner/types/scanner.types';
 import { toRecentScanFromEvent } from '../../features/scanner/utils/scan-events';
 import { canManageScanner } from '../../features/scanner/utils/scanner-admin';
 import { businessLabels } from '../../shared/labels/business-labels';
 import { useAuth } from '../../hooks/useAuth';
 
 const labels = businessLabels.scanner;
+
+export const previewForDeskScan = (result: ScanLookupResult): ScanLookupResult | null =>
+  result.status === 'FOUND' && result.product ? result : null;
+
+export const scannerOrderRouteState = (productId: string) => ({ prefillOrderProductId: productId });
 
 export const ScannerHubPage: React.FC = () => {
   const { user } = useAuth();
@@ -37,6 +44,7 @@ export const ScannerHubPage: React.FC = () => {
   const [confirmDisable, setConfirmDisable] = useState(false);
   const [revokingId, setRevokingId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [previewScan, setPreviewScan] = useState<ScanLookupResult | null>(null);
 
   // Drives the pairing countdown. A second is the coarsest tick that still
   // reads as counting down.
@@ -50,7 +58,7 @@ export const ScannerHubPage: React.FC = () => {
   const recentScans = useRecentScans();
   const scanner = useScannerLookup({
     onScanRecorded: recentScans.add,
-    onFound: (result) => { if (result.product) navigate(`/products?focus=${result.product.id}`); },
+    onFound: (result) => setPreviewScan(previewForDeskScan(result)),
   });
 
   // The hub is the one place that shows phone scans as they happen, so polling
@@ -163,5 +171,13 @@ export const ScannerHubPage: React.FC = () => {
         </div>
       </div>
     </Modal>
+
+    <ProductPreviewModal
+      productId={previewScan?.product?.id ?? null}
+      alsoMatchedSku={previewScan?.alsoMatchedSku}
+      onClose={() => setPreviewScan(null)}
+      onOpenProduct={(id) => navigate(`/products?focus=${id}`)}
+      onMakeOrder={(id) => navigate('/sales-orders', { state: scannerOrderRouteState(id) })}
+    />
   </div>;
 };

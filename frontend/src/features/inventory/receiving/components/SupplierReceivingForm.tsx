@@ -66,7 +66,9 @@ export const SupplierReceivingForm: React.FC = () => {
   const [values, setValues] = useState<ReceivingFormValues>({ supplierId: '', referenceNumber: '', receivedOn: localToday(), note: '', items: [newLine()] });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [serverError, setServerError] = useState('');
-  const suppliers = useSuppliers({ isActive: true, pageSize: 100, sortBy: 'name' });
+  const [supplierSearch, setSupplierSearch] = useState('');
+  const [selectedSupplierName, setSelectedSupplierName] = useState('');
+  const suppliers = useSuppliers({ search: supplierSearch || undefined, isActive: true, pageSize: 10, sortBy: 'name' });
   const create = useCreateSupplierReceiving();
   const duplicate = useSupplierReceivingDuplicate(values.supplierId, values.referenceNumber);
 
@@ -86,12 +88,22 @@ export const SupplierReceivingForm: React.FC = () => {
 
   return <form onSubmit={submit} className="space-y-5">
     <section className="grid gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm md:grid-cols-2">
-      <label className="text-sm font-semibold">Supplier (optional) / المورد (اختياري)
-        <select aria-label="Supplier (optional) / المورد (اختياري)" value={values.supplierId} onChange={(event) => setValues({ ...values, supplierId: event.target.value })} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5">
-          <option value="">No supplier / بدون مورّد</option>
-          {suppliers.data?.items.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.name}</option>)}
-        </select>
-      </label>
+      <div className="text-sm font-semibold">Supplier (optional) / المورد (اختياري)
+        <input
+          aria-label="Search supplier / البحث عن مورد"
+          value={supplierSearch}
+          onChange={(event) => setSupplierSearch(event.target.value)}
+          placeholder="Search supplier / البحث عن مورد"
+          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5"
+        />
+        {values.supplierId && <div className="mt-2 flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2"><span className="user-text" dir="auto">{selectedSupplierName}</span><button type="button" onClick={() => { setValues({ ...values, supplierId: '' }); setSelectedSupplierName(''); }} className="text-xs font-semibold text-emerald-800">Clear / مسح</button></div>}
+        <div className="mt-2 max-h-40 divide-y divide-slate-100 overflow-y-auto rounded-lg border border-slate-200">
+          <button type="button" onClick={() => { setValues({ ...values, supplierId: '' }); setSelectedSupplierName(''); }} className="block w-full px-3 py-2 text-left text-sm font-normal hover:bg-slate-50">No supplier / بدون مورّد</button>
+          {suppliers.data?.items.map((supplier) => <button key={supplier.id} type="button" onClick={() => { setValues({ ...values, supplierId: supplier.id }); setSelectedSupplierName(supplier.name); setSupplierSearch(''); }} className="user-text block w-full px-3 py-2 text-left text-sm font-normal hover:bg-emerald-50" dir="auto">{supplier.name}</button>)}
+          {suppliers.isLoading && <p className="px-3 py-2 text-xs font-normal text-slate-500">Loading suppliers… / جارٍ تحميل الموردين…</p>}
+          {!suppliers.isLoading && !suppliers.data?.items.length && <p className="px-3 py-2 text-xs font-normal text-slate-500">No suppliers match / لا يوجد موردون مطابقون</p>}
+        </div>
+      </div>
       <label className="text-sm font-semibold">Reference number (optional) / رقم المرجع (اختياري)
         <input value={values.referenceNumber} onChange={(event) => setValues({ ...values, referenceNumber: event.target.value })} maxLength={200} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5" />
       </label>

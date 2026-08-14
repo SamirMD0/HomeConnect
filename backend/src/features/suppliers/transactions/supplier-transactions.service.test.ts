@@ -14,6 +14,8 @@ const { repository, suppliersRepository, auditMock, verifyAdminPasswordMock } = 
     create: vi.fn(),
     update: vi.fn(),
     findById: vi.fn(),
+    findReceiving: vi.fn(),
+    findByReceivingId: vi.fn(),
     list: vi.fn(),
     supplierCount: vi.fn(),
   },
@@ -108,7 +110,7 @@ describe('SupplierTransactionsService', () => {
     description: 'Air conditioners received',
     reference: null,
     notes: null,
-  } as never;
+  };
 
   it('rejects a transaction for an archived supplier', async () => {
     suppliersRepository.findById.mockResolvedValue({ id: supplierId, isActive: false });
@@ -118,6 +120,29 @@ describe('SupplierTransactionsService', () => {
     ).rejects.toMatchObject({ statusCode: 409, code: 'SUPPLIER_ARCHIVED' });
 
     expect(repository.create).not.toHaveBeenCalled();
+  });
+
+  it('links a matching supplier receiving to a new debt without writing inventory', async () => {
+    const receivingId = '44444444-4444-4444-8444-444444444444';
+    suppliersRepository.findById.mockResolvedValue({ id: supplierId, isActive: true });
+    repository.findReceiving.mockResolvedValue({ id: receivingId, supplierId });
+    repository.findByReceivingId.mockResolvedValue(null);
+    repository.create.mockResolvedValue(makeTransaction({ supplierReceivingId: receivingId, supplierReceiving: null }));
+
+    await SupplierTransactionsService.create(supplierId, { ...createInput, supplierReceivingId: receivingId } as never, admin, context);
+
+    expect(repository.create).toHaveBeenCalledWith(expect.objectContaining({ supplierId, supplierReceivingId: receivingId }), tx);
+  });
+
+  it('rejects a receiving owned by another supplier and an already-linked receiving', async () => {
+    const receivingId = '44444444-4444-4444-8444-444444444444';
+    suppliersRepository.findById.mockResolvedValue({ id: supplierId, isActive: true });
+    repository.findReceiving.mockResolvedValue({ id: receivingId, supplierId: '55555555-5555-4555-8555-555555555555' });
+    await expect(SupplierTransactionsService.create(supplierId, { ...createInput, supplierReceivingId: receivingId } as never, admin, context)).rejects.toThrow(/different supplier/);
+
+    repository.findReceiving.mockResolvedValue({ id: receivingId, supplierId });
+    repository.findByReceivingId.mockResolvedValue({ id: transactionId });
+    await expect(SupplierTransactionsService.create(supplierId, { ...createInput, supplierReceivingId: receivingId } as never, admin, context)).rejects.toMatchObject({ code: 'RECEIVING_ALREADY_LINKED' });
   });
 
   it('excludes removed transactions from the active balance', async () => {

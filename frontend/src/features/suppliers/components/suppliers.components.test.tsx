@@ -47,8 +47,16 @@ describe('supplier components', () => {
 
   it('prefills a supplier debt bridge while always leaving amount blank', () => {
     const form = supplierTransactionFormFromPrefill({
-      type: 'SUPPLIER_DEBT', transactionDate: '2026-08-14', reference: 'INV-200', description: 'Supplier receiving INV-200',
+      type: 'SUPPLIER_DEBT', transactionDate: '2026-08-14', reference: 'INV-200', description: 'Supplier receiving INV-200', supplierReceivingId: 'receiving-1',
     });
-    expect(form).toMatchObject({ type: 'SUPPLIER_DEBT', transactionDate: '2026-08-14', reference: 'INV-200', description: 'Supplier receiving INV-200', amount: '' });
+    expect(form).toMatchObject({ type: 'SUPPLIER_DEBT', transactionDate: '2026-08-14', reference: 'INV-200', description: 'Supplier receiving INV-200', supplierReceivingId: 'receiving-1', amount: '' });
+  });
+
+  it('links ledger rows back to their receiving document and products', () => {
+    const linked = { ...transaction, supplierReceivingId: 'receiving-1', supplierReceiving: { id: 'receiving-1', referenceNumber: 'INV-200', receivedOn: '2026-08-14', items: [{ quantity: 2, product: { id: 'product-1', name: 'Coffee grinder', sku: 'HC-1' } }] } };
+    const html = renderToStaticMarkup(<MemoryRouter><SupplierTransactionTable items={[linked]} canMutate onEdit={noop} onRemove={noop} onRestore={noop} /></MemoryRouter>);
+    expect(html).toContain('/inventory/receiving/receiving-1');
+    expect(html).toContain('Receiving: INV-200');
+    expect(html).toContain('Coffee grinder ×2');
   });
 });

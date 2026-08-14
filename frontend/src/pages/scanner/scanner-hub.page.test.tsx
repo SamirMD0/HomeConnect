@@ -4,15 +4,22 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { apiMock, authState } = vi.hoisted(() => ({
+const { apiMock, authState, scannerEventsOptions } = vi.hoisted(() => ({
   apiMock: { get: vi.fn(), post: vi.fn() },
   authState: { user: { id: 'user-1', fullName: 'Master Administrator', role: 'ADMIN' } },
+  scannerEventsOptions: { current: undefined as Record<string, unknown> | undefined },
 }));
 
 vi.mock('../../services/api', () => ({ api: apiMock }));
 vi.mock('../../hooks/useAuth', () => ({ useAuth: () => authState }));
+vi.mock('../../features/scanner/hooks/useScannerEvents', () => ({
+  useScannerEvents: (options: Record<string, unknown>) => {
+    scannerEventsOptions.current = options;
+    return { isPolling: true, isError: false };
+  },
+}));
 
-import { ScannerHubPage } from './ScannerHubPage';
+import { previewForDeskScan, scannerOrderRouteState, ScannerHubPage } from './ScannerHubPage';
 
 /**
  * A static render, because this project has no jsdom: it proves the page
@@ -79,5 +86,27 @@ describe('ScannerHubPage', () => {
   it('issues no request during render', () => {
     render(<ScannerHubPage />);
     expect(apiMock.post).not.toHaveBeenCalled();
+  });
+
+  it('opens previews only for a found desk scan', () => {
+    const product = { id: 'p1', name: 'Fan', model: 'F1', sku: 'HC-1', barcode: null, brand: null, isActive: true };
+    const found = { status: 'FOUND', normalizedCode: 'HC-1', matchedBy: 'SKU', product } as const;
+    expect(previewForDeskScan(found)).toBe(found);
+    expect(previewForDeskScan({ status: 'NOT_FOUND', normalizedCode: 'NONE', matchedBy: null, product: null })).toBeNull();
+    expect(previewForDeskScan({ status: 'INVALID_CODE', normalizedCode: null, matchedBy: null, product: null })).toBeNull();
+  });
+
+  it('never lets a phone scan open or replace the desk preview', () => {
+    render(<ScannerHubPage />);
+    expect(scannerEventsOptions.current).toMatchObject({ enabled: true, canOpenProduct: false });
+    expect(scannerEventsOptions.current).not.toHaveProperty('onOpenProduct');
+  });
+
+  it('passes product identity only when Make Order navigates', () => {
+    const state = scannerOrderRouteState('product-1');
+    expect(state).toEqual({ prefillOrderProductId: 'product-1' });
+    expect(Object.keys(state)).toEqual(['prefillOrderProductId']);
+    expect(state).not.toHaveProperty('price');
+    expect(state).not.toHaveProperty('quantity');
   });
 });

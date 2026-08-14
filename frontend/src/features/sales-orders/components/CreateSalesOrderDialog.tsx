@@ -1,20 +1,28 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, ChevronLeft, ChevronRight, Phone, Save, ShoppingBag, Truck } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button, Card, FormField, Input, Modal, Select, Textarea } from '../../../components/ui';
 import { CustomerPicker } from '../../customers/components/CustomerPicker';
 import { useCustomer } from '../../customers/hooks/useCustomers';
 import { formatMoney } from '../../customer-financial/utils/financial-format';
+import { useProduct } from '../../products/hooks/useProducts';
+import type { Product } from '../../products/types/product.types';
 import { useCreateSalesOrder } from '../hooks/useSalesOrders';
 import type { CreateSalesOrderInput, SalesChannel, SalesOrderLineInput } from '../types/sales-orders.types';
 import { SALES_CHANNEL_LABELS } from '../utils/sales-order-labels';
 import { emptySalesLine, SalesOrderItemsEditor } from './SalesOrderItemsEditor';
+import { salesLineForProduct } from './ProductLinePicker';
 import { useAuth } from '../../../hooks/useAuth';
 
 type PaymentMode = 'FULL' | 'PARTIAL' | 'UNPAID';
 const today = () => { const date = new Date(); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; };
 
-export function CreateSalesOrderDialog({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+export interface SalesOrderPrefill { productId: string }
+
+export const salesOrderLineFromPrefill = (product: Product): SalesOrderLineInput =>
+  salesLineForProduct({ ...emptySalesLine(), quantity: 1 }, product);
+
+export function CreateSalesOrderDialog({ isOpen, onClose, prefill = null }: { isOpen: boolean; onClose: () => void; prefill?: SalesOrderPrefill | null }) {
   const { user } = useAuth();
   const create = useCreateSalesOrder();
   const [step, setStep] = useState(0);
@@ -29,14 +37,23 @@ export function CreateSalesOrderDialog({ isOpen, onClose }: { isOpen: boolean; o
   const [deliveryFee, setDeliveryFee] = useState('0.00');
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [deliveryNotes, setDeliveryNotes] = useState('');
+  const prefillProduct = useProduct(isOpen ? prefill?.productId ?? '' : '');
+  const appliedPrefillId = useRef<string | null>(null);
   const total = useMemo(() => calculatePreview(items, channel === 'SHOP_DIRECT' ? '0.00' : deliveryFee), [items, channel, deliveryFee]);
   const paidAmount = paymentMode === 'FULL' ? total : paymentMode === 'UNPAID' ? '0.00' : normalizeMoney(partialAmount);
   const remaining = subtractPreview(total, paidAmount);
   const customerOptional = user?.role === 'ADMIN' && paymentMode === 'FULL';
   useEffect(() => { if (customer.data?.address && !deliveryAddress) setDeliveryAddress(customer.data.address); }, [customer.data?.address, deliveryAddress]);
+  useEffect(() => {
+    if (!isOpen) { appliedPrefillId.current = null; return; }
+    if (!prefill?.productId || !prefillProduct.data || appliedPrefillId.current === prefill.productId) return;
+    setItems([salesOrderLineFromPrefill(prefillProduct.data)]);
+    setStep(0);
+    appliedPrefillId.current = prefill.productId;
+  }, [isOpen, prefill?.productId, prefillProduct.data]);
 
   const reset = () => { setStep(0); setCustomerId(''); setChannel('SHOP_DIRECT'); setItems([emptySalesLine()]); setPaymentMode('FULL'); setPartialAmount('0.00'); setDebtDueDate(''); setDeliveryDate(''); setDeliveryFee('0.00'); setDeliveryAddress(''); setDeliveryNotes(''); };
-  const close = () => { reset(); onClose(); };
+  const close = () => { reset(); appliedPrefillId.current = null; onClose(); };
   const next = () => {
     if (step === 0 && paymentMode !== 'FULL' && !debtDueDate) return toast.error('Enter the debt due date');
     if (step === 1 && !customerId && !customerOptional) return toast.error('Choose a customer');
@@ -63,6 +80,8 @@ export function CreateSalesOrderDialog({ isOpen, onClose }: { isOpen: boolean; o
   const footer = <div className="flex w-full items-center justify-between gap-3"><div><p className="text-xs text-slate-500">Total / الإجمالي</p><p className="font-bold tabular-nums text-slate-900">{formatMoney(total)} <span className="ml-2 text-sm font-medium text-slate-500">Remaining {formatMoney(remaining)}</span></p></div><div className="flex gap-2">{step > 0 && <Button variant="secondary" icon={<ChevronLeft />} onClick={back}>Back</Button>}{step < 5 ? <Button icon={<ChevronRight />} iconPosition="right" onClick={next}>Next</Button> : <><Button variant="secondary" icon={<Save />} isLoading={create.isPending} onClick={() => submit('DRAFT')}>Save draft</Button><Button icon={<Check />} isLoading={create.isPending} onClick={() => submit(channel === 'SHOP_DIRECT' ? 'DELIVERED' : 'CONFIRMED')}>Confirm order</Button></>}</div></div>;
 
   return <Modal isOpen={isOpen} onClose={close} title="Create Sales Order / إنشاء طلب بيع" description={`Step ${step + 1} of 6`} size="xl" footer={footer}>
+    {prefill?.productId && prefillProduct.isLoading && <p role="status" className="mb-4 rounded-lg bg-slate-50 p-3 text-sm text-slate-600">Loading scanned product / جارٍ تحميل المنتج الممسوح…</p>}
+    {prefill?.productId && prefillProduct.isError && <div role="alert" className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800"><span>Unable to load scanned product / تعذر تحميل المنتج الممسوح</span><Button size="sm" variant="secondary" onClick={() => prefillProduct.refetch()}>Retry / إعادة المحاولة</Button></div>}
     {step === 0 && <div className="space-y-4"><FormField label="Payment / الدفع">{(field) => <Select {...field} value={paymentMode} onChange={(event) => setPaymentMode(event.target.value as PaymentMode)}><option value="FULL">Paid in full / مدفوع بالكامل</option><option value="PARTIAL">Partial / جزئي</option><option value="UNPAID">Unpaid / غير مدفوع</option></Select>}</FormField>{paymentMode === 'PARTIAL' && <FormField label="Paid amount / المبلغ المدفوع" required>{(field) => <Input {...field} numeric value={partialAmount} onChange={(event) => setPartialAmount(event.target.value)} />}</FormField>}{paymentMode !== 'FULL' && <FormField label="Debt due date / تاريخ استحقاق الدين" required hint="This authorises creation of a debt for the remaining balance.">{(field) => <Input {...field} type="date" min={today()} value={debtDueDate} onChange={(event) => setDebtDueDate(event.target.value)} />}</FormField>}</div>}
     {step === 1 && <div className="space-y-3">{customerOptional && <p className="text-sm text-slate-500">Customer is optional for an admin-recorded fully paid sale / الزبون اختياري للبيع المدفوع بالكامل</p>}<CustomerPicker value={customerId} onChange={setCustomerId} /></div>}
     {step === 2 && <div className="grid gap-3 sm:grid-cols-3">{([['SHOP_DIRECT', <ShoppingBag />], ['SHOP_DELIVERY', <Truck />], ['PHONE_ORDER', <Phone />]] as const).map(([value, icon]) => <Card key={value} variant="interactive" role="button" tabIndex={0} onClick={() => setChannel(value)} className={channel === value ? 'border-brand-500 ring-2 ring-brand-500/20' : ''}><div className="mb-3 text-brand-600 [&>svg]:h-6 [&>svg]:w-6">{icon}</div><p className="font-semibold">{SALES_CHANNEL_LABELS[value]}</p></Card>)}</div>}

@@ -8,6 +8,12 @@ export const supplierTransactionInclude = {
   createdBy: { select: { id: true, fullName: true, username: true } },
   updatedBy: { select: { id: true, fullName: true, username: true } },
   removedBy: { select: { id: true, fullName: true, username: true } },
+  supplierReceiving: {
+    select: {
+      id: true, referenceNumber: true, receivedOn: true,
+      items: { select: { quantity: true, product: { select: { id: true, name: true, sku: true } } }, orderBy: [{ createdAt: 'asc' as const }, { id: 'asc' as const }] },
+    },
+  },
 } satisfies Prisma.SupplierTransactionInclude;
 
 export interface SupplierSearchMatch {
@@ -48,6 +54,12 @@ export function supplierTransactionWhere(
 export class SupplierTransactionsRepository {
   static findById(id: string, tx?: Prisma.TransactionClient) { return (tx ?? prisma).supplierTransaction.findUnique({ where: { id }, include: supplierTransactionInclude }); }
   static create(data: Prisma.SupplierTransactionUncheckedCreateInput, tx: Prisma.TransactionClient) { return tx.supplierTransaction.create({ data, include: supplierTransactionInclude }); }
+  static findReceiving(id: string, tx: Prisma.TransactionClient) {
+    return tx.supplierReceiving.findUnique({ where: { id }, select: { id: true, supplierId: true } });
+  }
+  static findByReceivingId(supplierReceivingId: string, tx: Prisma.TransactionClient) {
+    return tx.supplierTransaction.findUnique({ where: { supplierReceivingId }, select: { id: true } });
+  }
   static update(id: string, data: Prisma.SupplierTransactionUncheckedUpdateInput, tx: Prisma.TransactionClient) { return tx.supplierTransaction.update({ where: { id }, data, include: supplierTransactionInclude }); }
   static async list(query: SupplierLedgerQueryInput, supplierId?: string) {
     const searchMatch = await resolveSupplierSearch(query.search);

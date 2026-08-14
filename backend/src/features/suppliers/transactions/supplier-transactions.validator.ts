@@ -4,6 +4,7 @@ import { compareBusinessDates, parseBusinessDate, todayInBusinessTimezone } from
 import { userTextSchema } from '../../../validators/user-text';
 import { resolveSupplierDirection } from '../domain/supplier-domain';
 import { isPositiveMoney } from '../../financial/domain/money';
+import { databaseUuidSchema } from '../../../validators/database-uuid';
 
 const emptyToNull = (value: unknown) => typeof value === 'string' && value.trim() === '' ? null : value;
 const optionalText = (field: string, max: number) => z.preprocess(emptyToNull, userTextSchema({ field, max }).optional().nullable());
@@ -28,6 +29,7 @@ const values = {
   type: z.nativeEnum(SupplierTransactionType), direction: z.nativeEnum(SupplierTransactionDirection).optional(),
   amount, transactionDate: date, description: userTextSchema({ field: 'Description', min: 3, max: 500 }),
   reference: optionalText('Reference', 200), notes: optionalText('Notes', 2000),
+  supplierReceivingId: databaseUuidSchema().nullable().optional(),
 };
 const directionCheck = (v: { type?: SupplierTransactionType; direction?: SupplierTransactionDirection }, ctx: z.RefinementCtx) => {
   if (!v.type) return;

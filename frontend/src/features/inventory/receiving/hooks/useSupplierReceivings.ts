@@ -12,8 +12,8 @@ export const supplierReceivingKeys = {
   duplicate: (supplierId: string, referenceNumber: string) => [...supplierReceivingKeys.all, 'duplicate', supplierId, referenceNumber] as const,
 };
 
-export const useSupplierReceivings = (filters: SupplierReceivingFilters = {}) => useQuery({
-  queryKey: supplierReceivingKeys.list(filters), queryFn: () => supplierReceivingsApi.list(filters),
+export const useSupplierReceivings = (filters: SupplierReceivingFilters = {}, enabled = true) => useQuery({
+  queryKey: supplierReceivingKeys.list(filters), queryFn: () => supplierReceivingsApi.list(filters), enabled,
 });
 export const useSupplierReceiving = (id: string) => useQuery({
   queryKey: supplierReceivingKeys.detail(id), queryFn: () => supplierReceivingsApi.get(id), enabled: Boolean(id),

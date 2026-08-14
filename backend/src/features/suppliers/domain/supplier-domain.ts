@@ -36,7 +36,8 @@ export function supplierSnapshot(supplier: Supplier): Prisma.InputJsonObject {
 
 export function supplierTransactionSnapshot(transaction: SupplierTransaction): Prisma.InputJsonObject {
   return {
-    supplierId: transaction.supplierId, type: transaction.type, direction: transaction.direction,
+    supplierId: transaction.supplierId, supplierReceivingId: transaction.supplierReceivingId,
+    type: transaction.type, direction: transaction.direction,
     amount: moneyToApiString(transaction.amount),
     transactionDate: transaction.transactionDate.toISOString().slice(0, 10),
     description: transaction.description, reference: transaction.reference, notes: transaction.notes,

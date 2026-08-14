@@ -134,12 +134,21 @@ describe('supplier receiving frontend', () => {
     receivingHooks.detail.mockReturnValueOnce({ data: linkedReceiving, isLoading: false, isError: false });
     const html = renderToStaticMarkup(<MemoryRouter initialEntries={[`/inventory/receiving/${receiving.id}`]}><Routes><Route path="/inventory/receiving/:receivingId" element={<SupplierReceivingDetailPage />} /></Routes></MemoryRouter>);
     expect(html).toContain('Record supplier debt / تسجيل دين للمورد');
-    expect(supplierDebtPrefillForReceiving(linkedReceiving)).toEqual({ type: 'SUPPLIER_DEBT', transactionDate: '2026-08-14', reference: 'INV-200', description: 'Supplier receiving INV-200' });
+    expect(supplierDebtPrefillForReceiving(linkedReceiving)).toEqual({ type: 'SUPPLIER_DEBT', transactionDate: '2026-08-14', reference: 'INV-200', description: 'Supplier receiving INV-200', supplierReceivingId: receiving.id });
     expect(supplierDebtPrefillForReceiving(linkedReceiving)).not.toHaveProperty('amount');
 
     authState.role = 'EMPLOYEE';
     receivingHooks.detail.mockReturnValueOnce({ data: linkedReceiving, isLoading: false, isError: false });
     expect(renderToStaticMarkup(<MemoryRouter initialEntries={[`/inventory/receiving/${receiving.id}`]}><Routes><Route path="/inventory/receiving/:receivingId" element={<SupplierReceivingDetailPage />} /></Routes></MemoryRouter>)).not.toContain('Record supplier debt');
+  });
+
+  it('shows the linked-debt route instead of offering a duplicate bridge', () => {
+    const linkedReceiving = { ...receiving, supplierId: 'supplier-1', supplier: { id: 'supplier-1', name: 'Supplier One', isActive: true }, transactions: [{ id: 'transaction-1', type: 'SUPPLIER_DEBT', status: 'ACTIVE', amount: '25.00' }] };
+    receivingHooks.detail.mockReturnValueOnce({ data: linkedReceiving, isLoading: false, isError: false });
+    const html = renderToStaticMarkup(<MemoryRouter initialEntries={[`/inventory/receiving/${receiving.id}`]}><Routes><Route path="/inventory/receiving/:receivingId" element={<SupplierReceivingDetailPage />} /></Routes></MemoryRouter>);
+    expect(html).toContain('View linked supplier debt');
+    expect(html).toContain('/suppliers/supplier-1');
+    expect(html).not.toContain('Record supplier debt');
   });
 
   it('calls list, detail, create, and warning-only duplicate APIs', async () => {

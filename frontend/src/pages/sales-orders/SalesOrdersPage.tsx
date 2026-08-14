@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { AlertCircle, Plus, ShoppingCart } from 'lucide-react';
-import { useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button, EmptyState, PageHeader, Pagination, SkeletonTable } from '../../components/ui';
-import { CreateSalesOrderDialog } from '../../features/sales-orders/components/CreateSalesOrderDialog';
+import { CreateSalesOrderDialog, type SalesOrderPrefill } from '../../features/sales-orders/components/CreateSalesOrderDialog';
 import { SalesOrderDateNavigator } from '../../features/sales-orders/components/SalesOrderDateNavigator';
 import { SalesOrderFilters } from '../../features/sales-orders/components/SalesOrderFilters';
 import { SalesOrderSummaryCards } from '../../features/sales-orders/components/SalesOrderSummaryCards';
@@ -21,8 +21,20 @@ import {
 const MODES: SalesDateMode[] = ['day', 'month', 'all'];
 
 export function SalesOrdersPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
-  const [createOpen, setCreateOpen] = useState(params.get('action') === 'add');
+  const routePrefill = salesOrderPrefillFromRouteState(location.state);
+  const routePrefillProductId = routePrefill?.productId ?? null;
+  const [createOpen, setCreateOpen] = useState(params.get('action') === 'add' || Boolean(routePrefill));
+  const [orderPrefill, setOrderPrefill] = useState<SalesOrderPrefill | null>(routePrefill);
+
+  useEffect(() => {
+    if (!routePrefillProductId) return;
+    setOrderPrefill({ productId: routePrefillProductId });
+    setCreateOpen(true);
+    navigate({ pathname: location.pathname, search: location.search }, { replace: true, state: null });
+  }, [location.pathname, location.search, navigate, routePrefillProductId]);
 
   // Opens on today, because that is the day the shop is working in.
   const modeParam = params.get('mode');
@@ -64,12 +76,18 @@ export function SalesOrdersPage() {
   });
 
   return <div className="space-y-5">
-    <PageHeader title={{ en: 'Sales Orders', ar: 'طلبات البيع' }} description="Record shop and phone sales with fulfillment and ledger integration." icon={<ShoppingCart />} actions={<Button icon={<Plus />} onClick={() => setCreateOpen(true)}>Add Order / إضافة طلب</Button>} />
+    <PageHeader title={{ en: 'Sales Orders', ar: 'طلبات البيع' }} description="Record shop and phone sales with fulfillment and ledger integration." icon={<ShoppingCart />} actions={<Button icon={<Plus />} onClick={() => { setOrderPrefill(null); setCreateOpen(true); }}>Add Order / إضافة طلب</Button>} />
     <SalesOrderDateNavigator range={range} onAnchorChange={(anchor) => setParam('date', anchor)} onModeChange={(value) => setParam('mode', value)} />
     <SalesOrderSummaryCards data={summary.data} loading={summary.isLoading} period={period} />
     {filters.awaitingStockDeduction && <div className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900"><span>Showing orders awaiting stock deduction / عرض الطلبات التي تنتظر إخراج المخزون</span><Button size="sm" variant="ghost" onClick={() => update('awaitingStockDeduction', '')}>Clear / مسح</Button></div>}
     <SalesOrderFilters filters={filters} onChange={update} onReset={reset} />
     {orders.isLoading ? <SkeletonTable rows={6} columns={7} className="rounded-xl border border-slate-200 bg-white" /> : orders.isError ? <div role="alert" className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"><AlertCircle className="h-4 w-4" />Unable to load sales orders. <Button variant="link" onClick={() => orders.refetch()}>Retry</Button></div> : orders.data?.items.length ? <><SalesOrdersTable orders={orders.data.items} /><Pagination currentPage={filters.page ?? 1} totalPages={orders.data.pagination.totalPages} onPageChange={(page) => update('page', String(page))} /></> : <EmptyState title="No sales orders / لا توجد طلبات بيع" description={range.mode === 'all' ? 'Create the first order or adjust the filters.' : 'Nothing recorded here. Step back a day, or switch to All.'} action={<Button icon={<Plus />} onClick={() => setCreateOpen(true)}>Add Order / إضافة طلب</Button>} />}
-    <CreateSalesOrderDialog isOpen={createOpen} onClose={() => setCreateOpen(false)} />
+    <CreateSalesOrderDialog isOpen={createOpen} prefill={orderPrefill} onClose={() => { setCreateOpen(false); setOrderPrefill(null); }} />
   </div>;
+}
+
+export function salesOrderPrefillFromRouteState(state: unknown): SalesOrderPrefill | null {
+  if (!state || typeof state !== 'object') return null;
+  const productId = (state as { prefillOrderProductId?: unknown }).prefillOrderProductId;
+  return typeof productId === 'string' && productId.trim() ? { productId } : null;
 }
