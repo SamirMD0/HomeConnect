@@ -2,6 +2,11 @@ import path from 'path';
 import { describe, expect, it } from 'vitest';
 import { buildBackendEnvironment, buildBackendSpawnConfig, redactLogChunk, pipeChildOutput } from './backend-process';
 
+const comparablePath = (value: string) => {
+  const resolved = path.resolve(value);
+  return process.platform === 'win32' ? resolved.toLowerCase() : resolved;
+};
+
 describe('Electron backend process configuration', () => {
   it('uses localhost-only runtime configuration and credentialed CORS origins', () => {
     const env = buildBackendEnvironment('C:/Users/User/AppData/Roaming/HomeConnect');
@@ -16,12 +21,20 @@ describe('Electron backend process configuration', () => {
 
   it('places writable config and logs under Electron userData', () => {
     const userData = 'C:/Users/User/AppData/Roaming/HomeConnect';
-    const env = buildBackendEnvironment(userData);
+    const originalBackendEnvFile = process.env.BACKEND_ENV_FILE;
+    delete process.env.BACKEND_ENV_FILE;
 
-    expect(env.HOME_CONNECT_USER_DATA).toBe(userData);
-    expect(env.HOME_CONNECT_CONFIG_DIR).toBe(path.join(userData, 'config'));
-    expect(env.LOG_DIR).toBe(path.join(userData, 'logs'));
-    expect(env.BACKEND_ENV_FILE).toBe(path.join(userData, 'config', 'production.env'));
+    try {
+      const env = buildBackendEnvironment(userData);
+
+      expect(comparablePath(env.HOME_CONNECT_USER_DATA!)).toBe(comparablePath(userData));
+      expect(comparablePath(env.HOME_CONNECT_CONFIG_DIR!)).toBe(comparablePath(path.join(userData, 'config')));
+      expect(comparablePath(env.LOG_DIR!)).toBe(comparablePath(path.join(userData, 'logs')));
+      expect(comparablePath(env.BACKEND_ENV_FILE!)).toBe(comparablePath(path.join(userData, 'config', 'production.env')));
+    } finally {
+      if (originalBackendEnvFile === undefined) delete process.env.BACKEND_ENV_FILE;
+      else process.env.BACKEND_ENV_FILE = originalBackendEnvFile;
+    }
   });
 
   it('builds backend spawn arguments without shell execution', () => {
