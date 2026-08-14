@@ -29,6 +29,9 @@ import { PricingPresetsPage } from './pages/pricing/PricingPresetsPage';
 import { SalesOrdersPage } from './pages/sales-orders/SalesOrdersPage';
 import { SalesOrderDetailsPage } from './pages/sales-orders/SalesOrderDetailsPage';
 import { InventoryPage } from './pages/inventory/InventoryPage';
+import { SupplierReceivingListPage } from './features/inventory/receiving/pages/SupplierReceivingListPage';
+import { NewSupplierReceivingPage } from './features/inventory/receiving/pages/NewSupplierReceivingPage';
+import { SupplierReceivingDetailPage } from './features/inventory/receiving/pages/SupplierReceivingDetailPage';
 
 const queryClient = new QueryClient();
 
@@ -66,6 +69,9 @@ const App: React.FC = () => {
               <Route path="sales-orders/:id" element={<SalesOrderDetailsPage />} />
               <Route path="products" element={<ProductsPage />} />
               <Route path="inventory" element={<InventoryPage />} />
+              <Route path="inventory/receiving" element={<SupplierReceivingListPage />} />
+              <Route path="inventory/receiving/new" element={<NewSupplierReceivingPage />} />
+              <Route path="inventory/receiving/:receivingId" element={<SupplierReceivingDetailPage />} />
               <Route path="scanner" element={<ScannerHubPage />} />
               <Route path="pricing-presets" element={<PricingPresetsPage />} />
               <Route path="products/labels" element={<ProductLabelsPage />} />

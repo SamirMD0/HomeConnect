@@ -32,6 +32,14 @@ export interface StockMovement {
   product?: Pick<Product, 'id' | 'sku' | 'name' | 'trackStock' | 'stockQuantity'>;
   salesFulfillmentMovement?: { salesOrder: { id: string; orderNumber: string } } | null;
   salesFulfillmentReversalMovement?: { salesOrder: { id: string; orderNumber: string } } | null;
+  receivingMetadata?: {
+    receivingId: string;
+    receivingItemId: string;
+    supplierId: string | null;
+    supplierName: string | null;
+    referenceNumber: string | null;
+    receivedOn: string;
+  } | null;
 }
 
 export interface ProductInventory {

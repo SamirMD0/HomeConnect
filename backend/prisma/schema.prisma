@@ -351,6 +351,7 @@ model User {
   stockMovements              StockMovement[]             @relation("StockMovementCreatedBy")
   salesStockFulfillmentsCreated  SalesOrderStockFulfillment[] @relation("FulfillmentCreatedBy")
   salesStockFulfillmentsReversed SalesOrderStockFulfillment[] @relation("FulfillmentReversedBy")
+  supplierReceivingsReceived     SupplierReceiving[]          @relation("SupplierReceivingReceivedBy")
 
   @@map("users")
 }
@@ -680,6 +681,7 @@ model Product {
   prepaidPurchases PrepaidPurchase[]
   stockMovements   StockMovement[]
   salesStockFulfillments SalesOrderStockFulfillment[]
+  supplierReceivingItems SupplierReceivingItem[]
   image            ProductImage?
 
   @@index([name])
@@ -709,6 +711,7 @@ model StockMovement {
 
   salesFulfillmentMovement         SalesOrderStockFulfillment? @relation("FulfillmentMovement")
   salesFulfillmentReversalMovement SalesOrderStockFulfillment? @relation("FulfillmentReversalMovement")
+  supplierReceivingItem            SupplierReceivingItem?      @relation("ReceivingMovement")
 
   @@index([productId, createdAt])
   @@index([movementType, createdAt])
@@ -1016,12 +1019,48 @@ model Supplier {
 
   transactions SupplierTransaction[]
   audits       SupplierAudit[]
+  receivings   SupplierReceiving[]
 
   @@index([name])
   @@index([phone])
   @@index([companyName])
   @@index([isActive])
   @@map("suppliers")
+}
+
+model SupplierReceiving {
+  id              String    @id @default(uuid()) @db.Uuid
+  supplierId      String?   @db.Uuid
+  supplier        Supplier? @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  referenceNumber String?
+  note            String?   @db.Text
+  receivedOn      DateTime  @db.Date
+  receivedById    String    @db.Uuid
+  receivedBy      User      @relation("SupplierReceivingReceivedBy", fields: [receivedById], references: [id], onDelete: Restrict)
+  createdAt       DateTime  @default(now())
+
+  items SupplierReceivingItem[]
+
+  @@index([supplierId, receivedOn])
+  @@index([receivedOn])
+  @@index([receivedById])
+  @@map("supplier_receivings")
+}
+
+model SupplierReceivingItem {
+  id              String            @id @default(uuid()) @db.Uuid
+  receivingId     String            @db.Uuid
+  receiving       SupplierReceiving @relation(fields: [receivingId], references: [id], onDelete: Restrict)
+  productId       String            @db.Uuid
+  product         Product           @relation(fields: [productId], references: [id], onDelete: Restrict)
+  quantity        Int
+  stockMovementId String            @unique @db.Uuid
+  stockMovement   StockMovement     @relation("ReceivingMovement", fields: [stockMovementId], references: [id], onDelete: Restrict)
+  createdAt       DateTime          @default(now())
+
+  @@unique([receivingId, productId])
+  @@index([productId, createdAt])
+  @@map("supplier_receiving_items")
 }
 
 model SupplierTransaction {

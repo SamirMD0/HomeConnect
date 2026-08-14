@@ -101,6 +101,7 @@ export class SuppliersService {
     return runFinancialTransaction(async (tx) => {
       const existing = await requiredSupplier(id, tx);
       await verify(user.userId, input.accountPassword, 'DELETE_SUPPLIER', id, context, tx);
+      if ((await SuppliersRepository.receivingCount(id, tx)) > 0) throw new AppError('Supplier with stock receivings can only be archived / المورد الذي لديه مستندات استلام مخزون يمكن أرشفته فقط', 409, 'SUPPLIER_HAS_RECEIVINGS');
       if ((await SuppliersRepository.transactionCount(id, tx)) > 0) throw new AppError('Supplier with transactions can only be archived', 409, 'SUPPLIER_HAS_TRANSACTIONS');
       const actor = await loadActor(user.userId, tx);
       await SuppliersRepository.deleteAudits(id, tx);

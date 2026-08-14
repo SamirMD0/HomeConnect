@@ -5,6 +5,7 @@ const tx = { id: 'tx', user: { findUnique: vi.fn() } };
 const { repository, auditMock, verifyAdminPasswordMock } = vi.hoisted(() => ({
   repository: {
     findById: vi.fn(),
+    receivingCount: vi.fn(),
     transactionCount: vi.fn(),
     deleteAudits: vi.fn(),
     delete: vi.fn(),
@@ -49,6 +50,21 @@ describe('SuppliersService.delete', () => {
     tx.user.findUnique.mockResolvedValue({ fullName: 'Admin User', username: 'admin' });
     verifyAdminPasswordMock.mockResolvedValue(undefined);
     repository.findById.mockResolvedValue(supplier);
+    repository.receivingCount.mockResolvedValue(0);
+    repository.transactionCount.mockResolvedValue(0);
+  });
+
+  it('refuses to hard delete a supplier that has stock receivings', async () => {
+    repository.receivingCount.mockResolvedValue(1);
+
+    await expect(SuppliersService.delete(supplierId, deleteInput, admin, context)).rejects.toMatchObject({
+      statusCode: 409,
+      code: 'SUPPLIER_HAS_RECEIVINGS',
+    });
+
+    expect(repository.transactionCount).not.toHaveBeenCalled();
+    expect(repository.delete).not.toHaveBeenCalled();
+    expect(repository.deleteAudits).not.toHaveBeenCalled();
   });
 
   it('refuses to hard delete a supplier that has transactions', async () => {

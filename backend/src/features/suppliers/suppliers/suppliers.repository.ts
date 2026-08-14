@@ -35,6 +35,7 @@ export class SuppliersRepository {
   static create(data: Prisma.SupplierUncheckedCreateInput, tx: Prisma.TransactionClient) { return tx.supplier.create({ data, include: supplierInclude }); }
   static update(id: string, data: Prisma.SupplierUncheckedUpdateInput, tx: Prisma.TransactionClient) { return tx.supplier.update({ where: { id }, data, include: supplierInclude }); }
   static transactionCount(id: string, tx: Prisma.TransactionClient) { return tx.supplierTransaction.count({ where: { supplierId: id } }); }
+  static receivingCount(id: string, tx: Prisma.TransactionClient) { return tx.supplierReceiving.count({ where: { supplierId: id } }); }
   static deleteAudits(id: string, tx: Prisma.TransactionClient) { return tx.supplierAudit.deleteMany({ where: { supplierId: id } }); }
   static delete(id: string, tx: Prisma.TransactionClient) { return tx.supplier.delete({ where: { id } }); }
   static async balances(supplierIds: string[], tx?: Prisma.TransactionClient) {

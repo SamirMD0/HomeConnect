@@ -137,6 +137,25 @@ describe('inventory frontend', () => {
     expect(html).toContain('Search or scan product');
     expect(html).toContain('Low fan');
     expect(html).toContain('Recent stock movements');
+    expect(html).toContain('Receive Stock / إدخال إلى المخزون');
+    expect(html).toContain('/inventory/receiving/new');
+  });
+
+  it('labels purchase receipts clearly in movement history', () => {
+    const html = renderToStaticMarkup(<MovementHistory movements={[{ ...movement, movementType: 'PURCHASE_RECEIPT' }]} />);
+    expect(html).toContain('Supplier Receipt / إدخال من مورد');
+    expect(html).not.toContain('View receiving / عرض مستند الإدخال');
+  });
+
+  it('links purchase receipts to receiving detail when compatibility metadata is available', () => {
+    const html = renderToStaticMarkup(<MemoryRouter><MovementHistory movements={[{
+      ...movement,
+      movementType: 'PURCHASE_RECEIPT',
+      receivingMetadata: { receivingId: 'receiving-1', receivingItemId: 'item-1', supplierId: 'supplier-1', supplierName: 'Supplier One', referenceNumber: 'INV-77', receivedOn: '2026-08-14' },
+    }]} /></MemoryRouter>);
+    expect(html).toContain('/inventory/receiving/receiving-1');
+    expect(html).toContain('Supplier One · INV-77 · 2026-08-14');
+    expect(html).toContain('View receiving / عرض مستند الإدخال');
   });
 
   it('adds the awaiting-deduction dashboard counter and filtered sales-order link', () => {

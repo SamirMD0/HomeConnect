@@ -41,4 +41,12 @@ describe('inventory integrity classification', () => {
     expect(query).toContain('f."status" = \'ACTIVE\'');
     expect(query).not.toMatch(/costPrice|COGS|valuation|profit|margin/i);
   });
+
+  it('guards receiving relation reads behind both new table checks', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, 'inventory.repository.ts'), 'utf8');
+    expect(source).toContain("to_regclass('public.supplier_receivings')");
+    expect(source).toContain("to_regclass('public.supplier_receiving_items')");
+    expect(source).toContain('supplierReceivingTablesExist');
+    expect(source).toContain('movementRelationAvailability');
+  });
 });

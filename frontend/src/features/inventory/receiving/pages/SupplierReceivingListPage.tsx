@@ -1,0 +1,17 @@
+import { ClipboardList, Eye, Plus } from 'lucide-react';
+import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Pagination } from '../../../../components/ui';
+import { useSupplierReceivings } from '../hooks/useSupplierReceivings';
+
+export const SupplierReceivingListPage: React.FC = () => {
+  const [page, setPage] = useState(1);
+  const query = useSupplierReceivings({ page, pageSize: 25 });
+  return <div className="space-y-5">
+    <header className="flex flex-wrap items-end justify-between gap-3"><div><div className="flex items-center gap-2"><ClipboardList className="h-7 w-7 text-emerald-700" /><h1 className="text-2xl font-bold">Stock Receiving / إدخال المخزون</h1></div><p className="mt-1 text-sm text-slate-500">Immutable inventory receiving documents / مستندات إدخال مخزون غير قابلة للتعديل</p></div><Link to="/inventory/receiving/new" className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 font-semibold text-white"><Plus className="h-4 w-4" />New Receiving / إدخال مخزون جديد</Link></header>
+    {query.isLoading ? <p className="rounded-xl border bg-white p-8 text-center text-slate-500">Loading receivings… / جارٍ تحميل مستندات الإدخال…</p> : query.isError ? <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">Unable to load receiving documents / تعذر تحميل مستندات الإدخال</div> : query.data?.items.length ? <>
+      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"><div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-slate-50 text-left text-xs uppercase text-slate-500"><tr><th className="px-4 py-3">Date / التاريخ</th><th className="px-4 py-3">Supplier / المورد</th><th className="px-4 py-3">Reference / المرجع</th><th className="px-4 py-3">Received by / المستلم</th><th className="px-4 py-3">Items / الأصناف</th><th className="px-4 py-3">Created / الإنشاء</th><th className="px-4 py-3"></th></tr></thead><tbody className="divide-y divide-slate-100">{query.data.items.map((receiving) => <tr key={receiving.id}><td className="px-4 py-3 font-semibold">{receiving.receivedOn}</td><td className="user-text px-4 py-3" dir="auto">{receiving.supplier?.name ?? 'No supplier / بدون مورّد'}</td><td className="px-4 py-3">{receiving.referenceNumber || '—'}</td><td className="px-4 py-3">{receiving.receivedBy ? `${receiving.receivedBy.fullName} (${receiving.receivedBy.username})` : '—'}</td><td className="px-4 py-3 tabular-nums">{receiving._count?.items ?? receiving.items?.length ?? 0}</td><td className="px-4 py-3 text-xs text-slate-500">{new Date(receiving.createdAt).toLocaleString()}</td><td className="px-4 py-3"><Link aria-label={`View receiving ${receiving.id}`} to={`/inventory/receiving/${receiving.id}`} className="inline-flex items-center gap-1 font-semibold text-emerald-700 hover:underline"><Eye className="h-4 w-4" />View / عرض</Link></td></tr>)}</tbody></table></div></section>
+      <Pagination currentPage={page} totalPages={query.data.pagination.totalPages} onPageChange={setPage} />
+    </> : <div className="rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center"><ClipboardList className="mx-auto h-9 w-9 text-slate-300" /><p className="mt-3 font-semibold">No receiving documents / لا توجد مستندات إدخال</p><Link to="/inventory/receiving/new" className="mt-3 inline-block font-semibold text-emerald-700">Create the first receiving / أنشئ أول مستند إدخال</Link></div>}
+  </div>;
+};

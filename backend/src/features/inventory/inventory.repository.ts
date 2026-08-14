@@ -18,6 +18,42 @@ const movementInclude = {
   },
 } satisfies Prisma.StockMovementInclude;
 
+const receivingMovementRelation = {
+  select: {
+    id: true,
+    receiving: {
+      select: {
+        id: true,
+        supplierId: true,
+        referenceNumber: true,
+        receivedOn: true,
+        supplier: { select: { id: true, name: true } },
+      },
+    },
+  },
+} satisfies Prisma.SupplierReceivingItemArgs;
+
+const movementIncludeWithReceiving = {
+  ...movementInclude,
+  supplierReceivingItem: receivingMovementRelation,
+} satisfies Prisma.StockMovementInclude;
+
+const legacyMovementIncludeWithReceiving = {
+  ...legacyMovementInclude,
+  supplierReceivingItem: receivingMovementRelation,
+} satisfies Prisma.StockMovementInclude;
+
+interface ReceivingRelationPayload {
+  id: string;
+  receiving: {
+    id: string;
+    supplierId: string | null;
+    referenceNumber: string | null;
+    receivedOn: Date;
+    supplier: { id: string; name: string } | null;
+  };
+}
+
 const inventoryProductSelect = {
   id: true,
   sku: true,
@@ -134,17 +170,18 @@ export class InventoryRepository {
         ? { createdAt: { ...(input.from ? { gte: input.from } : {}), ...(input.to ? { lte: input.to } : {}) } }
         : {}),
     };
+    const receivingTablesExist = await this.supplierReceivingTablesExist();
     const [items, total] = await Promise.all([
       prisma.stockMovement.findMany({
         where,
-        include: movementInclude,
+        include: receivingTablesExist ? movementIncludeWithReceiving : movementInclude,
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),
       prisma.stockMovement.count({ where }),
     ]);
-    return { items, total, page, pageSize };
+    return { items: items.map(serializeMovement), total, page, pageSize };
   }
 
   static async listLowStock(input: LowStockListInput = {}) {
@@ -188,7 +225,7 @@ export class InventoryRepository {
   static async summary() {
     // The packaged app must start on the old schema so Maintenance can take a backup before
     // applying pending migrations. Keep the existing dashboard usable during that short window.
-    const fulfillmentTableExists = await this.salesOrderStockFulfillmentTableExists();
+    const relationAvailability = await this.movementRelationAvailability();
     const [counts, recentMovements, awaitingOrderIds] = await Promise.all([
       prisma.$queryRaw<Array<{
         trackedProducts: bigint;
@@ -209,10 +246,14 @@ export class InventoryRepository {
           (SELECT COUNT(*) FROM "stock_movements" m WHERE m."createdAt" >= date_trunc('day', CURRENT_TIMESTAMP)) AS "movementsToday"
         FROM "products" p
       `),
-      fulfillmentTableExists
-        ? prisma.stockMovement.findMany({ include: movementInclude, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 10 })
-        : prisma.stockMovement.findMany({ include: legacyMovementInclude, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 10 }),
-      fulfillmentTableExists ? this.querySalesOrderIdsAwaitingStockDeduction() : Promise.resolve([]),
+      prisma.stockMovement.findMany({
+        include: relationAvailability.fulfillment
+          ? relationAvailability.receiving ? movementIncludeWithReceiving : movementInclude
+          : relationAvailability.receiving ? legacyMovementIncludeWithReceiving : legacyMovementInclude,
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        take: 10,
+      }),
+      relationAvailability.fulfillment ? this.querySalesOrderIdsAwaitingStockDeduction() : Promise.resolve([]),
     ]);
     const count = counts[0];
     return {
@@ -222,7 +263,7 @@ export class InventoryRepository {
       totalUnits: Number(count?.totalUnits ?? 0),
       movementsToday: Number(count?.movementsToday ?? 0),
       ordersAwaitingStockDeduction: awaitingOrderIds.length,
-      recentMovements,
+      recentMovements: recentMovements.map(serializeMovement),
     };
   }
 
@@ -236,6 +277,29 @@ export class InventoryRepository {
       SELECT to_regclass('public.sales_order_stock_fulfillments') IS NOT NULL AS "exists"
     `);
     return result?.exists ?? false;
+  }
+
+  private static async supplierReceivingTablesExist(): Promise<boolean> {
+    const [result] = await prisma.$queryRaw<Array<{ exists: boolean }>>(Prisma.sql`
+      SELECT
+        to_regclass('public.supplier_receivings') IS NOT NULL
+        AND to_regclass('public.supplier_receiving_items') IS NOT NULL AS "exists"
+    `);
+    return result?.exists ?? false;
+  }
+
+  private static async movementRelationAvailability(): Promise<{ fulfillment: boolean; receiving: boolean }> {
+    const [result] = await prisma.$queryRaw<Array<{ fulfillmentExists?: boolean; receivingExists?: boolean; exists?: boolean }>>(Prisma.sql`
+      SELECT
+        to_regclass('public.sales_order_stock_fulfillments') IS NOT NULL AS "fulfillmentExists",
+        to_regclass('public.supplier_receivings') IS NOT NULL
+          AND to_regclass('public.supplier_receiving_items') IS NOT NULL AS "receivingExists"
+    `);
+    return {
+      // `exists` preserves the narrow mocked contract used by the v1.9.0 compatibility test.
+      fulfillment: result?.fulfillmentExists ?? result?.exists ?? false,
+      receiving: result?.receivingExists ?? false,
+    };
   }
 
   private static async querySalesOrderIdsAwaitingStockDeduction(): Promise<string[]> {
@@ -298,4 +362,30 @@ export class InventoryRepository {
       return { ...row, movementCount, ledgerSum, status };
     });
   }
+}
+
+export interface ReceivingMovementMetadata {
+  receivingId: string;
+  receivingItemId: string;
+  supplierId: string | null;
+  supplierName: string | null;
+  referenceNumber: string | null;
+  receivedOn: string;
+}
+
+function serializeMovement<T extends object>(movement: T): Omit<T, 'supplierReceivingItem'> & { receivingMetadata: ReceivingMovementMetadata | null } {
+  const relation = (movement as T & { supplierReceivingItem?: ReceivingRelationPayload | null }).supplierReceivingItem;
+  const rest = { ...movement } as T & { supplierReceivingItem?: ReceivingRelationPayload | null };
+  delete rest.supplierReceivingItem;
+  return {
+    ...rest,
+    receivingMetadata: relation ? {
+      receivingId: relation.receiving.id,
+      receivingItemId: relation.id,
+      supplierId: relation.receiving.supplierId,
+      supplierName: relation.receiving.supplier?.name ?? null,
+      referenceNumber: relation.receiving.referenceNumber,
+      receivedOn: relation.receiving.receivedOn.toISOString().slice(0, 10),
+    } : null,
+  } as Omit<T, 'supplierReceivingItem'> & { receivingMetadata: ReceivingMovementMetadata | null };
 }
