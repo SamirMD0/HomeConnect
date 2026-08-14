@@ -51,6 +51,15 @@ references. Both database columns are already unrestricted text, so no migration
 - Quick product creation inside receiving remains deferred because new products still require the
   existing administrator-verified opening-count workflow.
 
+## Deployment gate
+
+Do not install v1.9.2 on the business PC until it passes a rehearsal against a locally restored
+business-PC backup. This gate also covers the additive v1.9.1 supplier-receiving migration bundled
+inside the v1.9.2 installer, because v1.9.1 was not installed on the business PC and that migration
+has not yet been rehearsed against its real data. The rehearsal must apply all pending migrations,
+confirm protected row counts and product fingerprints remain unchanged, and run the inventory,
+sales-fulfillment, and supplier-receiving reconciliation reports before installation is approved.
+
 ## Validation
 
 - Frontend, backend, and Electron typechecks passed.
