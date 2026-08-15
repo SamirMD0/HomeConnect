@@ -6,7 +6,10 @@ import { Role } from '@prisma/client';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key_change_in_production';
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || JWT_SECRET;
-const ACCESS_EXPIRY = process.env.JWT_ACCESS_EXPIRY || '15m';
+// One hour. This default is what the packaged app runs on: backend/.env is
+// excluded from the installer, so a shorter value here silently became the
+// shop's session length no matter what a developer machine had configured.
+const ACCESS_EXPIRY = process.env.JWT_ACCESS_EXPIRY || '1h';
 const REFRESH_EXPIRY = process.env.JWT_REFRESH_EXPIRY || '7d';
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes

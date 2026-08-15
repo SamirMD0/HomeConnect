@@ -20,8 +20,15 @@ interface AuthContextType {
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// 15 minutes max inactivity
-const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000; 
+// One hour of genuine inactivity. A counter is often left open between
+// customers, and signing the operator out mid-shift costs more than the small
+// exposure of a session that outlives a short break.
+const INACTIVITY_TIMEOUT_MS = 60 * 60 * 1000;
+
+/** What counts as the operator still being there. */
+export const activityEvents = ['mousedown', 'keydown', 'wheel', 'scroll', 'touchstart'] as const;
+/** Capture so events that never reach the window still count; passive so none of this blocks scrolling. */
+const ACTIVITY_LISTENER_OPTIONS = { capture: true, passive: true } as const;
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -140,14 +147,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     resetInactivityTimer();
 
-    const activityEvents = ['mousedown', 'keydown', 'scroll', 'touchstart'];
+    // Captured, because a scroll inside a table or dialog does not bubble to
+    // the window: reading a long ledger by wheel counted as being idle, and the
+    // operator was signed out while actively using the screen. `wheel` covers
+    // the same gesture over a pane that has nothing left to scroll.
     activityEvents.forEach(event => {
-      window.addEventListener(event, resetInactivityTimer);
+      window.addEventListener(event, resetInactivityTimer, ACTIVITY_LISTENER_OPTIONS);
     });
 
     return () => {
       activityEvents.forEach(event => {
-        window.removeEventListener(event, resetInactivityTimer);
+        window.removeEventListener(event, resetInactivityTimer, ACTIVITY_LISTENER_OPTIONS);
       });
       clearInactivityTimer();
     };
