@@ -61,9 +61,28 @@ export function receivingErrorMessage(error: unknown): string {
     : 'Unable to receive stock / تعذر إدخال المخزون';
 }
 
-export const SupplierReceivingForm: React.FC = () => {
+export interface ReceivingPrefill { productId: string }
+
+/**
+ * Reads a scanner hand-off out of the router state. Mirrors
+ * `salesOrderPrefillFromRouteState` so both entry points behave the same way.
+ *
+ * The scanner only sends a product id when the product is actually receivable;
+ * everything else about the document — supplier, date, quantity — is still the
+ * user's to enter, and the form and backend still validate all of it.
+ */
+export function receivingPrefillFromRouteState(state: unknown): ReceivingPrefill | null {
+  if (!state || typeof state !== 'object') return null;
+  const productId = (state as { prefillReceivingProductId?: unknown }).prefillReceivingProductId;
+  return typeof productId === 'string' && productId.trim() ? { productId } : null;
+}
+
+export const SupplierReceivingForm: React.FC<{ prefill?: ReceivingPrefill | null }> = ({ prefill = null }) => {
   const navigate = useNavigate();
-  const [values, setValues] = useState<ReceivingFormValues>({ supplierId: '', referenceNumber: '', receivedOn: localToday(), note: '', items: [newLine()] });
+  const [values, setValues] = useState<ReceivingFormValues>({
+    supplierId: '', referenceNumber: '', receivedOn: localToday(), note: '',
+    items: [prefill?.productId ? { ...newLine(), productId: prefill.productId } : newLine()],
+  });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [serverError, setServerError] = useState('');
   const [supplierSearch, setSupplierSearch] = useState('');

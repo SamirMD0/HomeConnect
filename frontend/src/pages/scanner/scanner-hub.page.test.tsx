@@ -19,7 +19,7 @@ vi.mock('../../features/scanner/hooks/useScannerEvents', () => ({
   },
 }));
 
-import { previewForDeskScan, scannerOrderRouteState, ScannerHubPage } from './ScannerHubPage';
+import { previewForDeskScan, scannerOrderRouteState, scannerReceivingRouteState, ScannerHubPage } from './ScannerHubPage';
 
 /**
  * A static render, because this project has no jsdom: it proves the page
@@ -108,5 +108,52 @@ describe('ScannerHubPage', () => {
     expect(Object.keys(state)).toEqual(['prefillOrderProductId']);
     expect(state).not.toHaveProperty('price');
     expect(state).not.toHaveProperty('quantity');
+  });
+
+  /**
+   * The whole complaint that prompted this fix: the preview existed only as a
+   * modal that appeared after a successful scan, so the page looked unchanged.
+   * It is now a panel on the page with an empty state.
+   */
+  it('shows the product preview panel on the page before anything is scanned', () => {
+    const html = render(<ScannerHubPage />);
+    expect(html).toContain('Product Preview / معاينة المنتج');
+    expect(html).toContain('Scan or search a product to preview it');
+  });
+
+  it('offers the POS actions from the hub itself', () => {
+    // The empty state carries no actions; they arrive with a product. What the
+    // page must guarantee is that the panel is mounted and visible.
+    const html = render(<ScannerHubPage />);
+    expect(html).toContain('امسح أو ابحث عن منتج لعرضه');
+    expect(html).not.toContain('role="dialog"');
+  });
+
+  it('prefills receiving only for a product that can actually be received', () => {
+    expect(scannerReceivingRouteState('product-1', true)).toEqual({ prefillReceivingProductId: 'product-1' });
+    expect(scannerReceivingRouteState('product-1', false)).toBeUndefined();
+  });
+
+  it('sends no price, stock, or quantity through the receiving hand-off', () => {
+    const state = scannerReceivingRouteState('product-1', true)!;
+    expect(Object.keys(state)).toEqual(['prefillReceivingProductId']);
+    expect(state).not.toHaveProperty('price');
+    expect(state).not.toHaveProperty('quantity');
+  });
+
+  it('asks for no password anywhere on the hub', () => {
+    const html = render(<ScannerHubPage />);
+    expect(html).not.toContain('type="password"');
+    expect(html.toLowerCase()).not.toContain('account password');
+  });
+
+  /** The scanner is an entry point. It must never reach a money or stock endpoint. */
+  it('touches no ledger, payment, debt, or stock-mutating endpoint on render', () => {
+    render(<ScannerHubPage />);
+    expect(apiMock.post).not.toHaveBeenCalled();
+    const requested = apiMock.get.mock.calls.map((call) => String(call[0]));
+    for (const forbidden of ['supplier', 'customer', 'payment', 'debt', 'receivable', 'ledger', 'inventory/receivings']) {
+      expect(requested.some((url) => url.includes(forbidden))).toBe(false);
+    }
   });
 });

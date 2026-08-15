@@ -3,7 +3,7 @@ import { ScanLine } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Modal } from '../../components/ui/Modal';
-import { ProductPreviewModal } from '../../features/products/components/ProductPreviewModal';
+import { ProductPreviewPanel } from '../../features/products/components/ProductPreviewPanel';
 import { MobileScannerPanel } from '../../features/scanner/components/MobileScannerPanel';
 import { RecentScansList } from '../../features/scanner/components/RecentScansList';
 import { ScanFeedback } from '../../features/scanner/components/ScanFeedback';
@@ -28,6 +28,14 @@ export const previewForDeskScan = (result: ScanLookupResult): ScanLookupResult |
 
 export const scannerOrderRouteState = (productId: string) => ({ prefillOrderProductId: productId });
 
+/**
+ * Only seeds the receiving form when the product is actually receivable, so a
+ * product still awaiting its opening count opens an empty form rather than one
+ * carrying a line the form would refuse.
+ */
+export const scannerReceivingRouteState = (productId: string, canPrefill: boolean) =>
+  canPrefill ? { prefillReceivingProductId: productId } : undefined;
+
 export const ScannerHubPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -44,7 +52,9 @@ export const ScannerHubPage: React.FC = () => {
   const [confirmDisable, setConfirmDisable] = useState(false);
   const [revokingId, setRevokingId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const [previewScan, setPreviewScan] = useState<ScanLookupResult | null>(null);
+  // What the preview panel is showing: the latest desk scan, or an earlier scan
+  // the user reopened from the history.
+  const [preview, setPreview] = useState<{ productId: string; alsoMatchedSku?: boolean } | null>(null);
 
   // Drives the pairing countdown. A second is the coarsest tick that still
   // reads as counting down.
@@ -58,7 +68,13 @@ export const ScannerHubPage: React.FC = () => {
   const recentScans = useRecentScans();
   const scanner = useScannerLookup({
     onScanRecorded: recentScans.add,
-    onFound: (result) => setPreviewScan(previewForDeskScan(result)),
+    onFound: (result) => {
+      const found = previewForDeskScan(result);
+      if (found?.product) setPreview({ productId: found.product.id, alsoMatchedSku: found.alsoMatchedSku });
+    },
+    // Typed text that is not a code falls through to the product catalogue
+    // rather than being reported as an unreadable scan.
+    onSearch: (term) => navigate(`/products?search=${encodeURIComponent(term)}`),
   });
 
   // The hub is the one place that shows phone scans as they happen, so polling
@@ -125,10 +141,20 @@ export const ScannerHubPage: React.FC = () => {
           result={scanner.result}
           isLooking={scanner.isLooking}
           isError={scanner.isError}
-          onOpenProduct={(id) => navigate(`/products?focus=${id}`)}
+          onOpenProduct={(id) => setPreview({ productId: id })}
+          onManualSearch={() => navigate(`/products?search=${encodeURIComponent(scanner.result?.normalizedCode ?? '')}`)}
         />
       </div>
     </section>
+
+    <ProductPreviewPanel
+      productId={preview?.productId ?? null}
+      alsoMatchedSku={preview?.alsoMatchedSku}
+      onClear={() => setPreview(null)}
+      onOpenProduct={(id) => navigate(`/products?focus=${id}`)}
+      onMakeOrder={(id) => navigate('/sales-orders', { state: scannerOrderRouteState(id) })}
+      onReceiveStock={(id, canPrefill) => navigate('/inventory/receiving/new', { state: scannerReceivingRouteState(id, canPrefill) })}
+    />
 
     <div className="grid gap-5 lg:grid-cols-2">
       <MobileScannerPanel
@@ -154,6 +180,7 @@ export const ScannerHubPage: React.FC = () => {
 
     <RecentScansList
       scans={recentScans.scans}
+      onPreview={(id) => setPreview({ productId: id })}
       onOpenProduct={(id) => navigate(`/products?focus=${id}`)}
       onClear={recentScans.clear}
     />
@@ -171,13 +198,5 @@ export const ScannerHubPage: React.FC = () => {
         </div>
       </div>
     </Modal>
-
-    <ProductPreviewModal
-      productId={previewScan?.product?.id ?? null}
-      alsoMatchedSku={previewScan?.alsoMatchedSku}
-      onClose={() => setPreviewScan(null)}
-      onOpenProduct={(id) => navigate(`/products?focus=${id}`)}
-      onMakeOrder={(id) => navigate('/sales-orders', { state: scannerOrderRouteState(id) })}
-    />
   </div>;
 };

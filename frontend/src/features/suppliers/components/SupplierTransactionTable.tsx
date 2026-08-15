@@ -146,7 +146,9 @@ const TransactionCard: React.FC<Omit<Props, 'items'> & { transaction: SupplierTr
     <p className="mt-2 text-sm font-semibold text-slate-800 transition-colors group-hover:text-yellow-300">
       {englishLabel(supplierTransactionTypeLabels[transaction.type])}
     </p>
-    <p className="user-text mt-1 text-sm text-slate-600 transition-colors group-hover:text-yellow-200" dir="auto">
+    {/* whitespace-pre-line keeps a purchase's English and Arabic halves on
+        their own lines. The compact table row above stays truncated on purpose. */}
+    <p className="user-text mt-1 whitespace-pre-line text-sm text-slate-600 transition-colors group-hover:text-yellow-200" dir="auto">
       {transaction.description}
     </p>
     {transaction.supplierReceiving && <ReceivingLink transaction={transaction} />}

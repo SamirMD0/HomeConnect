@@ -5,6 +5,8 @@ import { RecentScan } from '../types/scanner.types';
 
 interface RecentScansListProps {
   scans: RecentScan[];
+  /** Re-opens the preview for an earlier scan without rescanning the item. */
+  onPreview?: (productId: string) => void;
   onOpenProduct?: (productId: string) => void;
   onClear?: () => void;
 }
@@ -24,7 +26,7 @@ const statusText: Record<RecentScan['status'], string> = {
 };
 
 /** Session history for the counter — what was scanned, what it matched, from where. */
-export const RecentScansList: React.FC<RecentScansListProps> = ({ scans, onOpenProduct, onClear }) => (
+export const RecentScansList: React.FC<RecentScansListProps> = ({ scans, onPreview, onOpenProduct, onClear }) => (
   <section className="rounded-lg border border-slate-200 bg-white">
     <header className="flex items-center justify-between border-b border-slate-200 px-4 py-2.5">
       <h2 className="text-sm font-semibold text-slate-800">{labels.recentScans}</h2>
@@ -50,6 +52,11 @@ export const RecentScansList: React.FC<RecentScansListProps> = ({ scans, onOpenP
             <time dateTime={scan.scannedAt} className="ml-auto text-xs text-slate-400">
               {new Date(scan.scannedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
             </time>
+            {scan.productId && onPreview && (
+              <button type="button" onClick={() => onPreview(scan.productId!)} className="rounded-lg border border-emerald-600 px-2 py-1 text-xs font-semibold text-emerald-700">
+                Preview / معاينة
+              </button>
+            )}
             {scan.productId && onOpenProduct && (
               <button type="button" onClick={() => onOpenProduct(scan.productId!)} className="rounded-lg border border-slate-300 px-2 py-1 text-xs font-semibold text-slate-700">
                 {labels.openProduct}

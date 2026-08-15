@@ -270,6 +270,13 @@ enum SupplierTransactionDirection {
   DECREASE_OWED
 }
 
+/// PRODUCT lines resolve to a real product and may move stock. MANUAL lines are
+/// description-only money — no product, no movement, ever.
+enum SupplierPurchaseLineKind {
+  PRODUCT
+  MANUAL
+}
+
 enum SupplierTransactionStatus {
   ACTIVE
   REMOVED
@@ -682,6 +689,7 @@ model Product {
   stockMovements   StockMovement[]
   salesStockFulfillments SalesOrderStockFulfillment[]
   supplierReceivingItems SupplierReceivingItem[]
+  supplierPurchaseLines  SupplierPurchaseLine[]
   image            ProductImage?
 
   @@index([name])
@@ -1060,9 +1068,41 @@ model SupplierReceivingItem {
   stockMovement   StockMovement     @relation("ReceivingMovement", fields: [stockMovementId], references: [id], onDelete: Restrict)
   createdAt       DateTime          @default(now())
 
+  purchaseLine    SupplierPurchaseLine? @relation("PurchaseLineReceivingItem")
+
   @@unique([receivingId, productId])
   @@index([productId, createdAt])
   @@map("supplier_receiving_items")
+}
+
+/// Priced purchase lines for a supplier debt. The debt transaction is the
+/// purchase document header; these are its body.
+///
+/// Money lives here and never on `SupplierReceivingItem`, so the inventory
+/// tables stay free of cost and valuation. A PRODUCT line that actually moved
+/// stock points at the receiving item that moved it — that unique link is what
+/// makes a second stock increase for the same line impossible to represent.
+model SupplierPurchaseLine {
+  id                    String                   @id @default(uuid()) @db.Uuid
+  supplierTransactionId String                   @db.Uuid
+  supplierTransaction   SupplierTransaction      @relation(fields: [supplierTransactionId], references: [id], onDelete: Restrict)
+  kind                  SupplierPurchaseLineKind
+  productId             String?                  @db.Uuid
+  product               Product?                 @relation(fields: [productId], references: [id], onDelete: Restrict)
+  /// Snapshot of what was bought, so a renamed or archived product never
+  /// rewrites the history of an invoice that was already posted.
+  description           String
+  quantity              Int?
+  unitPrice             Decimal?                 @db.Decimal(12, 2)
+  lineTotal             Decimal                  @db.Decimal(12, 2)
+  receivingItemId       String?                  @unique @db.Uuid
+  receivingItem         SupplierReceivingItem?   @relation("PurchaseLineReceivingItem", fields: [receivingItemId], references: [id], onDelete: Restrict)
+  position              Int
+  createdAt             DateTime                 @default(now())
+
+  @@index([supplierTransactionId, position])
+  @@index([productId])
+  @@map("supplier_purchase_lines")
 }
 
 model SupplierTransaction {
@@ -1078,6 +1118,14 @@ model SupplierTransaction {
   description     String
   reference       String?
   notes           String?                      @db.Text
+  /// Supplier's own invoice/receipt number. Deliberately not unique: suppliers
+  /// reuse and re-issue numbers, and a hard constraint would block a real
+  /// purchase at the counter. Duplicates surface as a warning instead.
+  receiptNumber   String?
+  /// True when the posted amount was set by hand instead of the line sum
+  /// (freight, rounding, a supplier discount). The line sum is still retained.
+  amountOverride       Boolean                 @default(false)
+  amountOverrideReason String?                 @db.Text
   status          SupplierTransactionStatus    @default(ACTIVE)
   removedAt       DateTime?
   removedById     String?                      @db.Uuid
@@ -1090,13 +1138,15 @@ model SupplierTransaction {
   createdAt       DateTime                     @default(now())
   updatedAt       DateTime                     @updatedAt
 
-  audits SupplierAudit[]
+  audits        SupplierAudit[]
+  purchaseLines SupplierPurchaseLine[]
 
   @@index([supplierId])
   @@index([supplierId, status])
   @@index([transactionDate])
   @@index([type])
   @@index([status])
+  @@index([supplierId, receiptNumber])
   @@map("supplier_transactions")
 }
 

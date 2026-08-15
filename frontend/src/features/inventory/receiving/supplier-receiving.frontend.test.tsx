@@ -1,7 +1,8 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { SupplierReceivingForm, createReceivingAndNavigate, receivingDetailPath, receivingErrorMessage, toCreateReceivingInput, validateReceivingForm, type ReceivingFormValues } from './components/SupplierReceivingForm';
+import { SupplierReceivingForm, createReceivingAndNavigate, receivingDetailPath, receivingErrorMessage, receivingPrefillFromRouteState, toCreateReceivingInput, validateReceivingForm, type ReceivingFormValues } from './components/SupplierReceivingForm';
+import { NewSupplierReceivingPage } from './pages/NewSupplierReceivingPage';
 import { SupplierReceivingDetailPage, supplierDebtPrefillForReceiving } from './pages/SupplierReceivingDetailPage';
 import { SupplierReceivingListPage } from './pages/SupplierReceivingListPage';
 import { supplierReceivingsApi } from './api/supplier-receivings.api';
@@ -90,6 +91,40 @@ describe('supplier receiving frontend', () => {
     expect(html).not.toContain('Payment / دفعة');
     expect(html).not.toContain('Debt / دين');
     expect(html).not.toContain('Valuation / تقييم');
+  });
+
+  /**
+   * The scanner's Receive Stock hand-off. Only a product id crosses the
+   * boundary — quantity, supplier, and date stay the user's to enter, and the
+   * form and backend still validate every one of them.
+   */
+  it('reads a scanner receiving hand-off out of the route state', () => {
+    expect(receivingPrefillFromRouteState({ prefillReceivingProductId: 'product-1' })).toEqual({ productId: 'product-1' });
+    expect(receivingPrefillFromRouteState({ prefillReceivingProductId: '' })).toBeNull();
+    expect(receivingPrefillFromRouteState({ prefillReceivingProductId: 123 })).toBeNull();
+    expect(receivingPrefillFromRouteState(undefined)).toBeNull();
+    expect(receivingPrefillFromRouteState({})).toBeNull();
+  });
+
+  it('seeds the first line from a scanner hand-off and says so', () => {
+    const html = renderToStaticMarkup(
+      <MemoryRouter initialEntries={[{ pathname: '/inventory/receiving/new', state: { prefillReceivingProductId: 'product-1' } }]}>
+        <Routes><Route path="/inventory/receiving/new" element={<NewSupplierReceivingPage />} /></Routes>
+      </MemoryRouter>
+    );
+    expect(html).toContain('Scanned product added to the first line');
+    expect(html).toContain('Tracked fan');
+    // Quantity still defaults to 1 and is still editable.
+    expect(html).toContain('value="1"');
+  });
+
+  it('opens an empty form for a direct visit with no hand-off', () => {
+    const html = renderToStaticMarkup(
+      <MemoryRouter initialEntries={['/inventory/receiving/new']}>
+        <Routes><Route path="/inventory/receiving/new" element={<NewSupplierReceivingPage />} /></Routes>
+      </MemoryRouter>
+    );
+    expect(html).not.toContain('Scanned product added to the first line');
   });
 
   it('validates multiple unique product lines and the 1–100,000 quantity range', () => {

@@ -88,4 +88,17 @@ describe('RecentScansList', () => {
     expect(render(<RecentScansList scans={[]} onClear={() => undefined} />)).not.toContain('مسح السجل');
     expect(render(<RecentScansList scans={scans} onClear={() => undefined} />)).toContain('مسح السجل');
   });
+
+  /** History is only useful if an earlier scan can be brought back up. */
+  it('offers a preview action for a found scan', () => {
+    const html = render(<RecentScansList scans={scans} onPreview={() => undefined} />);
+    expect(html).toContain('Preview / معاينة');
+    // One found scan and one not-found: only the found row may be previewed.
+    expect(html.match(/Preview \/ معاينة/g)).toHaveLength(1);
+  });
+
+  it('offers no preview action for a scan that matched nothing', () => {
+    const notFound = [scans[1]];
+    expect(render(<RecentScansList scans={notFound} onPreview={() => undefined} />)).not.toContain('Preview / معاينة');
+  });
 });

@@ -15,6 +15,86 @@ import { CreateSupplierReceivingInput, SupplierReceivingDuplicateInput, Supplier
 const MAX_DATABASE_QUANTITY = 2_147_483_647;
 const ONBOARDING_ERROR = 'This product needs a verified opening count before stock actions / يحتاج هذا المنتج جردًا مؤكدًا قبل حركات المخزون';
 const BEFORE_OPENING_ERROR = 'This receiving date is before the verified opening count for this product; its stock is already included in that count. / تاريخ الاستلام يسبق الجرد الافتتاحي المؤكد لهذا المنتج، ومخزونه محتسب ضمن ذلك الجرد.';
+const STOCK_CHANGED_ERROR = 'Stock changed while receiving. Refresh and try again. / تغيّر المخزون أثناء الاستلام. حدّث الصفحة وحاول مجددًا.';
+
+export interface ReceivingSupplier { id: string; name: string; isActive: boolean }
+export interface PostReceivingInput {
+  supplier: ReceivingSupplier | null;
+  referenceNumber: string | null;
+  note: string | null;
+  /** Business date, already validated as not in the future. */
+  receivedOn: string;
+  items: Array<{ productId: string; quantity: number }>;
+  userId: string;
+}
+
+/**
+ * The one and only writer of received stock.
+ *
+ * Runs inside a caller-supplied transaction so a composite command — a supplier
+ * purchase that posts a debt and receives goods — commits both halves together
+ * or neither. Both the standalone receiving route and the purchase orchestrator
+ * enter here; there is deliberately no second copy of this logic to drift.
+ *
+ * Returns the created item id per product so the caller can link its own
+ * records to the exact row that moved the stock.
+ */
+export async function postSupplierReceiving(
+  input: PostReceivingInput,
+  tx: Prisma.TransactionClient
+): Promise<{ receivingId: string; itemIdByProductId: Map<string, string> }> {
+  validateLines(input.items);
+  if (input.supplier && !input.supplier.isActive) {
+    throw new AppError('Archived suppliers cannot receive stock / لا يمكن استلام مخزون من مورد مؤرشف', 409, 'SUPPLIER_ARCHIVED');
+  }
+
+  // Sorted by product id so concurrent receivings touching the same products
+  // always lock them in the same order and cannot deadlock each other.
+  const lines = [...input.items].sort((left, right) => left.productId.localeCompare(right.productId));
+  for (const line of lines) await validateProduct(line.productId, line.quantity, input.receivedOn, tx);
+
+  const receiving = await SupplierReceivingsRepository.create({
+    supplierId: input.supplier?.id ?? null,
+    referenceNumber: input.referenceNumber,
+    note: input.note,
+    receivedOn: businessDateToPrisma(input.receivedOn),
+    receivedById: input.userId,
+  }, tx);
+  const reason = buildReason(input.supplier?.name ?? null, input.referenceNumber);
+  const itemIdByProductId = new Map<string, string>();
+
+  for (const line of lines) {
+    const product = await InventoryRepository.findProduct(line.productId, tx);
+    if (!product || !product.trackStock) throw new AppError(STOCK_CHANGED_ERROR, 409, 'STOCK_CHANGED');
+    const quantityAfter = checkedResult(product.stockQuantity, line.quantity);
+    const changed = await InventoryRepository.compareAndSetQuantity(product.id, product.stockQuantity, quantityAfter, tx);
+    if (changed.count !== 1) throw new AppError(STOCK_CHANGED_ERROR, 409, 'STOCK_CHANGED');
+    const itemId = randomUUID();
+    const movement = await InventoryRepository.createMovement({
+      productId: product.id,
+      movementType: StockMovementType.PURCHASE_RECEIPT,
+      quantityChange: line.quantity,
+      quantityBefore: product.stockQuantity,
+      quantityAfter,
+      reason,
+      note: input.note,
+      referenceType: 'SUPPLIER_RECEIVING_ITEM',
+      referenceId: itemId,
+      createdById: input.userId,
+    }, tx);
+    await SupplierReceivingsRepository.createItem({ id: itemId, receivingId: receiving.id, productId: product.id, quantity: line.quantity, stockMovementId: movement.id }, tx);
+    itemIdByProductId.set(product.id, itemId);
+  }
+
+  return { receivingId: receiving.id, itemIdByProductId };
+}
+
+/** Rejects a receiving date the business has not reached yet. */
+export function assertReceivingDateNotFuture(receivedOn: string): void {
+  if (compareBusinessDates(receivedOn, todayInBusinessTimezone()) > 0) {
+    throw new ValidationError('Receiving date cannot be in the future / لا يمكن أن يكون تاريخ الاستلام في المستقبل');
+  }
+}
 
 export class SupplierReceivingsService {
   static async create(input: CreateSupplierReceivingInput, user: InventoryUser) {
@@ -23,47 +103,18 @@ export class SupplierReceivingsService {
     const referenceNumber = normalizeOptionalText(input.referenceNumber);
     const note = normalizeOptionalText(input.note);
     const receivedOn = input.receivedOn ?? todayInBusinessTimezone();
-    if (compareBusinessDates(receivedOn, todayInBusinessTimezone()) > 0) {
-      throw new ValidationError('Receiving date cannot be in the future / لا يمكن أن يكون تاريخ الاستلام في المستقبل');
-    }
+    assertReceivingDateNotFuture(receivedOn);
     validateLines(input.items);
 
     return runFinancialTransaction(async (tx) => {
       const supplier = supplierId ? await SupplierReceivingsRepository.findSupplier(supplierId, tx) : null;
       if (supplierId && !supplier) throw new NotFoundError('Supplier not found / المورد غير موجود');
-      if (supplier && !supplier.isActive) throw new AppError('Archived suppliers cannot receive stock / لا يمكن استلام مخزون من مورد مؤرشف', 409, 'SUPPLIER_ARCHIVED');
 
-      const lines = [...input.items].sort((left, right) => left.productId.localeCompare(right.productId));
-      for (const line of lines) await validateProduct(line.productId, line.quantity, receivedOn, tx);
-
-      const receiving = await SupplierReceivingsRepository.create({
-        supplierId, referenceNumber, note, receivedOn: businessDateToPrisma(receivedOn), receivedById: user.userId,
+      const { receivingId } = await postSupplierReceiving({
+        supplier, referenceNumber, note, receivedOn, items: input.items, userId: user.userId,
       }, tx);
-      const reason = buildReason(supplier?.name ?? null, referenceNumber);
 
-      for (const line of lines) {
-        const product = await InventoryRepository.findProduct(line.productId, tx);
-        if (!product || !product.trackStock) throw new AppError('Stock changed while receiving. Refresh and try again. / تغيّر المخزون أثناء الاستلام. حدّث الصفحة وحاول مجددًا.', 409, 'STOCK_CHANGED');
-        const quantityAfter = checkedResult(product.stockQuantity, line.quantity);
-        const changed = await InventoryRepository.compareAndSetQuantity(product.id, product.stockQuantity, quantityAfter, tx);
-        if (changed.count !== 1) throw new AppError('Stock changed while receiving. Refresh and try again. / تغيّر المخزون أثناء الاستلام. حدّث الصفحة وحاول مجددًا.', 409, 'STOCK_CHANGED');
-        const itemId = randomUUID();
-        const movement = await InventoryRepository.createMovement({
-          productId: product.id,
-          movementType: StockMovementType.PURCHASE_RECEIPT,
-          quantityChange: line.quantity,
-          quantityBefore: product.stockQuantity,
-          quantityAfter,
-          reason,
-          note,
-          referenceType: 'SUPPLIER_RECEIVING_ITEM',
-          referenceId: itemId,
-          createdById: user.userId,
-        }, tx);
-        await SupplierReceivingsRepository.createItem({ id: itemId, receivingId: receiving.id, productId: product.id, quantity: line.quantity, stockMovementId: movement.id }, tx);
-      }
-
-      const result = await SupplierReceivingsRepository.findById(receiving.id, tx);
+      const result = await SupplierReceivingsRepository.findById(receivingId, tx);
       if (!result) throw new NotFoundError('Receiving not found after creation');
       return serializeReceiving(result);
     });

@@ -17,6 +17,7 @@ vi.mock('../../features/suppliers/hooks/useSupplierMutations', () => ({
 vi.mock('../../hooks/useAuth', () => ({ useAuth: () => ({ user: { role: 'EMPLOYEE' } }) }));
 vi.mock('../../features/suppliers/components/SupplierFormDialog', () => ({ SupplierFormDialog: () => null }));
 vi.mock('../../features/suppliers/components/SupplierTransactionFormDialog', () => ({ SupplierTransactionFormDialog: () => null }));
+vi.mock('../../features/suppliers/components/SupplierPurchaseFormDialog', () => ({ SupplierPurchaseFormDialog: () => null }));
 vi.mock('../../features/suppliers/components/SupplierActionDialog', () => ({ SupplierActionDialog: () => null }));
 vi.mock('../../features/inventory/receiving/components/SupplierReceivingHistory', () => ({
   SupplierReceivingHistory: ({ supplierId }: { supplierId: string }) => <section data-supplier-id={supplierId}><h2>Receiving History / سجل إدخال المخزون</h2><p>Inventory documents only — separate from financial transactions</p></section>,
