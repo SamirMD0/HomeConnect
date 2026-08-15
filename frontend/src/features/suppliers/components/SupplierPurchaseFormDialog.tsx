@@ -3,11 +3,12 @@ import toast from 'react-hot-toast';
 import { AlertTriangle, Plus } from 'lucide-react';
 import { Button } from '../../../components/ui';
 import { Modal } from '../../../components/ui/Modal';
-import { canonicalMoneyInput, moneyToCents, sanitizeMoneyInput } from '../../customer-financial/utils/money-input';
+import { canonicalMoneyInput, centsToMoney, moneyToCents, sanitizeMoneyInput } from '../../customer-financial/utils/money-input';
 import { normalizeFinancialError } from '../../customer-financial/utils/financial-form-errors';
 import { todayAsBusinessDate } from '../../customer-financial/utils/business-date';
 import { useCreateSupplierPurchase, useReceiptCheck } from '../hooks/useSupplierPurchases';
 import type { Supplier } from '../types/supplier.types';
+import type { PurchasePaymentStatus } from '../types/supplier-purchase.types';
 import {
   duplicateProductIds, emptyLine, hasQuickAdd, lineProblem, purchaseTotal, suggestedPurchaseDescription,
   toApiLines, type PurchaseLineDraft,
@@ -30,6 +31,9 @@ const emptyForm = () => ({
   overrideEnabled: false,
   amountOverride: '',
   amountOverrideReason: '',
+  paymentStatus: 'UNPAID' as PurchasePaymentStatus,
+  paidAmount: '',
+  paymentReference: '',
   accountPassword: '',
 });
 
@@ -62,6 +66,12 @@ export const SupplierPurchaseFormDialog: React.FC<Props> = ({ open, supplier, on
   // the field over, and no effect can race the typing.
   const description = descriptionEdited ? form.description : suggestion;
 
+  // Fully paid always tracks the total; partial is whatever the user typed.
+  const paidAmount = form.paymentStatus === 'PAID' ? total : form.paymentStatus === 'PARTIAL' ? form.paidAmount : '0';
+  const paidCents = moneyToCents(paidAmount || '0');
+  const totalCents = moneyToCents(total || '0');
+  const remaining = paidCents >= 0n && totalCents >= paidCents ? centsToMoney(totalCents - paidCents) : null;
+
   const blocker = (() => {
     if (!description.trim()) return 'Add a line so the description can be filled in / أضف بندًا ليُملأ الوصف تلقائيًا';
     if (duplicates.size) return 'The same product appears on more than one line — combine the quantities / تكرر المنتج في أكثر من بند';
@@ -70,6 +80,8 @@ export const SupplierPurchaseFormDialog: React.FC<Props> = ({ open, supplier, on
     if (moneyToCents(lineSum) <= 0n && !form.overrideEnabled) return 'A purchase must be worth more than zero / يجب أن تكون قيمة الفاتورة أكبر من صفر';
     if (form.overrideEnabled && moneyToCents(form.amountOverride) <= 0n) return 'Enter the total you are posting / أدخل الإجمالي المطلوب تسجيله';
     if (form.overrideEnabled && !form.amountOverrideReason.trim()) return 'Give a reason for the adjusted total / اذكر سبب تعديل الإجمالي';
+    if (form.paymentStatus === 'PARTIAL' && paidCents <= 0n) return 'Enter how much was paid / أدخل المبلغ المدفوع';
+    if (form.paymentStatus === 'PARTIAL' && paidCents > totalCents) return 'The paid amount cannot exceed the total / المبلغ المدفوع لا يمكن أن يتجاوز الإجمالي';
     if (quickAdd && !form.accountPassword) return 'Your account password is required to add a new product / كلمة مرور الحساب مطلوبة لإضافة منتج جديد';
     if (quickAdd && !form.receiveStock) return 'A new product can only be added on a purchase that receives stock / لا يمكن إضافة منتج جديد دون استلام مخزون';
     return null;
@@ -93,6 +105,8 @@ export const SupplierPurchaseFormDialog: React.FC<Props> = ({ open, supplier, on
           receiveStock: form.receiveStock,
           amountOverride: form.overrideEnabled ? canonicalMoneyInput(form.amountOverride) : null,
           amountOverrideReason: form.overrideEnabled ? form.amountOverrideReason.trim() : null,
+          paidAmount: paidCents > 0n ? canonicalMoneyInput(paidAmount) : null,
+          paymentReference: paidCents > 0n ? form.paymentReference.trim() || null : null,
           ...(quickAdd ? { accountPassword: form.accountPassword } : {}),
           lines: toApiLines(lines),
         },
@@ -211,6 +225,46 @@ export const SupplierPurchaseFormDialog: React.FC<Props> = ({ open, supplier, on
           </label>
         </div>}
       </div>
+
+      <section className="space-y-3 rounded-lg border border-slate-200 bg-white p-3">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-800">Payment / الدفع</h3>
+          <p className="mt-0.5 text-xs text-slate-500">
+            The bill is always recorded in full. Anything paid now is posted as a separate supplier payment /
+            تُسجَّل الفاتورة كاملة دائمًا، وأي مبلغ مدفوع الآن يُسجَّل كدفعة منفصلة
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
+          {([
+            { value: 'UNPAID', label: 'Unpaid — on account / غير مدفوعة — على الحساب' },
+            { value: 'PARTIAL', label: 'Partially paid / مدفوعة جزئيًا' },
+            { value: 'PAID', label: 'Paid in full / مدفوعة بالكامل' },
+          ] as const).map((option) => <label key={option.value} className="flex items-center gap-2">
+            <input
+              type="radio"
+              name="purchase-payment-status"
+              checked={form.paymentStatus === option.value}
+              onChange={() => setForm((current) => ({ ...current, paymentStatus: option.value, paidAmount: '', paymentReference: option.value === 'UNPAID' ? '' : current.paymentReference }))}
+            />
+            {option.label}
+          </label>)}
+        </div>
+
+        {form.paymentStatus !== 'UNPAID' && <div className="grid gap-3 sm:grid-cols-2">
+          {form.paymentStatus === 'PARTIAL' && <label className="block text-sm font-semibold text-slate-700">Amount paid now / المبلغ المدفوع الآن *
+            <input inputMode="decimal" value={form.paidAmount} onChange={(event) => setForm((current) => ({ ...current, paidAmount: sanitizeMoneyInput(event.target.value) }))} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 font-normal" />
+          </label>}
+          <label className="block text-sm font-semibold text-slate-700">Payment reference / مرجع الدفع
+            <input dir="auto" value={form.paymentReference} onChange={set('paymentReference')} className="user-text-input mt-1 w-full rounded-md border border-slate-300 px-3 py-2 font-normal" />
+          </label>
+        </div>}
+
+        <dl className="grid gap-2 border-t border-slate-100 pt-3 text-sm sm:grid-cols-3">
+          <div><dt className="text-xs text-slate-500">Bill total / إجمالي الفاتورة</dt><dd className="tabular-nums font-semibold text-slate-900">{total}</dd></div>
+          <div><dt className="text-xs text-slate-500">Paid now / المدفوع الآن</dt><dd className="tabular-nums font-semibold text-slate-900">{paidCents > 0n ? paidAmount : '0.00'}</dd></div>
+          <div><dt className="text-xs text-slate-500">Still owed / المتبقي</dt><dd className="tabular-nums font-semibold text-emerald-700">{remaining ?? '—'}</dd></div>
+        </dl>
+      </section>
 
       {quickAdd && <label className="block text-sm font-semibold text-slate-700">Account password / كلمة مرور الحساب *
         <input type="password" value={form.accountPassword} onChange={set('accountPassword')} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 font-normal" />

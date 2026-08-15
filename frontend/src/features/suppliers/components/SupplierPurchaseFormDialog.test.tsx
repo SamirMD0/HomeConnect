@@ -78,4 +78,38 @@ describe('SupplierPurchaseFormDialog', () => {
   it('does not ask for a password when no new product is being added', () => {
     expect(render()).not.toContain('Account password');
   });
+
+  /**
+   * A bill can arrive unpaid, part-paid, or settled on the spot. Without this
+   * the user had to record the purchase and then go to Add Transaction to
+   * record the payment separately.
+   */
+  it('offers the three payment states on the purchase itself', () => {
+    const html = render();
+    expect(html).toContain('Unpaid — on account');
+    expect(html).toContain('Partially paid');
+    expect(html).toContain('Paid in full');
+  });
+
+  it('explains that the bill is recorded in full whatever is paid', () => {
+    const html = render();
+    expect(html).toContain('The bill is always recorded in full');
+    expect(html).toContain('posted as a separate supplier payment');
+  });
+
+  it('shows the bill total, what was paid, and what is still owed', () => {
+    const html = render();
+    expect(html).toContain('Bill total');
+    expect(html).toContain('Paid now');
+    expect(html).toContain('Still owed');
+  });
+
+  it('defaults to unpaid so a payment is never recorded by accident', () => {
+    const html = render();
+    const start = html.indexOf('purchase-payment-status');
+    const firstRadio = html.slice(start - 200, start + 120);
+    expect(firstRadio).toContain('checked');
+    // The amount field only appears once partial is chosen.
+    expect(html).not.toContain('Amount paid now');
+  });
 });

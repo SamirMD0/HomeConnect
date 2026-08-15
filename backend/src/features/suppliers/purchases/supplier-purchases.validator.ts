@@ -13,6 +13,8 @@ const optionalText = (field: string, max: number) => z.preprocess(emptyToNull, u
 const unitPrice = z.string().trim().regex(/^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/, 'Unit price must be a non-negative decimal string');
 /** Strictly positive money, for amounts that must represent a real charge. */
 const positiveAmount = unitPrice.refine((value) => isPositiveMoney(value), 'Amount must be greater than zero');
+/** Non-negative money for the settled portion of a bill; zero means unpaid. */
+const paidAmount = z.string().trim().regex(/^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/, 'Paid amount must be a non-negative decimal string');
 
 const quantity = z.number().int('Quantity must be a whole number').min(1).max(INVENTORY_QUANTITY_LIMIT);
 
@@ -70,6 +72,14 @@ export const createSupplierPurchaseSchema = z.object({
   receiveStock: z.boolean().default(true),
   amountOverride: z.preprocess(emptyToNull, positiveAmount.optional().nullable()),
   amountOverrideReason: optionalText('Override reason', 1000),
+  /**
+   * How much of this bill was settled on the spot. Zero or absent leaves the
+   * whole bill owed. The debt always records what was billed; this is posted
+   * as a separate payment so both figures survive.
+   */
+  paidAmount: z.preprocess(emptyToNull, paidAmount.optional().nullable()),
+  /** How the settled portion was paid, for the payment's ledger description. */
+  paymentReference: optionalText('Payment reference', 200),
   /** Required only when a NEW_PRODUCT line is present. */
   accountPassword: z.string().min(1).optional(),
   lines: z.array(purchaseLine).min(1, 'At least one purchase line is required').max(100),

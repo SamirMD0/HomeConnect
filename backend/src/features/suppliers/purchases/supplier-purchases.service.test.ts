@@ -162,6 +162,69 @@ describe('SupplierPurchasesService.create', () => {
     expect(transactionsRepository.create).toHaveBeenCalled();
   });
 
+  /**
+   * A bill can arrive unpaid, settled on the spot, or part-paid. The debt must
+   * always record what was billed; anything settled is a separate payment, so
+   * both figures survive and the balance is still direction times amount.
+   */
+  it('posts only a debt when the bill is left unpaid', async () => {
+    await SupplierPurchasesService.create(supplierId, purchase(), admin, context);
+    expect(transactionsRepository.create).toHaveBeenCalledTimes(1);
+    expect(transactionsRepository.create.mock.calls[0][0].type).toBe(SupplierTransactionType.SUPPLIER_DEBT);
+  });
+
+  it('posts a matching payment when the bill is settled in full', async () => {
+    await SupplierPurchasesService.create(supplierId, purchase({ paidAmount: '630.00' }), admin, context);
+
+    expect(transactionsRepository.create).toHaveBeenCalledTimes(2);
+    const [debt, payment] = transactionsRepository.create.mock.calls.map((call) => call[0]);
+    expect(debt.type).toBe(SupplierTransactionType.SUPPLIER_DEBT);
+    expect(debt.amount.toFixed(2)).toBe('630.00');
+    expect(payment).toMatchObject({
+      type: SupplierTransactionType.SUPPLIER_PAYMENT,
+      direction: SupplierTransactionDirection.DECREASE_OWED,
+      receiptNumber: 'INV-2291',
+      // The database forbids a payment carrying the receiving link.
+      supplierReceivingId: null,
+    });
+    expect(payment.amount.toFixed(2)).toBe('630.00');
+  });
+
+  it('leaves the remainder owed when the bill is part-paid', async () => {
+    await SupplierPurchasesService.create(supplierId, purchase({ paidAmount: '200.00' }), admin, context);
+
+    const [debt, payment] = transactionsRepository.create.mock.calls.map((call) => call[0]);
+    expect(debt.amount.toFixed(2)).toBe('630.00');
+    expect(payment.amount.toFixed(2)).toBe('200.00');
+    expect(audits.writeSupplierAudit).toHaveBeenCalledWith(expect.objectContaining({
+      afterValues: expect.objectContaining({ paidAmount: '200.00', remainingOwed: '430.00' }),
+    }), tx);
+  });
+
+  it('never shrinks the debt to represent a payment', async () => {
+    await SupplierPurchasesService.create(supplierId, purchase({ paidAmount: '630.00' }), admin, context);
+    // The bill still says what was billed, so the invoice total stays auditable.
+    expect(transactionsRepository.create.mock.calls[0][0].amount.toFixed(2)).toBe('630.00');
+  });
+
+  it('refuses to pay more than the bill', async () => {
+    await expect(SupplierPurchasesService.create(supplierId, purchase({ paidAmount: '700.00' }), admin, context))
+      .rejects.toThrow('cannot exceed the purchase total');
+  });
+
+  it('treats a zero paid amount as unpaid', async () => {
+    await SupplierPurchasesService.create(supplierId, purchase({ paidAmount: '0' }), admin, context);
+    expect(transactionsRepository.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('measures the payment against an overridden total, not the line sum', async () => {
+    await SupplierPurchasesService.create(supplierId, purchase({
+      amountOverride: '600.00', amountOverrideReason: 'Bulk discount', paidAmount: '600.00',
+    }), admin, context);
+    expect(transactionsRepository.create).toHaveBeenCalledTimes(2);
+    expect(transactionsRepository.create.mock.calls[1][0].amount.toFixed(2)).toBe('600.00');
+  });
+
   it('refuses a non-admin before reading anything', async () => {
     await expect(SupplierPurchasesService.create(supplierId, purchase(), { ...admin, role: Role.EMPLOYEE }, context))
       .rejects.toMatchObject({ statusCode: 403 });

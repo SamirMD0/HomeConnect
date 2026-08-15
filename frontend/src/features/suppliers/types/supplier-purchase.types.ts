@@ -37,9 +37,15 @@ export interface CreateSupplierPurchaseInput {
   receiveStock: boolean;
   amountOverride?: string | null;
   amountOverrideReason?: string | null;
+  /** Settled on the spot. Posted as a separate payment, never as a smaller debt. */
+  paidAmount?: string | null;
+  paymentReference?: string | null;
   accountPassword?: string;
   lines: SupplierPurchaseLineInput[];
 }
+
+/** What the shop actually owes after this bill. */
+export type PurchasePaymentStatus = 'UNPAID' | 'PARTIAL' | 'PAID';
 
 export interface SupplierPurchaseLine {
   id: string;

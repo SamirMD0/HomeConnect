@@ -5,7 +5,7 @@ import {
 } from '@prisma/client';
 import { verifyAdminPassword } from '../../../lib/admin-verification';
 import { AppError, NotFoundError, ValidationError } from '../../../lib/errors';
-import { assertPositiveMoney, moneyToApiString, multiplyMoney, parseMoney, sumMoney, ZERO_MONEY } from '../../financial/domain/money';
+import { assertPositiveMoney, moneyToApiString, multiplyMoney, parseMoney, subtractMoney, sumMoney, ZERO_MONEY } from '../../financial/domain/money';
 import { businessDateToPrisma, prismaDateToBusinessDate } from '../../financial/domain/business-date';
 import { runFinancialTransaction } from '../../financial/infrastructure/transaction';
 import { InventoryRepository } from '../../inventory/inventory.repository';
@@ -143,6 +143,30 @@ export class SupplierPurchasesService {
         createdById: user.userId,
       }, tx);
 
+      // The settled portion is a second, ordinary supplier payment rather than a
+      // smaller debt: the bill must keep saying what was billed, and the balance
+      // still comes from direction and amount exactly as it always has.
+      const paid = parseMoney(input.paidAmount ?? '0');
+      if (paid.greaterThan(amount)) {
+        throw new ValidationError(`Paid amount cannot exceed the purchase total of ${moneyToApiString(amount)} / المبلغ المدفوع لا يمكن أن يتجاوز إجمالي الفاتورة`);
+      }
+      if (paid.greaterThan(ZERO_MONEY)) {
+        await SupplierTransactionsRepository.create({
+          supplierId,
+          // A payment may never carry the receiving link; the database enforces it.
+          supplierReceivingId: null,
+          type: SupplierTransactionType.SUPPLIER_PAYMENT,
+          direction: SupplierTransactionDirection.DECREASE_OWED,
+          amount: paid,
+          transactionDate: businessDateToPrisma(input.transactionDate),
+          description: paymentDescription(receiptNumber, moneyToApiString(paid)),
+          reference: input.paymentReference ?? null,
+          notes: null,
+          receiptNumber,
+          createdById: user.userId,
+        }, tx);
+      }
+
       for (const [position, line] of lines.entries()) {
         await SupplierPurchasesRepository.createLine({
           supplierTransactionId: transaction.id,
@@ -180,6 +204,8 @@ export class SupplierPurchasesService {
           lineCount: lines.length,
           stockLineCount: stockLines.length,
           quickAddedProducts: quickAddCount,
+          paidAmount: moneyToApiString(paid),
+          remainingOwed: moneyToApiString(subtractMoney(amount, paid)),
         },
         requestId: context.requestId,
         ipAddress: context.ipAddress,
@@ -297,6 +323,13 @@ function receivedItemId(line: ResolvedLine, itemIdByProductId: Map<string, strin
   const itemId = line.productId ? itemIdByProductId.get(line.productId) : undefined;
   if (!itemId) throw new AppError('Received stock could not be linked to its purchase line', 500, 'RECEIVING_LINK_MISSING');
   return itemId;
+}
+
+/** Ledger text for the settled portion, in the same two-line bilingual shape as a purchase. */
+function paymentDescription(receiptNumber: string | null, paid: string): string {
+  const invoice = receiptNumber ? ` on invoice ${receiptNumber}` : '';
+  const fatura = receiptNumber ? ` بموجب الفاتورة ${receiptNumber}` : '';
+  return `Paid ${paid} to the supplier${invoice}\nتم دفع ${paid} للمورد${fatura}`;
 }
 
 async function loadActor(id: string, tx: Prisma.TransactionClient) {
