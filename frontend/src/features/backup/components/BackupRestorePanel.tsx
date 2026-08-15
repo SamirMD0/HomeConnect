@@ -235,11 +235,21 @@ const BackupSettingsForm: React.FC<{
   );
 };
 
-const BackupList: React.FC<{ backups: BackupRecord[]; onRestore: (backup: BackupRecord) => void }> = ({
+export const BACKUP_PREVIEW_LIMIT = 5;
+
+export function visibleBackups(backups: BackupRecord[], expanded: boolean): BackupRecord[] {
+  return expanded ? backups : backups.slice(0, BACKUP_PREVIEW_LIMIT);
+}
+
+export const BackupList: React.FC<{ backups: BackupRecord[]; onRestore: (backup: BackupRecord) => void }> = ({
   backups,
   onRestore,
-}) => (
-  <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+}) => {
+  const [expanded, setExpanded] = useState(false);
+  const displayedBackups = visibleBackups(backups, expanded);
+  const hasMore = backups.length > BACKUP_PREVIEW_LIMIT;
+
+  return <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
     <div className="overflow-x-auto">
       <table className="min-w-full divide-y divide-slate-200 text-sm">
         <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
@@ -261,7 +271,7 @@ const BackupList: React.FC<{ backups: BackupRecord[]; onRestore: (backup: Backup
               </td>
             </tr>
           ) : (
-            backups.map((backup) => (
+            displayedBackups.map((backup) => (
               <tr key={backup.id}>
                 <td className="px-4 py-3 whitespace-nowrap text-slate-600">{formatDateTime(backup.createdAt)}</td>
                 <td className="px-4 py-3 font-medium text-slate-900">{backup.filename}</td>
@@ -292,8 +302,21 @@ const BackupList: React.FC<{ backups: BackupRecord[]; onRestore: (backup: Backup
         </tbody>
       </table>
     </div>
+    {hasMore && (
+      <div className="flex items-center justify-center border-t border-slate-200 bg-slate-50 px-4 py-3">
+        <button
+          type="button"
+          onClick={() => setExpanded((current) => !current)}
+          className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+        >
+          {expanded
+            ? 'Show less / عرض أقل'
+            : `Show more (${backups.length - BACKUP_PREVIEW_LIMIT}) / عرض المزيد`}
+        </button>
+      </div>
+    )}
   </div>
-);
+};
 
 const RestoreBackupDialog: React.FC<{
   backup: BackupRecord | null;
