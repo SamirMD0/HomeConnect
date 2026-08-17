@@ -1,7 +1,5 @@
 export type MonthlyDebtSortBy = 'CUSTOMER' | 'OUTSTANDING' | 'OVERDUE' | 'LAST_PAYMENT';
 export type MonthlyDebtSortOrder = 'ASC' | 'DESC';
-export type ReportType = 'MONTHLY_DEBT_SNAPSHOT' | 'MONTHLY_FINANCIAL_ACTIVITY';
-
 export interface MonthlyDebtReportFilters {
   month: string;
   search?: string;

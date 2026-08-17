@@ -2,9 +2,13 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import type { StockMovement } from '../types/inventory.types';
 
-export const movementTypeLabel = (type: StockMovement['movementType']): string => type === 'PURCHASE_RECEIPT'
-  ? 'Supplier Receipt / إدخال من مورد'
-  : type.replaceAll('_', ' ');
+const MOVEMENT_LABELS: Partial<Record<StockMovement['movementType'], string>> = {
+  PURCHASE_RECEIPT: 'Supplier Receipt / إدخال من مورد',
+  PURCHASE_RECEIPT_REVERSAL: 'Supplier Receipt Reversed / عكس إدخال من مورد',
+};
+
+export const movementTypeLabel = (type: StockMovement['movementType']): string =>
+  MOVEMENT_LABELS[type] ?? type.replaceAll('_', ' ');
 
 export const MovementHistory: React.FC<{ movements: StockMovement[]; emptyLabel?: string }> = ({ movements, emptyLabel = 'No stock movements / لا توجد حركات مخزون' }) => movements.length
   ? <div className="divide-y divide-slate-100">{movements.map((movement) => { const sourceOrder = movement.salesFulfillmentMovement?.salesOrder ?? movement.salesFulfillmentReversalMovement?.salesOrder; const receipt = movement.receivingMetadata; return <article key={movement.id} className="py-3 text-sm">

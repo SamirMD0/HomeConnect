@@ -1,12 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import { AlertTriangle, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { Button } from '../../../components/ui';
 import { Modal } from '../../../components/ui/Modal';
 import { canonicalMoneyInput, centsToMoney, moneyToCents, sanitizeMoneyInput } from '../../customer-financial/utils/money-input';
 import { normalizeFinancialError } from '../../customer-financial/utils/financial-form-errors';
 import { todayAsBusinessDate } from '../../customer-financial/utils/business-date';
-import { useCreateSupplierPurchase, useReceiptCheck } from '../hooks/useSupplierPurchases';
+import { useCreateSupplierPurchase } from '../hooks/useSupplierPurchases';
 import type { Supplier } from '../types/supplier.types';
 import type { PurchasePaymentStatus } from '../types/supplier-purchase.types';
 import {
@@ -48,7 +48,6 @@ export const SupplierPurchaseFormDialog: React.FC<Props> = ({ open, supplier, on
   /** Once the user writes their own description, stop overwriting it. */
   const [descriptionEdited, setDescriptionEdited] = useState(false);
   const create = useCreateSupplierPurchase();
-  const receiptCheck = useReceiptCheck(open ? supplier.id : '', form.receiptNumber);
 
   const set = (key: keyof ReturnType<typeof emptyForm>) => (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setForm((current) => ({ ...current, [key]: event.target.value }));
@@ -135,17 +134,6 @@ export const SupplierPurchaseFormDialog: React.FC<Props> = ({ open, supplier, on
         </label>
       </div>
 
-      {receiptCheck.data?.duplicate && <p role="status" className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-        <span>
-          This receipt number is already recorded for this supplier / رقم الفاتورة مسجل لهذا المورد من قبل
-          <span className="mt-1 block text-xs">
-            {receiptCheck.data.matches.map((match) => `${match.transactionDate} · ${match.amount}`).join(' — ')}
-          </span>
-          <span className="mt-1 block text-xs font-semibold">You can still save if this is genuinely a second invoice / يمكنك المتابعة إذا كانت فاتورة أخرى فعلًا</span>
-        </span>
-      </p>}
-
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-3">
           <h3 className="text-sm font-semibold text-slate-800">Lines / البنود</h3>
@@ -178,23 +166,29 @@ export const SupplierPurchaseFormDialog: React.FC<Props> = ({ open, supplier, on
       <div>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <label htmlFor="purchase-description" className="text-sm font-semibold text-slate-700">Description / الوصف *</label>
-          {descriptionEdited && suggestion
-            ? <Button type="button" size="sm" variant="ghost" onClick={() => { setDescriptionEdited(false); setForm((current) => ({ ...current, description: '' })); }}>
-                Use suggested / استخدام المقترح
-              </Button>
-            : <span className="text-xs text-slate-500">Filled in from the lines — edit if you prefer / يُملأ من البنود، ويمكنك تعديله</span>}
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            disabled={!suggestion}
+            onClick={() => { setDescriptionEdited(false); setForm((current) => ({ ...current, description: '' })); }}
+          >
+            Regenerate description / إعادة إنشاء الوصف
+          </Button>
         </div>
-        {/* A textarea, not an input: the description carries one line per
-            language, and each needs its own direction to stay readable. */}
         <textarea
           id="purchase-description"
           dir="auto"
           required
-          rows={3}
+          rows={2}
           value={description}
           onChange={(event) => { setDescriptionEdited(true); setForm((current) => ({ ...current, description: event.target.value })); }}
           className="user-text-input mt-1 w-full resize-y rounded-md border border-slate-300 px-3 py-2 font-normal leading-relaxed"
+          style={{ unicodeBidi: 'plaintext' }}
         />
+        <p className="mt-1 text-xs text-slate-500">
+          Generated from the purchase lines; you can edit it / يُنشأ من بنود الشراء ويمكنك تعديله
+        </p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">

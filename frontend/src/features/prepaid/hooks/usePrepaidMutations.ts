@@ -9,7 +9,8 @@ import { normalizeFinancialError } from '../../customer-financial/utils/financia
 
 /**
  * Delivering converts the unpaid remainder into a real receivable, so the
- * receivables cache is stale too, not just the prepaid list.
+ * receivables cache is stale too, not just the prepaid list. The customer
+ * profile carries the same prepaid balance, so it is refreshed as well.
  */
 const useInvalidatePrepaidCaches = () => {
   const queryClient = useQueryClient();
@@ -18,6 +19,8 @@ const useInvalidatePrepaidCaches = () => {
       queryClient.invalidateQueries({ queryKey: prepaidQueryKeyPrefix }),
       queryClient.invalidateQueries({ queryKey: financialLedgerQueryKeyPrefix }),
       queryClient.invalidateQueries({ queryKey: receivablesQueryKeyPrefix }),
+      // Covers ['customers', customerId, 'financial-summary'] by prefix.
+      queryClient.invalidateQueries({ queryKey: ['customers'] }),
     ]);
   };
 };

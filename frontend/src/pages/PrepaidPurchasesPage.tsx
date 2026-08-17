@@ -15,10 +15,7 @@ import { DeliverPrepaidDialog } from '../features/prepaid/components/DeliverPrep
 import { RevertPrepaidDeliveryDialog } from '../features/prepaid/components/RevertPrepaidDeliveryDialog';
 import { PrepaidDetailsDialog } from '../features/prepaid/components/PrepaidDetailsDialog';
 import { EditPrepaidPurchaseDialog } from '../features/prepaid/components/EditPrepaidPurchaseDialog';
-import {
-  DebtPaymentTarget,
-  RecordDebtPaymentDialog,
-} from '../features/customer-financial/components/RecordDebtPaymentDialog';
+import { RecordDebtPaymentDialog } from '../features/customer-financial/components/RecordDebtPaymentDialog';
 import { CancelDebtDialog } from '../features/customer-financial/components/CancelDebtDialog';
 import { usePrepaidPurchases } from '../features/prepaid/hooks/usePrepaidPurchases';
 import {
@@ -26,6 +23,7 @@ import {
   PrepaidPurchase,
 } from '../features/prepaid/types/prepaid.types';
 import { defaultPrepaidFilters } from '../features/prepaid/utils/prepaid-query';
+import { toPrepaidPaymentTarget } from '../features/prepaid/utils/prepaid-payment-target';
 import { businessLabels } from '../shared/labels/business-labels';
 
 export const PrepaidPurchasesPage: React.FC = () => {
@@ -199,7 +197,7 @@ export const PrepaidPurchasesPage: React.FC = () => {
         {paymentTarget && (
           <RecordDebtPaymentDialog
             customerId={paymentTarget.customer.id}
-            debt={toDebtPaymentTarget(paymentTarget)}
+            debt={toPrepaidPaymentTarget(paymentTarget)}
             contextVariant="prepaid"
             onSuccess={finishMutation}
           />
@@ -215,7 +213,7 @@ export const PrepaidPurchasesPage: React.FC = () => {
         {cancelTarget && (
           <CancelDebtDialog
             customerId={cancelTarget.customer.id}
-            debt={toDebtPaymentTarget(cancelTarget)}
+            debt={toPrepaidPaymentTarget(cancelTarget)}
             onSuccess={finishMutation}
           />
         )}
@@ -225,26 +223,3 @@ export const PrepaidPurchasesPage: React.FC = () => {
 };
 
 export default PrepaidPurchasesPage;
-
-function toDebtPaymentTarget(item: PrepaidPurchase): DebtPaymentTarget {
-  const status =
-    item.status === 'CANCELLED'
-      ? 'CANCELLED'
-      : item.isFullyPaid
-        ? 'PAID'
-        : item.amountPaid === '0.00'
-          ? 'UNPAID'
-          : 'PARTIALLY_PAID';
-
-  return {
-    id: item.debtId,
-    description: item.itemName,
-    originalAmount: item.fullAmount,
-    totalPaid: item.amountPaid,
-    remainingBalance: item.remainingToCollect,
-    dueDate: item.dueDate,
-    status,
-    calculatedStatus: status,
-    kind: 'PREPAID_PURCHASE',
-  };
-}

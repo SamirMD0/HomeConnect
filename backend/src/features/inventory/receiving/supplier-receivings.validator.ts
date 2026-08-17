@@ -29,6 +29,23 @@ export const createSupplierReceivingSchema = z.object({
   });
 });
 
+/**
+ * Metadata correction. Deliberately limited to the two fields that carry no
+ * stock meaning — a reference number and a note. Quantity, product, date, and
+ * supplier are history: correcting those is a void plus a fresh receiving, so
+ * the movements stay honest about what was on the shelf and when.
+ */
+export const updateSupplierReceivingMetadataSchema = z.object({
+  referenceNumber: optionalText(200),
+  note: optionalText(2000),
+  reason: z.string().trim().min(5, 'Reason must be at least 5 characters').max(1000),
+}).strict();
+
+export const voidSupplierReceivingSchema = z.object({
+  reason: z.string().trim().min(5, 'Reason must be at least 5 characters').max(1000),
+  accountPassword: z.string().min(1, 'Account password is required'),
+}).strict();
+
 export const supplierReceivingParamsSchema = z.object({ receivingId: uuid });
 export const supplierReceivingListSchema = z.object({
   page: z.coerce.number().int().positive().default(1),
@@ -42,6 +59,8 @@ export const supplierReceivingDuplicateSchema = z.object({
 }).strict();
 
 export type CreateSupplierReceivingInput = z.infer<typeof createSupplierReceivingSchema>;
+export type UpdateSupplierReceivingMetadataInput = z.infer<typeof updateSupplierReceivingMetadataSchema>;
+export type VoidSupplierReceivingInput = z.infer<typeof voidSupplierReceivingSchema>;
 export type SupplierReceivingParamsInput = z.infer<typeof supplierReceivingParamsSchema>;
 export type SupplierReceivingListInput = z.infer<typeof supplierReceivingListSchema>;
 export type SupplierReceivingDuplicateInput = z.infer<typeof supplierReceivingDuplicateSchema>;

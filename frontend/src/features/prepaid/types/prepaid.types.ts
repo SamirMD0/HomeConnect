@@ -15,6 +15,24 @@ export interface PrepaidUser {
   username: string;
 }
 
+export type PrepaidPaymentMethod = 'CASH' | 'CARD' | 'BANK_TRANSFER' | 'OTHER';
+
+/** One prepaid bill paid towards an item. A purchase normally has several. */
+export interface PrepaidPayment {
+  id: string;
+  paymentId: string;
+  amount: string;
+  paymentDate: string;
+  paymentMethod: PrepaidPaymentMethod;
+  /** Receipt or bill number, when one was recorded. */
+  reference: string | null;
+  notes: string | null;
+  recordedBy: PrepaidUser | null;
+  /** Kept in history, excluded from the balance. */
+  isVoided: boolean;
+  createdAt: string;
+}
+
 export interface PrepaidPurchase {
   id: string;
   debtId: string;
@@ -33,6 +51,11 @@ export interface PrepaidPurchase {
   deliveryNotes: string | null;
   deliveredBy: PrepaidUser | null;
   remainderDebtId: string | null;
+  createdBy: PrepaidUser | null;
+  /** Every bill paid towards this item, oldest first. */
+  payments: PrepaidPayment[];
+  /** Bills that still count towards the balance. */
+  paymentCount: number;
   createdAt: string;
   updatedAt: string;
 }

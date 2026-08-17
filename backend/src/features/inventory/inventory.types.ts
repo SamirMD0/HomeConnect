@@ -13,6 +13,7 @@ export const ACTIVE_STOCK_MOVEMENT_TYPES = [
 
 export const RESERVED_STOCK_MOVEMENT_TYPES = [
   StockMovementType.PURCHASE_RECEIPT,
+  StockMovementType.PURCHASE_RECEIPT_REVERSAL,
   StockMovementType.SALE_FULFILLMENT,
   StockMovementType.SALE_CANCEL_RESTORE,
   StockMovementType.SERVICE_PART_USED,

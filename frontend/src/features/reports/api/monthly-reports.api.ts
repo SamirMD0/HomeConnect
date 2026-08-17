@@ -36,4 +36,12 @@ export const monthlyReportsApi = {
     });
     return response.data;
   },
+
+  exportMonthlyActivityCsv: async (filters: MonthlyFinancialActivityFilters): Promise<Blob> => {
+    const response = await api.get<Blob>('/reports/monthly-financial-activity/export.csv', {
+      params: buildActivityParams({ ...filters, page: 1, limit: 10000 }),
+      responseType: 'blob',
+    });
+    return response.data;
+  },
 };

@@ -30,6 +30,19 @@ export const ReportErrorState: React.FC<{ onRetry: () => void }> = ({ onRetry })
   </div>
 );
 
+/**
+ * Shared so the portal and every report detail page refuse a non-admin with the
+ * same wording. Financial reports expose global debt and payment totals.
+ */
+export const ReportsAdminOnlyNotice: React.FC = () => (
+  <div className="mx-auto max-w-3xl rounded-lg border border-amber-200 bg-amber-50 p-6 text-amber-900">
+    <h1 className="text-xl font-semibold">Reports are admin-only</h1>
+    <p className="mt-2 text-sm">
+      Financial reports expose global customer debt and payment totals, so access is restricted to admins.
+    </p>
+  </div>
+);
+
 export const ReportEmptyState: React.FC = () => (
   <div className="rounded-lg border border-slate-200 bg-white p-10 text-center">
     <Search className="mx-auto h-8 w-8 text-slate-300" aria-hidden="true" />

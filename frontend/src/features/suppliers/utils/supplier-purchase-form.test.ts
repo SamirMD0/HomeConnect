@@ -117,74 +117,55 @@ describe('hasQuickAdd', () => {
   });
 });
 
-/** The two halves live on their own lines so bidirectional text stays readable. */
-const bilingual = (english: string, arabic: string) => `${english}\n${arabic}`;
-
 describe('suggestedPurchaseDescription', () => {
-  it('reads as a bilingual sentence naming the product, total, and receipt', () => {
-    expect(suggestedPurchaseDescription([existing()], 'INV-2291', '630.00')).toBe(bilingual(
-      'Purchased TCL AC × 3 for 630.00 on invoice INV-2291',
-      'تم شراء TCL AC × 3 بمبلغ 630.00 بموجب الفاتورة INV-2291'
-    ));
+  it('builds compact English and Arabic lines with product, total, and receipt', () => {
+    expect(suggestedPurchaseDescription([existing()], 'INV-2291', '630.00'))
+      .toBe('Purchase: TCL AC × 3 · 630.00 · #INV-2291\nشراء: TCL AC × 3 · 630.00 · #INV-2291');
   });
 
   it('puts each language on its own line', () => {
     const [english, arabic, ...rest] = suggestedPurchaseDescription([existing()], 'INV-1', '630.00').split('\n');
     expect(rest).toHaveLength(0);
-    expect(english.startsWith('Purchased')).toBe(true);
-    expect(arabic.startsWith('تم شراء')).toBe(true);
-    expect(english).not.toContain('تم شراء');
+    expect(english).toBe('Purchase: TCL AC × 3 · 630.00 · #INV-1');
+    expect(arabic).toBe('شراء: TCL AC × 3 · 630.00 · #INV-1');
   });
 
   it('omits the quantity when only one unit was bought', () => {
-    expect(suggestedPurchaseDescription([existing({ quantity: '1' })], '', '210.00')).toBe(bilingual(
-      'Purchased TCL AC for 210.00',
-      'تم شراء TCL AC بمبلغ 210.00'
-    ));
+    expect(suggestedPurchaseDescription([existing({ quantity: '1' })], '', '210.00'))
+      .toBe('Purchase: TCL AC · 210.00\nشراء: TCL AC · 210.00');
   });
 
   it('uses the typed name for a quick-added product', () => {
-    expect(suggestedPurchaseDescription([quickAdd()], 'INV-7', '600.00')).toBe(bilingual(
-      'Purchased TCL AC 2HP × 2 for 600.00 on invoice INV-7',
-      'تم شراء TCL AC 2HP × 2 بمبلغ 600.00 بموجب الفاتورة INV-7'
-    ));
+    expect(suggestedPurchaseDescription([quickAdd()], 'INV-7', '600.00'))
+      .toBe('Purchase: TCL AC 2HP × 2 · 600.00 · #INV-7\nشراء: TCL AC 2HP × 2 · 600.00 · #INV-7');
   });
 
   it('uses the description of a manual line', () => {
-    expect(suggestedPurchaseDescription([manual()], '', '25.50')).toBe(bilingual(
-      'Purchased Freight for 25.50',
-      'تم شراء Freight بمبلغ 25.50'
-    ));
+    expect(suggestedPurchaseDescription([manual()], '', '25.50'))
+      .toBe('Purchase: Freight · 25.50\nشراء: Freight · 25.50');
   });
 
-  it('separates several lines with each language’s own comma', () => {
+  it('separates several purchase lines cleanly', () => {
     const result = suggestedPurchaseDescription([existing(), manual()], 'INV-2291', '655.50');
-    expect(result).toContain('TCL AC × 3, Freight for 655.50');
-    expect(result).toContain('TCL AC × 3، Freight بمبلغ 655.50');
+    expect(result).toBe(
+      'Purchase: TCL AC × 3, Freight · 655.50 · #INV-2291\nشراء: TCL AC × 3, Freight · 655.50 · #INV-2291'
+    );
   });
 
   it('summarises the tail once there are more than three lines', () => {
     const base = [existing(), manual(), quickAdd()];
     const extra = ['Cable', 'Install kit', 'Bracket'].map((description) => manual({ description }));
     const result = suggestedPurchaseDescription([...base, ...extra], '', '0');
-    expect(result).toContain('TCL AC × 3, Freight, TCL AC 2HP × 2 and 3 more');
-    expect(result).toContain('و3 بنود أخرى');
-  });
-
-  it('uses the Arabic singular and dual forms for one and two extra lines', () => {
-    const base = [existing(), manual(), quickAdd()];
-    const extra = (count: number) => Array.from({ length: count }, (_, index) => manual({ description: `Extra ${index}` }));
-    expect(suggestedPurchaseDescription([...base, ...extra(1)], '', '0')).toContain('وبند آخر');
-    expect(suggestedPurchaseDescription([...base, ...extra(2)], '', '0')).toContain('وبندان آخران');
+    expect(result).toBe(
+      'Purchase: TCL AC × 3, Freight, TCL AC 2HP × 2 +3\nشراء: TCL AC × 3, Freight, TCL AC 2HP × 2 +3'
+    );
   });
 
   it('drops the parts that are not filled in yet', () => {
     expect(suggestedPurchaseDescription([existing()], '', '0'))
-      .toBe(bilingual('Purchased TCL AC × 3', 'تم شراء TCL AC × 3'));
-    expect(suggestedPurchaseDescription([existing()], 'INV-1', '0')).toBe(bilingual(
-      'Purchased TCL AC × 3 on invoice INV-1',
-      'تم شراء TCL AC × 3 بموجب الفاتورة INV-1'
-    ));
+      .toBe('Purchase: TCL AC × 3\nشراء: TCL AC × 3');
+    expect(suggestedPurchaseDescription([existing()], 'INV-1', '0'))
+      .toBe('Purchase: TCL AC × 3 · #INV-1\nشراء: TCL AC × 3 · #INV-1');
   });
 
   it('is empty while no line names anything, leaving the form to say so', () => {
@@ -193,27 +174,22 @@ describe('suggestedPurchaseDescription', () => {
   });
 
   it('ignores a receipt number that is only whitespace', () => {
-    expect(suggestedPurchaseDescription([existing()], '   ', '630.00')).toBe(bilingual(
-      'Purchased TCL AC × 3 for 630.00',
-      'تم شراء TCL AC × 3 بمبلغ 630.00'
-    ));
+    expect(suggestedPurchaseDescription([existing()], '   ', '630.00'))
+      .toBe('Purchase: TCL AC × 3 · 630.00\nشراء: TCL AC × 3 · 630.00');
   });
 
-  it('keeps both halves intact when product names are long', () => {
+  it('keeps the compact summary within the backend description limit', () => {
     const long = existing({ productName: 'X'.repeat(400) });
     const result = suggestedPurchaseDescription([long, long, long], 'INV-1', '630.00');
     expect(result.length).toBeLessThanOrEqual(500);
-    // Truncating the item list rather than the sentence means the Arabic half
-    // still arrives whole instead of being cut off mid-word.
     expect(result).toContain('…');
-    expect(result).toContain('بموجب الفاتورة INV-1');
+    expect(result).toContain('\nشراء:');
+    expect(result).toContain('· #INV-1');
   });
 
-  it('handles an Arabic product name without mangling either half', () => {
-    expect(suggestedPurchaseDescription([existing({ productName: 'مكيف تي سي إل' })], 'INV-9', '630.00')).toBe(bilingual(
-      'Purchased مكيف تي سي إل × 3 for 630.00 on invoice INV-9',
-      'تم شراء مكيف تي سي إل × 3 بمبلغ 630.00 بموجب الفاتورة INV-9'
-    ));
+  it('handles an Arabic product name without duplicating it', () => {
+    expect(suggestedPurchaseDescription([existing({ productName: 'مكيف تي سي إل' })], 'INV-9', '630.00'))
+      .toBe('Purchase: مكيف تي سي إل × 3 · 630.00 · #INV-9\nشراء: مكيف تي سي إل × 3 · 630.00 · #INV-9');
   });
 });
 

@@ -3,7 +3,7 @@ import { inventoryKeys } from '../../hooks/useInventory';
 import { productKeys } from '../../../products/hooks/useProducts';
 import { useDebouncedValue } from '../../../../hooks/useDebouncedValue';
 import { supplierReceivingsApi } from '../api/supplier-receivings.api';
-import type { CreateSupplierReceivingInput, SupplierReceivingFilters } from '../types/supplier-receiving.types';
+import type { CreateSupplierReceivingInput, SupplierReceivingFilters, UpdateReceivingMetadataInput, VoidReceivingInput } from '../types/supplier-receiving.types';
 
 export const supplierReceivingKeys = {
   all: ['supplier-receivings'] as const,
@@ -27,14 +27,31 @@ export const useSupplierReceivingDuplicate = (supplierId: string, referenceNumbe
     retry: false,
   });
 };
+const invalidateStock = (queryClient: ReturnType<typeof useQueryClient>) => Promise.all([
+  queryClient.invalidateQueries({ queryKey: supplierReceivingKeys.all }),
+  queryClient.invalidateQueries({ queryKey: inventoryKeys.all }),
+  queryClient.invalidateQueries({ queryKey: productKeys.all }),
+]);
+
 export function useCreateSupplierReceiving() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: CreateSupplierReceivingInput) => supplierReceivingsApi.create(input),
-    onSuccess: () => Promise.all([
-      queryClient.invalidateQueries({ queryKey: supplierReceivingKeys.all }),
-      queryClient.invalidateQueries({ queryKey: inventoryKeys.all }),
-      queryClient.invalidateQueries({ queryKey: productKeys.all }),
-    ]),
+    onSuccess: () => invalidateStock(queryClient),
+  });
+}
+/** Reference and note only — this moves no stock, so only the document caches need refreshing. */
+export function useUpdateReceivingMetadata(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: UpdateReceivingMetadataInput) => supplierReceivingsApi.updateMetadata(id, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: supplierReceivingKeys.all }),
+  });
+}
+export function useVoidSupplierReceiving(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: VoidReceivingInput) => supplierReceivingsApi.void(id, input),
+    onSuccess: () => invalidateStock(queryClient),
   });
 }

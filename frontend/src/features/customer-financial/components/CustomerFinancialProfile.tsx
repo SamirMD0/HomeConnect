@@ -30,12 +30,14 @@ import { RecentPaymentsList } from './RecentPaymentsList';
 import { RecordDebtPaymentDialog } from './RecordDebtPaymentDialog';
 import { RecordPlanPaymentDialog } from './RecordPlanPaymentDialog';
 import { VoidPaymentDialog } from './VoidPaymentDialog';
+import { CustomerPrepaidPanel } from '../../prepaid/components/CustomerPrepaidPanel';
+import { businessLabels } from '../../../shared/labels/business-labels';
 import { useCustomerActivity } from '../../customers/hooks/useCustomers';
 import { CustomerActivityTimeline } from '../../../pages/customers/components/CustomerActivityTimeline';
 import { CustomerAttentionPanel } from '../../../pages/customers/components/CustomerAttentionPanel';
 import { CustomerMonthStatusCard } from '../../../pages/customers/components/CustomerMonthStatusCard';
 
-export type FinancialProfileTab = 'overview' | 'debts' | 'plans' | 'payments' | 'overdue' | 'legacy' | 'activity';
+export type FinancialProfileTab = 'overview' | 'debts' | 'prepaid' | 'plans' | 'payments' | 'overdue' | 'legacy' | 'activity';
 
 interface CustomerFinancialProfileProps {
   customerId: string;
@@ -47,6 +49,7 @@ interface CustomerFinancialProfileProps {
 const tabs: Array<{ id: FinancialProfileTab; label: string }> = [
   { id: 'overview', label: 'Overview' },
   { id: 'debts', label: 'Debts' },
+  { id: 'prepaid', label: businessLabels.prepaid.navTitle },
   { id: 'plans', label: 'Installment Plans' },
   { id: 'payments', label: 'Payments' },
   { id: 'overdue', label: 'Overdue' },
@@ -400,6 +403,10 @@ const FinancialTabPanel: React.FC<FinancialTabPanelProps> = ({
         onCancelDebt={onCancelDebt}
       />
     );
+  }
+
+  if (activeTab === 'prepaid') {
+    return <CustomerPrepaidPanel customer={data.customer} canMutate={canMutate} />;
   }
 
   if (activeTab === 'plans') {

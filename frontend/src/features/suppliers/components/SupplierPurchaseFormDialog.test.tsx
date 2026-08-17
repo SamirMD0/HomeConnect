@@ -6,13 +6,11 @@ import type { Supplier } from '../types/supplier.types';
 const { hooks } = vi.hoisted(() => ({
   hooks: {
     create: { mutateAsync: vi.fn(), isPending: false },
-    receipt: { data: undefined as { duplicate: boolean; matches: Array<Record<string, string>> } | undefined },
   },
 }));
 
 vi.mock('../hooks/useSupplierPurchases', () => ({
   useCreateSupplierPurchase: () => hooks.create,
-  useReceiptCheck: () => hooks.receipt,
 }));
 vi.mock('../../products/components/ProductPicker', () => ({
   ProductPicker: (props: { requireOpeningCount?: boolean }) =>
@@ -54,19 +52,18 @@ describe('SupplierPurchaseFormDialog', () => {
   /** Typing a description for every invoice is friction, so it is derived by default. */
   it('presents the description as auto-filled from the lines', () => {
     const html = render();
-    expect(html).toContain('Filled in from the lines');
-    // A textarea, because the description carries one line per language.
-    expect(html).toMatch(/<textarea id="purchase-description"[^>]*rows="3"/);
+    expect(html).toContain('Generated from the purchase lines');
+    expect(html).toContain('Regenerate description / إعادة إنشاء الوصف');
+    expect(html).toMatch(/<textarea id="purchase-description"[^>]*rows="2"/);
+    expect(html).toContain('unicode-bidi:plaintext');
     // Nothing is entered yet, so there is nothing to suggest.
     expect(html).toMatch(/<textarea id="purchase-description"[^>]*><\/textarea>/);
   });
 
-  it('warns about a reused receipt number without blocking the save', () => {
-    hooks.receipt.data = { duplicate: true, matches: [{ transactionDate: '2026-08-14', amount: '630.00' }] };
+  it('does not imply that supplier receipt numbers must be unique', () => {
     const html = render();
-    expect(html).toContain('already recorded for this supplier');
-    expect(html).toContain('You can still save if this is genuinely a second invoice');
-    hooks.receipt.data = undefined;
+    expect(html).not.toContain('already recorded for this supplier');
+    expect(html).not.toContain('genuinely a second invoice');
   });
 
   it('shows the running total from the line sum', () => {

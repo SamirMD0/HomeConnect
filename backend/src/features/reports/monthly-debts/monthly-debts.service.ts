@@ -31,7 +31,9 @@ import {
   MonthlyDebtCsvQueryInput,
   MonthlyDebtReportQueryInput,
   MonthlyFinancialActivityQueryInput,
+  MonthlyFinancialActivityCsvQueryInput,
 } from './monthly-debts.validator';
+import { buildCsv } from '../shared/csv';
 
 interface MonthBoundaries {
   month: string;
@@ -58,12 +60,24 @@ interface CustomerBucket {
 
 export class MonthlyDebtsService {
   static async getMonthlyDebtReport(query: MonthlyDebtReportQueryInput): Promise<MonthlyDebtReport> {
-    const report = await this.buildMonthlyDebtReport(query, false);
+    const report = await this.buildMonthlyDebtReport(query, false, this.monthBoundaries(query.month));
     return report;
   }
 
+  static getDebtReportForRange(
+    query: MonthlyDebtReportQueryInput,
+    from: string,
+    to: string
+  ): Promise<MonthlyDebtReport> {
+    return this.buildMonthlyDebtReport(query, false, this.rangeBoundaries(query.month, from, to));
+  }
+
   static async getMonthlyDebtCsv(query: MonthlyDebtCsvQueryInput) {
-    const report = await this.buildMonthlyDebtReport({ ...query, page: 1, limit: 10000 }, true);
+    const report = await this.buildMonthlyDebtReport(
+      { ...query, page: 1, limit: 10000 },
+      true,
+      this.monthBoundaries(query.month)
+    );
     const csv = this.toCsv(report.rows);
 
     return {
@@ -75,7 +89,35 @@ export class MonthlyDebtsService {
   static async getMonthlyFinancialActivity(
     query: MonthlyFinancialActivityQueryInput
   ): Promise<MonthlyFinancialActivityReport> {
-    const boundaries = this.monthBoundaries(query.month);
+    return this.buildFinancialActivity(query, this.monthBoundaries(query.month));
+  }
+
+  static async getMonthlyFinancialActivityCsv(query: MonthlyFinancialActivityCsvQueryInput) {
+    const report = await this.buildFinancialActivity(
+      { ...query, page: 1, limit: 10000 },
+      this.monthBoundaries(query.month)
+    );
+    return {
+      filename: `monthly-financial-activity-${query.month}.csv`,
+      csv: buildCsv(
+        ['Date', 'Customer', 'Phone', 'Type', 'Description', 'Amount'],
+        report.items.map((item) => [item.date, item.customer.name, item.customer.phone, item.type, item.description, item.amount])
+      ),
+    };
+  }
+
+  static getFinancialActivityForRange(
+    query: MonthlyFinancialActivityQueryInput,
+    from: string,
+    to: string
+  ): Promise<MonthlyFinancialActivityReport> {
+    return this.buildFinancialActivity(query, this.rangeBoundaries(query.month, from, to));
+  }
+
+  private static async buildFinancialActivity(
+    query: MonthlyFinancialActivityQueryInput,
+    boundaries: MonthBoundaries
+  ): Promise<MonthlyFinancialActivityReport> {
     const records = await MonthlyDebtsRepository.loadActivityRecords({
       customerId: query.customerId,
       startDate: boundaries.startDatePrisma,
@@ -137,9 +179,9 @@ export class MonthlyDebtsService {
 
   private static async buildMonthlyDebtReport(
     query: MonthlyDebtReportQueryInput,
-    includeCompleteDataset: boolean
+    includeCompleteDataset: boolean,
+    boundaries: MonthBoundaries
   ): Promise<MonthlyDebtReport> {
-    const boundaries = this.monthBoundaries(query.month);
     const records = await MonthlyDebtsRepository.loadSnapshotRecords({
       search: query.search,
       startDate: boundaries.startDatePrisma,
@@ -457,14 +499,21 @@ export class MonthlyDebtsService {
 
   private static monthBoundaries(month: string): MonthBoundaries {
     const range = monthToBusinessRange(month);
-    parseBusinessDate(range.startDate);
-    parseBusinessDate(range.endDate);
+    return this.rangeBoundaries(month, range.startDate, range.endDate);
+  }
+
+  private static rangeBoundaries(month: string, from: string, to: string): MonthBoundaries {
+    const startDate = parseBusinessDate(from);
+    const endDate = parseBusinessDate(to);
+    if (startDate > endDate) throw new Error('Report range from must not be after to');
 
     return {
-      ...range,
-      startDatePrisma: businessDateToPrisma(range.startDate),
-      endDatePrisma: businessDateToPrisma(range.endDate),
-      nextDayAfterEnd: this.nextBusinessDayDate(range.endDate),
+      month,
+      startDate,
+      endDate,
+      startDatePrisma: businessDateToPrisma(startDate),
+      endDatePrisma: businessDateToPrisma(endDate),
+      nextDayAfterEnd: this.nextBusinessDayDate(endDate),
     };
   }
 
@@ -514,13 +563,6 @@ export class MonthlyDebtsService {
       row.nextDueDateAfterCutoff ?? '',
     ]);
 
-    return `\uFEFF${[headers, ...body].map((row) => row.map(this.escapeCsvValue).join(',')).join('\r\n')}\r\n`;
-  }
-
-  private static escapeCsvValue(value: string): string {
-    if (/[",\r\n]/.test(value)) {
-      return `"${value.replace(/"/g, '""')}"`;
-    }
-    return value;
+    return buildCsv(headers, body);
   }
 }

@@ -256,6 +256,30 @@ enum StockMovementType {
   SALE_FULFILLMENT
   SALE_CANCEL_RESTORE
   SERVICE_PART_USED
+  /// Compensating movement written when an admin voids a posted receiving
+  /// document. It has its own type — rather than reusing MANUAL_REMOVE — so a
+  /// receiving reversal is never mistaken for a hand-entered stock removal in
+  /// movement history, filters, or the integrity report. Reserved: no user can
+  /// choose it, only the void path writes it.
+  PURCHASE_RECEIPT_REVERSAL
+}
+
+/// A posted receiving is never edited or deleted. Voiding it writes compensating
+/// movements and flips this flag; the original document and its original
+/// PURCHASE_RECEIPT movements stay exactly as posted.
+enum SupplierReceivingStatus {
+  POSTED
+  VOIDED
+}
+
+enum SupplierReceivingItemStatus {
+  ACTIVE
+  REVERSED
+}
+
+enum SupplierReceivingAuditAction {
+  UPDATE_METADATA
+  VOID
 }
 
 enum SupplierTransactionType {
@@ -359,6 +383,9 @@ model User {
   salesStockFulfillmentsCreated  SalesOrderStockFulfillment[] @relation("FulfillmentCreatedBy")
   salesStockFulfillmentsReversed SalesOrderStockFulfillment[] @relation("FulfillmentReversedBy")
   supplierReceivingsReceived     SupplierReceiving[]          @relation("SupplierReceivingReceivedBy")
+  supplierReceivingsVoided       SupplierReceiving[]          @relation("SupplierReceivingVoidedBy")
+  supplierReceivingItemsReversed SupplierReceivingItem[]      @relation("ReceivingItemReversedBy")
+  supplierReceivingAudits        SupplierReceivingAudit[]     @relation("SupplierReceivingAuditChangedBy")
 
   @@map("users")
 }
@@ -720,6 +747,7 @@ model StockMovement {
   salesFulfillmentMovement         SalesOrderStockFulfillment? @relation("FulfillmentMovement")
   salesFulfillmentReversalMovement SalesOrderStockFulfillment? @relation("FulfillmentReversalMovement")
   supplierReceivingItem            SupplierReceivingItem?      @relation("ReceivingMovement")
+  supplierReceivingItemReversal    SupplierReceivingItem?      @relation("ReceivingReversalMovement")
 
   @@index([productId, createdAt])
   @@index([movementType, createdAt])
@@ -1036,43 +1064,96 @@ model Supplier {
   @@map("suppliers")
 }
 
+/// A posted stock receipt. What was received, when, and by whom is written once
+/// and never rewritten: `receivedOn`, the item lines, and their movements are
+/// history. An admin may correct the two fields that carry no stock meaning
+/// (`referenceNumber`, `note`) and may void the whole document, which reverses
+/// the stock through compensating movements rather than erasing anything.
 model SupplierReceiving {
-  id              String    @id @default(uuid()) @db.Uuid
-  supplierId      String?   @db.Uuid
-  supplier        Supplier? @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  id              String                  @id @default(uuid()) @db.Uuid
+  supplierId      String?                 @db.Uuid
+  supplier        Supplier?               @relation(fields: [supplierId], references: [id], onDelete: Restrict)
   referenceNumber String?
-  note            String?   @db.Text
-  receivedOn      DateTime  @db.Date
-  receivedById    String    @db.Uuid
-  receivedBy      User      @relation("SupplierReceivingReceivedBy", fields: [receivedById], references: [id], onDelete: Restrict)
-  createdAt       DateTime  @default(now())
+  note            String?                 @db.Text
+  receivedOn      DateTime                @db.Date
+  receivedById    String                  @db.Uuid
+  receivedBy      User                    @relation("SupplierReceivingReceivedBy", fields: [receivedById], references: [id], onDelete: Restrict)
+  createdAt       DateTime                @default(now())
+  status          SupplierReceivingStatus @default(POSTED)
+  voidedAt        DateTime?
+  voidedById      String?                 @db.Uuid
+  voidedBy        User?                   @relation("SupplierReceivingVoidedBy", fields: [voidedById], references: [id], onDelete: Restrict)
+  voidReason      String?                 @db.Text
 
   items        SupplierReceivingItem[]
   transactions SupplierTransaction[]
+  audits       SupplierReceivingAudit[]
 
   @@index([supplierId, receivedOn])
   @@index([receivedOn])
   @@index([receivedById])
+  @@index([status])
   @@unique([id, supplierId])
   @@map("supplier_receivings")
 }
 
+/// One received product line and the single movement that moved its stock.
+///
+/// The reversal columns deliberately mirror `SalesOrderStockFulfillment`: the
+/// original `stockMovementId` is never repointed or rewritten, and a void adds a
+/// second, opposite movement beside it. Both remain visible in history.
 model SupplierReceivingItem {
-  id              String            @id @default(uuid()) @db.Uuid
-  receivingId     String            @db.Uuid
-  receiving       SupplierReceiving @relation(fields: [receivingId], references: [id], onDelete: Restrict)
-  productId       String            @db.Uuid
-  product         Product           @relation(fields: [productId], references: [id], onDelete: Restrict)
+  id              String                      @id @default(uuid()) @db.Uuid
+  receivingId     String                      @db.Uuid
+  receiving       SupplierReceiving           @relation(fields: [receivingId], references: [id], onDelete: Restrict)
+  productId       String                      @db.Uuid
+  product         Product                     @relation(fields: [productId], references: [id], onDelete: Restrict)
   quantity        Int
-  stockMovementId String            @unique @db.Uuid
-  stockMovement   StockMovement     @relation("ReceivingMovement", fields: [stockMovementId], references: [id], onDelete: Restrict)
-  createdAt       DateTime          @default(now())
+  stockMovementId String                      @unique @db.Uuid
+  stockMovement   StockMovement               @relation("ReceivingMovement", fields: [stockMovementId], references: [id], onDelete: Restrict)
+  createdAt       DateTime                    @default(now())
+  status          SupplierReceivingItemStatus @default(ACTIVE)
+
+  reversalStockMovementId String?        @unique @db.Uuid
+  reversalStockMovement   StockMovement? @relation("ReceivingReversalMovement", fields: [reversalStockMovementId], references: [id], onDelete: Restrict)
+  reversedAt              DateTime?
+  reversedById            String?        @db.Uuid
+  reversedBy              User?          @relation("ReceivingItemReversedBy", fields: [reversedById], references: [id], onDelete: Restrict)
+  reversalReason          String?        @db.Text
 
   purchaseLine    SupplierPurchaseLine? @relation("PurchaseLineReceivingItem")
 
   @@unique([receivingId, productId])
   @@index([productId, createdAt])
+  @@index([status])
   @@map("supplier_receiving_items")
+}
+
+/// Who changed a posted receiving document, when, and why.
+///
+/// Stock changes are already self-auditing through `StockMovement`; this table
+/// exists so the changes that move no stock — a corrected reference number or
+/// note — are equally accountable, and so a void carries a readable before/after
+/// beside its movements.
+model SupplierReceivingAudit {
+  id                String                       @id @default(uuid()) @db.Uuid
+  receivingId       String                       @db.Uuid
+  receiving         SupplierReceiving            @relation(fields: [receivingId], references: [id], onDelete: Restrict)
+  action            SupplierReceivingAuditAction
+  changedById       String                       @db.Uuid
+  changedBy         User                         @relation("SupplierReceivingAuditChangedBy", fields: [changedById], references: [id], onDelete: Restrict)
+  changedByName     String
+  changedByUsername String
+  changedAt         DateTime                     @default(now())
+  reason            String                       @db.Text
+  beforeValues      Json
+  afterValues       Json
+  requestId         String?
+  ipAddress         String?
+
+  @@index([receivingId, changedAt])
+  @@index([changedAt])
+  @@map("supplier_receiving_audits")
 }
 
 /// Priced purchase lines for a supplier debt. The debt transaction is the

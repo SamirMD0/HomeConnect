@@ -6,6 +6,7 @@ import {
   monthlyDebtCsvQuerySchema,
   monthlyDebtReportQuerySchema,
   monthlyFinancialActivityQuerySchema,
+  monthlyFinancialActivityCsvQuerySchema,
 } from './monthly-debts.validator';
 
 export const monthlyDebtsRoutes = Router();
@@ -22,6 +23,13 @@ monthlyDebtsRoutes.get(
   requireRole(['ADMIN']),
   validate(monthlyDebtCsvQuerySchema, 'query'),
   MonthlyDebtsController.exportMonthlyDebtCsv
+);
+
+monthlyDebtsRoutes.get(
+  '/monthly-financial-activity/export.csv',
+  requireRole(['ADMIN']),
+  validate(monthlyFinancialActivityCsvQuerySchema, 'query'),
+  MonthlyDebtsController.exportMonthlyFinancialActivityCsv
 );
 
 monthlyDebtsRoutes.get(

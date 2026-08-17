@@ -8,12 +8,13 @@ export type StockMovementType =
   | 'DAMAGE_LOSS'
   | 'RETURN_TO_STOCK'
   | 'PURCHASE_RECEIPT'
+  | 'PURCHASE_RECEIPT_REVERSAL'
   | 'SALE_FULFILLMENT'
   | 'SALE_CANCEL_RESTORE'
   | 'SERVICE_PART_USED';
 
 export type WiredStockMovementType = Exclude<StockMovementType,
-  'OPENING_BALANCE' | 'PURCHASE_RECEIPT' | 'SALE_FULFILLMENT' | 'SALE_CANCEL_RESTORE' | 'SERVICE_PART_USED'>;
+  'OPENING_BALANCE' | 'PURCHASE_RECEIPT' | 'PURCHASE_RECEIPT_REVERSAL' | 'SALE_FULFILLMENT' | 'SALE_CANCEL_RESTORE' | 'SERVICE_PART_USED'>;
 
 export interface StockMovement {
   id: string;
@@ -39,6 +40,7 @@ export interface StockMovement {
     supplierName: string | null;
     referenceNumber: string | null;
     receivedOn: string;
+    status?: 'POSTED' | 'VOIDED';
   } | null;
 }
 

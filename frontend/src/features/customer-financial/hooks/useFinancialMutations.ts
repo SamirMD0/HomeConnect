@@ -18,12 +18,15 @@ import {
   debtDetailQueryKey,
   installmentPlanDetailQueryKey,
 } from './useCustomerFinancialSummary';
+import { prepaidQueryKeyPrefix } from '../../prepaid/hooks/usePrepaidPurchases';
 
 export const customerFinancialSummaryMutationQueryKey = (customerId: string) =>
   ['customers', customerId, 'financial-summary'] as const;
 
 export const salesOrdersMutationQueryKey = ['sales-orders'] as const;
 
+// Prepaid purchases are debts, so a debt-side write (a new prepaid purchase, an
+// extra bill, a void) leaves the prepaid section showing stale totals.
 const invalidateCustomerSurfaces = (queryClient: ReturnType<typeof useQueryClient>, customerId: string) =>
   Promise.all([
     queryClient.invalidateQueries({ queryKey: ['customer', customerId] }),
@@ -31,6 +34,7 @@ const invalidateCustomerSurfaces = (queryClient: ReturnType<typeof useQueryClien
     queryClient.invalidateQueries({ queryKey: ['customers'] }),
     queryClient.invalidateQueries({ queryKey: ['receivables'] }),
     queryClient.invalidateQueries({ queryKey: ['customer-activity', customerId] }),
+    queryClient.invalidateQueries({ queryKey: prepaidQueryKeyPrefix }),
   ]);
 
 export const useCreateDebt = (customerId: string) => {
@@ -115,6 +119,7 @@ export const useCancelDebt = (customerId: string, debtId: string) => {
           queryKey: customerFinancialSummaryMutationQueryKey(customerId),
         }),
         queryClient.invalidateQueries({ queryKey: debtDetailQueryKey(debtId) }),
+        queryClient.invalidateQueries({ queryKey: prepaidQueryKeyPrefix }),
       ]);
       toast.success('Debt cancelled');
     },

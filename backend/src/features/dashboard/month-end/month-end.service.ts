@@ -3,6 +3,7 @@ import { Decimal } from '@prisma/client/runtime/library';
 import {
   addMoney,
   moneyToApiString,
+  parseBusinessDate,
   prismaDateToBusinessDate,
   subtractMoney,
   sumMoney,
@@ -11,7 +12,7 @@ import {
 import { MonthlyDebtsService } from '../../reports/monthly-debts/monthly-debts.service';
 import { addDays, differenceInDays, resolveMonthRange } from '../shared/dashboard-range';
 import { MonthEndRepository, type MonthEndOperationalRecords } from './month-end.repository';
-import type { MonthEndData, MonthEndMovement } from './month-end.types';
+import type { MonthEndData, MonthEndMovement, RangeMonthEndData } from './month-end.types';
 
 const DISCLOSURE = {
   en: 'Computed from current records. Retroactive corrections restate closed months.',
@@ -19,7 +20,13 @@ const DISCLOSURE = {
 } as const;
 
 export class MonthEndService {
-  static async get(month: string): Promise<MonthEndData> {
+  static get(month: string): Promise<MonthEndData>;
+  static get(range: { from: string; to: string }): Promise<RangeMonthEndData>;
+  static get(input: string | { from: string; to: string }): Promise<MonthEndData | RangeMonthEndData> {
+    return typeof input === 'string' ? this.getMonth(input) : this.getRange(input.from, input.to);
+  }
+
+  private static async getMonth(month: string): Promise<MonthEndData> {
     const { from, to } = resolveMonthRange(month);
     const priorMonth = addDays(from, -1).slice(0, 7);
     const query = (value: string, includeZero: boolean) => ({
@@ -40,6 +47,67 @@ export class MonthEndService {
       MonthEndRepository.loadOperationalRecords(),
     ]);
 
+    return this.aggregateOperational(
+      month,
+      operational,
+      this.customerMovement(openingReport, closingReport, activity),
+      from,
+      to
+    );
+  }
+
+  private static async getRange(fromInput: string, toInput: string): Promise<RangeMonthEndData> {
+    const from = parseRangeDate(fromInput);
+    const to = parseRangeDate(toInput);
+    if (from > to) throw new Error('Month-end range from must not be after to');
+    const openingCutoff = addDays(from, -1);
+    const snapshotQuery = (month: string, includeZero: boolean) => ({
+      month,
+      mode: 'SNAPSHOT' as const,
+      includeZero,
+      includeCancelled: false,
+      overdueOnly: false,
+      page: 1,
+      limit: 10_000,
+      sortBy: 'OUTSTANDING' as const,
+      sortOrder: 'DESC' as const,
+    });
+    const [openingReport, closingReport, activity, operational] = await Promise.all([
+      MonthlyDebtsService.getDebtReportForRange(
+        snapshotQuery(openingCutoff.slice(0, 7), false),
+        openingCutoff,
+        openingCutoff
+      ),
+      MonthlyDebtsService.getDebtReportForRange(snapshotQuery(to.slice(0, 7), true), from, to),
+      MonthlyDebtsService.getFinancialActivityForRange(
+        { month: from.slice(0, 7), page: 1, limit: 10_000 },
+        from,
+        to
+      ),
+      MonthEndRepository.loadOperationalRecords(),
+    ]);
+    const result = this.aggregateOperational(
+      from.slice(0, 7),
+      operational,
+      this.customerMovement(openingReport, closingReport, activity),
+      from,
+      to
+    );
+
+    return {
+      meta: { from, to },
+      disclosure: result.disclosure,
+      customers: result.customers,
+      suppliers: result.suppliers,
+      service: result.service,
+    };
+  }
+
+  private static customerMovement(
+    openingReport: Awaited<ReturnType<typeof MonthlyDebtsService.getMonthlyDebtReport>>,
+    closingReport: Awaited<ReturnType<typeof MonthlyDebtsService.getMonthlyDebtReport>>,
+    activity: Awaited<ReturnType<typeof MonthlyDebtsService.getMonthlyFinancialActivity>>
+  ): MonthEndData['customers'] {
     const customerMovement = reconcileMovement({
       opening: openingReport.summary.totalOutstanding,
       newAmount: sumMoney([
@@ -49,27 +117,23 @@ export class MonthEndService {
       collected: activity.summary.paymentsReceived,
       closing: closingReport.summary.totalOutstanding,
     });
-    const rows = closingReport.rows;
-    const overdue = rows.filter((row) => new Decimal(row.overdueAmountAtCutoff).greaterThan(ZERO_MONEY));
-    const withDebt = rows.filter(
+    const overdue = closingReport.rows.filter((row) =>
+      new Decimal(row.overdueAmountAtCutoff).greaterThan(ZERO_MONEY)
+    );
+    const withDebt = closingReport.rows.filter(
       (row) =>
         new Decimal(row.totalOutstanding).greaterThan(ZERO_MONEY) &&
         new Decimal(row.overdueAmountAtCutoff).equals(ZERO_MONEY)
     );
-    const fullyPaid = rows.filter((row) => new Decimal(row.totalOutstanding).equals(ZERO_MONEY));
-
-    return this.aggregateOperational(
-      month,
-      operational,
-      {
-        ...customerMovement,
-        withDebt: withDebt.length,
-        fullyPaid: fullyPaid.length,
-        overdue: overdue.length,
-      },
-      from,
-      to
+    const fullyPaid = closingReport.rows.filter((row) =>
+      new Decimal(row.totalOutstanding).equals(ZERO_MONEY)
     );
+    return {
+      ...customerMovement,
+      withDebt: withDebt.length,
+      fullyPaid: fullyPaid.length,
+      overdue: overdue.length,
+    };
   }
 
   static aggregateOperational(
@@ -141,6 +205,10 @@ export class MonthEndService {
   }
 }
 
+function parseRangeDate(value: string): string {
+  return parseBusinessDate(value);
+}
+
 export function reconcileMovement(input: {
   opening: string | Decimal;
   newAmount: string | Decimal;
@@ -183,4 +251,3 @@ function positive(value: Decimal): boolean {
 function inRange(value: string, from: string, to: string): boolean {
   return value >= from && value <= to;
 }
-

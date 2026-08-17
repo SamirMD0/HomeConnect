@@ -119,25 +119,13 @@ const ITEMS_BUDGET = 170;
 
 const truncate = (value: string, limit: number) => value.length <= limit ? value : `${value.slice(0, limit - 1).trimEnd()}…`;
 
-/** "and 2 more", with Arabic's singular, dual, and plural forms handled properly. */
-const moreEnglish = (count: number) => `and ${count} more`;
-const moreArabic = (count: number) =>
-  count === 1 ? 'وبند آخر' : count === 2 ? 'وبندان آخران' : `و${count} بنود أخرى`;
-
 /**
  * Builds the ledger description from what was actually bought, so the common
  * case needs no typing: what, for how much, against which receipt.
  *
- * Written as a bilingual sentence rather than a joined code string, because
- * this text is what the owner reads back months later in the supplier ledger,
- * the audit trail, and a receipt search.
- *
- * The two languages go on separate lines rather than sharing one with a slash:
- * a product name is often Latin text inside an Arabic sentence, and running
- * both halves together makes the bidirectional layout reorder them into
- * something genuinely hard to read. A line break gives each half its own
- * direction. Newlines are valid here — the server's text validator rejects
- * control characters but allows them.
+ * Each language gets a short line of its own. The shared product, quantity,
+ * money, and receipt details stay compact so the description remains easy to
+ * scan in both the form and the supplier ledger.
  *
  * Returns an empty string while nothing is filled in yet, which leaves the
  * form's own "add a line" blocker in charge rather than posting a meaningless
@@ -153,24 +141,18 @@ export function suggestedPurchaseDescription(
 
   const shown = labels.slice(0, DESCRIPTION_LABEL_LIMIT);
   const remaining = labels.length - shown.length;
-  const english = truncate([shown.join(', '), ...(remaining ? [moreEnglish(remaining)] : [])].join(' '), ITEMS_BUDGET);
-  const arabic = truncate([shown.join('، '), ...(remaining ? [moreArabic(remaining)] : [])].join(' '), ITEMS_BUDGET);
+  const items = truncate([shown.join(', '), ...(remaining ? [`+${remaining}`] : [])].join(' '), ITEMS_BUDGET);
 
   const receipt = receiptNumber.trim();
   const priced = moneyToCents(total) > 0n;
 
-  const sentence = [
-    `Purchased ${english}`,
-    ...(priced ? [`for ${total}`] : []),
-    ...(receipt ? [`on invoice ${receipt}`] : []),
-  ].join(' ');
-  const jumla = [
-    `تم شراء ${arabic}`,
-    ...(priced ? [`بمبلغ ${total}`] : []),
-    ...(receipt ? [`بموجب الفاتورة ${receipt}`] : []),
-  ].join(' ');
+  const details = [
+    items,
+    ...(priced ? [total] : []),
+    ...(receipt ? [`#${receipt}`] : []),
+  ].join(' · ');
 
-  return `${sentence}\n${jumla}`.slice(0, DESCRIPTION_LIMIT);
+  return `Purchase: ${details}\nشراء: ${details}`.slice(0, DESCRIPTION_LIMIT);
 }
 
 export function toApiLines(lines: PurchaseLineDraft[]): SupplierPurchaseLineInput[] {

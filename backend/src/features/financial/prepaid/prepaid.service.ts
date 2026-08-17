@@ -38,6 +38,7 @@ import {
   RevertPrepaidDeliveryInput,
 } from './prepaid.validator';
 import {
+  PrepaidPaymentView,
   PrepaidPurchaseListResult,
   PrepaidPurchaseSummary,
   PrepaidPurchaseView,
@@ -339,8 +340,41 @@ export class PrepaidService {
     return prepaid.status;
   }
 
+  /**
+   * The individual bills paid towards this item, oldest first. Adding a bill
+   * appends to this list; nothing here is ever rewritten or replaced.
+   */
+  private static paymentsOf(prepaid: PrepaidPurchaseWithDetails): PrepaidPaymentView[] {
+    return prepaid.debt.paymentAllocations
+      .map((allocation): PrepaidPaymentView => ({
+        id: allocation.id,
+        paymentId: allocation.paymentId,
+        amount: moneyToApiString(allocation.amount),
+        paymentDate: prismaDateToBusinessDate(allocation.payment.paymentDate),
+        paymentMethod: allocation.payment.paymentMethod,
+        reference: allocation.payment.reference,
+        notes: allocation.payment.notes,
+        recordedBy: allocation.payment.createdBy
+          ? {
+              id: allocation.payment.createdBy.id,
+              name: allocation.payment.createdBy.fullName,
+              username: allocation.payment.createdBy.username,
+            }
+          : null,
+        isVoided: isPaymentAllocationVoided(allocation),
+        createdAt: allocation.createdAt.toISOString(),
+      }))
+      .sort((left, right) => {
+        const byDate = left.paymentDate.localeCompare(right.paymentDate);
+        if (byDate !== 0) return byDate;
+        const byCreated = left.createdAt.localeCompare(right.createdAt);
+        return byCreated === 0 ? left.id.localeCompare(right.id) : byCreated;
+      });
+  }
+
   private static toView(prepaid: PrepaidPurchaseWithDetails): PrepaidPurchaseView {
     const balance = this.balanceOf(prepaid);
+    const payments = this.paymentsOf(prepaid);
     const status = this.effectiveStatus(prepaid);
     const remainingToCollect = calculatePrepaidRemainingToCollect({
       fullAmount: prepaid.debt.originalAmount,
@@ -376,6 +410,15 @@ export class PrepaidService {
           }
         : null,
       remainderDebtId: prepaid.remainderDebtId,
+      createdBy: prepaid.debt.createdBy
+        ? {
+            id: prepaid.debt.createdBy.id,
+            name: prepaid.debt.createdBy.fullName,
+            username: prepaid.debt.createdBy.username,
+          }
+        : null,
+      payments,
+      paymentCount: payments.filter((payment) => !payment.isVoided).length,
       createdAt: prepaid.createdAt.toISOString(),
       updatedAt: prepaid.updatedAt.toISOString(),
     };

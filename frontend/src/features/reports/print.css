@@ -1,0 +1,64 @@
+@media print {
+  body {
+    background: white !important;
+    font-family: Tahoma, Arial, sans-serif !important;
+  }
+
+  aside,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  main {
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+
+  .report-print-root {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+
+  .report-print-root table {
+    font-size: 10px;
+    page-break-inside: auto;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  /* A wide report scrolls on screen; on paper it must fit the page instead. */
+  .report-print-root .overflow-x-auto,
+  .report-print-root .overflow-hidden {
+    overflow: visible !important;
+  }
+
+  .report-print-root thead {
+    display: table-header-group;
+  }
+
+  /* Sticky is a scrolling affordance; repeating the header per page is the
+     print equivalent, and thead already does that. */
+  .report-print-root thead th {
+    position: static !important;
+  }
+
+  .report-print-root tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .report-print-root th,
+  .report-print-root td {
+    padding: 6px !important;
+    overflow-wrap: anywhere;
+  }
+
+  .report-print-root .user-text,
+  .report-print-root .user-text-pre {
+    font-family: Tahoma, Arial, sans-serif !important;
+  }
+
+  .report-print-root .viz-root button {
+    display: none !important;
+  }
+}

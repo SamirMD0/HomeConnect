@@ -31,3 +31,9 @@ export interface MonthEndData {
   };
 }
 
+export interface RangeMonthEndData extends Omit<MonthEndData, 'month'> {
+  meta: {
+    from: string;
+    to: string;
+  };
+}

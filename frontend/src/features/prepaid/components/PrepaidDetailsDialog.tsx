@@ -1,5 +1,6 @@
 import React from 'react';
 import { PrepaidPurchase } from '../types/prepaid.types';
+import { PrepaidBillHistory } from './PrepaidBillHistory';
 import { PrepaidStatusBadge } from './PrepaidStatusBadge';
 import { formatBusinessDate, formatMoney } from '../../customer-financial/utils/financial-format';
 import { businessLabels } from '../../../shared/labels/business-labels';
@@ -57,8 +58,16 @@ export const PrepaidDetailsDialog: React.FC<PrepaidDetailsDialogProps> = ({
       <Row label={businessLabels.prepaid.remaining}>
         <span className="tabular-nums">{formatMoney(item.remainingToCollect)}</span>
       </Row>
+      <Row label={businessLabels.prepaid.bills}>
+        <span className="tabular-nums">{item.paymentCount ?? 0}</span>
+      </Row>
       <Row label={businessLabels.common.created}>
         {formatBusinessDate(item.createdAt.slice(0, 10))}
+        {item.createdBy && (
+          <span className="user-text block text-xs font-normal text-slate-500" dir="auto">
+            {item.createdBy.name}
+          </span>
+        )}
       </Row>
       {item.deliveredAt && (
         <Row label={businessLabels.prepaid.deliveredOn}>
@@ -85,6 +94,10 @@ export const PrepaidDetailsDialog: React.FC<PrepaidDetailsDialogProps> = ({
         </Row>
       )}
     </dl>
+
+    <div className="mt-4">
+      <PrepaidBillHistory payments={item.payments ?? []} />
+    </div>
 
     {canMutate && item.status === 'PENDING' && (
       <div className="mt-5 flex flex-wrap gap-2 border-t border-slate-200 pt-4">

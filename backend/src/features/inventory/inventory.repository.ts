@@ -1,4 +1,4 @@
-import { Prisma, StockMovementType } from '@prisma/client';
+import { Prisma, StockMovementType, SupplierReceivingStatus } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { getBusinessTimezone } from '../financial/domain/business-date';
 import { LowStockListInput, MovementListInput, StockIntegrityItem } from './inventory.types';
@@ -27,20 +27,25 @@ const receivingMovementRelation = {
         supplierId: true,
         referenceNumber: true,
         receivedOn: true,
+        status: true,
         supplier: { select: { id: true, name: true } },
       },
     },
   },
 } satisfies Prisma.SupplierReceivingItemArgs;
 
+// A reversal movement belongs to the same document as the receipt it undoes, so
+// both sides of a voided receiving link back to it from movement history.
 const movementIncludeWithReceiving = {
   ...movementInclude,
   supplierReceivingItem: receivingMovementRelation,
+  supplierReceivingItemReversal: receivingMovementRelation,
 } satisfies Prisma.StockMovementInclude;
 
 const legacyMovementIncludeWithReceiving = {
   ...legacyMovementInclude,
   supplierReceivingItem: receivingMovementRelation,
+  supplierReceivingItemReversal: receivingMovementRelation,
 } satisfies Prisma.StockMovementInclude;
 
 interface ReceivingRelationPayload {
@@ -50,6 +55,7 @@ interface ReceivingRelationPayload {
     supplierId: string | null;
     referenceNumber: string | null;
     receivedOn: Date;
+    status: SupplierReceivingStatus;
     supplier: { id: string; name: string } | null;
   };
 }
@@ -371,12 +377,18 @@ export interface ReceivingMovementMetadata {
   supplierName: string | null;
   referenceNumber: string | null;
   receivedOn: string;
+  status: SupplierReceivingStatus;
 }
 
-function serializeMovement<T extends object>(movement: T): Omit<T, 'supplierReceivingItem'> & { receivingMetadata: ReceivingMovementMetadata | null } {
-  const relation = (movement as T & { supplierReceivingItem?: ReceivingRelationPayload | null }).supplierReceivingItem;
-  const rest = { ...movement } as T & { supplierReceivingItem?: ReceivingRelationPayload | null };
+type ReceivingRelationKey = 'supplierReceivingItem' | 'supplierReceivingItemReversal';
+type WithReceivingRelations<T> = T & Partial<Record<ReceivingRelationKey, ReceivingRelationPayload | null>>;
+
+function serializeMovement<T extends object>(movement: T): Omit<T, ReceivingRelationKey> & { receivingMetadata: ReceivingMovementMetadata | null } {
+  const source = movement as WithReceivingRelations<T>;
+  const relation = source.supplierReceivingItem ?? source.supplierReceivingItemReversal;
+  const rest = { ...source } as WithReceivingRelations<T>;
   delete rest.supplierReceivingItem;
+  delete rest.supplierReceivingItemReversal;
   return {
     ...rest,
     receivingMetadata: relation ? {
@@ -386,6 +398,7 @@ function serializeMovement<T extends object>(movement: T): Omit<T, 'supplierRece
       supplierName: relation.receiving.supplier?.name ?? null,
       referenceNumber: relation.receiving.referenceNumber,
       receivedOn: relation.receiving.receivedOn.toISOString().slice(0, 10),
+      status: relation.receiving.status,
     } : null,
-  } as Omit<T, 'supplierReceivingItem'> & { receivingMetadata: ReceivingMovementMetadata | null };
+  } as Omit<T, ReceivingRelationKey> & { receivingMetadata: ReceivingMovementMetadata | null };
 }

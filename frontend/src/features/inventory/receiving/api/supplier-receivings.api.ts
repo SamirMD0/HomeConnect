@@ -1,5 +1,5 @@
 import { api } from '../../../../services/api';
-import type { CreateSupplierReceivingInput, DuplicateReceivingResult, ReceivingPagination, SupplierReceiving, SupplierReceivingFilters } from '../types/supplier-receiving.types';
+import type { CreateSupplierReceivingInput, DuplicateReceivingResult, ReceivingPagination, SupplierReceiving, SupplierReceivingFilters, UpdateReceivingMetadataInput, VoidReceivingInput } from '../types/supplier-receiving.types';
 
 const paramsFor = (values: object) => Object.fromEntries(Object.entries(values).filter(([, value]) => value !== undefined && value !== null && value !== ''));
 
@@ -12,4 +12,9 @@ export const supplierReceivingsApi = {
   create: async (input: CreateSupplierReceivingInput): Promise<SupplierReceiving> => (await api.post('/inventory/receivings', input)).data.data,
   duplicateCheck: async (supplierId: string, referenceNumber: string): Promise<DuplicateReceivingResult> =>
     (await api.get('/inventory/receivings/duplicate-check', { params: { supplierId, referenceNumber } })).data.data,
+  updateMetadata: async (id: string, input: UpdateReceivingMetadataInput): Promise<SupplierReceiving> =>
+    (await api.patch(`/inventory/receivings/${id}/metadata`, input)).data.data,
+  // Void, not delete: the server reverses the stock and keeps the document.
+  void: async (id: string, input: VoidReceivingInput): Promise<SupplierReceiving> =>
+    (await api.post(`/inventory/receivings/${id}/void`, input)).data.data,
 };

@@ -4,6 +4,7 @@ import {
   MonthlyDebtCsvQueryInput,
   MonthlyDebtReportQueryInput,
   MonthlyFinancialActivityQueryInput,
+  MonthlyFinancialActivityCsvQueryInput,
 } from './monthly-debts.validator';
 
 export class MonthlyDebtsController {
@@ -51,5 +52,16 @@ export class MonthlyDebtsController {
     } catch (error) {
       next(error);
     }
+  }
+
+  static async exportMonthlyFinancialActivityCsv(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await MonthlyDebtsService.getMonthlyFinancialActivityCsv(
+        req.query as unknown as MonthlyFinancialActivityCsvQueryInput
+      );
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
+      res.status(200).send(result.csv);
+    } catch (error) { next(error); }
   }
 }

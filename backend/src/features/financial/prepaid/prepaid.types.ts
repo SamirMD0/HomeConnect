@@ -1,4 +1,31 @@
-import { PrepaidPurchaseStatus } from '@prisma/client';
+import { PaymentMethod, PrepaidPurchaseStatus } from '@prisma/client';
+
+export interface PrepaidUserView {
+  id: string;
+  name: string;
+  username: string;
+}
+
+/**
+ * One prepaid bill: a single payment the customer made towards this item.
+ * A prepaid purchase normally has several, and every one of them is kept.
+ */
+export interface PrepaidPaymentView {
+  /** Allocation id: what ties this payment to this prepaid purchase. */
+  id: string;
+  paymentId: string;
+  /** The portion of the payment allocated to this prepaid purchase. */
+  amount: string;
+  paymentDate: string;
+  paymentMethod: PaymentMethod;
+  /** Receipt or bill number, when the operator recorded one. */
+  reference: string | null;
+  notes: string | null;
+  recordedBy: PrepaidUserView | null;
+  /** Voided bills stay in history but are excluded from `amountPaid`. */
+  isVoided: boolean;
+  createdAt: string;
+}
 
 export interface PrepaidPurchaseView {
   id: string;
@@ -24,12 +51,14 @@ export interface PrepaidPurchaseView {
   notes: string | null;
   deliveredAt: string | null;
   deliveryNotes: string | null;
-  deliveredBy: {
-    id: string;
-    name: string;
-    username: string;
-  } | null;
+  deliveredBy: PrepaidUserView | null;
   remainderDebtId: string | null;
+  /** Who recorded the prepaid purchase. */
+  createdBy: PrepaidUserView | null;
+  /** Every bill paid towards this item, oldest first. Voided ones included. */
+  payments: PrepaidPaymentView[];
+  /** Bills that still count towards `amountPaid`. */
+  paymentCount: number;
   createdAt: string;
   updatedAt: string;
 }

@@ -43,6 +43,11 @@ export const monthlyFinancialActivityQuerySchema = z.object({
   limit: z.coerce.number().int().positive().max(500).default(50),
 });
 
+export const monthlyFinancialActivityCsvQuerySchema = monthlyFinancialActivityQuerySchema.extend({
+  page: z.coerce.number().int().positive().optional().default(1),
+  limit: z.coerce.number().int().positive().max(10000).optional().default(10000),
+});
+
 export function monthToBusinessRange(monthValue: string) {
   const [yearPart, monthPart] = monthValue.split('-');
   const year = Number(yearPart);
@@ -59,3 +64,4 @@ export function monthToBusinessRange(monthValue: string) {
 export type MonthlyDebtReportQueryInput = z.infer<typeof monthlyDebtReportQuerySchema>;
 export type MonthlyDebtCsvQueryInput = z.infer<typeof monthlyDebtCsvQuerySchema>;
 export type MonthlyFinancialActivityQueryInput = z.infer<typeof monthlyFinancialActivityQuerySchema>;
+export type MonthlyFinancialActivityCsvQueryInput = z.infer<typeof monthlyFinancialActivityCsvQuerySchema>;

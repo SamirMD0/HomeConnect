@@ -72,4 +72,14 @@ describe('monthlyReportsApi', () => {
     });
     expect(result.summary.netFinancialChange).toBe('900.00');
   });
+
+  it('exports monthly financial activity through its own CSV endpoint', async () => {
+    const blob = new Blob(['csv']);
+    apiMock.get.mockResolvedValue({ data: blob });
+    const result = await monthlyReportsApi.exportMonthlyActivityCsv({ month: '2026-07' });
+    expect(apiMock.get).toHaveBeenCalledWith('/reports/monthly-financial-activity/export.csv', {
+      params: expect.objectContaining({ month: '2026-07', limit: 10000 }), responseType: 'blob',
+    });
+    expect(result).toBe(blob);
+  });
 });

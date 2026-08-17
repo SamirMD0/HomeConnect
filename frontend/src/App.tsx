@@ -14,6 +14,7 @@ import { LedgerPage } from './pages/LedgerPage';
 import { AccountsReceivablePage } from './pages/AccountsReceivablePage';
 import { PrepaidPurchasesPage } from './pages/PrepaidPurchasesPage';
 import { ReportsPage } from './pages/ReportsPage';
+import { ReportDetailPage } from './pages/ReportDetailPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ServiceJobsPage } from './pages/service/ServiceJobsPage';
@@ -80,6 +81,7 @@ const App: React.FC = () => {
               <Route path="suppliers/:id" element={<SupplierProfilePage />} />
               <Route path="supplier-ledger" element={<SupplierLedgerPage />} />
               <Route path="reports" element={<ReportsPage />} />
+              <Route path="reports/:reportId" element={<ReportDetailPage />} />
               <Route path="settings" element={<SettingsPage />} />
             </Route>
             

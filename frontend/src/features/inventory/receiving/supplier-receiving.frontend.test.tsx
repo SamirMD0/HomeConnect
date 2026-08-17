@@ -7,20 +7,53 @@ import { SupplierReceivingDetailPage, supplierDebtPrefillForReceiving } from './
 import { SupplierReceivingListPage } from './pages/SupplierReceivingListPage';
 import { supplierReceivingsApi } from './api/supplier-receivings.api';
 import { SupplierReceivingHistory } from './components/SupplierReceivingHistory';
+import { ReceivingMetadataDialog } from './components/ReceivingMetadataDialog';
+import { ReceivingVoidDialog } from './components/ReceivingVoidDialog';
+import {
+  canCorrectReceiving, correctionReasonError, isReceivingVoided, receivingCorrectionErrorMessage,
+  receivingStatus, reversibleLines, voidRequestError,
+} from './utils/receiving-correction';
+import type { SupplierReceiving } from './types/supplier-receiving.types';
 
-const receiving = {
-  id: '11111111-1111-4111-8111-111111111111', supplierId: null, supplier: null, referenceNumber: null,
+const receivingId = '11111111-1111-4111-8111-111111111111';
+const receiving: SupplierReceiving = {
+  id: receivingId, supplierId: null, supplier: null, referenceNumber: null,
   note: 'Shelf delivery', receivedOn: '2026-08-14', receivedById: 'user-1', receivedBy: { id: 'user-1', fullName: 'Ali', username: 'ali' },
-  createdAt: '2026-08-14T10:00:00.000Z', _count: { items: 1 }, items: [{
-    id: 'item-1', receivingId: '11111111-1111-4111-8111-111111111111', productId: 'product-1', quantity: 4, stockMovementId: 'movement-1', createdAt: '2026-08-14T10:00:00.000Z',
+  createdAt: '2026-08-14T10:00:00.000Z', status: 'POSTED', _count: { items: 1 }, items: [{
+    id: 'item-1', receivingId, productId: 'product-1', quantity: 4, stockMovementId: 'movement-1', createdAt: '2026-08-14T10:00:00.000Z', status: 'ACTIVE',
     product: { id: 'product-1', name: 'Tracked fan', sku: 'HC-1', stockQuantity: 9 },
     stockMovement: { id: 'movement-1', productId: 'product-1', movementType: 'PURCHASE_RECEIPT' as const, quantityChange: 4, quantityBefore: 5, quantityAfter: 9, reason: 'Stock received', note: null, referenceType: 'SUPPLIER_RECEIVING_ITEM', referenceId: 'item-1', createdById: 'user-1', createdBy: null, createdAt: '2026-08-14T10:00:00.000Z' },
   }],
 };
 
+/** The same document after an admin voided it: original line intact, reversal beside it. */
+const voidedReceiving: SupplierReceiving = {
+  ...receiving,
+  status: 'VOIDED',
+  voidedAt: '2026-08-16T09:00:00.000Z',
+  voidedBy: { id: 'user-2', fullName: 'Admin One', username: 'admin1' },
+  voidReason: 'Returned the whole delivery to the supplier',
+  items: [{
+    ...receiving.items![0],
+    status: 'REVERSED',
+    reversalStockMovementId: 'movement-2',
+    reversedAt: '2026-08-16T09:00:00.000Z',
+    reversedBy: { id: 'user-2', fullName: 'Admin One', username: 'admin1' },
+    reversalReason: 'Returned the whole delivery to the supplier',
+    reversalStockMovement: { id: 'movement-2', productId: 'product-1', movementType: 'PURCHASE_RECEIPT_REVERSAL' as const, quantityChange: -4, quantityBefore: 9, quantityAfter: 5, reason: 'Receiving voided', note: null, referenceType: 'SUPPLIER_RECEIVING_ITEM', referenceId: 'item-1', createdById: 'user-2', createdBy: null, createdAt: '2026-08-16T09:00:00.000Z' },
+  }],
+  audits: [{ id: 'audit-1', action: 'VOID', changedByName: 'Admin One', changedByUsername: 'admin1', changedAt: '2026-08-16T09:00:00.000Z', reason: 'Returned the whole delivery to the supplier' }],
+};
+
+const detailHtml = () => renderToStaticMarkup(
+  <MemoryRouter initialEntries={[`/inventory/receiving/${receivingId}`]}>
+    <Routes><Route path="/inventory/receiving/:receivingId" element={<SupplierReceivingDetailPage />} /></Routes>
+  </MemoryRouter>
+);
+
 const { receivingHooks, apiMock, authState } = vi.hoisted(() => ({
-  receivingHooks: { create: vi.fn(), list: vi.fn(), detail: vi.fn(), duplicate: vi.fn() },
-  apiMock: { get: vi.fn(), post: vi.fn() },
+  receivingHooks: { create: vi.fn(), list: vi.fn(), detail: vi.fn(), duplicate: vi.fn(), updateMetadata: vi.fn(), void: vi.fn() },
+  apiMock: { get: vi.fn(), post: vi.fn(), patch: vi.fn() },
   authState: { role: 'ADMIN' },
 }));
 vi.mock('./hooks/useSupplierReceivings', () => ({
@@ -28,6 +61,8 @@ vi.mock('./hooks/useSupplierReceivings', () => ({
   useSupplierReceivings: (filters: unknown) => receivingHooks.list(filters),
   useSupplierReceiving: () => receivingHooks.detail(),
   useSupplierReceivingDuplicate: () => receivingHooks.duplicate(),
+  useUpdateReceivingMetadata: () => ({ mutateAsync: receivingHooks.updateMetadata, isPending: false }),
+  useVoidSupplierReceiving: () => ({ mutateAsync: receivingHooks.void, isPending: false }),
 }));
 vi.mock('../../products/hooks/useProducts', () => ({ useProducts: () => ({ data: { items: [
   { id: 'product-1', name: 'Tracked fan', model: 'TF-1', sku: 'HC-1', barcode: null, stockQuantity: 5, trackStock: true },
@@ -154,14 +189,121 @@ describe('supplier receiving frontend', () => {
     expect(receivingErrorMessage(error)).toContain('verified opening count');
   });
 
-  it('renders immutable detail, item movement balances, and no mutation controls', () => {
-    const html = renderToStaticMarkup(<MemoryRouter initialEntries={[`/inventory/receiving/${receiving.id}`]}><Routes><Route path="/inventory/receiving/:receivingId" element={<SupplierReceivingDetailPage />} /></Routes></MemoryRouter>);
-    expect(html).toContain('This receiving document is immutable');
+  it('renders a posted document with movement balances and a correction explanation, not an immutable dead end', () => {
+    const html = detailHtml();
+    expect(html).not.toContain('immutable');
+    expect(html).not.toContain('غير قابل للتعديل');
+    expect(html).toContain('Posted receiving document / مستند إدخال مُرحّل');
+    expect(html).toContain('Admins can correct it with controlled correction actions');
+    expect(html).toContain('Posted / مُرحَّل');
     expect(html).toContain('Tracked fan');
     expect(html).toContain('5 → 9');
-    expect(html).not.toContain('Edit / تعديل');
+  });
+
+  it('offers an admin correction and a void, and never a hard delete', () => {
+    const html = detailHtml();
+    expect(html).toContain('Correct reference &amp; note / تعديل المرجع والملاحظة');
+    expect(html).toContain('Void receiving / إلغاء الإدخال');
     expect(html).not.toContain('Delete / حذف');
-    expect(html).not.toContain('Reverse / عكس');
+    expect(html).not.toMatch(/Delete receiving|حذف المستند/);
+  });
+
+  it('shows employees the same document with no correction controls', () => {
+    authState.role = 'EMPLOYEE';
+    const html = detailHtml();
+    expect(html).toContain('Posted receiving document / مستند إدخال مُرحّل');
+    expect(html).toContain('Tracked fan');
+    expect(html).not.toContain('Correct reference');
+    expect(html).not.toContain('Void receiving');
+  });
+
+  it('shows a voided document as voided, with its reason and its reversal, and no further actions', () => {
+    receivingHooks.detail.mockReturnValue({ data: voidedReceiving, isLoading: false, isError: false });
+    const html = detailHtml();
+    expect(html).toContain('Voided / ملغى');
+    expect(html).toContain('This receiving was voided and its stock has been reversed');
+    expect(html).toContain('Returned the whole delivery to the supplier');
+    expect(html).toContain('Reversed / معكوس');
+    expect(html).toContain('9 → 5');
+    // The original receipt line is still shown exactly as posted.
+    expect(html).toContain('5 → 9');
+    expect(html).not.toContain('Void receiving / إلغاء الإدخال');
+    expect(html).not.toContain('Correct reference &amp; note');
+  });
+
+  it('lists the correction history of a document that was corrected', () => {
+    receivingHooks.detail.mockReturnValue({ data: voidedReceiving, isLoading: false, isError: false });
+    const html = detailHtml();
+    expect(html).toContain('Correction history / سجل التصحيحات');
+    expect(html).toContain('Voided / إلغاء');
+    expect(html).toContain('Admin One (admin1)');
+  });
+
+  it('warns that a void reverses stock, requires a reason and password, and lists what is reversed', () => {
+    const html = renderToStaticMarkup(<MemoryRouter><ReceivingVoidDialog receiving={receiving} isOpen onClose={() => {}} /></MemoryRouter>);
+    expect(html).toContain('This reverses the stock this document received. It does not delete any history.');
+    expect(html).toContain('Stock to be reversed / المخزون الذي سيُعكس');
+    expect(html).toContain('Tracked fan');
+    expect(html).toContain('−4');
+    expect(html).toContain('Reason for voiding / سبب الإلغاء');
+    expect(html).toContain('type="password"');
+    expect(html).toContain('void this document and then create a new corrected receiving');
+    // The only place "delete" appears is the promise that nothing is deleted;
+    // no control on this dialog offers one.
+    expect(html).not.toMatch(/>[^<]*(?:Delete|Remove permanently|حذف نهائي)[^<]*</);
+    expect(html).toContain('It does not delete any history');
+  });
+
+  it('limits the metadata correction to reference and note, with no money or stock fields', () => {
+    const html = renderToStaticMarkup(<MemoryRouter><ReceivingMetadataDialog receiving={receiving} isOpen onClose={() => {}} /></MemoryRouter>);
+    expect(html).toContain('Reference number / رقم المرجع');
+    expect(html).toContain('Note / الملاحظة');
+    expect(html).toContain('Reason for this correction / سبب التصحيح');
+    expect(html).toContain('no stock moves');
+    for (const absent of ['Quantity / الكمية', 'Product / المنتج', 'Received on / تاريخ الاستلام', 'Cost / التكلفة', 'Amount / المبلغ', 'type="password"']) {
+      expect(html).not.toContain(absent);
+    }
+  });
+
+  it('refuses a correction or a void without a typed reason, and a void without a password', () => {
+    for (const tooShort of ['', '   ', 'oops']) {
+      expect(correctionReasonError(tooShort)).toContain('at least 5 characters');
+      expect(voidRequestError(tooShort, 'secret')).toContain('at least 5 characters');
+    }
+    expect(correctionReasonError('Wrong invoice number typed')).toBeNull();
+    expect(voidRequestError('Returned to supplier', '')).toContain('account password');
+    expect(voidRequestError('Returned to supplier', 'secret')).toBeNull();
+  });
+
+  it('surfaces the server reason a void was refused', () => {
+    const sold = { isAxiosError: true, response: { data: { error: { message: 'Cannot void because some of this stock has already been sold or used / لا يمكن الإلغاء' } } } };
+    expect(receivingCorrectionErrorMessage(sold)).toContain('already been sold or used');
+    expect(receivingCorrectionErrorMessage(new Error('offline'))).toContain('Unable to complete this correction');
+  });
+
+  it('treats a document with no status as posted, and hides admin actions once voided', () => {
+    expect(receivingStatus({ status: undefined })).toBe('POSTED');
+    expect(isReceivingVoided({ status: undefined })).toBe(false);
+    expect(canCorrectReceiving('ADMIN', { status: undefined })).toBe(true);
+    expect(canCorrectReceiving('ADMIN', { status: 'VOIDED' })).toBe(false);
+    expect(canCorrectReceiving('EMPLOYEE', { status: 'POSTED' })).toBe(false);
+    expect(canCorrectReceiving(undefined, { status: 'POSTED' })).toBe(false);
+  });
+
+  it('offers a void only the lines that have not already been reversed', () => {
+    expect(reversibleLines(receiving).map((line) => line.id)).toEqual(['item-1']);
+    expect(reversibleLines(voidedReceiving)).toEqual([]);
+  });
+
+  it('calls the correction endpoints as a patch and a void, never a delete', async () => {
+    apiMock.patch.mockResolvedValue({ data: { data: receiving } });
+    apiMock.post.mockResolvedValue({ data: { data: voidedReceiving } });
+    await supplierReceivingsApi.updateMetadata(receiving.id, { referenceNumber: 'INV-2', note: null, reason: 'Wrong invoice number' });
+    expect(apiMock.patch).toHaveBeenCalledWith(`/inventory/receivings/${receiving.id}/metadata`, { referenceNumber: 'INV-2', note: null, reason: 'Wrong invoice number' });
+    await supplierReceivingsApi.void(receiving.id, { reason: 'Returned to supplier', accountPassword: 'secret' });
+    expect(apiMock.post).toHaveBeenCalledWith(`/inventory/receivings/${receiving.id}/void`, { reason: 'Returned to supplier', accountPassword: 'secret' });
+    expect(supplierReceivingsApi).not.toHaveProperty('delete');
+    expect(supplierReceivingsApi).not.toHaveProperty('remove');
   });
 
   it('offers an admin-only debt bridge for an active receiving supplier without an amount', () => {

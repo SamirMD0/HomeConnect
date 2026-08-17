@@ -4,7 +4,14 @@ import { PrepaidTable } from './PrepaidTable';
 import { PrepaidSummaryCards } from './PrepaidSummaryCards';
 import { PrepaidStatusBadge } from './PrepaidStatusBadge';
 import { PrepaidEmptyState } from './PrepaidStates';
-import { PrepaidPurchase, PrepaidSummary } from '../types/prepaid.types';
+import { PrepaidBillHistory } from './PrepaidBillHistory';
+import { CustomerPrepaidHistory } from './CustomerPrepaidHistory';
+import {
+  PrepaidPayment,
+  PrepaidPurchase,
+  PrepaidSummary,
+  PrepaidUser,
+} from '../types/prepaid.types';
 import {
   countActivePrepaidFilters,
   hasActivePrepaidFilters,
@@ -12,6 +19,24 @@ import {
   resetPrepaidFilters,
   buildPrepaidParams,
 } from '../utils/prepaid-query';
+
+const admin: PrepaidUser = { id: 'u1', name: 'Admin User', username: 'admin' };
+
+function makeBill(overrides: Partial<PrepaidPayment> = {}): PrepaidPayment {
+  return {
+    id: `alloc-${overrides.amount ?? '100.00'}-${overrides.paymentDate ?? '2026-07-10'}`,
+    paymentId: `pay-${overrides.amount ?? '100.00'}`,
+    amount: '100.00',
+    paymentDate: '2026-07-10',
+    paymentMethod: 'CASH',
+    reference: null,
+    notes: null,
+    recordedBy: admin,
+    isVoided: false,
+    createdAt: '2026-07-10T10:00:00.000Z',
+    ...overrides,
+  };
+}
 
 const pendingItem: PrepaidPurchase = {
   id: 'p1',
@@ -30,6 +55,12 @@ const pendingItem: PrepaidPurchase = {
   deliveryNotes: null,
   deliveredBy: null,
   remainderDebtId: null,
+  createdBy: admin,
+  payments: [
+    makeBill({ amount: '150.00', paymentDate: '2026-07-10', reference: 'R-1' }),
+    makeBill({ amount: '50.00', paymentDate: '2026-07-20', reference: 'R-2' }),
+  ],
+  paymentCount: 2,
   createdAt: '2026-07-30T10:00:00.000Z',
   updatedAt: '2026-07-30T10:00:00.000Z',
 };
@@ -160,6 +191,156 @@ describe('PrepaidSummaryCards', () => {
     expect(markup).toContain('-$200.00');
     expect(markup).toContain('Current filters');
     expect(markup).toContain('إجمالي ما علينا');
+  });
+});
+
+describe('PrepaidBillHistory', () => {
+  it('lists every bill instead of one total', () => {
+    const markup = renderToStaticMarkup(
+      <PrepaidBillHistory
+        payments={[
+          makeBill({ amount: '100.00', paymentDate: '2026-07-10', reference: 'R-1' }),
+          makeBill({ amount: '50.00', paymentDate: '2026-07-20', reference: 'R-2' }),
+          makeBill({ amount: '25.00', paymentDate: '2026-07-30', reference: 'R-3' }),
+        ]}
+      />
+    );
+
+    expect(markup).toContain('$100.00');
+    expect(markup).toContain('$50.00');
+    expect(markup).toContain('$25.00');
+    expect(markup).not.toContain('$175.00');
+  });
+
+  it('shows the receipt number, method and who recorded each bill', () => {
+    const markup = renderToStaticMarkup(
+      <PrepaidBillHistory payments={[makeBill({ reference: 'RCPT-42' })]} />
+    );
+
+    expect(markup).toContain('RCPT-42');
+    expect(markup).toContain('رقم الإيصال');
+    expect(markup).toContain('Cash');
+    expect(markup).toContain('Admin User');
+  });
+
+  it('keeps a voided bill visible but struck through', () => {
+    const markup = renderToStaticMarkup(
+      <PrepaidBillHistory payments={[makeBill({ amount: '50.00', isVoided: true })]} />
+    );
+
+    expect(markup).toContain('$50.00');
+    expect(markup).toContain('line-through');
+    expect(markup).toContain('ملغاة');
+  });
+
+  it('renders a bilingual empty message when no bill exists yet', () => {
+    const markup = renderToStaticMarkup(<PrepaidBillHistory payments={[]} />);
+    expect(markup).toContain('لم تسجل أي فاتورة بعد');
+  });
+});
+
+describe('CustomerPrepaidHistory', () => {
+  const customerSummary: PrepaidSummary = {
+    totalAdminDebt: '-175.00',
+    totalFullAmount: '1000.00',
+    totalRemainingToCollect: '825.00',
+    pendingCount: 3,
+    deliveredCount: 0,
+    cancelledCount: 0,
+    customerCount: 1,
+    basis: 'filtered',
+  };
+
+  const threePurchases: PrepaidPurchase[] = [
+    {
+      ...pendingItem,
+      id: 'p1',
+      itemName: 'Air conditioner',
+      amountPaid: '100.00',
+      adminDebt: '-100.00',
+      payments: [makeBill({ amount: '100.00' })],
+      paymentCount: 1,
+    },
+    {
+      ...pendingItem,
+      id: 'p2',
+      itemName: 'Fridge',
+      amountPaid: '50.00',
+      adminDebt: '-50.00',
+      payments: [makeBill({ amount: '50.00' })],
+      paymentCount: 1,
+    },
+    {
+      ...pendingItem,
+      id: 'p3',
+      itemName: 'Washing machine',
+      amountPaid: '25.00',
+      adminDebt: '-25.00',
+      payments: [makeBill({ amount: '25.00' })],
+      paymentCount: 1,
+    },
+  ];
+
+  it('shows every prepaid purchase the customer has, not just the latest', () => {
+    const markup = renderToStaticMarkup(
+      <CustomerPrepaidHistory items={threePurchases} summary={customerSummary} />
+    );
+
+    expect(markup).toContain('Air conditioner');
+    expect(markup).toContain('Fridge');
+    expect(markup).toContain('Washing machine');
+    expect(markup).toContain('-$100.00');
+    expect(markup).toContain('-$50.00');
+    expect(markup).toContain('-$25.00');
+  });
+
+  it('shows the backend balance for the whole set', () => {
+    const markup = renderToStaticMarkup(
+      <CustomerPrepaidHistory items={threePurchases} summary={customerSummary} />
+    );
+
+    expect(markup).toContain('-$175.00');
+    expect(markup).toContain('الرصيد المسبق');
+    expect(markup).toContain('سجل المدفوعات المسبقة');
+  });
+
+  it('offers to add another bill to an unpaid purchase only when allowed', () => {
+    const withAction = renderToStaticMarkup(
+      <CustomerPrepaidHistory
+        items={threePurchases}
+        summary={customerSummary}
+        onRecordBill={noop}
+      />
+    );
+    const readOnly = renderToStaticMarkup(
+      <CustomerPrepaidHistory items={threePurchases} summary={customerSummary} />
+    );
+
+    expect(withAction).toContain('Record Payment');
+    expect(readOnly).not.toContain('Record Payment');
+  });
+
+  it('hides the bill action once a purchase is fully paid', () => {
+    const markup = renderToStaticMarkup(
+      <CustomerPrepaidHistory
+        items={[{ ...threePurchases[0], isFullyPaid: true }]}
+        summary={customerSummary}
+        onRecordBill={noop}
+      />
+    );
+
+    expect(markup).not.toContain('Record Payment');
+  });
+
+  it('renders a bilingual empty state for a customer with no prepaid history', () => {
+    const markup = renderToStaticMarkup(
+      <CustomerPrepaidHistory
+        items={[]}
+        summary={{ ...customerSummary, pendingCount: 0, totalAdminDebt: '0.00' }}
+      />
+    );
+
+    expect(markup).toContain('لا توجد مشتريات مسبقة لهذا الزبون');
   });
 });
 

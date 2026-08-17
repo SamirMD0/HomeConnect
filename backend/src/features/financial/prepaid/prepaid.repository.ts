@@ -2,6 +2,12 @@ import { DebtKind, Prisma, PrepaidPurchaseStatus } from '@prisma/client';
 import { prisma } from '../../../lib/prisma';
 import { FinancialTransactionClient } from '../infrastructure/transaction';
 
+const userSelect = {
+  id: true,
+  fullName: true,
+  username: true,
+} satisfies Prisma.UserSelect;
+
 const prepaidInclude = {
   debt: {
     include: {
@@ -12,12 +18,25 @@ const prepaidInclude = {
           phone: true,
         },
       },
+      createdBy: {
+        select: userSelect,
+      },
+      // A prepaid item is normally paid across several bills, so the payment
+      // rows are loaded in full: the aggregate alone cannot show that history.
       paymentAllocations: {
         include: {
           payment: {
             select: {
               id: true,
+              paymentDate: true,
+              paymentMethod: true,
+              reference: true,
+              notes: true,
               voidedAt: true,
+              createdAt: true,
+              createdBy: {
+                select: userSelect,
+              },
             },
           },
         },
@@ -28,11 +47,7 @@ const prepaidInclude = {
     },
   },
   deliveredBy: {
-    select: {
-      id: true,
-      fullName: true,
-      username: true,
-    },
+    select: userSelect,
   },
 } satisfies Prisma.PrepaidPurchaseInclude;
 

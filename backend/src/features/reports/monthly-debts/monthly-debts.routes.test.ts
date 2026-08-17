@@ -8,6 +8,7 @@ const { reportsServiceMock } = vi.hoisted(() => ({
     getMonthlyDebtReport: vi.fn(),
     getMonthlyDebtCsv: vi.fn(),
     getMonthlyFinancialActivity: vi.fn(),
+    getMonthlyFinancialActivityCsv: vi.fn(),
   },
 }));
 
@@ -76,6 +77,10 @@ describe('monthly debts report routes', () => {
       },
       items: [],
       pagination: { page: 1, limit: 50, total: 0, totalPages: 1 },
+    });
+    reportsServiceMock.getMonthlyFinancialActivityCsv.mockResolvedValue({
+      filename: 'monthly-financial-activity-2026-07.csv',
+      csv: '\uFEFFDate,Customer\r\n',
     });
   });
 
@@ -150,5 +155,14 @@ describe('monthly debts report routes', () => {
       page: 1,
       limit: 50,
     });
+  });
+
+  it('exports monthly financial activity CSV with download headers', async () => {
+    const response = await request(app)
+      .get('/api/v1/reports/monthly-financial-activity/export.csv?month=2026-07')
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(response.status).toBe(200);
+    expect(response.headers['content-type']).toContain('text/csv');
+    expect(response.headers['content-disposition']).toContain('monthly-financial-activity-2026-07.csv');
   });
 });

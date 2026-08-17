@@ -14,22 +14,24 @@ export const monthlyActivityReportQueryKey = (filters: MonthlyFinancialActivityF
 
 export const monthlyReportsQueryKeyPrefix = ['reports'] as const;
 
-export function useMonthlyDebtReport(filters: MonthlyDebtReportFilters) {
+export function useMonthlyDebtReport(filters: MonthlyDebtReportFilters, enabled = true) {
   const normalized = normalizeMonthlyDebtFilters(filters);
 
   return useQuery({
     queryKey: monthlyDebtReportQueryKey(normalized),
     queryFn: () => monthlyReportsApi.getMonthlyDebtReport(normalized),
+    enabled,
     placeholderData: (previousData) => previousData,
   });
 }
 
-export function useMonthlyFinancialActivity(filters: MonthlyFinancialActivityFilters) {
+export function useMonthlyFinancialActivity(filters: MonthlyFinancialActivityFilters, enabled = true) {
   const normalized = normalizeActivityFilters(filters);
 
   return useQuery({
     queryKey: monthlyActivityReportQueryKey(normalized),
     queryFn: () => monthlyReportsApi.getMonthlyFinancialActivity(normalized),
+    enabled,
     placeholderData: (previousData) => previousData,
   });
 }

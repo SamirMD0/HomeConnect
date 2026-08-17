@@ -1,6 +1,14 @@
 import { NextFunction, Request, Response } from 'express';
 import { SupplierReceivingsService } from './supplier-receivings.service';
-import { CreateSupplierReceivingInput, SupplierReceivingDuplicateInput, SupplierReceivingListInput, SupplierReceivingParamsInput } from './supplier-receivings.validator';
+import {
+  CreateSupplierReceivingInput, SupplierReceivingDuplicateInput, SupplierReceivingListInput,
+  SupplierReceivingParamsInput, UpdateSupplierReceivingMetadataInput, VoidSupplierReceivingInput,
+} from './supplier-receivings.validator';
+
+const contextFrom = (req: Request) => ({
+  requestId: typeof req.headers['x-request-id'] === 'string' ? req.headers['x-request-id'] : null,
+  ipAddress: req.ip ?? null,
+});
 
 export class SupplierReceivingsController {
   static async create(req: Request<unknown, unknown, CreateSupplierReceivingInput>, res: Response, next: NextFunction) {
@@ -17,5 +25,15 @@ export class SupplierReceivingsController {
   }
   static async duplicateCheck(req: Request, res: Response, next: NextFunction) {
     try { res.json({ success: true, data: await SupplierReceivingsService.duplicateCheck(req.query as unknown as SupplierReceivingDuplicateInput, req.user!) }); } catch (error) { next(error); }
+  }
+  static async updateMetadata(req: Request<SupplierReceivingParamsInput, unknown, UpdateSupplierReceivingMetadataInput>, res: Response, next: NextFunction) {
+    try {
+      res.json({ success: true, data: await SupplierReceivingsService.updateMetadata(req.params.receivingId, req.body, req.user!, contextFrom(req)) });
+    } catch (error) { next(error); }
+  }
+  static async void(req: Request<SupplierReceivingParamsInput, unknown, VoidSupplierReceivingInput>, res: Response, next: NextFunction) {
+    try {
+      res.json({ success: true, data: await SupplierReceivingsService.void(req.params.receivingId, req.body, req.user!, contextFrom(req)) });
+    } catch (error) { next(error); }
   }
 }

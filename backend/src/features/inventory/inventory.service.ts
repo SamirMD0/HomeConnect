@@ -34,6 +34,7 @@ type Direction = 'ADD' | 'REMOVE' | 'COUNT';
 type WiredMovementType = Exclude<
   StockMovementType,
   | 'PURCHASE_RECEIPT'
+  | 'PURCHASE_RECEIPT_REVERSAL'
   | 'SALE_FULFILLMENT'
   | 'SALE_CANCEL_RESTORE'
   | 'SERVICE_PART_USED'

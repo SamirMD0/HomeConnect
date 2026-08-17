@@ -60,6 +60,29 @@ describe('MonthlyDebtsService', () => {
     expect(report.rows).toEqual([]);
   });
 
+  it('characterizes the full-month report response before range support', async () => {
+    const report = await MonthlyDebtsService.getMonthlyDebtReport(baseSnapshotQuery());
+
+    expect(JSON.stringify(report)).toBe(JSON.stringify({
+      mode: 'SNAPSHOT',
+      summary: {
+        month: '2026-07',
+        cutoffDate: '2026-07-31',
+        customerCount: 0,
+        totalOutstanding: '0.00',
+        singleDebtOutstandingTotal: '0.00',
+        installmentPlanOutstandingTotal: '0.00',
+        totalAmountDueByCutoff: '0.00',
+        totalOverdueAtCutoff: '0.00',
+        totalPaymentsReceivedDuringMonth: '0.00',
+        customersWithOverdueDebt: 0,
+        customersWithActiveInstallmentPlans: 0,
+      },
+      rows: [],
+      pagination: { page: 1, limit: 50, total: 0, totalPages: 1 },
+    }));
+  });
+
   it('calculates debt outstanding at cutoff and ignores later payments', async () => {
     repositoryMock.loadSnapshotRecords.mockResolvedValue({
       debts: [
@@ -119,6 +142,47 @@ describe('MonthlyDebtsService', () => {
       activePlanCount: 1,
       nextDueDateAfterCutoff: '2026-08-15',
     });
+  });
+
+  it('does not mark a debt due later this month as due or overdue at an MTD cutoff', async () => {
+    repositoryMock.loadSnapshotRecords.mockResolvedValue({
+      debts: [debt({ customer: customerA, originalAmount: '200.00', dueDate: '2026-08-25' })],
+      plans: [],
+      paymentsThroughCutoff: [],
+      monthlyPayments: [],
+    });
+
+    const report = await MonthlyDebtsService.getDebtReportForRange(
+      { ...baseSnapshotQuery(), month: '2026-08' },
+      '2026-08-01',
+      '2026-08-17'
+    );
+
+    expect(report.summary.cutoffDate).toBe('2026-08-17');
+    expect(report.rows[0]).toMatchObject({
+      amountDueByCutoff: '0.00',
+      overdueAmountAtCutoff: '0.00',
+      overdueDebtCount: 0,
+      nextDueDateAfterCutoff: '2026-08-25',
+    });
+  });
+
+  it.each([
+    ['short range', '2026-08-05', '2026-08-12'],
+    ['month-crossing range', '2026-07-28', '2026-08-03'],
+    ['single-day range', '2026-08-17', '2026-08-17'],
+  ])('passes the exact %s cutoff to the snapshot repository', async (_label, from, to) => {
+    await MonthlyDebtsService.getDebtReportForRange(
+      { ...baseSnapshotQuery(), month: from.slice(0, 7) },
+      from,
+      to
+    );
+
+    expect(repositoryMock.loadSnapshotRecords).toHaveBeenCalledWith(expect.objectContaining({
+      startDate: date(from),
+      cutoffDate: date(to),
+      nextDayAfterCutoff: new Date(date(to).getTime() + 86_400_000),
+    }));
   });
 
   it('uses historical cancellation timing at cutoff', async () => {
@@ -258,9 +322,12 @@ describe('MonthlyDebtsService', () => {
     const exportResult = await MonthlyDebtsService.getMonthlyDebtCsv(baseSnapshotQuery());
 
     expect(exportResult.filename).toBe('monthly-debts-2026-07.csv');
-    expect(exportResult.csv).toContain('Customer Name,Phone,Single Debt Outstanding');
-    expect(exportResult.csv).toContain('"Nour, Trading",03654321,100.00');
-    expect(exportResult.csv.charCodeAt(0)).toBe(0xfeff);
+    const legacyBytes = Buffer.from(
+      '\uFEFFCustomer Name,Phone,Single Debt Outstanding,Installment Plan Outstanding,Total Outstanding,Due By Cutoff,Overdue At Cutoff,Active Debt Count,Active Plan Count,Overdue Debt Count,Overdue Installment Count,Last Payment Date,Next Due Date After Cutoff\r\n' +
+      '"Nour, Trading",03654321,100.00,0.00,100.00,0.00,0.00,1,0,0,0,,2026-08-10\r\n',
+      'utf8'
+    );
+    expect(Buffer.from(exportResult.csv, 'utf8')).toEqual(legacyBytes);
   });
 
   it('exports Arabic customer names as UTF-8 with BOM and CSV escaping', async () => {
@@ -285,6 +352,14 @@ describe('MonthlyDebtsService', () => {
 
     expect(exportResult.csv.charCodeAt(0)).toBe(0xfeff);
     expect(exportResult.csv).toContain('"علي، ""بيروت""",03123456,150.00');
+  });
+
+  it('exports monthly financial activity with the shared BOM and CRLF format', async () => {
+    const result = await MonthlyDebtsService.getMonthlyFinancialActivityCsv({
+      month: '2026-07', customerId: undefined, page: 1, limit: 10000,
+    });
+    expect(result.filename).toBe('monthly-financial-activity-2026-07.csv');
+    expect(result.csv).toBe('\uFEFFDate,Customer,Phone,Type,Description,Amount\r\n');
   });
 });
 
