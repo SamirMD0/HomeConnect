@@ -1,7 +1,15 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
+// The renderer runs with `sandbox: true`, so this preload may only require
+// 'electron' and a handful of builtins — a relative import of the channel
+// constant fails at load with "module not found". Channel names stay inline
+// here; `whatsapp-link.test.ts` and `preload.test.ts` pin both sides to the
+// same literal.
+
 contextBridge.exposeInMainWorld('electronAPI', {
   ping: () => ipcRenderer.invoke('ping'),
+  /** Customer communication: main-process-validated https://wa.me links only. */
+  openWhatsApp: (url: string) => ipcRenderer.invoke('comm:openWhatsApp', url),
   selectBackupDirectory: () => ipcRenderer.invoke('backup:selectDirectory'),
   openBackupDirectory: (directory: string) => ipcRenderer.invoke('backup:openDirectory', directory),
   selectBackupFile: () => ipcRenderer.invoke('backup:selectFile'),

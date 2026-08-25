@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { contextBridge, ipcRenderer } from 'electron';
 
@@ -17,6 +19,17 @@ describe('preload', () => {
     vi.clearAllMocks();
   });
 
+  it('imports nothing but electron, because the renderer is sandboxed', () => {
+    // With `sandbox: true` the preload gets a restricted `require` that resolves
+    // 'electron' and a few builtins only. A relative import compiles fine and
+    // then fails at runtime with "module not found", taking the whole
+    // electronAPI bridge down with it.
+    const source = fs.readFileSync(path.join(__dirname, 'preload.ts'), 'utf8');
+    const imports = Array.from(source.matchAll(/^import .* from '([^']+)';$/gm), (m) => m[1]);
+
+    expect(imports).toEqual(['electron']);
+  });
+
   it('exposes only allowed APIs to the renderer', async () => {
     // Dynamically import to trigger the top-level execution
     await import('./preload.js');
@@ -30,7 +43,7 @@ describe('preload', () => {
     
     // Check surface area
     const allowedMethods = [
-      'ping', 'selectBackupDirectory', 'openBackupDirectory', 'selectBackupFile', 'openLogsFolder', 'copyDiagnostics',
+      'ping', 'openWhatsApp', 'selectBackupDirectory', 'openBackupDirectory', 'selectBackupFile', 'openLogsFolder', 'copyDiagnostics',
       'exportLabelsPdf', 'retryStartup', 'closeApp', 'onStartupLog', 'onStartupState'
     ];
     const actualMethods = Object.keys(apiObj as object);
@@ -59,6 +72,10 @@ describe('preload', () => {
 
     (apiObj as any).openBackupDirectory('D:/Backups/HomeConnect');
     expect(ipcRenderer.invoke).toHaveBeenCalledWith('backup:openDirectory', 'D:/Backups/HomeConnect');
+
+    // The renderer may only ask; the main process decides whether the URL is allowed.
+    (apiObj as any).openWhatsApp('https://wa.me/96170123456?text=hi');
+    expect(ipcRenderer.invoke).toHaveBeenCalledWith('comm:openWhatsApp', 'https://wa.me/96170123456?text=hi');
 
     const exportOptions = { suggestedName: 'product-labels-2026-08-04-12.pdf', paper: 'A4' };
     (apiObj as any).exportLabelsPdf(exportOptions);

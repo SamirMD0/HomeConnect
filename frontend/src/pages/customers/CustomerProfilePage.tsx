@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Calendar, Copy, Edit2, MapPin, Phone, Trash2, User as UserIcon, WalletCards } from 'lucide-react';
+import { ArrowLeft, Calendar, Copy, Edit2, MapPin, MessageCircle, Phone, Trash2, User as UserIcon, WalletCards } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Modal } from '../../components/ui/Modal';
 import { CustomerDeleteModal } from '../../features/customers/components/CustomerDeleteModal';
@@ -15,6 +15,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { isFinancialAdmin } from '../../features/customer-financial/utils/financial-auth';
 import { AddFinancialObligationDialog } from '../../features/customer-financial/components/AddFinancialObligationDialog';
 import { GlobalReceivePaymentDialog } from '../../features/financial-ledger/components/GlobalReceivePaymentDialog';
+import { CustomerCommunicationSection } from '../../features/customer-communication/components/CustomerCommunicationSection';
 
 interface CustomerFormData {
   name: string;
@@ -31,6 +32,12 @@ export const CustomerProfilePage: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [financialAction, setFinancialAction] = useState<'add' | 'payment' | null>(null);
+  // The header WhatsApp button expands this section preset to a debt reminder;
+  // it never opens WhatsApp directly, because that would skip review. The key
+  // bumps only when the shortcut opens a collapsed section, so an ordinary
+  // collapse/expand keeps whatever the employee was drafting.
+  const [isCommunicationOpen, setIsCommunicationOpen] = useState(false);
+  const [communicationKey, setCommunicationKey] = useState(0);
   const { user } = useAuth();
   const canMutateFinancial = isFinancialAdmin(user?.role);
 
@@ -115,6 +122,18 @@ export const CustomerProfilePage: React.FC = () => {
                   <Phone className="mr-1.5 h-4 w-4" aria-hidden="true" />
                   {customer.phone}
                   <button type="button" className="ml-2 rounded-md bg-emerald-50 p-1.5 text-emerald-600 transition-colors hover:bg-emerald-600 hover:text-white" aria-label={businessLabels.customer.copyPhone} onClick={() => { void navigator.clipboard?.writeText(customer.phone); toast.success('Phone copied / تم نسخ الهاتف'); }}><Copy className="h-4 w-4" /></button>
+                  <button
+                    type="button"
+                    className="ml-1.5 rounded-md bg-emerald-50 p-1.5 text-emerald-600 transition-colors hover:bg-emerald-600 hover:text-white"
+                    aria-label={businessLabels.communication.whatsAppShortcut}
+                    onClick={() => {
+                      if (!isCommunicationOpen) setCommunicationKey((key) => key + 1);
+                      setIsCommunicationOpen(true);
+                      document.getElementById('customer-communication-title')?.scrollIntoView({ block: 'center' });
+                    }}
+                  >
+                    <MessageCircle className="h-4 w-4" />
+                  </button>
                 </span>
                 {customer.address && (
                   <span className="user-text flex items-center" dir="auto">
@@ -178,6 +197,14 @@ export const CustomerProfilePage: React.FC = () => {
           </div>
         </div>
       </section>
+
+      <CustomerCommunicationSection
+        key={communicationKey}
+        customer={customer}
+        isExpanded={isCommunicationOpen}
+        onToggle={() => setIsCommunicationOpen((open) => !open)}
+        presetType="DEBT_REMINDER"
+      />
 
       {searchParams.get('tab') === 'details' && <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2">

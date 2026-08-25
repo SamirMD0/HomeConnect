@@ -13,6 +13,7 @@ import { focusExistingWindow, shouldQuitAfterChildExit, cleanupRuntime as perfor
 import { describeStartupFailure, startupFailureText } from './startup-failure-messages';
 import { writeStartupDiagnostics } from './startup-diagnostics';
 import { BACKEND_PORT, FRONTEND_PORT } from './runtime-config';
+import { WHATSAPP_OPEN_CHANNEL, openWhatsAppUrl } from './whatsapp-link';
 
 let backendProcess: ChildProcess | null = null;
 let frontendServer: Server | null = null;
@@ -95,6 +96,16 @@ if (!gotTheLock) {
         return { saved: false, error: error instanceof Error ? error.message : 'PDF export failed' };
       }
     });
+
+    /**
+     * Hands a customer-communication deep link to the OS. The URL is validated
+     * in `whatsapp-link.ts` — https + `wa.me` only — before it reaches
+     * `shell.openExternal`. HomeConnect does not send the message; WhatsApp
+     * opens with the text prefilled and the employee presses Send.
+     */
+    ipcMain.handle(WHATSAPP_OPEN_CHANNEL, (_event, url: unknown) =>
+      openWhatsAppUrl(url, (target) => shell.openExternal(target))
+    );
 
     ipcMain.handle('diagnostics:openLogsFolder', async () => {
       const safeUserDataPath = app.getPath('userData') || process.env.HOME_CONNECT_USER_DATA || '';
