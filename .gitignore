@@ -9,6 +9,7 @@ release/
 .env.production.local
 logs/
 backups/
+*.backup
 .tmp-asar-check/
 crash.log
 db-test.js
