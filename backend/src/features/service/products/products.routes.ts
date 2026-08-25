@@ -10,6 +10,7 @@ import {
   updateProductPricingSchema, productPricingPreviewQuerySchema,
   productLabelQuerySchema, productLabelsQuerySchema, updateProductSkuSchema, updateProductStockSchema,
   regenerateProductSkuSchema,
+  normalizeProductBrandsSchema,
 } from './products.validator';
 import { InventoryController } from '../../inventory/inventory.controller';
 import { inventoryProductParamsSchema, stockMovementSchema, verifyOpeningCountSchema } from '../../inventory/inventory.validator';
@@ -19,6 +20,9 @@ export const productsRoutes = Router();
 productsRoutes.get('/', validate(productListQuerySchema, 'query'), ProductsController.list);
 productsRoutes.post('/', validate(createProductSchema), ProductsController.create);
 productsRoutes.get('/check-duplicate', validate(productDuplicateQuerySchema, 'query'), ProductsController.checkDuplicate);
+productsRoutes.post('/brands/normalize', requireServiceAdmin, validate(normalizeProductBrandsSchema), ProductsController.normalizeBrands);
+// Must stay above `GET /:productId`, or "brands" is parsed as a product id.
+productsRoutes.get('/brands', ProductsController.brands);
 // Must stay above `GET /:productId`, or "labels" is parsed as a product id.
 productsRoutes.get('/labels', validate(productLabelsQuerySchema, 'query'), ProductsController.labels);
 // Same ordering rule as `/labels`. Any authenticated user may scan: it is a

@@ -27,7 +27,7 @@ const panel = (props: Record<string, unknown> = {}) => renderToStaticMarkup(
   <ProductPreviewPanel
     productId="product-1"
     onOpenProduct={noop}
-    onMakeOrder={noop}
+    onQuickOrder={noop}
     onReceiveStock={noop}
     {...props}
   />
@@ -77,9 +77,9 @@ describe('ProductPreviewPanel', () => {
     expect(html).toContain('150W');
   });
 
-  it('offers Make Order, Receive Stock, and Open Product', () => {
+  it('offers Quick Order, Receive Stock, and Open Product', () => {
     const html = render();
-    expect(html).toContain('Make Order / إنشاء طلب');
+    expect(html).toContain('Quick Order / طلب سريع');
     expect(html).toContain('Receive Stock / إدخال مخزون');
     expect(html).toContain('Open Product');
   });
@@ -89,14 +89,14 @@ describe('ProductPreviewPanel', () => {
     expect(render()).toContain('creates no supplier debt');
   });
 
-  it('keeps Make Order enabled when stock is zero', () => {
-    expect(buttonTag(render(), 'Make Order')).not.toContain('disabled=""');
+  it('keeps Quick Order enabled when stock is zero', () => {
+    expect(buttonTag(render(), 'Quick Order')).not.toContain('disabled=""');
   });
 
-  it('disables Make Order and explains why for an archived product', () => {
+  it('disables Quick Order and explains why for an archived product', () => {
     const html = render({ isActive: false });
     expect(html).toContain('Archived product');
-    expect(buttonTag(html, 'Make Order')).toContain('disabled=""');
+    expect(buttonTag(html, 'Quick Order')).toContain('disabled=""');
   });
 
   it('surfaces a barcode and SKU collision', () => {
@@ -137,7 +137,7 @@ describe('ProductPreviewPanel', () => {
   it('reports whether the receiving form may be prefilled', () => {
     const onReceiveStock = vi.fn();
     productState.data = baseProduct;
-    renderToStaticMarkup(<ProductPreviewPanel productId="product-1" onOpenProduct={noop} onMakeOrder={noop} onReceiveStock={onReceiveStock} />);
+    renderToStaticMarkup(<ProductPreviewPanel productId="product-1" onOpenProduct={noop} onQuickOrder={noop} onReceiveStock={onReceiveStock} />);
 
     // Rendering alone must not act; the flag is computed from onboarding state.
     expect(onReceiveStock).not.toHaveBeenCalled();

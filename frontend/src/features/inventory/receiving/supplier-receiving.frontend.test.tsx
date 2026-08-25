@@ -64,10 +64,16 @@ vi.mock('./hooks/useSupplierReceivings', () => ({
   useUpdateReceivingMetadata: () => ({ mutateAsync: receivingHooks.updateMetadata, isPending: false }),
   useVoidSupplierReceiving: () => ({ mutateAsync: receivingHooks.void, isPending: false }),
 }));
-vi.mock('../../products/hooks/useProducts', () => ({ useProducts: () => ({ data: { items: [
-  { id: 'product-1', name: 'Tracked fan', model: 'TF-1', sku: 'HC-1', barcode: null, stockQuantity: 5, trackStock: true },
-  { id: 'product-2', name: 'Untracked fan', model: 'UF-1', sku: 'HC-2', barcode: null, stockQuantity: 0, trackStock: false },
-] }, isLoading: false, isError: false }) }));
+vi.mock('../../products/hooks/useProducts', () => {
+  const products = [
+    { id: 'product-1', name: 'Tracked fan', model: 'TF-1', sku: 'HC-1', barcode: null, stockQuantity: 5, trackStock: true },
+    { id: 'product-2', name: 'Untracked fan', model: 'UF-1', sku: 'HC-2', barcode: null, stockQuantity: 0, trackStock: false },
+  ];
+  return {
+    useProducts: () => ({ data: { items: products }, isLoading: false, isError: false }),
+    useProduct: (id: string) => ({ data: products.find((product) => product.id === id), isLoading: false, isError: false, refetch: vi.fn() }),
+  };
+});
 vi.mock('../hooks/useInventory', () => ({ useProductInventory: () => ({ data: { onboardingStatus: 'ONBOARDED' }, isLoading: false, isError: false }) }));
 vi.mock('../../suppliers/hooks/useSuppliers', () => ({ useSuppliers: () => ({ data: { items: [{ id: 'supplier-1', name: 'Supplier One' }] }, isLoading: false }) }));
 vi.mock('../../../services/api', () => ({ api: apiMock }));

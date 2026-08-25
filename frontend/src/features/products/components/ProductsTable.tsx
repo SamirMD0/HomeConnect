@@ -1,10 +1,11 @@
 import React, { useEffect, useRef } from 'react';
-import { Archive, Edit3, Eye, Printer, RotateCcw, TriangleAlert } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Edit3, Eye, TriangleAlert, Warehouse } from 'lucide-react';
 import { formatMoney } from '../../customer-financial/utils/financial-format';
 import { Product } from '../types/product.types';
+import { ProductIdentity, ProductNotInInventoryChip } from './ProductIdentity';
 import { ProductImageView } from './ProductImageView';
 import { ProductMobileCard } from './ProductMobileCard';
+import { ProductOverflowMenu } from './ProductOverflowMenu';
 import { ProductStatusBadge } from './ProductStatusBadge';
 import { ProductStockBadge } from './ProductStockBadge';
 
@@ -16,23 +17,23 @@ interface ProductsTableProps {
   onSelectAll: (selected: boolean) => void;
   onView: (product: Product) => void;
   onEdit: (product: Product) => void;
+  onInventory?: (product: Product) => void;
   onArchive: (product: Product) => void;
   onRestore: (product: Product) => void;
 }
 
 export const ProductsTable: React.FC<ProductsTableProps> = ({
-  products, selectedIds, canAdmin, onSelect, onSelectAll, onView, onEdit, onArchive, onRestore,
+  products, selectedIds, canAdmin, onSelect, onSelectAll, onView, onEdit, onInventory = onView, onArchive, onRestore,
 }) => (
   <>
     <div className="hidden overflow-x-auto rounded-lg border border-slate-200 bg-white lg:block">
-      <table className="w-full min-w-250 text-left text-sm text-slate-700">
+      <table className="w-full min-w-225 text-left text-sm text-slate-700">
         <thead className="border-b border-slate-200 bg-slate-50 text-slate-600">
           <tr>
             <th scope="col" className="w-11 px-3 py-2.5">
               <SelectAllCheckbox products={products} selectedIds={selectedIds} onSelectAll={onSelectAll} />
             </th>
             <th scope="col" className="w-full max-w-0 px-4 py-2.5"><ColumnHeading english="Product" arabic="المنتج" /></th>
-            <th scope="col" className="whitespace-nowrap px-4 py-2.5"><ColumnHeading english="Pricing Formula" arabic="صيغة التسعير" /></th>
             {canAdmin && <th scope="col" className="whitespace-nowrap px-4 py-2.5"><ColumnHeading english="Cost" arabic="التكلفة" align="right" /></th>}
             <th scope="col" className="whitespace-nowrap px-4 py-2.5"><ColumnHeading english="Cash Price" arabic="السعر النقدي" align="right" /></th>
             <th scope="col" className="whitespace-nowrap px-4 py-2.5"><ColumnHeading english="Installment" arabic="التقسيط" align="right" /></th>
@@ -45,7 +46,7 @@ export const ProductsTable: React.FC<ProductsTableProps> = ({
           {products.map((product) => {
             const selected = selectedIds.has(product.id);
             const rowBg = selected
-              ? 'bg-emerald-50/70 group-hover:bg-emerald-50'
+              ? 'bg-brand-50/70 group-hover:bg-brand-50'
               : product.isActive ? 'bg-white group-hover:bg-slate-50' : 'bg-slate-50/70 group-hover:bg-slate-100';
 
             return (
@@ -56,40 +57,15 @@ export const ProductsTable: React.FC<ProductsTableProps> = ({
                     checked={selected}
                     onChange={(event) => onSelect(product.id, event.target.checked)}
                     aria-label={`Select ${product.name}`}
-                    className="mt-1 h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                    className="mt-1 h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
                   />
                 </td>
 
                 <td className="w-full max-w-0 px-4 py-3 align-top">
                   <div className="flex min-w-0 items-start gap-3">
-                    <ProductImageView
-                      productId={product.id}
-                      image={product.image}
-                      alt=""
-                      className="h-10 w-10 shrink-0 rounded-md border border-slate-200"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <button
-                        type="button"
-                        onClick={() => onView(product)}
-                        className="user-text block max-w-full truncate text-left font-semibold text-slate-900 hover:text-emerald-700 hover:underline"
-                        dir="auto"
-                      >
-                        {product.name}
-                      </button>
-                      <span className="user-text mt-0.5 block truncate text-xs text-slate-500" dir="auto">
-                        {product.model}{product.brand ? ` · ${product.brand}` : ''}
-                      </span>
-                      {product.barcode && (
-                        <span className="mt-0.5 block truncate font-mono text-[11px] text-slate-400">{product.barcode}</span>
-                      )}
-                      <span className="mt-0.5 block truncate font-mono text-[11px] font-semibold text-slate-600">{product.sku}</span>
-                    </div>
+                    <button type="button" onClick={() => onView(product)} aria-label={`Open ${product.name} details / فتح تفاصيل المنتج`} title={`Open ${product.name} details`} className="h-10 w-10 shrink-0 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-500"><ProductImageView productId={product.id} image={product.image} alt={product.name} className="h-10 w-10 rounded-md border border-slate-200" /></button>
+                    <ProductIdentity product={product} onView={() => onView(product)} />
                   </div>
-                </td>
-
-                <td className="whitespace-nowrap px-4 py-3 align-top">
-                  <PricingFormulaCell product={product} />
                 </td>
 
                 {canAdmin && (
@@ -107,23 +83,19 @@ export const ProductsTable: React.FC<ProductsTableProps> = ({
                 </td>
 
                 <td className="whitespace-nowrap px-4 py-3 align-top"><ProductStatusBadge isActive={product.isActive} /></td>
-                <td className="whitespace-nowrap px-4 py-3 align-top"><ProductStockBadge status={product.stockStatus} /></td>
+                <td className="whitespace-nowrap px-4 py-3 align-top">
+                  <div className="flex flex-col items-start gap-1">
+                    <ProductStockBadge status={product.stockStatus} />
+                    <ProductNotInInventoryChip product={product} />
+                  </div>
+                </td>
 
                 <td className={`sticky right-0 whitespace-nowrap px-4 py-3 align-top ${rowBg}`}>
                   <div className="flex items-center justify-end gap-1.5">
                     <IconButton label="View details / عرض التفاصيل" onClick={() => onView(product)} primary><Eye className="h-4 w-4" /></IconButton>
                     <IconButton label="Edit product / تعديل المنتج" onClick={() => onEdit(product)}><Edit3 className="h-4 w-4" /></IconButton>
-                    <Link
-                      to={`/products/${product.id}/label`}
-                      title="Print label / طباعة الملصق"
-                      aria-label="Print label / طباعة الملصق"
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-900"
-                    >
-                      <Printer className="h-4 w-4" />
-                    </Link>
-                    {canAdmin && (product.isActive
-                      ? <IconButton label="Archive product / أرشفة المنتج" onClick={() => onArchive(product)}><Archive className="h-4 w-4" /></IconButton>
-                      : <IconButton label="Restore product / استعادة المنتج" onClick={() => onRestore(product)}><RotateCcw className="h-4 w-4" /></IconButton>)}
+                    <IconButton label="Inventory / المخزون" onClick={() => onInventory(product)}><Warehouse className="h-4 w-4" /></IconButton>
+                    <ProductOverflowMenu product={product} canAdmin={canAdmin} onArchive={() => onArchive(product)} onRestore={() => onRestore(product)} />
                   </div>
                 </td>
               </tr>
@@ -143,6 +115,7 @@ export const ProductsTable: React.FC<ProductsTableProps> = ({
           onSelect={(value) => onSelect(product.id, value)}
           onView={() => onView(product)}
           onEdit={() => onEdit(product)}
+          onInventory={() => onInventory(product)}
           onArchive={() => onArchive(product)}
           onRestore={() => onRestore(product)}
         />
@@ -171,34 +144,33 @@ const SelectAllCheckbox: React.FC<{
       checked={allSelected}
       onChange={(event) => onSelectAll(event.target.checked)}
       aria-label="Select all products on this page"
-      className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+      className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
     />
   );
 };
 
-const PricingFormulaCell: React.FC<{ product: Product }> = ({ product }) => {
+/**
+ * The formula used to sit in its own column, pushing the table past a
+ * horizontal scroll while saying nothing the price cell could not carry. As a
+ * caption under the figure it explains that figure, which is what it was
+ * always for, and gives the identity column its width back.
+ */
+const PricingFormulaCaption: React.FC<{ product: Product }> = ({ product }) => {
   const pricing = product.pricing;
   const archivedPreset = pricing?.pricingAvailable && pricing.warnings.includes('PRESET_ARCHIVED');
   const mode = pricing?.mode ?? (pricing?.useCustomPricing ? 'CUSTOM' : pricing?.presetName ? 'PRESET' : product.price ? 'MANUAL' : 'NONE');
 
-  if (mode === 'CUSTOM') {
-    return <Chip tone="blue">Custom / مخصص</Chip>;
-  }
-  if (mode === 'PRESET') {
-    return (
-      <div className="flex min-w-0 items-center gap-1.5">
-        <Chip>{pricing?.presetName ?? 'Preset / صيغة جاهزة'}</Chip>
-        {archivedPreset && (
-          <TriangleAlert
-            className="h-3.5 w-3.5 shrink-0 text-amber-500"
-            aria-label="Archived preset / صيغة مؤرشفة"
-          />
-        )}
-      </div>
-    );
-  }
-  if (mode === 'MANUAL') return <Chip tone="amber">Manual / يدوي</Chip>;
-  return <span className="text-xs text-slate-400">No formula / دون صيغة</span>;
+  if (mode === 'NONE') return null;
+  return (
+    <span className="mt-1 flex items-center justify-end gap-1.5">
+      {mode === 'CUSTOM' && <Chip tone="blue">Custom / مخصص</Chip>}
+      {mode === 'MANUAL' && <Chip tone="amber">Manual / يدوي</Chip>}
+      {mode === 'PRESET' && <Chip>{pricing?.presetName ?? 'Preset / صيغة جاهزة'}</Chip>}
+      {archivedPreset && (
+        <TriangleAlert className="h-3.5 w-3.5 shrink-0 text-amber-500" aria-label="Archived preset / صيغة مؤرشفة" />
+      )}
+    </span>
+  );
 };
 
 const CashPriceCell: React.FC<{ product: Product }> = ({ product }) => {
@@ -208,12 +180,13 @@ const CashPriceCell: React.FC<{ product: Product }> = ({ product }) => {
     const manualDiffers = product.price != null && product.price !== pricing.cashPrice;
     return (
       <>
-        <Money value={pricing.cashPrice} className="text-[15px] font-bold text-emerald-700" />
+        <Money value={pricing.cashPrice} className="text-[15px] font-bold text-brand-700" />
         {manualDiffers && (
           <span className="mt-0.5 block text-[11px] text-amber-600" title="Manual price differs from calculated price / السعر اليدوي يختلف عن المحسوب">
             manual <span dir="ltr" className="tabular-nums">{formatMoney(product.price as string)}</span>
           </span>
         )}
+        <PricingFormulaCaption product={product} />
       </>
     );
   }
@@ -222,7 +195,7 @@ const CashPriceCell: React.FC<{ product: Product }> = ({ product }) => {
     return (
       <>
         <Money value={product.price} className="font-semibold text-slate-700" />
-        <span className="mt-0.5 block text-[11px] text-slate-400">manual / يدوي</span>
+        <PricingFormulaCaption product={product} />
       </>
     );
   }
@@ -282,7 +255,7 @@ const IconButton: React.FC<{ label: string; onClick: () => void; children: React
     onClick={onClick}
     className={`inline-flex h-9 w-9 items-center justify-center rounded-md border ${
       primary
-        ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+        ? 'border-brand-200 bg-brand-50 text-brand-700 hover:bg-brand-100'
         : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-900'
     }`}
   >

@@ -5,8 +5,9 @@ const { repository, pricing, writeAudit, verify, tx } = vi.hoisted(() => {
   const transaction = { user: { findUnique: vi.fn().mockResolvedValue({ fullName: 'Admin User', username: 'admin' }) } };
   return {
     repository: {
-      findByBarcode: vi.fn(), findPricingPreset: vi.fn(), create: vi.fn(),
+      findByBarcode: vi.fn(), findBySku: vi.fn(), findDuplicates: vi.fn(), findPricingPreset: vi.fn(), create: vi.fn(),
       findActiveDefaultPricingPreset: vi.fn(), findById: vi.fn(), update: vi.fn(), deleteImage: vi.fn(),
+      groupBrandSpellings: vi.fn(), list: vi.fn(),
     },
     pricing: { resolveProductPricing: vi.fn() },
     writeAudit: vi.fn(), verify: vi.fn(), tx: transaction,
@@ -21,7 +22,7 @@ vi.mock('../../financial/infrastructure/transaction', () => ({ runFinancialTrans
 vi.mock('./product-sku', () => ({ generateProductSku: vi.fn().mockResolvedValue('HC-000001') }));
 vi.mock('../../../lib/prisma', () => ({ prisma: {}, transactionModel: {}, activityLogModel: {} }));
 
-import { ProductsService } from './products.service';
+import { ProductsService, summarizeProductBrands } from './products.service';
 
 const user = { userId: '11111111-1111-4111-8111-111111111111', role: Role.ADMIN, username: 'admin' };
 const employee = { ...user, role: Role.EMPLOYEE };
@@ -52,8 +53,11 @@ describe('product service workflow', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     repository.findByBarcode.mockResolvedValue(null);
+    repository.findBySku.mockResolvedValue(null);
+    repository.findDuplicates.mockResolvedValue({ sameNameModel: [], sameModelBrand: [] });
     repository.findPricingPreset.mockResolvedValue(null);
     repository.findActiveDefaultPricingPreset.mockResolvedValue(null);
+    repository.list.mockResolvedValue({ items: [], total: 0 });
     pricing.resolveProductPricing.mockReturnValue(unavailable);
     repository.create.mockImplementation((data) => Promise.resolve(productOf({ ...data })));
     repository.update.mockImplementation((_id, data) => Promise.resolve(productOf({ ...data })));
@@ -72,6 +76,31 @@ describe('product service workflow', () => {
 
   it('does not treat false pricing booleans as an admin-only create', async () => {
     await expect(ProductsService.create({ name: 'Fan', model: 'F1', useCustomPricing: false, installmentEnabled: false }, employee, context)).resolves.toMatchObject({ name: 'Fan' });
+  });
+
+  it('persists admin-supplied create-time stock settings at quantity zero and audits the intent', async () => {
+    const created = await ProductsService.create({
+      name: 'Tracked fan', model: 'TF-1', trackStock: true, lowStockThreshold: 3,
+    }, user, context);
+
+    expect(repository.create).toHaveBeenCalledWith(expect.objectContaining({
+      trackStock: true, lowStockThreshold: 3,
+    }), expect.anything());
+    expect(repository.create.mock.calls[0][0]).not.toHaveProperty('stockQuantity');
+    expect(created).toMatchObject({ trackStock: true, stockQuantity: 0, lowStockThreshold: 3 });
+    expect(writeAudit.mock.calls[0][0].afterValues).toMatchObject({
+      trackStock: true, stockQuantity: 0, lowStockThreshold: 3,
+    });
+  });
+
+  it('keeps create-time stock settings admin-only without blocking a plain employee create', async () => {
+    await expect(ProductsService.create({ name: 'Plain fan', model: 'PF-1' }, employee, context))
+      .resolves.toMatchObject({ name: 'Plain fan', trackStock: false, stockQuantity: 0 });
+    await expect(ProductsService.create({ name: 'Tracked fan', model: 'TF-1', trackStock: true }, employee, context))
+      .rejects.toMatchObject({ statusCode: 403 });
+    await expect(ProductsService.create({ name: 'Threshold fan', model: 'TH-1', lowStockThreshold: 2 }, employee, context))
+      .rejects.toMatchObject({ statusCode: 403 });
+    expect(repository.create).toHaveBeenCalledTimes(1);
   });
 
   it('updates imageUrl only when supplied and returns resolved pricing from PATCH', async () => {
@@ -108,6 +137,34 @@ describe('product service workflow', () => {
     });
   });
 
+  it('adds list-only not-in-inventory truth and keeps it off the detail response', async () => {
+    repository.list.mockResolvedValue({
+      items: [
+        productOf({ id: 'outside', _count: { stockMovements: 0 }, trackStock: false, stockQuantity: 0 }),
+        productOf({ id: 'has-movement', _count: { stockMovements: 1 }, trackStock: false, stockQuantity: 0 }),
+        productOf({ id: 'tracked', _count: { stockMovements: 0 }, trackStock: true, stockQuantity: 0 }),
+        productOf({ id: 'has-quantity', _count: { stockMovements: 0 }, trackStock: false, stockQuantity: 2 }),
+      ],
+      total: 4,
+    });
+    const list = await ProductsService.list({
+      isActive: undefined,
+      hasBarcode: undefined,
+      trackStock: undefined,
+      sortBy: 'name',
+      sortOrder: 'asc',
+      page: 1,
+      pageSize: 25,
+    }, employee);
+    expect(list.items.map((item) => [item.id, item.notInInventory])).toEqual([
+      ['outside', true], ['has-movement', false], ['tracked', false], ['has-quantity', false],
+    ]);
+
+    repository.findById.mockResolvedValue(productOf({ id: 'outside' }));
+    const detail = await ProductsService.get('outside', employee);
+    expect(detail).not.toHaveProperty('notInInventory');
+  });
+
   it('rejects clearing a persisted manufacturer barcode', async () => {
     const existing = productOf({ labelBarcodeSource: LabelBarcodeSource.MANUFACTURER, barcode: 'ABCD-1234' });
     repository.findById.mockResolvedValue(existing);
@@ -132,6 +189,60 @@ describe('product service workflow', () => {
     expect(repository.update.mock.calls[0][1]).toMatchObject({
       installmentEnabled: false, customInstallmentMarkupPercent: null,
       customDownPaymentPercent: null, customInstallmentMonths: null,
+    });
+  });
+});
+
+describe('product brand summaries', () => {
+  it('groups case variants, collapses whitespace, and chooses the majority spelling', () => {
+    expect(summarizeProductBrands([
+      { brand: 'Kozano', _count: { _all: 12 } },
+      { brand: 'KOZANO', _count: { _all: 5 } },
+      { brand: 'kozano', _count: { _all: 3 } },
+      { brand: '  Silver   Crest ', _count: { _all: 2 } },
+      { brand: 'silver crest', _count: { _all: 1 } },
+    ])).toEqual([
+      { canonical: 'Kozano', productCount: 20, spellings: ['Kozano', 'KOZANO', 'kozano'], spellingCounts: [{ spelling: 'Kozano', productCount: 12 }, { spelling: 'KOZANO', productCount: 5 }, { spelling: 'kozano', productCount: 3 }] },
+      { canonical: 'Silver Crest', productCount: 3, spellings: ['Silver Crest', 'silver crest'], spellingCounts: [{ spelling: 'Silver Crest', productCount: 2 }, { spelling: 'silver crest', productCount: 1 }] },
+    ]);
+  });
+
+  it('resolves a usage tie to Title Case deterministically', () => {
+    expect(summarizeProductBrands([
+      { brand: 'KENWOOD', _count: { _all: 2 } },
+      { brand: 'Kenwood', _count: { _all: 2 } },
+      { brand: 'kenwood', _count: { _all: 2 } },
+    ])[0]).toEqual({ canonical: 'Kenwood', productCount: 6, spellings: ['Kenwood', 'kenwood', 'KENWOOD'], spellingCounts: [{ spelling: 'Kenwood', productCount: 2 }, { spelling: 'kenwood', productCount: 2 }, { spelling: 'KENWOOD', productCount: 2 }] });
+  });
+
+  it('excludes null, empty, and whitespace-only brand values', () => {
+    expect(summarizeProductBrands([
+      { brand: null, _count: { _all: 3 } },
+      { brand: '', _count: { _all: 2 } },
+      { brand: '   ', _count: { _all: 1 } },
+    ])).toEqual([]);
+  });
+
+  it('keeps prefix-sharing brands in separate groups', () => {
+    const summaries = summarizeProductBrands([
+      { brand: 'Mac', _count: { _all: 1 } },
+      { brand: 'MAC Styler', _count: { _all: 1 } },
+      { brand: 'GENERAL', _count: { _all: 1 } },
+      { brand: 'General Pro', _count: { _all: 1 } },
+      { brand: 'General Gold', _count: { _all: 1 } },
+      { brand: 'GENERAL OCEAN', _count: { _all: 1 } },
+    ]);
+
+    expect(summaries.map((brand) => brand.canonical)).toEqual(expect.arrayContaining([
+      'Mac', 'MAC Styler', 'GENERAL', 'General Pro', 'General Gold', 'GENERAL OCEAN',
+    ]));
+    expect(summaries).toHaveLength(6);
+  });
+
+  it('returns only grouped brand fields from the repository aggregate', async () => {
+    repository.groupBrandSpellings.mockResolvedValue([{ brand: 'DSP', _count: { _all: 30 } }]);
+    await expect(ProductsService.brands()).resolves.toEqual({
+      brands: [{ canonical: 'DSP', productCount: 30, spellings: ['DSP'], spellingCounts: [{ spelling: 'DSP', productCount: 30 }] }],
     });
   });
 });
@@ -206,6 +317,18 @@ describe('product edit security policy', () => {
     expect(verify).not.toHaveBeenCalled();
   });
 
+  it('keeps case-insensitive SKU collision enforcement authoritative on save', async () => {
+    repository.findBySku.mockResolvedValue(productOf({ id: '99999999-9999-4999-8999-999999999999', sku: 'HC-009999' }));
+
+    await expect(ProductsService.updateSku(productId, { sku: 'HC-009999' }, user, context))
+      .rejects.toMatchObject({ statusCode: 409, details: { field: 'sku' } });
+    expect(repository.findBySku).toHaveBeenCalledWith('HC-009999', expect.anything(), {
+      caseInsensitive: true,
+      excludeProductId: productId,
+    });
+    expect(repository.update).not.toHaveBeenCalled();
+  });
+
   it('keeps SKU and stock settings admin-only', async () => {
     await expect(ProductsService.updateSku(productId, { sku: 'HC-009999' }, employee, context)).rejects.toThrow();
     await expect(ProductsService.regenerateSku(productId, employee, context)).rejects.toThrow();
@@ -222,5 +345,61 @@ describe('product edit security policy', () => {
     repository.findById.mockResolvedValue(productOf({ isActive: false }));
     await ProductsService.restore(productId, { reason: 'Back in catalogue', accountPassword: 'secret' }, user, context);
     expect(verify).toHaveBeenCalledTimes(3);
+  });
+
+  it('classifies every duplicate reason, excludes the subject, and serializes catalogue fields only', async () => {
+    const subjectId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    const barcode = productOf({ id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', name: 'Barcode owner', barcode: 'AbC-1234' });
+    const sku = productOf({ id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', name: 'SKU owner', sku: 'HC-009999' });
+    const sameName = productOf({ id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd', name: 'Fan', model: 'F1', brand: 'Ariete' });
+    const sameModelBrand = productOf({ id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee', name: 'Fan Deluxe', model: 'F1', brand: 'Ariete' });
+    repository.findByBarcode.mockResolvedValue(barcode);
+    repository.findBySku.mockResolvedValue(sku);
+    repository.findDuplicates.mockResolvedValue({
+      sameNameModel: [productOf({ id: subjectId }), sameName],
+      sameModelBrand: [sameModelBrand, productOf({ id: subjectId })],
+    });
+
+    const result = await ProductsService.checkDuplicate({
+      name: 'fAn', model: 'f1', brand: 'aRiEtE', barcode: 'aBc-1234', sku: 'hc-009999', excludeProductId: subjectId,
+    });
+
+    expect(result.matches.map((match) => match.reason)).toEqual(expect.arrayContaining([
+      'BARCODE_TAKEN', 'SKU_TAKEN', 'SAME_NAME_MODEL', 'SAME_MODEL_BRAND',
+    ]));
+    expect(result.matches).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: barcode.id, reason: 'BARCODE_TAKEN' }),
+      expect.objectContaining({ id: sku.id, reason: 'SKU_TAKEN' }),
+      expect.objectContaining({ id: sameName.id, reason: 'SAME_NAME_MODEL' }),
+      expect.objectContaining({ id: sameModelBrand.id, reason: 'SAME_MODEL_BRAND' }),
+    ]));
+    expect(result.matches.some((match) => match.id === subjectId)).toBe(false);
+    expect(repository.findByBarcode).toHaveBeenCalledWith('aBc-1234', undefined, { caseInsensitive: true, excludeProductId: subjectId });
+    expect(repository.findBySku).toHaveBeenCalledWith('HC-009999', undefined, { caseInsensitive: true, excludeProductId: subjectId });
+    expect(repository.findDuplicates).toHaveBeenCalledWith(expect.objectContaining({
+      name: 'fAn', model: 'f1', brand: 'aRiEtE', excludeProductId: subjectId,
+    }));
+    for (const match of result.matches) {
+      expect(Object.keys(match).sort()).toEqual(['barcode', 'brand', 'id', 'isActive', 'model', 'name', 'reason', 'sku']);
+      for (const forbidden of ['price', 'costPrice', 'discount', 'stockQuantity', 'notes']) {
+        expect(JSON.stringify(match)).not.toContain(`"${forbidden}"`);
+      }
+    }
+  });
+
+  it('caps duplicate results at five with active products first and newest updates first', async () => {
+    const candidates = Array.from({ length: 7 }, (_, index) => productOf({
+      id: `00000000-0000-4000-8000-00000000000${index}`,
+      name: `Fan ${index}`,
+      isActive: index >= 3,
+      updatedAt: new Date(`2026-08-${String(index + 1).padStart(2, '0')}T00:00:00Z`),
+    }));
+    repository.findDuplicates.mockResolvedValue({ sameNameModel: candidates, sameModelBrand: [] });
+
+    const result = await ProductsService.checkDuplicate({ name: 'Fan', model: 'F1' });
+
+    expect(result.matches).toHaveLength(5);
+    expect(result.matches.slice(0, 4).every((match) => match.isActive)).toBe(true);
+    expect(result.matches.slice(0, 4).map((match) => match.name)).toEqual(['Fan 6', 'Fan 5', 'Fan 4', 'Fan 3']);
   });
 });

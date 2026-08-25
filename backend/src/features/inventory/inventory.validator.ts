@@ -41,7 +41,6 @@ export const verifyOpeningCountSchema = z.object({
   verifiedCount: z.number().int('Verified count must be a whole number').min(0, 'Verified count cannot be negative').max(INVENTORY_QUANTITY_LIMIT),
   reason: reasonSchema,
   note: optionalText,
-  accountPassword: z.string().min(1, 'Account password is required'),
 }).strict();
 
 export const inventoryMovementListSchema = z.object({
@@ -60,11 +59,46 @@ export const lowStockListSchema = z.object({
   pageSize: z.coerce.number().int().positive().max(100).default(25),
 });
 
+export const onboardingWorklistSchema = z.object({
+  search: z.string().trim().max(200).optional(),
+  includeArchived: z.enum(['true', 'false']).optional()
+    .transform((value) => value === undefined ? false : value === 'true'),
+  page: z.coerce.number().int().positive().default(1),
+  pageSize: z.coerce.number().int().positive().max(100).default(50),
+}).strict();
+
+const batchOpeningCountItemSchema = z.object({
+  productId: uuidSchema,
+  openingCount: z.number().int('Opening count must be a whole number')
+    .min(0, 'Opening count cannot be negative')
+    .max(INVENTORY_QUANTITY_LIMIT),
+  note: optionalText,
+}).strict();
+
+export const batchVerifyOpeningCountSchema = z.object({
+  dryRun: z.boolean().optional(),
+  items: z.array(batchOpeningCountItemSchema).min(1, 'At least one product is required').max(100, 'A batch may contain at most 100 products'),
+}).strict().superRefine((input, context) => {
+  const seen = new Set<string>();
+  input.items.forEach((item, index) => {
+    if (seen.has(item.productId)) {
+      context.addIssue({
+        code: 'custom',
+        path: ['items', index, 'productId'],
+        message: 'Product IDs must be unique within a batch',
+      });
+    }
+    seen.add(item.productId);
+  });
+});
+
 export type InventoryProductParamsInput = z.infer<typeof inventoryProductParamsSchema>;
 export type StockMovementInput = z.infer<typeof stockMovementSchema>;
 export type VerifyOpeningCountInput = z.infer<typeof verifyOpeningCountSchema>;
 export type InventoryMovementListQuery = z.infer<typeof inventoryMovementListSchema>;
 export type LowStockListQuery = z.infer<typeof lowStockListSchema>;
+export type OnboardingWorklistQuery = z.infer<typeof onboardingWorklistSchema>;
+export type BatchVerifyOpeningCountBody = z.infer<typeof batchVerifyOpeningCountSchema>;
 
 export function assertMovementQuantity(quantity: number): void {
   assertInteger(quantity, 'Quantity');

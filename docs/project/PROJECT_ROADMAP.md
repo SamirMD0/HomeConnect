@@ -1223,7 +1223,7 @@ MAJOR.MINOR.PATCH
 1.0.0 — First release (Customer Debt Management)
 1.1.0 — New feature (e.g., enhanced reports)
 1.1.1 — Bug fix
-2.0.0 — Breaking change (e.g., major redesign, schema change requiring manual migration)
+2.0.0 — Inventory-managed ERP milestone; deliberately non-breaking and schema-identical to 1.9.x
 ```
 
 ### 14.2 Release Process

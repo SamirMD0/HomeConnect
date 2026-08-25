@@ -1,4 +1,5 @@
-import { Role, StockMovementType } from '@prisma/client';
+import { Prisma, Role, StockMovementType } from '@prisma/client';
+import { randomUUID } from 'crypto';
 import { verifyAdminPassword } from '../../lib/admin-verification';
 import { AuthorizationError, NotFoundError, ValidationError } from '../../lib/errors';
 import { runFinancialTransaction } from '../financial/infrastructure/transaction';
@@ -6,11 +7,18 @@ import { deriveProductStockStatus } from '../service/products/product-stock';
 import { InventoryRepository } from './inventory.repository';
 import {
   GuardedStockMovementInput,
+  BatchOpeningCountItem,
+  BatchOnboardingDryRunResult,
+  BatchOnboardingSkippedItem,
+  BatchOnboardingValidItem,
+  BatchOnboardingWriteResult,
+  BatchVerifyOpeningCountInput,
   InventoryRequestContext,
   InventoryUser,
   LowStockListInput,
   MaintenanceStockIntegrity,
   MovementListInput,
+  OnboardingWorklistInput,
   StockCountInput,
   StockIntegrityResult,
   StockMovementBaseInput,
@@ -28,6 +36,7 @@ const ONBOARDING_REQUIRED =
   'This product needs a verified opening count before stock actions / يحتاج هذا المنتج جردًا مؤكدًا قبل حركات المخزون';
 const COUNT_MATCHES =
   'Count matches current stock. Nothing to record. / الجرد مطابق للمخزون الحالي. لا يوجد ما يُسجَّل.';
+export const BATCH_ONBOARDING_REASON = 'Initial shop-floor stock count / جرد افتتاحي';
 
 type Direction = 'ADD' | 'REMOVE' | 'COUNT';
 
@@ -48,29 +57,79 @@ interface MutationSpec {
 }
 
 export class InventoryService {
+  static async batchVerifyOpeningCount(
+    input: BatchVerifyOpeningCountInput,
+    user: InventoryUser,
+    _context: InventoryRequestContext = {}
+  ): Promise<BatchOnboardingDryRunResult | BatchOnboardingWriteResult> {
+    if (!user?.userId) throw new AuthorizationError('User not authenticated');
+    if (user.role !== Role.ADMIN) throw new AuthorizationError('Only administrators can verify opening counts in batch');
+    assertBatchOpeningCountInput(input);
+
+    if (input.dryRun === true) {
+      const classification = await classifyBatchOnboarding(input.items);
+      return {
+        dryRun: true,
+        batchId: null,
+        valid: classification.valid.map(toValidResult),
+        skipped: classification.skipped,
+        counts: { valid: classification.valid.length, skipped: classification.skipped.length },
+      };
+    }
+
+    return runFinancialTransaction(async (tx) => {
+      const classification = await classifyBatchOnboarding(input.items, tx);
+      const batchId = randomUUID();
+      const skipped = [...classification.skipped];
+      const written: BatchOnboardingWriteResult['written'] = [];
+
+      for (const item of classification.valid) {
+        // Classification and this guard both run inside the serializable transaction.
+        // The second read keeps a stale/overlapping row out of the write path.
+        if (await InventoryRepository.hasOpeningBalance(item.productId, tx)) {
+          skipped.push({ productId: item.productId, reason: 'ALREADY_ONBOARDED' });
+          continue;
+        }
+        await InventoryRepository.setVerifiedOpeningCount(item.productId, item.openingCount, user.userId, tx);
+        const movement = await InventoryRepository.createMovement({
+          productId: item.productId,
+          movementType: StockMovementType.OPENING_BALANCE,
+          quantityChange: item.openingCount,
+          quantityBefore: 0,
+          quantityAfter: item.openingCount,
+          reason: BATCH_ONBOARDING_REASON,
+          note: normalizeOptionalText(item.note),
+          referenceType: 'MANUAL_BATCH',
+          referenceId: batchId,
+          createdById: user.userId,
+        }, tx);
+        written.push({ productId: item.productId, openingCount: item.openingCount, movementId: movement.id });
+      }
+
+      return {
+        dryRun: false,
+        batchId,
+        written,
+        skipped,
+        counts: { written: written.length, skipped: skipped.length },
+      };
+    });
+  }
+
   static async verifyOpeningCount(
     productId: string,
     input: VerifyOpeningCountInput,
     user: InventoryUser,
-    context: InventoryRequestContext = {}
+    _context: InventoryRequestContext = {}
   ) {
     if (!user?.userId) throw new AuthorizationError('User not authenticated');
     if (user.role !== Role.ADMIN) throw new AuthorizationError('Only administrators can verify an opening count');
     assertStockCountTarget(input.verifiedCount);
     const reason = normalizeRequiredReason(input.reason);
-    if (!input.accountPassword) throw new ValidationError('Account password is required');
 
     return runFinancialTransaction(async (tx) => {
       const product = await InventoryRepository.findProduct(productId, tx);
       if (!product) throw new NotFoundError('Product not found');
-
-      await verifyAdminPassword(user.userId, input.accountPassword, {
-        action: 'VERIFY_OPENING_COUNT',
-        recordType: 'PRODUCT',
-        recordId: productId,
-        ipAddress: context.ipAddress,
-        domainLabel: 'inventory opening count',
-      }, tx);
 
       if (await InventoryRepository.hasOpeningBalance(productId, tx)) {
         throw new ValidationError('This product already has a verified opening count / لهذا المنتج جرد افتتاحي مؤكد بالفعل');
@@ -175,6 +234,10 @@ export class InventoryService {
     return InventoryRepository.listLowStock(input);
   }
 
+  static getPendingOnboarding(input: OnboardingWorklistInput = {}) {
+    return InventoryRepository.listPendingOnboarding(input);
+  }
+
   static getInventorySummary() {
     return InventoryRepository.summary();
   }
@@ -204,6 +267,46 @@ export class InventoryService {
       };
     }
   }
+}
+
+function assertBatchOpeningCountInput(input: BatchVerifyOpeningCountInput): void {
+  if (!input || !Array.isArray(input.items) || input.items.length === 0) {
+    throw new ValidationError('At least one product is required');
+  }
+  if (input.items.length > 100) throw new ValidationError('A batch may contain at most 100 products');
+  const seen = new Set<string>();
+  for (const item of input.items) {
+    if (seen.has(item.productId)) throw new ValidationError('Product IDs must be unique within a batch');
+    seen.add(item.productId);
+    assertStockCountTarget(item.openingCount);
+  }
+}
+
+async function classifyBatchOnboarding(items: BatchOpeningCountItem[], tx?: Prisma.TransactionClient): Promise<{
+  valid: BatchOpeningCountItem[];
+  skipped: BatchOnboardingSkippedItem[];
+}> {
+  const productIds = items.map((item) => item.productId);
+  const [products, openingBalances] = await Promise.all([
+    InventoryRepository.findProductsForOnboarding(productIds, tx),
+    InventoryRepository.findOpeningBalances(productIds, tx),
+  ]);
+  const productsById = new Map(products.map((product) => [product.id, product]));
+  const onboardedIds = new Set(openingBalances.map((movement) => movement.productId));
+  const valid: BatchOpeningCountItem[] = [];
+  const skipped: BatchOnboardingSkippedItem[] = [];
+  for (const item of items) {
+    const product = productsById.get(item.productId);
+    if (!product) skipped.push({ productId: item.productId, reason: 'PRODUCT_NOT_FOUND' });
+    else if (!product.isActive) skipped.push({ productId: item.productId, reason: 'PRODUCT_ARCHIVED' });
+    else if (onboardedIds.has(item.productId)) skipped.push({ productId: item.productId, reason: 'ALREADY_ONBOARDED' });
+    else valid.push(item);
+  }
+  return { valid, skipped };
+}
+
+function toValidResult(item: BatchOpeningCountItem): BatchOnboardingValidItem {
+  return { productId: item.productId, openingCount: item.openingCount };
 }
 
 async function mutate(

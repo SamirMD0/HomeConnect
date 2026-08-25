@@ -11,7 +11,7 @@ export interface ProductPreviewPanelProps {
   /** The scanned code also matched a different product's SKU. */
   alsoMatchedSku?: boolean;
   onOpenProduct: (productId: string) => void;
-  onMakeOrder: (productId: string) => void;
+  onQuickOrder: (productId: string) => void;
   /**
    * `canPrefill` is false when the product cannot legally be received yet, so
    * the caller opens the receiving form empty instead of seeding it with a
@@ -32,7 +32,7 @@ export interface ProductPreviewPanelProps {
  * every action back to the caller as navigation. It writes nothing.
  */
 export const ProductPreviewPanel: React.FC<ProductPreviewPanelProps> = ({
-  productId, alsoMatchedSku = false, onOpenProduct, onMakeOrder, onReceiveStock, onClear,
+  productId, alsoMatchedSku = false, onOpenProduct, onQuickOrder, onReceiveStock, onClear,
 }) => {
   const product = useProduct(productId ?? '');
   const inventory = useProductInventory(productId ?? '');
@@ -137,16 +137,16 @@ export const ProductPreviewPanel: React.FC<ProductPreviewPanelProps> = ({
         <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-4">
           <button
             type="button"
-            onClick={() => onMakeOrder(item.id)}
+            onClick={() => onQuickOrder(item.id)}
             disabled={!item.isActive}
-            className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <ShoppingCart className="h-4 w-4" /> Make Order / إنشاء طلب
+            <ShoppingCart className="h-4 w-4" /> Quick Order / طلب سريع
           </button>
           <button
             type="button"
             onClick={() => onReceiveStock(item.id, canPrefillReceiving)}
-            className="inline-flex items-center gap-2 rounded-lg border border-emerald-600 bg-white px-4 py-2 text-sm font-semibold text-emerald-700"
+            className="inline-flex items-center gap-2 rounded-lg border border-brand-600 bg-white px-4 py-2 text-sm font-semibold text-brand-700"
           >
             <PackagePlus className="h-4 w-4" /> Receive Stock / إدخال مخزون
           </button>

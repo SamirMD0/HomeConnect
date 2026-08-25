@@ -9,6 +9,8 @@ const { service } = vi.hoisted(() => ({
     getLowStockProducts: vi.fn(),
     getProductMovements: vi.fn(),
     getProductInventory: vi.fn(),
+    getPendingOnboarding: vi.fn(),
+    batchVerifyOpeningCount: vi.fn(),
     verifyOpeningCount: vi.fn(),
     addStock: vi.fn(),
     removeStock: vi.fn(),
@@ -42,6 +44,10 @@ describe('inventory routes', () => {
     service.getLowStockProducts.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 25 });
     service.getProductMovements.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 25 });
     service.getProductInventory.mockResolvedValue({ product: { id: productId }, onboardingStatus: 'ONBOARDED', recentMovements: [] });
+    service.getPendingOnboarding.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 50 });
+    service.batchVerifyOpeningCount.mockResolvedValue({
+      dryRun: false, batchId: '44444444-4444-4444-8444-444444444444', written: [], skipped: [], counts: { written: 0, skipped: 0 },
+    });
     service.verifyOpeningCount.mockResolvedValue(result);
     for (const name of ['addStock', 'removeStock', 'correctStockCount', 'markDamagedLost', 'returnToStock'] as const) {
       service[name].mockResolvedValue(result);
@@ -50,19 +56,22 @@ describe('inventory routes', () => {
 
   it('exposes opening-count verification to admins only and accepts zero', async () => {
     const url = `/api/v1/products/${productId}/opening-count`;
-    const input = { verifiedCount: 0, reason: 'Verified empty shelf', accountPassword: 'secret' };
+    const input = { verifiedCount: 0, reason: 'Verified empty shelf' };
     expect((await request(app).post(url).set('Authorization', as(employee)).send(input)).status).toBe(403);
     expect((await request(app).post(url).set('Authorization', as(admin)).send(input)).status).toBe(201);
     expect(service.verifyOpeningCount).toHaveBeenCalledWith(productId, input, expect.objectContaining({ role: 'ADMIN' }), expect.any(Object));
   });
 
-  it('rejects negative opening counts and missing passwords before the service', async () => {
+  it('rejects negative opening counts, blank reasons, and legacy password fields before the service', async () => {
     const url = `/api/v1/products/${productId}/opening-count`;
     expect((await request(app).post(url).set('Authorization', as(admin)).send({
-      verifiedCount: -1, reason: 'Invalid count', accountPassword: 'secret',
+      verifiedCount: -1, reason: 'Invalid count',
     })).status).toBe(400);
     expect((await request(app).post(url).set('Authorization', as(admin)).send({
-      verifiedCount: 1, reason: 'Counted shelf',
+      verifiedCount: 1, reason: '   ',
+    })).status).toBe(400);
+    expect((await request(app).post(url).set('Authorization', as(admin)).send({
+      verifiedCount: 1, reason: 'Counted shelf', accountPassword: 'legacy-secret',
     })).status).toBe(400);
     expect(service.verifyOpeningCount).not.toHaveBeenCalled();
   });
@@ -80,6 +89,49 @@ describe('inventory routes', () => {
     expect((await request(app).get('/api/v1/inventory/low-stock?search=HC&page=1').set('Authorization', as(employee))).status).toBe(200);
     expect((await request(app).get('/api/v1/inventory/movements?page=1').set('Authorization', as(employee))).status).toBe(200);
     expect((await request(app).get(`/api/v1/products/${productId}/inventory`).set('Authorization', as(employee))).status).toBe(200);
+    const pending = await request(app).get('/api/v1/inventory/onboarding/pending?search=Fan&page=2').set('Authorization', as(employee));
+    expect(pending.status).toBe(200);
+    expect(service.getPendingOnboarding).toHaveBeenCalledWith(expect.objectContaining({
+      search: 'Fan', includeArchived: false, page: 2, pageSize: 50,
+    }));
+  });
+
+  it('protects batch onboarding at the route and service boundary and uses dry-run status 200', async () => {
+    const url = '/api/v1/inventory/onboarding/batch';
+    const input = { items: [{ productId, openingCount: 0 }] };
+    expect((await request(app).post(url).send(input)).status).toBe(401);
+    expect((await request(app).post(url).set('Authorization', as(employee)).send(input)).status).toBe(403);
+
+    const written = await request(app).post(url).set('Authorization', as(admin)).send(input);
+    expect(written.status).toBe(201);
+    expect(service.batchVerifyOpeningCount).toHaveBeenCalledWith(input, expect.objectContaining({ role: 'ADMIN' }), expect.any(Object));
+
+    service.batchVerifyOpeningCount.mockResolvedValueOnce({
+      dryRun: true, batchId: null, valid: [{ productId, openingCount: 0 }], skipped: [], counts: { valid: 1, skipped: 0 },
+    });
+    const dryRun = await request(app).post(url).set('Authorization', as(admin)).send({ ...input, dryRun: true });
+    expect(dryRun.status).toBe(200);
+    expect(dryRun.body.data).toMatchObject({ dryRun: true, batchId: null, counts: { valid: 1, skipped: 0 } });
+  });
+
+  it('rejects malformed batches before the service', async () => {
+    const url = '/api/v1/inventory/onboarding/batch';
+    const valid = { items: [{ productId, openingCount: 0 }] };
+    const invalid = [
+      { ...valid, items: [] },
+      { ...valid, items: Array.from({ length: 101 }, (_, index) => ({ productId: `${index.toString(16).padStart(8, '0')}-1111-4111-8111-111111111111`, openingCount: 0 })) },
+      { ...valid, items: [...valid.items, ...valid.items] },
+      { ...valid, items: [{ productId, openingCount: -1 }] },
+      { ...valid, items: [{ productId, openingCount: 1.5 }] },
+      { ...valid, items: [{ productId, openingCount: 100_001 }] },
+      { ...valid, unexpected: true },
+      { ...valid, reason: 'Legacy reason' },
+      { ...valid, accountPassword: 'secret' },
+    ];
+    for (const input of invalid) {
+      expect((await request(app).post(url).set('Authorization', as(admin)).send(input)).status).toBe(400);
+    }
+    expect(service.batchVerifyOpeningCount).not.toHaveBeenCalled();
   });
 
   it.each([

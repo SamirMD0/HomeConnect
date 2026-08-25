@@ -29,7 +29,11 @@ import {
 
 vi.mock('../../products/hooks/useProducts', () => ({
   useProducts: () => ({ data: { items: [] }, isLoading: false, isError: false }),
-  useProduct: () => ({ data: undefined, isLoading: false, isError: false, refetch: vi.fn() }),
+  useProduct: (id: string) => ({ data: id ? {
+    id, name: 'Scanned fan', model: 'SF-1', sku: 'HC-000777', barcode: '77777777',
+    trackStock: true, stockQuantity: 6, price: '15.00', netPrice: '12.00',
+    pricing: { pricingAvailable: true, cashPrice: '11.25' },
+  } : undefined, isLoading: false, isError: false, refetch: vi.fn() }),
 }));
 vi.mock('../../../hooks/useAuth', () => ({ useAuth: () => ({ user: { role: 'ADMIN' } }) }));
 
@@ -77,6 +81,16 @@ describe('sales order presentation components', () => {
     expect(line).not.toContain('Discount amount / مبلغ الحسم');
     expect(line).toContain('Name, model, SKU or barcode');
     expect(line).not.toContain('<select');
+  });
+
+  it('opens a prefilled creation wizard on Items with the scanned product visible at quantity one', () => {
+    const queryClient = new QueryClient();
+    const wizard = renderToStaticMarkup(<QueryClientProvider client={queryClient}><CreateSalesOrderDialog isOpen prefill={{ productId: 'scanned-product' }} onClose={() => undefined} /></QueryClientProvider>);
+    expect(wizard).toContain('Step 4 of 6');
+    expect(wizard).toContain('Scanned fan');
+    expect(wizard).toContain('value="1"');
+    expect(wizard).toContain('In stock: 6');
+    expect(wizard).not.toContain('Payment / الدفع');
   });
 
   it('copies the selected catalog product and its cash price into a sales line', () => {

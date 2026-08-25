@@ -4,6 +4,9 @@ import {
   Product,
   ProductActionInput,
   ProductAudit,
+  ProductBrandSummary,
+  ProductBrandNormalizeInput,
+  ProductBrandNormalizeResult,
   ProductDuplicateMatch,
   ProductDuplicateQuery,
   ProductFilters,
@@ -25,6 +28,10 @@ export const productsApi = {
     const response = await api.get('/products', { params: paramsFor(filters) });
     return { items: response.data.data, pagination: response.data.meta.pagination };
   },
+  brands: async (): Promise<ProductBrandSummary[]> =>
+    (await api.get('/products/brands')).data.data.brands,
+  normalizeBrands: async (input: ProductBrandNormalizeInput): Promise<ProductBrandNormalizeResult> =>
+    (await api.post('/products/brands/normalize', input)).data.data,
   get: async (id: string): Promise<Product> => (await api.get(`/products/${id}`)).data.data,
   create: async (input: CreateProductInput): Promise<Product> => (await api.post('/products', input)).data.data,
   update: async (id: string, input: UpdateProductInput): Promise<Product> => (await api.patch(`/products/${id}`, input)).data.data,
@@ -40,8 +47,8 @@ export const productsApi = {
   updateStock: async (id: string, input: UpdateProductStockInput): Promise<Product> => (await api.patch(`/products/${id}/stock`, input)).data.data,
   audit: async (id: string, page = 1, pageSize = 50): Promise<ProductAudit[]> =>
     (await api.get(`/products/${id}/audit`, { params: { page, pageSize } })).data.data,
-  checkDuplicate: async (query: ProductDuplicateQuery): Promise<ProductDuplicateMatch[]> =>
-    (await api.get('/products/check-duplicate', { params: paramsFor(query) })).data.data.matches,
+  checkDuplicate: async (query: ProductDuplicateQuery, signal?: AbortSignal): Promise<ProductDuplicateMatch[]> =>
+    (await api.get('/products/check-duplicate', { params: paramsFor(query), signal })).data.data.matches,
   serviceJobs: async (id: string, page = 1, pageSize = 10): Promise<ProductServiceJobsResult> => {
     const response = await api.get(`/products/${id}/service-jobs`, { params: { page, pageSize } });
     return { items: response.data.data, pagination: response.data.meta.pagination };

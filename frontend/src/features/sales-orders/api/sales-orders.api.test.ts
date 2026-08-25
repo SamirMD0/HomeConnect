@@ -5,6 +5,19 @@ vi.mock('../../../services/api', () => ({ api: apiMock }));
 
 import { salesOrdersApi } from './sales-orders.api';
 
+describe('sales order summary API', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    apiMock.get.mockResolvedValue({ data: { data: { periodSales: '0.00' } } });
+  });
+
+  it('requests the summary endpoint before the parameterized order route', async () => {
+    const range = { dateFrom: '2026-08-01', dateTo: '2026-08-22' };
+    await salesOrdersApi.summary(range);
+    expect(apiMock.get).toHaveBeenCalledWith('/sales-orders/summary', { params: range });
+  });
+});
+
 describe('sales order stock API', () => {
   beforeEach(() => {
     vi.clearAllMocks();

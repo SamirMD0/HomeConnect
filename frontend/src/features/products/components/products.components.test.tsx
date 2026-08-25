@@ -1,7 +1,9 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Children, isValidElement, ReactElement, ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { AuthContext } from '../../../context/AuthContext';
 import { productFormSchema, productPricingModeFormSchema } from '../schemas/product.schemas';
 import { Product, ProductLabelData } from '../types/product.types';
 import { productKeys } from '../hooks/useProducts';
@@ -15,10 +17,14 @@ import { ProductMobileCard } from './ProductMobileCard';
 import { ProductPicker } from './ProductPicker';
 import { ProductsTable } from './ProductsTable';
 import { ProductCard } from './ProductCard';
+import { ProductDetailsDrawer } from './ProductDetailsDrawer';
+import { ProductFilters } from './ProductFilters';
 import { ProductImageBroken } from './ProductImageView';
-import { buildProductPricingConfigurationInput, shouldRemoveStagedProductImage, shouldUpdateProductPricing } from './ProductFormDialog';
+import { ProductOverflowMenu, ProductOverflowMenuItems } from './ProductOverflowMenu';
+import { buildProductPricingConfigurationInput, CreatedTrackedProductToast, ProductFormDialog, shouldRemoveStagedProductImage, shouldUpdateProductPricing, toCreateInput } from './ProductFormDialog';
 import { emptyProductFormPricing } from './ProductFormPricingPanel';
 import { ProductStockSection } from './ProductStockSection';
+import { productFocusSearchParams } from '../../../pages/products/ProductsPage';
 
 const product: Product = {
   id: '11111111-1111-4111-8111-111111111111',
@@ -46,15 +52,188 @@ const product: Product = {
   },
 };
 
+interface TestProps {
+  children?: ReactNode;
+  'aria-label'?: string;
+  label?: string;
+  onClick?: () => void;
+  onChange?: (event: { target: { checked: boolean } }) => void;
+}
+
+type TestElement = ReactElement<TestProps>;
+
+/**
+ * Flattens a rendered tree into the elements the interaction tests poke at.
+ *
+ * Function components are expanded by calling them, so extracting a block of
+ * markup into its own presentational component (`ProductIdentity`) does not
+ * hide the controls inside it from a test that only cares that clicking the
+ * product name opens the drawer. Anything that needs React's hook dispatcher
+ * cannot be called this way and is skipped — those components have their own
+ * tests that render them properly.
+ */
+const testElements = (node: ReactNode): TestElement[] => {
+  if (!isValidElement(node)) return [];
+  const element = node as TestElement;
+  return [element, ...expandComponent(element), ...Children.toArray(element.props.children).flatMap(testElements)];
+};
+
+const expandComponent = (element: TestElement): TestElement[] => {
+  if (typeof element.type !== 'function') return [];
+  try {
+    return testElements((element.type as (props: TestProps) => ReactNode)(element.props));
+  } catch {
+    return [];
+  }
+};
+
+const textOf = (node: ReactNode): string => Children.toArray(node).map((child) =>
+  typeof child === 'string' || typeof child === 'number'
+    ? String(child)
+    : isValidElement(child) ? textOf((child as TestElement).props.children) : ''
+).join('');
+
 describe('product management frontend', () => {
   it('renders stock quantity as read-only settings context', () => {
     const html = renderToStaticMarkup(<ProductStockSection value={{ trackStock: true, stockQuantity: 4, lowStockThreshold: 2 }} onChange={() => undefined} />);
     expect(html).toContain('<output');
     expect(html).not.toContain('value="4"');
   });
+  it('renders create-time stock controls without quantity and explains the opening-count guard', () => {
+    const tracked = renderToStaticMarkup(<ProductStockSection mode="create" value={{ trackStock: true, stockQuantity: 0, lowStockThreshold: 2 }} onChange={() => undefined} />);
+    const untracked = renderToStaticMarkup(<ProductStockSection mode="create" value={{ trackStock: false, stockQuantity: 0, lowStockThreshold: null }} onChange={() => undefined} />);
+    expect(tracked).toContain('Track stock / تتبع المخزون');
+    expect(tracked).toContain('Low-stock threshold / حد المخزون المنخفض');
+    expect(tracked).not.toContain('Current quantity / الكمية الحالية');
+    expect(tracked).toContain('The opening count must be verified before any stock action');
+    expect(untracked).toContain('disabled=""');
+    expect(untracked).not.toContain('The opening count must be verified before any stock action');
+  });
+
+  it('renders the stock section in the Add Product form', () => {
+    const queryClient = new QueryClient();
+    const html = renderToStaticMarkup(
+      <AuthContext.Provider value={{
+        user: { id: 'employee-1', username: 'employee', fullName: 'Shop Employee', role: 'EMPLOYEE' },
+        accessToken: 'token', isAuthenticated: true, isLoading: false,
+        login: () => undefined, logout: async () => undefined, updateUser: () => undefined,
+      }}>
+        <QueryClientProvider client={queryClient}>
+          <MemoryRouter><ProductFormDialog open product={null} onClose={() => undefined} onViewDuplicate={() => undefined} /></MemoryRouter>
+        </QueryClientProvider>
+      </AuthContext.Provider>
+    );
+    expect(html).toContain('Add Product / إضافة منتج');
+    expect(html).toContain('Stock settings / إعدادات المخزون');
+    expect(html).not.toContain('Current quantity / الكمية الحالية');
+  });
+
+  it('builds a quantity-free create payload and clears the threshold when tracking is off', () => {
+    const values = { name: ' Fan ', model: ' F1 ', brand: '', barcode: '', price: '', discount: '', imageUrl: '', notes: '' };
+    expect(toCreateInput(values, undefined, [], '', 'AUTO', { trackStock: true, stockQuantity: 99, lowStockThreshold: 2 }))
+      .toMatchObject({ name: 'Fan', model: 'F1', trackStock: true, lowStockThreshold: 2 });
+    expect(toCreateInput(values, undefined, [], '', 'AUTO', { trackStock: false, stockQuantity: 99, lowStockThreshold: 2 }))
+      .toMatchObject({ trackStock: false, lowStockThreshold: null });
+    expect(toCreateInput(values, undefined, [], '', 'AUTO', { trackStock: true, stockQuantity: 99, lowStockThreshold: 2 }))
+      .not.toHaveProperty('stockQuantity');
+  });
+
+  it('offers the opening-count follow-through after creating a tracked product', () => {
+    const html = renderToStaticMarkup(<CreatedTrackedProductToast onVerify={() => undefined} />);
+    expect(html).toContain('Verify opening count now / تأكيد الجرد الافتتاحي الآن');
+  });
   it('keeps the mobile product list card markup stable', () => {
     const html = renderToStaticMarkup(<MemoryRouter><ProductMobileCard product={product} selected={false} canAdmin onSelect={() => undefined} onView={() => undefined} onEdit={() => undefined} onArchive={() => undefined} onRestore={() => undefined} /></MemoryRouter>);
     expect(html).toMatchSnapshot();
+  });
+
+  it('keeps grid image, name, and selection as independent clickable targets', () => {
+    const onView = vi.fn();
+    const onSelect = vi.fn();
+    const onInventory = vi.fn();
+    const tree = ProductCard({ product, variant: 'grid', selected: false, canAdmin: true, onSelect, onView, onEdit: vi.fn(), onInventory, onArchive: vi.fn(), onRestore: vi.fn() }) as ReactElement;
+    const controls = testElements(tree);
+    const image = controls.find((element) => element.type === 'button' && String(element.props['aria-label']).startsWith('Open '));
+    const name = controls.find((element) => element.type === 'button' && textOf(element.props.children) === product.name);
+    const checkbox = controls.find((element) => element.type === 'input' && element.props['aria-label'] === `Select ${product.name}`);
+    const inventory = controls.find((element) => element.props.label === 'Inventory / المخزون');
+    image?.props.onClick?.();
+    expect(onView).toHaveBeenCalledTimes(1);
+    expect(onSelect).not.toHaveBeenCalled();
+    name?.props.onClick?.();
+    expect(onView).toHaveBeenCalledTimes(2);
+    expect(onSelect).not.toHaveBeenCalled();
+    checkbox?.props.onChange?.({ target: { checked: true } });
+    expect(onView).toHaveBeenCalledTimes(2);
+    expect(onSelect).toHaveBeenCalledWith(true);
+    inventory?.props.onClick?.();
+    expect(onInventory).toHaveBeenCalledTimes(1);
+    expect(checkbox?.props.children).toBeUndefined();
+    expect(renderToStaticMarkup(<MemoryRouter>{tree}</MemoryRouter>)).not.toContain('<label');
+  });
+
+  it('opens table thumbnail and name independently, and mobile repeats the same controls', () => {
+    const tableView = vi.fn();
+    const table = ProductsTable({ products: [product], selectedIds: new Set(), canAdmin: true, onSelect: vi.fn(), onSelectAll: vi.fn(), onView: tableView, onEdit: vi.fn(), onInventory: vi.fn(), onArchive: vi.fn(), onRestore: vi.fn() }) as ReactElement;
+    const tableControls = testElements(table);
+    tableControls.find((element) => element.type === 'button' && String(element.props['aria-label']).startsWith('Open '))?.props.onClick?.();
+    tableControls.find((element) => element.type === 'button' && textOf(element.props.children) === product.name)?.props.onClick?.();
+    expect(tableView).toHaveBeenCalledTimes(2);
+
+    const mobileView = vi.fn();
+    const mobile = ProductMobileCard({ product, selected: false, canAdmin: true, onSelect: vi.fn(), onView: mobileView, onEdit: vi.fn(), onInventory: vi.fn(), onArchive: vi.fn(), onRestore: vi.fn() }) as ReactElement<Parameters<typeof ProductCard>[0]>;
+    const mobileControls = testElements(ProductCard(mobile.props) as ReactElement);
+    mobileControls.find((element) => element.type === 'button' && String(element.props['aria-label']).startsWith('Open '))?.props.onClick?.();
+    mobileControls.find((element) => element.type === 'button' && textOf(element.props.children) === product.name)?.props.onClick?.();
+    expect(mobileView).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps secondary actions in a keyboard-reachable overflow with the shared Make Order URL', () => {
+    const menu = renderToStaticMarkup(<MemoryRouter><ProductOverflowMenu product={product} canAdmin onArchive={() => undefined} onRestore={() => undefined} defaultOpen /></MemoryRouter>);
+    expect(menu).toContain('aria-haspopup="menu"');
+    expect(menu).toContain('aria-expanded="true"');
+    expect(menu).toContain('role="menu"');
+    expect(menu).toContain('role="menuitem"');
+    expect(menu.match(/role="menuitem"/g)).toHaveLength(3);
+    expect(menu).not.toContain('<div role="menuitem"');
+    expect(menu).toContain(`/sales-orders?action=add&amp;productId=${product.id}`);
+    expect(menu).toContain('Print label / طباعة الملصق');
+    expect(menu).toContain('Make Order / إنشاء طلب');
+
+    const archive = vi.fn();
+    const items = testElements(ProductOverflowMenuItems({ product, canAdmin: true, onArchive: archive, onRestore: vi.fn() }) as ReactElement);
+    items.find((element) => element.type === 'button' && textOf(element.props.children).includes('Archive'))?.props.onClick?.();
+    expect(archive).toHaveBeenCalledTimes(1);
+
+    const restore = vi.fn();
+    const inactiveItems = testElements(ProductOverflowMenuItems({ product: { ...product, isActive: false }, canAdmin: true, onArchive: vi.fn(), onRestore: restore }) as ReactElement);
+    inactiveItems.find((element) => element.type === 'button' && textOf(element.props.children).includes('Restore'))?.props.onClick?.();
+    expect(restore).toHaveBeenCalledTimes(1);
+  });
+
+  it('anchors Inventory to Stock and shows stock truth in the drawer header', () => {
+    expect(productFocusSearchParams(new URLSearchParams('search=fan&page=2'), product.id, 'stock').toString())
+      .toContain(`focus=${product.id}&section=stock`);
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(productKeys.detail(product.id), product);
+    queryClient.setQueryData(productKeys.audit(product.id), []);
+    queryClient.setQueryData(productKeys.serviceJobs(product.id, 1), { items: [], pagination: { page: 1, pageSize: 10, totalItems: 0, totalPages: 0 } });
+    queryClient.setQueryData(productKeys.pricing(product.id, undefined), product.pricing);
+    const html = renderToStaticMarkup(<AuthContext.Provider value={{
+      user: { id: 'admin-1', username: 'admin', fullName: 'Admin', role: 'ADMIN' }, accessToken: 'token', isAuthenticated: true, isLoading: false,
+      login: () => undefined, logout: async () => undefined, updateUser: () => undefined,
+    }}><QueryClientProvider client={queryClient}><MemoryRouter><ProductDetailsDrawer productId={product.id} initialSection="stock" onClose={() => undefined} onEdit={() => undefined} onArchive={() => undefined} onRestore={() => undefined} /></MemoryRouter></QueryClientProvider></AuthContext.Provider>);
+    expect(html).toContain('In stock / متوفر');
+    expect(html).toContain('4 units / وحدة');
+    expect(html).toContain('Product sections / أقسام المنتج');
+    expect(html).toContain('href="#product-stock"');
+    expect(html).toContain('id="product-stock"');
+  });
+
+  it('labels the temporary brand text field honestly until CP-RW7', () => {
+    const html = renderToStaticMarkup(<ProductFilters filters={{}} search="" onSearchChange={() => undefined} onChange={() => undefined} onSearchSubmit={() => undefined} onReset={() => undefined} searchInputRef={{ current: null }} />);
+    expect(html).toContain('Filter by brand / تصفية حسب الماركة');
+    expect(html).not.toContain('All Brands / كل الماركات');
   });
 
   it('accepts Arabic text and validates discount amounts using cents', () => {
@@ -71,7 +250,9 @@ describe('product management frontend', () => {
     expect(html).toContain('Standard AC');
     expect(html).toContain('$453.38');
     expect(html).toContain('View details / عرض التفاصيل');
-    expect(html).toContain('Archive product');
+    expect(html).toContain('Inventory / المخزون');
+    expect(html).toContain('More actions for مروحة سقف');
+    expect(html).not.toContain('Archive product');
   });
 
   it('renders the installment total with its down payment and monthly breakdown', () => {

@@ -60,6 +60,22 @@ describe('product validation', () => {
     expect(() => productListQuerySchema.parse({ sortBy: 'barcode' })).toThrow();
   });
 
+  it('parses track-stock filtering without weakening the 100-row page cap', () => {
+    expect(productListQuerySchema.parse({ trackStock: 'true' }).trackStock).toBe(true);
+    expect(productListQuerySchema.parse({ trackStock: 'false' }).trackStock).toBe(false);
+    expect(() => productListQuerySchema.parse({ trackStock: 'all' })).toThrow();
+    expect(() => productListQuerySchema.parse({ pageSize: 101 })).toThrow();
+  });
+
+  it('accepts every catalogue stock filter and stock sorting, while keeping the filter optional', () => {
+    for (const stockStatus of ['IN_STOCK', 'LOW_STOCK', 'OUT_OF_STOCK', 'NOT_TRACKED', 'NOT_IN_INVENTORY'] as const) {
+      expect(productListQuerySchema.parse({ stockStatus }).stockStatus).toBe(stockStatus);
+    }
+    expect(productListQuerySchema.parse({ sortBy: 'stock' }).sortBy).toBe('stock');
+    expect(productListQuerySchema.parse({})).not.toHaveProperty('stockStatus');
+    expect(() => productListQuerySchema.parse({ stockStatus: 'PENDING_ONBOARDING' })).toThrow();
+  });
+
   it('takes sensitive and notes-only updates without credentials', () => {
     // v1.8.1: the field policy still decides WHO may edit a sensitive field, but
     // the schema no longer demands a reason or a password to do it.
@@ -71,9 +87,29 @@ describe('product validation', () => {
     expect(productDuplicateQuerySchema.parse({ name: 'مروحة', model: 'F1', brand: '' }))
       .toEqual({ name: 'مروحة', model: 'F1', brand: null });
   });
+  it('accepts each duplicate lookup shape, normalizes SKU, and rejects empty or unknown queries', () => {
+    expect(productDuplicateQuerySchema.parse({ barcode: 'AbC-1234' })).toMatchObject({ barcode: 'AbC-1234' });
+    expect(productDuplicateQuerySchema.parse({ sku: 'hc-009999' })).toMatchObject({ sku: 'HC-009999' });
+    expect(productDuplicateQuerySchema.parse({
+      name: 'Fan', model: 'F1', excludeProductId: '33333333-3333-4333-8333-333333333333',
+    })).toMatchObject({ name: 'Fan', model: 'F1' });
+    expect(() => productDuplicateQuerySchema.parse({})).toThrow('Provide name and model, barcode, or SKU');
+    expect(() => productDuplicateQuerySchema.parse({ name: 'Fan' })).toThrow('Provide name and model, barcode, or SKU');
+    expect(() => productDuplicateQuerySchema.parse({ barcode: 'ABCD', price: '10.00' })).toThrow();
+  });
   it('rejects client SKU and stock writes during product creation', () => {
     expect(() => createProductSchema.parse({ name: 'Fan', model: 'F1', sku: 'HC-999999' })).toThrow();
     expect(() => createProductSchema.parse({ name: 'Fan', model: 'F1', stockQuantity: 4 })).toThrow();
+  });
+  it('accepts create-time stock settings but validates the threshold', () => {
+    expect(createProductSchema.parse({
+      name: 'Fan', model: 'F1', trackStock: true, lowStockThreshold: 2,
+    })).toMatchObject({ trackStock: true, lowStockThreshold: 2 });
+    expect(createProductSchema.parse({
+      name: 'Fan', model: 'F1', trackStock: false, lowStockThreshold: null,
+    })).toMatchObject({ trackStock: false, lowStockThreshold: null });
+    expect(() => createProductSchema.parse({ name: 'Fan', model: 'F1', lowStockThreshold: -1 })).toThrow();
+    expect(() => createProductSchema.parse({ name: 'Fan', model: 'F1', lowStockThreshold: 1.5 })).toThrow('integer');
   });
   it('normalizes ordered specifications and keeps stock settings quantity-free', () => {
     expect(createProductSchema.parse({ name: 'Fan', model: 'F1', specifications: [{ label: ' Color ', value: ' Silver ' }, { label: '', value: '' }] }).specifications)

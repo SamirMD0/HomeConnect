@@ -89,7 +89,6 @@ export interface VerifyOpeningCountInput {
   verifiedCount: number;
   reason: string;
   note?: string | null;
-  accountPassword: string;
 }
 
 export interface StockMovementResult {
@@ -110,3 +109,69 @@ export interface MovementFilters {
 }
 
 export interface InventoryListFilters { search?: string; page?: number; pageSize?: number }
+
+export type OnboardingStatus = 'NOT_IN_INVENTORY' | 'PENDING_ONBOARDING';
+
+export interface OnboardingWorklistItem {
+  productId: string;
+  sku: string;
+  name: string;
+  model: string;
+  brand: string | null;
+  barcode: string | null;
+  trackStock: boolean;
+  stockQuantity: number;
+  status: OnboardingStatus;
+}
+
+export interface OnboardingWorklistFilters extends InventoryListFilters {
+  includeArchived?: boolean;
+}
+
+export interface BatchOpeningCountItem {
+  productId: string;
+  openingCount: number;
+  note?: string | null;
+}
+
+export interface BatchOnboardingInput {
+  dryRun?: boolean;
+  items: BatchOpeningCountItem[];
+}
+
+export type BatchOnboardingSkipReason =
+  | 'ALREADY_ONBOARDED'
+  | 'PRODUCT_NOT_FOUND'
+  | 'PRODUCT_ARCHIVED';
+
+export interface BatchOnboardingSkippedItem {
+  productId: string;
+  reason: BatchOnboardingSkipReason;
+}
+
+export interface BatchOnboardingValidItem {
+  productId: string;
+  openingCount: number;
+}
+
+export interface BatchOnboardingWrittenItem extends BatchOnboardingValidItem {
+  movementId: string;
+}
+
+export interface BatchOnboardingDryRunResult {
+  dryRun: true;
+  batchId: null;
+  valid: BatchOnboardingValidItem[];
+  skipped: BatchOnboardingSkippedItem[];
+  counts: { valid: number; skipped: number };
+}
+
+export interface BatchOnboardingWriteResult {
+  dryRun: false;
+  batchId: string;
+  written: BatchOnboardingWrittenItem[];
+  skipped: BatchOnboardingSkippedItem[];
+  counts: { written: number; skipped: number };
+}
+
+export type BatchOnboardingResult = BatchOnboardingDryRunResult | BatchOnboardingWriteResult;

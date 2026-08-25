@@ -24,17 +24,17 @@ export function SalesOrdersPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
-  const routePrefill = salesOrderPrefillFromRouteState(location.state);
-  const routePrefillProductId = routePrefill?.productId ?? null;
-  const [createOpen, setCreateOpen] = useState(params.get('action') === 'add' || Boolean(routePrefill));
-  const [orderPrefill, setOrderPrefill] = useState<SalesOrderPrefill | null>(routePrefill);
+  const requestedPrefill = salesOrderPrefillFromNavigation(params, location.state);
+  const requestedPrefillProductId = requestedPrefill?.productId ?? null;
+  const [createOpen, setCreateOpen] = useState(params.get('action') === 'add' || Boolean(requestedPrefill));
+  const [orderPrefill, setOrderPrefill] = useState<SalesOrderPrefill | null>(requestedPrefill);
 
   useEffect(() => {
-    if (!routePrefillProductId) return;
-    setOrderPrefill({ productId: routePrefillProductId });
+    if (!requestedPrefillProductId) return;
+    setOrderPrefill({ productId: requestedPrefillProductId });
     setCreateOpen(true);
-    navigate({ pathname: location.pathname, search: location.search }, { replace: true, state: null });
-  }, [location.pathname, location.search, navigate, routePrefillProductId]);
+    navigate({ pathname: location.pathname, search: stripSalesOrderProductPrefill(location.search) }, { replace: true, state: null });
+  }, [location.pathname, location.search, navigate, requestedPrefillProductId]);
 
   // Opens on today, because that is the day the shop is working in.
   const modeParam = params.get('mode');
@@ -90,4 +90,20 @@ export function salesOrderPrefillFromRouteState(state: unknown): SalesOrderPrefi
   if (!state || typeof state !== 'object') return null;
   const productId = (state as { prefillOrderProductId?: unknown }).prefillOrderProductId;
   return typeof productId === 'string' && productId.trim() ? { productId } : null;
+}
+
+export function salesOrderPrefillFromSearchParams(params: Pick<URLSearchParams, 'get'>): SalesOrderPrefill | null {
+  const productId = params.get('productId');
+  return productId?.trim() ? { productId } : null;
+}
+
+export function salesOrderPrefillFromNavigation(params: Pick<URLSearchParams, 'get'>, state: unknown): SalesOrderPrefill | null {
+  return salesOrderPrefillFromSearchParams(params) ?? salesOrderPrefillFromRouteState(state);
+}
+
+export function stripSalesOrderProductPrefill(search: string): string {
+  const params = new URLSearchParams(search);
+  params.delete('productId');
+  const next = params.toString();
+  return next ? `?${next}` : '';
 }

@@ -13,13 +13,11 @@ interface Props {
 
 export function validateOpeningCountForm(
   verifiedCount: number,
-  reason: string,
-  accountPassword: string
+  reason: string
 ): Record<string, string> {
   const errors: Record<string, string> = {};
   if (!Number.isInteger(verifiedCount) || verifiedCount < 0) errors.verifiedCount = 'Enter a non-negative whole count / أدخل جردًا صحيحًا غير سالب';
   if (!reason.trim()) errors.reason = 'Reason is required / السبب مطلوب';
-  if (!accountPassword) errors.accountPassword = 'Account password is required / كلمة مرور الحساب مطلوبة';
   return errors;
 }
 
@@ -28,7 +26,6 @@ export const VerifyOpeningCountDialog: React.FC<Props> = ({ productId, productNa
   const [verifiedCount, setVerifiedCount] = useState<number | ''>('');
   const [reason, setReason] = useState('Physical opening count / جرد افتتاحي فعلي');
   const [note, setNote] = useState('');
-  const [accountPassword, setAccountPassword] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [serverError, setServerError] = useState('');
 
@@ -37,7 +34,6 @@ export const VerifyOpeningCountDialog: React.FC<Props> = ({ productId, productNa
     setVerifiedCount('');
     setReason('Physical opening count / جرد افتتاحي فعلي');
     setNote('');
-    setAccountPassword('');
     setErrors({});
     setServerError('');
   }, [open]);
@@ -46,7 +42,7 @@ export const VerifyOpeningCountDialog: React.FC<Props> = ({ productId, productNa
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     const parsedCount = verifiedCount === '' ? Number.NaN : verifiedCount;
-    const nextErrors = validateOpeningCountForm(parsedCount, reason, accountPassword);
+    const nextErrors = validateOpeningCountForm(parsedCount, reason);
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length) return;
     setServerError('');
@@ -55,7 +51,6 @@ export const VerifyOpeningCountDialog: React.FC<Props> = ({ productId, productNa
         verifiedCount: parsedCount,
         reason: reason.trim(),
         note: note.trim() || null,
-        accountPassword,
       } });
       toast.success('Opening count verified / تم تأكيد الجرد الافتتاحي');
       onClose();
@@ -74,8 +69,7 @@ export const VerifyOpeningCountDialog: React.FC<Props> = ({ productId, productNa
       <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-center text-lg font-bold tabular-nums">0 → {verifiedCount === '' ? '—' : verifiedCount}</div>
       <label className="block text-sm font-semibold text-slate-700">Reason / السبب<textarea dir="auto" value={reason} onChange={(event) => setReason(event.target.value)} className="user-text-input mt-1 w-full rounded-lg border border-slate-300 p-3" />{errors.reason && <span className="mt-1 block text-xs text-red-600">{errors.reason}</span>}</label>
       <label className="block text-sm font-semibold text-slate-700">Note (optional) / ملاحظة (اختياري)<textarea dir="auto" value={note} onChange={(event) => setNote(event.target.value)} className="user-text-input mt-1 w-full rounded-lg border border-slate-300 p-3" /></label>
-      <label className="block text-sm font-semibold text-slate-700">Account password / كلمة مرور الحساب<input type="password" value={accountPassword} onChange={(event) => setAccountPassword(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" />{errors.accountPassword && <span className="mt-1 block text-xs text-red-600">{errors.accountPassword}</span>}</label>
-      <div className="flex justify-end gap-2"><button type="button" onClick={onClose} className="rounded-lg border border-slate-300 px-4 py-2">Cancel / إلغاء</button><button disabled={mutation.isPending} className="rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-white disabled:opacity-50">{mutation.isPending ? 'Verifying… / جارٍ التأكيد' : 'Verify Opening Count / تأكيد الجرد الافتتاحي'}</button></div>
+      <div className="flex justify-end gap-2"><button type="button" onClick={onClose} className="rounded-lg border border-slate-300 px-4 py-2">Cancel</button><button disabled={mutation.isPending} className="rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-white disabled:opacity-50">{mutation.isPending ? 'Verifying…' : 'Verify Opening Count'}</button></div>
     </form>
   </Modal>;
 };

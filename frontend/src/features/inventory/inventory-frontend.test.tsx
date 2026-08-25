@@ -17,6 +17,7 @@ vi.mock('../../services/api', () => ({ api: apiMock }));
 vi.mock('./hooks/useInventory', () => ({
   useInventorySummary: () => ({ data: { trackedProducts: 2, lowStockProducts: 1, outOfStockProducts: 1, movementsToday: 2, ordersAwaitingStockDeduction: 3, totalUnits: 4, recentMovements: [] }, isLoading: false }),
   useLowStockProducts: () => ({ data: { items: [{ id: 'p1', sku: 'HC-1', name: 'Low fan', barcode: null, stockQuantity: 1, lowStockThreshold: 2, stockStatus: 'LOW_STOCK' }] } }),
+  usePendingOnboarding: () => ({ data: { items: [], pagination: { page: 1, pageSize: 25, totalItems: 309, totalPages: 13 } }, isLoading: false, isError: false }),
   useProductInventory: (id: string) => ({ data: {
     product: { id, sku: 'HC-1', name: 'Low fan', isActive: true, trackStock: id !== 'not-in', stockQuantity: id === 'pending' ? 3 : id === 'not-in' ? 0 : 1, lowStockThreshold: 2, stockStatus: id === 'not-in' ? 'NOT_TRACKED' : 'LOW_STOCK' },
     onboardingStatus: id === 'pending' ? 'PENDING_ONBOARDING' : id === 'not-in' ? 'NOT_IN_INVENTORY' : 'ONBOARDED',
@@ -24,6 +25,7 @@ vi.mock('./hooks/useInventory', () => ({
   }, isLoading: false, isError: false }),
   useCreateStockMovement: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useVerifyOpeningCount: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useBatchOnboarding: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 vi.mock('../../hooks/useAuth', () => ({ useAuth: () => ({ user: { role: 'ADMIN' } }) }));
 vi.mock('../products/hooks/useProducts', () => ({
@@ -97,14 +99,17 @@ describe('inventory frontend', () => {
     expect(html).toContain('Verify Opening Count / تأكيد الجرد الافتتاحي');
   });
 
-  it('accepts zero and nonzero verified counts while requiring the admin password', () => {
-    expect(validateOpeningCountForm(0, 'Counted shelf', 'secret')).toEqual({});
-    expect(validateOpeningCountForm(7, 'Counted shelf', 'secret')).toEqual({});
-    expect(validateOpeningCountForm(0, 'Counted shelf', '')).toMatchObject({ accountPassword: expect.any(String) });
-    expect(validateOpeningCountForm(-1, 'Counted shelf', 'secret')).toMatchObject({ verifiedCount: expect.any(String) });
+  it('accepts zero and nonzero verified counts without a password and uses English-only action buttons', () => {
+    expect(validateOpeningCountForm(0, 'Counted shelf')).toEqual({});
+    expect(validateOpeningCountForm(7, 'Counted shelf')).toEqual({});
+    expect(validateOpeningCountForm(-1, 'Counted shelf')).toMatchObject({ verifiedCount: expect.any(String) });
     const html = renderToStaticMarkup(<VerifyOpeningCountDialog productId="p1" productName="Low fan" open onClose={() => undefined} />);
     expect(html).toContain('Zero is valid for an empty shelf');
-    expect(html).toContain('Account password / كلمة مرور الحساب');
+    expect(html).not.toContain('Account password');
+    expect(html).not.toContain('Cancel / إلغاء');
+    expect(html).not.toContain('Verify Opening Count / تأكيد الجرد الافتتاحي</button>');
+    expect(html).toContain('>Cancel</button>');
+    expect(html).toContain('>Verify Opening Count</button>');
   });
 
   it('validates all five dialogs and previews both directions and count totals', () => {
@@ -178,7 +183,8 @@ describe('inventory frontend', () => {
     expect(apiMock.get).toHaveBeenCalledWith('/inventory/movements', { params: { productId: 'p1', page: 2 } });
     await inventoryApi.createMovement('p1', { movementType: 'MANUAL_ADD', quantity: 2, expectedBefore: 1, reason: 'Delivery' });
     expect(apiMock.post).toHaveBeenCalledWith('/products/p1/stock-movements', expect.objectContaining({ movementType: 'MANUAL_ADD', quantity: 2 }));
-    await inventoryApi.verifyOpeningCount('p1', { verifiedCount: 0, reason: 'Counted empty shelf', accountPassword: 'secret' });
-    expect(apiMock.post).toHaveBeenCalledWith('/products/p1/opening-count', expect.objectContaining({ verifiedCount: 0 }));
+    const openingCountInput = { verifiedCount: 0, reason: 'Counted empty shelf' };
+    await inventoryApi.verifyOpeningCount('p1', openingCountInput);
+    expect(apiMock.post).toHaveBeenCalledWith('/products/p1/opening-count', openingCountInput);
   });
 });

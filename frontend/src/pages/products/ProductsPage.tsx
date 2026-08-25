@@ -1,17 +1,23 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { LayoutGrid, List, Package, Plus, ScanLine } from 'lucide-react';
-import { useSearchParams } from 'react-router-dom';
+import { LayoutGrid, List, Package, Plus, ScanLine, Tags } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { Button, buttonClasses } from '../../components/ui/Button';
+import { Card } from '../../components/ui/Card';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { PageHeader } from '../../components/ui/PageHeader';
 import { Pagination } from '../../components/ui/Pagination';
+import { SkeletonTable } from '../../components/ui/Skeleton';
 import { ProductArchiveDialog } from '../../features/products/components/ProductArchiveDialog';
 import { ProductBulkActionsBar } from '../../features/products/components/ProductBulkActionsBar';
 import { ProductDetailsDrawer } from '../../features/products/components/ProductDetailsDrawer';
-import { ProductFilters } from '../../features/products/components/ProductFilters';
+import { ProductFilters, hasActiveProductFilters, productFilterResetPatch } from '../../features/products/components/ProductFilters';
 import { ProductFormDialog } from '../../features/products/components/ProductFormDialog';
 import { ProductGrid, ProductGridSkeleton } from '../../features/products/components/ProductGrid';
 import { ProductRestoreDialog } from '../../features/products/components/ProductRestoreDialog';
+import { ProductStats } from '../../features/products/components/ProductStats';
 import { ProductsTable } from '../../features/products/components/ProductsTable';
-import { useProducts } from '../../features/products/hooks/useProducts';
-import { Product, ProductFilters as ProductFilterValues, ProductSortBy, ProductSortOrder } from '../../features/products/types/product.types';
+import { useProductBrands, useProducts } from '../../features/products/hooks/useProducts';
+import { Product, ProductFilterPatch, ProductFilters as ProductFilterValues, ProductSortBy, ProductSortOrder, ProductStockFilter } from '../../features/products/types/product.types';
 import { productLabels } from '../../features/products/utils/product-labels';
 import { productSearchParams, productViewSearchParams, resolveProductView } from '../../features/products/utils/product-view';
 import { businessLabels } from '../../shared/labels/business-labels';
@@ -51,13 +57,17 @@ export const ProductsPage: React.FC = () => {
     isActive: params.get('status') !== 'archived',
     brand: params.get('brand') || undefined,
     hasBarcode: params.has('hasBarcode') ? params.get('hasBarcode') === 'true' : undefined,
+    trackStock: params.has('trackStock') ? params.get('trackStock') === 'true' : undefined,
+    stockStatus: (params.get('stockStatus') as ProductStockFilter | null) ?? undefined,
     sortBy: (params.get('sortBy') as ProductSortBy | null) ?? 'name',
     sortOrder: (params.get('sortOrder') as ProductSortOrder | null) ?? 'asc',
     page: Math.max(1, Number(params.get('page') || 1)),
-    pageSize: 25,
+    pageSize: resolveProductPageSize(params.get('pageSize')),
   }), [params]);
   const products = useProducts(filters);
+  const brands = useProductBrands();
   const focusedId = params.get('focus');
+  const focusedSection = params.get('section') === 'stock' ? 'stock' : undefined;
 
   const recentScans = useRecentScans();
   const scanner = useScannerLookup({
@@ -108,13 +118,23 @@ export const ProductsPage: React.FC = () => {
     if (!formOpen && !focusedId && !archiveProduct && !restoreProduct) searchInputRef.current?.focus();
   }, [archiveProduct, focusedId, formOpen, restoreProduct]);
 
-  const updateFilters = (patch: Partial<ProductFilterValues>) => {
+  /**
+   * Patch keys are URL parameter names, so every filter survives a reload, a
+   * back button, and a bookmarked "what do I need to reorder" link. `isActive`
+   * is excluded by `ProductFilterPatch` because it lives in the `status` tab.
+   */
+  const updateFilters = (patch: ProductFilterPatch) => {
     const next = new URLSearchParams(params);
     for (const [key, value] of Object.entries(patch)) {
       if (value === undefined || value === '') next.delete(key);
       else next.set(key, String(value));
     }
     setParams(next);
+  };
+  const resetFilters = () => {
+    setSearch('');
+    setDebouncedSearch('');
+    updateFilters(productFilterResetPatch());
   };
   const setStatus = (status: 'active' | 'archived') => {
     const next = new URLSearchParams(params);
@@ -128,11 +148,7 @@ export const ProductsPage: React.FC = () => {
     window.localStorage.setItem('products:view', nextView);
     setParams(next, { replace: true });
   };
-  const focus = (id: string | null) => {
-    const next = new URLSearchParams(params);
-    if (id) next.set('focus', id); else next.delete('focus');
-    setParams(next, { replace: true });
-  };
+  const focus = (id: string | null, section?: 'stock') => setParams(productFocusSearchParams(params, id, section), { replace: true });
   const openEdit = (product: Product) => { focus(null); setEditingProduct(product); setFormOpen(true); };
   const openArchive = (product: Product) => { focus(null); setArchiveProduct(product); };
   const openRestore = (product: Product) => { focus(null); setRestoreProduct(product); };
@@ -162,44 +178,191 @@ export const ProductsPage: React.FC = () => {
     });
   };
 
+  const canAdmin = user?.role === 'ADMIN';
+  const filtersActive = hasActiveProductFilters(filters, search);
+  const toggleSelected = (id: string, selected: boolean) => setSelectedIds((current) => {
+    const next = new Set(current);
+    if (selected) next.add(id); else next.delete(id);
+    return next;
+  });
+  const toggleSelectedPage = (selected: boolean) => setSelectedIds((current) => {
+    const next = new Set(current);
+    visible.forEach((product) => selected ? next.add(product.id) : next.delete(product.id));
+    return next;
+  });
+  const listProps = {
+    products: visible,
+    selectedIds,
+    canAdmin,
+    onSelect: toggleSelected,
+    onSelectAll: toggleSelectedPage,
+    onView: (product: Product) => focus(product.id),
+    onEdit: openEdit,
+    onInventory: (product: Product) => focus(product.id, 'stock'),
+    onArchive: openArchive,
+    onRestore: openRestore,
+  };
+
   return <div className="space-y-5">
-    <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-      <div><div className="flex items-center gap-3"><Package className="h-7 w-7 text-emerald-600" /><h1 className="text-2xl font-bold text-slate-900">{businessLabels.product.products}</h1></div><p className="mt-1 text-sm text-slate-500">Manage the product catalogue and printable labels / إدارة دليل المنتجات والملصقات.</p></div>
-      <button type="button" onClick={() => { setEditingProduct(null); setFormOpen(true); }} className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white"><Plus className="h-4 w-4" /> {businessLabels.product.addProduct}</button>
-    </header>
+    <PageHeader
+      icon={<Package />}
+      title={businessLabels.product.products}
+      description="Manage the product catalogue and printable labels / إدارة دليل المنتجات والملصقات."
+      actions={<>
+        <Link to="/products/brands" className={buttonClasses('secondary', 'md')}><Tags className="h-4 w-4" />Brands / الماركات</Link>
+        <Button icon={<Plus />} onClick={() => { setEditingProduct(null); setFormOpen(true); }}>{businessLabels.product.addProduct}</Button>
+      </>}
+    />
+
+    <ProductStats totalMatching={products.data?.pagination.totalItems} filters={filters} onFilter={updateFilters} />
 
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200">
       <div className="flex gap-1">
-        <button type="button" onClick={() => setStatus('active')} className={`border-b-2 px-4 py-2 text-sm font-semibold ${filters.isActive ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-slate-500'}`}>{productLabels.activeProducts}</button>
-        <button type="button" onClick={() => setStatus('archived')} className={`border-b-2 px-4 py-2 text-sm font-semibold ${!filters.isActive ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-slate-500'}`}>{productLabels.archivedProducts}</button>
+        <StatusTab active={Boolean(filters.isActive)} onClick={() => setStatus('active')}>{productLabels.activeProducts}</StatusTab>
+        <StatusTab active={!filters.isActive} onClick={() => setStatus('archived')}>{productLabels.archivedProducts}</StatusTab>
       </div>
       <div className="mb-1 flex flex-wrap items-center gap-2">
-        <button type="button" aria-pressed={scannerMode} onClick={toggleScannerMode} className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold ${scannerMode ? 'border-emerald-600 bg-emerald-50 text-emerald-700' : 'border-slate-300 bg-white text-slate-500'}`}>
-          <ScanLine className="h-4 w-4" />{businessLabels.scanner.scannerMode}
-        </button>
-        <div className="inline-flex rounded-lg border border-slate-300 bg-white p-1" aria-label="Product view / طريقة عرض المنتجات">
-          <button type="button" aria-pressed={view === 'table'} onClick={() => setView('table')} className={`inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-semibold ${view === 'table' ? 'bg-emerald-50 text-emerald-700' : 'text-slate-500'}`}><List className="h-4 w-4" />Table / جدول</button>
-          <button type="button" aria-pressed={view === 'grid'} onClick={() => setView('grid')} className={`inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-semibold ${view === 'grid' ? 'bg-emerald-50 text-emerald-700' : 'text-slate-500'}`}><LayoutGrid className="h-4 w-4" />Grid / شبكة</button>
+        <Button
+          variant={scannerMode ? 'secondary' : 'ghost'}
+          icon={<ScanLine />}
+          aria-pressed={scannerMode}
+          onClick={toggleScannerMode}
+          className={scannerMode ? 'border-brand-600 bg-brand-50 text-brand-700 hover:bg-brand-100' : undefined}
+        >
+          {businessLabels.scanner.scannerMode}
+        </Button>
+        <div className="inline-flex rounded-lg border border-slate-300 bg-white p-1" role="group" aria-label="Product view / طريقة عرض المنتجات">
+          <ViewTab active={view === 'table'} onClick={() => setView('table')} icon={<List className="h-4 w-4" />}>Table / جدول</ViewTab>
+          <ViewTab active={view === 'grid'} onClick={() => setView('grid')} icon={<LayoutGrid className="h-4 w-4" />}>Grid / شبكة</ViewTab>
         </div>
       </div>
     </div>
 
     <ProductBulkActionsBar selectedIds={[...selectedIds]} visibleIds={visible.map((product) => product.id)} onClear={() => setSelectedIds(new Set())} />
 
-    <ProductFilters filters={filters} search={search} onSearchChange={(value) => { setSearch(value); scanner.clear(); }} onSearchSubmit={submitScan} searchInputRef={searchInputRef} onChange={updateFilters} />
+    <ProductFilters
+      filters={filters}
+      search={search}
+      onSearchChange={(value) => { setSearch(value); scanner.clear(); }}
+      onSearchSubmit={submitScan}
+      onReset={resetFilters}
+      searchInputRef={searchInputRef}
+      onChange={updateFilters}
+      brands={brands.data}
+      brandsLoading={brands.isLoading}
+      isFetching={products.isFetching}
+      resultCount={products.data?.pagination.totalItems}
+    />
     <ScanFeedback result={scanner.result} isLooking={scanner.isLooking} isError={scanner.isError} onOpenProduct={focus} />
     {scannerMode && <RecentScansList scans={recentScans.scans} onOpenProduct={focus} onClear={recentScans.clear} />}
 
-    {products.isLoading ? view === 'grid' ? <ProductGridSkeleton /> : <div className="p-12 text-center text-slate-500">Loading products / جارٍ تحميل المنتجات…</div>
-      : products.isError ? <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">Unable to load products / تعذر تحميل المنتجات.</div>
-      : visible.length ? <>{view === 'grid'
-        ? <ProductGrid products={visible} selectedIds={selectedIds} canAdmin={user?.role === 'ADMIN'} onSelect={(id, selected) => setSelectedIds((current) => { const next = new Set(current); if (selected) next.add(id); else next.delete(id); return next; })} onSelectAll={(selected) => setSelectedIds((current) => { const next = new Set(current); visible.forEach((product) => selected ? next.add(product.id) : next.delete(product.id)); return next; })} onView={(product) => focus(product.id)} onEdit={openEdit} onArchive={openArchive} onRestore={openRestore} />
-        : <ProductsTable products={visible} selectedIds={selectedIds} canAdmin={user?.role === 'ADMIN'} onSelect={(id, selected) => setSelectedIds((current) => { const next = new Set(current); if (selected) next.add(id); else next.delete(id); return next; })} onSelectAll={(selected) => setSelectedIds((current) => { const next = new Set(current); visible.forEach((product) => selected ? next.add(product.id) : next.delete(product.id)); return next; })} onView={(product) => focus(product.id)} onEdit={openEdit} onArchive={openArchive} onRestore={openRestore} />}<div className="overflow-hidden rounded-lg border border-slate-200"><Pagination currentPage={filters.page ?? 1} totalPages={products.data?.pagination.totalPages ?? 1} onPageChange={(page) => updateFilters({ page })} /></div></>
-      : <div className="rounded-lg border border-dashed border-slate-300 bg-white p-12 text-center"><Package className="mx-auto h-8 w-8 text-slate-300" /><p className="mt-3 font-medium text-slate-700">{productLabels.noProducts}</p></div>}
+    {products.isLoading
+      ? <ProductsLoadingState view={view} />
+      : products.isError
+        ? <ProductsErrorState onRetry={() => products.refetch()} />
+        : visible.length
+          ? <>
+              {view === 'grid' ? <ProductGrid {...listProps} /> : <ProductsTable {...listProps} />}
+              <Card variant="flush"><Pagination currentPage={filters.page ?? 1} totalPages={products.data?.pagination.totalPages ?? 1} onPageChange={(page) => updateFilters({ page })} /></Card>
+            </>
+          : <ProductsEmptyState
+              filtersActive={filtersActive}
+              archived={!filters.isActive}
+              onReset={resetFilters}
+              onAdd={() => { setEditingProduct(null); setFormOpen(true); }}
+            />}
 
     <ProductFormDialog open={formOpen} product={editingProduct} onClose={closeForm} onViewDuplicate={(id) => { closeForm(); focus(id); }} />
-    <ProductDetailsDrawer productId={focusedId} onClose={() => focus(null)} onEdit={openEdit} onArchive={openArchive} onRestore={openRestore} />
+    <ProductDetailsDrawer productId={focusedId} initialSection={focusedSection} onClose={() => focus(null)} onEdit={openEdit} onArchive={openArchive} onRestore={openRestore} />
     <ProductArchiveDialog key={archiveProduct?.id ?? 'archive'} product={archiveProduct} onClose={() => setArchiveProduct(null)} />
     <ProductRestoreDialog key={restoreProduct?.id ?? 'restore'} product={restoreProduct} onClose={() => setRestoreProduct(null)} />
   </div>;
+};
+
+const StatusTab: React.FC<{ active: boolean; onClick: () => void; children: React.ReactNode }> = ({ active, onClick, children }) => (
+  <button
+    type="button"
+    aria-pressed={active}
+    onClick={onClick}
+    className={`border-b-2 px-4 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 ${
+      active ? 'border-brand-600 text-brand-700' : 'border-transparent text-slate-500 hover:text-slate-800'
+    }`}
+  >
+    {children}
+  </button>
+);
+
+const ViewTab: React.FC<{ active: boolean; onClick: () => void; icon: React.ReactNode; children: React.ReactNode }> = ({ active, onClick, icon, children }) => (
+  <button
+    type="button"
+    aria-pressed={active}
+    onClick={onClick}
+    className={`inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 ${
+      active ? 'bg-brand-50 text-brand-700' : 'text-slate-500 hover:text-slate-800'
+    }`}
+  >
+    {icon}{children}
+  </button>
+);
+
+/**
+ * Three different nothings, because they need three different next steps:
+ * a filter that matched nothing needs a way out, an empty catalogue needs a
+ * first product, and an empty archive is simply good news.
+ */
+export const ProductsEmptyState: React.FC<{
+  filtersActive: boolean;
+  archived: boolean;
+  onReset: () => void;
+  onAdd: () => void;
+}> = ({ filtersActive, archived, onReset, onAdd }) => {
+  if (filtersActive) {
+    return <EmptyState
+      icon={<Package className="h-8 w-8 text-slate-300" />}
+      title={productLabels.noProducts}
+      description={productLabels.noProductsHint}
+      action={<Button variant="secondary" onClick={onReset}>{productLabels.resetFilters}</Button>}
+    />;
+  }
+  if (archived) {
+    return <EmptyState
+      icon={<Package className="h-8 w-8 text-slate-300" />}
+      title={productLabels.noArchivedProducts}
+      description={productLabels.noArchivedProductsHint}
+    />;
+  }
+  return <EmptyState
+    icon={<Package className="h-8 w-8 text-slate-300" />}
+    title={productLabels.emptyCatalogue}
+    description={productLabels.emptyCatalogueHint}
+    action={<Button icon={<Plus />} onClick={onAdd}>{businessLabels.product.addProduct}</Button>}
+  />;
+};
+
+export const ProductsLoadingState: React.FC<{ view: 'table' | 'grid' }> = ({ view }) => (
+  view === 'grid'
+    ? <ProductGridSkeleton />
+    : <Card variant="flush" aria-label="Loading products / جارٍ تحميل المنتجات"><SkeletonTable rows={8} columns={6} /></Card>
+);
+
+export const ProductsErrorState: React.FC<{ onRetry: () => void }> = ({ onRetry }) => (
+  <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+    <span className="min-w-0 flex-1">{productLabels.loadFailed}</span>
+    <Button variant="secondary" size="sm" onClick={onRetry}>{productLabels.retry}</Button>
+  </div>
+);
+
+const PRODUCT_PAGE_SIZES = [25, 50, 100];
+
+/** A hand-edited `?pageSize=` must not reach the backend's 100 cap as a 400. */
+export const resolveProductPageSize = (raw: string | null): number => {
+  const value = Number(raw);
+  return PRODUCT_PAGE_SIZES.includes(value) ? value : PRODUCT_PAGE_SIZES[0];
+};
+
+export const productFocusSearchParams = (current: URLSearchParams, id: string | null, section?: 'stock') => {
+  const next = new URLSearchParams(current);
+  if (id) next.set('focus', id); else next.delete('focus');
+  if (id && section) next.set('section', section); else next.delete('section');
+  return next;
 };

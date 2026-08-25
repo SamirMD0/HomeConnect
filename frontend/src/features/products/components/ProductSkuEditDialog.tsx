@@ -1,9 +1,11 @@
 import React, { FormEvent, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Modal } from '../../../components/ui/Modal';
-import { useRegenerateProductSku, useUpdateProductSku } from '../hooks/useProducts';
+import { useCheckProductDuplicate, useRegenerateProductSku, useUpdateProductSku } from '../hooks/useProducts';
 import { Product } from '../types/product.types';
+import { ProductDuplicateInlineError } from './ProductDuplicateWarning';
 
 export const SKU_LABEL_WARNING = 'Changing SKU may invalidate printed labels already placed on products. / تغيير رمز المنتج قد يجعل الملصقات المطبوعة سابقًا غير صحيحة.';
 
@@ -15,12 +17,17 @@ export const SKU_LABEL_WARNING = 'Changing SKU may invalidate printed labels alr
  * labels on the shelf are about to stop matching.
  */
 export const ProductSkuEditDialog: React.FC<{ product: Product | null; onClose: () => void }> = ({ product, onClose }) => {
+  const navigate = useNavigate();
   const update = useUpdateProductSku(); const regenerate = useRegenerateProductSku();
   const [sku, setSku] = useState(''); const [acknowledged, setAcknowledged] = useState(false); const [error, setError] = useState('');
+  const duplicate = useCheckProductDuplicate(product ? { sku, excludeProductId: product.id } : null);
+  const duplicateMatches = duplicate.data ?? [];
+  const skuTaken = duplicateMatches.some((match) => match.reason === 'SKU_TAKEN');
   useEffect(() => { setSku(product?.sku ?? ''); setAcknowledged(false); setError(''); }, [product]);
   if (!product) return null;
   const submit = async (event: FormEvent) => {
     event.preventDefault();
+    if (skuTaken) { setError('Change the SKU already used by another product / غيّر رمز المنتج المستخدم في منتج آخر'); return; }
     if (!/^[A-Z0-9-]{4,32}$/.test(sku.trim().toUpperCase())) { setError('SKU must be 4-32 uppercase letters, numbers, or hyphens'); return; }
     if (!acknowledged) { setError('Confirm the printed-label warning before saving / أكّد التحذير قبل الحفظ'); return; }
     try { await update.mutateAsync({ id: product.id, input: { sku: sku.trim().toUpperCase() } }); toast.success('SKU updated. Reprint existing labels.'); onClose(); }
@@ -31,6 +38,7 @@ export const ProductSkuEditDialog: React.FC<{ product: Product | null; onClose: 
     try { await regenerate.mutateAsync(product.id); toast.success('New SKU issued. Reprint existing labels.'); onClose(); }
     catch { setError('Unable to regenerate SKU.'); }
   };
-  return <Modal isOpen onClose={onClose} title="Edit SKU / تعديل رمز المنتج"><form onSubmit={submit} className="space-y-4"><p className="flex gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900" dir="auto"><AlertTriangle className="h-5 w-5 shrink-0" />{SKU_LABEL_WARNING}</p><Field label="SKU" value={sku} set={setSku} /><label className="flex items-start gap-2 text-sm text-slate-700"><input type="checkbox" checked={acknowledged} onChange={(event) => setAcknowledged(event.target.checked)} className="mt-1" />I understand printed labels must be reprinted / أفهم أنه يجب إعادة طباعة الملصقات</label>{error && <p className="text-sm text-red-600">{error}</p>}<div className="flex flex-wrap justify-end gap-2"><button type="button" onClick={issueNew} className="inline-flex items-center gap-2 rounded-lg border border-amber-300 px-3 py-2 text-sm font-semibold text-amber-800"><RefreshCw className="h-4 w-4" />Issue new SKU</button><button type="submit" className="rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-white">Save SKU</button></div></form></Modal>;
+  const openDuplicate = (id: string) => { onClose(); navigate(`/products?focus=${id}`); };
+  return <Modal isOpen onClose={onClose} title="Edit SKU / تعديل رمز المنتج"><form onSubmit={submit} className="space-y-4"><p className="flex gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900" dir="auto"><AlertTriangle className="h-5 w-5 shrink-0" />{SKU_LABEL_WARNING}</p><Field label="SKU" value={sku} set={setSku} feedback={<ProductDuplicateInlineError field="SKU" matches={duplicateMatches} onView={openDuplicate} />} /><label className="flex items-start gap-2 text-sm text-slate-700"><input type="checkbox" checked={acknowledged} onChange={(event) => setAcknowledged(event.target.checked)} className="mt-1" />I understand printed labels must be reprinted / أفهم أنه يجب إعادة طباعة الملصقات</label>{error && <p className="text-sm text-red-600">{error}</p>}<div className="flex flex-wrap justify-end gap-2"><button type="button" onClick={issueNew} className="inline-flex items-center gap-2 rounded-lg border border-amber-300 px-3 py-2 text-sm font-semibold text-amber-800"><RefreshCw className="h-4 w-4" />Issue new SKU</button><button type="submit" disabled={update.isPending || skuTaken} className="rounded-lg bg-brand-600 px-4 py-2 font-semibold text-white disabled:opacity-50">Save SKU</button></div></form></Modal>;
 };
-const Field: React.FC<{ label: string; value: string; set: (value: string) => void; type?: string }> = ({ label, value, set, type = 'text' }) => <label className="block text-sm font-medium">{label}<input value={value} onChange={(event) => set(event.target.value)} type={type} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" /></label>;
+const Field: React.FC<{ label: string; value: string; set: (value: string) => void; type?: string; feedback?: React.ReactNode }> = ({ label, value, set, type = 'text', feedback }) => <div><label className="block text-sm font-medium">{label}<input value={value} onChange={(event) => set(event.target.value)} type={type} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" /></label>{feedback}</div>;

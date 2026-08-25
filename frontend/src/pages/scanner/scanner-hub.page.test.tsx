@@ -4,14 +4,35 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { apiMock, authState, scannerEventsOptions } = vi.hoisted(() => ({
+const { apiMock, authState, productState, scannerEventsOptions } = vi.hoisted(() => ({
   apiMock: { get: vi.fn(), post: vi.fn() },
   authState: { user: { id: 'user-1', fullName: 'Master Administrator', role: 'ADMIN' } },
+  productState: {
+    data: {
+      id: 'product-1', sku: 'HC-000001', name: 'Coffee grinder', model: 'CG-8', barcode: '1234567890123', brand: 'Home',
+      price: '40.00', netPrice: '38.00', isActive: true, image: null, trackStock: true, stockQuantity: 4,
+      stockStatus: 'IN_STOCK', pricing: { pricingAvailable: true, cashPrice: '35.00' }, specifications: [],
+    },
+    isLoading: false,
+    isError: false,
+    refetch: vi.fn(),
+  },
   scannerEventsOptions: { current: undefined as Record<string, unknown> | undefined },
 }));
 
 vi.mock('../../services/api', () => ({ api: apiMock }));
 vi.mock('../../hooks/useAuth', () => ({ useAuth: () => authState }));
+vi.mock('../../features/products/hooks/useProducts', () => ({
+  useProduct: (id: string) => ({ ...productState, data: id ? productState.data : undefined }),
+  useProductImageUrl: () => ({ url: null, isLoading: false, isError: false }),
+}));
+vi.mock('../../features/inventory/hooks/useInventory', () => ({
+  useProductInventory: (id: string) => ({
+    data: id ? { onboardingStatus: 'ONBOARDED' } : undefined,
+    isLoading: false,
+    isError: false,
+  }),
+}));
 vi.mock('../../features/scanner/hooks/useScannerEvents', () => ({
   useScannerEvents: (options: Record<string, unknown>) => {
     scannerEventsOptions.current = options;
@@ -19,7 +40,7 @@ vi.mock('../../features/scanner/hooks/useScannerEvents', () => ({
   },
 }));
 
-import { previewForDeskScan, scannerOrderRouteState, scannerReceivingRouteState, ScannerHubPage } from './ScannerHubPage';
+import { previewForDeskScan, ScannerHubProductArea, scannerReceivingRouteState, ScannerHubPage } from './ScannerHubPage';
 
 /**
  * A static render, because this project has no jsdom: it proves the page
@@ -102,14 +123,6 @@ describe('ScannerHubPage', () => {
     expect(scannerEventsOptions.current).not.toHaveProperty('onOpenProduct');
   });
 
-  it('passes product identity only when Make Order navigates', () => {
-    const state = scannerOrderRouteState('product-1');
-    expect(state).toEqual({ prefillOrderProductId: 'product-1' });
-    expect(Object.keys(state)).toEqual(['prefillOrderProductId']);
-    expect(state).not.toHaveProperty('price');
-    expect(state).not.toHaveProperty('quantity');
-  });
-
   /**
    * The whole complaint that prompted this fix: the preview existed only as a
    * modal that appeared after a successful scan, so the page looked unchanged.
@@ -121,12 +134,20 @@ describe('ScannerHubPage', () => {
     expect(html).toContain('Scan or search a product to preview it');
   });
 
-  it('offers the POS actions from the hub itself', () => {
-    // The empty state carries no actions; they arrive with a product. What the
-    // page must guarantee is that the panel is mounted and visible.
-    const html = render(<ScannerHubPage />);
-    expect(html).toContain('امسح أو ابحث عن منتج لعرضه');
-    expect(html).not.toContain('role="dialog"');
+  it('offers Quick Order, Receive Stock, and Open Product from the scanned-product area', () => {
+    const html = render(<ScannerHubProductArea
+      preview={{ productId: 'product-1' }}
+      quickOrderProductId={null}
+      onClear={() => undefined}
+      onOpenProduct={() => undefined}
+      onQuickOrder={() => undefined}
+      onReceiveStock={() => undefined}
+      onCloseQuickOrder={() => undefined}
+    />);
+    expect(html).toContain('Quick Order / طلب سريع');
+    expect(html).not.toContain('Make Order');
+    expect(html).toContain('Receive Stock / إدخال مخزون');
+    expect(html).toContain('Open Product / فتح المنتج');
   });
 
   it('prefills receiving only for a product that can actually be received', () => {
@@ -152,7 +173,7 @@ describe('ScannerHubPage', () => {
     render(<ScannerHubPage />);
     expect(apiMock.post).not.toHaveBeenCalled();
     const requested = apiMock.get.mock.calls.map((call) => String(call[0]));
-    for (const forbidden of ['supplier', 'customer', 'payment', 'debt', 'receivable', 'ledger', 'inventory/receivings']) {
+    for (const forbidden of ['supplier', 'customer', 'payment', 'debt', 'receivable', 'ledger', 'inventory/receivings', 'deduct-stock', 'restore-stock']) {
       expect(requested.some((url) => url.includes(forbidden))).toBe(false);
     }
   });

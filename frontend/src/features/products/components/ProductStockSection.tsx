@@ -1,14 +1,16 @@
 import React from 'react';
 import { ProductStockInput } from '../types/product.types';
 
-export const ProductStockSection: React.FC<{ value: ProductStockInput; onChange: (value: ProductStockInput) => void }> = ({ value, onChange }) => (
+export const ProductStockSection: React.FC<{ value: ProductStockInput; onChange: (value: ProductStockInput) => void; mode?: 'create' | 'edit' }> = ({ value, onChange, mode = 'edit' }) => (
   <section className="space-y-3 rounded-lg border border-slate-200 p-4">
     <div><h3 className="font-semibold text-slate-900">Stock settings / إعدادات المخزون</h3><p className="text-xs text-slate-500">Quantity changes are recorded through inventory movements / تُسجَّل تغييرات الكمية عبر حركات المخزون</p></div>
     <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={value.trackStock} onChange={(event) => onChange({ ...value, trackStock: event.target.checked })} />Track stock / تتبع المخزون</label>
     <div className={`grid gap-4 sm:grid-cols-2 ${value.trackStock ? '' : 'opacity-55'}`}>
-      <div className="text-sm font-medium text-slate-700"><span>Current quantity / الكمية الحالية</span><output aria-label="Current quantity / الكمية الحالية" className="mt-1 block w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 font-semibold tabular-nums">{value.stockQuantity}</output><span className="mt-1 block text-xs font-normal text-slate-500">Use Inventory actions to change this value / استخدم حركات المخزون لتعديلها</span></div>
+      {mode === 'edit' && <div className="text-sm font-medium text-slate-700"><span>Current quantity / الكمية الحالية</span><output aria-label="Current quantity / الكمية الحالية" className="mt-1 block w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 font-semibold tabular-nums">{value.stockQuantity}</output><span className="mt-1 block text-xs font-normal text-slate-500">Use Inventory actions to change this value / استخدم حركات المخزون لتعديلها</span></div>}
       <NumberField label="Low-stock threshold / حد المخزون المنخفض" value={value.lowStockThreshold ?? ''} disabled={!value.trackStock} onChange={(next) => onChange({ ...value, lowStockThreshold: next === '' ? null : next })} />
     </div>
+    {mode === 'create' && value.trackStock && <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">Stock tracking enabled. The opening count must be verified before any stock action. / تم تفعيل تتبع المخزون. يجب تأكيد الجرد الافتتاحي قبل أي حركة مخزون.</p>}
+    {mode === 'edit' && <p className="text-xs text-slate-500">Switching tracking on requires a verified opening count before stock actions / تفعيل التتبع يتطلب تأكيد الجرد الافتتاحي قبل حركات المخزون</p>}
   </section>
 );
 

@@ -1,10 +1,14 @@
 import { api } from '../../../services/api';
 import type {
+  BatchOnboardingInput,
+  BatchOnboardingResult,
   CreateStockMovementInput,
   InventoryListFilters,
   InventorySummary,
   LowStockProduct,
   MovementFilters,
+  OnboardingWorklistFilters,
+  OnboardingWorklistItem,
   PaginationMeta,
   ProductInventory,
   StockMovement,
@@ -24,6 +28,12 @@ export const inventoryApi = {
     const response = await api.get('/inventory/movements', { params: paramsFor(filters) });
     return { items: response.data.data, pagination: response.data.meta.pagination };
   },
+  pendingOnboarding: async (filters: OnboardingWorklistFilters = {}): Promise<{ items: OnboardingWorklistItem[]; pagination: PaginationMeta }> => {
+    const response = await api.get('/inventory/onboarding/pending', { params: paramsFor(filters) });
+    return { items: response.data.data, pagination: response.data.meta.pagination };
+  },
+  batchOnboarding: async (input: BatchOnboardingInput): Promise<BatchOnboardingResult> =>
+    (await api.post('/inventory/onboarding/batch', input)).data.data,
   product: async (productId: string): Promise<ProductInventory> =>
     (await api.get(`/products/${productId}/inventory`)).data.data,
   createMovement: async (productId: string, input: CreateStockMovementInput): Promise<StockMovementResult> =>

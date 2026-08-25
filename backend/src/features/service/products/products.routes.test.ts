@@ -3,7 +3,7 @@ import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { app } from '../../../app';
 
-const { service } = vi.hoisted(() => ({ service: { create: vi.fn(), list: vi.fn(), get: vi.fn(), update: vi.fn(), archive: vi.fn(), restore: vi.fn(), label: vi.fn(), labels: vi.fn(), audit: vi.fn(), checkDuplicate: vi.fn(), serviceJobs: vi.fn(), updateSku: vi.fn(), regenerateSku: vi.fn(), updateStock: vi.fn() } }));
+const { service } = vi.hoisted(() => ({ service: { create: vi.fn(), list: vi.fn(), brands: vi.fn(), normalizeBrands: vi.fn(), get: vi.fn(), update: vi.fn(), archive: vi.fn(), restore: vi.fn(), label: vi.fn(), labels: vi.fn(), audit: vi.fn(), checkDuplicate: vi.fn(), serviceJobs: vi.fn(), updateSku: vi.fn(), regenerateSku: vi.fn(), updateStock: vi.fn() } }));
 vi.mock('./products.service', () => ({ ProductsService: service }));
 vi.mock('../../../lib/prisma', () => ({ prisma: { $queryRaw: vi.fn().mockResolvedValue([{ result: 1 }]) }, transactionModel: {}, activityLogModel: {} }));
 
@@ -18,6 +18,8 @@ describe('product routes', () => {
     vi.clearAllMocks();
     service.create.mockResolvedValue(product);
     service.list.mockResolvedValue({ items: [product], total: 1, page: 1, pageSize: 25 });
+    service.brands.mockResolvedValue({ brands: [{ canonical: 'Kozano', productCount: 20, spellings: ['Kozano', 'KOZANO', 'kozano'], spellingCounts: [{ spelling: 'Kozano', productCount: 12 }, { spelling: 'KOZANO', productCount: 5 }, { spelling: 'kozano', productCount: 3 }] }] });
+    service.normalizeBrands.mockResolvedValue({ targetBrand: 'General', affectedCount: 1, products: [{ id: productId, sku: 'HC-000001', name: 'Fan', brand: 'GENERAL' }], warnings: [] });
     service.get.mockResolvedValue(product);
     service.archive.mockResolvedValue({ ...product, isActive: false });
     service.checkDuplicate.mockResolvedValue({ matches: [] });
@@ -82,6 +84,16 @@ describe('product routes', () => {
     expect(create.status).toBe(201); expect(service.create).toHaveBeenCalled();
     expect((await request(app).get('/api/v1/products').set('Authorization', `Bearer ${employee}`)).status).toBe(200);
   });
+  it('passes valid stock-status filters to the service and rejects unknown values', async () => {
+    const valid = await request(app).get('/api/v1/products?stockStatus=LOW_STOCK').set('Authorization', `Bearer ${employee}`);
+    expect(valid.status).toBe(200);
+    expect(service.list).toHaveBeenCalledWith(expect.objectContaining({ stockStatus: 'LOW_STOCK' }), expect.objectContaining({ role: 'EMPLOYEE' }));
+
+    service.list.mockClear();
+    const invalid = await request(app).get('/api/v1/products?stockStatus=NONSENSE').set('Authorization', `Bearer ${employee}`);
+    expect(invalid.status).toBe(400);
+    expect(service.list).not.toHaveBeenCalled();
+  });
   it('creates a product with both pricing booleans off and no cost price', async () => {
     const response = await request(app).post('/api/v1/products').set('Authorization', `Bearer ${admin}`).send({
       name: 'Fan', model: 'F1', useCustomPricing: false, installmentEnabled: false,
@@ -115,6 +127,33 @@ describe('product routes', () => {
     expect(response.body.data).toEqual({ matches: [] });
     expect(service.checkDuplicate).toHaveBeenCalled();
     expect(service.get).not.toHaveBeenCalled();
+  });
+  it('registers brands before the product id route and exposes only names and counts', async () => {
+    const response = await request(app).get('/api/v1/products/brands').set('Authorization', `Bearer ${employee}`);
+    expect(response.status).toBe(200);
+    expect(response.body.data).toEqual({ brands: [{ canonical: 'Kozano', productCount: 20, spellings: ['Kozano', 'KOZANO', 'kozano'], spellingCounts: [{ spelling: 'Kozano', productCount: 12 }, { spelling: 'KOZANO', productCount: 5 }, { spelling: 'kozano', productCount: 3 }] }] });
+    expect(service.brands).toHaveBeenCalled();
+    expect(service.get).not.toHaveBeenCalled();
+    for (const forbidden of ['price', 'costPrice', 'cashPrice', 'stock', 'stockQuantity']) {
+      expect(JSON.stringify(response.body.data)).not.toContain(forbidden);
+    }
+  });
+  it('registers brand normalization before the product id route and enforces admin authentication', async () => {
+    const body = { sourceBrands: ['General', 'GENERAL'], targetBrand: 'General', reason: 'Normalize duplicate spelling', dryRun: true };
+    expect((await request(app).post('/api/v1/products/brands/normalize').send(body)).status).toBe(401);
+    expect((await request(app).post('/api/v1/products/brands/normalize').set('Authorization', `Bearer ${employee}`).send(body)).status).toBe(403);
+    const response = await request(app).post('/api/v1/products/brands/normalize').set('Authorization', `Bearer ${admin}`).set('x-request-id', 'brand-route-request').send(body);
+    expect(response.status).toBe(200);
+    expect(service.normalizeBrands).toHaveBeenCalledWith(expect.objectContaining(body), expect.objectContaining({ role: 'ADMIN' }), expect.objectContaining({ requestId: 'brand-route-request' }));
+    expect(service.get).not.toHaveBeenCalled();
+    for (const forbidden of ['price', 'costPrice', 'discount', 'stockQuantity']) expect(JSON.stringify(response.body.data)).not.toContain(forbidden);
+  });
+  it('rejects an empty duplicate lookup while keeping barcode lookup available to employees', async () => {
+    const empty = await request(app).get('/api/v1/products/check-duplicate').set('Authorization', `Bearer ${employee}`);
+    const barcode = await request(app).get('/api/v1/products/check-duplicate?barcode=AbC-1234').set('Authorization', `Bearer ${employee}`);
+    expect(empty.status).toBe(400);
+    expect(barcode.status).toBe(200);
+    expect(service.checkDuplicate).toHaveBeenCalledWith(expect.objectContaining({ barcode: 'AbC-1234' }));
   });
   it('returns related service-job pagination and takes a sensitive update without credentials', async () => {
     const jobs = await request(app)

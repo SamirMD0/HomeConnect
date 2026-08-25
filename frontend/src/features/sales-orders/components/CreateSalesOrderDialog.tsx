@@ -13,6 +13,7 @@ import { SALES_CHANNEL_LABELS } from '../utils/sales-order-labels';
 import { emptySalesLine, SalesOrderItemsEditor } from './SalesOrderItemsEditor';
 import { salesLineForProduct } from './ProductLinePicker';
 import { useAuth } from '../../../hooks/useAuth';
+import { fromCents, normalizeMoney, toCents } from '../utils/sales-money';
 
 type PaymentMode = 'FULL' | 'PARTIAL' | 'UNPAID';
 const today = () => { const date = new Date(); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; };
@@ -25,11 +26,14 @@ export const salesOrderLineFromPrefill = (product: Product): SalesOrderLineInput
 export function CreateSalesOrderDialog({ isOpen, onClose, prefill = null }: { isOpen: boolean; onClose: () => void; prefill?: SalesOrderPrefill | null }) {
   const { user } = useAuth();
   const create = useCreateSalesOrder();
-  const [step, setStep] = useState(0);
+  const prefillProduct = useProduct(isOpen ? prefill?.productId ?? '' : '');
+  const [step, setStep] = useState(prefill ? 3 : 0);
   const [customerId, setCustomerId] = useState('');
   const customer = useCustomer(customerId);
   const [channel, setChannel] = useState<SalesChannel>('SHOP_DIRECT');
-  const [items, setItems] = useState<SalesOrderLineInput[]>([emptySalesLine()]);
+  const [items, setItems] = useState<SalesOrderLineInput[]>(() => prefillProduct.data
+    ? [salesOrderLineFromPrefill(prefillProduct.data)]
+    : [emptySalesLine()]);
   const [paymentMode, setPaymentMode] = useState<PaymentMode>('FULL');
   const [partialAmount, setPartialAmount] = useState('0.00');
   const [debtDueDate, setDebtDueDate] = useState('');
@@ -37,7 +41,6 @@ export function CreateSalesOrderDialog({ isOpen, onClose, prefill = null }: { is
   const [deliveryFee, setDeliveryFee] = useState('0.00');
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [deliveryNotes, setDeliveryNotes] = useState('');
-  const prefillProduct = useProduct(isOpen ? prefill?.productId ?? '' : '');
   const appliedPrefillId = useRef<string | null>(null);
   const total = useMemo(() => calculatePreview(items, channel === 'SHOP_DIRECT' ? '0.00' : deliveryFee), [items, channel, deliveryFee]);
   const paidAmount = paymentMode === 'FULL' ? total : paymentMode === 'UNPAID' ? '0.00' : normalizeMoney(partialAmount);
@@ -48,7 +51,7 @@ export function CreateSalesOrderDialog({ isOpen, onClose, prefill = null }: { is
     if (!isOpen) { appliedPrefillId.current = null; return; }
     if (!prefill?.productId || !prefillProduct.data || appliedPrefillId.current === prefill.productId) return;
     setItems([salesOrderLineFromPrefill(prefillProduct.data)]);
-    setStep(0);
+    setStep(3);
     appliedPrefillId.current = prefill.productId;
   }, [isOpen, prefill?.productId, prefillProduct.data]);
 
@@ -92,8 +95,5 @@ export function CreateSalesOrderDialog({ isOpen, onClose, prefill = null }: { is
 }
 
 function Review({ label, value, userText = false }: { label: string; value: string; userText?: boolean }) { return <Card dense><p className="text-xs text-slate-500">{label}</p><p className={userText ? 'user-text font-semibold' : 'font-semibold'} dir={userText ? 'auto' : undefined}>{value}</p></Card>; }
-function toCents(value: string): bigint { const match = /^(\d+)(?:\.(\d{0,2}))?$/.exec(value.trim()); if (!match) return 0n; return BigInt(match[1]) * 100n + BigInt((match[2] ?? '').padEnd(2, '0')); }
-function fromCents(value: bigint): string { const safe = value < 0n ? 0n : value; return `${safe / 100n}.${String(safe % 100n).padStart(2, '0')}`; }
-function normalizeMoney(value: string): string { return fromCents(toCents(value)); }
 function calculatePreview(items: SalesOrderLineInput[], deliveryFee: string): string { return fromCents(items.reduce((sum, item) => sum + (toCents(item.unitPrice) * BigInt(item.quantity) - toCents(item.discountAmount ?? '0.00')), 0n) + toCents(deliveryFee)); }
 function subtractPreview(total: string, paid: string): string { return fromCents(toCents(total) - toCents(paid)); }

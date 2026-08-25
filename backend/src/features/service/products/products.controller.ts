@@ -7,6 +7,7 @@ import {
   ProductServiceJobsQueryInput, UpdateProductInput,
   UpdateProductPricingInput, ProductPricingPreviewQueryInput,
   ProductLabelQueryInput, ProductLabelsQueryInput, UpdateProductSkuInput, UpdateProductStockInput,
+  NormalizeProductBrandsInput,
 } from './products.validator';
 
 const contextFrom = (req: { headers: Request['headers']; ip?: string }) => ({
@@ -49,6 +50,14 @@ export class ProductsController {
       const result = await ProductsService.list(req.query as unknown as ProductListQueryInput, req.user);
       res.json({ success: true, data: result.items, meta: { pagination: { page: result.page, pageSize: result.pageSize, totalItems: result.total, totalPages: Math.ceil(result.total / result.pageSize) } } });
     } catch (error) { next(error); }
+  }
+  static async brands(_req: Request, res: Response, next: NextFunction) {
+    try { res.json({ success: true, data: await ProductsService.brands() }); }
+    catch (error) { next(error); }
+  }
+  static async normalizeBrands(req: Request<unknown, unknown, NormalizeProductBrandsInput>, res: Response, next: NextFunction) {
+    try { res.json({ success: true, data: await ProductsService.normalizeBrands(req.body, req.user!, contextFrom(req)) }); }
+    catch (error) { next(error); }
   }
   static async scan(req: Request, res: Response, next: NextFunction) {
     try { res.json({ success: true, data: await ProductsService.scanLookup(req.query as unknown as ProductScanQueryInput) }); }

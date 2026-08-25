@@ -30,6 +30,7 @@ import {
   ProductPricingPreviewQueryInput,
   ProductLabelQueryInput,
   ProductLabelsQueryInput,
+  NormalizeProductBrandsInput,
   UpdateProductSkuInput,
   UpdateProductStockInput,
   UpdateProductInput,
@@ -42,7 +43,7 @@ import { Role } from '@prisma/client';
 import { parsePricingPercent, percentToApiString } from '../../pricing/domain/pricing-percent';
 import { formatStaffLabelCode } from '../../pricing/domain/internal-price-code';
 import { generateProductSku } from './product-sku';
-import { deriveProductStockStatus } from './product-stock';
+import { deriveProductStockStatus, isProductOutsideInventory } from './product-stock';
 
 export interface ProductScanPayload {
   id: string;
@@ -64,13 +65,167 @@ export interface ProductScanResult {
   product: ProductScanPayload | null;
 }
 
+export interface ProductBrandSummary {
+  canonical: string;
+  productCount: number;
+  spellings: string[];
+  spellingCounts: Array<{ spelling: string; productCount: number }>;
+}
+
+interface ProductBrandSpellingCount {
+  brand: string | null;
+  _count: { _all: number };
+}
+
+const collapseBrandWhitespace = (value: string) => value.trim().replace(/\s+/gu, ' ');
+const compareBrandNames = (left: string, right: string) =>
+  left.localeCompare(right, 'en', { sensitivity: 'variant' });
+const isTitleCaseBrand = (value: string) => value.split(' ').every((word) => {
+  if (!word) return true;
+  const firstLetter = [...word].find((character) => /\p{L}/u.test(character));
+  if (!firstLetter) return true;
+  const firstIndex = word.indexOf(firstLetter);
+  const rest = word.slice(firstIndex + firstLetter.length);
+  return firstLetter === firstLetter.toLocaleUpperCase() && rest === rest.toLocaleLowerCase();
+});
+
+/**
+ * Combines already-aggregated database rows. Matching is deliberately limited
+ * to exact text after whitespace collapse and case folding: prefixes are never
+ * treated as the same brand.
+ */
+export function summarizeProductBrands(rows: readonly ProductBrandSpellingCount[]): ProductBrandSummary[] {
+  const groups = new Map<string, Map<string, number>>();
+
+  for (const row of rows) {
+    if (!row.brand || row._count._all <= 0) continue;
+    const spelling = collapseBrandWhitespace(row.brand);
+    if (!spelling) continue;
+    const key = spelling.toLowerCase();
+    const spellings = groups.get(key) ?? new Map<string, number>();
+    spellings.set(spelling, (spellings.get(spelling) ?? 0) + row._count._all);
+    groups.set(key, spellings);
+  }
+
+  return [...groups.values()].map((counts) => {
+    const entries = [...counts.entries()];
+    const highestCount = Math.max(...entries.map(([, count]) => count));
+    const tied = entries.filter(([, count]) => count === highestCount).map(([spelling]) => spelling);
+    const titleCase = tied.filter(isTitleCaseBrand);
+    const canonical = [...(titleCase.length ? titleCase : tied)].sort(compareBrandNames)[0];
+    const orderedEntries = entries
+      .sort(([left, leftCount], [right, rightCount]) => {
+        if (left === right) return 0;
+        if (left === canonical) return -1;
+        if (right === canonical) return 1;
+        return rightCount - leftCount || compareBrandNames(left, right);
+      });
+
+    return {
+      canonical,
+      productCount: entries.reduce((total, [, count]) => total + count, 0),
+      spellings: orderedEntries.map(([spelling]) => spelling),
+      spellingCounts: orderedEntries.map(([spelling, productCount]) => ({ spelling, productCount })),
+    };
+  }).sort((left, right) => right.productCount - left.productCount || compareBrandNames(left.canonical, right.canonical));
+}
+
+export type ProductDuplicateReason =
+  | 'BARCODE_TAKEN'
+  | 'SKU_TAKEN'
+  | 'SAME_NAME_MODEL'
+  | 'SAME_MODEL_BRAND';
+
+export interface ProductDuplicateMatch {
+  id: string;
+  name: string;
+  model: string;
+  brand: string | null;
+  sku: string;
+  barcode: string | null;
+  isActive: boolean;
+  reason: ProductDuplicateReason;
+}
+
+type ProductDuplicateCandidate = Pick<Product,
+  'id' | 'name' | 'model' | 'brand' | 'sku' | 'barcode' | 'isActive' | 'updatedAt'
+>;
+
+const duplicateReasonPriority: Record<ProductDuplicateReason, number> = {
+  BARCODE_TAKEN: 0,
+  SKU_TAKEN: 1,
+  SAME_NAME_MODEL: 2,
+  SAME_MODEL_BRAND: 3,
+};
+
+export const MAX_BRAND_NORMALIZE_PRODUCTS = 500;
+
 export class ProductsService {
+  static async brands() {
+    return { brands: summarizeProductBrands(await ProductsRepository.groupBrandSpellings()) };
+  }
+
+  static async normalizeBrands(
+    input: NormalizeProductBrandsInput,
+    user: ServiceMutationUser,
+    context: RequestContext
+  ) {
+    assertServiceAdmin(user);
+
+    if (input.dryRun) {
+      const products = (await ProductsRepository.findForBrandNormalization(input.sourceBrands, input.targetBrand))
+        .map(toBrandNormalizeProduct);
+      const targetExists = input.sourceBrands.includes(input.targetBrand)
+        || Boolean(await ProductsRepository.findExactBrandUsage(input.targetBrand));
+      return {
+        targetBrand: input.targetBrand,
+        affectedCount: products.length,
+        products,
+        warnings: targetExists
+          ? []
+          : [`${input.targetBrand} is not currently used and will create a new brand spelling / هذه التهجئة غير مستخدمة حاليًا وستُنشئ تهجئة جديدة`],
+      };
+    }
+
+    return runFinancialTransaction(async (tx) => {
+      const products = await ProductsRepository.findForBrandNormalization(input.sourceBrands, input.targetBrand, tx);
+      if (products.length > MAX_BRAND_NORMALIZE_PRODUCTS) {
+        throw new ValidationError(`Brand cleanup cannot update more than ${MAX_BRAND_NORMALIZE_PRODUCTS} products at once`);
+      }
+      if (products.length === 0) return { targetBrand: input.targetBrand, updatedCount: 0, products: [] };
+
+      const actor = await loadActor(user.userId, tx);
+      const updated: Array<{ id: string; sku: string; name: string; brand: string | null }> = [];
+      for (const product of products) {
+        const beforeBrand = product.brand;
+        const result = await ProductsRepository.updateBrand(product.id, input.targetBrand, user.userId, tx);
+        await writeServiceAudit({
+          recordType: ServiceAuditRecordType.PRODUCT,
+          recordId: product.id,
+          action: ServiceAuditAction.UPDATE_DETAILS,
+          changedById: user.userId,
+          changedByName: actor.fullName,
+          changedByUsername: actor.username,
+          reason: input.reason,
+          beforeValues: { brand: beforeBrand },
+          afterValues: { brand: input.targetBrand },
+          requestId: context.requestId,
+          ipAddress: context.ipAddress,
+        }, tx);
+        updated.push(toBrandNormalizeProduct(result));
+      }
+      return { targetBrand: input.targetBrand, updatedCount: updated.length, products: updated };
+    });
+  }
+
   static async create(input: CreateProductInput, user: ServiceMutationUser, context: RequestContext) {
     const includesPricing = hasProductPricingInput(input);
     if (includesPricing) assertServiceAdmin(user);
+    const includesStockSettings = input.trackStock !== undefined || input.lowStockThreshold !== undefined;
+    if (includesStockSettings) assertServiceAdmin(user);
     try {
       return await runFinancialTransaction(async (tx) => {
-        if (input.barcode && (await ProductsRepository.findByBarcode(input.barcode, tx))) {
+        if (input.barcode && (await ProductsRepository.findByBarcode(input.barcode, tx, { caseInsensitive: true }))) {
           throw barcodeConflict();
         }
         if (input.pricingPresetId) {
@@ -88,6 +243,8 @@ export class ProductsService {
             discount: moneyOrNull(input.discount),
             imageUrl: input.imageUrl ?? null,
             notes: input.notes ?? null,
+            trackStock: input.trackStock ?? false,
+            lowStockThreshold: input.lowStockThreshold ?? null,
             labelBarcodeSource: input.labelBarcodeSource,
             specifications: input.specifications == null ? Prisma.JsonNull : specificationsJson(input.specifications),
             specificationNotes: input.specificationNotes ?? null,
@@ -123,6 +280,8 @@ export class ProductsService {
       isActive: query.isActive,
       brand: query.brand,
       hasBarcode: query.hasBarcode,
+      trackStock: query.trackStock,
+      stockStatus: query.stockStatus,
       sortBy: query.sortBy,
       sortOrder: query.sortOrder,
       skip: (query.page - 1) * query.pageSize,
@@ -135,6 +294,13 @@ export class ProductsService {
       items: result.items.map((item) => ({
         ...serializeProduct(item, defaultPreset, viewer?.role === Role.ADMIN),
         exactMatch: Boolean(normalizedSearch && (item.sku.toUpperCase() === normalizedSearch || item.barcode?.toUpperCase() === normalizedSearch)),
+        // List-only: the drawer reads the authoritative onboarding status from
+        // the inventory endpoint, which also distinguishes PENDING_ONBOARDING.
+        notInInventory: isProductOutsideInventory({
+          trackStock: item.trackStock,
+          stockQuantity: item.stockQuantity,
+          movementCount: item._count.stockMovements,
+        }),
       })).sort((a, b) => Number(b.exactMatch) - Number(a.exactMatch)),
       page: query.page,
       pageSize: query.pageSize,
@@ -246,7 +412,10 @@ export class ProductsService {
         const existing = await ProductsRepository.findById(id, tx);
         if (!existing) throw new NotFoundError('Product not found');
         if (input.barcode && input.barcode !== existing.barcode) {
-          const duplicate = await ProductsRepository.findByBarcode(input.barcode, tx);
+          const duplicate = await ProductsRepository.findByBarcode(input.barcode, tx, {
+            caseInsensitive: true,
+            excludeProductId: id,
+          });
           if (duplicate) throw barcodeConflict();
         }
         const data = productUpdateData(input, user.userId);
@@ -442,8 +611,54 @@ export class ProductsService {
   }
 
   static async checkDuplicate(query: ProductDuplicateQueryInput) {
-    const matches = await ProductsRepository.findDuplicates(query.name, query.model, query.brand);
-    return { matches };
+    const [barcodeMatch, skuMatch, related] = await Promise.all([
+      query.barcode ? ProductsRepository.findByBarcode(query.barcode, undefined, {
+        caseInsensitive: true,
+        excludeProductId: query.excludeProductId,
+      }) : Promise.resolve(null),
+      query.sku ? ProductsRepository.findBySku(query.sku.toUpperCase(), undefined, {
+        caseInsensitive: true,
+        excludeProductId: query.excludeProductId,
+      }) : Promise.resolve(null),
+      query.name && query.model ? ProductsRepository.findDuplicates({
+        name: query.name,
+        model: query.model,
+        brand: query.brand,
+        excludeProductId: query.excludeProductId,
+      }) : Promise.resolve({ sameNameModel: [], sameModelBrand: [] }),
+    ]);
+
+    const matches = new Map<string, ProductDuplicateMatch & { updatedAt: Date }>();
+    const add = (product: ProductDuplicateCandidate, reason: ProductDuplicateReason) => {
+      if (product.id === query.excludeProductId) return;
+      const existing = matches.get(product.id);
+      if (existing && duplicateReasonPriority[existing.reason] <= duplicateReasonPriority[reason]) return;
+      matches.set(product.id, {
+        id: product.id,
+        name: product.name,
+        model: product.model,
+        brand: product.brand,
+        sku: product.sku,
+        barcode: product.barcode,
+        isActive: product.isActive,
+        reason,
+        updatedAt: product.updatedAt,
+      });
+    };
+
+    if (barcodeMatch) add(barcodeMatch, 'BARCODE_TAKEN');
+    if (skuMatch) add(skuMatch, 'SKU_TAKEN');
+    related.sameNameModel.forEach((product) => add(product, 'SAME_NAME_MODEL'));
+    related.sameModelBrand.forEach((product) => add(product, 'SAME_MODEL_BRAND'));
+
+    return {
+      matches: [...matches.values()]
+        .sort((left, right) => Number(right.isActive) - Number(left.isActive)
+          || right.updatedAt.getTime() - left.updatedAt.getTime()
+          || left.id.localeCompare(right.id))
+        .slice(0, 5)
+        .map(({ updatedAt: _updatedAt, ...match }) => match),
+    };
   }
 
   static async serviceJobs(id: string, query: ProductServiceJobsQueryInput) {
@@ -506,6 +721,10 @@ export class ProductsService {
         if (!existing) throw new NotFoundError('Product not found');
         const sku = requestedSku ?? await generateProductSku(tx);
         if (sku === existing.sku) throw new ValidationError('The new SKU matches the current SKU');
+        if (requestedSku && (await ProductsRepository.findBySku(sku, tx, {
+          caseInsensitive: true,
+          excludeProductId: id,
+        }))) throw skuConflict();
         const updated = await ProductsRepository.update(id, { sku, updatedById: user.userId }, tx);
         const actor = await loadActor(user.userId, tx);
         await writeServiceAudit({
@@ -523,6 +742,10 @@ export class ProductsService {
       throw mapProductError(error);
     }
   }
+}
+
+function toBrandNormalizeProduct(product: { id: string; sku: string; name: string; brand: string | null }) {
+  return { id: product.id, sku: product.sku, name: product.name, brand: product.brand };
 }
 
 function stockSnapshot(product: Product): Prisma.InputJsonObject {
@@ -840,10 +1063,14 @@ function barcodeConflict() {
   return new ServiceConflictError('A product with this barcode already exists', { field: 'barcode' });
 }
 
+function skuConflict() {
+  return new ServiceConflictError('A product with this SKU already exists', { field: 'sku' });
+}
+
 function mapProductError(error: unknown): unknown {
   if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
     const target = Array.isArray(error.meta?.target) ? error.meta.target.join(',') : String(error.meta?.target ?? '');
-    return target.includes('sku') ? new ServiceConflictError('A product with this SKU already exists', { field: 'sku' }) : barcodeConflict();
+    return target.includes('sku') ? skuConflict() : barcodeConflict();
   }
   return error;
 }

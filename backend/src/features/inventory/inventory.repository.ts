@@ -1,7 +1,13 @@
 import { Prisma, StockMovementType, SupplierReceivingStatus } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { getBusinessTimezone } from '../financial/domain/business-date';
-import { LowStockListInput, MovementListInput, StockIntegrityItem } from './inventory.types';
+import {
+  LowStockListInput,
+  MovementListInput,
+  OnboardingWorklistInput,
+  OnboardingWorklistItem,
+  StockIntegrityItem,
+} from './inventory.types';
 
 const legacyMovementInclude = {
   product: { select: { id: true, sku: true, name: true, trackStock: true, stockQuantity: true } },
@@ -70,6 +76,13 @@ const inventoryProductSelect = {
   lowStockThreshold: true,
 } satisfies Prisma.ProductSelect;
 
+const onboardingProductSelect = {
+  ...inventoryProductSelect,
+  model: true,
+  brand: true,
+  barcode: true,
+} satisfies Prisma.ProductSelect;
+
 export interface CreateMovementData {
   productId: string;
   movementType: StockMovementType;
@@ -93,6 +106,18 @@ interface IntegrityRow {
   movementCount: bigint;
   hasOpeningBalance: boolean;
   lastQuantityAfter: number | null;
+}
+
+interface OnboardingWorklistRow {
+  productId: string;
+  sku: string;
+  name: string;
+  model: string;
+  brand: string | null;
+  barcode: string | null;
+  trackStock: boolean;
+  stockQuantity: number;
+  movementCount: bigint;
 }
 
 export function classifyStockIntegrity(row: {
@@ -132,6 +157,20 @@ export class InventoryRepository {
     return (tx ?? prisma).stockMovement.findFirst({
       where: { productId, movementType: StockMovementType.OPENING_BALANCE },
       select: { id: true, createdAt: true },
+    });
+  }
+
+  static findProductsForOnboarding(productIds: string[], tx?: Prisma.TransactionClient) {
+    return (tx ?? prisma).product.findMany({
+      where: { id: { in: productIds } },
+      select: onboardingProductSelect,
+    });
+  }
+
+  static findOpeningBalances(productIds: string[], tx?: Prisma.TransactionClient) {
+    return (tx ?? prisma).stockMovement.findMany({
+      where: { productId: { in: productIds }, movementType: StockMovementType.OPENING_BALANCE },
+      select: { id: true, productId: true },
     });
   }
 
@@ -226,6 +265,56 @@ export class InventoryRepository {
       page,
       pageSize,
     };
+  }
+
+  static async listPendingOnboarding(input: OnboardingWorklistInput = {}) {
+    const page = input.page ?? 1;
+    const pageSize = input.pageSize ?? 50;
+    const search = input.search?.trim() ?? '';
+    const includeArchived = input.includeArchived ?? false;
+    const pattern = `%${search}%`;
+    const where = Prisma.sql`
+      (${includeArchived} OR p."isActive" = true)
+      AND NOT EXISTS (
+        SELECT 1 FROM "stock_movements" opening
+        WHERE opening."productId" = p."id"
+          AND opening."movementType" = 'OPENING_BALANCE'
+      )
+      AND (
+        ${search} = ''
+        OR p."name" ILIKE ${pattern}
+        OR p."sku" ILIKE ${pattern}
+        OR COALESCE(p."barcode", '') ILIKE ${pattern}
+        OR p."model" ILIKE ${pattern}
+        OR COALESCE(p."brand", '') ILIKE ${pattern}
+      )
+    `;
+    const [rows, totals] = await Promise.all([
+      prisma.$queryRaw<OnboardingWorklistRow[]>(Prisma.sql`
+        SELECT
+          p."id" AS "productId", p."sku", p."name", p."model", p."brand", p."barcode",
+          p."trackStock", p."stockQuantity", COUNT(m."id") AS "movementCount"
+        FROM "products" p
+        LEFT JOIN "stock_movements" m ON m."productId" = p."id"
+        WHERE ${where}
+        GROUP BY p."id"
+        ORDER BY p."name" ASC, p."id" ASC
+        OFFSET ${(page - 1) * pageSize}
+        LIMIT ${pageSize}
+      `),
+      prisma.$queryRaw<Array<{ total: bigint }>>(Prisma.sql`
+        SELECT COUNT(*) AS "total"
+        FROM "products" p
+        WHERE ${where}
+      `),
+    ]);
+    const items: OnboardingWorklistItem[] = rows.map(({ movementCount, ...row }) => ({
+      ...row,
+      status: Number(movementCount) === 0 && !row.trackStock && row.stockQuantity === 0
+        ? 'NOT_IN_INVENTORY'
+        : 'PENDING_ONBOARDING',
+    }));
+    return { items, total: Number(totals[0]?.total ?? 0), page, pageSize };
   }
 
   static async summary() {

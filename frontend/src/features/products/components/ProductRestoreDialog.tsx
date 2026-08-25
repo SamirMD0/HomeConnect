@@ -29,7 +29,7 @@ export const ProductRestoreDialog: React.FC<{ product: Product | null; onClose: 
       {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
       <label className="block text-sm font-medium">{productLabels.reason} *<textarea value={reason} onChange={(event) => setReason(event.target.value)} dir="auto" className="mt-1 min-h-24 w-full rounded-lg border border-slate-300 px-3 py-2" /></label>
       <label className="block text-sm font-medium">{productLabels.accountPassword} *<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" /></label>
-      <div className="flex justify-end gap-2"><button type="button" onClick={onClose} className="rounded-lg border px-4 py-2">{businessLabels.common.cancel}</button><button disabled={mutation.isPending} className="rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-white disabled:opacity-50">{businessLabels.product.restoreProduct}</button></div>
+      <div className="flex justify-end gap-2"><button type="button" onClick={onClose} className="rounded-lg border px-4 py-2">{businessLabels.common.cancel}</button><button disabled={mutation.isPending} className="rounded-lg bg-brand-600 px-4 py-2 font-semibold text-white disabled:opacity-50">{businessLabels.product.restoreProduct}</button></div>
     </form>
   </Modal>;
 };

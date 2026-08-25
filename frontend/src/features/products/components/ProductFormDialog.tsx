@@ -1,20 +1,22 @@
 import React, { FormEvent, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Modal } from '../../../components/ui/Modal';
+import { Button, FormField, Input, Modal, SectionHeader, Select, Textarea } from '../../../components/ui';
 import { useAuth } from '../../../hooks/useAuth';
 import { businessLabels } from '../../../shared/labels/business-labels';
 import { productCorrectionSchema, productFormSchema, productPricingModeFormSchema, ProductFormValues } from '../schemas/product.schemas';
-import { LabelBarcodeSource, Product, ProductSpecification, ProductStockInput, UpdateProductInput } from '../types/product.types';
+import { LabelBarcodeSource, Product, ProductDuplicateMatch, ProductDuplicateQuery, ProductSpecification, ProductStockInput, UpdateProductInput } from '../types/product.types';
 import { firstUnrenderedProductFieldError, normalizeProductError } from '../utils/product-form-errors';
 import { productLabels } from '../utils/product-labels';
 import { useCheckProductDuplicate, useCreateProduct, useRemoveProductImage, useUpdateProduct, useUpdateProductPricing, useUpdateProductStock, useUploadProductImage } from '../hooks/useProducts';
 import { ProductImageField } from './ProductImageField';
 import { productPricingConfigurationSchema, productPricingPreviewOverridesSchema } from '../../pricing/schemas/pricing.schemas';
 import { ProductPricingConfigurationInput } from '../../pricing/types/pricing.types';
-import { ProductDuplicateWarning } from './ProductDuplicateWarning';
+import { ProductDuplicateInlineError, ProductDuplicateWarning } from './ProductDuplicateWarning';
 import { emptyProductFormPricing, ProductFormPricingPanel, ProductFormPricingValues } from './ProductFormPricingPanel';
 import { ProductStockSection } from './ProductStockSection';
 import { ProductSpecificationsEditor } from './ProductSpecificationsEditor';
+import { VerifyOpeningCountDialog } from '../../inventory/components/VerifyOpeningCountDialog';
+import { BrandCombobox } from './BrandCombobox';
 
 interface ProductFormDialogProps {
   open: boolean;
@@ -34,8 +36,6 @@ export const ProductFormDialog: React.FC<ProductFormDialogProps> = ({ open, prod
   const updateStock = useUpdateProductStock();
   const uploadImage = useUploadProductImage();
   const removeImage = useRemoveProductImage();
-  const duplicate = useCheckProductDuplicate();
-  const resetDuplicate = duplicate.reset;
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [savedImageRemoved, setSavedImageRemoved] = useState(false);
   const [form, setForm] = useState<ProductFormValues>(emptyForm);
@@ -48,7 +48,13 @@ export const ProductFormDialog: React.FC<ProductFormDialogProps> = ({ open, prod
   const [accountPassword, setAccountPassword] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [serverError, setServerError] = useState('');
+  const [notice, setNotice] = useState('');
   const [duplicateDismissed, setDuplicateDismissed] = useState(false);
+  const [openingCountProduct, setOpeningCountProduct] = useState<{ id: string; name: string } | null>(null);
+  const duplicateQuery = useMemo(() => productDuplicateQueryForForm(form, product), [form, product]);
+  const duplicate = useCheckProductDuplicate(open ? duplicateQuery : null);
+  const duplicateMatches = duplicate.data ?? [];
+  const duplicateBlocked = hasBlockingProductDuplicate(duplicateMatches);
 
   useEffect(() => {
     if (!open) return;
@@ -73,9 +79,9 @@ export const ProductFormDialog: React.FC<ProductFormDialogProps> = ({ open, prod
     setAccountPassword('');
     setErrors({});
     setServerError('');
+    setNotice('');
     setDuplicateDismissed(false);
-    resetDuplicate();
-  }, [open, product, resetDuplicate]);
+  }, [open, product]);
 
   const stockChanged = useMemo(() => Boolean(product && (
     stock.trackStock !== product.trackStock || stock.lowStockThreshold !== product.lowStockThreshold
@@ -87,20 +93,19 @@ export const ProductFormDialog: React.FC<ProductFormDialogProps> = ({ open, prod
   const set = (field: keyof ProductFormValues, value: string) => {
     setForm((current) => ({ ...current, [field]: value }));
     setErrors((current) => ({ ...current, [field]: '' }));
-    if (field === 'name' || field === 'model' || field === 'brand') {
+    if (field === 'name' || field === 'model' || field === 'brand' || field === 'barcode') {
       setDuplicateDismissed(false);
-      duplicate.reset();
     }
-  };
-
-  const checkDuplicate = () => {
-    if (product || !form.name.trim() || !form.model.trim()) return;
-    duplicate.mutate({ name: form.name.trim(), model: form.model.trim(), brand: form.brand.trim() || null });
   };
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setServerError('');
+    setNotice('');
+    if (duplicateBlocked) {
+      setServerError('Change the barcode already used by another product before saving / غيّر الباركود المستخدم في منتج آخر قبل الحفظ');
+      return;
+    }
     const parsed = productFormSchema.safeParse(form);
     if (!parsed.success) {
       setErrors(Object.fromEntries(parsed.error.issues.map((issue) => [String(issue.path[0]), issue.message])));
@@ -138,9 +143,17 @@ export const ProductFormDialog: React.FC<ProductFormDialogProps> = ({ open, prod
       try {
         // The image endpoint is keyed by product id, so a chosen file uploads
         // only once the product row exists.
-        const created = await create.mutateAsync(toCreateInput(values, isAdmin ? pricingInput : undefined, specifications, specificationNotes, labelBarcodeSource));
+        const requestedStockSettings = isAdmin || stock.trackStock || stock.lowStockThreshold !== null ? stock : undefined;
+        const created = await create.mutateAsync(toCreateInput(values, isAdmin ? pricingInput : undefined, specifications, specificationNotes, labelBarcodeSource, requestedStockSettings));
         if (imageFile) await uploadImage.mutateAsync({ id: created.id, file: imageFile });
-        toast.success('Product created / تم إنشاء المنتج');
+        if (created.trackStock) {
+          toast.success((notification) => <CreatedTrackedProductToast onVerify={() => {
+            toast.dismiss(notification.id);
+            setOpeningCountProduct({ id: created.id, name: created.name });
+          }} />, { duration: 12_000 });
+        } else {
+          toast.success('Product created / تم إنشاء المنتج');
+        }
         onClose();
       } catch (error) { handleError(error); }
       return;
@@ -148,7 +161,7 @@ export const ProductFormDialog: React.FC<ProductFormDialogProps> = ({ open, prod
 
     const input = changedInput(product, values, specifications, specificationNotes, labelBarcodeSource);
     if (Object.keys(input).length === 0 && !pricingChanged && !stockChanged && !imageFile && !savedImageRemoved) {
-      setServerError('No product changes were entered / لم يتم إدخال أي تعديل');
+      setNotice('No product changes were entered / لم يتم إدخال أي تعديل');
       return;
     }
     try {
@@ -167,84 +180,125 @@ export const ProductFormDialog: React.FC<ProductFormDialogProps> = ({ open, prod
 
   const handleError = (error: unknown) => {
     const normalizedError = normalizeProductError(error);
-    const hiddenMessage = firstUnrenderedProductFieldError(normalizedError.fieldErrors, renderedProductFields(isAdmin, pricing));
+    const hiddenMessage = firstUnrenderedProductFieldError(normalizedError.fieldErrors, renderedProductFields(isAdmin, pricing, pricingChanged));
     setServerError(hiddenMessage ? `${normalizedError.message} ${hiddenMessage}` : normalizedError.message);
     setErrors((current) => ({ ...current, ...normalizedError.fieldErrors }));
   };
 
-  return (
+  return <>
     <Modal isOpen={open} onClose={onClose} title={product ? businessLabels.product.editProduct : businessLabels.product.addProduct} maxWidth="max-w-4xl">
       <form onSubmit={submit} className="space-y-5">
         {serverError && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{serverError}</p>}
-        <div>
-          <h3 className="font-semibold text-slate-900">Basic Product Info / معلومات المنتج الأساسية</h3>
-          <p className="mt-1 text-xs text-slate-500">Product identity and notes / بيانات المنتج وملاحظاته</p>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
+        {notice && <ProductFormNotice>{notice}</ProductFormNotice>}
+
+        <section className="space-y-4">
+          <SectionHeader title="Product identity / هوية المنتج" description="Core catalogue details and notes / بيانات الدليل الأساسية والملاحظات" />
+          <div className="grid gap-4 sm:grid-cols-2">
           {product && <div className="sm:col-span-2"><span className="text-xs font-medium text-slate-500">SKU</span><div className="mt-1 inline-flex rounded-md bg-slate-100 px-3 py-2 font-mono text-sm font-bold">{product.sku}</div></div>}
-          <Field label={`${businessLabels.product.name} *`} value={form.name} onChange={(value) => set('name', value)} error={errors.name} disabled={Boolean(product && !isAdmin)} />
-          <Field label={`${businessLabels.product.model} *`} value={form.model} onChange={(value) => set('model', value)} onBlur={checkDuplicate} error={errors.model} disabled={Boolean(product && !isAdmin)} />
-          <Field label={businessLabels.product.brand} value={form.brand} onChange={(value) => set('brand', value)} onBlur={checkDuplicate} error={errors.brand} disabled={Boolean(product && !isAdmin)} />
-          <Field label={businessLabels.product.barcode} value={form.barcode} onChange={(value) => set('barcode', value)} error={errors.barcode} disabled={Boolean(product && !isAdmin)} dir="ltr" />
-          <label className="block text-sm font-medium text-slate-700">Label barcode source / مصدر باركود الملصق<select value={labelBarcodeSource} onChange={(event) => setLabelBarcodeSource(event.target.value as LabelBarcodeSource)} disabled={Boolean(product && !isAdmin)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 disabled:bg-slate-100"><option value="AUTO">Numeric barcode when available / الباركود الرقمي عند توفره</option><option value="MANUFACTURER">Manufacturer barcode / باركود الشركة</option><option value="SKU">HomeConnect SKU / رمز HomeConnect</option></select><span className="mt-1 block text-xs text-slate-500" dir="auto">{labelPrintPreview(labelBarcodeSource, form.barcode, product?.sku)}</span>{errors.labelBarcodeSource && <span className="mt-1 block text-xs text-red-600">{errors.labelBarcodeSource}</span>}</label>
-          <Field label={businessLabels.product.notes} value={form.notes} onChange={(value) => set('notes', value)} error={errors.notes} textarea className="sm:col-span-2" />
-        </div>
+          <ProductTextField label={businessLabels.product.name} value={form.name} onChange={(value) => set('name', value)} error={errors.name} disabled={Boolean(product && !isAdmin)} required />
+          <ProductTextField label={businessLabels.product.model} value={form.model} onChange={(value) => set('model', value)} error={errors.model} disabled={Boolean(product && !isAdmin)} required />
+          <BrandCombobox label={businessLabels.product.brand} value={form.brand} onChange={(value) => set('brand', value)} error={errors.brand} disabled={Boolean(product && !isAdmin)} />
+          <ProductTextField label={businessLabels.product.barcode} value={form.barcode} onChange={(value) => set('barcode', value)} error={errors.barcode} disabled={Boolean(product && !isAdmin)} dir="ltr" userText={false} feedback={<ProductDuplicateInlineError field="Barcode" matches={duplicateMatches} onView={onViewDuplicate} />} />
+          <FormField label="Label barcode source / مصدر باركود الملصق" error={errors.labelBarcodeSource} hint={<span dir="auto">{labelPrintPreview(labelBarcodeSource, form.barcode, product?.sku)}</span>}>
+            {(field) => <Select {...field} value={labelBarcodeSource} onChange={(event) => setLabelBarcodeSource(event.target.value as LabelBarcodeSource)} disabled={Boolean(product && !isAdmin)}><option value="AUTO">Numeric barcode when available / الباركود الرقمي عند توفره</option><option value="MANUFACTURER">Manufacturer barcode / باركود الشركة</option><option value="SKU">HomeConnect SKU / رمز HomeConnect</option></Select>}
+          </FormField>
+          <ProductTextField label={businessLabels.product.notes} value={form.notes} onChange={(value) => set('notes', value)} error={errors.notes} textarea className="sm:col-span-2" />
+          </div>
+        </section>
 
-        {product && <><ProductStockSection value={stock} onChange={setStock} />{errors.lowStockThreshold && <p className="text-xs text-red-600">{errors.lowStockThreshold}</p>}</>}
-        <ProductSpecificationsEditor value={specifications} notes={specificationNotes} onChange={setSpecifications} onNotesChange={setSpecificationNotes} />
+        <section className="space-y-4"><SectionHeader title="Inventory / المخزون" divided /><ProductStockSection value={stock} onChange={setStock} mode={product ? 'edit' : 'create'} />{errors.lowStockThreshold && <p className="text-xs text-red-600">{errors.lowStockThreshold}</p>}</section>
 
-        <ProductImageField
-          product={product}
-          url={form.imageUrl}
-          onUrlChange={(value) => set('imageUrl', value)}
-          file={imageFile}
-          onFileChange={setImageFile}
-          savedImageRemoved={savedImageRemoved}
-          onSavedImageRemovedChange={setSavedImageRemoved}
-          error={errors.imageUrl}
-        />
+        <section className="space-y-4"><SectionHeader title="Image / الصورة" divided /><ProductImageField
+            product={product}
+            url={form.imageUrl}
+            onUrlChange={(value) => set('imageUrl', value)}
+            file={imageFile}
+            onFileChange={setImageFile}
+            savedImageRemoved={savedImageRemoved}
+            onSavedImageRemovedChange={setSavedImageRemoved}
+            error={errors.imageUrl}
+          /></section>
 
-        {!product && !duplicateDismissed && duplicate.data && <ProductDuplicateWarning matches={duplicate.data} onContinue={() => setDuplicateDismissed(true)} onView={onViewDuplicate} />}
+        <section className="space-y-4"><SectionHeader title="Specifications / المواصفات" divided /><ProductSpecificationsEditor value={specifications} notes={specificationNotes} onChange={setSpecifications} onNotesChange={setSpecificationNotes} /></section>
 
         {product && !isAdmin && <p className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">Employees may update product notes. Product identity and pricing require an administrator / يمكن للموظف تعديل الملاحظات فقط.</p>}
 
-        {isAdmin && <ProductFormPricingPanel value={pricing} onChange={setPricing} manualPrice={form.price} manualDiscount={form.discount} onManualPriceChange={(value) => set('price', value)} onManualDiscountChange={(value) => set('discount', value)} errors={errors} />}
+        {isAdmin && <section className="space-y-4"><SectionHeader title="Pricing / التسعير" divided /><ProductFormPricingPanel value={pricing} onChange={setPricing} manualPrice={form.price} manualDiscount={form.discount} onManualPriceChange={(value) => set('price', value)} onManualDiscountChange={(value) => set('discount', value)} errors={errors} /></section>}
 
         {product && pricingChanged && <div className="grid gap-4 rounded-lg border border-amber-200 bg-amber-50 p-4 sm:grid-cols-2">
           <p className="text-xs text-amber-800 sm:col-span-2">Pricing changes need a reason and your account password / تتطلب تعديلات التسعير سببًا وكلمة مرور حسابك</p>
-          <Field label={`${productLabels.reason} *`} value={reason} onChange={setReason} error={errors.reason} textarea />
-          <Field label={`${productLabels.accountPassword} *`} value={accountPassword} onChange={setAccountPassword} error={errors.accountPassword} type="password" />
+          <ProductTextField label={productLabels.reason} value={reason} onChange={setReason} error={errors.reason} textarea required />
+          <ProductTextField label={productLabels.accountPassword} value={accountPassword} onChange={setAccountPassword} error={errors.accountPassword} type="password" userText={false} required />
         </div>}
 
+        {!duplicateDismissed && duplicateMatches.length > 0 && <ProductDuplicateWarning matches={duplicateMatches} onContinue={() => setDuplicateDismissed(true)} onView={onViewDuplicate} />}
+
         <div className="flex flex-wrap justify-end gap-2 border-t border-slate-200 pt-4">
-          <button type="button" onClick={onClose} className="rounded-lg border border-slate-300 px-4 py-2 font-medium">{businessLabels.common.cancel}</button>
-          <button disabled={pending} className="rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-white disabled:opacity-50">{pending ? 'Saving…' : product ? businessLabels.common.saveChanges : 'Add Product / إضافة منتج'}</button>
+          <Button variant="secondary" onClick={onClose}>{businessLabels.common.cancel}</Button>
+          <Button type="submit" isLoading={pending} disabled={isProductSaveDisabled(pending, duplicateMatches)}>{product ? businessLabels.common.saveChanges : 'Add Product / إضافة منتج'}</Button>
         </div>
       </form>
     </Modal>
-  );
+    <VerifyOpeningCountDialog
+      productId={openingCountProduct?.id ?? ''}
+      productName={openingCountProduct?.name ?? ''}
+      open={Boolean(openingCountProduct)}
+      onClose={() => setOpeningCountProduct(null)}
+    />
+  </>;
 };
 
-interface FieldProps {
+export const CreatedTrackedProductToast: React.FC<{ onVerify: () => void }> = ({ onVerify }) => <div className="flex flex-wrap items-center gap-3">
+  <span>Product created. Verify the opening count to enable stock actions. / تم إنشاء المنتج. أكّد الجرد الافتتاحي لتفعيل حركات المخزون.</span>
+  <button type="button" onClick={onVerify} className="rounded-lg bg-brand-700 px-3 py-2 text-xs font-semibold text-white">Verify opening count now / تأكيد الجرد الافتتاحي الآن</button>
+</div>;
+
+export const ProductFormNotice: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <p role="status" className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">{children}</p>
+);
+
+interface ProductTextFieldProps {
   label: string; value: string; onChange: (value: string) => void; error?: string;
-  disabled?: boolean; textarea?: boolean; type?: string; inputMode?: 'text' | 'decimal'; dir?: 'auto' | 'ltr'; className?: string; onBlur?: () => void;
+  disabled?: boolean; textarea?: boolean; type?: string; inputMode?: 'text' | 'decimal'; dir?: 'auto' | 'ltr';
+  className?: string; feedback?: React.ReactNode; required?: boolean; userText?: boolean;
 }
 
-const Field: React.FC<FieldProps> = ({ label, value, onChange, error, disabled, textarea, type = 'text', inputMode = 'text', dir = 'auto', className = '', onBlur }) => (
-  <label className={`block text-sm font-medium text-slate-700 ${className}`}>
-    {label}
-    {textarea
-      ? <textarea value={value} onChange={(event) => onChange(event.target.value)} disabled={disabled} dir={dir} className="user-text-input mt-1 min-h-24 w-full rounded-lg border border-slate-300 px-3 py-2 disabled:bg-slate-100" />
-      : <input value={value} onChange={(event) => onChange(event.target.value)} onBlur={onBlur} disabled={disabled} type={type} inputMode={inputMode} dir={dir} className="user-text-input mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 disabled:bg-slate-100" />}
-    {error && <span className="mt-1 block text-xs text-red-600">{error}</span>}
-  </label>
+const ProductTextField: React.FC<ProductTextFieldProps> = ({
+  label, value, onChange, error, disabled, textarea, type = 'text', inputMode = 'text', dir = 'auto',
+  className, feedback, required = false, userText = true,
+}) => (
+  <div className={className}>
+    <FormField label={label} error={error} required={required}>
+      {(field) => textarea
+        ? <Textarea {...field} value={value} onChange={(event) => onChange(event.target.value)} disabled={disabled} dir={dir} userText={userText} className="min-h-24" />
+        : <Input {...field} value={value} onChange={(event) => onChange(event.target.value)} disabled={disabled} type={type} inputMode={inputMode} dir={dir} userText={userText} />}
+    </FormField>
+    {feedback}
+  </div>
 );
+
+export function productDuplicateQueryForForm(values: ProductFormValues, product?: Product | null): ProductDuplicateQuery {
+  const barcode = values.barcode.trim();
+  return {
+    name: values.name.trim() || undefined,
+    model: values.model.trim() || undefined,
+    brand: values.brand.trim() || undefined,
+    barcode: !product || barcode !== (product.barcode ?? '') ? barcode || undefined : undefined,
+    excludeProductId: product?.id,
+  };
+}
+
+export const hasBlockingProductDuplicate = (matches: ProductDuplicateMatch[]) =>
+  matches.some((match) => match.reason === 'BARCODE_TAKEN' || match.reason === 'SKU_TAKEN');
+
+export const isProductSaveDisabled = (pending: boolean, matches: ProductDuplicateMatch[]) =>
+  pending || hasBlockingProductDuplicate(matches);
 
 function normalized(value: unknown): string {
   return value == null ? '' : String(value).trim();
 }
 
-function toCreateInput(values: ProductFormValues, pricing?: ProductPricingConfigurationInput, specifications: ProductSpecification[] = [], specificationNotes = '', labelBarcodeSource: LabelBarcodeSource = 'AUTO') {
+export function toCreateInput(values: ProductFormValues, pricing?: ProductPricingConfigurationInput, specifications: ProductSpecification[] = [], specificationNotes = '', labelBarcodeSource: LabelBarcodeSource = 'AUTO', stock?: ProductStockInput) {
   return {
     name: values.name.trim(), model: values.model.trim(), brand: values.brand.trim() || null,
     barcode: values.barcode.trim() || null, price: values.price.trim() || null,
@@ -252,6 +306,10 @@ function toCreateInput(values: ProductFormValues, pricing?: ProductPricingConfig
     notes: values.notes.trim() || null,
     labelBarcodeSource,
     specifications: cleanSpecifications(specifications), specificationNotes: specificationNotes.trim() || null,
+    ...(stock ? {
+      trackStock: stock.trackStock,
+      lowStockThreshold: stock.trackStock ? stock.lowStockThreshold : null,
+    } : {}),
     ...pricing,
   };
 }
@@ -346,11 +404,19 @@ export function buildProductPricingConfigurationInput(values: ProductFormPricing
   };
 }
 
-function renderedProductFields(isAdmin: boolean, pricing: ProductFormPricingValues): Set<string> {
-  const fields = new Set(['name', 'model', 'brand', 'barcode', 'imageUrl', 'notes', 'labelBarcodeSource', 'reason', 'accountPassword']);
+export function renderedProductFields(
+  isAdmin: boolean,
+  pricing: ProductFormPricingValues,
+  pricingCorrectionVisible = false
+): Set<string> {
+  const fields = new Set(['name', 'model', 'brand', 'barcode', 'imageUrl', 'notes', 'labelBarcodeSource']);
   if (!isAdmin) return fields;
   fields.add('price');
   fields.add('discount');
+  if (pricingCorrectionVisible) {
+    fields.add('reason');
+    fields.add('accountPassword');
+  }
   if (pricing.mode === 'PRESET' || pricing.mode === 'CUSTOM') {
     fields.add('costPrice');
     fields.add('pricingPresetId');

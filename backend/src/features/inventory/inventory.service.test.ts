@@ -50,6 +50,7 @@ describe('inventory service', () => {
     repository.compareAndSetQuantity.mockResolvedValue({ count: 1 });
     repository.setVerifiedOpeningCount.mockImplementation((_id, verifiedCount) => Promise.resolve(productOf(verifiedCount, { trackStock: true })));
     repository.createMovement.mockImplementation((data) => Promise.resolve({ id: 'movement', ...data }));
+    repository.listMovements.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 10 });
     verifyAdminPassword.mockResolvedValue(undefined);
   });
 
@@ -61,10 +62,9 @@ describe('inventory service', () => {
       verifiedCount,
       reason: ' Physical shelf count ',
       note: 'Counted by manager',
-      accountPassword: 'top-secret',
     }, user, context);
 
-    expect(verifyAdminPassword).toHaveBeenCalledWith(user.userId, 'top-secret', expect.objectContaining({ action: 'VERIFY_OPENING_COUNT' }), tx);
+    expect(verifyAdminPassword).not.toHaveBeenCalled();
     expect(repository.setVerifiedOpeningCount).toHaveBeenCalledWith(productId, verifiedCount, user.userId, tx);
     expect(repository.createMovement).toHaveBeenCalledTimes(1);
     expect(repository.createMovement).toHaveBeenCalledWith(expect.objectContaining({
@@ -78,32 +78,27 @@ describe('inventory service', () => {
     expect(result).toMatchObject({ changed: true, product: { trackStock: true, stockQuantity: verifiedCount } });
   });
 
-  it('rejects employee, invalid, negative, and duplicate opening-count attempts', async () => {
+  it('rejects employee, negative, and duplicate opening-count attempts', async () => {
     await expect(InventoryService.verifyOpeningCount(productId, {
-      verifiedCount: 0, reason: 'Counted shelf', accountPassword: 'secret',
+      verifiedCount: 0, reason: 'Counted shelf',
     }, employee)).rejects.toMatchObject({ statusCode: 403 });
 
     await expect(InventoryService.verifyOpeningCount(productId, {
-      verifiedCount: -1, reason: 'Counted shelf', accountPassword: 'secret',
+      verifiedCount: -1, reason: 'Counted shelf',
     }, user)).rejects.toThrow(/cannot be negative/i);
-
-    verifyAdminPassword.mockRejectedValueOnce(new Error('Account password is incorrect'));
-    await expect(InventoryService.verifyOpeningCount(productId, {
-      verifiedCount: 1, reason: 'Counted shelf', accountPassword: 'wrong',
-    }, user)).rejects.toThrow('Account password is incorrect');
-    expect(repository.setVerifiedOpeningCount).not.toHaveBeenCalled();
 
     repository.hasOpeningBalance.mockResolvedValueOnce({ id: 'opening' });
     await expect(InventoryService.verifyOpeningCount(productId, {
-      verifiedCount: 1, reason: 'Counted shelf again', accountPassword: 'secret',
+      verifiedCount: 1, reason: 'Counted shelf again',
     }, user)).rejects.toThrow(/already has a verified opening count/i);
+    expect(verifyAdminPassword).not.toHaveBeenCalled();
   });
 
   it('allows normal stock actions immediately after a verified zero opening count', async () => {
     repository.findProduct.mockResolvedValueOnce(productOf(0, { trackStock: false }));
     repository.hasOpeningBalance.mockResolvedValueOnce(null);
     await InventoryService.verifyOpeningCount(productId, {
-      verifiedCount: 0, reason: 'Verified empty shelf', accountPassword: 'secret',
+      verifiedCount: 0, reason: 'Verified empty shelf',
     }, user);
 
     repository.findProduct.mockResolvedValueOnce(productOf(0));
@@ -238,6 +233,23 @@ describe('inventory service', () => {
       'This product needs a verified opening count before stock actions / يحتاج هذا المنتج جردًا مؤكدًا قبل حركات المخزون'
     );
 
+    expect(repository.compareAndSetQuantity).not.toHaveBeenCalled();
+    expect(repository.createMovement).not.toHaveBeenCalled();
+  });
+
+  it('reports a newly-created tracked product as pending and refuses its first stock movement', async () => {
+    repository.findProduct.mockResolvedValue(productOf(0, { trackStock: true }));
+    repository.hasOpeningBalance.mockResolvedValue(null);
+
+    await expect(InventoryService.getProductInventory(productId)).resolves.toMatchObject({
+      product: { trackStock: true, stockQuantity: 0 },
+      onboardingStatus: 'PENDING_ONBOARDING',
+    });
+    await expect(InventoryService.addStock(productId, {
+      quantity: 1, reason: 'New delivery',
+    }, employee)).rejects.toThrow(
+      'This product needs a verified opening count before stock actions / يحتاج هذا المنتج جردًا مؤكدًا قبل حركات المخزون'
+    );
     expect(repository.compareAndSetQuantity).not.toHaveBeenCalled();
     expect(repository.createMovement).not.toHaveBeenCalled();
   });

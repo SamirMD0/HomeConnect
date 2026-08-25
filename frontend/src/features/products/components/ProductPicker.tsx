@@ -3,7 +3,7 @@ import { Check, Plus, X } from 'lucide-react';
 import { Button, Card } from '../../../components/ui';
 import { businessLabels } from '../../../shared/labels/business-labels';
 import { useProductInventory } from '../../inventory/hooks/useInventory';
-import { useCreateProduct } from '../hooks/useProducts';
+import { useCreateProduct, useProduct } from '../hooks/useProducts';
 import { useProductSearch } from '../hooks/useProductSearch';
 import type { CreateProductInput, Product } from '../types/product.types';
 import { ProductSearchInput } from './ProductSearchInput';
@@ -26,6 +26,7 @@ export interface CatalogProductPickerProps {
   onSelect: (product: Product | null) => void;
   requireOpeningCount?: boolean;
   disabledProductIds?: ReadonlySet<string>;
+  renderResolvedProduct?: (product: Product | null) => React.ReactNode;
 }
 
 export const ProductPicker: React.FC<LegacyProps | CatalogProductPickerProps> = (props) => (
@@ -36,9 +37,11 @@ const CatalogProductPicker: React.FC<CatalogProductPickerProps> = (props) => {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const search = useProductSearch({ isActive: true, sortBy: 'name', sortOrder: 'asc', limit: 10 });
   const products = useMemo(() => search.products.data?.items ?? [], [search.products.data?.items]);
-  const selected = selectedProduct?.id === props.selectedProductId
-    ? selectedProduct
-    : products.find((product) => product.id === props.selectedProductId) ?? null;
+  const localSelection = selectedProduct?.id === props.selectedProductId ? selectedProduct : null;
+  const searchSelection = products.find((product) => product.id === props.selectedProductId) ?? null;
+  const needsHydration = Boolean(props.selectedProductId && !localSelection && !searchSelection);
+  const hydration = useProduct(needsHydration ? props.selectedProductId ?? '' : '');
+  const selected = localSelection ?? searchSelection ?? hydration.data ?? null;
 
   const choose = (product: Product | null) => {
     setSelectedProduct(product);
@@ -46,10 +49,16 @@ const CatalogProductPicker: React.FC<CatalogProductPickerProps> = (props) => {
   };
   return <div className="space-y-3">
     <ProductSearchInput value={search.query} onChange={search.setQuery} isLoading={search.products.isFetching} resultCount={products.length} />
-    {selected && <Card dense className="flex items-center justify-between gap-3 border-emerald-200 bg-emerald-50">
+    {selected && <Card dense className="flex items-center justify-between gap-3 border-brand-200 bg-brand-50">
       <ProductSummary product={selected} />
       <Button type="button" variant="ghost" size="sm" icon={<X />} onClick={() => choose(null)}>Clear / مسح</Button>
     </Card>}
+    {needsHydration && hydration.isLoading && <p className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">Loading selected product… / جارٍ تحميل المنتج المحدد…</p>}
+    {needsHydration && hydration.isError && <div role="alert" className="flex items-center justify-between gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+      <span>Unable to load selected product / تعذر تحميل المنتج المحدد</span>
+      <Button type="button" size="sm" variant="ghost" onClick={() => hydration.refetch()}>Retry / إعادة المحاولة</Button>
+    </div>}
+    {props.renderResolvedProduct?.(selected)}
     <div className="max-h-52 divide-y divide-slate-100 overflow-y-auto rounded-lg border border-slate-200">
       {products.map((product) => props.requireOpeningCount && product.trackStock
         ? <OpeningCountProductResult key={product.id} product={product} duplicate={Boolean(props.disabledProductIds?.has(product.id))} selected={props.selectedProductId === product.id} onSelect={choose} />
@@ -90,14 +99,14 @@ const LegacyProductPicker: React.FC<LegacyProps> = ({ value, onChange }) => {
     </div>
     {mode === 'existing' ? <div className="space-y-3">
       <CatalogProductPicker selectedProductId={value.productId} onSelect={choose} />
-      <button type="button" onClick={() => setShowAdd((open) => !open)} className="inline-flex items-center gap-1 text-sm font-medium text-emerald-700"><Plus className="h-4 w-4" /> Add New Product / إضافة منتج</button>
+      <button type="button" onClick={() => setShowAdd((open) => !open)} className="inline-flex items-center gap-1 text-sm font-medium text-brand-700"><Plus className="h-4 w-4" /> Add New Product / إضافة منتج</button>
       {showAdd && <div className="grid gap-3 rounded-lg bg-slate-50 p-3 sm:grid-cols-2">
         <input dir="auto" className="user-text-input rounded-lg border border-slate-300 px-3 py-2" placeholder={`${businessLabels.product.name} *`} aria-label={businessLabels.product.name} value={newProduct.name} onChange={(event) => setNewProduct({ ...newProduct, name: event.target.value })} />
         <input dir="auto" className="user-text-input rounded-lg border border-slate-300 px-3 py-2" placeholder={`${businessLabels.product.model} *`} aria-label={businessLabels.product.model} value={newProduct.model} onChange={(event) => setNewProduct({ ...newProduct, model: event.target.value })} />
         <input dir="auto" className="user-text-input rounded-lg border border-slate-300 px-3 py-2" placeholder={`${businessLabels.product.brand} (optional / اختياري)`} value={newProduct.brand ?? ''} onChange={(event) => setNewProduct({ ...newProduct, brand: event.target.value })} />
         <input className="rounded-lg border border-slate-300 px-3 py-2" placeholder={`${businessLabels.product.barcode} (optional / اختياري)`} value={newProduct.barcode ?? ''} onChange={(event) => setNewProduct({ ...newProduct, barcode: event.target.value })} />
         <input className="rounded-lg border border-slate-300 px-3 py-2" placeholder={`${businessLabels.product.price} (optional / اختياري)`} value={newProduct.price ?? ''} onChange={(event) => setNewProduct({ ...newProduct, price: event.target.value })} />
-        <button type="button" disabled={!newProduct.name.trim() || !newProduct.model.trim() || createProduct.isPending} onClick={() => createProduct.mutate(newProduct, { onSuccess: (product) => { choose(product); setShowAdd(false); } })} className="rounded-lg bg-emerald-600 px-3 py-2 font-medium text-white disabled:opacity-50">Save and Select / حفظ واختيار</button>
+        <button type="button" disabled={!newProduct.name.trim() || !newProduct.model.trim() || createProduct.isPending} onClick={() => createProduct.mutate(newProduct, { onSuccess: (product) => { choose(product); setShowAdd(false); } })} className="rounded-lg bg-brand-600 px-3 py-2 font-medium text-white disabled:opacity-50">Save and Select / حفظ واختيار</button>
       </div>}
     </div> : <div className="grid gap-3 sm:grid-cols-2">
       <input required dir="auto" className="user-text-input rounded-lg border border-slate-300 px-3 py-2" placeholder={`${businessLabels.product.name} *`} value={value.manualProductName} onChange={(event) => setManual('manualProductName', event.target.value)} />
@@ -142,7 +151,7 @@ const ProductResult: React.FC<{
   type="button"
   disabled={Boolean(reason)}
   onClick={() => onSelect(product)}
-  className="flex w-full items-start justify-between gap-3 px-3 py-2 text-left hover:bg-emerald-50 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+  className="flex w-full items-start justify-between gap-3 px-3 py-2 text-left hover:bg-brand-50 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
 >
   <span>
     <span className="user-text block font-medium" dir="auto">{product.name}</span>
@@ -151,6 +160,6 @@ const ProductResult: React.FC<{
   </span>
   <span className="shrink-0 text-xs text-slate-500">
     {product.trackStock ? `${product.stockQuantity} in stock` : 'Not tracked'}
-    {selected && <Check className="ml-auto mt-1 h-4 w-4 text-emerald-700" />}
+    {selected && <Check className="ml-auto mt-1 h-4 w-4 text-brand-700" />}
   </span>
 </button>;

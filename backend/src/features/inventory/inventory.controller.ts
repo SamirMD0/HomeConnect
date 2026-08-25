@@ -5,6 +5,8 @@ import {
   InventoryMovementListQuery,
   InventoryProductParamsInput,
   LowStockListQuery,
+  OnboardingWorklistQuery,
+  BatchVerifyOpeningCountBody,
   StockMovementInput,
   VerifyOpeningCountInput,
 } from './inventory.validator';
@@ -15,6 +17,24 @@ const contextFrom = (req: Request) => ({
 });
 
 export class InventoryController {
+  static async pendingOnboarding(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await InventoryService.getPendingOnboarding(req.query as unknown as OnboardingWorklistQuery);
+      res.json({ success: true, data: result.items, meta: pagination(result) });
+    } catch (error) { next(error); }
+  }
+
+  static async batchVerifyOpeningCount(
+    req: Request<Record<string, never>, unknown, BatchVerifyOpeningCountBody>,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const result = await InventoryService.batchVerifyOpeningCount(req.body, req.user!, contextFrom(req));
+      res.status(result.dryRun ? 200 : 201).json({ success: true, data: result });
+    } catch (error) { next(error); }
+  }
+
   static async summary(_req: Request, res: Response, next: NextFunction) {
     try { res.json({ success: true, data: await InventoryService.getInventorySummary() }); }
     catch (error) { next(error); }

@@ -21,6 +21,7 @@ import { ServiceJobsPage } from './pages/service/ServiceJobsPage';
 import { ServiceJobDetailsPage } from './pages/service/ServiceJobDetailsPage';
 import { ProductLabelPage } from './pages/products/ProductLabelPage';
 import { ProductsPage } from './pages/products/ProductsPage';
+import { BrandsPage } from './pages/products/BrandsPage';
 import { ScannerHubPage } from './pages/scanner/ScannerHubPage';
 import { ProductLabelsPage } from './pages/products/ProductLabelsPage';
 import { SuppliersPage } from './pages/suppliers/SuppliersPage';
@@ -30,6 +31,7 @@ import { PricingPresetsPage } from './pages/pricing/PricingPresetsPage';
 import { SalesOrdersPage } from './pages/sales-orders/SalesOrdersPage';
 import { SalesOrderDetailsPage } from './pages/sales-orders/SalesOrderDetailsPage';
 import { InventoryPage } from './pages/inventory/InventoryPage';
+import { InventoryOnboardingPage } from './pages/inventory/InventoryOnboardingPage';
 import { SupplierReceivingListPage } from './features/inventory/receiving/pages/SupplierReceivingListPage';
 import { NewSupplierReceivingPage } from './features/inventory/receiving/pages/NewSupplierReceivingPage';
 import { SupplierReceivingDetailPage } from './features/inventory/receiving/pages/SupplierReceivingDetailPage';
@@ -69,7 +71,9 @@ const App: React.FC = () => {
               <Route path="sales-orders" element={<SalesOrdersPage />} />
               <Route path="sales-orders/:id" element={<SalesOrderDetailsPage />} />
               <Route path="products" element={<ProductsPage />} />
+              <Route path="products/brands" element={<BrandsPage />} />
               <Route path="inventory" element={<InventoryPage />} />
+              <Route path="inventory/onboarding" element={<ProtectedRoute allowedRoles={['ADMIN']}><InventoryOnboardingPage /></ProtectedRoute>} />
               <Route path="inventory/receiving" element={<SupplierReceivingListPage />} />
               <Route path="inventory/receiving/new" element={<NewSupplierReceivingPage />} />
               <Route path="inventory/receiving/:receivingId" element={<SupplierReceivingDetailPage />} />

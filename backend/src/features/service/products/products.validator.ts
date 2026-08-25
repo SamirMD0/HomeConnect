@@ -6,6 +6,7 @@ import { userTextSchema } from '../../../validators/user-text';
 import { databaseUuidSchema } from '../../../validators/database-uuid';
 import { MAX_PRODUCT_SPECIFICATIONS, MAX_PRODUCT_SPECIFICATIONS_BYTES, normalizeProductSpecifications, serializedSpecificationsSize } from './product-specifications';
 import { PRODUCT_SKU_PATTERN } from './product-sku';
+import { PRODUCT_STOCK_FILTERS } from './product-stock';
 
 const uuidSchema = databaseUuidSchema('Invalid product ID');
 const moneyPattern = /^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/;
@@ -105,7 +106,12 @@ function validateDiscount(
   }
 }
 
-export const createProductSchema = z.object({ ...productValues, ...productPricingValues }).strict().superRefine((values, context) => {
+export const createProductSchema = z.object({
+  ...productValues,
+  ...productPricingValues,
+  trackStock: z.boolean().optional(),
+  lowStockThreshold: z.number().int('Low stock threshold must be an integer').min(0).nullable().optional(),
+}).strict().superRefine((values, context) => {
   validateDiscount(values, context);
   validateCustomPricing(values, context);
   validateLabelBarcodeSource(values, context);
@@ -141,6 +147,16 @@ export const productActionSchema = z.object({
   accountPassword: z.string().min(1, 'Account password is required'),
 });
 
+export const normalizeProductBrandsSchema = z.object({
+  sourceBrands: z.array(userTextSchema({ field: 'Source brand', min: 1, max: 120 }))
+    .min(1, 'Select at least one source brand')
+    .max(20, 'Select at most 20 source brands')
+    .refine((values) => new Set(values).size === values.length, 'Source brands must be unique'),
+  targetBrand: userTextSchema({ field: 'Target brand', min: 1, max: 120 }),
+  reason: userTextSchema({ field: 'Reason', min: 5, max: 1000 }),
+  dryRun: z.boolean().optional().default(false),
+}).strict();
+
 // SKU and stock settings are ordinary admin work as of v1.8.1: role-gated by the
 // route, audited with a server-generated reason, no password, no typed reason.
 export const updateProductSkuSchema = z.object({ sku: productSkuSchema }).strict();
@@ -157,7 +173,9 @@ export const productListQuerySchema = z.object({
   isActive: z.enum(['true', 'false']).optional().transform((value) => value === undefined ? undefined : value === 'true'),
   brand: z.string().trim().max(120).optional(),
   hasBarcode: z.enum(['true', 'false']).optional().transform((value) => value === undefined ? undefined : value === 'true'),
-  sortBy: z.enum(['name', 'model', 'brand', 'price', 'createdAt', 'updatedAt']).default('name'),
+  trackStock: z.enum(['true', 'false']).optional().transform((value) => value === undefined ? undefined : value === 'true'),
+  stockStatus: z.enum(PRODUCT_STOCK_FILTERS).optional(),
+  sortBy: z.enum(['name', 'model', 'brand', 'price', 'stock', 'createdAt', 'updatedAt']).default('name'),
   sortOrder: z.enum(['asc', 'desc']).default('asc'),
   page: z.coerce.number().int().positive().default(1),
   pageSize: z.coerce.number().int().positive().max(100).default(25),
@@ -175,9 +193,18 @@ export const productScanQuerySchema = z.object({
 });
 
 export const productDuplicateQuerySchema = z.object({
-  name: userTextSchema({ field: 'Product name', min: 1, max: 200 }),
-  model: userTextSchema({ field: 'Model', min: 1, max: 120 }),
+  name: userTextSchema({ field: 'Product name', min: 1, max: 200 }).optional(),
+  model: userTextSchema({ field: 'Model', min: 1, max: 120 }).optional(),
   brand: z.preprocess(emptyToNull, userTextSchema({ field: 'Brand', max: 120 }).optional().nullable()),
+  barcode: barcodeSchema,
+  sku: z.preprocess(emptyToNull, productSkuSchema.optional().nullable()),
+  excludeProductId: uuidSchema.optional(),
+}).strict().superRefine((values, context) => {
+  if ((values.name && values.model) || values.barcode || values.sku) return;
+  context.addIssue({
+    code: 'custom',
+    message: 'Provide name and model, barcode, or SKU for duplicate checking',
+  });
 });
 
 export const productServiceJobsQuerySchema = z.object({
@@ -257,6 +284,7 @@ export const productLabelsQuerySchema = z.object({
 export type CreateProductInput = z.infer<typeof createProductSchema>;
 export type UpdateProductInput = z.infer<typeof updateProductSchema>;
 export type ProductActionInput = z.infer<typeof productActionSchema>;
+export type NormalizeProductBrandsInput = z.infer<typeof normalizeProductBrandsSchema>;
 export type ProductParamsInput = z.infer<typeof productParamsSchema>;
 export type ProductListQueryInput = z.infer<typeof productListQuerySchema>;
 export type ProductAuditQueryInput = z.infer<typeof productAuditQuerySchema>;

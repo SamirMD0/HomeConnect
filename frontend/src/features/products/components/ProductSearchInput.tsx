@@ -12,7 +12,7 @@ export const ProductSearchInput: React.FC<{
     type="search"
     dir="auto"
     aria-label="Search products / بحث عن المنتجات"
-    className="user-text-input block w-full rounded-lg border border-slate-300 py-2 pl-10 pr-10 text-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+    className="user-text-input block w-full rounded-lg border border-slate-300 py-2 pl-10 pr-10 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
     value={value}
     onChange={(event) => onChange(event.target.value)}
     placeholder="Name, model, SKU or barcode / الاسم أو الموديل أو الرمز أو الباركود"

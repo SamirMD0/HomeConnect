@@ -33,6 +33,13 @@ export interface Product {
   specifications: ProductSpecification[];
   specificationNotes: string | null;
   exactMatch?: boolean;
+  /**
+   * List-only. True when the product has never had a stock movement and was
+   * never switched on for tracking — it exists in the catalogue but has not
+   * been brought into inventory. Absent on the single-product read, where the
+   * inventory panel reports the fuller onboarding status instead.
+   */
+  notInInventory?: boolean;
   createdAt: string;
   updatedAt: string;
   createdById?: string;
@@ -110,18 +117,73 @@ export interface ProductPaginationMeta {
   totalPages: number;
 }
 
+export interface ProductBrandSummary {
+  canonical: string;
+  productCount: number;
+  spellings: string[];
+  spellingCounts: Array<{ spelling: string; productCount: number }>;
+}
+
+export interface ProductBrandNormalizeInput {
+  sourceBrands: string[];
+  targetBrand: string;
+  reason: string;
+  dryRun?: boolean;
+}
+
+export interface ProductBrandNormalizeProduct {
+  id: string;
+  sku: string;
+  name: string;
+  brand: string | null;
+}
+
+export interface ProductBrandNormalizeDryRunResult {
+  targetBrand: string;
+  affectedCount: number;
+  products: ProductBrandNormalizeProduct[];
+  warnings: string[];
+}
+
+export interface ProductBrandNormalizeWriteResult {
+  targetBrand: string;
+  updatedCount: number;
+  products: ProductBrandNormalizeProduct[];
+}
+
+export type ProductBrandNormalizeResult = ProductBrandNormalizeDryRunResult | ProductBrandNormalizeWriteResult;
+
 export interface ProductFilters {
   search?: string;
   isActive?: boolean;
   brand?: string;
   hasBarcode?: boolean;
+  trackStock?: boolean;
+  stockStatus?: ProductStockFilter;
   sortBy?: ProductSortBy;
   sortOrder?: ProductSortOrder;
   page?: number;
   pageSize?: number;
 }
 
-export type ProductSortBy = 'name' | 'model' | 'brand' | 'price' | 'createdAt' | 'updatedAt';
+/**
+ * The first four mirror `ProductStockStatus`, so filtering by one returns
+ * exactly the rows whose badge shows it. `NOT_IN_INVENTORY` is the extra case:
+ * never brought into inventory at all.
+ */
+export type ProductStockFilter = ProductStockStatus | 'NOT_IN_INVENTORY';
+
+/**
+ * What the toolbar can change, keyed by URL parameter name.
+ *
+ * `isActive` is excluded on purpose: it is stored as the `status` tab, so a
+ * patch containing it would write a second parameter the page never reads.
+ * Keeping it out of the type makes that a compile error rather than a filter
+ * that silently does nothing.
+ */
+export type ProductFilterPatch = Partial<Omit<ProductFilters, 'isActive'>>;
+
+export type ProductSortBy = 'name' | 'model' | 'brand' | 'price' | 'stock' | 'createdAt' | 'updatedAt';
 export type ProductSortOrder = 'asc' | 'desc';
 
 export interface CreateProductInput extends ProductPricingConfigurationInput {
@@ -136,6 +198,8 @@ export interface CreateProductInput extends ProductPricingConfigurationInput {
   labelBarcodeSource?: LabelBarcodeSource;
   specifications?: ProductSpecification[];
   specificationNotes?: string | null;
+  trackStock?: boolean;
+  lowStockThreshold?: number | null;
 }
 
 /**
@@ -143,7 +207,10 @@ export interface CreateProductInput extends ProductPricingConfigurationInput {
  * they belong to the strict pricing endpoint, and the backend schema is `.strict()`
  * so sending one here is a 400 rather than a silent no-op.
  */
-export type UpdateProductInput = Partial<Omit<CreateProductInput, keyof ProductPricingConfigurationInput>>;
+export type UpdateProductInput = Partial<Omit<
+  CreateProductInput,
+  keyof ProductPricingConfigurationInput | 'trackStock' | 'lowStockThreshold'
+>>;
 
 /** Archive and restore stay strict: typed reason plus admin password. */
 export interface ProductActionInput {
@@ -152,17 +219,25 @@ export interface ProductActionInput {
 }
 
 export interface ProductDuplicateQuery {
-  name: string;
-  model: string;
+  name?: string;
+  model?: string;
   brand?: string | null;
+  barcode?: string | null;
+  sku?: string | null;
+  excludeProductId?: string;
 }
+
+export type ProductDuplicateReason = 'BARCODE_TAKEN' | 'SKU_TAKEN' | 'SAME_NAME_MODEL' | 'SAME_MODEL_BRAND';
 
 export interface ProductDuplicateMatch {
   id: string;
   name: string;
   model: string;
   brand: string | null;
+  sku: string;
+  barcode: string | null;
   isActive: boolean;
+  reason: ProductDuplicateReason;
 }
 
 export interface ProductServiceJobsResult {

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Modal } from '../../components/ui/Modal';
 import { ProductPreviewPanel } from '../../features/products/components/ProductPreviewPanel';
+import { ScannerQuickOrderDialog } from '../../features/sales-orders/components/ScannerQuickOrderDialog';
 import { MobileScannerPanel } from '../../features/scanner/components/MobileScannerPanel';
 import { RecentScansList } from '../../features/scanner/components/RecentScansList';
 import { ScanFeedback } from '../../features/scanner/components/ScanFeedback';
@@ -26,8 +27,6 @@ const labels = businessLabels.scanner;
 export const previewForDeskScan = (result: ScanLookupResult): ScanLookupResult | null =>
   result.status === 'FOUND' && result.product ? result : null;
 
-export const scannerOrderRouteState = (productId: string) => ({ prefillOrderProductId: productId });
-
 /**
  * Only seeds the receiving form when the product is actually receivable, so a
  * product still awaiting its opening count opens an empty form rather than one
@@ -35,6 +34,41 @@ export const scannerOrderRouteState = (productId: string) => ({ prefillOrderProd
  */
 export const scannerReceivingRouteState = (productId: string, canPrefill: boolean) =>
   canPrefill ? { prefillReceivingProductId: productId } : undefined;
+
+interface ScannerHubProductAreaProps {
+  preview: { productId: string; alsoMatchedSku?: boolean } | null;
+  quickOrderProductId: string | null;
+  onClear: () => void;
+  onOpenProduct: (productId: string) => void;
+  onQuickOrder: (productId: string) => void;
+  onReceiveStock: (productId: string, canPrefill: boolean) => void;
+  onCloseQuickOrder: () => void;
+}
+
+/** Keeps the scanned-product workspace mounted while Quick Order opens over it. */
+export const ScannerHubProductArea: React.FC<ScannerHubProductAreaProps> = ({
+  preview,
+  quickOrderProductId,
+  onClear,
+  onOpenProduct,
+  onQuickOrder,
+  onReceiveStock,
+  onCloseQuickOrder,
+}) => <>
+  <ProductPreviewPanel
+    productId={preview?.productId ?? null}
+    alsoMatchedSku={preview?.alsoMatchedSku}
+    onClear={onClear}
+    onOpenProduct={onOpenProduct}
+    onQuickOrder={onQuickOrder}
+    onReceiveStock={onReceiveStock}
+  />
+  <ScannerQuickOrderDialog
+    productId={quickOrderProductId}
+    isOpen={quickOrderProductId !== null}
+    onClose={onCloseQuickOrder}
+  />
+</>;
 
 export const ScannerHubPage: React.FC = () => {
   const { user } = useAuth();
@@ -55,6 +89,7 @@ export const ScannerHubPage: React.FC = () => {
   // What the preview panel is showing: the latest desk scan, or an earlier scan
   // the user reopened from the history.
   const [preview, setPreview] = useState<{ productId: string; alsoMatchedSku?: boolean } | null>(null);
+  const [quickOrderProductId, setQuickOrderProductId] = useState<string | null>(null);
 
   // Drives the pairing countdown. A second is the coarsest tick that still
   // reads as counting down.
@@ -147,13 +182,14 @@ export const ScannerHubPage: React.FC = () => {
       </div>
     </section>
 
-    <ProductPreviewPanel
-      productId={preview?.productId ?? null}
-      alsoMatchedSku={preview?.alsoMatchedSku}
+    <ScannerHubProductArea
+      preview={preview}
+      quickOrderProductId={quickOrderProductId}
       onClear={() => setPreview(null)}
       onOpenProduct={(id) => navigate(`/products?focus=${id}`)}
-      onMakeOrder={(id) => navigate('/sales-orders', { state: scannerOrderRouteState(id) })}
+      onQuickOrder={setQuickOrderProductId}
       onReceiveStock={(id, canPrefill) => navigate('/inventory/receiving/new', { state: scannerReceivingRouteState(id, canPrefill) })}
+      onCloseQuickOrder={() => setQuickOrderProductId(null)}
     />
 
     <div className="grid gap-5 lg:grid-cols-2">

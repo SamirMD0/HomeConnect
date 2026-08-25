@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { salesOrderPrefillFromRouteState } from './SalesOrdersPage';
+import {
+  salesOrderPrefillFromNavigation,
+  salesOrderPrefillFromRouteState,
+  salesOrderPrefillFromSearchParams,
+  stripSalesOrderProductPrefill,
+} from './SalesOrdersPage';
 
 describe('sales order scanner route state', () => {
   it('accepts only a non-empty product id', () => {
@@ -16,5 +21,19 @@ describe('sales order scanner route state', () => {
     });
     expect(prefill).toEqual({ productId: 'product-1' });
     expect(Object.keys(prefill ?? {})).toEqual(['productId']);
+  });
+
+  it('reads query-param prefill first and strips only the one-shot product id', () => {
+    const params = new URLSearchParams('action=add&productId=query-product&date=2026-08-21');
+    expect(salesOrderPrefillFromSearchParams(params)).toEqual({ productId: 'query-product' });
+    expect(salesOrderPrefillFromNavigation(params, { prefillOrderProductId: 'state-product' }))
+      .toEqual({ productId: 'query-product' });
+    expect(stripSalesOrderProductPrefill(params.toString())).toBe('?action=add&date=2026-08-21');
+  });
+
+  it('keeps route state as the fallback when the query has no product id', () => {
+    expect(salesOrderPrefillFromNavigation(new URLSearchParams('action=add'), {
+      prefillOrderProductId: 'state-product',
+    })).toEqual({ productId: 'state-product' });
   });
 });

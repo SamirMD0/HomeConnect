@@ -275,7 +275,7 @@ const ModeButton: React.FC<{ active: boolean; onClick: () => void; children: Rea
     type="button"
     aria-pressed={active}
     onClick={onClick}
-    className={`rounded-lg border px-3 py-2 text-sm font-semibold ${active ? 'border-emerald-500 bg-emerald-50 text-emerald-800' : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'}`}
+    className={`rounded-lg border px-3 py-2 text-sm font-semibold ${active ? 'border-brand-500 bg-brand-50 text-brand-800' : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'}`}
   >
     {children}
   </button>
