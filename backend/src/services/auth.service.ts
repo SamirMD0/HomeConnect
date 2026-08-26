@@ -3,8 +3,9 @@ import jwt from 'jsonwebtoken';
 import { prisma } from '../lib/prisma';
 import { AuthenticationError, AuthorizationError, AppError } from '../lib/errors';
 import { Role } from '@prisma/client';
+import { requireEnv } from '../lib/env';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key_change_in_production';
+const JWT_SECRET = requireEnv('JWT_SECRET');
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || JWT_SECRET;
 // One hour. This default is what the packaged app runs on: backend/.env is
 // excluded from the installer, so a shorter value here silently became the
