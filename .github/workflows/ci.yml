@@ -1,0 +1,108 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Typecheck, lint and full test suite
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: homeconnect
+          POSTGRES_PASSWORD: ci_local_password
+          # The database name deliberately contains phase4, phase5 and phase6.
+          #
+          # Three integration suites guard themselves with a check on the
+          # database NAME (databaseName.includes('phase4') and equivalents) so a
+          # destructive suite can never be pointed at the real `homeconnect`
+          # database by accident. That guard protects a developer's machine, and
+          # it is worth keeping exactly as written.
+          #
+          # Satisfying all three names at once lets CI run every suite in a
+          # single pass without editing those safety checks. The suites clean up
+          # only the rows they created (scoped deleteMany on their own generated
+          # ids -- no TRUNCATE, no unscoped delete), so sharing one throwaway
+          # database cannot make them interfere.
+          POSTGRES_DB: homeconnect_ci_phase4_phase5_phase6
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U homeconnect"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://homeconnect:ci_local_password@localhost:5432/homeconnect_ci_phase4_phase5_phase6
+      # Required at startup. A CI-only value; never a real secret.
+      JWT_SECRET: ci_only_jwt_secret_not_used_outside_ci
+      JWT_REFRESH_SECRET: ci_only_jwt_refresh_secret_not_used_outside_ci
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate --schema backend/prisma/schema.prisma
+
+      - name: Apply migrations
+        run: npx prisma migrate deploy --schema backend/prisma/schema.prisma
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test (including database integration suites)
+        # One run, two reporters: the default one keeps the log readable, the
+        # json one is what the next step inspects. Running the suite twice to
+        # get a machine-readable result would double the slowest step in CI.
+        run: npm run test:ci
+
+      - name: Assert no test files were skipped
+        # A skipped integration suite is the exact pre-plan state this pipeline
+        # exists to end. Passing with skips would give false confidence, so the
+        # job fails on any skip rather than reporting green.
+        if: always()
+        run: |
+          node -e "
+            const fs = require('fs');
+            const reportPath = 'node_modules/.cache/home-connect/vitest-report.json';
+            if (!fs.existsSync(reportPath)) {
+              console.error('No vitest report produced; cannot verify the skip count.');
+              process.exit(1);
+            }
+            const r = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+            const skipped = (r.numPendingTests || 0) + (r.numTodoTests || 0);
+            console.log('passed=' + r.numPassedTests + ' failed=' + r.numFailedTests + ' skipped=' + skipped);
+            if (r.numFailedTests > 0) {
+              console.error('FAIL: ' + r.numFailedTests + ' test(s) failed.');
+              process.exit(1);
+            }
+            if (skipped > 0) {
+              console.error('FAIL: ' + skipped + ' test(s) skipped. test:ci must run every suite.');
+              process.exit(1);
+            }
+          "
+
+      - name: Build
+        run: npm run build

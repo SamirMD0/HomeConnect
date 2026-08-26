@@ -149,10 +149,23 @@ describeDatabase('supplier receiving database contract', () => {
           'supplier_receiving_items_positive_quantity_check',
           'supplier_receiving_items_quantity_limit_check',
         ]));
-      expect(constraints.filter((constraint) => constraint.type === 'f')).toHaveLength(5);
-      expect(constraints.filter((constraint) => constraint.type === 'f').every(
-        (constraint) => constraint.deleteAction === 'r'
-      )).toBe(true);
+      // Named rather than counted. A bare `toHaveLength(n)` breaks every time the
+      // schema legitimately grows — it already did once, when v1.9.6 added the
+      // receiving-correction columns (voidedById, reversedById,
+      // reversalStockMovementId) and took the count from 5 to 8.
+      //
+      // What actually matters is that these specific links exist and that every
+      // foreign key on both tables is RESTRICT, so a delete can never orphan
+      // posted receiving history.
+      const foreignKeys = constraints.filter((constraint) => constraint.type === 'f');
+      expect(foreignKeys.map((constraint) => constraint.name)).toEqual(expect.arrayContaining([
+        'supplier_receivings_supplierId_fkey',
+        'supplier_receivings_receivedById_fkey',
+        'supplier_receiving_items_receivingId_fkey',
+        'supplier_receiving_items_productId_fkey',
+        'supplier_receiving_items_stockMovementId_fkey',
+      ]));
+      expect(foreignKeys.every((constraint) => constraint.deleteAction === 'r')).toBe(true);
 
       const indexes = await prisma.$queryRaw<Array<{ name: string }>>`
         SELECT indexname AS name

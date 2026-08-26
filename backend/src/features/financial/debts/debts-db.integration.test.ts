@@ -18,6 +18,25 @@ const isIsolatedPhase4Database = databaseName.includes('phase4');
 const describeDebtDb = runDebtDbTests && isIsolatedPhase4Database ? describe : describe.skip;
 const accountPassword = 'admin-password';
 
+/**
+ * Due dates are relative to today rather than hard-coded.
+ *
+ * This suite sat skipped behind its RUN_* flag for months. It carried
+ * `dueDate: '2026-08-10'` and asserted the debt was UNPAID — correct when it was
+ * written, and silently wrong from 2026-08-11 onwards, because a debt past its
+ * due date is derived as OVERDUE. The first CI run that actually executed this
+ * file failed on exactly that.
+ *
+ * A relative date cannot rot the same way.
+ */
+function isoDaysFromToday(days: number): string {
+  const date = new Date();
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+const FUTURE_DUE_DATE = isoDaysFromToday(90);
+
 describeDebtDb('single debt database flow', () => {
   it('creates debt, records payments transactionally, enforces idempotency, and cancels eligible debt', async () => {
     const adminId = randomUUID();
@@ -50,7 +69,7 @@ describeDebtDb('single debt database flow', () => {
         {
           amount: '600.00',
           description: 'Refrigerator',
-          dueDate: '2026-08-10',
+          dueDate: FUTURE_DUE_DATE,
           notes: null,
         },
         { userId: adminId, role: Role.ADMIN }
@@ -166,7 +185,7 @@ describeDebtDb('single debt database flow', () => {
         {
           amount: '50.00',
           description: 'Cancelled eligible debt',
-          dueDate: '2026-08-10',
+          dueDate: FUTURE_DUE_DATE,
           notes: null,
         },
         { userId: adminId, role: Role.ADMIN }

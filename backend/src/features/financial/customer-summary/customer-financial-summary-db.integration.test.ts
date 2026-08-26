@@ -12,6 +12,31 @@ const databaseName = databaseUrl.split('/').pop()?.split('?')[0] ?? '';
 const isIsolatedPhase6Database = databaseName.includes('phase6');
 const describeSummaryDb = runSummaryDbTests && isIsolatedPhase6Database ? describe : describe.skip;
 
+/**
+ * The debt's due date is relative to today rather than hard-coded.
+ *
+ * This suite sat skipped behind its RUN_* flag for months carrying
+ * `dueDate: '2026-08-10'`, and asserted the debt's calculated status was
+ * PARTIALLY_PAID. From 2026-08-11 that became OVERDUE, because a debt past its
+ * due date is derived as overdue regardless of what has been paid. The first CI
+ * run that actually executed this file failed on it.
+ *
+ * The plan's start date is relative for a second reason: this test asserts that
+ * `nextDue` picks the debt, which only holds while the debt falls due before the
+ * plan's earliest unpaid installment. Anchoring both to today keeps that
+ * ordering true permanently instead of for one particular week.
+ */
+function isoDaysFromToday(days: number): string {
+  const date = new Date();
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+/** Due first, so it is the next obligation. */
+const FUTURE_DUE_DATE = isoDaysFromToday(10);
+/** Starts well after the debt falls due, so the debt stays ahead of it. */
+const PLAN_START_DATE = isoDaysFromToday(60);
+
 describeSummaryDb('customer financial summary database flow', () => {
   it('summarizes debts, plans, multi-allocation plan payments, and recent history', async () => {
     const adminId = randomUUID();
@@ -44,7 +69,7 @@ describeSummaryDb('customer financial summary database flow', () => {
         {
           amount: '600.00',
           description: 'Phase 6 debt',
-          dueDate: '2026-08-10',
+          dueDate: FUTURE_DUE_DATE,
           notes: null,
         },
         { userId: adminId, role: Role.ADMIN }
@@ -69,7 +94,7 @@ describeSummaryDb('customer financial summary database flow', () => {
         {
           totalAmount: '600.00',
           description: 'Phase 6 plan',
-          startDate: '2026-08-01',
+          startDate: PLAN_START_DATE,
           installmentCount: 6,
           frequency: InstallmentPlanFrequency.MONTHLY,
           notes: null,
@@ -116,7 +141,7 @@ describeSummaryDb('customer financial summary database flow', () => {
       });
       expect(summary.recentPayments).toHaveLength(2);
       expect(summary.recentPayments.some((payment) => payment.allocations.length > 1)).toBe(true);
-      expect(summary.nextDue?.date).toBe('2026-08-10');
+      expect(summary.nextDue?.date).toBe(FUTURE_DUE_DATE);
     } finally {
       await prisma.paymentAllocation.deleteMany({
         where: {

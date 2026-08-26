@@ -215,12 +215,15 @@ describeDatabase('inventory database contract', () => {
       expect(legacyWrite.status).toBe(400);
       expect((await prisma.product.findUniqueOrThrow({ where: { id: productId } })).stockQuantity).toBe(0);
 
+      // Settings-only updates take trackStock and lowStockThreshold and nothing
+      // else. v1.8.1 made them ordinary admin work — role-gated by the route and
+      // audited with a server-generated reason — so `reason` and
+      // `accountPassword` were dropped from the payload. The schema is strict,
+      // so sending either now returns 400.
       const settingsOnly = await request(app).patch(`/api/v1/products/${productId}/stock`)
         .set('Authorization', `Bearer ${adminToken}`).send({
           trackStock: true,
           lowStockThreshold: 0,
-          reason: 'Confirm inventory settings',
-          accountPassword: password,
         });
       expect(settingsOnly.status).toBe(200);
       expect(settingsOnly.body.data.stockQuantity).toBe(0);
