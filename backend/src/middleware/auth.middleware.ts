@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { AuthenticationError } from '../lib/errors';
 import { requireEnv } from '../lib/env';
+import { requireActiveUserSession } from '../lib/user-session-status';
 
 const JWT_SECRET = requireEnv('JWT_SECRET');
 
@@ -17,7 +18,7 @@ declare global {
   }
 }
 
-export const requireAuth = (req: Request, res: Response, next: NextFunction) => {
+export const requireAuth = async (req: Request, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -26,11 +27,18 @@ export const requireAuth = (req: Request, res: Response, next: NextFunction) => 
 
   const token = authHeader.split(' ')[1];
 
+  let decoded: { userId: string; role: string };
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string, role: string };
+    decoded = jwt.verify(token, JWT_SECRET) as { userId: string; role: string };
+  } catch {
+    return next(new AuthenticationError('Invalid or expired token'));
+  }
+
+  try {
+    await requireActiveUserSession(decoded.userId);
     req.user = decoded;
-    next();
+    return next();
   } catch (error) {
-    next(new AuthenticationError('Invalid or expired token'));
+    return next(error);
   }
 };

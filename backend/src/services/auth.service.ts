@@ -4,6 +4,7 @@ import { prisma } from '../lib/prisma';
 import { AuthenticationError, AuthorizationError, AppError } from '../lib/errors';
 import { Role } from '@prisma/client';
 import { requireEnv } from '../lib/env';
+import { requireActiveUserSession } from '../lib/user-session-status';
 
 const JWT_SECRET = requireEnv('JWT_SECRET');
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || JWT_SECRET;
@@ -99,14 +100,10 @@ export class AuthService {
   static async refreshToken(refreshToken: string) {
     try {
       const decoded = jwt.verify(refreshToken, JWT_REFRESH_SECRET) as { userId: string, role: string };
-      
-      const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
-      
-      if (!user || user.deletedAt || !user.isActive) {
-        throw new AuthenticationError('Invalid token or account deactivated');
-      }
 
-      const tokens = this.generateTokens(user.id, user.role);
+      const user = await requireActiveUserSession(decoded.userId);
+
+      const tokens = this.generateTokens(decoded.userId, user.role);
       return tokens;
     } catch (error) {
       throw new AuthenticationError('Invalid or expired refresh token');
