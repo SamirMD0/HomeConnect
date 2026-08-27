@@ -7,6 +7,11 @@ import { verifyAdminPassword } from '../../../lib/admin-verification';
 import { AppError, NotFoundError, ValidationError } from '../../../lib/errors';
 import { assertPositiveMoney, moneyToApiString, multiplyMoney, parseMoney, subtractMoney, sumMoney, ZERO_MONEY } from '../../financial/domain/money';
 import { businessDateToPrisma, prismaDateToBusinessDate } from '../../financial/domain/business-date';
+import {
+  assertIdempotentReplay,
+  createIdempotencyFingerprint,
+  normalizeIdempotencyKey,
+} from '../../financial/infrastructure/idempotency';
 import { runFinancialTransaction } from '../../financial/infrastructure/transaction';
 import { InventoryRepository } from '../../inventory/inventory.repository';
 import { assertReceivingDateNotFuture, postSupplierReceiving } from '../../inventory/receiving/supplier-receivings.service';
@@ -51,12 +56,30 @@ export class SupplierPurchasesService {
     context: SupplierRequestContext
   ) {
     assertSupplierAdmin(user);
+    const idempotencyKey = normalizeIdempotencyKey(input.idempotencyKey);
     const receiptNumber = input.receiptNumber ?? null;
 
     return runFinancialTransaction(async (tx) => {
       const supplier = await SuppliersRepository.findById(supplierId, tx);
       if (!supplier) throw new NotFoundError('Supplier not found / المورد غير موجود');
       if (!supplier.isActive) throw new AppError('Archived suppliers cannot receive new transactions', 409, 'SUPPLIER_ARCHIVED');
+
+      if (idempotencyKey) {
+        const existingPurchase = await SupplierPurchasesRepository.findByIdempotencyKey(tx, idempotencyKey);
+        if (existingPurchase) {
+          assertIdempotentReplay({
+            existingFingerprint: createExistingPurchaseFingerprint(existingPurchase, input),
+            incomingFingerprint: await createIncomingPurchaseFingerprint(
+              supplierId,
+              input,
+              idempotencyKey,
+              user.userId,
+              tx
+            ),
+          });
+          return serializeIdempotentPurchase(existingPurchase);
+        }
+      }
 
       // One verification for the whole purchase, before anything is written.
       const quickAddCount = input.lines.filter((line) => line.kind === 'NEW_PRODUCT').length;
@@ -111,6 +134,7 @@ export class SupplierPurchasesService {
       if (stockLines.length) {
         assertReceivingDateNotFuture(input.transactionDate);
         const posted = await postSupplierReceiving({
+          idempotencyKey,
           supplier: { id: supplier.id, name: supplier.name, isActive: supplier.isActive },
           referenceNumber: receiptNumber,
           note: input.notes ?? null,
@@ -128,6 +152,7 @@ export class SupplierPurchasesService {
       const amount = assertPositiveMoney(input.amountOverride ?? lineSum);
 
       const transaction = await SupplierTransactionsRepository.create({
+        idempotencyKey,
         supplierId,
         supplierReceivingId: receivingId,
         type: SupplierTransactionType.SUPPLIER_DEBT,
@@ -205,6 +230,7 @@ export class SupplierPurchasesService {
           stockLineCount: stockLines.length,
           quickAddedProducts: quickAddCount,
           paidAmount: moneyToApiString(paid),
+          paymentReference: paid.greaterThan(ZERO_MONEY) ? input.paymentReference ?? null : null,
           remainingOwed: moneyToApiString(subtractMoney(amount, paid)),
         },
         requestId: context.requestId,
@@ -214,7 +240,7 @@ export class SupplierPurchasesService {
       const created = await SupplierPurchasesRepository.findById(transaction.id, tx);
       if (!created) throw new NotFoundError('Purchase not found after creation');
       return serializePurchase(created);
-    });
+    }, idempotencyKey ? { maxRetries: 0 } : undefined);
   }
 
   static async get(id: string) {
@@ -339,6 +365,7 @@ async function loadActor(id: string, tx: Prisma.TransactionClient) {
 }
 
 type PurchaseRecord = NonNullable<Awaited<ReturnType<typeof SupplierPurchasesRepository.findById>>>;
+type IdempotentPurchaseRecord = NonNullable<Awaited<ReturnType<typeof SupplierPurchasesRepository.findByIdempotencyKey>>>;
 
 function serializePurchase(purchase: PurchaseRecord) {
   const lineSum = purchase.purchaseLines.length
@@ -358,4 +385,141 @@ function serializePurchase(purchase: PurchaseRecord) {
       lineTotal: moneyToApiString(line.lineTotal),
     })),
   };
+}
+
+function serializeIdempotentPurchase(purchase: IdempotentPurchaseRecord) {
+  const { audits, ...record } = purchase;
+  void audits;
+  return serializePurchase(record);
+}
+
+async function createIncomingPurchaseFingerprint(
+  supplierId: string,
+  input: CreateSupplierPurchaseInput,
+  idempotencyKey: string,
+  createdById: string,
+  tx: Prisma.TransactionClient
+): Promise<string> {
+  const lines = [];
+  for (const line of input.lines) {
+    if (line.kind === 'MANUAL') {
+      lines.push({
+        kind: 'MANUAL',
+        description: line.description,
+        amount: moneyToApiString(parseMoney(line.amount)),
+      });
+      continue;
+    }
+
+    const identity = line.kind === 'NEW_PRODUCT'
+      ? {
+          mode: 'NEW_PRODUCT',
+          name: line.name,
+          model: line.model,
+          barcode: line.barcode ?? null,
+          brand: line.brand ?? null,
+          sellingPrice: line.sellingPrice ? moneyToApiString(parseMoney(line.sellingPrice)) : null,
+        }
+      : await existingProductIdentity(line.productId, tx);
+    lines.push({
+      kind: 'PRODUCT',
+      identity,
+      quantity: line.quantity,
+      unitPrice: moneyToApiString(parseMoney(line.unitPrice)),
+      lineTotal: moneyToApiString(multiplyMoney(line.unitPrice, String(line.quantity))),
+      receivesStock: input.receiveStock,
+    });
+  }
+
+  const lineSum = sumMoney(input.lines.map((line) =>
+    line.kind === 'MANUAL'
+      ? parseMoney(line.amount)
+      : multiplyMoney(line.unitPrice, String(line.quantity))
+  ));
+  const amount = assertPositiveMoney(input.amountOverride ?? lineSum);
+  const paidAmount = parseMoney(input.paidAmount ?? '0');
+
+  return createIdempotencyFingerprint({
+    supplierId,
+    receiptNumber: input.receiptNumber ?? null,
+    transactionDate: input.transactionDate,
+    description: input.description,
+    reference: input.reference ?? null,
+    notes: input.notes ?? null,
+    receiveStock: input.receiveStock && input.lines.some((line) => line.kind !== 'MANUAL'),
+    amount: moneyToApiString(amount),
+    amountOverride: Boolean(input.amountOverride),
+    amountOverrideReason: input.amountOverride ? input.amountOverrideReason ?? null : null,
+    paidAmount: moneyToApiString(paidAmount),
+    paymentReference: paidAmount.greaterThan(ZERO_MONEY) ? input.paymentReference ?? null : null,
+    lines,
+    idempotencyKey,
+    createdById,
+  });
+}
+
+function createExistingPurchaseFingerprint(
+  purchase: IdempotentPurchaseRecord,
+  incoming: CreateSupplierPurchaseInput
+): string {
+  const auditValues = jsonObject(purchase.audits[0]?.afterValues);
+  const lines = purchase.purchaseLines.map((line, index) => {
+    const incomingLine = incoming.lines[index];
+    if (line.kind === SupplierPurchaseLineKind.MANUAL || incomingLine?.kind === 'MANUAL') {
+      return {
+        kind: 'MANUAL',
+        description: line.description,
+        amount: moneyToApiString(line.lineTotal),
+      };
+    }
+
+    const identity = incomingLine?.kind === 'NEW_PRODUCT'
+      ? {
+          mode: 'NEW_PRODUCT',
+          name: line.product?.name ?? null,
+          model: line.product?.model ?? null,
+          barcode: line.product?.barcode ?? null,
+          brand: line.product?.brand ?? null,
+          sellingPrice: line.product?.price ? moneyToApiString(line.product.price) : null,
+        }
+      : { mode: 'EXISTING_PRODUCT', productId: line.productId };
+    return {
+      kind: 'PRODUCT',
+      identity,
+      quantity: line.quantity,
+      unitPrice: line.unitPrice ? moneyToApiString(line.unitPrice) : null,
+      lineTotal: moneyToApiString(line.lineTotal),
+      receivesStock: Boolean(line.receivingItemId),
+    };
+  });
+
+  return createIdempotencyFingerprint({
+    supplierId: purchase.supplierId,
+    receiptNumber: purchase.receiptNumber,
+    transactionDate: prismaDateToBusinessDate(purchase.transactionDate),
+    description: purchase.description,
+    reference: purchase.reference,
+    notes: purchase.notes,
+    receiveStock: Boolean(purchase.supplierReceivingId),
+    amount: moneyToApiString(purchase.amount),
+    amountOverride: purchase.amountOverride,
+    amountOverrideReason: purchase.amountOverrideReason,
+    paidAmount: typeof auditValues.paidAmount === 'string' ? auditValues.paidAmount : '0.00',
+    paymentReference: typeof auditValues.paymentReference === 'string' ? auditValues.paymentReference : null,
+    lines,
+    idempotencyKey: purchase.idempotencyKey,
+    createdById: purchase.createdById,
+  });
+}
+
+async function existingProductIdentity(productId: string, tx: Prisma.TransactionClient) {
+  const product = await InventoryRepository.findProduct(productId, tx);
+  if (!product) throw new NotFoundError('Product not found / المنتج غير موجود');
+  return { mode: 'EXISTING_PRODUCT', productId: product.id };
+}
+
+function jsonObject(value: Prisma.JsonValue | undefined): Record<string, Prisma.JsonValue> {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, Prisma.JsonValue>
+    : {};
 }

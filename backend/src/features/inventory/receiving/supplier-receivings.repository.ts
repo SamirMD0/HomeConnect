@@ -48,6 +48,9 @@ export class SupplierReceivingsRepository {
   static findById(id: string, tx?: Prisma.TransactionClient) {
     return (tx ?? prisma).supplierReceiving.findUnique({ where: { id }, include: detailInclude });
   }
+  static findByIdempotencyKey(tx: Prisma.TransactionClient, idempotencyKey: string) {
+    return tx.supplierReceiving.findUnique({ where: { idempotencyKey }, include: detailInclude });
+  }
   /** The correction paths read only what they may act on: metadata, status, and the lines to reverse. */
   static findForCorrection(id: string, tx: Prisma.TransactionClient) {
     return tx.supplierReceiving.findUnique({

@@ -59,6 +59,7 @@ const manualLine = z.object({
 const purchaseLine = z.discriminatedUnion('kind', [existingProductLine, newProductLine, manualLine]);
 
 export const createSupplierPurchaseSchema = z.object({
+  idempotencyKey: z.string().trim().max(128, 'Idempotency key is too long').optional().nullable(),
   receiptNumber: optionalText('Receipt number', 200),
   transactionDate: purchaseDate,
   description: userTextSchema({ field: 'Description', min: 3, max: 500 }),

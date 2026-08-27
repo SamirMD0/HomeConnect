@@ -1071,6 +1071,7 @@ model Supplier {
 /// the stock through compensating movements rather than erasing anything.
 model SupplierReceiving {
   id              String                  @id @default(uuid()) @db.Uuid
+  idempotencyKey  String?                 @unique
   supplierId      String?                 @db.Uuid
   supplier        Supplier?               @relation(fields: [supplierId], references: [id], onDelete: Restrict)
   referenceNumber String?
@@ -1188,6 +1189,7 @@ model SupplierPurchaseLine {
 
 model SupplierTransaction {
   id              String                       @id @default(uuid()) @db.Uuid
+  idempotencyKey  String?                      @unique
   supplierId      String                       @db.Uuid
   supplier        Supplier                     @relation(fields: [supplierId], references: [id], onDelete: Restrict)
   supplierReceivingId String?                   @unique @db.Uuid

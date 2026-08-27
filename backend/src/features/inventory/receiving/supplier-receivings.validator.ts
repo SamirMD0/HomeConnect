@@ -13,6 +13,7 @@ const businessDate = z.string().superRefine((value, context) => {
 });
 
 export const createSupplierReceivingSchema = z.object({
+  idempotencyKey: z.string().trim().max(128, 'Idempotency key is too long').optional().nullable(),
   supplierId: uuid.nullable().optional(),
   referenceNumber: optionalText(200),
   note: optionalText(2000),

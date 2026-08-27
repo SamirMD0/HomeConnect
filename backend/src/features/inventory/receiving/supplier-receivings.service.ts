@@ -9,6 +9,11 @@ import {
   businessDateToPrisma, compareBusinessDates, getBusinessTimezone, prismaDateToBusinessDate,
   timestampToBusinessDate, todayInBusinessTimezone,
 } from '../../financial/domain/business-date';
+import {
+  assertIdempotentReplay,
+  createIdempotencyFingerprint,
+  normalizeIdempotencyKey,
+} from '../../financial/infrastructure/idempotency';
 import { runFinancialTransaction } from '../../financial/infrastructure/transaction';
 import { InventoryRepository } from '../inventory.repository';
 import { INVENTORY_QUANTITY_LIMIT, InventoryRequestContext, InventoryUser } from '../inventory.types';
@@ -30,6 +35,7 @@ const TRACKING_DISABLED_ERROR = 'Stock tracking was turned off for a product on 
 
 export interface ReceivingSupplier { id: string; name: string; isActive: boolean }
 export interface PostReceivingInput {
+  idempotencyKey?: string | null;
   supplier: ReceivingSupplier | null;
   referenceNumber: string | null;
   note: string | null;
@@ -65,6 +71,7 @@ export async function postSupplierReceiving(
   for (const line of lines) await validateProduct(line.productId, line.quantity, input.receivedOn, tx);
 
   const receiving = await SupplierReceivingsRepository.create({
+    idempotencyKey: input.idempotencyKey ?? null,
     supplierId: input.supplier?.id ?? null,
     referenceNumber: input.referenceNumber,
     note: input.note,
@@ -110,6 +117,7 @@ export function assertReceivingDateNotFuture(receivedOn: string): void {
 export class SupplierReceivingsService {
   static async create(input: CreateSupplierReceivingInput, user: InventoryUser) {
     assertRole(user);
+    const idempotencyKey = normalizeIdempotencyKey(input.idempotencyKey);
     const supplierId = input.supplierId ?? null;
     const referenceNumber = normalizeOptionalText(input.referenceNumber);
     const note = normalizeOptionalText(input.note);
@@ -121,14 +129,41 @@ export class SupplierReceivingsService {
       const supplier = supplierId ? await SupplierReceivingsRepository.findSupplier(supplierId, tx) : null;
       if (supplierId && !supplier) throw new NotFoundError('Supplier not found / المورد غير موجود');
 
+      if (idempotencyKey) {
+        const existingReceiving = await SupplierReceivingsRepository.findByIdempotencyKey(tx, idempotencyKey);
+        if (existingReceiving) {
+          assertIdempotentReplay({
+            existingFingerprint: createReceivingFingerprint({
+              supplierId: existingReceiving.supplierId,
+              referenceNumber: existingReceiving.referenceNumber,
+              note: existingReceiving.note,
+              receivedOn: prismaDateToBusinessDate(existingReceiving.receivedOn),
+              items: existingReceiving.items,
+              idempotencyKey: existingReceiving.idempotencyKey,
+              receivedById: existingReceiving.receivedById,
+            }),
+            incomingFingerprint: createReceivingFingerprint({
+              supplierId,
+              referenceNumber,
+              note,
+              receivedOn,
+              items: input.items,
+              idempotencyKey,
+              receivedById: user.userId,
+            }),
+          });
+          return serializeReceiving(existingReceiving);
+        }
+      }
+
       const { receivingId } = await postSupplierReceiving({
-        supplier, referenceNumber, note, receivedOn, items: input.items, userId: user.userId,
+        idempotencyKey, supplier, referenceNumber, note, receivedOn, items: input.items, userId: user.userId,
       }, tx);
 
       const result = await SupplierReceivingsRepository.findById(receivingId, tx);
       if (!result) throw new NotFoundError('Receiving not found after creation');
       return serializeReceiving(result);
-    });
+    }, idempotencyKey ? { maxRetries: 0 } : undefined);
   }
 
   static async list(input: SupplierReceivingListInput, user: InventoryUser) {
@@ -388,4 +423,21 @@ function buildReversalReason(supplierName: string | null, referenceNumber: strin
 
 function serializeReceiving<T extends { receivedOn: Date }>(receiving: T) {
   return { ...receiving, receivedOn: prismaDateToBusinessDate(receiving.receivedOn) };
+}
+
+function createReceivingFingerprint(input: {
+  supplierId: string | null;
+  referenceNumber: string | null;
+  note: string | null;
+  receivedOn: string;
+  items: Array<{ productId: string; quantity: number }>;
+  idempotencyKey: string | null;
+  receivedById: string;
+}): string {
+  return createIdempotencyFingerprint({
+    ...input,
+    items: [...input.items]
+      .sort((left, right) => left.productId.localeCompare(right.productId))
+      .map(({ productId, quantity }) => ({ productId, quantity })),
+  });
 }

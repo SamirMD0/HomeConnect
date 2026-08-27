@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const tx = { id: 'tx' };
 const { receivingRepository, inventoryRepository, verifyAdminPassword } = vi.hoisted(() => ({
   receivingRepository: {
-    findSupplier: vi.fn(), create: vi.fn(), createItem: vi.fn(), findById: vi.fn(), findDuplicate: vi.fn(), list: vi.fn(),
+    findSupplier: vi.fn(), create: vi.fn(), createItem: vi.fn(), findById: vi.fn(), findByIdempotencyKey: vi.fn(), findDuplicate: vi.fn(), list: vi.fn(),
     findForCorrection: vi.fn(), updateMetadata: vi.fn(), markVoided: vi.fn(), reverseItem: vi.fn(), createAudit: vi.fn(), findActor: vi.fn(),
   },
   inventoryRepository: { findProduct: vi.fn(), findOpeningBalance: vi.fn(), compareAndSetQuantity: vi.fn(), createMovement: vi.fn() },
@@ -34,6 +34,7 @@ describe('SupplierReceivingsService', () => {
     receivingRepository.findSupplier.mockResolvedValue({ id: supplierId, name: 'Supplier One', isActive: true });
     receivingRepository.create.mockResolvedValue({ id: '55555555-5555-4555-8555-555555555555' });
     receivingRepository.createItem.mockResolvedValue({});
+    receivingRepository.findByIdempotencyKey.mockResolvedValue(null);
     receivingRepository.findById.mockResolvedValue({ id: '55555555-5555-4555-8555-555555555555', receivedOn: new Date('2026-08-14T00:00:00.000Z'), items: [] });
     inventoryRepository.findProduct.mockImplementation(async (id: string) => product(id));
     inventoryRepository.findOpeningBalance.mockResolvedValue(opening);
@@ -53,6 +54,41 @@ describe('SupplierReceivingsService', () => {
     const item = receivingRepository.createItem.mock.calls[0][0];
     expect(item.id).toBe(movement.referenceId);
     expect(item.stockMovementId).toBe('66666666-6666-4666-8666-666666666666');
+  });
+
+  it('returns the original receiving for an exact replay and rejects a changed replay', async () => {
+    const idempotencyKey = 'supplier-receiving-replay-key';
+    receivingRepository.findByIdempotencyKey.mockResolvedValue({
+      id: receivingId,
+      idempotencyKey,
+      supplierId,
+      referenceNumber: 'INV-9',
+      note: 'Shelf delivery',
+      receivedOn: new Date('2026-08-14T00:00:00.000Z'),
+      receivedById: user.userId,
+      items: [{ productId: firstId, quantity: 2 }],
+    });
+
+    const replay = await SupplierReceivingsService.create({
+      idempotencyKey,
+      supplierId,
+      referenceNumber: ' INV-9 ',
+      note: ' Shelf delivery ',
+      receivedOn: '2026-08-14',
+      items: [{ productId: firstId, quantity: 2 }],
+    }, user);
+    expect(replay.id).toBe(receivingId);
+    expect(receivingRepository.create).not.toHaveBeenCalled();
+    expect(inventoryRepository.createMovement).not.toHaveBeenCalled();
+
+    await expect(SupplierReceivingsService.create({
+      idempotencyKey,
+      supplierId,
+      referenceNumber: 'INV-9',
+      note: 'Shelf delivery',
+      receivedOn: '2026-08-14',
+      items: [{ productId: firstId, quantity: 3 }],
+    }, user)).rejects.toMatchObject({ statusCode: 409, code: 'PAYMENT_IDEMPOTENCY_CONFLICT' });
   });
 
   it('allows no supplier and normalizes blank reference and note to null', async () => {

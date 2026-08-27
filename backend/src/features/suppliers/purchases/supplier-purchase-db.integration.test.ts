@@ -1,6 +1,8 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient, Role, StockMovementType, SupplierTransactionType } from '@prisma/client';
 import { randomUUID } from 'crypto';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { SupplierPurchasesService } from './supplier-purchases.service';
+import { SupplierPurchasesRepository } from './supplier-purchases.repository';
 
 /**
  * Proves the v1.9.4 constraints actually bite in PostgreSQL rather than only in
@@ -84,6 +86,118 @@ describeDatabase('supplier purchase database contract', () => {
       await prisma.supplierTransaction.deleteMany({ where: { supplierId } });
       await prisma.supplierReceivingItem.deleteMany({ where: { receivingId } });
       await prisma.supplierReceiving.deleteMany({ where: { id: receivingId } });
+      await prisma.stockMovement.deleteMany({ where: { productId } });
+      await prisma.product.deleteMany({ where: { id: productId } });
+      await prisma.supplier.deleteMany({ where: { id: supplierId } });
+      await prisma.user.deleteMany({ where: { id: userId } });
+      await prisma.$disconnect();
+    }
+  }, 60_000);
+
+  it('makes the complete purchase command idempotent and keeps no-key callers compatible', async () => {
+    const prisma = new PrismaClient();
+    const userId = randomUUID();
+    const supplierId = randomUUID();
+    const productId = randomUUID();
+    const businessDate = new Date().toISOString().slice(0, 10);
+    const idempotencyKey = `purchase-${randomUUID()}`;
+    const concurrentKey = `purchase-${randomUUID()}`;
+    const user = { userId, role: Role.ADMIN };
+    const context = { requestId: 'purchase-idempotency-db', ipAddress: '127.0.0.1' };
+    const input = {
+      idempotencyKey,
+      receiptNumber: 'IDEMPOTENCY-INV-1',
+      transactionDate: businessDate,
+      description: 'Idempotent supplier purchase',
+      reference: null,
+      notes: null,
+      receiveStock: true,
+      amountOverride: null,
+      amountOverrideReason: null,
+      paidAmount: null,
+      paymentReference: null,
+      lines: [{ kind: 'EXISTING_PRODUCT' as const, productId, quantity: 2, unitPrice: '15.00' }],
+    };
+
+    process.env.BUSINESS_TIMEZONE = 'Asia/Beirut';
+    try {
+      await prisma.user.create({
+        data: { id: userId, username: `purchase-idem-${userId}`, password: 'not-used', fullName: 'Purchase Idempotency User', role: Role.ADMIN },
+      });
+      await prisma.supplier.create({
+        data: { id: supplierId, name: 'Purchase Idempotency Supplier', phone: `idem-${supplierId}`, createdById: userId },
+      });
+      await prisma.product.create({
+        data: { id: productId, sku: `HC-IDEM-${productId}`, name: 'Purchase Idempotency Product', model: 'IDEM-1', trackStock: true, stockQuantity: 0, createdById: userId },
+      });
+      await prisma.stockMovement.create({
+        data: { productId, movementType: StockMovementType.OPENING_BALANCE, quantityChange: 0, quantityBefore: 0, quantityAfter: 0, reason: 'Verified zero opening count', createdById: userId },
+      });
+
+      const original = await SupplierPurchasesService.create(supplierId, input, user, context);
+      const replay = await SupplierPurchasesService.create(supplierId, input, user, context);
+
+      expect(replay.id).toBe(original.id);
+      expect(await prisma.supplierTransaction.count({
+        where: { supplierId, type: SupplierTransactionType.SUPPLIER_DEBT, idempotencyKey },
+      })).toBe(1);
+      expect(await prisma.supplierReceiving.count({ where: { supplierId, idempotencyKey } })).toBe(1);
+      expect(await prisma.stockMovement.count({
+        where: { productId, movementType: StockMovementType.PURCHASE_RECEIPT },
+      })).toBe(1);
+      expect((await prisma.product.findUniqueOrThrow({ where: { id: productId } })).stockQuantity).toBe(2);
+
+      await expect(SupplierPurchasesService.create(
+        supplierId,
+        { ...input, lines: [{ ...input.lines[0], quantity: 3 }] },
+        user,
+        context
+      )).rejects.toMatchObject({ statusCode: 409, code: 'PAYMENT_IDEMPOTENCY_CONFLICT' });
+
+      const withoutKey = await SupplierPurchasesService.create(
+        supplierId,
+        { ...input, idempotencyKey: null, receiveStock: false, description: 'Backward-compatible no-key purchase' },
+        user,
+        context
+      );
+      expect(withoutKey.id).not.toBe(original.id);
+
+      const concurrentInput = {
+        ...input,
+        idempotencyKey: concurrentKey,
+        receiveStock: false,
+        description: 'Concurrent idempotent purchase',
+      };
+      const repository = SupplierPurchasesRepository as unknown as {
+        findByIdempotencyKey: (tx: Prisma.TransactionClient, key: string) => Promise<unknown>;
+      };
+      const originalLookup = repository.findByIdempotencyKey;
+      let lookupCount = 0;
+      let releaseLookups: () => void = () => undefined;
+      const bothLookupsReached = new Promise<void>((resolve) => { releaseLookups = resolve; });
+      const lookupSpy = vi.spyOn(repository, 'findByIdempotencyKey')
+        .mockImplementation(async (tx, key) => {
+          const result = await originalLookup(tx, key);
+          lookupCount += 1;
+          if (lookupCount === 2) releaseLookups();
+          await bothLookupsReached;
+          return result;
+        });
+      const concurrent = await Promise.allSettled([
+        SupplierPurchasesService.create(supplierId, concurrentInput, user, context),
+        SupplierPurchasesService.create(supplierId, concurrentInput, user, context),
+      ]);
+      lookupSpy.mockRestore();
+      expect(concurrent.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+      expect(await prisma.supplierTransaction.count({ where: { idempotencyKey: concurrentKey } })).toBe(1);
+    } finally {
+      const receivingIds = (await prisma.supplierReceiving.findMany({ where: { supplierId }, select: { id: true } })).map(({ id }) => id);
+      const transactionIds = (await prisma.supplierTransaction.findMany({ where: { supplierId }, select: { id: true } })).map(({ id }) => id);
+      await prisma.supplierAudit.deleteMany({ where: { supplierId } });
+      await prisma.supplierPurchaseLine.deleteMany({ where: { supplierTransactionId: { in: transactionIds } } });
+      await prisma.supplierTransaction.deleteMany({ where: { id: { in: transactionIds } } });
+      await prisma.supplierReceivingItem.deleteMany({ where: { receivingId: { in: receivingIds } } });
+      await prisma.supplierReceiving.deleteMany({ where: { id: { in: receivingIds } } });
       await prisma.stockMovement.deleteMany({ where: { productId } });
       await prisma.product.deleteMany({ where: { id: productId } });
       await prisma.supplier.deleteMany({ where: { id: supplierId } });

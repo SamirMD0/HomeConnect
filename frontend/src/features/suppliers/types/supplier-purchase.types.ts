@@ -29,6 +29,7 @@ export interface ManualLineInput {
 export type SupplierPurchaseLineInput = ExistingProductLineInput | NewProductLineInput | ManualLineInput;
 
 export interface CreateSupplierPurchaseInput {
+  idempotencyKey?: string | null;
   receiptNumber?: string | null;
   transactionDate: string;
   description: string;

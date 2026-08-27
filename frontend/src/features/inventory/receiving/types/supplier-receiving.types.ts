@@ -56,6 +56,7 @@ export interface SupplierReceiving {
 }
 
 export interface CreateSupplierReceivingInput {
+  idempotencyKey?: string | null;
   supplierId?: string | null;
   referenceNumber?: string | null;
   note?: string | null;

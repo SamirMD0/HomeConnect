@@ -8,7 +8,7 @@ const {
 } = vi.hoisted(() => ({
   suppliersRepository: { findById: vi.fn() },
   transactionsRepository: { create: vi.fn() },
-  purchasesRepository: { createLine: vi.fn(), findById: vi.fn(), listForSupplier: vi.fn(), findReceiptMatches: vi.fn() },
+  purchasesRepository: { createLine: vi.fn(), findById: vi.fn(), findByIdempotencyKey: vi.fn(), listForSupplier: vi.fn(), findReceiptMatches: vi.fn() },
   inventoryRepository: { findProduct: vi.fn(), createMovement: vi.fn() },
   productsRepository: { create: vi.fn(), findByBarcode: vi.fn() },
   receiving: { postSupplierReceiving: vi.fn(), assertReceivingDateNotFuture: vi.fn() },
@@ -66,6 +66,7 @@ describe('SupplierPurchasesService.create', () => {
     receiving.postSupplierReceiving.mockResolvedValue({ receivingId, itemIdByProductId: new Map([[productId, itemId]]) });
     transactionsRepository.create.mockResolvedValue({ id: transactionId });
     purchasesRepository.createLine.mockResolvedValue({});
+    purchasesRepository.findByIdempotencyKey.mockResolvedValue(null);
     purchasesRepository.findById.mockResolvedValue({
       id: transactionId, amount: '630.00', transactionDate: new Date('2026-08-15T00:00:00.000Z'),
       supplierReceiving: null, purchaseLines: [],
@@ -96,6 +97,54 @@ describe('SupplierPurchasesService.create', () => {
     expect(purchasesRepository.createLine).toHaveBeenCalledWith(expect.objectContaining({
       kind: SupplierPurchaseLineKind.PRODUCT, productId, quantity: 3, receivingItemId: itemId, position: 0,
     }), tx);
+  });
+
+  it('returns the original purchase for an exact replay and rejects a changed replay', async () => {
+    const idempotencyKey = 'supplier-purchase-replay-key';
+    purchasesRepository.findByIdempotencyKey.mockResolvedValue({
+      id: transactionId,
+      idempotencyKey,
+      supplierId,
+      receiptNumber: 'INV-2291',
+      transactionDate: new Date(`${today()}T00:00:00.000Z`),
+      description: 'TCL AC purchase',
+      reference: null,
+      notes: null,
+      amount: '630.00',
+      amountOverride: false,
+      amountOverrideReason: null,
+      supplierReceivingId: receivingId,
+      createdById: admin.userId,
+      supplierReceiving: null,
+      purchaseLines: [{
+        kind: SupplierPurchaseLineKind.PRODUCT,
+        productId,
+        description: 'TCL AC 1.5HP · HC-000042',
+        quantity: 3,
+        unitPrice: '210.00',
+        lineTotal: '630.00',
+        receivingItemId: itemId,
+        product: { id: productId },
+      }],
+      audits: [{ afterValues: { paidAmount: '0.00', paymentReference: null } }],
+    });
+
+    const replay = await SupplierPurchasesService.create(
+      supplierId,
+      purchase({ idempotencyKey }),
+      admin,
+      context
+    );
+    expect(replay.id).toBe(transactionId);
+    expect(transactionsRepository.create).not.toHaveBeenCalled();
+    expect(receiving.postSupplierReceiving).not.toHaveBeenCalled();
+
+    await expect(SupplierPurchasesService.create(
+      supplierId,
+      purchase({ idempotencyKey, lines: [productLine({ quantity: 4 })] }),
+      admin,
+      context
+    )).rejects.toMatchObject({ statusCode: 409, code: 'PAYMENT_IDEMPOTENCY_CONFLICT' });
   });
 
   it('keeps stock writing inside the shared receiving function and never touches quantities itself', async () => {
