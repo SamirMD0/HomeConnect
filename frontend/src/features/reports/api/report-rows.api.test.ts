@@ -11,6 +11,12 @@ describe('reportRowsApi', () => {
     apiMock.get.mockResolvedValue({ data: { success: true, meta: { preset: 'lastMonth' }, data: { summary: {}, rows: [] } } });
     await reportRowsApi.get('suppliers-receiving', { period: 'lastMonth' });
     expect(apiMock.get).toHaveBeenCalledWith('/reports/suppliers/receiving', { params: { period: 'lastMonth' } });
+
+    await reportRowsApi.get('customers-financial-integrity', { period: 'lastMonth' });
+    expect(apiMock.get).toHaveBeenCalledWith('/reports/customers/financial-integrity', { params: { period: 'lastMonth' } });
+
+    await reportRowsApi.get('suppliers-financial-integrity', { period: 'lastMonth' });
+    expect(apiMock.get).toHaveBeenCalledWith('/reports/suppliers/financial-integrity', { params: { period: 'lastMonth' } });
   });
 
   it('exports the selected custom slice without changing its range', async () => {

@@ -1,10 +1,12 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 import { PendingRepairsList } from './PendingRepairsList';
 import { PreflightReportCard } from './PreflightReportCard';
 import { RepairHistoryTable } from './RepairHistoryTable';
 import { ResolveMigrationsPanel } from './ResolveMigrationsPanel';
+import { IntegrityReportsLinks } from './MaintenancePanel';
 import { PendingMigration, PendingRepair, PreflightReport, RepairHistoryRow } from '../types/maintenance.types';
 
 const renderPanel = (migrations: PendingMigration[]) => renderToStaticMarkup(
@@ -164,6 +166,16 @@ describe('ResolveMigrationsPanel', () => {
     const html = renderPanel([unknown]);
     expect(html).toContain('Cannot check');
     expect(checkboxFor(html, unknown.name)).not.toContain('disabled=""');
+  });
+});
+
+describe('integrity report links', () => {
+  it('places customer and supplier financial checks beside inventory reconciliation', () => {
+    const html = renderToStaticMarkup(<MemoryRouter><IntegrityReportsLinks /></MemoryRouter>);
+
+    expect(html).toContain('href="/reports/receiving-reconciliation"');
+    expect(html).toContain('href="/reports/customer-financial-integrity"');
+    expect(html).toContain('href="/reports/supplier-financial-integrity"');
   });
 });
 

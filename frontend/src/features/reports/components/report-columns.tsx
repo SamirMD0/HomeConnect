@@ -84,6 +84,28 @@ export function columnsFor(slice: ReportSlice): ReportColumn[] {
     signed('Change / التغيير', 'quantityChange'), count('Before / قبل', 'quantityBefore'),
     count('After / بعد', 'quantityAfter'), text('Reason / السبب', 'reason'),
   ];
+  if (slice === 'customers-financial-integrity') return [
+    partyLink('Customer / الزبون', 'customer', '/customers/'),
+    nestedText('Phone / الهاتف', 'customer', 'phone'),
+    money('Obligations / الالتزامات', 'obligationTotal'),
+    money('Allocations / التخصيصات', 'allocationTotal'),
+    money('Reported / المعروض', 'reportedOutstanding'),
+    money('Independent / المستقل', 'independentOutstanding'),
+    money('Difference / الفرق', 'difference'),
+    statusBadge('Result / النتيجة', 'status', (value) => value === 'OK'),
+    issuesColumn(),
+  ];
+  if (slice === 'suppliers-financial-integrity') return [
+    partyLink('Supplier / المورد', 'supplier', '/suppliers/'),
+    nestedText('Phone / الهاتف', 'supplier', 'phone'),
+    money('Increases / الزيادات', 'increaseTotal'),
+    money('Decreases / التخفيضات', 'decreaseTotal'),
+    money('Reported / المعروض', 'reportedBalance'),
+    money('Independent / المستقل', 'independentBalance'),
+    money('Difference / الفرق', 'difference'),
+    statusBadge('Result / النتيجة', 'status', (value) => value === 'OK'),
+    issuesColumn(),
+  ];
   return [
     linked('Receiving / الاستلام', 'referenceNumber', '/inventory/receiving/', 'receivingId'),
     text('Date / التاريخ', 'receivedOn'), partyText('Supplier / المورد', 'supplier'),
@@ -116,6 +138,8 @@ export function summariesFor(
     'sales-unpaid': [['Unpaid orders / طلبات غير مدفوعة', 'count'], ['Remaining / الباقي', 'remainingAmount', true]],
     'inventory-movements': [['Movements / الحركات', 'count']],
     'inventory-reconciliation': [['Lines checked / بنود مفحوصة', 'count'], ['OK / سليم', 'ok'], ['Mismatches / غير مطابق', 'mismatches']],
+    'customers-financial-integrity': [['Customers checked / زبائن مفحوصون', 'count'], ['OK / سليم', 'ok'], ['Mismatches / غير مطابق', 'mismatches'], ['Reported / المعروض', 'reportedTotal', true], ['Independent / المستقل', 'independentTotal', true], ['Difference / الفرق', 'difference', true]],
+    'suppliers-financial-integrity': [['Suppliers checked / موردون مفحوصون', 'count'], ['OK / سليم', 'ok'], ['Mismatches / غير مطابق', 'mismatches'], ['Reported / المعروض', 'reportedTotal', true], ['Independent / المستقل', 'independentTotal', true], ['Difference / الفرق', 'difference', true]],
   };
   return (definitions[slice] ?? []).map(([label, key, moneyValue]) => ({
     label, value: String(summary[key] ?? '0'), money: Boolean(moneyValue),
@@ -131,7 +155,8 @@ export function movementSummaryRows(value: unknown) {
 
 export function rowKey(row: ReportRow, index: number) {
   const value = record(row);
-  return String(value.id ?? value.receivingId ?? `${index}`);
+  const party = (value.customer ?? value.supplier) as Record<string, unknown> | undefined;
+  return String(value.id ?? value.receivingId ?? party?.id ?? `${index}`);
 }
 
 export const AGING_BUCKET_LABELS: Record<string, string> = {

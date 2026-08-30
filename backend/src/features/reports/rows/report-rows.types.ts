@@ -11,6 +11,8 @@ export type ReportSlice =
   | 'sales-unpaid'
   | 'inventory-movements'
   | 'inventory-reconciliation'
+  | 'customers-financial-integrity'
+  | 'suppliers-financial-integrity'
   | 'products-bought';
 
 export interface ReportRowsData<Row = unknown, Summary = Record<string, unknown>> {

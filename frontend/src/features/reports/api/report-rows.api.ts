@@ -9,6 +9,8 @@ const paths: Record<ReportSlice, string> = {
   'suppliers-receiving': 'suppliers/receiving', 'sales-orders': 'sales/orders',
   'sales-unpaid': 'sales/unpaid', 'inventory-movements': 'inventory/movements',
   'inventory-reconciliation': 'inventory/reconciliation', 'products-bought': 'products/bought',
+  'customers-financial-integrity': 'customers/financial-integrity',
+  'suppliers-financial-integrity': 'suppliers/financial-integrity',
 };
 
 function params(query: ReportRowsQuery) {

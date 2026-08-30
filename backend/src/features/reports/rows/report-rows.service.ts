@@ -11,6 +11,8 @@ import {
   ZERO_MONEY,
 } from '../../financial';
 import { addDays, differenceInDays } from '../../dashboard/shared/dashboard-range';
+import { ReceivablesService } from '../../financial/receivables/receivables.service';
+import { SuppliersRepository } from '../../suppliers/suppliers/suppliers.repository';
 import { ReportsMetricsService } from '../metrics/reports-metrics.service';
 import { MonthlyDebtsService } from '../monthly-debts/monthly-debts.service';
 import { buildCsv, type CsvValue } from '../shared/csv';
@@ -322,6 +324,65 @@ export class ReportRowsService {
       return { summary: { count: rows.length, movementsByType }, rows };
     }
 
+    if (slice === 'customers-financial-integrity') {
+      const evidence = await ReportRowsRepository.customerFinancialIntegrity();
+      const reported = await ReceivablesService.computeReceivableProjections({
+        customerIds: evidence.map((row) => row.customerId),
+      });
+      const rows = evidence.map((record) => {
+        const obligationTotal = new Decimal(record.obligationTotal);
+        const allocationTotal = new Decimal(record.allocationTotal);
+        const independentOutstanding = subtractMoney(obligationTotal, allocationTotal);
+        const projection = reported.get(record.customerId);
+        const reportedOutstanding = new Decimal(projection?.outstanding ?? '0.00');
+        const difference = subtractMoney(reportedOutstanding, independentOutstanding);
+        const issues: string[] = [];
+        if (!projection) issues.push('Customer is missing from the reported receivables projection');
+        if (allocationTotal.greaterThan(obligationTotal)) issues.push('Non-voided allocations exceed non-cancelled obligations');
+        if (!difference.equals(ZERO_MONEY)) issues.push('Reported outstanding does not match obligations minus allocations');
+        return {
+          customer: { id: record.customerId, name: record.customerName, phone: record.customerPhone },
+          obligationTotal: moneyToApiString(obligationTotal),
+          allocationTotal: moneyToApiString(allocationTotal),
+          reportedOutstanding: moneyToApiString(reportedOutstanding),
+          independentOutstanding: moneyToApiString(independentOutstanding),
+          difference: moneyToApiString(difference),
+          obligationCount: record.obligationCount,
+          allocationCount: record.allocationCount,
+          status: issues.length === 0 ? 'OK' as const : 'MISMATCH' as const,
+          issues,
+        };
+      });
+      return { operationalSnapshot: true, summary: financialIntegritySummary(rows, 'reportedOutstanding', 'independentOutstanding'), rows };
+    }
+
+    if (slice === 'suppliers-financial-integrity') {
+      const evidence = await ReportRowsRepository.supplierFinancialIntegrity();
+      const reported = await SuppliersRepository.balances(evidence.map((row) => row.supplierId));
+      const rows = evidence.map((record) => {
+        const increaseTotal = new Decimal(record.increaseTotal);
+        const decreaseTotal = new Decimal(record.decreaseTotal);
+        const independentBalance = subtractMoney(increaseTotal, decreaseTotal);
+        const balance = reported.get(record.supplierId);
+        const reportedBalance = subtractMoney(balance?.increase ?? '0.00', balance?.decrease ?? '0.00');
+        const difference = subtractMoney(reportedBalance, independentBalance);
+        const issues: string[] = [];
+        if (!difference.equals(ZERO_MONEY)) issues.push('Reported balance does not match active increases minus active decreases');
+        return {
+          supplier: { id: record.supplierId, name: record.supplierName, phone: record.supplierPhone },
+          increaseTotal: moneyToApiString(increaseTotal),
+          decreaseTotal: moneyToApiString(decreaseTotal),
+          reportedBalance: moneyToApiString(reportedBalance),
+          independentBalance: moneyToApiString(independentBalance),
+          difference: moneyToApiString(difference),
+          transactionCount: record.transactionCount,
+          status: issues.length === 0 ? 'OK' as const : 'MISMATCH' as const,
+          issues,
+        };
+      });
+      return { operationalSnapshot: true, summary: financialIntegritySummary(rows, 'reportedBalance', 'independentBalance'), rows };
+    }
+
     const records = await ReportRowsRepository.receivingReconciliation(period);
     const rows = records.flatMap((receiving) => receiving.items.map((item) => {
       const issues = reconciliationIssues(receiving, item);
@@ -375,6 +436,24 @@ function reconciliationIssues(
   return issues;
 }
 
+function financialIntegritySummary<Row extends { status: 'OK' | 'MISMATCH' }>(
+  rows: Row[],
+  reportedKey: keyof Row,
+  independentKey: keyof Row
+) {
+  const money = (key: keyof Row) => moneyToApiString(sumMoney(rows.map((row) => new Decimal(String(row[key])))));
+  const reportedTotal = money(reportedKey);
+  const independentTotal = money(independentKey);
+  return {
+    count: rows.length,
+    ok: rows.filter((row) => row.status === 'OK').length,
+    mismatches: rows.filter((row) => row.status === 'MISMATCH').length,
+    reportedTotal,
+    independentTotal,
+    difference: moneyToApiString(subtractMoney(reportedTotal, independentTotal)),
+  };
+}
+
 function csvDefinition(slice: ReportSlice, rows: Array<Record<string, unknown>>): { headers: CsvValue[]; rows: CsvValue[][] } {
   const definitions: Record<ReportSlice, { headers: string[]; values: (row: Record<string, unknown>) => CsvValue[] }> = {
     'customers-new': { headers: ['Date', 'Customer', 'Phone', 'Active'], values: (r) => [r.createdOn as string, r.name as string, r.phone as string, r.isActive as boolean] },
@@ -390,6 +469,8 @@ function csvDefinition(slice: ReportSlice, rows: Array<Record<string, unknown>>)
     'sales-unpaid': { headers: ['Date', 'Order', 'Customer', 'Payment status', 'Fulfillment', 'Total', 'Paid', 'Remaining'], values: salesCsvRow },
     'inventory-movements': { headers: ['Timestamp', 'SKU', 'Product', 'Type', 'Change', 'Before', 'After', 'Reason', 'Reference'], values: (r) => { const p = r.product as Record<string, unknown>; return [r.createdAt as string, p.sku as string, p.name as string, r.movementType as string, r.quantityChange as number, r.quantityBefore as number, r.quantityAfter as number, r.reason as string, r.referenceId as string | null]; } },
     'inventory-reconciliation': { headers: ['Date', 'Receiving', 'Supplier', 'SKU', 'Product', 'Quantity', 'Status', 'Issues'], values: (r) => { const s = r.supplier as Record<string, unknown> | null; return [r.receivedOn as string, r.referenceNumber as string | null, s?.name as string | undefined, r.sku as string, r.productName as string, r.quantity as number, r.status as string, (r.issues as string[]).join('; ')]; } },
+    'customers-financial-integrity': { headers: ['Customer', 'Phone', 'Obligations', 'Non-voided allocations', 'Reported outstanding', 'Independent outstanding', 'Difference', 'Status', 'Issues'], values: (r) => { const c = r.customer as Record<string, unknown>; return [c.name as string, c.phone as string, r.obligationTotal as string, r.allocationTotal as string, r.reportedOutstanding as string, r.independentOutstanding as string, r.difference as string, r.status as string, (r.issues as string[]).join('; ')]; } },
+    'suppliers-financial-integrity': { headers: ['Supplier', 'Phone', 'Active increases', 'Active decreases', 'Reported balance', 'Independent balance', 'Difference', 'Status', 'Issues'], values: (r) => { const s = r.supplier as Record<string, unknown>; return [s.name as string, s.phone as string, r.increaseTotal as string, r.decreaseTotal as string, r.reportedBalance as string, r.independentBalance as string, r.difference as string, r.status as string, (r.issues as string[]).join('; ')]; } },
   };
   const definition = definitions[slice];
   return { headers: definition.headers, rows: rows.map(definition.values) };

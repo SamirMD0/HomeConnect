@@ -14,6 +14,7 @@ const paths = [
   'customers/new', 'customers/debts', 'customers/payments', 'suppliers/debts',
   'suppliers/receiving', 'sales/orders', 'sales/unpaid', 'inventory/movements',
   'inventory/reconciliation',
+  'customers/financial-integrity', 'suppliers/financial-integrity',
 ];
 
 describe('report row routes', () => {

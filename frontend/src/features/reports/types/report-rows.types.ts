@@ -6,6 +6,7 @@ export type ReportSlice =
   | 'suppliers-debts' | 'suppliers-receiving'
   | 'sales-orders' | 'sales-unpaid'
   | 'inventory-movements' | 'inventory-reconciliation'
+  | 'customers-financial-integrity' | 'suppliers-financial-integrity'
   | 'products-bought';
 
 export interface ReportRowsEnvelope<Row = ReportRow> {
@@ -24,6 +25,8 @@ export type ReportRow =
   | { id: string; orderNumber: string; orderDate: string; customer: NamedParty | null; paymentStatus: string; fulfillmentStatus: string; totalAmount: string; paidAmount: string; remainingAmount: string }
   | { id: string; product: { id: string; name: string; sku: string }; movementType: string; quantityChange: number; quantityBefore: number; quantityAfter: number; reason: string; createdAt: string }
   | { receivingId: string; referenceNumber: string | null; receivedOn: string; supplier: NamedParty | null; sku: string; productName: string; quantity: number; status: 'OK' | 'MISMATCH'; issues: string[] }
+  | { customer: NamedParty; obligationTotal: string; allocationTotal: string; reportedOutstanding: string; independentOutstanding: string; difference: string; status: 'OK' | 'MISMATCH'; issues: string[] }
+  | { supplier: NamedParty; increaseTotal: string; decreaseTotal: string; reportedBalance: string; independentBalance: string; difference: string; status: 'OK' | 'MISMATCH'; issues: string[] }
   | { debtId: string; customer: NamedParty; description: string; reference: string | null; createdOn: string; dueDate: string; originalAmount: string; paidAmount: string; remainingAmount: string; daysUnpaid: number; bucket: string; lastPaymentDate: string | null; status: string }
   | { customer: NamedParty; openingBalance: string; newDebt: string; paidInPeriod: string; closingBalance: string; paymentCount: number; unpaidDebtCount: number; lastPaymentDate: string | null; daysSinceLastPayment: number | null; riskLabels: string[] }
   | { itemId: string; product: { id: string; name: string; sku: string }; sku: string; barcode: string | null; currentStock: number; supplier: NamedParty | null; receivingId: string; referenceNumber: string | null; receivedOn: string; quantity: number; status: 'ACTIVE' | 'REVERSED'; soldInPeriod: number; linkedDebt: { id: string; amount: string } | null };

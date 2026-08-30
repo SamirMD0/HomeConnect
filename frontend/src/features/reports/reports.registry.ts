@@ -1,7 +1,7 @@
 import {
   Activity, Banknote, Boxes, CircleDollarSign, ClipboardList, FileText, Hourglass,
   PackageSearch, ReceiptText, ScrollText, ShoppingCart, Truck, UserCheck, UserPlus,
-  UserX, Users, type LucideIcon,
+  UserX, Users, ShieldCheck, type LucideIcon,
 } from 'lucide-react';
 import type { MonthlyReviewData } from './types/monthly-review.types';
 import type { ReportSlice } from './types/report-rows.types';
@@ -127,6 +127,16 @@ export const reportDefinitions: ReportDefinition[] = [
     headline: (data) => ({ label: 'Closing balance / الرصيد الختامي', value: data.customers.movement.closing, money: true }),
   },
   {
+    id: 'customer-financial-integrity',
+    title: 'Customer Financial Integrity / سلامة حسابات الزبائن',
+    description: 'Compares the customer balance shown by Home Connect with an independent sum of obligations minus live payment allocations.',
+    icon: ShieldCheck,
+    category: 'customers',
+    kind: 'rows',
+    slice: 'customers-financial-integrity',
+    operational: true,
+  },
+  {
     id: 'customer-payments',
     title: 'Customer Payments / دفعات الزبائن',
     description: 'Every payment collected during the period, with method and reference.',
@@ -161,6 +171,16 @@ export const reportDefinitions: ReportDefinition[] = [
     kind: 'rows',
     slice: 'suppliers-debts',
     headline: (data) => ({ label: 'Closing owed / المستحق الختامي', value: data.suppliers.movement.closing, money: true }),
+  },
+  {
+    id: 'supplier-financial-integrity',
+    title: 'Supplier Financial Integrity / سلامة حسابات الموردين',
+    description: 'Compares each displayed supplier balance with an independent sum of active increases minus active decreases.',
+    icon: ShieldCheck,
+    category: 'suppliers',
+    kind: 'rows',
+    slice: 'suppliers-financial-integrity',
+    operational: true,
   },
   {
     id: 'supplier-receiving',

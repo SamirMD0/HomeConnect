@@ -17,6 +17,25 @@ const excludedSalesStatuses = [
   SalesOrderFulfillmentStatus.RETURNED,
 ];
 
+export interface CustomerFinancialIntegrityEvidence {
+  customerId: string;
+  customerName: string;
+  customerPhone: string;
+  obligationTotal: string;
+  allocationTotal: string;
+  obligationCount: number;
+  allocationCount: number;
+}
+
+export interface SupplierFinancialIntegrityEvidence {
+  supplierId: string;
+  supplierName: string;
+  supplierPhone: string;
+  increaseTotal: string;
+  decreaseTotal: string;
+  transactionCount: number;
+}
+
 function boundaries(period: ResolvedReportsPeriod) {
   return {
     from: businessDateToPrisma(period.from),
@@ -261,5 +280,107 @@ export class ReportRowsRepository {
       },
       orderBy: [{ receivedOn: 'asc' }, { id: 'asc' }],
     });
+  }
+
+  /**
+   * Independent customer-balance evidence.
+   *
+   * This deliberately does not call any financial-domain balance helper used by
+   * customer screens. It treats each standard debt and each live installment as
+   * an obligation, then subtracts only allocations whose allocation row and
+   * parent payment are both live. Keeping this SQL separate is what lets the
+   * report catch a regression in the normal application projection.
+   */
+  static customerFinancialIntegrity() {
+    return prisma.$queryRaw<CustomerFinancialIntegrityEvidence[]>`
+      WITH obligation_rows AS (
+        SELECT d."customerId", d."originalAmount" AS amount
+        FROM "debts" d
+        WHERE d."kind" <> 'PREPAID_PURCHASE'
+          AND d."status" <> 'CANCELLED'
+          AND d."cancelledAt" IS NULL
+        UNION ALL
+        SELECT p."customerId", i."amountDue" AS amount
+        FROM "installments" i
+        JOIN "installment_plans" p ON p."id" = i."installmentPlanId"
+        WHERE p."status" <> 'CANCELLED'
+          AND p."cancelledAt" IS NULL
+          AND i."status" <> 'CANCELLED'
+      ),
+      obligation_totals AS (
+        SELECT "customerId", SUM(amount) AS amount, COUNT(*)::integer AS count
+        FROM obligation_rows
+        GROUP BY "customerId"
+      ),
+      allocation_rows AS (
+        SELECT d."customerId", a."amount"
+        FROM "payment_allocations" a
+        JOIN "payments" payment ON payment."id" = a."paymentId"
+        JOIN "debts" d ON d."id" = a."debtId"
+        WHERE a."voidedAt" IS NULL
+          AND payment."voidedAt" IS NULL
+          AND d."kind" <> 'PREPAID_PURCHASE'
+          AND d."status" <> 'CANCELLED'
+          AND d."cancelledAt" IS NULL
+        UNION ALL
+        SELECT p."customerId", a."amount"
+        FROM "payment_allocations" a
+        JOIN "payments" payment ON payment."id" = a."paymentId"
+        JOIN "installments" i ON i."id" = a."installmentId"
+        JOIN "installment_plans" p ON p."id" = i."installmentPlanId"
+        WHERE a."voidedAt" IS NULL
+          AND payment."voidedAt" IS NULL
+          AND p."status" <> 'CANCELLED'
+          AND p."cancelledAt" IS NULL
+          AND i."status" <> 'CANCELLED'
+      ),
+      allocation_totals AS (
+        SELECT "customerId", SUM(amount) AS amount, COUNT(*)::integer AS count
+        FROM allocation_rows
+        GROUP BY "customerId"
+      )
+      SELECT
+        customer."id" AS "customerId",
+        customer."name" AS "customerName",
+        customer."phone" AS "customerPhone",
+        COALESCE(obligations.amount, 0)::text AS "obligationTotal",
+        COALESCE(allocations.amount, 0)::text AS "allocationTotal",
+        COALESCE(obligations.count, 0)::integer AS "obligationCount",
+        COALESCE(allocations.count, 0)::integer AS "allocationCount"
+      FROM "customers" customer
+      LEFT JOIN obligation_totals obligations ON obligations."customerId" = customer."id"
+      LEFT JOIN allocation_totals allocations ON allocations."customerId" = customer."id"
+      WHERE customer."deletedAt" IS NULL
+      ORDER BY customer."name" ASC, customer."id" ASC
+    `;
+  }
+
+  /** Independent direction-and-status aggregation for every supplier. */
+  static supplierFinancialIntegrity() {
+    return prisma.$queryRaw<SupplierFinancialIntegrityEvidence[]>`
+      WITH transaction_totals AS (
+        SELECT
+          st."supplierId",
+          COALESCE(SUM(st."amount") FILTER (
+            WHERE st."status" = 'ACTIVE' AND st."direction" = 'INCREASE_OWED'
+          ), 0) AS increases,
+          COALESCE(SUM(st."amount") FILTER (
+            WHERE st."status" = 'ACTIVE' AND st."direction" = 'DECREASE_OWED'
+          ), 0) AS decreases,
+          COUNT(*) FILTER (WHERE st."status" = 'ACTIVE')::integer AS count
+        FROM "supplier_transactions" st
+        GROUP BY st."supplierId"
+      )
+      SELECT
+        supplier."id" AS "supplierId",
+        supplier."name" AS "supplierName",
+        supplier."phone" AS "supplierPhone",
+        COALESCE(totals.increases, 0)::text AS "increaseTotal",
+        COALESCE(totals.decreases, 0)::text AS "decreaseTotal",
+        COALESCE(totals.count, 0)::integer AS "transactionCount"
+      FROM "suppliers" supplier
+      LEFT JOIN transaction_totals totals ON totals."supplierId" = supplier."id"
+      ORDER BY supplier."name" ASC, supplier."id" ASC
+    `;
   }
 }
