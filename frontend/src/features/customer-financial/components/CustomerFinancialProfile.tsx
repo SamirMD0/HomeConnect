@@ -37,11 +37,10 @@ import { CustomerActivityTimeline } from '../../../pages/customers/components/Cu
 import { CustomerAttentionPanel } from '../../../pages/customers/components/CustomerAttentionPanel';
 import { CustomerMonthStatusCard } from '../../../pages/customers/components/CustomerMonthStatusCard';
 
-export type FinancialProfileTab = 'overview' | 'debts' | 'prepaid' | 'plans' | 'payments' | 'overdue' | 'legacy' | 'activity';
+export type FinancialProfileTab = 'overview' | 'debts' | 'prepaid' | 'plans' | 'payments' | 'overdue' | 'activity';
 
 interface CustomerFinancialProfileProps {
   customerId: string;
-  legacyLedger: React.ReactNode;
   activeTab?: FinancialProfileTab;
   onTabChange?: (tab: FinancialProfileTab) => void;
 }
@@ -53,13 +52,11 @@ const tabs: Array<{ id: FinancialProfileTab; label: string }> = [
   { id: 'plans', label: 'Installment Plans' },
   { id: 'payments', label: 'Payments' },
   { id: 'overdue', label: 'Overdue' },
-  { id: 'legacy', label: 'Legacy Ledger' },
   { id: 'activity', label: 'Activity / النشاط' },
 ];
 
 export const CustomerFinancialProfile: React.FC<CustomerFinancialProfileProps> = ({
   customerId,
-  legacyLedger,
   activeTab: controlledTab,
   onTabChange,
 }) => {
@@ -189,7 +186,6 @@ export const CustomerFinancialProfile: React.FC<CustomerFinancialProfileProps> =
             data={data}
             onOpenDebt={setSelectedDebtId}
             onOpenPlan={setSelectedPlanId}
-            legacyLedger={legacyLedger}
             canMutate={canMutateFinancialRecords}
             onRecordDebtPayment={setDebtForPayment}
             onCancelDebt={setDebtForCancellation}
@@ -368,7 +364,6 @@ interface FinancialTabPanelProps {
   data: CustomerFinancialSummary;
   onOpenDebt: (debtId: string) => void;
   onOpenPlan: (planId: string) => void;
-  legacyLedger: React.ReactNode;
   canMutate: boolean;
   onRecordDebtPayment: (debt: DebtSummaryItem) => void;
   onCancelDebt: (debt: DebtSummaryItem) => void;
@@ -383,7 +378,6 @@ const FinancialTabPanel: React.FC<FinancialTabPanelProps> = ({
   data,
   onOpenDebt,
   onOpenPlan,
-  legacyLedger,
   canMutate,
   onRecordDebtPayment,
   onCancelDebt,
@@ -438,22 +432,6 @@ const FinancialTabPanel: React.FC<FinancialTabPanelProps> = ({
         onOpenDebt={onOpenDebt}
         onOpenPlan={onOpenPlan}
       />
-    );
-  }
-
-  if (activeTab === 'legacy') {
-    return (
-      <section aria-labelledby="legacy-ledger-heading">
-        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          <h2 id="legacy-ledger-heading" className="font-semibold">
-            Legacy transaction ledger
-          </h2>
-          <p className="mt-1">
-            This section is kept for existing transaction history. It is not included in the financial-summary totals.
-          </p>
-        </div>
-        {legacyLedger}
-      </section>
     );
   }
 

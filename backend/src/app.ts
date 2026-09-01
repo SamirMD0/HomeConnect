@@ -9,7 +9,6 @@ import { prisma } from './lib/prisma';
 import { authRoutes } from './routes/auth.routes';
 import { usersRoutes } from './routes/users.routes';
 import customersRoutes from './routes/customers.routes';
-import transactionsRoutes from './routes/transactions.routes';
 import { dashboardRoutes } from './routes/dashboard.routes';
 import { requireAuth } from './middleware/auth.middleware';
 import { customerDebtsRoutes, debtsRoutes } from './features/financial/debts/debts.routes';
@@ -125,7 +124,6 @@ app.use('/api/v1/admin/preflight', requireAuth, preflightRoutes);
 app.use('/api/v1/admin/maintenance', requireAuth, maintenanceRoutes);
 app.use('/api/v1/system', requireAuth, systemRoutes);
 app.use('/api/v1/scanner', requireAuth, scannerRoutes);
-app.use('/api/v1/transactions', requireAuth, transactionsRoutes);
 app.use('/api/v1/dashboard', requireAuth, dashboardRoutes);
 
 // Global Error Handler

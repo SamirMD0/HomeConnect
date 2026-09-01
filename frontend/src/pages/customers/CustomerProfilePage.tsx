@@ -7,7 +7,6 @@ import { CustomerDeleteModal } from '../../features/customers/components/Custome
 import { CustomerForm } from '../../features/customers/components/CustomerForm';
 import { useCustomer, useDeleteCustomer, useUpdateCustomer } from '../../features/customers/hooks/useCustomers';
 import { CustomerFinancialProfile, FinancialProfileTab } from '../../features/customer-financial/components/CustomerFinancialProfile';
-import { TransactionList } from '../../features/transactions/components/TransactionList';
 import { CustomerServiceJobsSection } from '../../features/service/components/CustomerServiceJobsSection';
 import { CustomerSalesOrdersSection } from '../../features/sales-orders/components/CustomerSalesOrdersSection';
 import { businessLabels } from '../../shared/labels/business-labels';
@@ -244,7 +243,6 @@ export const CustomerProfilePage: React.FC = () => {
 
       {searchParams.get('tab') !== 'details' && <CustomerFinancialProfile
         customerId={customer.id}
-        legacyLedger={<TransactionList customerId={customer.id} />}
         activeTab={(searchParams.get('tab') as FinancialProfileTab | null) ?? 'overview'}
         onTabChange={(tab) => setSearchParams({ tab })}
       />}

@@ -21,18 +21,6 @@ vi.mock('./lib/prisma', () => ({
     activityLog: {
       findMany: vi.fn(),
     },
-    transaction: {
-      findUnique: vi.fn(),
-      findMany: vi.fn(),
-      count: vi.fn(),
-      groupBy: vi.fn(),
-    },
-  },
-  transactionModel: {
-    findUnique: vi.fn(),
-    findMany: vi.fn(),
-    count: vi.fn(),
-    groupBy: vi.fn(),
   },
   activityLogModel: {
     findMany: vi.fn(),
@@ -94,6 +82,12 @@ describe('Express app smoke tests', () => {
     expect(response.status).toBe(401);
     expect(response.body.success).toBe(false);
     expect(response.body.error.code).toBe('UNAUTHORIZED');
+  });
+
+  it('does not expose the removed legacy transactions API', async () => {
+    const response = await request(app).get('/api/v1/transactions');
+
+    expect(response.status).toBe(404);
   });
 
   it('returns no content for auth refresh without a refresh cookie', async () => {

@@ -120,11 +120,31 @@ describe('sql safety scanner — real bundled files', () => {
     expect(result.statementCount).toBeGreaterThan(0);
   });
 
-  const migrationDirs = fs.readdirSync(MIGRATIONS_DIR).filter((name) => /^\d{14}_/.test(name));
+  const reviewedDestructiveMigration = '20260830183000_remove_legacy_transactions';
+  const migrationDirs = fs
+    .readdirSync(MIGRATIONS_DIR)
+    .filter((name) => /^\d{14}_/.test(name) && name !== reviewedDestructiveMigration);
 
   it.each(migrationDirs)('accepts migration %s', (name) => {
     const file = path.join(MIGRATIONS_DIR, name, 'migration.sql');
     if (!fs.existsSync(file)) return;
     expect(scanSqlForUnsafeStatements(fs.readFileSync(file, 'utf8')).violations).toEqual([]);
+  });
+
+  it('recognizes the reviewed legacy transaction removal as destructive', () => {
+    const sql = fs.readFileSync(
+      path.join(MIGRATIONS_DIR, reviewedDestructiveMigration, 'migration.sql'),
+      'utf8'
+    );
+    const result = scanSqlForUnsafeStatements(sql);
+
+    expect(result.violations.map((violation) => violation.code)).toEqual([
+      'DROP_STATEMENT',
+      'DROP_STATEMENT',
+      'DROP_STATEMENT',
+    ]);
+    expect(sql).toContain('DROP TABLE "transactions"');
+    expect(sql).toContain('DROP TYPE IF EXISTS "TransactionStatus"');
+    expect(sql).toContain('DROP TYPE "TransactionType"');
   });
 });

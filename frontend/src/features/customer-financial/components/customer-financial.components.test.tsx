@@ -630,7 +630,7 @@ describe('customer financial profile components', () => {
     });
     expect(
       renderToStaticMarkup(
-        <CustomerFinancialProfile customerId="customer-1" legacyLedger={<div>Legacy</div>} />
+        <CustomerFinancialProfile customerId="customer-1" />
       )
     ).toContain('Loading customer financial profile');
 
@@ -642,7 +642,7 @@ describe('customer financial profile components', () => {
       refetch: vi.fn(),
     });
     const successHtml = renderToStaticMarkup(
-      <CustomerFinancialProfile customerId="customer-1" legacyLedger={<div>Legacy</div>} />
+      <CustomerFinancialProfile customerId="customer-1" />
     );
     expect(successHtml).toContain('Financial Profile');
     expect(successHtml).toContain('Show cancelled records');
@@ -652,7 +652,7 @@ describe('customer financial profile components', () => {
       user: { id: 'employee-1', username: 'employee', fullName: 'Employee User', role: 'EMPLOYEE' },
     });
     const employeeHtml = renderToStaticMarkup(
-      <CustomerFinancialProfile customerId="customer-1" legacyLedger={<div>Legacy</div>} />
+      <CustomerFinancialProfile customerId="customer-1" />
     );
     expect(employeeHtml).not.toContain('Add financial obligation');
 
@@ -665,7 +665,7 @@ describe('customer financial profile components', () => {
     });
     expect(
       renderToStaticMarkup(
-        <CustomerFinancialProfile customerId="customer-1" legacyLedger={<div>Legacy</div>} />
+        <CustomerFinancialProfile customerId="customer-1" />
       )
     ).toContain('Customer not found');
   });

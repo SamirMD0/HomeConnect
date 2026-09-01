@@ -9,6 +9,12 @@ const migration = readFileSync(
   ),
   'utf8'
 );
+const legacyRemovalMigration = readFileSync(
+  path.resolve(
+    'backend/prisma/migrations/20260830183000_remove_legacy_transactions/migration.sql'
+  ),
+  'utf8'
+);
 
 describe('Phase 2 financial domain schema', () => {
   it('adds the explicit financial domain models', () => {
@@ -23,16 +29,14 @@ describe('Phase 2 financial domain schema', () => {
     }
   });
 
-  it('keeps legacy Transaction model intact', () => {
-    expect(schema).toContain('model Transaction');
-    expect(schema).toContain('enum TransactionType');
-    expect(schema).toContain('ONE_TIME');
-    expect(schema).toContain('INSTALLMENT');
-    expect(schema).toContain('PAYMENT');
-    expect(schema).toContain('ADJUSTMENT');
+  it('retires the legacy Transaction model only in its dedicated migration', () => {
+    expect(schema).not.toContain('model Transaction');
+    expect(schema).not.toContain('enum TransactionType');
     expect(migration).not.toMatch(/ALTER TYPE "TransactionType"/);
     expect(migration).not.toMatch(/DROP TYPE "TransactionType"/);
     expect(migration).not.toMatch(/ALTER TABLE "transactions"/);
+    expect(legacyRemovalMigration).toContain('DROP TABLE "transactions"');
+    expect(legacyRemovalMigration).toContain('DROP TYPE "TransactionType"');
   });
 
   it('uses Decimal money fields and PostgreSQL DATE business dates', () => {

@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
 import { CustomersService } from '../services/customers.service';
-import { TransactionsService } from '../services/transactions.service';
 import { CustomerSuggestionsService } from '../features/customers/customer-suggestions.service';
 
 export class CustomersController {
@@ -104,29 +103,4 @@ export class CustomersController {
     }
   }
 
-  static async getCustomerTransactions(req: Request, res: Response, next: NextFunction) {
-    try {
-      const transactions = await TransactionsService.getCustomerTransactionsWithBalance(req.params.id as string);
-      res.status(200).json({
-        success: true,
-        data: transactions,
-        meta: { timestamp: new Date().toISOString() }
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  static async getCustomerBalance(req: Request, res: Response, next: NextFunction) {
-    try {
-      const balance = await TransactionsService.getCustomerBalance(req.params.id as string);
-      res.status(200).json({
-        success: true,
-        data: { balance },
-        meta: { timestamp: new Date().toISOString() }
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
 }
