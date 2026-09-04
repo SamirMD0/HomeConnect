@@ -21,7 +21,7 @@ export class SalesAnalyticsService {
     const productNames = new Map(records.products.map((product) => [product.id, product.name]));
     return {
       totals: {
-        salesToday: moneyToApiString(records.todayAggregate._sum.totalAmount ?? '0.00'),
+        salesToday: moneyToApiString(records.todayAggregate._sum.baseTotalAmount ?? '0.00'),
         ordersToday: records.todayAggregate._count._all,
         pendingDelivery: records.pendingDelivery,
         unpaidOrders: records.unpaidOrders,
@@ -30,7 +30,7 @@ export class SalesAnalyticsService {
       },
       salesByDay: records.salesByDay.map((row) => ({
         date: prismaDateToBusinessDate(row.orderDate),
-        amount: moneyToApiString(row._sum.totalAmount ?? '0.00'),
+        amount: moneyToApiString(row._sum.baseTotalAmount ?? '0.00'),
         orderCount: row._count._all,
       })),
       paymentStatusDistribution: records.paymentStatusDistribution.map((row) => ({ status: row.paymentStatus, count: row._count._all })),

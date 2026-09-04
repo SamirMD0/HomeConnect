@@ -96,6 +96,11 @@ export class SalesOrdersService {
             totalAmount: totals.totalAmount,
             paidAmount: totals.paidAmount,
             remainingAmount: totals.remainingAmount,
+            baseSubtotal: totals.itemsSubtotal,
+            baseDeliveryFee: input.deliveryFee ?? null,
+            baseTotalAmount: totals.totalAmount,
+            basePaidAmount: totals.paidAmount,
+            baseRemainingAmount: totals.remainingAmount,
             deliveryAddressSnapshot: input.deliveryAddressSnapshot ?? null,
             deliveryNotes: input.deliveryNotes ?? null,
             notes: input.notes ?? null,
@@ -157,7 +162,7 @@ export class SalesOrdersService {
     toExclusive.setUTCDate(toExclusive.getUTCDate() + 1);
     const result = await SalesOrdersRepository.summary(from, toExclusive);
     return {
-      periodSales: moneyToApiString(result.todayAggregate._sum.totalAmount ?? '0.00'),
+      periodSales: moneyToApiString(result.todayAggregate._sum.baseTotalAmount ?? '0.00'),
       periodOrders: result.todayAggregate._count._all,
       pendingDelivery: result.pendingDelivery,
       unpaidOrders: result.unpaidOrders,
@@ -196,7 +201,10 @@ export class SalesOrdersService {
         ...(input.salesChannel !== undefined ? { salesChannel: channel } : {}),
         ...(input.orderDate !== undefined ? { orderDate: businessDateToPrisma(orderDate) } : {}),
         ...(input.deliveryDate !== undefined ? { deliveryDate: dateOrNull(deliveryDate) } : {}),
-        ...(input.deliveryFee !== undefined ? { deliveryFee: input.deliveryFee ?? null } : {}),
+        ...(input.deliveryFee !== undefined ? {
+          deliveryFee: input.deliveryFee ?? null,
+          baseDeliveryFee: input.deliveryFee ?? null,
+        } : {}),
         ...(input.deliveryAddressSnapshot !== undefined ? { deliveryAddressSnapshot: input.deliveryAddressSnapshot } : {}),
         ...(input.deliveryNotes !== undefined ? { deliveryNotes: input.deliveryNotes } : {}),
         ...(input.notes !== undefined ? { notes: input.notes } : {}),
@@ -347,6 +355,8 @@ export class SalesOrdersService {
       let updated = await SalesOrdersRepository.update(id, {
         paidAmount: totals.paidAmount,
         remainingAmount: totals.remainingAmount,
+        basePaidAmount: totals.paidAmount,
+        baseRemainingAmount: totals.remainingAmount,
         paymentStatus: deriveSalesOrderPaymentStatus(totals.paidAmount, totals.totalAmount),
         updatedById: user.userId,
       }, tx);
@@ -487,6 +497,9 @@ export class SalesOrdersService {
       itemsSubtotal: totals.itemsSubtotal,
       totalAmount: totals.totalAmount,
       remainingAmount: totals.remainingAmount,
+      baseSubtotal: totals.itemsSubtotal,
+      baseTotalAmount: totals.totalAmount,
+      baseRemainingAmount: totals.remainingAmount,
       paymentStatus: deriveSalesOrderPaymentStatus(totals.paidAmount, totals.totalAmount),
       updatedById: user.userId,
     }, tx);
@@ -636,6 +649,9 @@ async function prepareItems(items: Array<{
       unitPrice: item.unitPrice,
       discountAmount: item.discountAmount ?? null,
       lineTotal,
+      baseUnitPrice: item.unitPrice,
+      baseDiscountAmount: item.discountAmount ?? null,
+      baseLineTotal: lineTotal,
       notes: item.notes ?? null,
     };
   }));

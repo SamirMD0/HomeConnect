@@ -1,4 +1,4 @@
-import { DebtStatus, FinancialCorrectionSourceScreen, PaymentMethod } from '@prisma/client';
+import { Currency, DebtStatus, FinancialCorrectionSourceScreen, PaymentMethod } from '@prisma/client';
 import { z } from 'zod';
 import { userTextSchema } from '../../../validators/user-text';
 
@@ -24,11 +24,13 @@ export const debtParamsSchema = z.object({
 export const createDebtSchema = z
   .object({
     amount: moneyStringSchema,
+    currency: z.nativeEnum(Currency).default(Currency.USD),
     description: userTextSchema({ field: 'Description', min: 1, max: 200 }),
     dueDate: businessDateSchema,
     notes: userTextSchema({ field: 'Notes', max: 1000 }).optional().nullable(),
   })
-  .strict();
+  .strict()
+  .superRefine(rejectFractionalLbp('amount'));
 
 export const createPrepaidPurchaseSchema = z
   .object({
@@ -78,13 +80,15 @@ export const listCustomerDebtsQuerySchema = z.object({
 export const createDebtPaymentSchema = z
   .object({
     amount: moneyStringSchema,
+    currency: z.nativeEnum(Currency).default(Currency.USD),
     paymentDate: businessDateSchema,
     paymentMethod: z.nativeEnum(PaymentMethod).default(PaymentMethod.CASH),
     reference: userTextSchema({ field: 'Reference', max: 100 }).optional().nullable(),
     notes: userTextSchema({ field: 'Notes', max: 1000 }).optional().nullable(),
     idempotencyKey: z.string().trim().max(128, 'Idempotency key is too long').optional().nullable(),
   })
-  .strict();
+  .strict()
+  .superRefine(rejectFractionalLbp('amount'));
 
 export const cancelDebtSchema = z
   .object({
@@ -95,14 +99,26 @@ export const cancelDebtSchema = z
 
 export type CustomerDebtParamsInput = z.infer<typeof customerDebtParamsSchema>;
 export type DebtParamsInput = z.infer<typeof debtParamsSchema>;
-export type CreateDebtInput = z.infer<typeof createDebtSchema>;
+export type CreateDebtInput = z.input<typeof createDebtSchema>;
 export type CreatePrepaidPurchaseInput = z.infer<typeof createPrepaidPurchaseSchema>;
 export type UpdateDebtInput = z.infer<typeof updateDebtSchema>;
 export type ListCustomerDebtsQueryInput = z.infer<typeof listCustomerDebtsQuerySchema>;
-export type CreateDebtPaymentInput = z.infer<typeof createDebtPaymentSchema>;
+export type CreateDebtPaymentInput = z.input<typeof createDebtPaymentSchema>;
 export type CancelDebtInput = z.infer<typeof cancelDebtSchema>;
 
 function moneyToCents(value: string): bigint {
   const [whole, fraction = ''] = value.split('.');
   return BigInt(whole) * 100n + BigInt(fraction.padEnd(2, '0'));
+}
+
+function rejectFractionalLbp(field: 'amount') {
+  return (value: { amount: string; currency: Currency }, context: z.RefinementCtx) => {
+    if (value.currency === Currency.LBP && !/^\d+(?:\.0{1,2})?$/.test(value[field])) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [field],
+        message: 'LBP amount must be a whole number',
+      });
+    }
+  };
 }

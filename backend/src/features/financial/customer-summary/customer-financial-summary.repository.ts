@@ -36,6 +36,8 @@ const debtInclude = {
         select: {
           id: true,
           voidedAt: true,
+          currency: true,
+          exchangeRate: true,
         },
       },
     },
@@ -60,6 +62,8 @@ const installmentPlanInclude = {
             select: {
               id: true,
               voidedAt: true,
+              currency: true,
+              exchangeRate: true,
             },
           },
         },

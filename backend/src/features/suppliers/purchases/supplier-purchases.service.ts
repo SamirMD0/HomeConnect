@@ -1,5 +1,5 @@
 import {
-  LabelBarcodeSource, Prisma, ServiceAuditAction, ServiceAuditRecordType, StockMovementType,
+  Currency, LabelBarcodeSource, Prisma, ServiceAuditAction, ServiceAuditRecordType, StockMovementType,
   SupplierAuditAction, SupplierAuditRecordType, SupplierPurchaseLineKind,
   SupplierTransactionDirection, SupplierTransactionType,
 } from '@prisma/client';
@@ -124,7 +124,7 @@ export class SupplierPurchasesService {
           description: `${product.name} · ${product.sku}`,
           quantity: line.quantity,
           unitPrice: parseMoney(line.unitPrice),
-          lineTotal: multiplyMoney(line.unitPrice, String(line.quantity)),
+          lineTotal: multiplyMoney(line.unitPrice, String(line.quantity), Currency.USD, Decimal.ROUND_HALF_UP),
           receivesStock: input.receiveStock,
         });
       }
@@ -311,7 +311,7 @@ async function updateProductCostsFromPurchase(input: PurchaseCostUpdateContext, 
     if (weighted.quantity === 0) continue;
     const product = await ProductsRepository.findById(productId, tx);
     if (!product) throw new NotFoundError('Product not found / المنتج غير موجود');
-    const nextCost = divideMoney(weighted.extendedCost, new Decimal(weighted.quantity), Decimal.ROUND_HALF_UP);
+    const nextCost = divideMoney(weighted.extendedCost, new Decimal(weighted.quantity), Currency.USD, Decimal.ROUND_HALF_UP);
     const previousCost = product.costPrice == null ? null : parseMoney(product.costPrice);
     if (previousCost?.equals(nextCost)) continue;
 
@@ -502,7 +502,7 @@ async function createIncomingPurchaseFingerprint(
       identity,
       quantity: line.quantity,
       unitPrice: moneyToApiString(parseMoney(line.unitPrice)),
-      lineTotal: moneyToApiString(multiplyMoney(line.unitPrice, String(line.quantity))),
+      lineTotal: moneyToApiString(multiplyMoney(line.unitPrice, String(line.quantity), Currency.USD, Decimal.ROUND_HALF_UP)),
       receivesStock: input.receiveStock,
     });
   }
@@ -510,7 +510,7 @@ async function createIncomingPurchaseFingerprint(
   const lineSum = sumMoney(input.lines.map((line) =>
     line.kind === 'MANUAL'
       ? parseMoney(line.amount)
-      : multiplyMoney(line.unitPrice, String(line.quantity))
+      : multiplyMoney(line.unitPrice, String(line.quantity), Currency.USD, Decimal.ROUND_HALF_UP)
   ));
   const amount = assertPositiveMoney(input.amountOverride ?? lineSum);
   const paidAmount = parseMoney(input.paidAmount ?? '0');

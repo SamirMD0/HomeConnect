@@ -155,7 +155,7 @@ export class SalesOrdersRepository {
     const [todayAggregate, pendingDelivery, unpaidOrders, partialPayments] = await Promise.all([
       prisma.salesOrder.aggregate({
         where: { orderDate: { gte: today, lt: tomorrow }, fulfillmentStatus: counted },
-        _sum: { totalAmount: true },
+        _sum: { baseTotalAmount: true },
         _count: { _all: true },
       }),
       prisma.salesOrder.count({

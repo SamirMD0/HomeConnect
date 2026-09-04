@@ -26,7 +26,9 @@ describe('supplier purchase database foundation', () => {
     expect(sql).toContain('CREATE UNIQUE INDEX "supplier_purchase_lines_receivingItemId_key"');
     // Already in production from v1.9.3, and still the defence against a second
     // debt for one delivery.
-    expect(modelBlock('SupplierTransaction')).toContain('supplierReceivingId String?                   @unique @db.Uuid');
+    expect(modelBlock('SupplierTransaction')).toMatch(
+      /supplierReceivingId\s+String\?\s+@unique @db\.Uuid/
+    );
   });
 
   it('is additive, with no backfill and no rewrite of existing rows', () => {

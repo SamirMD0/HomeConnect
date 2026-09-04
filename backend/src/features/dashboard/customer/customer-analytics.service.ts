@@ -1,4 +1,4 @@
-import { DebtKind, DebtStatus, InstallmentPlanStatus, InstallmentStatus } from '@prisma/client';
+import { Currency, DebtKind, DebtStatus, InstallmentPlanStatus, InstallmentStatus } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import {
   calculateDebtBalance,
@@ -11,6 +11,7 @@ import {
   prismaDateToBusinessDate,
   subtractMoney,
   sumMoney,
+  toBaseAmount,
   todayInBusinessTimezone,
   ZERO_MONEY,
 } from '../../financial';
@@ -72,10 +73,10 @@ export class CustomerAnalyticsService {
     const rangePlans = records.plans.filter((plan) =>
       inRange(createdBusinessDate(plan.createdAt), range.from, range.to)
     );
-    const collected = sumMoney(rangePayments.map((payment) => payment.totalAmount));
+    const collected = sumMoney(rangePayments.map((payment) => payment.baseAmount ?? payment.totalAmount));
     const newDebt = sumMoney([
-      ...rangeDebts.filter(notCancelledDebt).map((debt) => debt.originalAmount),
-      ...rangePlans.filter(notCancelledPlan).map((plan) => plan.totalAmount),
+      ...rangeDebts.filter(notCancelledDebt).map((debt) => debt.baseOriginalAmount ?? debt.originalAmount),
+      ...rangePlans.filter(notCancelledPlan).map((plan) => plan.baseTotalAmount ?? plan.totalAmount),
     ]);
     const outstanding = sumMoney(openItems.map((item) => item.remaining));
     const todayPayments = records.payments.filter(
@@ -84,10 +85,10 @@ export class CustomerAnalyticsService {
     const todayDebt = sumMoney([
       ...records.debts
         .filter((debt) => createdBusinessDate(debt.createdAt) === businessDate && notCancelledDebt(debt))
-        .map((debt) => debt.originalAmount),
+        .map((debt) => debt.baseOriginalAmount ?? debt.originalAmount),
       ...records.plans
         .filter((plan) => createdBusinessDate(plan.createdAt) === businessDate && notCancelledPlan(plan))
-        .map((plan) => plan.totalAmount),
+        .map((plan) => plan.baseTotalAmount ?? plan.totalAmount),
     ]);
     const byCustomer = groupOutstanding(openItems);
     const overdueCustomers = new Set(openItems.filter((item) => item.overdue).map((item) => item.customer.id));
@@ -104,7 +105,7 @@ export class CustomerAnalyticsService {
         netMovement: moneyToApiString(subtractMoney(newDebt, collected)),
       },
       today: {
-        collected: moneyToApiString(sumMoney(todayPayments.map((payment) => payment.totalAmount))),
+        collected: moneyToApiString(sumMoney(todayPayments.map((payment) => payment.baseAmount ?? payment.totalAmount))),
         distinctPayers: new Set(todayPayments.map((payment) => payment.customerId)).size,
         newDebt: moneyToApiString(todayDebt),
       },
@@ -133,9 +134,9 @@ export class CustomerAnalyticsService {
   private static debtItem(record: CustomerAnalyticsDebt, businessDate: string): OpenItem[] {
     if (!notCancelledDebt(record)) return [];
     const balance = calculateDebtBalance({
-      originalAmount: record.originalAmount,
+      originalAmount: record.baseOriginalAmount ?? record.originalAmount,
       allocations: record.paymentAllocations.map((allocation) => ({
-        amount: allocation.amount,
+        amount: allocationBaseAmount(allocation),
         isVoided: isPaymentAllocationVoided(allocation),
       })),
     });
@@ -153,13 +154,13 @@ export class CustomerAnalyticsService {
     if (!notCancelledPlan(record)) return [];
     calculateInstallmentPlanSummary(
       {
-        totalAmount: record.totalAmount,
+        totalAmount: record.baseTotalAmount ?? record.totalAmount,
         installments: record.installments.map((installment) => ({
           dueDate: prismaDateToBusinessDate(installment.dueDate),
-          amountDue: installment.amountDue,
+          amountDue: installment.baseAmountDue ?? installment.amountDue,
           status: installment.status,
           allocations: installment.paymentAllocations.map((allocation) => ({
-            amount: allocation.amount,
+            amount: allocationBaseAmount(allocation),
             isVoided: isPaymentAllocationVoided(allocation),
           })),
         })),
@@ -169,9 +170,9 @@ export class CustomerAnalyticsService {
     return record.installments.flatMap((installment) => {
       if (installment.status === InstallmentStatus.CANCELLED) return [];
       const balance = calculateInstallmentBalance({
-        amountDue: installment.amountDue,
+        amountDue: installment.baseAmountDue ?? installment.amountDue,
         allocations: installment.paymentAllocations.map((allocation) => ({
-          amount: allocation.amount,
+          amount: allocationBaseAmount(allocation),
           isVoided: isPaymentAllocationVoided(allocation),
         })),
       });
@@ -187,11 +188,11 @@ function buildTrend(records: CustomerAnalyticsRecords, range: ResolvedDashboardR
   return buckets.map((bucket) => ({
     bucket,
     collected: moneyToApiString(
-      sumMoney(records.payments.filter((p) => bucketFor(prismaDateToBusinessDate(p.paymentDate), range.granularity) === bucket).map((p) => p.totalAmount))
+      sumMoney(records.payments.filter((p) => bucketFor(prismaDateToBusinessDate(p.paymentDate), range.granularity) === bucket).map((p) => p.baseAmount ?? p.totalAmount))
     ),
     newDebt: moneyToApiString(sumMoney([
-      ...records.debts.filter((d) => notCancelledDebt(d) && bucketFor(createdBusinessDate(d.createdAt), range.granularity) === bucket).map((d) => d.originalAmount),
-      ...records.plans.filter((p) => notCancelledPlan(p) && bucketFor(createdBusinessDate(p.createdAt), range.granularity) === bucket).map((p) => p.totalAmount),
+      ...records.debts.filter((d) => notCancelledDebt(d) && bucketFor(createdBusinessDate(d.createdAt), range.granularity) === bucket).map((d) => d.baseOriginalAmount ?? d.originalAmount),
+      ...records.plans.filter((p) => notCancelledPlan(p) && bucketFor(createdBusinessDate(p.createdAt), range.granularity) === bucket).map((p) => p.baseTotalAmount ?? p.totalAmount),
     ])),
   }));
 }
@@ -199,10 +200,10 @@ function buildTrend(records: CustomerAnalyticsRecords, range: ResolvedDashboardR
 function buildMonthlyComparison(records: CustomerAnalyticsRecords, businessDate: string): CustomerMonthlyPoint[] {
   return Array.from({ length: 6 }, (_, index) => monthStartOffset(businessDate, index - 5).slice(0, 7)).map((month) => ({
     month,
-    collected: moneyToApiString(sumMoney(records.payments.filter((p) => prismaDateToBusinessDate(p.paymentDate).startsWith(month)).map((p) => p.totalAmount))),
+    collected: moneyToApiString(sumMoney(records.payments.filter((p) => prismaDateToBusinessDate(p.paymentDate).startsWith(month)).map((p) => p.baseAmount ?? p.totalAmount))),
     newDebt: moneyToApiString(sumMoney([
-      ...records.debts.filter((d) => notCancelledDebt(d) && createdBusinessDate(d.createdAt).startsWith(month)).map((d) => d.originalAmount),
-      ...records.plans.filter((p) => notCancelledPlan(p) && createdBusinessDate(p.createdAt).startsWith(month)).map((p) => p.totalAmount),
+      ...records.debts.filter((d) => notCancelledDebt(d) && createdBusinessDate(d.createdAt).startsWith(month)).map((d) => d.baseOriginalAmount ?? d.originalAmount),
+      ...records.plans.filter((p) => notCancelledPlan(p) && createdBusinessDate(p.createdAt).startsWith(month)).map((p) => p.baseTotalAmount ?? p.totalAmount),
     ])),
   }));
 }
@@ -231,6 +232,19 @@ function groupOutstanding(items: OpenItem[]) {
     grouped.set(item.customer.id, { customer: item.customer, amount: sumMoney([existing?.amount ?? ZERO_MONEY, item.remaining]) });
   }
   return grouped;
+}
+
+function allocationBaseAmount(allocation: {
+  amount: Decimal;
+  paymentAmount: Decimal;
+  payment: { currency: Currency; exchangeRate: Decimal };
+}): Decimal {
+  return toBaseAmount(
+    allocation.paymentAmount ?? allocation.amount,
+    allocation.payment?.currency ?? Currency.USD,
+    allocation.payment?.exchangeRate ?? new Decimal(1),
+    Decimal.ROUND_HALF_UP
+  );
 }
 
 function bucketKeys(from: string, to: string, granularity: ResolvedDashboardRange['granularity']): string[] {

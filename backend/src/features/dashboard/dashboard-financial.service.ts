@@ -1,4 +1,4 @@
-import { DebtKind, DebtStatus, InstallmentPlanStatus, InstallmentStatus } from '@prisma/client';
+import { Currency, DebtKind, DebtStatus, InstallmentPlanStatus, InstallmentStatus } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import {
   calculateDebtBalance,
@@ -13,6 +13,7 @@ import {
   prismaDateToBusinessDate,
   subtractMoney,
   sumMoney,
+  toBaseAmount,
   todayInBusinessTimezone,
   ZERO_MONEY,
 } from '../financial';
@@ -116,9 +117,9 @@ export class DashboardFinancialService {
 
   private static computeDebt(debt: DashboardDebtRecord, businessDate: string): DebtComputation {
     const balance = calculateDebtBalance({
-      originalAmount: debt.originalAmount,
+      originalAmount: debt.baseOriginalAmount ?? debt.originalAmount,
       allocations: debt.paymentAllocations.map((allocation) => ({
-        amount: allocation.amount,
+        amount: allocationBaseAmount(allocation),
         isVoided: isPaymentAllocationVoided(allocation),
       })),
     });
@@ -143,9 +144,9 @@ export class DashboardFinancialService {
     const planIsCancelled = plan.status === InstallmentPlanStatus.CANCELLED || Boolean(plan.cancelledAt);
     const installments = plan.installments.map((installment) => {
       const balance = calculateInstallmentBalance({
-        amountDue: installment.amountDue,
+        amountDue: installment.baseAmountDue ?? installment.amountDue,
         allocations: installment.paymentAllocations.map((allocation) => ({
-          amount: allocation.amount,
+          amount: allocationBaseAmount(allocation),
           isVoided: isPaymentAllocationVoided(allocation),
         })),
       });
@@ -166,13 +167,13 @@ export class DashboardFinancialService {
     });
     const summary = calculateInstallmentPlanSummary(
       {
-        totalAmount: plan.totalAmount,
+        totalAmount: plan.baseTotalAmount ?? plan.totalAmount,
         installments: plan.installments.map((installment) => ({
           dueDate: prismaDateToBusinessDate(installment.dueDate),
-          amountDue: installment.amountDue,
+          amountDue: installment.baseAmountDue ?? installment.amountDue,
           status: installment.status,
           allocations: installment.paymentAllocations.map((allocation) => ({
-            amount: allocation.amount,
+            amount: allocationBaseAmount(allocation),
             isVoided: isPaymentAllocationVoided(allocation),
           })),
         })),
@@ -206,7 +207,7 @@ export class DashboardFinancialService {
             compareBusinessDates(paymentDate, toBusinessDate) <= 0
           );
         })
-        .map((payment) => payment.totalAmount)
+        .map((payment) => payment.baseAmount ?? payment.totalAmount)
     );
   }
 
@@ -223,10 +224,10 @@ export class DashboardFinancialService {
             debt.kind !== DebtKind.PREPAID_PURCHASE &&
             this.createdWithinRange(debt.createdAt, fromBusinessDate, toBusinessDate)
         )
-        .map((debt) => debt.originalAmount),
+        .map((debt) => debt.baseOriginalAmount ?? debt.originalAmount),
       ...plans
         .filter((plan) => this.createdWithinRange(plan.createdAt, fromBusinessDate, toBusinessDate))
-        .map((plan) => plan.totalAmount),
+        .map((plan) => plan.baseTotalAmount ?? plan.totalAmount),
     ]);
   }
 
@@ -335,11 +336,24 @@ export class DashboardFinancialService {
     return payments.slice(0, 5).map((payment) => ({
       id: payment.id,
       customer: payment.customer,
-      amount: moneyToApiString(payment.totalAmount),
+      amount: moneyToApiString(payment.baseAmount ?? payment.totalAmount),
       paymentDate: prismaDateToBusinessDate(payment.paymentDate),
       paymentMethod: payment.paymentMethod,
       reference: payment.reference,
       allocationCount: payment.allocations.length,
     }));
   }
+}
+
+function allocationBaseAmount(allocation: {
+  amount: Decimal;
+  paymentAmount: Decimal;
+  payment: { currency: Currency; exchangeRate: Decimal };
+}): Decimal {
+  return toBaseAmount(
+    allocation.paymentAmount ?? allocation.amount,
+    allocation.payment?.currency ?? Currency.USD,
+    allocation.payment?.exchangeRate ?? new Decimal(1),
+    Decimal.ROUND_HALF_UP
+  );
 }

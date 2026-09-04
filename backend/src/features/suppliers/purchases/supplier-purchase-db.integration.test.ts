@@ -32,13 +32,14 @@ describeDatabase('supplier purchase database contract', () => {
       await prisma.stockMovement.create({ data: { id: movementId, productId, movementType: 'PURCHASE_RECEIPT', quantityChange: 2, quantityBefore: 0, quantityAfter: 2, reason: 'Purchase DB contract', createdById: userId } });
       await prisma.supplierReceiving.create({ data: { id: receivingId, supplierId, receivedOn: new Date('2026-08-15T00:00:00.000Z'), receivedById: userId } });
       await prisma.supplierReceivingItem.create({ data: { id: receivingItemId, receivingId, productId, quantity: 2, stockMovementId: movementId } });
-      await prisma.supplierTransaction.create({ data: { id: debtId, supplierId, supplierReceivingId: receivingId, type: 'SUPPLIER_DEBT', direction: 'INCREASE_OWED', amount: '420.00', transactionDate: new Date('2026-08-15T00:00:00.000Z'), description: 'Purchase DB contract', receiptNumber: 'INV-DBTEST', createdById: userId } });
+      await prisma.supplierTransaction.create({ data: { id: debtId, supplierId, supplierReceivingId: receivingId, type: 'SUPPLIER_DEBT', direction: 'INCREASE_OWED', amount: '420.00', baseAmount: '420.00', transactionDate: new Date('2026-08-15T00:00:00.000Z'), description: 'Purchase DB contract', receiptNumber: 'INV-DBTEST', createdById: userId } });
     };
 
     const line = (overrides: Record<string, unknown>) => prisma.supplierPurchaseLine.create({
       data: {
         id: randomUUID(), supplierTransactionId: debtId, kind: 'PRODUCT', productId,
         description: 'Purchase DB Contract Product', quantity: 2, unitPrice: '210.00', lineTotal: '420.00',
+        baseUnitPrice: '210.00', baseLineTotal: '420.00',
         position: 0, ...overrides,
       } as never,
     });
@@ -76,7 +77,7 @@ describeDatabase('supplier purchase database contract', () => {
 
       // Receipt numbers are deliberately reusable.
       await expect(prisma.supplierTransaction.create({
-        data: { id: randomUUID(), supplierId, type: 'SUPPLIER_DEBT', direction: 'INCREASE_OWED', amount: '10.00', transactionDate: new Date('2026-08-15T00:00:00.000Z'), description: 'Second invoice, same number', receiptNumber: 'INV-DBTEST', createdById: userId },
+        data: { id: randomUUID(), supplierId, type: 'SUPPLIER_DEBT', direction: 'INCREASE_OWED', amount: '10.00', baseAmount: '10.00', transactionDate: new Date('2026-08-15T00:00:00.000Z'), description: 'Second invoice, same number', receiptNumber: 'INV-DBTEST', createdById: userId },
       })).resolves.toBeTruthy();
 
       // History stays restrictive: a billed purchase line pins its receiving item.

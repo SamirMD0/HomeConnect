@@ -63,6 +63,10 @@ describeDatabase('orders awaiting stock deduction database query', () => {
           itemsSubtotal: '1.00',
           totalAmount: '1.00',
           remainingAmount: '1.00',
+          baseSubtotal: '1.00',
+          baseTotalAmount: '1.00',
+          basePaidAmount: '0.00',
+          baseRemainingAmount: '1.00',
           createdById: userId,
         })),
       });
@@ -77,6 +81,8 @@ describeDatabase('orders awaiting stock deduction database query', () => {
           quantity: 1,
           unitPrice: '1.00',
           lineTotal: '1.00',
+          baseUnitPrice: '1.00',
+          baseLineTotal: '1.00',
         })),
       });
 

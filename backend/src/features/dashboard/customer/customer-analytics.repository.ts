@@ -5,7 +5,7 @@ import { addDays } from '../shared/dashboard-range';
 import type { ResolvedDashboardRange } from '../dashboard.types';
 
 const allocationInclude = {
-  include: { payment: { select: { voidedAt: true, paymentDate: true } } },
+  include: { payment: { select: { voidedAt: true, paymentDate: true, currency: true, exchangeRate: true } } },
 } satisfies Prisma.PaymentAllocationFindManyArgs;
 
 const debtInclude = {
@@ -101,4 +101,3 @@ export class CustomerAnalyticsRepository {
 function dedupeById<T extends { id: string }>(records: T[]): T[] {
   return [...new Map(records.map((record) => [record.id, record])).values()];
 }
-

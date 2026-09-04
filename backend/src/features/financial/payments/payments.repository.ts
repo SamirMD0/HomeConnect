@@ -1,4 +1,4 @@
-import { PaymentMethod, Prisma } from '@prisma/client';
+import { Currency, PaymentMethod, Prisma } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { prisma } from '../../../lib/prisma';
 import { FinancialTransactionClient } from '../infrastructure/transaction';
@@ -45,6 +45,9 @@ export type PaymentWithDetails = Prisma.PaymentGetPayload<{ include: typeof paym
 export interface CreateReplacementPaymentData {
   customerId: string;
   totalAmount: Decimal;
+  currency?: Currency;
+  exchangeRate?: Decimal;
+  baseAmount?: Decimal;
   paymentDate: Date;
   paymentMethod: PaymentMethod;
   reference?: string | null;
@@ -144,6 +147,7 @@ export class PaymentsRepository {
       data: {
         ...data,
         idempotencyKey: null,
+        baseAmount: data.baseAmount ?? data.totalAmount,
       },
       include: paymentInclude,
     });
@@ -155,6 +159,8 @@ export class PaymentsRepository {
       paymentId: string;
       debtId: string;
       amount: Decimal;
+      paymentAmount?: Decimal;
+      exchangeRate?: Decimal;
     }
   ) {
     return tx.paymentAllocation.create({
@@ -163,6 +169,8 @@ export class PaymentsRepository {
         debtId: data.debtId,
         installmentId: null,
         amount: data.amount,
+        paymentAmount: data.paymentAmount ?? data.amount,
+        exchangeRate: data.exchangeRate,
       },
     });
   }
@@ -173,6 +181,8 @@ export class PaymentsRepository {
       paymentId: string;
       installmentId: string;
       amount: Decimal;
+      paymentAmount?: Decimal;
+      exchangeRate?: Decimal;
     }>
   ) {
     return tx.paymentAllocation.createMany({
@@ -181,6 +191,8 @@ export class PaymentsRepository {
         debtId: null,
         installmentId: allocation.installmentId,
         amount: allocation.amount,
+        paymentAmount: allocation.paymentAmount ?? allocation.amount,
+        exchangeRate: allocation.exchangeRate,
       })),
     });
   }

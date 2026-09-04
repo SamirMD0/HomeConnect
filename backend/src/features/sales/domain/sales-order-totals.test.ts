@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { SalesOrderPaymentStatus } from '@prisma/client';
+import { Currency, SalesOrderPaymentStatus } from '@prisma/client';
+import { Decimal } from '@prisma/client/runtime/library';
 import { moneyToApiString, multiplyMoney } from '../../financial/domain/money';
 import {
   calculateSalesOrderLineTotal,
@@ -30,7 +31,7 @@ describe('sales order totals', () => {
   });
 
   it('guards the .005 boundary through the shared money rounding contract', () => {
-    expect(moneyToApiString(multiplyMoney('0.01', '0.5'))).toBe('0.01');
+    expect(moneyToApiString(multiplyMoney('0.01', '0.5', Currency.USD, Decimal.ROUND_HALF_UP))).toBe('0.01');
   });
 
   it('derives all payment status bands', () => {

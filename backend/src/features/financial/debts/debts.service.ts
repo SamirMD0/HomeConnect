@@ -1,10 +1,12 @@
 import {
+  Currency,
   DebtKind,
   DebtStatus,
   FinancialCorrectionAction,
   FinancialCorrectionRecordType,
   PaymentMethod,
 } from '@prisma/client';
+import { Decimal } from '@prisma/client/runtime/library';
 import { NotFoundError, ValidationError } from '../../../lib/errors';
 import {
   assertCanCancelDebt,
@@ -21,6 +23,7 @@ import {
   moneyToApiString,
   normalizeIdempotencyKey,
   parseBusinessDate,
+  toBaseAmount,
   planDebtPaymentAllocation,
   prismaDateToBusinessDate,
   runFinancialTransaction,
@@ -32,6 +35,8 @@ import { DebtsRepository, DebtWithDetails } from './debts.repository';
 import { PrepaidRepository } from '../prepaid/prepaid.repository';
 import { verifyAccountPassword, verifyAdminPasswordForCorrection } from '../authorization/account-password';
 import { writeFinancialCorrectionAudit } from '../corrections/correction-audit';
+import { convertPaymentAllocation } from '../domain/currency-allocation';
+import { ExchangeRatesService } from '../exchange-rates/exchange-rates.service';
 import {
   CancelDebtInput,
   CreateDebtInput,
@@ -63,6 +68,9 @@ interface DebtView {
   };
   description: string;
   originalAmount: string;
+  currency: Currency;
+  exchangeRate: string;
+  baseOriginalAmount: string;
   totalPaid: string;
   remainingBalance: string;
   adminDebt: string;
@@ -92,6 +100,9 @@ interface DebtView {
 interface DebtPaymentView {
   id: string;
   totalAmount: string;
+  currency: Currency;
+  exchangeRate: string;
+  baseAmount: string;
   paymentDate: string;
   paymentMethod: PaymentMethod;
   reference: string | null;
@@ -114,6 +125,8 @@ interface DebtPaymentView {
     id: string;
     debtId: string | null;
     installmentId: string | null;
+    paymentAmount: string;
+    exchangeRate: string;
     amount: string;
     createdAt: string;
   }>;
@@ -200,7 +213,8 @@ export class DebtsService {
       throw new NotFoundError('Customer not found');
     }
 
-    const amount = assertPositiveMoney(input.amount);
+    const currency = input.currency ?? Currency.USD;
+    const amount = assertPositiveMoney(input.amount, currency);
     const dueDate = parseBusinessDate(input.dueDate);
     const initialBalance = calculateDebtBalance({ originalAmount: amount });
     const status = determineDebtStatus({
@@ -211,10 +225,18 @@ export class DebtsService {
       overdueEligible: true,
     });
 
+    const exchangeRate = await ExchangeRatesService.snapshotFor(
+      currency,
+      new Date(),
+      tx
+    );
     const data = {
       customerId,
       description: input.description,
       originalAmount: amount,
+      currency,
+      exchangeRate,
+      baseOriginalAmount: toBaseAmount(amount, currency, exchangeRate, Decimal.ROUND_HALF_UP),
       dueDate: businessDateToPrisma(dueDate),
       status,
       notes: input.notes ?? null,
@@ -297,13 +319,17 @@ export class DebtsService {
     }
 
     const dueDate = parseBusinessDate(input.dueDate);
-    const correctedAmount = input.originalAmount ? assertPositiveMoney(input.originalAmount) : null;
+    const correctedAmountInput = input.originalAmount ?? null;
 
     return runFinancialTransaction(async (tx) => {
       const debt = await DebtsRepository.findDebtById(debtId, tx);
       if (!debt) {
         throw new NotFoundError('Debt not found');
       }
+
+      const correctedAmount = correctedAmountInput
+        ? assertPositiveMoney(correctedAmountInput, debt.currency ?? Currency.USD)
+        : null;
 
       const balance = this.calculateBalance(debt);
       const originalAmount = correctedAmount ?? debt.originalAmount;
@@ -327,6 +353,12 @@ export class DebtsService {
 
       const updatedDebt = await DebtsRepository.updateDebtDetails(tx, debtId, {
         originalAmount,
+        baseOriginalAmount: toBaseAmount(
+          originalAmount,
+          debt.currency ?? Currency.USD,
+          debt.exchangeRate ?? new Decimal(1),
+          Decimal.ROUND_HALF_UP
+        ),
         description: input.description,
         dueDate: businessDateToPrisma(dueDate),
         notes: input.notes ?? null,
@@ -367,7 +399,9 @@ export class DebtsService {
     input: CreateDebtPaymentInput,
     user: AuthenticatedUser
   ): Promise<DebtView> {
-    const amount = assertPositiveMoney(input.amount);
+    const paymentCurrency = input.currency ?? Currency.USD;
+    const paymentAmount = assertPositiveMoney(input.amount, paymentCurrency);
+    const paymentMethod = input.paymentMethod ?? PaymentMethod.CASH;
     const paymentDate = parseBusinessDate(input.paymentDate);
     const idempotencyKey = normalizeIdempotencyKey(input.idempotencyKey);
 
@@ -377,6 +411,19 @@ export class DebtsService {
         throw new NotFoundError('Debt not found');
       }
 
+      const effectiveAt = businessDateToPrisma(paymentDate);
+      const debtCurrency = debt.currency ?? Currency.USD;
+      const paymentExchangeRate = await ExchangeRatesService.snapshotFor(paymentCurrency, effectiveAt, tx);
+      const allocationExchangeRate = debtCurrency === paymentCurrency
+        ? new Decimal(1)
+        : await ExchangeRatesService.snapshotFor(Currency.LBP, effectiveAt, tx);
+      const convertedAllocation = convertPaymentAllocation({
+        paymentAmount,
+        paymentCurrency,
+        obligationCurrency: debtCurrency,
+        exchangeRate: allocationExchangeRate,
+      });
+
       if (idempotencyKey) {
         const existingPayment = await DebtsRepository.findPaymentByIdempotencyKey(tx, idempotencyKey);
         if (existingPayment) {
@@ -385,7 +432,8 @@ export class DebtsService {
           );
           const existingFingerprint = createIdempotencyFingerprint({
             debtId: debtAllocation?.debtId ?? null,
-            amount: moneyToApiString(existingPayment.totalAmount),
+            amount: moneyToApiString(existingPayment.totalAmount, existingPayment.currency),
+            currency: existingPayment.currency ?? Currency.USD,
             paymentDate: prismaDateToBusinessDate(existingPayment.paymentDate),
             paymentMethod: existingPayment.paymentMethod,
             idempotencyKey: existingPayment.idempotencyKey,
@@ -393,9 +441,10 @@ export class DebtsService {
           });
           const incomingFingerprint = createIdempotencyFingerprint({
             debtId,
-            amount: moneyToApiString(amount),
+            amount: moneyToApiString(paymentAmount, paymentCurrency),
+            currency: paymentCurrency,
             paymentDate,
-            paymentMethod: input.paymentMethod,
+            paymentMethod,
             idempotencyKey,
             createdById: user.userId,
           });
@@ -420,16 +469,24 @@ export class DebtsService {
 
       const allocationPlan = planDebtPaymentAllocation({
         debtId,
-        paymentAmount: amount,
+        paymentAmount: convertedAllocation.amount,
         remainingBalance: balance.remainingBalance,
         status: debt.status,
       });
 
       const payment = await DebtsRepository.createPayment(tx, {
         customerId: debt.customerId,
-        totalAmount: amount,
+        totalAmount: paymentAmount,
+        currency: paymentCurrency,
+        exchangeRate: paymentExchangeRate,
+        baseAmount: toBaseAmount(
+          paymentAmount,
+          paymentCurrency,
+          paymentExchangeRate,
+          Decimal.ROUND_HALF_UP
+        ),
         paymentDate: businessDateToPrisma(paymentDate),
-        paymentMethod: input.paymentMethod,
+        paymentMethod,
         reference: input.reference ?? null,
         notes: input.notes ?? null,
         idempotencyKey,
@@ -440,6 +497,8 @@ export class DebtsService {
         paymentId: payment.id,
         debtId,
         amount: allocationPlan.amount,
+        paymentAmount: convertedAllocation.paymentAmount,
+        exchangeRate: convertedAllocation.exchangeRate,
       });
 
       const refreshedDebt = await DebtsRepository.findDebtById(debtId, tx);
@@ -511,6 +570,9 @@ export class DebtsService {
       customer: debt.customer,
       description: debt.description,
       originalAmount: moneyToApiString(debt.originalAmount),
+      currency: debt.currency ?? Currency.USD,
+      exchangeRate: (debt.exchangeRate ?? new Decimal(1)).toFixed(6),
+      baseOriginalAmount: moneyToApiString(debt.baseOriginalAmount ?? debt.originalAmount),
       totalPaid: moneyToApiString(balance.totalPaid),
       remainingBalance: moneyToApiString(balance.remainingBalance),
       adminDebt: moneyToApiString(
@@ -557,7 +619,10 @@ export class DebtsService {
       if (!paymentsById.has(payment.id)) {
         paymentsById.set(payment.id, {
           id: payment.id,
-          totalAmount: moneyToApiString(payment.totalAmount),
+          totalAmount: moneyToApiString(payment.totalAmount, payment.currency ?? Currency.USD),
+          currency: payment.currency ?? Currency.USD,
+          exchangeRate: (payment.exchangeRate ?? new Decimal(1)).toFixed(6),
+          baseAmount: moneyToApiString(payment.baseAmount ?? payment.totalAmount),
           paymentDate: prismaDateToBusinessDate(payment.paymentDate),
           paymentMethod: payment.paymentMethod,
           reference: payment.reference,
@@ -583,6 +648,11 @@ export class DebtsService {
             debtId: paymentAllocation.debtId,
             installmentId: paymentAllocation.installmentId,
             amount: moneyToApiString(paymentAllocation.amount),
+            paymentAmount: moneyToApiString(
+              paymentAllocation.paymentAmount ?? paymentAllocation.amount,
+              payment.currency ?? Currency.USD
+            ),
+            exchangeRate: (paymentAllocation.exchangeRate ?? new Decimal(1)).toFixed(6),
             createdAt: paymentAllocation.createdAt.toISOString(),
           })),
         });

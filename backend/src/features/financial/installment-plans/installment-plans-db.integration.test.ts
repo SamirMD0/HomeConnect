@@ -9,6 +9,7 @@ import {
   OverpaymentError,
   PaymentIdempotencyConflictError,
 } from '../domain/financial-errors';
+import { addMonthsToBusinessDate, todayInBusinessTimezone } from '../domain/business-date';
 import { InstallmentPlansService } from './installment-plans.service';
 
 const runPlanDbTests = process.env.RUN_PHASE5_INSTALLMENT_DB_TESTS === '1';
@@ -24,6 +25,8 @@ describePlanDb('installment plan database flow', () => {
     const customerId = randomUUID();
     const planIds: string[] = [];
     const installmentIds: string[] = [];
+    const paymentDate = todayInBusinessTimezone();
+    const startDate = `${paymentDate.slice(0, 7)}-01`;
 
     try {
       await prisma.user.create({
@@ -50,7 +53,7 @@ describePlanDb('installment plan database flow', () => {
         {
           totalAmount: '600.00',
           description: 'Refrigerator',
-          startDate: '2026-08-01',
+          startDate,
           installmentCount: 6,
           frequency: InstallmentPlanFrequency.MONTHLY,
           notes: null,
@@ -61,8 +64,8 @@ describePlanDb('installment plan database flow', () => {
       installmentIds.push(...plan.schedule.map((installment) => installment.id));
 
       expect(plan.schedule).toHaveLength(6);
-      expect(plan.schedule[0].dueDate).toBe('2026-08-01');
-      expect(plan.schedule[5].dueDate).toBe('2027-01-01');
+      expect(plan.schedule[0].dueDate).toBe(startDate);
+      expect(plan.schedule[5].dueDate).toBe(addMonthsToBusinessDate(startDate, 5));
       expect(plan.totalAmount).toBe('600.00');
       expect(plan.remainingBalance).toBe('600.00');
 
@@ -70,7 +73,7 @@ describePlanDb('installment plan database flow', () => {
         plan.id,
         {
           amount: '150.00',
-          paymentDate: '2026-08-15',
+          paymentDate,
           paymentMethod: PaymentMethod.CASH,
           reference: null,
           notes: null,
@@ -82,7 +85,7 @@ describePlanDb('installment plan database flow', () => {
       expect(partial.totalPaid).toBe('150.00');
       expect(partial.remainingBalance).toBe('450.00');
       expect(partial.schedule[0].status).toBe(InstallmentStatus.PAID);
-      expect(partial.schedule[0].paidDate).toBe('2026-08-15');
+      expect(partial.schedule[0].paidDate).toBe(paymentDate);
       expect(partial.schedule[1].status).toBe(InstallmentStatus.PARTIALLY_PAID);
       expect(partial.schedule[1].remainingAmount).toBe('50.00');
       expect(partial.payments).toHaveLength(1);
@@ -95,7 +98,7 @@ describePlanDb('installment plan database flow', () => {
         plan.id,
         {
           amount: '150.00',
-          paymentDate: '2026-08-15',
+          paymentDate,
           paymentMethod: PaymentMethod.CASH,
           reference: null,
           notes: null,
@@ -110,7 +113,7 @@ describePlanDb('installment plan database flow', () => {
           plan.id,
           {
             amount: '151.00',
-            paymentDate: '2026-08-15',
+            paymentDate,
             paymentMethod: PaymentMethod.CASH,
             reference: null,
             notes: null,
@@ -125,7 +128,7 @@ describePlanDb('installment plan database flow', () => {
           plan.id,
           {
             amount: '451.00',
-            paymentDate: '2026-08-15',
+            paymentDate,
             paymentMethod: PaymentMethod.CASH,
             reference: null,
             notes: null,
@@ -139,7 +142,7 @@ describePlanDb('installment plan database flow', () => {
         plan.id,
         {
           amount: '450.00',
-          paymentDate: '2026-08-20',
+          paymentDate,
           paymentMethod: PaymentMethod.CASH,
           reference: null,
           notes: null,
@@ -158,7 +161,7 @@ describePlanDb('installment plan database flow', () => {
           plan.id,
           {
             amount: '1.00',
-            paymentDate: '2026-08-20',
+            paymentDate,
             paymentMethod: PaymentMethod.CASH,
             reference: null,
             notes: null,
@@ -173,7 +176,7 @@ describePlanDb('installment plan database flow', () => {
         {
           totalAmount: '50.00',
           description: 'Cancellable plan',
-          startDate: '2026-08-01',
+          startDate,
           installmentCount: 1,
           frequency: InstallmentPlanFrequency.MONTHLY,
           notes: null,
@@ -196,7 +199,7 @@ describePlanDb('installment plan database flow', () => {
           cancellable.id,
           {
             amount: '1.00',
-            paymentDate: '2026-08-20',
+            paymentDate,
             paymentMethod: PaymentMethod.CASH,
             reference: null,
             notes: null,

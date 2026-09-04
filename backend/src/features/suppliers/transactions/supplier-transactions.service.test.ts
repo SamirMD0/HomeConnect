@@ -70,7 +70,7 @@ function makeTransaction(overrides: Record<string, unknown> = {}) {
 const debtRow = {
   type: SupplierTransactionType.SUPPLIER_DEBT,
   direction: SupplierTransactionDirection.INCREASE_OWED,
-  _sum: { amount: '500.00' },
+  _sum: { baseAmount: '500.00' },
   _count: { _all: 1 },
 };
 
@@ -79,10 +79,10 @@ describe('supplier transaction summary', () => {
 
   it('derives all totals from every matching row, independent of pagination', async () => {
     repository.summaryRows.mockResolvedValue([
-      { type: SupplierTransactionType.SUPPLIER_DEBT, direction: SupplierTransactionDirection.INCREASE_OWED, _sum: { amount: '500.00' }, _count: { _all: 2 } },
-      { type: SupplierTransactionType.SUPPLIER_PAYMENT, direction: SupplierTransactionDirection.DECREASE_OWED, _sum: { amount: '125.25' }, _count: { _all: 3 } },
-      { type: SupplierTransactionType.SUPPLIER_CREDIT, direction: SupplierTransactionDirection.DECREASE_OWED, _sum: { amount: '25.00' }, _count: { _all: 1 } },
-      { type: SupplierTransactionType.SUPPLIER_ADJUSTMENT, direction: SupplierTransactionDirection.INCREASE_OWED, _sum: { amount: '10.00' }, _count: { _all: 1 } },
+      { type: SupplierTransactionType.SUPPLIER_DEBT, direction: SupplierTransactionDirection.INCREASE_OWED, _sum: { baseAmount: '500.00' }, _count: { _all: 2 } },
+      { type: SupplierTransactionType.SUPPLIER_PAYMENT, direction: SupplierTransactionDirection.DECREASE_OWED, _sum: { baseAmount: '125.25' }, _count: { _all: 3 } },
+      { type: SupplierTransactionType.SUPPLIER_CREDIT, direction: SupplierTransactionDirection.DECREASE_OWED, _sum: { baseAmount: '25.00' }, _count: { _all: 1 } },
+      { type: SupplierTransactionType.SUPPLIER_ADJUSTMENT, direction: SupplierTransactionDirection.INCREASE_OWED, _sum: { baseAmount: '10.00' }, _count: { _all: 1 } },
     ]);
 
     await expect(summaryForWhere({ status: 'ACTIVE' })).resolves.toEqual({
@@ -192,7 +192,7 @@ describe('SupplierTransactionsService', () => {
     repository.update.mockResolvedValue(makeTransaction({ amount: new Decimal('600.00') }));
     repository.summaryRows
       .mockResolvedValueOnce([debtRow])
-      .mockResolvedValueOnce([{ ...debtRow, _sum: { amount: '600.00' } }]);
+      .mockResolvedValueOnce([{ ...debtRow, _sum: { baseAmount: '600.00' } }]);
 
     await SupplierTransactionsService.update(
       transactionId,

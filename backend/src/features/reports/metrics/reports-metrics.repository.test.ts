@@ -73,7 +73,7 @@ describe('ReportsMetricsRepository', () => {
           ],
         },
       }),
-      _sum: { totalAmount: true, paidAmount: true, remainingAmount: true },
+      _sum: { baseTotalAmount: true, basePaidAmount: true, baseRemainingAmount: true },
     }));
   });
 });

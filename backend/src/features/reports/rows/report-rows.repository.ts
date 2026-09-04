@@ -340,13 +340,13 @@ export class ReportRowsRepository {
   static customerFinancialIntegrity() {
     return prisma.$queryRaw<CustomerFinancialIntegrityEvidence[]>`
       WITH obligation_rows AS (
-        SELECT d."customerId", d."originalAmount" AS amount
+        SELECT d."customerId", d."baseOriginalAmount" AS amount
         FROM "debts" d
         WHERE d."kind" <> 'PREPAID_PURCHASE'
           AND d."status" <> 'CANCELLED'
           AND d."cancelledAt" IS NULL
         UNION ALL
-        SELECT p."customerId", i."amountDue" AS amount
+        SELECT p."customerId", i."baseAmountDue" AS amount
         FROM "installments" i
         JOIN "installment_plans" p ON p."id" = i."installmentPlanId"
         WHERE p."status" <> 'CANCELLED'
@@ -359,7 +359,11 @@ export class ReportRowsRepository {
         GROUP BY "customerId"
       ),
       allocation_rows AS (
-        SELECT d."customerId", a."amount"
+        SELECT d."customerId",
+          CASE WHEN payment."currency" = 'USD'
+            THEN a."paymentAmount"
+            ELSE a."paymentAmount" / payment."exchangeRate"
+          END AS amount
         FROM "payment_allocations" a
         JOIN "payments" payment ON payment."id" = a."paymentId"
         JOIN "debts" d ON d."id" = a."debtId"
@@ -369,7 +373,11 @@ export class ReportRowsRepository {
           AND d."status" <> 'CANCELLED'
           AND d."cancelledAt" IS NULL
         UNION ALL
-        SELECT p."customerId", a."amount"
+        SELECT p."customerId",
+          CASE WHEN payment."currency" = 'USD'
+            THEN a."paymentAmount"
+            ELSE a."paymentAmount" / payment."exchangeRate"
+          END AS amount
         FROM "payment_allocations" a
         JOIN "payments" payment ON payment."id" = a."paymentId"
         JOIN "installments" i ON i."id" = a."installmentId"
@@ -407,10 +415,10 @@ export class ReportRowsRepository {
       WITH transaction_totals AS (
         SELECT
           st."supplierId",
-          COALESCE(SUM(st."amount") FILTER (
+          COALESCE(SUM(st."baseAmount") FILTER (
             WHERE st."status" = 'ACTIVE' AND st."direction" = 'INCREASE_OWED'
           ), 0) AS increases,
-          COALESCE(SUM(st."amount") FILTER (
+          COALESCE(SUM(st."baseAmount") FILTER (
             WHERE st."status" = 'ACTIVE' AND st."direction" = 'DECREASE_OWED'
           ), 0) AS decreases,
           COUNT(*) FILTER (WHERE st."status" = 'ACTIVE')::integer AS count

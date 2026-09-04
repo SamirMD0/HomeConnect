@@ -1,8 +1,8 @@
-import { InstallmentPlanFrequency } from '@prisma/client';
+import { Currency, InstallmentPlanFrequency } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { addMonthsToBusinessDate, addWeeksToBusinessDate, parseBusinessDate } from './business-date';
 import { InstallmentScheduleError, InvalidInstallmentCountError } from './financial-errors';
-import { assertPositiveMoney, centsToMoney, moneyToCents, sumMoney } from './money';
+import { assertPositiveMoney, minorUnitsToMoney, moneyToMinorUnits, sumMoney } from './money';
 import { GeneratedInstallment, GenerateMonthlyInstallmentScheduleInput } from './financial-types';
 
 export function generateMonthlyInstallmentSchedule(
@@ -12,22 +12,23 @@ export function generateMonthlyInstallmentSchedule(
     throw new InvalidInstallmentCountError('Installment count must be a positive integer');
   }
 
-  const totalAmount = assertPositiveMoney(input.totalAmount);
+  const currency = input.currency ?? Currency.USD;
+  const totalAmount = assertPositiveMoney(input.totalAmount, currency);
   const startDate = parseBusinessDate(input.startDate);
-  const totalCents = moneyToCents(totalAmount);
+  const totalCents = moneyToMinorUnits(totalAmount, currency);
   const count = BigInt(input.installmentCount);
 
   if (totalCents < count) {
     throw new InstallmentScheduleError('Total amount is too small to create positive installments');
   }
 
-  const useWholeDollarSplit = totalCents % 100n === 0n && totalCents / 100n >= count;
+  const useWholeDollarSplit = currency === Currency.USD && totalCents % 100n === 0n && totalCents / 100n >= count;
   const baseCents = useWholeDollarSplit
     ? (totalCents / 100n / count) * 100n
     : totalCents / count;
   const remainderCents = useWholeDollarSplit
     ? (totalCents / 100n) % count
-    : 0n;
+    : currency === Currency.LBP ? totalCents % count : 0n;
   const installments: GeneratedInstallment[] = [];
   let allocatedCents = 0n;
 
@@ -35,9 +36,11 @@ export function generateMonthlyInstallmentSchedule(
     const isFinalInstallment = index === input.installmentCount - 1;
     const amountCents = useWholeDollarSplit
       ? baseCents + (BigInt(index) < remainderCents ? 100n : 0n)
-      : isFinalInstallment
-        ? totalCents - allocatedCents
-        : baseCents;
+      : currency === Currency.LBP
+        ? baseCents + (BigInt(index) < remainderCents ? 1n : 0n)
+        : isFinalInstallment
+          ? totalCents - allocatedCents
+          : baseCents;
 
     if (amountCents <= 0n) {
       throw new InstallmentScheduleError('Installment amount must be greater than zero');
@@ -46,13 +49,13 @@ export function generateMonthlyInstallmentSchedule(
     installments.push({
       installmentNumber: index + 1,
       dueDate: installmentDueDate(startDate, index, input.frequency),
-      amountDue: centsToMoney(amountCents),
+      amountDue: minorUnitsToMoney(amountCents, currency),
     });
 
     allocatedCents += amountCents;
   }
 
-  const generatedTotal = sumMoney(installments.map((installment) => installment.amountDue));
+  const generatedTotal = sumMoney(installments.map((installment) => installment.amountDue), currency);
   if (!generatedTotal.equals(new Decimal(totalAmount))) {
     throw new InstallmentScheduleError('Generated installment total does not match plan total');
   }

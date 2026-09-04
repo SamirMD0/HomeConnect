@@ -11,6 +11,9 @@ const allocationPaymentSelect = {
   id: true,
   paymentDate: true,
   totalAmount: true,
+  baseAmount: true,
+  currency: true,
+  exchangeRate: true,
   voidedAt: true,
 } satisfies Prisma.PaymentSelect;
 
@@ -45,6 +48,7 @@ const activityDebtSelect = {
   description: true,
   kind: true,
   originalAmount: true,
+  baseOriginalAmount: true,
   createdAt: true,
 } satisfies Prisma.DebtSelect;
 
@@ -53,6 +57,7 @@ const activityPlanSelect = {
   customer: { select: customerSelect },
   description: true,
   totalAmount: true,
+  baseTotalAmount: true,
   createdAt: true,
 } satisfies Prisma.InstallmentPlanSelect;
 
@@ -60,6 +65,7 @@ const activityPaymentSelect = {
   id: true,
   customer: { select: customerSelect },
   totalAmount: true,
+  baseAmount: true,
   paymentDate: true,
   voidedAt: true,
   reference: true,

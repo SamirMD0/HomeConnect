@@ -40,13 +40,8 @@ describe('Phase 2 financial domain schema', () => {
   });
 
   it('uses Decimal money fields and PostgreSQL DATE business dates', () => {
-    for (const field of [
-      'originalAmount Decimal',
-      'totalAmount      Decimal',
-      'amountDue         Decimal',
-      'amount        Decimal',
-    ]) {
-      expect(schema).toContain(field);
+    for (const field of ['originalAmount', 'totalAmount', 'amountDue', 'amount']) {
+      expect(schema).toMatch(new RegExp(`${field}\\s+Decimal\\s+@db\\.Decimal\\(12, 2\\)`));
     }
 
     expect(schema).toMatch(/dueDate\s+DateTime\s+@db\.Date/);

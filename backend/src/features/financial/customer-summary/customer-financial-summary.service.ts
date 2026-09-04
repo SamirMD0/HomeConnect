@@ -1,4 +1,5 @@
 import {
+  Currency,
   DebtKind,
   DebtStatus,
   InstallmentPlanFrequency,
@@ -24,6 +25,7 @@ import {
   prismaDateToBusinessDate,
   subtractMoney,
   sumMoney,
+  toBaseAmount,
   todayInBusinessTimezone,
   ZERO_MONEY,
 } from '../index';
@@ -196,6 +198,9 @@ interface DebtComputation {
   view: DebtSummaryView;
   totalPaid: Decimal;
   remainingBalance: Decimal;
+  baseOriginalAmount: Decimal;
+  baseTotalPaid: Decimal;
+  baseRemainingBalance: Decimal;
   dueDate: BusinessDate;
   isCancelled: boolean;
   isPrepaid: boolean;
@@ -212,6 +217,9 @@ interface InstallmentComputation {
   amountDue: Decimal;
   totalPaid: Decimal;
   remainingAmount: Decimal;
+  baseAmountDue: Decimal;
+  baseTotalPaid: Decimal;
+  baseRemainingAmount: Decimal;
   status: InstallmentStatus;
   isCancelled: boolean;
 }
@@ -220,6 +228,9 @@ interface PlanComputation {
   view: InstallmentPlanSummaryView;
   totalPaid: Decimal;
   remainingBalance: Decimal;
+  baseTotalAmount: Decimal;
+  baseTotalPaid: Decimal;
+  baseRemainingBalance: Decimal;
   status: InstallmentPlanStatus;
   installments: InstallmentComputation[];
   isCancelled: boolean;
@@ -245,8 +256,8 @@ export class CustomerFinancialSummaryService {
     const debtComputations = records.debts.map((debt) => this.computeDebt(debt, businessDate));
     const planComputations = records.plans.map((plan) => this.computePlan(plan, businessDate));
     const totalPaid = sumMoney([
-      ...debtComputations.map((debt) => debt.totalPaid),
-      ...planComputations.map((plan) => plan.totalPaid),
+      ...debtComputations.map((debt) => debt.baseTotalPaid),
+      ...planComputations.map((plan) => plan.baseTotalPaid),
     ]);
 
     const activeDebts = debtComputations.filter(
@@ -265,7 +276,7 @@ export class CustomerFinancialSummaryService {
     const singleDebtOutstanding = sumMoney(
       debtComputations
         .filter((debt) => !debt.isCancelled && !debt.isPrepaid)
-        .map((debt) => debt.remainingBalance)
+        .map((debt) => debt.baseRemainingBalance)
     );
     // The liability is the cash the business is holding, i.e. what was paid, and
     // only while the item is still awaiting delivery.
@@ -274,31 +285,31 @@ export class CustomerFinancialSummaryService {
       sumMoney(
         debtComputations
           .filter((debt) => debt.awaitsDelivery)
-          .map((debt) => debt.totalPaid)
+          .map((debt) => debt.baseTotalPaid)
       )
     );
     const installmentPlanOutstanding = sumMoney(
       planComputations
         .filter((plan) => !plan.isCancelled)
-        .map((plan) => plan.remainingBalance)
+        .map((plan) => plan.baseRemainingBalance)
     );
     const nextDue = this.calculateNextDue(activeDebts, activePlans);
     const totalObligated = sumMoney([
-      ...debtComputations.filter((debt) => !debt.isCancelled && !debt.isPrepaid).map((debt) => new Decimal(debt.view.originalAmount)),
-      ...planComputations.filter((plan) => !plan.isCancelled).map((plan) => new Decimal(plan.view.totalAmount)),
+      ...debtComputations.filter((debt) => !debt.isCancelled && !debt.isPrepaid).map((debt) => debt.baseOriginalAmount),
+      ...planComputations.filter((plan) => !plan.isCancelled).map((plan) => plan.baseTotalAmount),
     ]);
     const overdueAmount = sumMoney([
-      ...debtComputations.filter((debt) => debt.view.calculatedStatus === DebtStatus.OVERDUE).map((debt) => debt.remainingBalance),
-      ...overdueInstallments.map((installment) => installment.remainingAmount),
+      ...debtComputations.filter((debt) => debt.view.calculatedStatus === DebtStatus.OVERDUE).map((debt) => debt.baseRemainingBalance),
+      ...overdueInstallments.map((installment) => installment.baseRemainingAmount),
     ]);
     const lastPayment = records.recentPayments.find((payment) => !payment.voidedAt) ?? null;
     const lastPaymentDate = lastPayment ? prismaDateToBusinessDate(lastPayment.paymentDate) : null;
     const monthRange = query.month ? monthToRange(query.month) : null;
     const monthDebtAdded = monthRange
-      ? sumMoney(debtComputations.filter((debt) => { const date = debt.view.createdAt.slice(0, 10); return date >= monthRange.from && date <= monthRange.to; }).map((debt) => new Decimal(debt.view.originalAmount)))
+      ? sumMoney(debtComputations.filter((debt) => { const date = debt.view.createdAt.slice(0, 10); return date >= monthRange.from && date <= monthRange.to; }).map((debt) => debt.baseOriginalAmount))
       : ZERO_MONEY;
     const monthPaid = monthRange
-      ? sumMoney(records.recentPayments.filter((payment) => { const date = prismaDateToBusinessDate(payment.paymentDate); return !payment.voidedAt && date >= monthRange.from && date <= monthRange.to; }).map((payment) => payment.totalAmount))
+      ? sumMoney(records.recentPayments.filter((payment) => { const date = prismaDateToBusinessDate(payment.paymentDate); return !payment.voidedAt && date >= monthRange.from && date <= monthRange.to; }).map((payment) => payment.baseAmount ?? payment.totalAmount))
       : ZERO_MONEY;
     const monthRemaining = monthDebtAdded.greaterThan(monthPaid) ? subtractMoney(monthDebtAdded, monthPaid) : ZERO_MONEY;
 
@@ -356,6 +367,13 @@ export class CustomerFinancialSummaryService {
         isVoided: isPaymentAllocationVoided(allocation),
       })),
     });
+    const baseBalance = calculateDebtBalance({
+      originalAmount: debt.baseOriginalAmount ?? debt.originalAmount,
+      allocations: debt.paymentAllocations.map((allocation) => ({
+        amount: allocationBaseAmount(allocation),
+        isVoided: isPaymentAllocationVoided(allocation),
+      })),
+    });
     const dueDate = prismaDateToBusinessDate(debt.dueDate);
     const isCancelled = debt.status === DebtStatus.CANCELLED || Boolean(debt.cancelledAt);
     const calculatedStatus = determineDebtStatus({
@@ -394,6 +412,9 @@ export class CustomerFinancialSummaryService {
       },
       totalPaid: balance.totalPaid,
       remainingBalance: balance.remainingBalance,
+      baseOriginalAmount: debt.baseOriginalAmount ?? debt.originalAmount,
+      baseTotalPaid: baseBalance.totalPaid,
+      baseRemainingBalance: baseBalance.remainingBalance,
       dueDate,
       isCancelled,
       isPrepaid: debt.kind === DebtKind.PREPAID_PURCHASE,
@@ -415,6 +436,13 @@ export class CustomerFinancialSummaryService {
           isVoided: isPaymentAllocationVoided(allocation),
         })),
       });
+      const baseBalance = calculateInstallmentBalance({
+        amountDue: installment.baseAmountDue ?? installment.amountDue,
+        allocations: installment.paymentAllocations.map((allocation) => ({
+          amount: allocationBaseAmount(allocation),
+          isVoided: isPaymentAllocationVoided(allocation),
+        })),
+      });
       const dueDate = prismaDateToBusinessDate(installment.dueDate);
       const installmentIsCancelled = planIsCancelled || installment.status === InstallmentStatus.CANCELLED;
       const status = determineInstallmentStatus({
@@ -433,12 +461,18 @@ export class CustomerFinancialSummaryService {
         amountDue: installment.amountDue,
         totalPaid: balance.totalPaid,
         remainingAmount: balance.remainingBalance,
+        baseAmountDue: installment.baseAmountDue ?? installment.amountDue,
+        baseTotalPaid: baseBalance.totalPaid,
+        baseRemainingAmount: baseBalance.remainingBalance,
         status,
         isCancelled: installmentIsCancelled,
       };
     });
     const totalPaid = sumMoney(installments.map((installment) => installment.totalPaid));
     const remainingBalance = subtractMoney(plan.totalAmount, totalPaid);
+    const baseTotalAmount = plan.baseTotalAmount ?? plan.totalAmount;
+    const baseTotalPaid = sumMoney(installments.map((installment) => installment.baseTotalPaid));
+    const baseRemainingBalance = subtractMoney(baseTotalAmount, baseTotalPaid);
     const activeInstallments = installments.filter((installment) => !installment.isCancelled);
     const completedInstallmentCount = activeInstallments.filter(
       (installment) => installment.status === InstallmentStatus.PAID
@@ -493,6 +527,9 @@ export class CustomerFinancialSummaryService {
       },
       totalPaid,
       remainingBalance,
+      baseTotalAmount,
+      baseTotalPaid,
+      baseRemainingBalance,
       status: calculatedStatus,
       installments,
       isCancelled: planIsCancelled,
@@ -545,7 +582,7 @@ export class CustomerFinancialSummaryService {
       planId: null,
       description: debt.view.description,
       dueDate: debt.dueDate,
-      remainingAmount: debt.remainingBalance,
+      remainingAmount: debt.baseRemainingBalance,
     }));
     const installmentItems = plans.flatMap((plan) =>
       plan.installments
@@ -553,7 +590,7 @@ export class CustomerFinancialSummaryService {
           (installment) =>
             !installment.isCancelled &&
             installment.status !== InstallmentStatus.PAID &&
-            installment.remainingAmount.greaterThan(ZERO_MONEY)
+            installment.baseRemainingAmount.greaterThan(ZERO_MONEY)
         )
         .map((installment) => ({
           type: 'INSTALLMENT' as const,
@@ -561,7 +598,7 @@ export class CustomerFinancialSummaryService {
           planId: installment.planId,
           description: installment.planDescription,
           dueDate: installment.dueDate,
-          remainingAmount: installment.remainingAmount,
+          remainingAmount: installment.baseRemainingAmount,
         }))
     );
     const candidates = [...debtItems, ...installmentItems].filter((item) =>
@@ -680,4 +717,17 @@ export class CustomerFinancialSummaryService {
     if (dateComparison !== 0) return dateComparison;
     return left.obligationId.localeCompare(right.obligationId);
   }
+}
+
+function allocationBaseAmount(allocation: {
+  amount: Decimal;
+  paymentAmount: Decimal;
+  payment: { currency: Currency; exchangeRate: Decimal };
+}): Decimal {
+  return toBaseAmount(
+    allocation.paymentAmount ?? allocation.amount,
+    allocation.payment?.currency ?? Currency.USD,
+    allocation.payment?.exchangeRate ?? new Decimal(1),
+    Decimal.ROUND_HALF_UP
+  );
 }

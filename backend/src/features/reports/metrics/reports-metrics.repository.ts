@@ -42,7 +42,7 @@ export class ReportsMetricsRepository {
           orderDate: { gte: from, lt: toExclusive },
         },
         _count: { _all: true },
-        _sum: { totalAmount: true, paidAmount: true, remainingAmount: true },
+        _sum: { baseTotalAmount: true, basePaidAmount: true, baseRemainingAmount: true },
         orderBy: { paymentStatus: 'asc' },
       }),
     ]);

@@ -93,10 +93,11 @@ export class SupplierTransactionsService {
 
 export async function summaryForWhere(where: Prisma.SupplierTransactionWhereInput, tx?: Prisma.TransactionClient) {
   const rows = await SupplierTransactionsRepository.summaryRows(where, tx);
-  const increases = rows.filter((r) => r.direction === 'INCREASE_OWED').map((r) => r._sum.amount ?? ZERO_MONEY);
-  const decreases = rows.filter((r) => r.direction === 'DECREASE_OWED').map((r) => r._sum.amount ?? ZERO_MONEY);
-  const paid = rows.filter((r) => r.type === 'SUPPLIER_PAYMENT').map((r) => r._sum.amount ?? ZERO_MONEY);
-  const credit = rows.filter((r) => r.type === 'SUPPLIER_CREDIT').map((r) => r._sum.amount ?? ZERO_MONEY);
+  const base = (row: typeof rows[number]) => row._sum.baseAmount ?? ZERO_MONEY;
+  const increases = rows.filter((r) => r.direction === 'INCREASE_OWED').map(base);
+  const decreases = rows.filter((r) => r.direction === 'DECREASE_OWED').map(base);
+  const paid = rows.filter((r) => r.type === 'SUPPLIER_PAYMENT').map(base);
+  const credit = rows.filter((r) => r.type === 'SUPPLIER_CREDIT').map(base);
   return { totalOwed: moneyToApiString(sumMoney(increases)), totalPaid: moneyToApiString(sumMoney(paid)), totalCredit: moneyToApiString(sumMoney(credit)), balance: moneyToApiString(subtractMoney(sumMoney(increases), sumMoney(decreases))), transactionCount: rows.reduce((n, r) => n + r._count._all, 0) };
 }
 

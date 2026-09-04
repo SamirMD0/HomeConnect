@@ -1,5 +1,5 @@
 import { Decimal } from '@prisma/client/runtime/library';
-import { DebtKind } from '@prisma/client';
+import { Currency, DebtKind } from '@prisma/client';
 import {
   businessDateToPrisma,
   compareBusinessDates,
@@ -9,6 +9,7 @@ import {
   splitBusinessDate,
   subtractMoney,
   sumMoney,
+  toBaseAmount,
   ZERO_MONEY,
 } from '../../financial';
 import {
@@ -139,9 +140,9 @@ export class MonthlyDebtsService {
       return left.id.localeCompare(right.id);
     });
 
-    const newSingleDebtAmount = sumMoney(standardDebts.map((debt) => debt.originalAmount));
-    const newInstallmentPlanAmount = sumMoney(records.plans.map((plan) => plan.totalAmount));
-    const paymentsReceived = sumMoney(validPayments.map((payment) => payment.totalAmount));
+    const newSingleDebtAmount = sumMoney(standardDebts.map((debt) => debt.baseOriginalAmount ?? debt.originalAmount));
+    const newInstallmentPlanAmount = sumMoney(records.plans.map((plan) => plan.baseTotalAmount ?? plan.totalAmount));
+    const paymentsReceived = sumMoney(validPayments.map((payment) => payment.baseAmount ?? payment.totalAmount));
     const netFinancialChange = subtractMoney(
       sumMoney([newSingleDebtAmount, newInstallmentPlanAmount]),
       paymentsReceived
@@ -282,7 +283,7 @@ export class MonthlyDebtsService {
       boundaries.endDate,
       boundaries.nextDayAfterEnd
     );
-    const remaining = this.nonNegative(subtractMoney(debt.originalAmount, totalPaidAtCutoff));
+    const remaining = this.nonNegative(subtractMoney(debt.baseOriginalAmount ?? debt.originalAmount, totalPaidAtCutoff));
     if (!remaining.greaterThan(ZERO_MONEY)) return;
 
     const dueDate = prismaDateToBusinessDate(debt.dueDate);
@@ -322,7 +323,7 @@ export class MonthlyDebtsService {
         )
       )
     );
-    const remainingPlanBalance = this.nonNegative(subtractMoney(plan.totalAmount, totalPaidAtCutoff));
+    const remainingPlanBalance = this.nonNegative(subtractMoney(plan.baseTotalAmount ?? plan.totalAmount, totalPaidAtCutoff));
     if (!remainingPlanBalance.greaterThan(ZERO_MONEY)) return;
 
     bucket.installmentPlanOutstanding = sumMoney([
@@ -337,7 +338,7 @@ export class MonthlyDebtsService {
         boundaries.endDate,
         boundaries.nextDayAfterEnd
       );
-      const remainingInstallment = this.nonNegative(subtractMoney(installment.amountDue, installmentPaid));
+      const remainingInstallment = this.nonNegative(subtractMoney(installment.baseAmountDue ?? installment.amountDue, installmentPaid));
       if (!remainingInstallment.greaterThan(ZERO_MONEY)) continue;
 
       const dueDate = prismaDateToBusinessDate(installment.dueDate);
@@ -355,7 +356,11 @@ export class MonthlyDebtsService {
   }
 
   private static sumValidAllocationsAtCutoff(
-    allocations: Array<{ amount: Decimal; payment: { paymentDate: Date; voidedAt: Date | null } }>,
+    allocations: Array<{
+      amount: Decimal;
+      paymentAmount: Decimal;
+      payment: { paymentDate: Date; voidedAt: Date | null; currency: Currency; exchangeRate: Decimal };
+    }>,
     cutoffDate: string,
     nextDayAfterCutoff: Date
   ) {
@@ -368,7 +373,12 @@ export class MonthlyDebtsService {
             this.paymentValidAtCutoff(allocation.payment, nextDayAfterCutoff)
           );
         })
-        .map((allocation) => allocation.amount)
+        .map((allocation) => toBaseAmount(
+          allocation.paymentAmount ?? allocation.amount,
+          allocation.payment.currency ?? Currency.USD,
+          allocation.payment.exchangeRate ?? new Decimal(1),
+          Decimal.ROUND_HALF_UP
+        ))
     );
   }
 
@@ -380,7 +390,7 @@ export class MonthlyDebtsService {
       return this.paymentValidAtCutoff(payment, nextDayAfterCutoff);
     });
 
-    return sumMoney(validPayments.map((payment) => payment.totalAmount));
+    return sumMoney(validPayments.map((payment) => payment.baseAmount ?? payment.totalAmount));
   }
 
   private static paymentValidAtCutoff(
@@ -471,7 +481,7 @@ export class MonthlyDebtsService {
       type: 'DEBT_CREATED',
       date: prismaDateToBusinessDate(debt.createdAt),
       description: debt.description,
-      amount: moneyToApiString(debt.originalAmount),
+      amount: moneyToApiString(debt.baseOriginalAmount ?? debt.originalAmount),
     };
   }
 
@@ -482,7 +492,7 @@ export class MonthlyDebtsService {
       type: 'INSTALLMENT_PLAN_CREATED',
       date: prismaDateToBusinessDate(plan.createdAt),
       description: plan.description,
-      amount: moneyToApiString(plan.totalAmount),
+      amount: moneyToApiString(plan.baseTotalAmount ?? plan.totalAmount),
     };
   }
 
@@ -493,7 +503,7 @@ export class MonthlyDebtsService {
       type: 'PAYMENT_RECEIVED',
       date: prismaDateToBusinessDate(payment.paymentDate),
       description: payment.reference || 'Payment received',
-      amount: moneyToApiString(payment.totalAmount),
+      amount: moneyToApiString(payment.baseAmount ?? payment.totalAmount),
     };
   }
 

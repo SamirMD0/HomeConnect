@@ -1,4 +1,5 @@
 import {
+  Currency,
   DebtStatus,
   InstallmentPlanFrequency,
   InstallmentPlanStatus,
@@ -63,6 +64,7 @@ export interface GenerateMonthlyInstallmentScheduleInput {
   startDate: BusinessDate;
   installmentCount: number;
   frequency: InstallmentPlanFrequency;
+  currency?: Currency;
 }
 
 export interface DebtStatusInput {

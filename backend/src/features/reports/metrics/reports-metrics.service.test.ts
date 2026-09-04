@@ -77,9 +77,9 @@ function salesGroup(
     paymentStatus,
     _count: { _all: count },
     _sum: {
-      totalAmount: new Decimal(totalAmount),
-      paidAmount: new Decimal(paidAmount),
-      remainingAmount: new Decimal(remainingAmount),
+      baseTotalAmount: new Decimal(totalAmount),
+      basePaidAmount: new Decimal(paidAmount),
+      baseRemainingAmount: new Decimal(remainingAmount),
     },
   };
 }

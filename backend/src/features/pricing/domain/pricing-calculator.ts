@@ -1,4 +1,5 @@
 import { Decimal } from '@prisma/client/runtime/library';
+import { Currency } from '@prisma/client';
 import { divideMoney, moneyToApiString, multiplyMoney, parseMoney, subtractMoney } from '../../financial/domain/money';
 import { PricingCalculationError } from './pricing-errors';
 import { percentFactor } from './pricing-percent';
@@ -20,12 +21,14 @@ export function calculatePricing(costPrice: Decimal, config: PricingConfig): Pri
   const downPayment = multiplyMoney(
     installmentPrice,
     config.downPaymentPercent.div(100),
+    Currency.USD,
     Decimal.ROUND_HALF_UP
   );
   const remaining = subtractMoney(installmentPrice, downPayment);
   const monthlyPayment = divideMoney(
     remaining,
     new Decimal(config.installmentMonths),
+    Currency.USD,
     Decimal.ROUND_FLOOR
   );
   const lastInstallmentPayment = subtractMoney(

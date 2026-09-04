@@ -1,4 +1,5 @@
 import {
+  Currency,
   DebtKind,
   DebtStatus,
   FinancialCorrectionAction,
@@ -27,6 +28,7 @@ import {
   prismaDateToBusinessDate,
   runFinancialTransaction,
   sumMoney,
+  toBaseAmount,
   todayInBusinessTimezone,
 } from '../index';
 import { DebtsRepository } from '../debts/debts.repository';
@@ -34,6 +36,8 @@ import { InstallmentPlansRepository } from '../installment-plans/installment-pla
 import { FinancialTransactionClient } from '../infrastructure/transaction';
 import { CorrectPaymentInput, ReallocatePaymentInput, VoidPaymentInput } from './payments.validator';
 import { PaymentsRepository, PaymentWithDetails } from './payments.repository';
+import { convertPaymentAllocation, splitPaymentAmounts } from '../domain/currency-allocation';
+import { ExchangeRatesService } from '../exchange-rates/exchange-rates.service';
 
 interface AuthenticatedUser {
   userId: string;
@@ -139,7 +143,7 @@ export class PaymentsService {
       throw new NotFoundError('Correcting user not found');
     }
 
-    const correctedAmount = input.amount ? assertPositiveMoney(input.amount) : null;
+    const correctedAmountInput = input.amount ?? null;
     const paymentDate = parseBusinessDate(input.paymentDate);
 
     return runFinancialTransaction(async (tx) => {
@@ -150,6 +154,9 @@ export class PaymentsService {
       if (payment.voidedAt) {
         throw new ValidationError('Voided payments cannot be corrected');
       }
+      const correctedAmount = correctedAmountInput
+        ? assertPositiveMoney(correctedAmountInput, payment.currency ?? Currency.USD)
+        : null;
 
       if (correctedAmount && !correctedAmount.equals(payment.totalAmount)) {
         return this.reissuePayment(tx, payment, correctedAmount, input, correctingUser, user.userId);
@@ -224,6 +231,11 @@ export class PaymentsService {
       }
       if (payment.voidedAt) {
         throw new ValidationError('Voided payments cannot be reallocated');
+      }
+      if (payment.allocations.some((allocation) =>
+        !(allocation.exchangeRate ?? new Decimal(1)).equals(1)
+        || !(allocation.paymentAmount ?? allocation.amount).equals(allocation.amount))) {
+        throw new ValidationError('Cross-currency payment allocations cannot be manually reallocated');
       }
       if (!requestedTotal.equals(payment.totalAmount)) {
         throw new ValidationError('Replacement allocations must equal the payment total');
@@ -318,6 +330,9 @@ export class PaymentsService {
   ): Promise<PaymentCorrectionResult> {
     const affected = this.getAffectedTargets(payment);
     const paymentDate = parseBusinessDate(input.paymentDate);
+    const paymentCurrency = payment.currency ?? Currency.USD;
+    const effectiveAt = businessDateToPrisma(paymentDate);
+    const paymentExchangeRate = await ExchangeRatesService.snapshotFor(paymentCurrency, effectiveAt, tx);
     const beforeValues = this.toPaymentAuditValues(payment);
     const voidedAt = new Date();
 
@@ -341,6 +356,14 @@ export class PaymentsService {
     const replacement = await PaymentsRepository.createReplacementPayment(tx, {
       customerId: payment.customerId,
       totalAmount: correctedAmount,
+      currency: paymentCurrency,
+      exchangeRate: paymentExchangeRate,
+      baseAmount: toBaseAmount(
+        correctedAmount,
+        paymentCurrency,
+        paymentExchangeRate,
+        Decimal.ROUND_HALF_UP
+      ),
       paymentDate: businessDateToPrisma(paymentDate),
       paymentMethod: input.paymentMethod,
       reference: input.reference ?? null,
@@ -354,6 +377,16 @@ export class PaymentsService {
       if (!debt) {
         throw new NotFoundError('Debt not found for replacement payment');
       }
+      const obligationCurrency = debt.currency ?? Currency.USD;
+      const allocationExchangeRate = obligationCurrency === paymentCurrency
+        ? new Decimal(1)
+        : await ExchangeRatesService.snapshotFor(Currency.LBP, effectiveAt, tx);
+      const converted = convertPaymentAllocation({
+        paymentAmount: correctedAmount,
+        paymentCurrency,
+        obligationCurrency,
+        exchangeRate: allocationExchangeRate,
+      });
       const balance = calculateDebtBalance({
         originalAmount: debt.originalAmount,
         allocations: debt.paymentAllocations.map((allocation) => ({
@@ -363,7 +396,7 @@ export class PaymentsService {
       });
       const allocation = planDebtPaymentAllocation({
         debtId,
-        paymentAmount: correctedAmount,
+        paymentAmount: converted.amount,
         remainingBalance: balance.remainingBalance,
         status: debt.status,
       });
@@ -371,6 +404,8 @@ export class PaymentsService {
         paymentId: replacement.id,
         debtId,
         amount: allocation.amount,
+        paymentAmount: correctedAmount,
+        exchangeRate: allocationExchangeRate,
       });
     } else if (affected.planIds.length === 1 && affected.debtIds.length === 0) {
       const planId = affected.planIds[0];
@@ -378,8 +413,18 @@ export class PaymentsService {
       if (!plan) {
         throw new NotFoundError('Installment plan not found for replacement payment');
       }
-      const allocations = planInstallmentPaymentAllocations({
+      const obligationCurrency = plan.currency ?? Currency.USD;
+      const allocationExchangeRate = obligationCurrency === paymentCurrency
+        ? new Decimal(1)
+        : await ExchangeRatesService.snapshotFor(Currency.LBP, effectiveAt, tx);
+      const converted = convertPaymentAllocation({
         paymentAmount: correctedAmount,
+        paymentCurrency,
+        obligationCurrency,
+        exchangeRate: allocationExchangeRate,
+      });
+      const allocations = planInstallmentPaymentAllocations({
+        paymentAmount: converted.amount,
         installments: plan.installments.map((installment) => {
           const balance = calculateInstallmentBalance({
             amountDue: installment.amountDue,
@@ -398,12 +443,21 @@ export class PaymentsService {
           };
         }),
       });
+      const paymentSideAmounts = splitPaymentAmounts({
+        obligationAmounts: allocations.map((allocation) => allocation.amount),
+        totalPaymentAmount: correctedAmount,
+        paymentCurrency,
+        obligationCurrency,
+        exchangeRate: allocationExchangeRate,
+      });
       await PaymentsRepository.createInstallmentAllocations(
         tx,
-        allocations.map((allocation) => ({
+        allocations.map((allocation, index) => ({
           paymentId: replacement.id,
           installmentId: allocation.installmentId,
           amount: allocation.amount,
+          paymentAmount: paymentSideAmounts[index],
+          exchangeRate: allocationExchangeRate,
         }))
       );
     } else {

@@ -29,8 +29,18 @@ const supplierPurchaseIdempotencyInclude = {
 } satisfies Prisma.SupplierTransactionInclude;
 
 export class SupplierPurchasesRepository {
-  static createLine(data: Prisma.SupplierPurchaseLineUncheckedCreateInput, tx: Prisma.TransactionClient) {
-    return tx.supplierPurchaseLine.create({ data });
+  static createLine(
+    data: Omit<Prisma.SupplierPurchaseLineUncheckedCreateInput, 'baseUnitPrice' | 'baseLineTotal'> &
+      Partial<Pick<Prisma.SupplierPurchaseLineUncheckedCreateInput, 'baseUnitPrice' | 'baseLineTotal'>>,
+    tx: Prisma.TransactionClient
+  ) {
+    return tx.supplierPurchaseLine.create({
+      data: {
+        ...data,
+        baseUnitPrice: data.baseUnitPrice ?? data.unitPrice,
+        baseLineTotal: data.baseLineTotal ?? data.lineTotal,
+      },
+    });
   }
 
   static findById(id: string, tx?: Prisma.TransactionClient) {

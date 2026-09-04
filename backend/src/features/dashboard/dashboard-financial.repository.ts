@@ -11,6 +11,8 @@ const customerSelect = {
 const paymentAllocationPaymentSelect = {
   id: true,
   voidedAt: true,
+  currency: true,
+  exchangeRate: true,
 } satisfies Prisma.PaymentSelect;
 
 const dashboardDebtInclude = {

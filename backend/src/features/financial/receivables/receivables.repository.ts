@@ -11,6 +11,8 @@ const customerSelect = {
 const paymentAllocationPaymentSelect = {
   id: true,
   voidedAt: true,
+  currency: true,
+  exchangeRate: true,
 } satisfies Prisma.PaymentSelect;
 
 const receivableDebtInclude = {
@@ -38,6 +40,8 @@ const receivablePaymentSelect = {
   id: true,
   customerId: true,
   totalAmount: true,
+  baseAmount: true,
+  currency: true,
   paymentDate: true,
 } satisfies Prisma.PaymentSelect;
 

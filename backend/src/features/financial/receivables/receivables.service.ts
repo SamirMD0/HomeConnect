@@ -1,10 +1,9 @@
-import { DebtKind, DebtStatus, InstallmentPlanStatus, InstallmentStatus } from '@prisma/client';
+import { Currency, DebtKind, DebtStatus, InstallmentPlanStatus, InstallmentStatus } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import {
   businessDateToPrisma,
   calculateDebtBalance,
   calculateInstallmentBalance,
-  calculateInstallmentPlanSummary,
   compareBusinessDates,
   daysInMonth,
   determineDebtStatus,
@@ -14,7 +13,9 @@ import {
   moneyToApiString,
   parseMoney,
   prismaDateToBusinessDate,
+  subtractMoney,
   sumMoney,
+  toBaseAmount,
   todayInBusinessTimezone,
   ZERO_MONEY,
 } from '../../financial';
@@ -234,6 +235,13 @@ export class ReceivablesService {
           isVoided: isPaymentAllocationVoided(allocation),
         })),
       });
+      const baseBalance = calculateDebtBalance({
+        originalAmount: debt.baseOriginalAmount ?? debt.originalAmount,
+        allocations: debt.paymentAllocations.map((allocation) => ({
+          amount: allocationBaseAmount(allocation),
+          isVoided: isPaymentAllocationVoided(allocation),
+        })),
+      });
       const dueDate = prismaDateToBusinessDate(debt.dueDate);
       const status = determineDebtStatus({
         isCancelled: debt.status === DebtStatus.CANCELLED || Boolean(debt.cancelledAt),
@@ -246,9 +254,9 @@ export class ReceivablesService {
       billsTotal += 1;
       if (balance.isFullyPaid) billsPaid += 1;
 
-      obligatedAmounts.push(parseMoney(debt.originalAmount));
-      paidAmounts.push(balance.totalPaid);
-      outstandingAmounts.push(balance.remainingBalance);
+      obligatedAmounts.push(parseMoney(debt.baseOriginalAmount ?? debt.originalAmount));
+      paidAmounts.push(baseBalance.totalPaid);
+      outstandingAmounts.push(baseBalance.remainingBalance);
 
       if (balance.remainingBalance.greaterThan(ZERO_MONEY)) {
         openDebtCount += 1;
@@ -256,7 +264,7 @@ export class ReceivablesService {
 
         if (status === DebtStatus.OVERDUE) {
           overdueItemCount += 1;
-          overdueAmounts.push(balance.remainingBalance);
+          overdueAmounts.push(baseBalance.remainingBalance);
           overdueDueDates.push(dueDate);
         }
       }
@@ -283,6 +291,13 @@ export class ReceivablesService {
             isVoided: isPaymentAllocationVoided(allocation),
           })),
         });
+        const baseBalance = calculateInstallmentBalance({
+          amountDue: installment.baseAmountDue ?? installment.amountDue,
+          allocations: installment.paymentAllocations.map((allocation) => ({
+            amount: allocationBaseAmount(allocation),
+            isVoided: isPaymentAllocationVoided(allocation),
+          })),
+        });
         const dueDate = prismaDateToBusinessDate(installment.dueDate);
         const status = determineInstallmentStatus({
           isCancelled: planIsCancelled,
@@ -296,9 +311,9 @@ export class ReceivablesService {
         if (!isWithinRange(dueDate, monthRange)) continue;
 
         scopedInstallmentCount += 1;
-        scopedObligated.push(parseMoney(installment.amountDue));
-        scopedPaid.push(balance.totalPaid);
-        scopedOutstanding.push(balance.remainingBalance);
+        scopedObligated.push(parseMoney(installment.baseAmountDue ?? installment.amountDue));
+        scopedPaid.push(baseBalance.totalPaid);
+        scopedOutstanding.push(baseBalance.remainingBalance);
 
         billsTotal += 1;
         if (balance.isFullyPaid) billsPaid += 1;
@@ -308,7 +323,7 @@ export class ReceivablesService {
 
           if (status === InstallmentStatus.OVERDUE) {
             overdueItemCount += 1;
-            overdueAmounts.push(balance.remainingBalance);
+            overdueAmounts.push(baseBalance.remainingBalance);
             overdueDueDates.push(dueDate);
           }
         }
@@ -336,25 +351,15 @@ export class ReceivablesService {
         continue;
       }
 
-      const summary = calculateInstallmentPlanSummary(
-        {
-          totalAmount: plan.totalAmount,
-          installments: plan.installments.map((installment) => ({
-            dueDate: prismaDateToBusinessDate(installment.dueDate),
-            amountDue: installment.amountDue,
-            status: installment.status,
-            allocations: installment.paymentAllocations.map((allocation) => ({
-              amount: allocation.amount,
-              isVoided: isPaymentAllocationVoided(allocation),
-            })),
-          })),
-        },
-        businessDate
-      );
-
-      obligatedAmounts.push(parseMoney(plan.totalAmount));
-      paidAmounts.push(summary.totalPaid);
-      outstandingAmounts.push(summary.remainingBalance);
+      const baseTotal = parseMoney(plan.baseTotalAmount ?? plan.totalAmount);
+      const basePaid = sumMoney(plan.installments.flatMap((installment) =>
+        installment.paymentAllocations
+          .filter((allocation) => !isPaymentAllocationVoided(allocation))
+          .map(allocationBaseAmount)
+      ));
+      obligatedAmounts.push(baseTotal);
+      paidAmounts.push(basePaid);
+      outstandingAmounts.push(subtractMoney(baseTotal, basePaid));
     }
 
     const totalObligated = sumMoney(obligatedAmounts);
@@ -552,4 +557,17 @@ function groupBy<T>(items: T[], keySelector: (item: T) => string): Map<string, T
   }
 
   return groups;
+}
+
+function allocationBaseAmount(allocation: {
+  amount: Decimal;
+  paymentAmount: Decimal;
+  payment: { currency: Currency; exchangeRate: Decimal };
+}): Decimal {
+  return toBaseAmount(
+    allocation.paymentAmount ?? allocation.amount,
+    allocation.payment?.currency ?? Currency.USD,
+    allocation.payment?.exchangeRate ?? new Decimal(1),
+    Decimal.ROUND_HALF_UP
+  );
 }

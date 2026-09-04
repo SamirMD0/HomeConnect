@@ -1,4 +1,5 @@
 import {
+  Currency,
   FinancialCorrectionAction,
   FinancialCorrectionRecordType,
   InstallmentPlanFrequency,
@@ -15,7 +16,6 @@ import {
   businessDateToPrisma,
   calculateInstallmentBalance,
   calculateInstallmentPlanSummary,
-  centsToMoney,
   createIdempotencyFingerprint,
   determineInstallmentPlanStatus,
   determineInstallmentStatus,
@@ -26,7 +26,9 @@ import {
   installmentDueDate,
   isPaymentAllocationVoided,
   moneyToApiString,
-  moneyToCents,
+  toBaseAmount,
+  moneyToMinorUnits,
+  minorUnitsToMoney,
   normalizeIdempotencyKey,
   parseBusinessDate,
   planInstallmentPaymentAllocations,
@@ -49,10 +51,31 @@ import {
 import type { FinancialTransactionClient } from '../infrastructure/transaction';
 import { verifyAccountPassword, verifyAdminPasswordForCorrection } from '../authorization/account-password';
 import { writeFinancialCorrectionAudit } from '../corrections/correction-audit';
+import { convertPaymentAllocation, splitPaymentAmounts } from '../domain/currency-allocation';
+import { ExchangeRatesService } from '../exchange-rates/exchange-rates.service';
 
 interface AuthenticatedUser {
   userId: string;
   role: string;
+}
+
+function baseAmountsWithFinalResidual(
+  amounts: Decimal[],
+  currency: Currency,
+  exchangeRate: Decimal,
+  baseTotal: Decimal
+): Decimal[] {
+  if (amounts.length === 0) return [];
+  const baseAmounts: Decimal[] = [];
+  for (let index = 0; index < amounts.length; index += 1) {
+    if (index === amounts.length - 1) {
+      const allocated = baseAmounts.reduce((sum, amount) => sum.plus(amount), new Decimal(0));
+      baseAmounts.push(baseTotal.minus(allocated).toDecimalPlaces(2, Decimal.ROUND_HALF_UP));
+    } else {
+      baseAmounts.push(toBaseAmount(amounts[index], currency, exchangeRate, Decimal.ROUND_HALF_UP));
+    }
+  }
+  return baseAmounts;
 }
 
 interface InstallmentPlanListResult {
@@ -71,6 +94,9 @@ interface InstallmentPlanView {
   };
   description: string;
   totalAmount: string;
+  currency: Currency;
+  exchangeRate: string;
+  baseTotalAmount: string;
   totalPaid: string;
   remainingBalance: string;
   startDate: string;
@@ -107,6 +133,7 @@ interface InstallmentView {
   installmentNumber: number;
   dueDate: string;
   amountDue: string;
+  baseAmountDue: string;
   totalPaid: string;
   remainingAmount: string;
   status: InstallmentStatus;
@@ -117,6 +144,9 @@ interface InstallmentView {
 interface InstallmentPlanPaymentView {
   id: string;
   totalAmount: string;
+  currency: Currency;
+  exchangeRate: string;
+  baseAmount: string;
   paymentDate: string;
   paymentMethod: PaymentMethod;
   reference: string | null;
@@ -140,6 +170,8 @@ interface InstallmentPlanPaymentView {
     debtId: string | null;
     installmentId: string | null;
     amount: string;
+    paymentAmount: string;
+    exchangeRate: string;
     createdAt: string;
   }>;
 }
@@ -151,18 +183,20 @@ export class InstallmentPlansService {
     user: AuthenticatedUser,
     tx?: FinancialTransactionClient
   ): Promise<InstallmentPlanView> {
-    const totalAmount = assertPositiveMoney(input.totalAmount);
+    const currency = input.currency ?? Currency.USD;
+    const totalAmount = assertPositiveMoney(input.totalAmount, currency);
     const startDate = parseBusinessDate(input.startDate);
     const schedule = input.schedule
-      ? this.createManualMonthlySchedule(input, totalAmount, startDate)
+      ? this.createManualMonthlySchedule(input, totalAmount, startDate, currency)
       : generateMonthlyInstallmentSchedule({
           totalAmount,
           startDate,
           installmentCount: input.installmentCount,
           frequency: input.frequency,
+          currency,
         });
 
-    const generatedTotal = sumMoney(schedule.map((installment) => installment.amountDue));
+    const generatedTotal = sumMoney(schedule.map((installment) => installment.amountDue), currency);
     if (!generatedTotal.equals(totalAmount)) {
       throw new FinancialInvariantError('Generated schedule total does not match plan total');
     }
@@ -174,6 +208,14 @@ export class InstallmentPlansService {
       }
 
       const businessDate = todayInBusinessTimezone();
+      const exchangeRate = await ExchangeRatesService.snapshotFor(currency, new Date(), transaction);
+      const baseTotalAmount = toBaseAmount(totalAmount, currency, exchangeRate, Decimal.ROUND_HALF_UP);
+      const baseInstallments = baseAmountsWithFinalResidual(
+        schedule.map((installment) => installment.amountDue),
+        currency,
+        exchangeRate,
+        baseTotalAmount
+      );
       const installmentStatuses = schedule.map((installment) =>
         determineInstallmentStatus({
           isCancelled: false,
@@ -193,6 +235,9 @@ export class InstallmentPlansService {
           customerId,
           description: input.description,
           totalAmount,
+          currency,
+          exchangeRate,
+          baseTotalAmount,
           startDate: businessDateToPrisma(startDate),
           installmentCount: input.installmentCount,
           frequency: input.frequency,
@@ -204,6 +249,7 @@ export class InstallmentPlansService {
           installmentNumber: installment.installmentNumber,
           dueDate: businessDateToPrisma(installment.dueDate),
           amountDue: installment.amountDue,
+          baseAmountDue: baseInstallments[index],
           status: installmentStatuses[index],
         }))
       );
@@ -293,7 +339,11 @@ export class InstallmentPlansService {
         throw new NotFoundError('Correcting user not found');
       }
 
-      const correctedTotal = input.totalAmount ? assertPositiveMoney(input.totalAmount) : plan.totalAmount;
+      const planCurrency = plan.currency ?? Currency.USD;
+      const planExchangeRate = plan.exchangeRate ?? new Decimal(1);
+      const correctedTotal = input.totalAmount
+        ? assertPositiveMoney(input.totalAmount, planCurrency)
+        : plan.totalAmount;
       const correctedStartDate = input.startDate
         ? parseBusinessDate(input.startDate)
         : prismaDateToBusinessDate(plan.startDate);
@@ -318,6 +368,7 @@ export class InstallmentPlansService {
             frequency: plan.frequency,
             schedule: input.schedule,
             existingPlan: planHasPayments ? plan : undefined,
+            currency: planCurrency,
           })
         : null;
       if (schedule && planHasPayments) {
@@ -348,6 +399,12 @@ export class InstallmentPlansService {
       const updatedPlan = await InstallmentPlansRepository.updatePlanDetails(tx, planId, {
         description: input.description,
         totalAmount: correctedTotal,
+        baseTotalAmount: toBaseAmount(
+          correctedTotal,
+          planCurrency,
+          planExchangeRate,
+          Decimal.ROUND_HALF_UP
+        ),
         startDate: businessDateToPrisma(correctedStartDate),
         installmentCount: correctedInstallmentCount,
         status: planStatus,
@@ -356,12 +413,25 @@ export class InstallmentPlansService {
       });
 
       if (schedule) {
+        const correctedBaseTotal = toBaseAmount(
+          correctedTotal,
+          planCurrency,
+          planExchangeRate,
+          Decimal.ROUND_HALF_UP
+        );
+        const baseInstallments = baseAmountsWithFinalResidual(
+          schedule.map((installment) => installment.amountDue),
+          planCurrency,
+          planExchangeRate,
+          correctedBaseTotal
+        );
         await InstallmentPlansRepository.updateInstallmentScheduleRows(
           tx,
           plan.installments.map((installment, index) => ({
             id: installment.id,
             dueDate: businessDateToPrisma(schedule[index].dueDate),
             amountDue: schedule[index].amountDue,
+            baseAmountDue: baseInstallments[index],
             status: installmentStatuses[index],
             paidDate:
               installmentStatuses[index] === InstallmentStatus.PAID
@@ -406,7 +476,9 @@ export class InstallmentPlansService {
     input: CreateInstallmentPlanPaymentInput,
     user: AuthenticatedUser
   ): Promise<InstallmentPlanView> {
-    const amount = assertPositiveMoney(input.amount);
+    const paymentCurrency = input.currency ?? Currency.USD;
+    const paymentAmount = assertPositiveMoney(input.amount, paymentCurrency);
+    const paymentMethod = input.paymentMethod ?? PaymentMethod.CASH;
     const paymentDate = parseBusinessDate(input.paymentDate);
     const idempotencyKey = normalizeIdempotencyKey(input.idempotencyKey);
 
@@ -415,6 +487,18 @@ export class InstallmentPlansService {
       if (!plan) {
         throw new NotFoundError('Installment plan not found');
       }
+      const planCurrency = plan.currency ?? Currency.USD;
+      const effectiveAt = businessDateToPrisma(paymentDate);
+      const paymentExchangeRate = await ExchangeRatesService.snapshotFor(paymentCurrency, effectiveAt, tx);
+      const allocationExchangeRate = planCurrency === paymentCurrency
+        ? new Decimal(1)
+        : await ExchangeRatesService.snapshotFor(Currency.LBP, effectiveAt, tx);
+      const convertedPayment = convertPaymentAllocation({
+        paymentAmount,
+        paymentCurrency,
+        obligationCurrency: planCurrency,
+        exchangeRate: allocationExchangeRate,
+      });
 
       if (idempotencyKey) {
         const existingPayment = await InstallmentPlansRepository.findPaymentByIdempotencyKey(tx, idempotencyKey);
@@ -428,7 +512,8 @@ export class InstallmentPlansService {
           );
           const existingFingerprint = createIdempotencyFingerprint({
             planId: belongsToPlan ? planId : null,
-            amount: moneyToApiString(existingPayment.totalAmount),
+            amount: moneyToApiString(existingPayment.totalAmount, existingPayment.currency ?? Currency.USD),
+            currency: existingPayment.currency ?? Currency.USD,
             paymentDate: prismaDateToBusinessDate(existingPayment.paymentDate),
             paymentMethod: existingPayment.paymentMethod,
             idempotencyKey: existingPayment.idempotencyKey,
@@ -436,9 +521,10 @@ export class InstallmentPlansService {
           });
           const incomingFingerprint = createIdempotencyFingerprint({
             planId,
-            amount: moneyToApiString(amount),
+            amount: moneyToApiString(paymentAmount, paymentCurrency),
+            currency: paymentCurrency,
             paymentDate,
-            paymentMethod: input.paymentMethod,
+            paymentMethod,
             idempotencyKey,
             createdById: user.userId,
           });
@@ -462,7 +548,7 @@ export class InstallmentPlansService {
       }
 
       const allocationPlan = planInstallmentPaymentAllocations({
-        paymentAmount: amount,
+        paymentAmount: convertedPayment.amount,
         installments: plan.installments.map((installment) => {
           const balance = this.calculateInstallmentBalanceForPlan(installment);
           return {
@@ -475,12 +561,27 @@ export class InstallmentPlansService {
           };
         }),
       });
+      const paymentSideAmounts = splitPaymentAmounts({
+        obligationAmounts: allocationPlan.map((allocation) => allocation.amount),
+        totalPaymentAmount: paymentAmount,
+        paymentCurrency,
+        obligationCurrency: planCurrency,
+        exchangeRate: allocationExchangeRate,
+      });
 
       const payment = await InstallmentPlansRepository.createPayment(tx, {
         customerId: plan.customerId,
-        totalAmount: amount,
+        totalAmount: paymentAmount,
+        currency: paymentCurrency,
+        exchangeRate: paymentExchangeRate,
+        baseAmount: toBaseAmount(
+          paymentAmount,
+          paymentCurrency,
+          paymentExchangeRate,
+          Decimal.ROUND_HALF_UP
+        ),
         paymentDate: businessDateToPrisma(paymentDate),
-        paymentMethod: input.paymentMethod,
+        paymentMethod,
         reference: input.reference ?? null,
         notes: input.notes ?? null,
         idempotencyKey,
@@ -489,10 +590,12 @@ export class InstallmentPlansService {
 
       await InstallmentPlansRepository.createPaymentAllocations(
         tx,
-        allocationPlan.map((allocation) => ({
+        allocationPlan.map((allocation, index) => ({
           paymentId: payment.id,
           installmentId: allocation.installmentId,
           amount: allocation.amount,
+          paymentAmount: paymentSideAmounts[index],
+          exchangeRate: allocationExchangeRate,
         }))
       );
 
@@ -571,14 +674,15 @@ export class InstallmentPlansService {
   private static createManualMonthlySchedule(
     input: CreateInstallmentPlanInput,
     totalAmount: Decimal,
-    startDate: string
+    startDate: string,
+    currency: Currency
   ) {
     if (!input.schedule || input.schedule.length !== input.installmentCount) {
       throw new FinancialInvariantError('Manual schedule must have one amount for each installment');
     }
 
-    const amounts = input.schedule.map((installment) => assertPositiveMoney(installment.amountDue));
-    const manualTotal = sumMoney(amounts);
+    const amounts = input.schedule.map((installment) => assertPositiveMoney(installment.amountDue, currency));
+    const manualTotal = sumMoney(amounts, currency);
     if (!manualTotal.equals(totalAmount)) {
       throw new FinancialInvariantError('Manual installment schedule total must match plan total');
     }
@@ -597,6 +701,7 @@ export class InstallmentPlansService {
     frequency: InstallmentPlanFrequency;
     schedule?: Array<{ amountDue: string }>;
     existingPlan?: InstallmentPlanWithDetails;
+    currency: Currency;
   }) {
     if (!input.schedule && input.existingPlan) {
       return this.createPaymentAwareCorrectedSchedule({
@@ -611,6 +716,7 @@ export class InstallmentPlansService {
         startDate: input.startDate,
         installmentCount: input.installmentCount,
         frequency: input.frequency,
+        currency: input.currency,
       });
     }
 
@@ -618,8 +724,8 @@ export class InstallmentPlansService {
       throw new FinancialInvariantError('Manual schedule must have one amount for each installment');
     }
 
-    const amounts = input.schedule.map((installment) => assertPositiveMoney(installment.amountDue));
-    const manualTotal = sumMoney(amounts);
+    const amounts = input.schedule.map((installment) => assertPositiveMoney(installment.amountDue, input.currency));
+    const manualTotal = sumMoney(amounts, input.currency);
     if (!manualTotal.equals(input.totalAmount)) {
       throw new FinancialInvariantError('Manual installment schedule total must match plan total');
     }
@@ -652,14 +758,16 @@ export class InstallmentPlansService {
         startDate: input.startDate,
         installmentCount: input.installmentCount,
         frequency: input.frequency,
+        currency: input.existingPlan.currency ?? Currency.USD,
       });
     }
 
+    const currency = input.existingPlan.currency ?? Currency.USD;
     const fixedTotalCents = fixedAmounts.reduce(
-      (total, amount) => total + moneyToCents(amount),
+      (total, amount) => total + moneyToMinorUnits(amount, currency),
       0n
     );
-    const totalCents = moneyToCents(input.totalAmount);
+    const totalCents = moneyToMinorUnits(input.totalAmount, currency);
     const minimumAdjustableCents = BigInt(adjustableIndexes.length);
     if (totalCents < fixedTotalCents + minimumAdjustableCents) {
       throw new ValidationError(
@@ -669,7 +777,8 @@ export class InstallmentPlansService {
 
     const distributedAmounts = this.distributeCentsAcrossInstallments(
       totalCents - fixedTotalCents,
-      adjustableIndexes.length
+      adjustableIndexes.length,
+      currency
     );
     const amounts = [...fixedAmounts];
     adjustableIndexes.forEach((installmentIndex, distributedIndex) => {
@@ -683,26 +792,34 @@ export class InstallmentPlansService {
     }));
   }
 
-  private static distributeCentsAcrossInstallments(totalCents: bigint, installmentCount: number): Decimal[] {
+  private static distributeCentsAcrossInstallments(
+    totalCents: bigint,
+    installmentCount: number,
+    currency: Currency
+  ): Decimal[] {
     const count = BigInt(installmentCount);
-    const useWholeDollarSplit = totalCents % 100n === 0n && totalCents / 100n >= count;
+    const useWholeDollarSplit = currency === Currency.USD && totalCents % 100n === 0n && totalCents / 100n >= count;
     const baseCents = useWholeDollarSplit ? (totalCents / 100n / count) * 100n : totalCents / count;
-    const remainderCents = useWholeDollarSplit ? (totalCents / 100n) % count : 0n;
+    const remainderCents = useWholeDollarSplit
+      ? (totalCents / 100n) % count
+      : currency === Currency.LBP ? totalCents % count : 0n;
     const amounts: Decimal[] = [];
     let allocatedCents = 0n;
 
     for (let index = 0; index < installmentCount; index += 1) {
       const amountCents = useWholeDollarSplit
         ? baseCents + (BigInt(index) < remainderCents ? 100n : 0n)
-        : index === installmentCount - 1
-          ? totalCents - allocatedCents
-          : baseCents;
+        : currency === Currency.LBP
+          ? baseCents + (BigInt(index) < remainderCents ? 1n : 0n)
+          : index === installmentCount - 1
+            ? totalCents - allocatedCents
+            : baseCents;
 
       if (amountCents <= 0n) {
         throw new ValidationError('Installment amount must be greater than zero');
       }
 
-      amounts.push(centsToMoney(amountCents));
+      amounts.push(minorUnitsToMoney(amountCents, currency));
       allocatedCents += amountCents;
     }
 
@@ -754,7 +871,10 @@ export class InstallmentPlansService {
   private static toPlanAuditValues(plan: InstallmentPlanWithDetails) {
     return {
       description: plan.description,
-      totalAmount: moneyToApiString(plan.totalAmount),
+      totalAmount: moneyToApiString(plan.totalAmount, plan.currency ?? Currency.USD),
+      currency: plan.currency ?? Currency.USD,
+      exchangeRate: (plan.exchangeRate ?? new Decimal(1)).toFixed(6),
+      baseTotalAmount: moneyToApiString(plan.baseTotalAmount ?? plan.totalAmount),
       startDate: prismaDateToBusinessDate(plan.startDate),
       installmentCount: plan.installmentCount,
       frequency: plan.frequency,
@@ -780,9 +900,12 @@ export class InstallmentPlansService {
       id: plan.id,
       customer: plan.customer,
       description: plan.description,
-      totalAmount: moneyToApiString(plan.totalAmount),
-      totalPaid: moneyToApiString(summary.totalPaid),
-      remainingBalance: moneyToApiString(summary.remainingBalance),
+      totalAmount: moneyToApiString(plan.totalAmount, plan.currency ?? Currency.USD),
+      currency: plan.currency ?? Currency.USD,
+      exchangeRate: (plan.exchangeRate ?? new Decimal(1)).toFixed(6),
+      baseTotalAmount: moneyToApiString(plan.baseTotalAmount ?? plan.totalAmount),
+      totalPaid: moneyToApiString(summary.totalPaid, plan.currency ?? Currency.USD),
+      remainingBalance: moneyToApiString(summary.remainingBalance, plan.currency ?? Currency.USD),
       startDate: prismaDateToBusinessDate(plan.startDate),
       installmentCount: plan.installmentCount,
       frequency: plan.frequency,
@@ -812,13 +935,17 @@ export class InstallmentPlansService {
               : null,
           }
         : null,
-      schedule: plan.installments.map((installment) => this.toInstallmentView(installment)),
+      schedule: plan.installments.map((installment) => this.toInstallmentView(
+        installment,
+        plan.currency ?? Currency.USD
+      )),
       payments: this.toPaymentHistory(plan),
     };
   }
 
   private static toInstallmentView(
-    installment: InstallmentPlanWithDetails['installments'][number]
+    installment: InstallmentPlanWithDetails['installments'][number],
+    currency: Currency
   ): InstallmentView {
     const balance = this.calculateInstallmentBalanceForPlan(installment);
     const status = determineInstallmentStatus({
@@ -832,9 +959,10 @@ export class InstallmentPlansService {
       id: installment.id,
       installmentNumber: installment.installmentNumber,
       dueDate: prismaDateToBusinessDate(installment.dueDate),
-      amountDue: moneyToApiString(installment.amountDue),
-      totalPaid: moneyToApiString(balance.totalPaid),
-      remainingAmount: moneyToApiString(balance.remainingBalance),
+      amountDue: moneyToApiString(installment.amountDue, currency),
+      baseAmountDue: moneyToApiString(installment.baseAmountDue ?? installment.amountDue),
+      totalPaid: moneyToApiString(balance.totalPaid, currency),
+      remainingAmount: moneyToApiString(balance.remainingBalance, currency),
       status,
       storedStatus: installment.status,
       paidDate: installment.paidDate ? prismaDateToBusinessDate(installment.paidDate) : null,
@@ -851,7 +979,10 @@ export class InstallmentPlansService {
         if (!paymentsById.has(payment.id)) {
           paymentsById.set(payment.id, {
             id: payment.id,
-            totalAmount: moneyToApiString(payment.totalAmount),
+            totalAmount: moneyToApiString(payment.totalAmount, payment.currency ?? Currency.USD),
+            currency: payment.currency ?? Currency.USD,
+            exchangeRate: (payment.exchangeRate ?? new Decimal(1)).toFixed(6),
+            baseAmount: moneyToApiString(payment.baseAmount ?? payment.totalAmount),
             paymentDate: prismaDateToBusinessDate(payment.paymentDate),
             paymentMethod: payment.paymentMethod,
             reference: payment.reference,
@@ -883,6 +1014,11 @@ export class InstallmentPlansService {
                 debtId: paymentAllocation.debtId,
                 installmentId: paymentAllocation.installmentId,
                 amount: moneyToApiString(paymentAllocation.amount),
+                paymentAmount: moneyToApiString(
+                  paymentAllocation.paymentAmount ?? paymentAllocation.amount,
+                  payment.currency ?? Currency.USD
+                ),
+                exchangeRate: (paymentAllocation.exchangeRate ?? new Decimal(1)).toFixed(6),
                 createdAt: paymentAllocation.createdAt.toISOString(),
               })),
           });

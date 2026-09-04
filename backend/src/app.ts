@@ -22,6 +22,7 @@ import { receivablesRoutes } from './features/financial/receivables/receivables.
 import { prepaidRoutes } from './features/financial/prepaid/prepaid.routes';
 import { correctionsRoutes, customerCorrectionsRoutes } from './features/financial/corrections/corrections.routes';
 import { paymentsRoutes } from './features/financial/payments/payments.routes';
+import { exchangeRatesRoutes } from './features/financial/exchange-rates/exchange-rates.routes';
 import { monthlyDebtsRoutes } from './features/reports/monthly-debts/monthly-debts.routes';
 import { monthlyReviewRoutes } from './features/reports/monthly-review/monthly-review.routes';
 import { reportRowsRoutes } from './features/reports/rows/report-rows.routes';
@@ -98,6 +99,7 @@ app.use('/api/v1/customers', requireAuth, customersRoutes);
 app.use('/api/v1/debts', requireAuth, debtsRoutes);
 app.use('/api/v1/installment-plans', requireAuth, installmentPlansRoutes);
 app.use('/api/v1/payments', requireAuth, paymentsRoutes);
+app.use('/api/v1/admin/exchange-rates', requireAuth, exchangeRatesRoutes);
 app.use('/api/v1/financial-ledger', requireAuth, financialLedgerRoutes);
 app.use('/api/v1/receivables', requireAuth, receivablesRoutes);
 app.use('/api/v1/prepaid-purchases', requireAuth, prepaidRoutes);

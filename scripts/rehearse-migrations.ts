@@ -25,7 +25,10 @@ async function main() {
   // Developer-machine only. Requiring an explicit flag means this can never be
   // run casually on a business PC, where the same command would connect with
   // live credentials even though it only ever writes to a scratch database.
-  if (!process.argv.includes('--confirm-scratch')) {
+  if (
+    !process.argv.includes('--confirm-scratch') &&
+    process.env.REHEARSAL_CONFIRM_SCRATCH !== '1'
+  ) {
     console.error('FAILED: this rehearsal is for a development machine only.');
     console.error('It creates a scratch database and never touches the business database,');
     console.error('but it must not be run on a shop PC holding real data.');
@@ -64,11 +67,14 @@ async function main() {
   let phase1 = false;
   let phase2 = false;
 
-  console.log('\n--- PHASE 1: apply to an empty database ---');
+  console.log('\n--- PHASE 1: apply pending migrations ---');
   const outcomes = await MigrationExecutor.applyPending(client, bundled);
   console.log(`attempted ${outcomes.length}, applied ${outcomes.filter((outcome) => outcome.applied).length}`);
-  for (const outcome of outcomes.filter((outcome) => !outcome.applied)) {
-    console.log(`  FAILED ${outcome.name}: ${outcome.error}`);
+  for (const outcome of outcomes) {
+    console.log(
+      `  ${outcome.applied ? 'APPLIED' : 'FAILED'} ${outcome.name}: ${outcome.durationMs}ms (${outcome.statementCount} statements)`
+    );
+    if (outcome.error) console.log(`    ${outcome.error}`);
   }
   const afterApply = await MigrationExecutor.status(client, bundled);
   console.log(`pending=${afterApply.pending.length} failed=${afterApply.failed.length} mismatched=${afterApply.mismatched.length}`);
@@ -86,7 +92,7 @@ async function main() {
 
   const recovery = await MigrationExecutor.applyPending(client, bundled);
   for (const outcome of recovery) {
-    console.log(`  ${outcome.name}: applied=${outcome.applied} recovered=${outcome.recovered}`);
+    console.log(`  ${outcome.name}: applied=${outcome.applied} recovered=${outcome.recovered} duration=${outcome.durationMs}ms`);
     if (outcome.error) console.log(`     ${outcome.error.split('\n')[0].slice(0, 160)}`);
   }
   const healed = await MigrationExecutor.status(client, bundled);

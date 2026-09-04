@@ -1,3 +1,5 @@
+import { Decimal } from '@prisma/client/runtime/library';
+import { Currency } from '@prisma/client';
 import { divideMoney, moneyToApiString, sumMoney, ZERO_MONEY } from '../../financial';
 import { ReportsMetricsRepository, type ReportsMetricRecords } from './reports-metrics.repository';
 import type { ReportsCoreMetrics } from './reports-metrics.types';
@@ -16,13 +18,13 @@ export class ReportsMetricsService {
       0
     );
     const totalAmount = sumMoney(
-      records.salesByPaymentStatus.map((row) => row._sum.totalAmount ?? ZERO_MONEY)
+      records.salesByPaymentStatus.map((row) => row._sum.baseTotalAmount ?? ZERO_MONEY)
     );
     const paidAmount = sumMoney(
-      records.salesByPaymentStatus.map((row) => row._sum.paidAmount ?? ZERO_MONEY)
+      records.salesByPaymentStatus.map((row) => row._sum.basePaidAmount ?? ZERO_MONEY)
     );
     const unpaidAmount = sumMoney(
-      records.salesByPaymentStatus.map((row) => row._sum.remainingAmount ?? ZERO_MONEY)
+      records.salesByPaymentStatus.map((row) => row._sum.baseRemainingAmount ?? ZERO_MONEY)
     );
 
     return {
@@ -32,7 +34,7 @@ export class ReportsMetricsService {
         paidAmount: moneyToApiString(paidAmount),
         unpaidAmount: moneyToApiString(unpaidAmount),
         averageOrderValue: moneyToApiString(
-          orderCount === 0 ? ZERO_MONEY : divideMoney(totalAmount, String(orderCount))
+          orderCount === 0 ? ZERO_MONEY : divideMoney(totalAmount, String(orderCount), Currency.USD, Decimal.ROUND_HALF_UP)
         ),
       },
       customers: {

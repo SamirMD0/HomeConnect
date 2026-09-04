@@ -1,4 +1,4 @@
-import { InstallmentPlanFrequency, InstallmentPlanStatus, InstallmentStatus, PaymentMethod, Prisma } from '@prisma/client';
+import { Currency, InstallmentPlanFrequency, InstallmentPlanStatus, InstallmentStatus, PaymentMethod, Prisma } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { prisma } from '../../../lib/prisma';
 import { FinancialTransactionClient } from '../infrastructure/transaction';
@@ -68,6 +68,9 @@ export interface CreateInstallmentPlanData {
   customerId: string;
   description: string;
   totalAmount: Decimal;
+  currency?: Currency;
+  exchangeRate?: Decimal;
+  baseTotalAmount?: Decimal;
   startDate: Date;
   installmentCount: number;
   frequency: InstallmentPlanFrequency;
@@ -80,6 +83,7 @@ export interface CreateInstallmentData {
   installmentNumber: number;
   dueDate: Date;
   amountDue: Decimal;
+  baseAmountDue?: Decimal;
   status: InstallmentStatus;
 }
 
@@ -95,6 +99,9 @@ export interface ListInstallmentPlansParams {
 export interface CreateInstallmentPlanPaymentData {
   customerId: string;
   totalAmount: Decimal;
+  currency?: Currency;
+  exchangeRate?: Decimal;
+  baseAmount?: Decimal;
   paymentDate: Date;
   paymentMethod: PaymentMethod;
   reference?: string | null;
@@ -123,8 +130,12 @@ export class InstallmentPlansRepository {
     return tx.installmentPlan.create({
       data: {
         ...planData,
+        baseTotalAmount: planData.baseTotalAmount ?? planData.totalAmount,
         installments: {
-          create: installments,
+          create: installments.map((installment) => ({
+            ...installment,
+            baseAmountDue: installment.baseAmountDue ?? installment.amountDue,
+          })),
         },
       },
       include: installmentPlanInclude,
@@ -171,7 +182,10 @@ export class InstallmentPlansRepository {
 
   static async createPayment(tx: FinancialTransactionClient, data: CreateInstallmentPlanPaymentData) {
     return tx.payment.create({
-      data,
+      data: {
+        ...data,
+        baseAmount: data.baseAmount ?? data.totalAmount,
+      },
       include: {
         allocations: true,
         createdBy: {
@@ -198,6 +212,8 @@ export class InstallmentPlansRepository {
       paymentId: string;
       installmentId: string;
       amount: Decimal;
+      paymentAmount?: Decimal;
+      exchangeRate?: Decimal;
     }>
   ) {
     return tx.paymentAllocation.createMany({
@@ -206,6 +222,8 @@ export class InstallmentPlansRepository {
         debtId: null,
         installmentId: allocation.installmentId,
         amount: allocation.amount,
+        paymentAmount: allocation.paymentAmount ?? allocation.amount,
+        exchangeRate: allocation.exchangeRate,
       })),
     });
   }
@@ -242,6 +260,7 @@ export class InstallmentPlansRepository {
     data: {
       description: string;
       totalAmount?: Decimal;
+      baseTotalAmount?: Decimal;
       startDate?: Date;
       installmentCount?: number;
       status?: InstallmentPlanStatus;
@@ -251,7 +270,12 @@ export class InstallmentPlansRepository {
   ) {
     return tx.installmentPlan.update({
       where: { id: planId },
-      data,
+      data: {
+        ...data,
+        ...(data.totalAmount === undefined ? {} : {
+          baseTotalAmount: data.baseTotalAmount ?? data.totalAmount,
+        }),
+      },
       include: installmentPlanInclude,
     });
   }
@@ -262,6 +286,7 @@ export class InstallmentPlansRepository {
       id: string;
       dueDate: Date;
       amountDue: Decimal;
+      baseAmountDue?: Decimal;
       status: InstallmentStatus;
       paidDate?: Date | null;
     }>
@@ -272,6 +297,7 @@ export class InstallmentPlansRepository {
         data: {
           dueDate: installment.dueDate,
           amountDue: installment.amountDue,
+          baseAmountDue: installment.baseAmountDue ?? installment.amountDue,
           status: installment.status,
           paidDate: installment.paidDate ?? null,
         },

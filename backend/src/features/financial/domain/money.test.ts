@@ -1,3 +1,4 @@
+import { Currency } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { describe, expect, it } from 'vitest';
 import { InvalidMoneyError } from './financial-errors';
@@ -7,11 +8,15 @@ import {
   compareMoney,
   divideMoney,
   equalMoney,
+  fromBaseAmount,
+  moneyToMinorUnits,
   moneyToApiString,
+  roundMoney,
   parseMoney,
   multiplyMoney,
   subtractMoney,
   sumMoney,
+  toBaseAmount,
 } from './money';
 
 describe('financial money helpers', () => {
@@ -41,9 +46,9 @@ describe('financial money helpers', () => {
   });
 
   it('multiplies and divides using Decimal factors and explicit rounding', () => {
-    expect(moneyToApiString(multiplyMoney('0.07', '1.33333'))).toBe('0.09');
-    expect(moneyToApiString(divideMoney('10.00', '3', Decimal.ROUND_FLOOR))).toBe('3.33');
-    expect(() => divideMoney('10.00', '0')).toThrow(InvalidMoneyError);
+    expect(moneyToApiString(multiplyMoney('0.07', '1.33333', Currency.USD, Decimal.ROUND_HALF_UP))).toBe('0.09');
+    expect(moneyToApiString(divideMoney('10.00', '3', Currency.USD, Decimal.ROUND_FLOOR))).toBe('3.33');
+    expect(() => divideMoney('10.00', '0', Currency.USD, Decimal.ROUND_HALF_UP)).toThrow(InvalidMoneyError);
   });
 
   it('compares values correctly', () => {
@@ -62,5 +67,17 @@ describe('financial money helpers', () => {
     expect(() => parseMoney('10000000000.00')).toThrow(InvalidMoneyError);
     expect(() => assertPositiveMoney('-1.00')).toThrow(InvalidMoneyError);
     expect(() => assertPositiveMoney('0.00')).toThrow(InvalidMoneyError);
+  });
+
+  it('accepts only whole LBP input and serializes it without decimals', () => {
+    expect(moneyToApiString(parseMoney('4500000.00', Currency.LBP), Currency.LBP)).toBe('4500000');
+    expect(moneyToMinorUnits('4500000', Currency.LBP)).toBe(4500000n);
+    expect(() => parseMoney('4500000.50', Currency.LBP)).toThrow('LBP money amount must be a whole number');
+  });
+
+  it('rounds computed LBP HALF_UP and snapshots USD base values', () => {
+    expect(moneyToApiString(roundMoney('1000.5', Currency.LBP, Decimal.ROUND_HALF_UP), Currency.LBP)).toBe('1001');
+    expect(moneyToApiString(toBaseAmount('4500000', Currency.LBP, '90000', Decimal.ROUND_HALF_UP))).toBe('50.00');
+    expect(moneyToApiString(fromBaseAmount('50.01', Currency.LBP, '90000', Decimal.ROUND_HALF_UP), Currency.LBP)).toBe('4500900');
   });
 });
