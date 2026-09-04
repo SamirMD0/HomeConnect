@@ -8,6 +8,7 @@ const productActorInclude = {
   createdBy: { select: { fullName: true, username: true } },
   updatedBy: { select: { fullName: true, username: true } },
   pricingPreset: true,
+  taxProfile: { include: { taxRate: true } },
   // Metadata only — never select `data`, or every product query would load image payloads.
   image: { select: { mimeType: true, byteSize: true, updatedAt: true } },
 } satisfies Prisma.ProductInclude;
@@ -113,7 +114,7 @@ export class ProductsRepository {
   static findManyForLabels(ids: string[], tx?: Prisma.TransactionClient) {
     return (tx ?? prisma).product.findMany({
       where: { id: { in: ids } },
-      include: { pricingPreset: true },
+      include: { pricingPreset: true, taxProfile: { include: { taxRate: true } } },
     });
   }
 
@@ -285,6 +286,17 @@ export class ProductsRepository {
 
   static findActiveDefaultPricingPreset(tx?: Prisma.TransactionClient) {
     return (tx ?? prisma).pricingPreset.findFirst({ where: { isDefault: true, isActive: true, archivedAt: null } });
+  }
+
+  static findActiveDefaultTaxProfile(effectiveOn: Date, tx?: Prisma.TransactionClient) {
+    return (tx ?? prisma).taxProfile.findFirst({
+      where: {
+        isDefault: true,
+        isActive: true,
+        taxRate: { is: { isActive: true, effectiveFrom: { lte: effectiveOn }, OR: [{ effectiveTo: null }, { effectiveTo: { gte: effectiveOn } }] } },
+      },
+      include: { taxRate: true },
+    });
   }
 
   static findPricingPreset(id: string, tx?: Prisma.TransactionClient) {

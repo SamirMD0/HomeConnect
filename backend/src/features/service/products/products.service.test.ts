@@ -1,4 +1,4 @@
-import { LabelBarcodeSource, Prisma, Role } from '@prisma/client';
+import { Currency, LabelBarcodeSource, Prisma, Role } from '@prisma/client';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { repository, pricing, writeAudit, verify, tx } = vi.hoisted(() => {
@@ -6,7 +6,7 @@ const { repository, pricing, writeAudit, verify, tx } = vi.hoisted(() => {
   return {
     repository: {
       findByBarcode: vi.fn(), findBySku: vi.fn(), findDuplicates: vi.fn(), findPricingPreset: vi.fn(), create: vi.fn(),
-      findActiveDefaultPricingPreset: vi.fn(), findById: vi.fn(), update: vi.fn(), deleteImage: vi.fn(),
+      findActiveDefaultPricingPreset: vi.fn(), findActiveDefaultTaxProfile: vi.fn(), findById: vi.fn(), update: vi.fn(), deleteImage: vi.fn(),
       groupBrandSpellings: vi.fn(), list: vi.fn(),
     },
     pricing: { resolveProductPricing: vi.fn() },
@@ -32,6 +32,7 @@ const money = (value: string) => new Prisma.Decimal(value);
 const productOf = (overrides: Record<string, unknown> = {}) => ({
   id: '22222222-2222-4222-8222-222222222222', sku: 'HC-000001', name: 'Fan', model: 'F1',
   barcode: null, brand: null, price: null, discount: null, costPrice: null, pricingPresetId: null,
+  priceCurrency: Currency.USD, taxProfileId: null, priceIncludesVat: false, taxProfile: null,
   useCustomPricing: false, installmentEnabled: false, customExpensePercent: null,
   customProfitPercent: null, customDiscountBufferPercent: null, customInstallmentMarkupPercent: null,
   customDownPaymentPercent: null, customInstallmentMonths: null, customCalculationMode: null,
@@ -61,6 +62,22 @@ describe('product service workflow', () => {
     pricing.resolveProductPricing.mockReturnValue(unavailable);
     repository.create.mockImplementation((data) => Promise.resolve(productOf({ ...data })));
     repository.update.mockImplementation((_id, data) => Promise.resolve(productOf({ ...data })));
+  });
+
+  it('keeps preset output ex-VAT and makes the label price VAT-inclusive', async () => {
+    const product = productOf({ costPrice: money('100.00') });
+    repository.findById.mockResolvedValue(product);
+    repository.findActiveDefaultTaxProfile.mockResolvedValue({
+      code: 'LB_STANDARD', isActive: true,
+      taxRate: { isActive: true, ratePercent: money('11.000') },
+    });
+    pricing.resolveProductPricing.mockReturnValue({ ...available, cashPrice: '150.00' });
+
+    const result = await ProductsService.label(product.id, { includePrice: true, includePriceCode: false });
+    expect(result.payload).toMatchObject({
+      cashPriceExVat: '150.00', vatAmount: '16.50', cashPriceIncVat: '166.50', cashPrice: '166.50',
+      taxRatePercent: '11.000', taxCode: 'LB_STANDARD',
+    });
   });
 
   it('persists an image URL on create, returns it after a fresh get, and audits it', async () => {

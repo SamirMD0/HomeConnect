@@ -40,6 +40,7 @@ describeDatabase('supplier purchase database contract', () => {
         id: randomUUID(), supplierTransactionId: debtId, kind: 'PRODUCT', productId,
         description: 'Purchase DB Contract Product', quantity: 2, unitPrice: '210.00', lineTotal: '420.00',
         baseUnitPrice: '210.00', baseLineTotal: '420.00',
+        taxRateSnapshot: '0.000', taxCodeSnapshot: null, unitPriceExVat: '210.00', vatAmount: '0.00', lineTotalIncVat: '420.00',
         position: 0, ...overrides,
       } as never,
     });
@@ -57,14 +58,14 @@ describeDatabase('supplier purchase database contract', () => {
       // rejected by the database, not merely by the service.
       await expect(line({ id: randomUUID(), kind: 'MANUAL', position: 2 })).rejects.toThrow();
       await expect(line({ id: randomUUID(), kind: 'MANUAL', productId: null, quantity: null, unitPrice: null, receivingItemId, position: 3 })).rejects.toThrow();
-      await expect(line({ id: randomUUID(), kind: 'MANUAL', productId: null, quantity: null, unitPrice: null, receivingItemId: null, description: 'Freight', lineTotal: '25.00', position: 4 })).resolves.toBeTruthy();
+      await expect(line({ id: randomUUID(), kind: 'MANUAL', productId: null, quantity: null, unitPrice: null, receivingItemId: null, description: 'Freight', lineTotal: '25.00', unitPriceExVat: '25.00', lineTotalIncVat: '25.00', position: 4 })).resolves.toBeTruthy();
 
       // A product line missing its quantity or price is rejected.
       await expect(line({ id: randomUUID(), quantity: null, position: 5 })).rejects.toThrow();
       await expect(line({ id: randomUUID(), unitPrice: null, position: 6 })).rejects.toThrow();
 
       // Zero is allowed for bonus stock; negative never is.
-      await expect(line({ id: randomUUID(), unitPrice: '0.00', lineTotal: '0.00', position: 7 })).resolves.toBeTruthy();
+      await expect(line({ id: randomUUID(), unitPrice: '0.00', lineTotal: '0.00', unitPriceExVat: '0.00', lineTotalIncVat: '0.00', position: 7 })).resolves.toBeTruthy();
       await expect(line({ id: randomUUID(), unitPrice: '-1.00', lineTotal: '-2.00', position: 8 })).rejects.toThrow();
       await expect(line({ id: randomUUID(), quantity: 0, position: 9 })).rejects.toThrow();
 
@@ -100,6 +101,8 @@ describeDatabase('supplier purchase database contract', () => {
     const userId = randomUUID();
     const supplierId = randomUUID();
     const productId = randomUUID();
+    const taxRateId = randomUUID();
+    const taxProfileId = randomUUID();
     const businessDate = new Date().toISOString().slice(0, 10);
     const idempotencyKey = `purchase-${randomUUID()}`;
     const concurrentKey = `purchase-${randomUUID()}`;
@@ -128,8 +131,14 @@ describeDatabase('supplier purchase database contract', () => {
       await prisma.supplier.create({
         data: { id: supplierId, name: 'Purchase Idempotency Supplier', phone: `idem-${supplierId}`, createdById: userId },
       });
+      await prisma.taxRate.create({
+        data: { id: taxRateId, code: `PURCHASE_ZERO_${taxRateId}`, name: 'Purchase test zero rate', nameAr: 'اختبار', ratePercent: '0.000', effectiveFrom: new Date('2020-01-01T00:00:00.000Z'), createdById: userId },
+      });
+      await prisma.taxProfile.create({
+        data: { id: taxProfileId, code: `PURCHASE_ZERO_${taxProfileId}`, name: 'Purchase test zero profile', nameAr: 'اختبار', taxRateId },
+      });
       await prisma.product.create({
-        data: { id: productId, sku: `HC-IDEM-${productId}`, name: 'Purchase Idempotency Product', model: 'IDEM-1', trackStock: true, stockQuantity: 0, createdById: userId },
+        data: { id: productId, sku: `HC-IDEM-${productId}`, name: 'Purchase Idempotency Product', model: 'IDEM-1', trackStock: true, stockQuantity: 0, taxProfileId, createdById: userId },
       });
       await prisma.stockMovement.create({
         data: { productId, movementType: StockMovementType.OPENING_BALANCE, quantityChange: 0, quantityBefore: 0, quantityAfter: 0, reason: 'Verified zero opening count', createdById: userId },
@@ -230,6 +239,27 @@ describeDatabase('supplier purchase database contract', () => {
       lookupSpy.mockRestore();
       expect(concurrent.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
       expect(await prisma.supplierTransaction.count({ where: { idempotencyKey: concurrentKey } })).toBe(1);
+
+      // INV-20: a configuration change must never rewrite a posted invoice.
+      const snapshotBeforeRateChange = await prisma.supplierPurchaseLine.findMany({
+        where: { supplierTransactionId: original.id },
+        select: {
+          id: true, lineTotal: true, taxRateSnapshot: true, taxCodeSnapshot: true,
+          unitPriceExVat: true, vatAmount: true, lineTotalIncVat: true,
+        },
+        orderBy: { id: 'asc' },
+      });
+      const historicalBytes = JSON.stringify(snapshotBeforeRateChange);
+      await prisma.taxRate.update({ where: { id: taxRateId }, data: { ratePercent: '11.000' } });
+      const snapshotAfterRateChange = await prisma.supplierPurchaseLine.findMany({
+        where: { supplierTransactionId: original.id },
+        select: {
+          id: true, lineTotal: true, taxRateSnapshot: true, taxCodeSnapshot: true,
+          unitPriceExVat: true, vatAmount: true, lineTotalIncVat: true,
+        },
+        orderBy: { id: 'asc' },
+      });
+      expect(JSON.stringify(snapshotAfterRateChange)).toBe(historicalBytes);
     } finally {
       const receivingIds = (await prisma.supplierReceiving.findMany({ where: { supplierId }, select: { id: true } })).map(({ id }) => id);
       const transactionIds = (await prisma.supplierTransaction.findMany({ where: { supplierId }, select: { id: true } })).map(({ id }) => id);
@@ -241,6 +271,8 @@ describeDatabase('supplier purchase database contract', () => {
       await prisma.supplierReceiving.deleteMany({ where: { id: { in: receivingIds } } });
       await prisma.stockMovement.deleteMany({ where: { productId } });
       await prisma.product.deleteMany({ where: { id: productId } });
+      await prisma.taxProfile.deleteMany({ where: { id: taxProfileId } });
+      await prisma.taxRate.deleteMany({ where: { id: taxRateId } });
       await prisma.supplier.deleteMany({ where: { id: supplierId } });
       await prisma.user.deleteMany({ where: { id: userId } });
       await prisma.$disconnect();

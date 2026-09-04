@@ -74,6 +74,7 @@ const inventoryProductSelect = {
   trackStock: true,
   stockQuantity: true,
   lowStockThreshold: true,
+  taxProfileId: true,
 } satisfies Prisma.ProductSelect;
 
 const onboardingProductSelect = {

@@ -370,6 +370,7 @@ model User {
   prepaidDeliveries           PrepaidPurchase[]          @relation("PrepaidDeliveredBy")
   pricingPresetsCreated       PricingPreset[]             @relation("PricingPresetCreatedBy")
   pricingPresetsUpdated       PricingPreset[]             @relation("PricingPresetUpdatedBy")
+  taxRatesCreated             TaxRate[]                    @relation("TaxRateCreatedBy")
   repairsApplied              RepairHistory[]             @relation("RepairHistoryAppliedBy")
   stockMovements              StockMovement[]             @relation("StockMovementCreatedBy")
   salesStockFulfillmentsCreated  SalesOrderStockFulfillment[] @relation("FulfillmentCreatedBy")
@@ -663,6 +664,44 @@ model AdminVerificationLog {
   @@map("admin_verification_logs")
 }
 
+model TaxRate {
+  id            String    @id @default(uuid()) @db.Uuid
+  code          String    @unique
+  name          String
+  nameAr        String
+  ratePercent   Decimal   @db.Decimal(6, 3)
+  effectiveFrom DateTime  @db.Date
+  effectiveTo   DateTime? @db.Date
+  isActive      Boolean   @default(true)
+  createdById   String    @db.Uuid
+  createdBy     User      @relation("TaxRateCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt     DateTime  @default(now())
+
+  taxProfiles TaxProfile[]
+
+  @@index([isActive, effectiveFrom, effectiveTo])
+  @@map("tax_rates")
+}
+
+model TaxProfile {
+  id        String   @id @default(uuid()) @db.Uuid
+  code      String   @unique
+  name      String
+  nameAr    String
+  taxRateId String   @db.Uuid
+  taxRate   TaxRate  @relation(fields: [taxRateId], references: [id], onDelete: Restrict)
+  isDefault Boolean  @default(false)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  products Product[]
+
+  @@index([taxRateId])
+  @@index([isActive, isDefault])
+  @@map("tax_profiles")
+}
+
 model Product {
   id                                     String                  @id @default(uuid()) @db.Uuid
   sku                                    String                  @unique
@@ -674,6 +713,9 @@ model Product {
   discount                               Decimal?                @db.Decimal(12, 2)
   costPrice                              Decimal?                @db.Decimal(12, 2)
   priceCurrency                          Currency                @default(USD)
+  taxProfileId                           String?                 @db.Uuid
+  taxProfile                             TaxProfile?             @relation(fields: [taxProfileId], references: [id], onDelete: Restrict)
+  priceIncludesVat                       Boolean                 @default(false)
   pricingPresetId                        String?                 @db.Uuid
   pricingPreset                          PricingPreset?          @relation(fields: [pricingPresetId], references: [id], onDelete: Restrict)
   useCustomPricing                       Boolean                 @default(false)
@@ -716,6 +758,7 @@ model Product {
   @@index([brand])
   @@index([isActive])
   @@index([pricingPresetId])
+  @@index([taxProfileId])
   @@map("products")
 }
 
@@ -973,6 +1016,11 @@ model SalesOrderItem {
   baseUnitPrice      Decimal  @db.Decimal(12, 2)
   baseDiscountAmount Decimal? @db.Decimal(12, 2)
   baseLineTotal      Decimal  @db.Decimal(12, 2)
+  taxRateSnapshot    Decimal  @db.Decimal(6, 3)
+  taxCodeSnapshot    String?
+  unitPriceExVat     Decimal  @db.Decimal(12, 2)
+  vatAmount          Decimal  @db.Decimal(12, 2)
+  lineTotalIncVat    Decimal  @db.Decimal(12, 2)
   notes          String?  @db.Text
 
   createdAt DateTime @default(now())
@@ -1184,6 +1232,11 @@ model SupplierPurchaseLine {
   lineTotal             Decimal                  @db.Decimal(12, 2)
   baseUnitPrice         Decimal?                 @db.Decimal(12, 2)
   baseLineTotal         Decimal                  @db.Decimal(12, 2)
+  taxRateSnapshot       Decimal                  @db.Decimal(6, 3)
+  taxCodeSnapshot       String?
+  unitPriceExVat        Decimal                  @db.Decimal(12, 2)
+  vatAmount             Decimal                  @db.Decimal(12, 2)
+  lineTotalIncVat       Decimal                  @db.Decimal(12, 2)
   receivingItemId       String?                  @unique @db.Uuid
   receivingItem         SupplierReceivingItem?   @relation("PurchaseLineReceivingItem", fields: [receivingItemId], references: [id], onDelete: Restrict)
   position              Int

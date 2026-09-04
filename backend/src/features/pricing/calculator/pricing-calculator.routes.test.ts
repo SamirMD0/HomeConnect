@@ -4,14 +4,16 @@ import request from 'supertest';
 import { describe, expect, it, vi } from 'vitest';
 import { app } from '../../../app';
 
-const { repository } = vi.hoisted(() => ({ repository: { findById: vi.fn(), findActiveDefault: vi.fn() } }));
+const { repository, taxRepository } = vi.hoisted(() => ({ repository: { findById: vi.fn(), findActiveDefault: vi.fn() }, taxRepository: { findEffectiveProfile: vi.fn() } }));
 vi.mock('../presets/pricing-presets.repository', () => ({ PricingPresetsRepository: repository }));
+vi.mock('../../tax/tax.repository', () => ({ TaxRepository: taxRepository }));
 vi.mock('../../../lib/prisma', () => ({ prisma: { $queryRaw: vi.fn().mockResolvedValue([{ result: 1 }]) }, transactionModel: {}, activityLogModel: {} }));
 const secret = process.env.JWT_SECRET || 'fallback_secret_key_change_in_production';
 const employee = jwt.sign({ userId: '22222222-2222-4222-8222-222222222222', role: 'EMPLOYEE' }, secret);
 
 describe('pricing calculator route', () => {
   it('is authenticated, read-only, and returns string amounts', async () => {
+    taxRepository.findEffectiveProfile.mockResolvedValue({ code: 'LB_STANDARD', taxRate: { ratePercent: new Decimal('11.000') } });
     repository.findActiveDefault.mockResolvedValue({
       expensePercent: new Decimal(10), profitPercent: new Decimal(7), discountBufferPercent: new Decimal(7),
       installmentMarkupPercent: new Decimal(20), downPaymentPercent: new Decimal(40), defaultInstallmentMonths: 3,
@@ -20,10 +22,11 @@ describe('pricing calculator route', () => {
     expect((await request(app).post('/api/v1/pricing/calculate').send({ costPrice: '300.00' })).status).toBe(401);
     const response = await request(app).post('/api/v1/pricing/calculate').set('Authorization', `Bearer ${employee}`).send({ costPrice: '300.00' });
     expect(response.status).toBe(200);
-    expect(response.body.data).toMatchObject({ cashPrice: '377.82', installmentPrice: '453.38' });
+    expect(response.body.data).toMatchObject({ cashPrice: '377.82', cashPriceExVat: '377.82', vatAmount: '41.56', cashPriceIncVat: '419.38', installmentPrice: '453.38' });
   });
 
   it('uses an active selected preset and applies installment preview overrides', async () => {
+    taxRepository.findEffectiveProfile.mockResolvedValue(null);
     repository.findById.mockResolvedValue({
       id: '33333333-3333-4333-8333-333333333333', name: 'AC pricing', isActive: true, archivedAt: null,
       expensePercent: new Decimal(10), profitPercent: new Decimal(7), discountBufferPercent: new Decimal(7),

@@ -7,7 +7,7 @@ export const PricingPreviewCard:React.FC<{preview?:PricingPreview|PricingCalcula
   if(loading&&!preview)return <div className="h-52 animate-pulse rounded-lg bg-slate-100" aria-label="Loading pricing preview"/>;
   if(!preview)return <div className="rounded-lg border border-dashed border-slate-300 p-4 text-sm text-slate-500">{pricingLabels.pricingPreview}</div>;
   if('pricingAvailable'in preview&&!preview.pricingAvailable){return <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">{pricingUnavailableLabels[preview.reason]}{preview.reason==='NO_DEFAULT_PRESET'&&<Link className="ml-2 font-semibold underline" to="/pricing-presets">{pricingLabels.createPreset}</Link>}</div>;}
-  const result='installment'in preview?{...preview.breakdown,...preview.installment,cashPrice:preview.cashPrice,priceWithoutDiscountBuffer:preview.priceWithoutDiscountBuffer,internalPriceCode:preview.internalPriceCode}:preview;
+  const result='installment'in preview?{...preview.breakdown,...preview.installment,cashPrice:preview.cashPrice,cashPriceExVat:preview.cashPriceExVat,vatAmount:preview.vatAmount,cashPriceIncVat:preview.cashPriceIncVat,priceWithoutDiscountBuffer:preview.priceWithoutDiscountBuffer,internalPriceCode:preview.internalPriceCode}:preview;
   const inputs='inputs'in preview?preview.inputs:percents;
   return <section className={`rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition-opacity ${stale?'opacity-60':''}`} aria-label={pricingLabels.pricingPreview}>
     <h3 className="text-sm font-semibold text-slate-800">{pricingLabels.pricingPreview}</h3>
@@ -15,6 +15,7 @@ export const PricingPreviewCard:React.FC<{preview?:PricingPreview|PricingCalcula
       {costPrice&&<Line label={pricingLabels.costPrice} value={costPrice}/>}<Line label={`+ ${pricingLabels.expensePercent}${inputs?.expensePercent?` (${inputs.expensePercent}%)`:''}`} value={result.expensesAmount}/><Line label={`+ ${pricingLabels.profitPercent}${inputs?.profitPercent?` (${inputs.profitPercent}%)`:''}`} value={result.profitAmount}/><Line label={`+ ${pricingLabels.discountBufferPercent}${inputs?.discountBufferPercent?` (${inputs.discountBufferPercent}%)`:''}`} value={result.discountBufferAmount}/>
       <Line label="Price before buffer / السعر قبل هامش الخصم" value={result.priceWithoutDiscountBuffer}/>{result.internalPriceCode&&<TextLine label="Internal code / الرمز الداخلي" value={result.internalPriceCode}/>} 
       <div className="border-t border-slate-200 pt-2"><Line strong label={pricingLabels.cashPrice} value={result.cashPrice}/></div>
+      {result.cashPriceExVat&&result.cashPriceIncVat&&<div className="rounded-md bg-emerald-50 px-3 py-2 font-semibold text-emerald-900">You receive ${result.cashPriceExVat} · Customer pays ${result.cashPriceIncVat}</div>}
       {showInstallment&&<><Line label={pricingLabels.installmentPrice} value={result.installmentPrice}/><Line label={pricingLabels.downPayment} value={result.downPayment}/><Line label={pricingLabels.remaining} value={result.remaining}/><Line label={`${pricingLabels.monthlyPayment} × ${result.installmentMonths}`} value={`${result.monthlyPayment}${result.lastInstallmentPayment!==result.monthlyPayment?` (last ${result.lastInstallmentPayment})`:''}`}/></>}
     </dl>
   </section>;

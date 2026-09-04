@@ -6,7 +6,7 @@ import {
 import { Decimal } from '@prisma/client/runtime/library';
 import { verifyAdminPassword } from '../../../lib/admin-verification';
 import { AppError, NotFoundError, ValidationError } from '../../../lib/errors';
-import { assertPositiveMoney, divideMoney, moneyToApiString, multiplyMoney, parseMoney, subtractMoney, sumMoney, ZERO_MONEY } from '../../financial/domain/money';
+import { assertPositiveMoney, divideMoney, moneyToApiString, parseMoney, subtractMoney, sumMoney, ZERO_MONEY } from '../../financial/domain/money';
 import { businessDateToPrisma, prismaDateToBusinessDate } from '../../financial/domain/business-date';
 import {
   assertIdempotentReplay,
@@ -14,6 +14,8 @@ import {
   normalizeIdempotencyKey,
 } from '../../financial/infrastructure/idempotency';
 import { runFinancialTransaction } from '../../financial/infrastructure/transaction';
+import { calculateVatLine } from '../../tax/domain/vat';
+import { TaxRepository } from '../../tax/tax.repository';
 import { InventoryRepository } from '../../inventory/inventory.repository';
 import { assertReceivingDateNotFuture, postSupplierReceiving } from '../../inventory/receiving/supplier-receivings.service';
 import { ProductsRepository } from '../../service/products/products.repository';
@@ -35,6 +37,11 @@ interface ResolvedLine {
   quantity: number | null;
   unitPrice: Prisma.Decimal | null;
   lineTotal: Prisma.Decimal;
+  taxRateSnapshot: Prisma.Decimal;
+  taxCodeSnapshot: string;
+  unitPriceExVat: Prisma.Decimal;
+  vatAmount: Prisma.Decimal;
+  lineTotalIncVat: Prisma.Decimal;
   /** Product lines that should move stock; manual lines never can. */
   receivesStock: boolean;
 }
@@ -97,10 +104,18 @@ export class SupplierPurchasesService {
       const lines: ResolvedLine[] = [];
       for (const line of input.lines) {
         if (line.kind === 'MANUAL') {
+          const profile = await TaxRepository.requireEffectiveProfile(line.taxProfileId, businessDateToPrisma(input.transactionDate), tx);
+          const vat = calculateVatLine({
+            currency: Currency.USD, quotedUnitPrice: line.amount, quantity: 1,
+            priceIncludesVat: line.priceIncludesVat ?? false, taxRatePercent: profile.taxRate.ratePercent, taxCode: profile.code,
+          });
           lines.push({
             kind: SupplierPurchaseLineKind.MANUAL,
             productId: null, description: line.description, quantity: null, unitPrice: null,
-            lineTotal: parseMoney(line.amount), receivesStock: false,
+            lineTotal: vat.lineTotalExVat,
+            taxRateSnapshot: vat.taxRateSnapshot, taxCodeSnapshot: vat.taxCodeSnapshot,
+            unitPriceExVat: vat.unitPriceExVat, vatAmount: vat.vatAmount, lineTotalIncVat: vat.lineTotalIncVat,
+            receivesStock: false,
           });
           continue;
         }
@@ -118,13 +133,20 @@ export class SupplierPurchasesService {
           throw new ValidationError(`Stock tracking is disabled for ${product.name} — record it as a description line or enable stock tracking first / تتبع المخزون غير مفعّل لهذا المنتج`);
         }
 
+        const profile = await TaxRepository.requireEffectiveProfile(line.taxProfileId ?? product.taxProfileId, businessDateToPrisma(input.transactionDate), tx);
+        const vat = calculateVatLine({
+          currency: Currency.USD, quotedUnitPrice: line.unitPrice, quantity: line.quantity,
+          priceIncludesVat: line.priceIncludesVat ?? false, taxRatePercent: profile.taxRate.ratePercent, taxCode: profile.code,
+        });
         lines.push({
           kind: SupplierPurchaseLineKind.PRODUCT,
           productId,
           description: `${product.name} · ${product.sku}`,
           quantity: line.quantity,
           unitPrice: parseMoney(line.unitPrice),
-          lineTotal: multiplyMoney(line.unitPrice, String(line.quantity), Currency.USD, Decimal.ROUND_HALF_UP),
+          lineTotal: vat.lineTotalExVat,
+          taxRateSnapshot: vat.taxRateSnapshot, taxCodeSnapshot: vat.taxCodeSnapshot,
+          unitPriceExVat: vat.unitPriceExVat, vatAmount: vat.vatAmount, lineTotalIncVat: vat.lineTotalIncVat,
           receivesStock: input.receiveStock,
         });
       }
@@ -147,7 +169,7 @@ export class SupplierPurchasesService {
         itemIdByProductId = posted.itemIdByProductId;
       }
 
-      const lineSum = sumMoney(lines.map((line) => line.lineTotal));
+      const lineSum = sumMoney(lines.map((line) => line.lineTotalIncVat));
       // The override is the user's stated total; the line sum is still stored on
       // the lines, so an adjusted invoice keeps both numbers visible.
       const amount = assertPositiveMoney(input.amountOverride ?? lineSum);
@@ -213,6 +235,11 @@ export class SupplierPurchasesService {
           quantity: line.quantity,
           unitPrice: line.unitPrice,
           lineTotal: line.lineTotal,
+          taxRateSnapshot: line.taxRateSnapshot,
+          taxCodeSnapshot: line.taxCodeSnapshot,
+          unitPriceExVat: line.unitPriceExVat,
+          vatAmount: line.vatAmount,
+          lineTotalIncVat: line.lineTotalIncVat,
           receivingItemId: line.receivesStock ? receivedItemId(line, itemIdByProductId) : null,
           position,
         }, tx);
@@ -302,7 +329,7 @@ async function updateProductCostsFromPurchase(input: PurchaseCostUpdateContext, 
     if (line.kind !== SupplierPurchaseLineKind.PRODUCT || !line.productId || line.quantity == null || line.unitPrice == null) continue;
     const current = byProduct.get(line.productId) ?? { quantity: 0, extendedCost: new Decimal(0), lineCount: 0 };
     current.quantity += line.quantity;
-    current.extendedCost = current.extendedCost.plus(line.unitPrice.mul(line.quantity));
+    current.extendedCost = current.extendedCost.plus(line.unitPriceExVat.mul(line.quantity));
     current.lineCount += 1;
     byProduct.set(line.productId, current);
   }
@@ -445,7 +472,7 @@ type IdempotentPurchaseRecord = NonNullable<Awaited<ReturnType<typeof SupplierPu
 
 function serializePurchase(purchase: PurchaseRecord) {
   const lineSum = purchase.purchaseLines.length
-    ? sumMoney(purchase.purchaseLines.map((line) => line.lineTotal))
+    ? sumMoney(purchase.purchaseLines.map((line) => line.lineTotalIncVat ?? line.lineTotal))
     : ZERO_MONEY;
   return {
     ...purchase,
@@ -459,6 +486,10 @@ function serializePurchase(purchase: PurchaseRecord) {
       ...line,
       unitPrice: line.unitPrice ? moneyToApiString(line.unitPrice) : null,
       lineTotal: moneyToApiString(line.lineTotal),
+      taxRateSnapshot: line.taxRateSnapshot?.toFixed(3) ?? '0.000',
+      unitPriceExVat: moneyToApiString(line.unitPriceExVat ?? line.unitPrice ?? line.lineTotal),
+      vatAmount: moneyToApiString(line.vatAmount ?? ZERO_MONEY),
+      lineTotalIncVat: moneyToApiString(line.lineTotalIncVat ?? line.lineTotal),
     })),
   };
 }
@@ -477,16 +508,30 @@ async function createIncomingPurchaseFingerprint(
   tx: Prisma.TransactionClient
 ): Promise<string> {
   const lines = [];
+  const inclusiveTotals: Decimal[] = [];
   for (const line of input.lines) {
     if (line.kind === 'MANUAL') {
+      const profile = await TaxRepository.requireEffectiveProfile(line.taxProfileId, businessDateToPrisma(input.transactionDate), tx);
+      const vat = calculateVatLine({ currency: Currency.USD, quotedUnitPrice: line.amount, quantity: 1, priceIncludesVat: line.priceIncludesVat ?? false, taxRatePercent: profile.taxRate.ratePercent, taxCode: profile.code });
+      inclusiveTotals.push(vat.lineTotalIncVat);
       lines.push({
         kind: 'MANUAL',
         description: line.description,
-        amount: moneyToApiString(parseMoney(line.amount)),
+        lineTotal: moneyToApiString(vat.lineTotalExVat),
+        taxRateSnapshot: vat.taxRateSnapshot.toFixed(3),
+        taxCodeSnapshot: vat.taxCodeSnapshot,
+        unitPriceExVat: moneyToApiString(vat.unitPriceExVat),
+        vatAmount: moneyToApiString(vat.vatAmount),
+        lineTotalIncVat: moneyToApiString(vat.lineTotalIncVat),
       });
       continue;
     }
 
+    const product = line.kind === 'EXISTING_PRODUCT' ? await InventoryRepository.findProduct(line.productId, tx) : null;
+    if (line.kind === 'EXISTING_PRODUCT' && !product) throw new NotFoundError('Product not found / المنتج غير موجود');
+    const profile = await TaxRepository.requireEffectiveProfile(line.taxProfileId ?? product?.taxProfileId, businessDateToPrisma(input.transactionDate), tx);
+    const vat = calculateVatLine({ currency: Currency.USD, quotedUnitPrice: line.unitPrice, quantity: line.quantity, priceIncludesVat: line.priceIncludesVat ?? false, taxRatePercent: profile.taxRate.ratePercent, taxCode: profile.code });
+    inclusiveTotals.push(vat.lineTotalIncVat);
     const identity = line.kind === 'NEW_PRODUCT'
       ? {
           mode: 'NEW_PRODUCT',
@@ -502,16 +547,17 @@ async function createIncomingPurchaseFingerprint(
       identity,
       quantity: line.quantity,
       unitPrice: moneyToApiString(parseMoney(line.unitPrice)),
-      lineTotal: moneyToApiString(multiplyMoney(line.unitPrice, String(line.quantity), Currency.USD, Decimal.ROUND_HALF_UP)),
+      lineTotal: moneyToApiString(vat.lineTotalExVat),
+      taxRateSnapshot: vat.taxRateSnapshot.toFixed(3),
+      taxCodeSnapshot: vat.taxCodeSnapshot,
+      unitPriceExVat: moneyToApiString(vat.unitPriceExVat),
+      vatAmount: moneyToApiString(vat.vatAmount),
+      lineTotalIncVat: moneyToApiString(vat.lineTotalIncVat),
       receivesStock: input.receiveStock,
     });
   }
 
-  const lineSum = sumMoney(input.lines.map((line) =>
-    line.kind === 'MANUAL'
-      ? parseMoney(line.amount)
-      : multiplyMoney(line.unitPrice, String(line.quantity), Currency.USD, Decimal.ROUND_HALF_UP)
-  ));
+  const lineSum = sumMoney(inclusiveTotals);
   const amount = assertPositiveMoney(input.amountOverride ?? lineSum);
   const paidAmount = parseMoney(input.paidAmount ?? '0');
 
@@ -545,7 +591,12 @@ function createExistingPurchaseFingerprint(
       return {
         kind: 'MANUAL',
         description: line.description,
-        amount: moneyToApiString(line.lineTotal),
+        lineTotal: moneyToApiString(line.lineTotal),
+        taxRateSnapshot: line.taxRateSnapshot?.toFixed(3) ?? '0.000',
+        taxCodeSnapshot: line.taxCodeSnapshot ?? null,
+        unitPriceExVat: moneyToApiString(line.unitPriceExVat ?? line.lineTotal),
+        vatAmount: moneyToApiString(line.vatAmount ?? ZERO_MONEY),
+        lineTotalIncVat: moneyToApiString(line.lineTotalIncVat ?? line.lineTotal),
       };
     }
 
@@ -565,6 +616,11 @@ function createExistingPurchaseFingerprint(
       quantity: line.quantity,
       unitPrice: line.unitPrice ? moneyToApiString(line.unitPrice) : null,
       lineTotal: moneyToApiString(line.lineTotal),
+      taxRateSnapshot: line.taxRateSnapshot?.toFixed(3) ?? '0.000',
+      taxCodeSnapshot: line.taxCodeSnapshot ?? null,
+      unitPriceExVat: moneyToApiString(line.unitPriceExVat ?? line.unitPrice ?? line.lineTotal),
+      vatAmount: moneyToApiString(line.vatAmount ?? ZERO_MONEY),
+      lineTotalIncVat: moneyToApiString(line.lineTotalIncVat ?? line.lineTotal),
       receivesStock: Boolean(line.receivingItemId),
     };
   });

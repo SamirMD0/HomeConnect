@@ -35,6 +35,8 @@ const existingProductLine = z.object({
   productId: uuid,
   quantity,
   unitPrice,
+  taxProfileId: uuid.optional().nullable(),
+  priceIncludesVat: z.boolean().optional(),
 }).strict();
 
 const newProductLine = z.object({
@@ -48,12 +50,16 @@ const newProductLine = z.object({
   sellingPrice: z.preprocess(emptyToNull, unitPrice.optional().nullable()),
   quantity,
   unitPrice,
+  taxProfileId: uuid.optional().nullable(),
+  priceIncludesVat: z.boolean().optional(),
 }).strict();
 
 const manualLine = z.object({
   kind: z.literal('MANUAL'),
   description: userTextSchema({ field: 'Description', min: 2, max: 500 }),
   amount: positiveAmount,
+  taxProfileId: uuid.optional().nullable(),
+  priceIncludesVat: z.boolean().optional(),
 }).strict();
 
 const purchaseLine = z.discriminatedUnion('kind', [existingProductLine, newProductLine, manualLine]);

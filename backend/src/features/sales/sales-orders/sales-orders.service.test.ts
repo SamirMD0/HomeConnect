@@ -7,7 +7,7 @@ import {
 } from '@prisma/client';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { repository, debtService, audit, verifyAdmin, tx } = vi.hoisted(() => ({
+const { repository, debtService, audit, verifyAdmin, taxRepository, tx } = vi.hoisted(() => ({
   tx: { marker: 'transaction' },
   repository: {
     findActiveCustomer: vi.fn(), findActiveProduct: vi.fn(), nextOrderNumber: vi.fn(),
@@ -18,12 +18,14 @@ const { repository, debtService, audit, verifyAdmin, tx } = vi.hoisted(() => ({
   debtService: { createDebt: vi.fn() },
   audit: vi.fn(),
   verifyAdmin: vi.fn(),
+  taxRepository: { requireEffectiveProfile: vi.fn() },
 }));
 
 vi.mock('../../financial/infrastructure/transaction', () => ({ runFinancialTransaction: vi.fn((operation) => operation(tx)) }));
 vi.mock('../../financial/debts/debts.service', () => ({ DebtsService: debtService }));
 vi.mock('../audit/sales-audit', () => ({ writeSalesAudit: audit }));
 vi.mock('../../../lib/admin-verification', () => ({ verifyAdminPassword: verifyAdmin }));
+vi.mock('../../tax/tax.repository', () => ({ TaxRepository: taxRepository }));
 vi.mock('./sales-orders.repository', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./sales-orders.repository')>();
   return { ...actual, SalesOrdersRepository: repository };
@@ -101,6 +103,7 @@ describe('sales order service transaction boundary', () => {
     repository.hasActiveStockFulfillmentForOrder.mockResolvedValue(null);
     debtService.createDebt.mockResolvedValue({ id: '55555555-5555-4555-8555-555555555555' });
     verifyAdmin.mockResolvedValue(undefined);
+    taxRepository.requireEffectiveProfile.mockResolvedValue({ code: 'LB_ZERO', taxRate: { ratePercent: '0.000' } });
   });
 
   it('serializes authoritative inventory state and active fulfillment id for the frontend', () => {
@@ -140,6 +143,50 @@ describe('sales order service transaction boundary', () => {
       SalesAuditAction.LINK_DEBT,
       SalesAuditAction.CREATE,
     ]);
+  });
+
+  it('snapshots the effective default VAT profile and totals the customer-facing amount inclusively', async () => {
+    taxRepository.requireEffectiveProfile.mockResolvedValue({ code: 'LB_STANDARD', taxRate: { ratePercent: '11.000' } });
+    await SalesOrdersService.create({
+      ...input,
+      fulfillmentStatus: SalesOrderFulfillmentStatus.DRAFT,
+      paidAmount: '0.00',
+      items: [{ manualProductName: 'Fan', quantity: 1, unitPrice: '150.00' }],
+    }, user, {});
+
+    expect(repository.create).toHaveBeenCalledWith(expect.objectContaining({
+      itemsSubtotal: '150.00', totalAmount: '166.50', remainingAmount: '166.50',
+      items: { create: [expect.objectContaining({
+        lineTotal: expect.objectContaining({}), taxRateSnapshot: expect.objectContaining({}),
+        taxCodeSnapshot: 'LB_STANDARD', unitPriceExVat: expect.objectContaining({}),
+        vatAmount: expect.objectContaining({}), lineTotalIncVat: expect.objectContaining({}),
+      })] },
+    }), tx);
+    const line = repository.create.mock.calls.at(-1)![0].items.create[0];
+    expect(line.lineTotal.toFixed(2)).toBe('150.00');
+    expect(line.vatAmount.toFixed(2)).toBe('16.50');
+    expect(line.lineTotalIncVat.toFixed(2)).toBe('166.50');
+  });
+
+  it('INV-21 makes document VAT the exact sum of rounded line VAT instead of independently rounding the subtotal', async () => {
+    taxRepository.requireEffectiveProfile.mockResolvedValue({ code: 'LB_STANDARD', taxRate: { ratePercent: '11.000' } });
+    await SalesOrdersService.create({
+      ...input,
+      fulfillmentStatus: SalesOrderFulfillmentStatus.DRAFT,
+      paidAmount: '0.00',
+      items: [
+        { manualProductName: 'Small line A', quantity: 1, unitPrice: '0.05' },
+        { manualProductName: 'Small line B', quantity: 1, unitPrice: '0.05' },
+      ],
+    }, user, {});
+
+    const created = repository.create.mock.calls.at(-1)![0];
+    const lines = created.items.create;
+    expect(lines.map((line: { vatAmount: { toFixed: (places: number) => string } }) => line.vatAmount.toFixed(2))).toEqual(['0.01', '0.01']);
+    expect(created.itemsSubtotal).toBe('0.10');
+    expect(created.totalAmount).toBe('0.12');
+    // Independently rounding 0.10 × 11% would be 0.01; the stored line sum is 0.02.
+    expect(lines[0].vatAmount.plus(lines[1].vatAmount).toFixed(2)).toBe('0.02');
   });
 
   it('does not write an audit when debt creation fails, leaving the transaction to roll back the inserted order', async () => {

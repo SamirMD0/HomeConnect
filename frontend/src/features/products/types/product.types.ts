@@ -21,6 +21,8 @@ export interface Product {
   price: string | null;
   discount: string | null;
   netPrice: string | null;
+  taxProfileId?: string | null;
+  priceIncludesVat?: boolean;
   isActive: boolean;
   imageUrl: string | null;
   image: ProductImage | null;
@@ -46,7 +48,7 @@ export interface Product {
   updatedById?: string | null;
   createdBy?: ProductActor;
   updatedBy?: ProductActor | null;
-  pricing?: ({pricingAvailable:true;mode:ProductPricingMode;source:PricingSource;pricingPresetId:string|null;presetName:string|null;useCustomPricing:boolean;installmentEnabled:boolean;cashPrice:string;installmentPrice?:string;downPayment?:string;remaining?:string;monthlyPayment?:string;lastInstallmentPayment?:string;installmentMonths?:number;costPrice?:string;configuration?:ProductPricingFields;warnings:string[]} | ({pricingAvailable:false;mode:ProductPricingMode;reason:string;pricingPresetId:string|null;presetName:string|null;useCustomPricing:boolean;installmentEnabled:boolean;costPrice?:string|null;configuration?:ProductPricingFields}));
+  pricing?: ({pricingAvailable:true;mode:ProductPricingMode;source:PricingSource;pricingPresetId:string|null;presetName:string|null;useCustomPricing:boolean;installmentEnabled:boolean;cashPrice:string;cashPriceExVat?:string;vatAmount?:string;cashPriceIncVat?:string;taxRatePercent?:string;taxCode?:string;installmentPrice?:string;downPayment?:string;remaining?:string;monthlyPayment?:string;lastInstallmentPayment?:string;installmentMonths?:number;costPrice?:string;configuration?:ProductPricingFields;warnings:string[]} | ({pricingAvailable:false;mode:ProductPricingMode;reason:string;pricingPresetId:string|null;presetName:string|null;useCustomPricing:boolean;installmentEnabled:boolean;costPrice?:string|null;configuration?:ProductPricingFields}));
 }
 
 export interface ProductLabelData {
@@ -60,6 +62,11 @@ export interface ProductLabelData {
   internalPriceCode?: string | null;
   staffLabelCode?: string | null;
   cashPrice?: string | null;
+  cashPriceExVat?: string | null;
+  cashPriceIncVat?: string | null;
+  vatAmount?: string | null;
+  taxRatePercent?: string | null;
+  taxCode?: string | null;
 }
 
 export type ProductLabelWarningCode =
@@ -245,6 +252,6 @@ export interface ProductServiceJobsResult {
   pagination: ProductPaginationMeta;
 }
 
-export interface ProductPricingFields { costPrice?:string|null;pricingPresetId?:string|null;useCustomPricing:boolean;installmentEnabled:boolean;customExpensePercent?:string|null;customProfitPercent?:string|null;customDiscountBufferPercent?:string|null;customInstallmentMarkupPercent?:string|null;customDownPaymentPercent?:string|null;customInstallmentMonths?:number|null;customCalculationMode?:PricingCalculationMode|null }
+export interface ProductPricingFields { costPrice?:string|null;pricingPresetId?:string|null;useCustomPricing:boolean;installmentEnabled:boolean;customExpensePercent?:string|null;customProfitPercent?:string|null;customDiscountBufferPercent?:string|null;customInstallmentMarkupPercent?:string|null;customDownPaymentPercent?:string|null;customInstallmentMonths?:number|null;customCalculationMode?:PricingCalculationMode|null;taxProfileId?:string|null;priceIncludesVat?:boolean }
 export type UpdateProductPricingInput=ProductPricingInput;
 export type ProductPricingPreview=PricingPreview;

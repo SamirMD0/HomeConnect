@@ -65,6 +65,10 @@ const productPricingValues = {
   customInstallmentMonths: z.preprocess(emptyToNull, z.coerce.number().int().min(1).max(120).optional().nullable()),
   customCalculationMode: z.preprocess(emptyToNull, z.nativeEnum(PricingCalculationMode).optional().nullable()),
 };
+const productTaxValues = {
+  taxProfileId: z.preprocess(emptyToNull, z.string().uuid().optional().nullable()),
+  priceIncludesVat: z.boolean().optional(),
+};
 
 const PRICING_VALUE_FIELDS = [
   'costPrice', 'pricingPresetId', 'customExpensePercent', 'customProfitPercent',
@@ -109,6 +113,7 @@ function validateDiscount(
 export const createProductSchema = z.object({
   ...productValues,
   ...productPricingValues,
+  ...productTaxValues,
   trackStock: z.boolean().optional(),
   lowStockThreshold: z.number().int('Low stock threshold must be an integer').min(0).nullable().optional(),
 }).strict().superRefine((values, context) => {
@@ -219,6 +224,7 @@ export const productAuditQuerySchema = z.object({
 
 export const updateProductPricingSchema = z.object({
   ...productPricingValues,
+  ...productTaxValues,
   reason: userTextSchema({ field: 'Reason', min: 5, max: 1000 }),
   accountPassword: z.string().min(1, 'Account password is required'),
 }).strict().superRefine((values, context) => {

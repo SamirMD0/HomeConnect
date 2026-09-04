@@ -1,10 +1,10 @@
-import { Role, StockMovementType, SupplierPurchaseLineKind, SupplierTransactionDirection, SupplierTransactionType } from '@prisma/client';
+import { Prisma, Role, StockMovementType, SupplierPurchaseLineKind, SupplierTransactionDirection, SupplierTransactionType } from '@prisma/client';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const tx = { id: 'tx', user: { findUnique: vi.fn() } };
 const {
   suppliersRepository, transactionsRepository, purchasesRepository, inventoryRepository,
-  productsRepository, receiving, audits, adminVerification, sku,
+  productsRepository, receiving, audits, adminVerification, sku, taxRepository,
 } = vi.hoisted(() => ({
   suppliersRepository: { findById: vi.fn() },
   transactionsRepository: { create: vi.fn() },
@@ -15,6 +15,7 @@ const {
   audits: { writeSupplierAudit: vi.fn(), writeServiceAudit: vi.fn() },
   adminVerification: { verifyAdminPassword: vi.fn() },
   sku: { generateProductSku: vi.fn() },
+  taxRepository: { requireEffectiveProfile: vi.fn() },
 }));
 
 vi.mock('../suppliers/suppliers.repository', () => ({ SuppliersRepository: suppliersRepository }));
@@ -27,6 +28,7 @@ vi.mock('../audit/supplier-audit', () => ({ writeSupplierAudit: audits.writeSupp
 vi.mock('../../service/audit/service-audit', () => ({ writeServiceAudit: audits.writeServiceAudit }));
 vi.mock('../../../lib/admin-verification', () => adminVerification);
 vi.mock('../../service/products/product-sku', () => sku);
+vi.mock('../../tax/tax.repository', () => ({ TaxRepository: taxRepository }));
 vi.mock('../../financial/infrastructure/transaction', () => ({
   runFinancialTransaction: vi.fn((operation: (client: unknown) => unknown) => operation(tx)),
 }));
@@ -62,7 +64,7 @@ describe('SupplierPurchasesService.create', () => {
     process.env.BUSINESS_TIMEZONE = 'Asia/Beirut';
     tx.user.findUnique.mockResolvedValue({ fullName: 'Owner', username: 'owner' });
     suppliersRepository.findById.mockResolvedValue({ id: supplierId, name: 'TCL Distributor', isActive: true });
-    inventoryRepository.findProduct.mockResolvedValue({ id: productId, sku: 'HC-000042', name: 'TCL AC 1.5HP', isActive: true, trackStock: true, stockQuantity: 4, lowStockThreshold: null, costPrice: '200.00' });
+    inventoryRepository.findProduct.mockResolvedValue({ id: productId, sku: 'HC-000042', name: 'TCL AC 1.5HP', isActive: true, trackStock: true, stockQuantity: 4, lowStockThreshold: null, costPrice: '200.00', taxProfileId: null });
     productsRepository.update.mockResolvedValue({});
     productsRepository.findById.mockResolvedValue({ id: productId, costPrice: '200.00' });
     receiving.postSupplierReceiving.mockResolvedValue({ receivingId, itemIdByProductId: new Map([[productId, itemId]]) });
@@ -73,6 +75,7 @@ describe('SupplierPurchasesService.create', () => {
       id: transactionId, amount: '630.00', transactionDate: new Date('2026-08-15T00:00:00.000Z'),
       supplierReceiving: null, purchaseLines: [],
     });
+    taxRepository.requireEffectiveProfile.mockResolvedValue({ code: 'LB_ZERO', taxRate: { ratePercent: '0.000' } });
   });
 
   it('posts one receiving and one debt for the line total, linking each stock line to the item that moved it', async () => {
@@ -101,6 +104,34 @@ describe('SupplierPurchasesService.create', () => {
     }), tx);
   });
 
+  it('snapshots mixed standard, zero-rated, and exempt classifications and uses DEFAULT for an unassigned product', async () => {
+    const zeroProfileId = '77777777-7777-4777-8777-777777777777';
+    const exemptProfileId = '88888888-8888-4888-8888-888888888888';
+    taxRepository.requireEffectiveProfile
+      .mockResolvedValueOnce({ code: 'LB_STANDARD', taxRate: { ratePercent: '11.000' } })
+      .mockResolvedValueOnce({ code: 'LB_ZERO', taxRate: { ratePercent: '0.000' } })
+      .mockResolvedValueOnce({ code: 'EXEMPT', taxRate: { ratePercent: '0.000' } });
+    await SupplierPurchasesService.create(supplierId, purchase({
+      receiveStock: false,
+      lines: [
+        productLine({ quantity: 1, unitPrice: '100.00' }),
+        { kind: 'MANUAL', description: 'Zero-rated line', amount: '25.00', taxProfileId: zeroProfileId },
+        { kind: 'MANUAL', description: 'Exempt classification fixture', amount: '30.00', taxProfileId: exemptProfileId },
+      ],
+    }), admin, context);
+
+    expect(taxRepository.requireEffectiveProfile.mock.calls[0][0]).toBeNull();
+    expect(taxRepository.requireEffectiveProfile.mock.calls[1][0]).toBe(zeroProfileId);
+    expect(taxRepository.requireEffectiveProfile.mock.calls[2][0]).toBe(exemptProfileId);
+    expect(transactionsRepository.create.mock.calls[0][0].amount.toFixed(2)).toBe('166.00');
+    expect(purchasesRepository.createLine.mock.calls[0][0]).toMatchObject({ taxCodeSnapshot: 'LB_STANDARD' });
+    expect(purchasesRepository.createLine.mock.calls[0][0].vatAmount.toFixed(2)).toBe('11.00');
+    expect(purchasesRepository.createLine.mock.calls[1][0]).toMatchObject({ taxCodeSnapshot: 'LB_ZERO' });
+    expect(purchasesRepository.createLine.mock.calls[1][0].vatAmount.toFixed(2)).toBe('0.00');
+    expect(purchasesRepository.createLine.mock.calls[2][0]).toMatchObject({ taxCodeSnapshot: 'EXEMPT' });
+    expect(purchasesRepository.createLine.mock.calls[2][0].vatAmount.toFixed(2)).toBe('0.00');
+  });
+
   it('returns the original purchase for an exact replay and rejects a changed replay', async () => {
     const idempotencyKey = 'supplier-purchase-replay-key';
     purchasesRepository.findByIdempotencyKey.mockResolvedValue({
@@ -125,6 +156,11 @@ describe('SupplierPurchasesService.create', () => {
         quantity: 3,
         unitPrice: '210.00',
         lineTotal: '630.00',
+        taxRateSnapshot: new Prisma.Decimal('0.000'),
+        taxCodeSnapshot: 'LB_ZERO',
+        unitPriceExVat: '210.00',
+        vatAmount: '0.00',
+        lineTotalIncVat: '630.00',
         receivingItemId: itemId,
         product: { id: productId },
       }],

@@ -1,4 +1,5 @@
 import {
+  Currency,
   Prisma,
   Role,
   SalesAuditAction,
@@ -18,10 +19,12 @@ import {
   timestampToBusinessDate,
   todayInBusinessTimezone,
 } from '../../financial/domain/business-date';
-import { compareMoney, moneyToApiString } from '../../financial/domain/money';
+import { compareMoney, moneyToApiString, parseMoney, subtractMoney, sumMoney, ZERO_MONEY } from '../../financial/domain/money';
 import { runFinancialTransaction } from '../../financial/infrastructure/transaction';
 import { DebtsService } from '../../financial/debts/debts.service';
 import { InstallmentPlansService } from '../../financial/installment-plans/installment-plans.service';
+import { calculateVatLine } from '../../tax/domain/vat';
+import { TaxRepository } from '../../tax/tax.repository';
 import { assertSalesAdmin, containsSensitiveSalesOrderFields } from '../authorization/sales-policy';
 import { writeSalesAudit } from '../audit/sales-audit';
 import { SalesAuditRepository } from '../audit/sales-audit.repository';
@@ -32,11 +35,7 @@ import {
 } from '../domain/sales-order-status';
 import { SalesConflictError } from '../domain/sales-errors';
 import type { SalesMutationUser, SalesRequestContext } from '../domain/sales-types';
-import {
-  calculateSalesOrderLineTotal,
-  calculateSalesOrderTotals,
-  deriveSalesOrderPaymentStatus,
-} from '../domain/sales-order-totals';
+import { deriveSalesOrderPaymentStatus } from '../domain/sales-order-totals';
 import { SalesOrderRecord, SalesOrdersRepository } from './sales-orders.repository';
 import type {
   AddSalesOrderItemInput,
@@ -66,10 +65,6 @@ const INVENTORY_DEDUCTIBLE_STATUSES = new Set<SalesOrderFulfillmentStatus>([
 export class SalesOrdersService {
   static async create(input: CreateSalesOrderInput, user: SalesMutationUser, context: SalesRequestContext) {
     validateOrderDates(input.orderDate, input.deliveryDate);
-    const totals = calculateSalesOrderTotals(input);
-    const paymentStatus = deriveSalesOrderPaymentStatus(totals.paidAmount, totals.totalAmount);
-    validateCustomerRequirement(input.customerId, totals.remainingAmount, user.role === Role.ADMIN);
-    validateCreateDebtTerms(input, totals.remainingAmount);
 
     for (let attempt = 0; attempt < 2; attempt += 1) {
       try {
@@ -77,7 +72,11 @@ export class SalesOrdersService {
           if (input.customerId && !(await SalesOrdersRepository.findActiveCustomer(input.customerId, tx))) {
             throw new NotFoundError('Customer not found');
           }
-          const preparedItems = await prepareItems(input.items, tx);
+          const preparedItems = await prepareItems(input.items, businessDateToPrisma(input.orderDate), tx);
+          const totals = calculateVatAwareOrderTotals(preparedItems, input.deliveryFee, input.paidAmount);
+          const paymentStatus = deriveSalesOrderPaymentStatus(totals.paidAmount, totals.totalAmount);
+          validateCustomerRequirement(input.customerId, totals.remainingAmount, user.role === Role.ADMIN);
+          validateCreateDebtTerms(input, totals.remainingAmount);
           const orderNumber = await SalesOrdersRepository.nextOrderNumber(Number(input.orderDate.slice(0, 4)), tx);
           const created = await SalesOrdersRepository.create({
             orderNumber,
@@ -231,7 +230,7 @@ export class SalesOrdersService {
       if (existing.fulfillmentStatus !== SalesOrderFulfillmentStatus.DRAFT) {
         await requireAdminVerification(input, user, context, id, 'ADD_SALES_ORDER_ITEM', tx);
       }
-      const prepared = (await prepareItems([input], tx))[0];
+      const prepared = (await prepareItems([input], existing.orderDate, tx))[0];
       const item = await SalesOrdersRepository.addItem({ salesOrderId: id, ...prepared }, tx);
       const updated = await this.recalculateOrder(id, input.debtDueDate, user, context, tx);
       await auditMutation(updated, {
@@ -268,9 +267,11 @@ export class SalesOrdersService {
         quantity: input.quantity ?? item.quantity,
         unitPrice: input.unitPrice ?? moneyToApiString(item.unitPrice),
         discountAmount: input.discountAmount === undefined ? moneyToApiString(item.discountAmount ?? '0.00') : input.discountAmount,
+        taxProfileId: input.taxProfileId,
+        priceIncludesVat: input.priceIncludesVat ?? item.product?.priceIncludesVat ?? false,
         notes: input.notes === undefined ? item.notes : input.notes,
       };
-      const prepared = (await prepareItems([merged], tx))[0];
+      const prepared = (await prepareItems([merged], existing.orderDate, tx))[0];
       const changedItem = await SalesOrdersRepository.updateItem(itemId, prepared, tx);
       const updated = await this.recalculateOrder(orderId, input.debtDueDate, user, context, tx);
       await auditMutation(updated, {
@@ -345,11 +346,7 @@ export class SalesOrdersService {
       assertEditable(existing);
       assertNoFinancialLink(existing);
       await requireAdminVerification(input, user, context, id, 'CHANGE_SALES_ORDER_PAYMENT', tx);
-      const totals = calculateSalesOrderTotals({
-        items: existing.items.map((item) => ({ quantity: item.quantity, unitPrice: moneyToApiString(item.unitPrice), discountAmount: moneyToApiString(item.discountAmount ?? '0.00') })),
-        deliveryFee: moneyToApiString(existing.deliveryFee ?? '0.00'),
-        paidAmount: input.paidAmount,
-      });
+      const totals = calculateVatAwareOrderTotals(existing.items, moneyToApiString(existing.deliveryFee ?? '0.00'), input.paidAmount);
       validateCustomerRequirement(existing.customerId, totals.remainingAmount);
       const shouldCreateDebt = validateMutationDebtTerms(existing, totals.remainingAmount, input.debtDueDate);
       let updated = await SalesOrdersRepository.update(id, {
@@ -482,15 +479,7 @@ export class SalesOrdersService {
     tx: Prisma.TransactionClient
   ) {
     const order = await requiredOrder(id, tx);
-    const totals = calculateSalesOrderTotals({
-      items: order.items.map((item) => ({
-        quantity: item.quantity,
-        unitPrice: moneyToApiString(item.unitPrice),
-        discountAmount: moneyToApiString(item.discountAmount ?? '0.00'),
-      })),
-      deliveryFee: moneyToApiString(order.deliveryFee ?? '0.00'),
-      paidAmount: moneyToApiString(order.paidAmount),
-    });
+    const totals = calculateVatAwareOrderTotals(order.items, moneyToApiString(order.deliveryFee ?? '0.00'), moneyToApiString(order.paidAmount));
     validateCustomerRequirement(order.customerId, totals.remainingAmount);
     const shouldCreateDebt = validateMutationDebtTerms(order, totals.remainingAmount, debtDueDate);
     let updated = await SalesOrdersRepository.update(id, {
@@ -629,15 +618,30 @@ async function prepareItems(items: Array<{
   quantity: number;
   unitPrice: string;
   discountAmount?: string | null;
+  taxProfileId?: string | null;
+  priceIncludesVat?: boolean;
   notes?: string | null;
-}>, tx: Prisma.TransactionClient): Promise<Prisma.SalesOrderItemUncheckedCreateWithoutSalesOrderInput[]> {
+}>, effectiveOn: Date, tx: Prisma.TransactionClient): Promise<Prisma.SalesOrderItemUncheckedCreateWithoutSalesOrderInput[]> {
   return Promise.all(items.map(async (item) => {
     if (Boolean(item.productId) === Boolean(item.manualProductName)) {
       throw new ValidationError('Choose one existing product or enter a manual product name');
     }
     const product = item.productId ? await SalesOrdersRepository.findActiveProduct(item.productId, tx) : null;
     if (item.productId && !product) throw new NotFoundError('Product not found');
-    const lineTotal = calculateSalesOrderLineTotal(item);
+    const profile = await TaxRepository.requireEffectiveProfile(
+      product?.taxProfileId ?? item.taxProfileId,
+      effectiveOn,
+      tx
+    );
+    const vat = calculateVatLine({
+      currency: Currency.USD,
+      quotedUnitPrice: item.unitPrice,
+      quantity: item.quantity,
+      discountAmount: item.discountAmount,
+      priceIncludesVat: product?.priceIncludesVat ?? item.priceIncludesVat ?? false,
+      taxRatePercent: profile.taxRate.ratePercent,
+      taxCode: profile.code,
+    });
     return {
       productId: product?.id ?? null,
       manualProductName: product ? null : item.manualProductName,
@@ -648,13 +652,41 @@ async function prepareItems(items: Array<{
       quantity: item.quantity,
       unitPrice: item.unitPrice,
       discountAmount: item.discountAmount ?? null,
-      lineTotal,
+      lineTotal: vat.lineTotalExVat,
       baseUnitPrice: item.unitPrice,
       baseDiscountAmount: item.discountAmount ?? null,
-      baseLineTotal: lineTotal,
+      baseLineTotal: vat.lineTotalExVat,
+      taxRateSnapshot: vat.taxRateSnapshot,
+      taxCodeSnapshot: vat.taxCodeSnapshot,
+      unitPriceExVat: vat.unitPriceExVat,
+      vatAmount: vat.vatAmount,
+      lineTotalIncVat: vat.lineTotalIncVat,
       notes: item.notes ?? null,
     };
   }));
+}
+
+function calculateVatAwareOrderTotals(
+  items: Array<{ lineTotal: { toString(): string }; lineTotalIncVat?: { toString(): string } }>,
+  deliveryFeeInput?: Prisma.Decimal | string | null,
+  paidAmountInput?: Prisma.Decimal | string | null
+) {
+  if (!items.length) throw new ValidationError('At least one item is required');
+  const itemsSubtotal = sumMoney(items.map((item) => item.lineTotal.toString()));
+  const inclusiveItemsTotal = sumMoney(items.map((item) => (item.lineTotalIncVat ?? item.lineTotal).toString()));
+  const deliveryFee = parseMoney(deliveryFeeInput ?? '0.00');
+  if (compareMoney(deliveryFee, ZERO_MONEY) < 0) throw new ValidationError('Delivery fee cannot be negative');
+  const totalAmount = sumMoney([inclusiveItemsTotal, deliveryFee]);
+  const paidAmount = parseMoney(paidAmountInput ?? '0.00');
+  if (compareMoney(paidAmount, ZERO_MONEY) < 0) throw new ValidationError('Paid amount cannot be negative');
+  if (compareMoney(paidAmount, totalAmount) > 0) throw new ValidationError('Paid amount cannot exceed the order total');
+  return {
+    itemsSubtotal: moneyToApiString(itemsSubtotal),
+    deliveryFee: moneyToApiString(deliveryFee),
+    totalAmount: moneyToApiString(totalAmount),
+    paidAmount: moneyToApiString(paidAmount),
+    remainingAmount: moneyToApiString(subtractMoney(totalAmount, paidAmount)),
+  };
 }
 
 async function auditMutation(
@@ -788,6 +820,11 @@ function itemSnapshot(item: {
   unitPrice: Prisma.Decimal;
   discountAmount: Prisma.Decimal | null;
   lineTotal: Prisma.Decimal;
+  taxRateSnapshot?: Prisma.Decimal;
+  taxCodeSnapshot?: string | null;
+  unitPriceExVat?: Prisma.Decimal;
+  vatAmount?: Prisma.Decimal;
+  lineTotalIncVat?: Prisma.Decimal;
   notes: string | null;
 }): Prisma.InputJsonObject {
   return {
@@ -799,11 +836,17 @@ function itemSnapshot(item: {
     unitPrice: moneyToApiString(item.unitPrice),
     discountAmount: moneyToApiString(item.discountAmount ?? '0.00'),
     lineTotal: moneyToApiString(item.lineTotal),
+    taxRateSnapshot: item.taxRateSnapshot?.toFixed(3) ?? '0.000',
+    taxCodeSnapshot: item.taxCodeSnapshot ?? null,
+    unitPriceExVat: moneyToApiString(item.unitPriceExVat ?? item.unitPrice),
+    vatAmount: moneyToApiString(item.vatAmount ?? ZERO_MONEY),
+    lineTotalIncVat: moneyToApiString(item.lineTotalIncVat ?? item.lineTotal),
     notes: item.notes,
   };
 }
 
 export function serializeSalesOrder(order: SalesOrderRecord) {
+  const vatAmount = sumMoney(order.items.map((item) => item.vatAmount ?? ZERO_MONEY));
   return {
     ...order,
     orderDate: prismaDateToBusinessDate(order.orderDate),
@@ -814,6 +857,7 @@ export function serializeSalesOrder(order: SalesOrderRecord) {
     totalAmount: moneyToApiString(order.totalAmount),
     paidAmount: moneyToApiString(order.paidAmount),
     remainingAmount: moneyToApiString(order.remainingAmount),
+    vatAmount: moneyToApiString(vatAmount),
     items: order.items.map((item) => {
       const stockFulfillments = item.stockFulfillments ?? [];
       const openingCount = item.product?.stockMovements?.[0] ?? null;
@@ -823,6 +867,10 @@ export function serializeSalesOrder(order: SalesOrderRecord) {
         unitPrice: moneyToApiString(item.unitPrice),
         discountAmount: moneyToApiString(item.discountAmount ?? '0.00'),
         lineTotal: moneyToApiString(item.lineTotal),
+        taxRateSnapshot: item.taxRateSnapshot?.toFixed(3) ?? '0.000',
+        unitPriceExVat: moneyToApiString(item.unitPriceExVat ?? item.unitPrice),
+        vatAmount: moneyToApiString(item.vatAmount ?? ZERO_MONEY),
+        lineTotalIncVat: moneyToApiString(item.lineTotalIncVat ?? item.lineTotal),
         product,
         stockFulfillments,
         inventory: salesOrderItemInventoryState(order, item, openingCount?.createdAt ?? null, stockFulfillments),

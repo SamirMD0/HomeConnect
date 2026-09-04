@@ -14,7 +14,7 @@ describe('service mutation policy', () => {
         'imageUrl', 'costPrice', 'pricingPresetId', 'useCustomPricing', 'customExpensePercent',
         'customProfitPercent', 'customDiscountBufferPercent', 'customInstallmentMarkupPercent',
         'customDownPaymentPercent', 'customInstallmentMonths', 'customCalculationMode',
-        'installmentEnabled',
+        'installmentEnabled', 'taxProfileId', 'priceIncludesVat',
         'sku', 'labelBarcodeSource', 'trackStock', 'stockQuantity', 'lowStockThreshold',
         'specifications', 'specificationNotes',
       ].sort()

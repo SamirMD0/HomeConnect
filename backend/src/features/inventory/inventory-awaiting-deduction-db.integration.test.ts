@@ -83,6 +83,11 @@ describeDatabase('orders awaiting stock deduction database query', () => {
           lineTotal: '1.00',
           baseUnitPrice: '1.00',
           baseLineTotal: '1.00',
+          taxRateSnapshot: '0.000',
+          taxCodeSnapshot: null,
+          unitPriceExVat: '1.00',
+          vatAmount: '0.00',
+          lineTotalIncVat: '1.00',
         })),
       });
 

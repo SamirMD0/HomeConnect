@@ -25,6 +25,7 @@ export interface PricingAudit { id:string; action:string; changedByName:string; 
 
 export interface PricingCalculationResult {
   cashPrice: string; installmentPrice: string; downPayment: string; remaining: string;
+  cashPriceExVat?: string; vatAmount?: string; cashPriceIncVat?: string; taxRatePercent?: string; taxCode?: string;
   monthlyPayment: string; lastInstallmentPayment: string; installmentMonths: number;
   expensesAmount: string; profitAmount: string; discountBufferAmount: string;
   priceWithoutDiscountBuffer: string; internalPriceCode: string | null;
@@ -35,6 +36,7 @@ export interface PricingPreviewAvailable {
   calculationMode:PricingCalculationMode; roundingMode:PricingRoundingMode;
   inputs:{costPrice?:string;expensePercent:string;profitPercent:string;discountBufferPercent:string;installmentMarkupPercent:string;downPaymentPercent:string;installmentMonths:number};
   breakdown:{expensesAmount:string;profitAmount:string;discountBufferAmount:string}; cashPrice:string;
+  cashPriceExVat?:string;vatAmount?:string;cashPriceIncVat?:string;taxRatePercent?:string;taxCode?:string;
   priceWithoutDiscountBuffer:string; internalPriceCode:string|null;
   installment:{installmentPrice:string;downPayment:string;remaining:string;monthlyPayment:string;lastInstallmentPayment:string;installmentMonths:number};
   warnings:string[];
@@ -47,6 +49,7 @@ export interface ProductPricingConfigurationInput {
   customExpensePercent?:string|null; customProfitPercent?:string|null; customDiscountBufferPercent?:string|null;
   customInstallmentMarkupPercent?:string|null; customDownPaymentPercent?:string|null;
   customInstallmentMonths?:number|null; customCalculationMode?:PricingCalculationMode|null;
+  taxProfileId?:string|null; priceIncludesVat?:boolean;
 }
 export interface ProductPricingInput extends ProductPricingConfigurationInput {
   reason:string; accountPassword:string;

@@ -28,6 +28,8 @@ const itemSchema = z.object({
   quantity: z.coerce.number().int().min(1).max(999),
   unitPrice: positiveMoneySchema,
   discountAmount: moneySchema.optional().nullable(),
+  taxProfileId: uuidSchema.optional().nullable(),
+  priceIncludesVat: z.boolean().optional(),
   notes: optionalText('Item notes', 1000),
 }).superRefine(validateItemIdentity);
 
@@ -92,6 +94,8 @@ export const updateSalesOrderItemSchema = z.object({
   quantity: z.coerce.number().int().min(1).max(999).optional(),
   unitPrice: positiveMoneySchema.optional(),
   discountAmount: moneySchema.optional().nullable(),
+  taxProfileId: uuidSchema.optional().nullable(),
+  priceIncludesVat: z.boolean().optional(),
   debtDueDate: dateSchema.optional().nullable(),
   notes: optionalText('Item notes', 1000),
   reason: reasonSchema.optional(),

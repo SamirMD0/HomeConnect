@@ -22,6 +22,8 @@ export const PRODUCT_FIELD_POLICY = {
   customDownPaymentPercent: true,
   customInstallmentMonths: true,
   customCalculationMode: true,
+  taxProfileId: true,
+  priceIncludesVat: true,
   isActive: true,
   // Cosmetic catalogue fields any authenticated user may maintain.
   imageUrl: false,

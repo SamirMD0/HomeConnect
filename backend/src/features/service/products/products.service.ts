@@ -6,6 +6,7 @@ import {
   ServiceAuditRecordType,
 } from '@prisma/client';
 import { compareMoney, moneyToApiString, parseMoney, subtractMoney } from '../../financial/domain/money';
+import { businessDateToPrisma, todayInBusinessTimezone } from '../../financial/domain/business-date';
 import { runFinancialTransaction } from '../../financial/infrastructure/transaction';
 import { verifyAdminPassword } from '../../../lib/admin-verification';
 import { NotFoundError, ValidationError } from '../../../lib/errors';
@@ -38,12 +39,13 @@ import {
 import { ProductsRepository } from './products.repository';
 import { normalizeScanCode } from '../../../lib/scan-code';
 import { serializeServiceJob } from '../service-jobs/service-jobs.service';
-import { ProductPricingRecord, resolveProductPricing } from '../../pricing/calculator/pricing-resolution';
+import { resolveProductPricing } from '../../pricing/calculator/pricing-resolution';
 import { Role } from '@prisma/client';
 import { parsePricingPercent, percentToApiString } from '../../pricing/domain/pricing-percent';
 import { formatStaffLabelCode } from '../../pricing/domain/internal-price-code';
 import { generateProductSku } from './product-sku';
 import { deriveProductStockStatus, isProductOutsideInventory } from './product-stock';
+import { presentExVatPrice } from '../../tax/domain/vat';
 
 export interface ProductScanPayload {
   id: string;
@@ -267,7 +269,7 @@ export class ProductsService {
           requestId: context.requestId,
           ipAddress: context.ipAddress,
         }, tx);
-        return serializeProduct(product, await ProductsRepository.findActiveDefaultPricingPreset(tx), user.role === Role.ADMIN);
+        return serializeProduct(product, await ProductsRepository.findActiveDefaultPricingPreset(tx), user.role === Role.ADMIN, await defaultTaxProfile(tx));
       });
     } catch (error) {
       throw mapProductError(error);
@@ -287,12 +289,12 @@ export class ProductsService {
       skip: (query.page - 1) * query.pageSize,
       take: query.pageSize,
     });
-    const defaultPreset = await ProductsRepository.findActiveDefaultPricingPreset();
+    const [defaultPreset, defaultTax] = await Promise.all([ProductsRepository.findActiveDefaultPricingPreset(), defaultTaxProfile()]);
     const normalizedSearch = query.search?.trim().toUpperCase();
     return {
       ...result,
       items: result.items.map((item) => ({
-        ...serializeProduct(item, defaultPreset, viewer?.role === Role.ADMIN),
+        ...serializeProduct(item, defaultPreset, viewer?.role === Role.ADMIN, defaultTax),
         exactMatch: Boolean(normalizedSearch && (item.sku.toUpperCase() === normalizedSearch || item.barcode?.toUpperCase() === normalizedSearch)),
         // List-only: the drawer reads the authoritative onboarding status from
         // the inventory endpoint, which also distinguishes PENDING_ONBOARDING.
@@ -310,8 +312,8 @@ export class ProductsService {
   static async get(id: string, viewer?: { role: string }) {
     const product = await ProductsRepository.findById(id);
     if (!product) throw new NotFoundError('Product not found');
-    const defaultPreset = await ProductsRepository.findActiveDefaultPricingPreset();
-    return serializeProduct(product, defaultPreset, viewer?.role === Role.ADMIN);
+    const [defaultPreset, defaultTax] = await Promise.all([ProductsRepository.findActiveDefaultPricingPreset(), defaultTaxProfile()]);
+    return serializeProduct(product, defaultPreset, viewer?.role === Role.ADMIN, defaultTax);
   }
 
   /**
@@ -363,7 +365,11 @@ export class ProductsService {
   static async getPricingPreview(id: string, query: ProductPricingPreviewQueryInput, viewer?: { role: string }) {
     const product = await ProductsRepository.findById(id);
     if (!product) throw new NotFoundError('Product not found');
-    const preview = resolveProductPricing(product, await ProductsRepository.findActiveDefaultPricingPreset(), query.installmentMonths);
+    const preview = addVatPresentation(
+      resolveProductPricing(product, await ProductsRepository.findActiveDefaultPricingPreset(), query.installmentMonths),
+      product,
+      await defaultTaxProfile()
+    );
     if (preview.pricingAvailable && viewer?.role !== Role.ADMIN) {
       const inputs = Object.fromEntries(Object.entries(preview.inputs).filter(([key]) => key !== 'costPrice'));
       return { ...preview, inputs };
@@ -390,7 +396,7 @@ export class ProductsService {
         changedById: user.userId, changedByName: actor.fullName, changedByUsername: actor.username, reason: input.reason,
         beforeValues: changedSnapshot(existing, fields), afterValues: changedSnapshot(updated, fields), requestId: context.requestId, ipAddress: context.ipAddress,
       }, tx);
-      return serializeProduct(updated, await ProductsRepository.findActiveDefaultPricingPreset(tx), true);
+      return serializeProduct(updated, await ProductsRepository.findActiveDefaultPricingPreset(tx), true, await defaultTaxProfile(tx));
     });
   }
 
@@ -446,7 +452,7 @@ export class ProductsService {
           requestId: context.requestId,
           ipAddress: context.ipAddress,
         }, tx);
-        return serializeProduct(updated, await ProductsRepository.findActiveDefaultPricingPreset(tx), user.role === Role.ADMIN);
+        return serializeProduct(updated, await ProductsRepository.findActiveDefaultPricingPreset(tx), user.role === Role.ADMIN, await defaultTaxProfile(tx));
       });
     } catch (error) {
       throw mapProductError(error);
@@ -493,7 +499,7 @@ export class ProductsService {
         requestId: context.requestId,
         ipAddress: context.ipAddress,
       }, tx);
-      return serializeProduct(updated, await ProductsRepository.findActiveDefaultPricingPreset(tx), user.role === Role.ADMIN);
+      return serializeProduct(updated, await ProductsRepository.findActiveDefaultPricingPreset(tx), user.role === Role.ADMIN, await defaultTaxProfile(tx));
     });
   }
 
@@ -519,7 +525,7 @@ export class ProductsService {
         requestId: context.requestId,
         ipAddress: context.ipAddress,
       }, tx);
-      return serializeProduct(updated, await ProductsRepository.findActiveDefaultPricingPreset(tx), user.role === Role.ADMIN);
+      return serializeProduct(updated, await ProductsRepository.findActiveDefaultPricingPreset(tx), user.role === Role.ADMIN, await defaultTaxProfile(tx));
     });
   }
 
@@ -535,7 +541,8 @@ export class ProductsService {
     const product = await ProductsRepository.findById(id);
     if (!product) throw new NotFoundError('Product not found');
     const defaultPreset = labelNeedsPricing(query) ? await ProductsRepository.findActiveDefaultPricingPreset() : null;
-    return toLabelPayload(product, defaultPreset, query);
+    const defaultTax = query.includePrice ? await defaultTaxProfile() : null;
+    return toLabelPayload(product, defaultPreset, query, defaultTax);
   }
 
   /**
@@ -547,6 +554,7 @@ export class ProductsService {
     const products = await ProductsRepository.findManyForLabels(query.ids);
     const byId = new Map(products.map((product) => [product.id, product]));
     const defaultPreset = labelNeedsPricing(query) ? await ProductsRepository.findActiveDefaultPricingPreset() : null;
+    const defaultTax = query.includePrice ? await defaultTaxProfile() : null;
 
     const labels: ProductLabelPayload[] = [];
     const warnings: ProductLabelWarning[] = [];
@@ -560,7 +568,7 @@ export class ProductsService {
         warnings.push({ productId: id, code: 'ARCHIVED_EXCLUDED', name: product.name });
         continue;
       }
-      const { payload, warnings: itemWarnings } = toLabelPayload(product, defaultPreset, query);
+      const { payload, warnings: itemWarnings } = toLabelPayload(product, defaultPreset, query, defaultTax);
       labels.push(payload);
       warnings.push(...itemWarnings);
     }
@@ -596,7 +604,7 @@ export class ProductsService {
         beforeValues: stockSnapshot(existing), afterValues: stockSnapshot(updated),
         requestId: context.requestId, ipAddress: context.ipAddress,
       }, tx);
-      return serializeProduct(updated, await ProductsRepository.findActiveDefaultPricingPreset(tx), true);
+      return serializeProduct(updated, await ProductsRepository.findActiveDefaultPricingPreset(tx), true, await defaultTaxProfile(tx));
     });
   }
 
@@ -703,7 +711,7 @@ export class ProductsService {
         beforeValues: { isActive: existing.isActive }, afterValues: { isActive },
         requestId: context.requestId, ipAddress: context.ipAddress,
       }, tx);
-      return serializeProduct(updated, await ProductsRepository.findActiveDefaultPricingPreset(tx), user.role === Role.ADMIN);
+      return serializeProduct(updated, await ProductsRepository.findActiveDefaultPricingPreset(tx), user.role === Role.ADMIN, await defaultTaxProfile(tx));
     });
   }
 
@@ -736,7 +744,7 @@ export class ProductsService {
           beforeValues: { sku: existing.sku }, afterValues: { sku },
           requestId: context.requestId, ipAddress: context.ipAddress,
         }, tx);
-        return serializeProduct(updated, await ProductsRepository.findActiveDefaultPricingPreset(tx), true);
+        return serializeProduct(updated, await ProductsRepository.findActiveDefaultPricingPreset(tx), true, await defaultTaxProfile(tx));
       });
     } catch (error) {
       throw mapProductError(error);
@@ -784,7 +792,7 @@ const labelNeedsPricing = (query: LabelFieldFlags) => query.includePriceCode || 
  * never receives is a label that cannot leak through the network tab or an
  * exported PDF. `products.routes.test.ts` asserts the exact key set.
  */
-function toLabelPayload(product: ProductPricingRecord, defaultPreset: PricingPreset | null, query: LabelFieldFlags) {
+function toLabelPayload(product: ProductRecord, defaultPreset: PricingPreset | null, query: LabelFieldFlags, defaultTax: TaxProfileRecord | null) {
   const warnings: ProductLabelWarning[] = [];
   const wantsManufacturer = product.labelBarcodeSource === 'MANUFACTURER' || product.labelBarcodeSource === 'AUTO';
   const usesManufacturer = wantsManufacturer && Boolean(product.barcode);
@@ -798,7 +806,9 @@ function toLabelPayload(product: ProductPricingRecord, defaultPreset: PricingPre
     });
   }
 
-  const preview = labelNeedsPricing(query) ? resolveProductPricing(product, defaultPreset) : null;
+  const preview = labelNeedsPricing(query)
+    ? addVatPresentation(resolveProductPricing(product, defaultPreset), product, defaultTax)
+    : null;
   if (preview && !preview.pricingAvailable) warnings.push({ productId: product.id, code: 'NO_PRICING', name: product.name });
   const internalPriceCode = preview?.pricingAvailable ? preview.internalPriceCode : null;
 
@@ -814,7 +824,14 @@ function toLabelPayload(product: ProductPricingRecord, defaultPreset: PricingPre
       internalPriceCode,
       staffLabelCode: internalPriceCode ? formatStaffLabelCode(product.sku, internalPriceCode) : null,
     } : {}),
-    ...(query.includePrice ? { cashPrice: preview?.pricingAvailable ? preview.cashPrice : null } : {}),
+    ...(query.includePrice ? {
+      cashPrice: preview?.pricingAvailable && preview.vatPresentationAvailable ? preview.cashPriceIncVat : null,
+      cashPriceExVat: preview?.pricingAvailable && preview.vatPresentationAvailable ? preview.cashPriceExVat : null,
+      cashPriceIncVat: preview?.pricingAvailable && preview.vatPresentationAvailable ? preview.cashPriceIncVat : null,
+      vatAmount: preview?.pricingAvailable && preview.vatPresentationAvailable ? preview.vatAmount : null,
+      taxRatePercent: preview?.pricingAvailable && preview.vatPresentationAvailable ? preview.taxRatePercent : null,
+      taxCode: preview?.pricingAvailable && preview.vatPresentationAvailable ? preview.taxCode : null,
+    } : {}),
   };
 
   return { payload, warnings };
@@ -841,7 +858,43 @@ type ProductRecord = Product & {
   updatedBy?: { fullName: string; username: string } | null;
   pricingPreset?: Prisma.PricingPresetGetPayload<Record<string, never>> | null;
   image?: { mimeType: string; byteSize: number; updatedAt: Date } | null;
+  taxProfile?: TaxProfileRecord | null;
 };
+
+type TaxProfileRecord = Prisma.TaxProfileGetPayload<{ include: { taxRate: true } }>;
+
+async function defaultTaxProfile(tx?: Prisma.TransactionClient): Promise<TaxProfileRecord | null> {
+  return ProductsRepository.findActiveDefaultTaxProfile(businessDateToPrisma(todayInBusinessTimezone()), tx);
+}
+
+type ResolvedPricing = ReturnType<typeof resolveProductPricing>;
+type AvailablePricing = Extract<ResolvedPricing, { pricingAvailable: true }>;
+type VatPresentedPricing = Exclude<ResolvedPricing, { pricingAvailable: true }> | (AvailablePricing & (
+  | { vatPresentationAvailable: false }
+  | { vatPresentationAvailable: true; cashPriceExVat: string; vatAmount: string; cashPriceIncVat: string; taxRatePercent: string; taxCode: string }
+));
+
+function addVatPresentation(
+  preview: ResolvedPricing,
+  product: ProductRecord,
+  defaultTax: TaxProfileRecord | null
+): VatPresentedPricing {
+  if (!preview.pricingAvailable) return preview;
+  const profile = product.taxProfileId ? product.taxProfile ?? null : defaultTax;
+  if (!profile || !profile.isActive || !profile.taxRate.isActive) {
+    return { ...preview, vatPresentationAvailable: false as const };
+  }
+  const presented = presentExVatPrice(preview.cashPrice, profile.taxRate.ratePercent, product.priceCurrency);
+  return {
+    ...preview,
+    vatPresentationAvailable: true as const,
+    cashPriceExVat: moneyToApiString(presented.priceExVat, product.priceCurrency),
+    vatAmount: moneyToApiString(presented.vatAmount, product.priceCurrency),
+    cashPriceIncVat: moneyToApiString(presented.priceIncVat, product.priceCurrency),
+    taxRatePercent: profile.taxRate.ratePercent.toFixed(3),
+    taxCode: profile.code,
+  };
+}
 
 /**
  * One shape for both image sources so the client can render without branching on
@@ -887,8 +940,8 @@ function serializeScanResult(product: Product): ProductScanPayload {
   };
 }
 
-function serializeProduct(product: ProductRecord, defaultPreset: Prisma.PricingPresetGetPayload<Record<string, never>> | null = null, isAdmin = false) {
-  const preview = resolveProductPricing(product, defaultPreset);
+function serializeProduct(product: ProductRecord, defaultPreset: Prisma.PricingPresetGetPayload<Record<string, never>> | null = null, isAdmin = false, defaultTax: TaxProfileRecord | null = null) {
+  const preview = addVatPresentation(resolveProductPricing(product, defaultPreset), product, defaultTax);
   const mode = product.costPrice != null
     ? product.useCustomPricing ? 'CUSTOM' as const : 'PRESET' as const
     : product.price != null ? 'MANUAL' as const : 'NONE' as const;
@@ -897,6 +950,13 @@ function serializeProduct(product: ProductRecord, defaultPreset: Prisma.PricingP
     presetName: preview.preset?.name ?? null, useCustomPricing: product.useCustomPricing,
     installmentEnabled: product.installmentEnabled,
     cashPrice: preview.cashPrice,
+    ...(preview.vatPresentationAvailable ? {
+      cashPriceExVat: preview.cashPriceExVat,
+      vatAmount: preview.vatAmount,
+      cashPriceIncVat: preview.cashPriceIncVat,
+      taxRatePercent: preview.taxRatePercent,
+      taxCode: preview.taxCode,
+    } : {}),
     ...(product.installmentEnabled ? {
       installmentPrice: preview.installment.installmentPrice,
       downPayment: preview.installment.downPayment,
@@ -919,6 +979,8 @@ function serializeProduct(product: ProductRecord, defaultPreset: Prisma.PricingP
     netPrice: product.price && product.discount
       ? moneyToApiString(subtractMoney(product.price, product.discount))
       : product.price ? moneyToApiString(product.price) : null,
+    taxProfileId: product.taxProfileId,
+    priceIncludesVat: product.priceIncludesVat,
     isActive: product.isActive,
     notes: product.notes,
     labelBarcodeSource: product.labelBarcodeSource,
@@ -951,6 +1013,8 @@ function pricingConfiguration(product: Product) {
     customInstallmentMarkupPercent: product.customInstallmentMarkupPercent ? percentToApiString(product.customInstallmentMarkupPercent) : null,
     customDownPaymentPercent: product.customDownPaymentPercent ? percentToApiString(product.customDownPaymentPercent) : null,
     customInstallmentMonths: product.customInstallmentMonths, customCalculationMode: product.customCalculationMode,
+    taxProfileId: product.taxProfileId,
+    priceIncludesVat: product.priceIncludesVat,
   };
 }
 
@@ -973,6 +1037,7 @@ function productSnapshot(product: Product): Prisma.InputJsonObject {
     customInstallmentMarkupPercent: product.customInstallmentMarkupPercent ? percentToApiString(product.customInstallmentMarkupPercent) : null,
     customDownPaymentPercent: product.customDownPaymentPercent ? percentToApiString(product.customDownPaymentPercent) : null,
     customInstallmentMonths: product.customInstallmentMonths, customCalculationMode: product.customCalculationMode,
+    taxProfileId: product.taxProfileId, priceIncludesVat: product.priceIncludesVat,
   };
 }
 
@@ -990,6 +1055,8 @@ function pricingUpdateData(input: UpdateProductPricingInput, updatedById: string
   for (const field of ['customExpensePercent','customProfitPercent','customDiscountBufferPercent','customInstallmentMarkupPercent','customDownPaymentPercent'] as const) if (input[field] !== undefined) data[field] = input[field] == null ? null : parsePricingPercent(input[field]!);
   if (input.customInstallmentMonths !== undefined) data.customInstallmentMonths = input.customInstallmentMonths;
   if (input.customCalculationMode !== undefined) data.customCalculationMode = input.customCalculationMode;
+  if (input.taxProfileId !== undefined) data.taxProfileId = input.taxProfileId;
+  if (input.priceIncludesVat !== undefined) data.priceIncludesVat = input.priceIncludesVat;
   return data;
 }
 
@@ -1005,7 +1072,7 @@ const PRICING_VALUE_FIELDS = [
   'customDownPaymentPercent', 'customInstallmentMonths', 'customCalculationMode',
 ] as const;
 
-type ProductPricingField = typeof PRICING_VALUE_FIELDS[number] | 'useCustomPricing' | 'installmentEnabled';
+type ProductPricingField = typeof PRICING_VALUE_FIELDS[number] | 'useCustomPricing' | 'installmentEnabled' | 'taxProfileId' | 'priceIncludesVat';
 
 type ProductPricingCreateData = Partial<Pick<
   Prisma.ProductUncheckedCreateInput,
@@ -1023,6 +1090,8 @@ function pricingCreateData(input: CreateProductInput): ProductPricingCreateData 
   }
   if (input.customInstallmentMonths != null) data.customInstallmentMonths = input.customInstallmentMonths;
   if (input.customCalculationMode != null) data.customCalculationMode = input.customCalculationMode;
+  if (input.taxProfileId !== undefined) data.taxProfileId = input.taxProfileId;
+  if (input.priceIncludesVat !== undefined) data.priceIncludesVat = input.priceIncludesVat;
   return data;
 }
 
