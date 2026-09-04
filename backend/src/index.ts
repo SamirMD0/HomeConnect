@@ -1,18 +1,6 @@
-import dotenv from 'dotenv';
-import path from 'path';
-
-for (const envPath of [
-  process.env.BACKEND_ENV_FILE,
-  process.env.HOME_CONNECT_CONFIG_DIR
-    ? path.join(process.env.HOME_CONNECT_CONFIG_DIR, 'production.env')
-    : undefined,
-  path.resolve(process.cwd(), 'backend/.env'),
-  path.resolve(__dirname, '../../backend/.env'),
-  path.resolve(__dirname, '../../../../backend/.env'),
-]) {
-  if (envPath) dotenv.config({ path: envPath, quiet: true });
-}
-
+// Must stay first: it populates process.env for the modules imported below,
+// several of which read their configuration at module scope.
+import './load-env';
 import { app } from './app';
 import { logger } from './lib/logger';
 import { BackupScheduler } from './features/backup/backup.scheduler';
