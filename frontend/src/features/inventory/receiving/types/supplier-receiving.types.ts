@@ -53,6 +53,8 @@ export interface SupplierReceiving {
   audits?: SupplierReceivingAuditEntry[];
   _count?: { items: number; transactions?: number };
   transactions?: Array<{ id: string; type: 'SUPPLIER_DEBT'; status: 'ACTIVE'|'REMOVED'; amount: string }>;
+  /** Product costs changed by the linked purchase; voiding stock never reverts them. */
+  costPriceReviewCount?: number;
 }
 
 export interface CreateSupplierReceivingInput {

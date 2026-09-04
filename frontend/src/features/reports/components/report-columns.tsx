@@ -58,6 +58,18 @@ export function columnsFor(slice: ReportSlice): ReportColumn[] {
     statusBadge('Line / البند', 'status', (value) => value === 'ACTIVE'),
     nestedMoney('Linked bill / الفاتورة', 'linkedDebt', 'amount'),
   ];
+  if (slice === 'products-cost-changes') return [
+    text('Changed / التغيير', 'changedAt'),
+    partyText('Product / المنتج', 'product'),
+    nestedText('SKU', 'product', 'sku'),
+    nullableMoney('Old cost / الكلفة القديمة', 'oldCost'),
+    nullableMoney('New cost / الكلفة الجديدة', 'newCost'),
+    percentage('Change / النسبة', 'percentageChange'),
+    text('Source / المصدر', 'source'),
+    text('Receipt / الفاتورة', 'receiptNumber'),
+    nestedText('Changed by / عدّلها', 'changedBy', 'fullName'),
+    text('Reason / السبب', 'reason'),
+  ];
   if (slice === 'suppliers-debts') return [
     text('Date / التاريخ', 'transactionDate'), partyLink('Supplier / المورد', 'supplier', '/suppliers/'),
     text('Type / النوع', 'type'), text('Direction / الاتجاه', 'direction'),
@@ -132,6 +144,7 @@ export function summariesFor(
     'customers-not-paid': [['Customers / الزبائن', 'count'], ['Opening / الافتتاحي', 'openingBalance', true], ['New debt / دين جديد', 'newDebt', true], ['Closing / الختامي', 'closingBalance', true], ['Old balances / أرصدة قديمة', 'withOldBalance']],
     'customers-paid': [['Customers / الزبائن', 'count'], ['Payments / الدفعات', 'paymentCount'], ['Collected / المحصل', 'paidInPeriod', true], ['Closing / الختامي', 'closingBalance', true]],
     'products-bought': [['Received lines / بنود مستلمة', 'activeLines'], ['Total units / إجمالي الوحدات', 'totalUnits'], ['Distinct products / منتجات', 'distinctProducts'], ['Received not sold / لم تُبع', 'receivedNotSold'], ['Reversed lines / بنود معكوسة', 'reversedLines']],
+    'products-cost-changes': [['Cost changes / تغييرات الكلفة', 'count'], ['Increases / زيادات', 'increases'], ['Decreases / تخفيضات', 'decreases'], ['From purchases / من المشتريات', 'fromPurchases']],
     'suppliers-debts': [['Transactions / الحركات', 'count'], ['New owed / دين جديد', 'increased', true], ['Paid or credited / مدفوع أو دائن', 'decreased', true], ['Net change / صافي التغيير', 'netChange', true]],
     'suppliers-receiving': [['Documents / المستندات', 'count'], ['Posted / مثبت', 'posted'], ['Voided / ملغى', 'voided']],
     'sales-orders': [['Orders / الطلبات', 'orderCount'], ['Sales / المبيعات', 'totalAmount', true], ['Paid / المدفوع', 'paidAmount', true], ['Unpaid / غير المدفوع', 'unpaidAmount', true]],
@@ -214,6 +227,30 @@ function text(label: string, key: string): ReportColumn {
 
 function money(label: string, key: string): ReportColumn {
   return { label, numeric: true, render: (row) => <strong className="tabular-nums">{formatMoney(String(record(row)[key] ?? '0.00'))}</strong> };
+}
+
+function nullableMoney(label: string, key: string): ReportColumn {
+  return {
+    label,
+    numeric: true,
+    render: (row) => {
+      const value = record(row)[key];
+      return value == null ? '—' : <strong className="tabular-nums">{formatMoney(String(value))}</strong>;
+    },
+  };
+}
+
+function percentage(label: string, key: string): ReportColumn {
+  return {
+    label,
+    numeric: true,
+    render: (row) => {
+      const value = record(row)[key];
+      if (value == null) return '—';
+      const numeric = Number(value);
+      return <strong className={`tabular-nums ${numeric < 0 ? 'text-red-700' : 'text-emerald-700'}`}>{numeric > 0 ? '+' : ''}{String(value)}%</strong>;
+    },
+  };
 }
 
 function count(label: string, key: string): ReportColumn {

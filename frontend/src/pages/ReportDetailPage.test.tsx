@@ -217,6 +217,18 @@ describe('Report detail page — ERP reports', () => {
     expect(supplierHtml).toContain('Independent / المستقل');
     expect(supplierHtml).toContain('Supplier');
   });
+
+  it('renders the product cost changes report with old, new, and percentage values', () => {
+    rows.value = withRows(
+      { count: 1, increases: 1, decreases: 0, fromPurchases: 1 },
+      [{ id: 'a1', changedAt: '2026-08-15T10:00:00.000Z', product: { id: 'p1', name: 'AC', sku: 'HC-1' }, oldCost: '100.00', newCost: '120.00', percentageChange: '20.00', source: 'SUPPLIER_PURCHASE', receiptNumber: 'INV-1', changedBy: { fullName: 'Owner', username: 'owner' }, reason: 'Supplier purchase' }]
+    );
+
+    const html = render('product-cost-changes');
+    expect(html).toContain('Product Cost Changes / تغييرات كلفة المنتجات');
+    expect(html).toContain('+20.00%');
+    expect(html).toContain('INV-1');
+  });
 });
 
 function withRows(summary: Record<string, unknown>, tableRows: unknown[]) {

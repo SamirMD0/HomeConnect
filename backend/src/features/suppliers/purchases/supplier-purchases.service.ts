@@ -3,9 +3,10 @@ import {
   SupplierAuditAction, SupplierAuditRecordType, SupplierPurchaseLineKind,
   SupplierTransactionDirection, SupplierTransactionType,
 } from '@prisma/client';
+import { Decimal } from '@prisma/client/runtime/library';
 import { verifyAdminPassword } from '../../../lib/admin-verification';
 import { AppError, NotFoundError, ValidationError } from '../../../lib/errors';
-import { assertPositiveMoney, moneyToApiString, multiplyMoney, parseMoney, subtractMoney, sumMoney, ZERO_MONEY } from '../../financial/domain/money';
+import { assertPositiveMoney, divideMoney, moneyToApiString, multiplyMoney, parseMoney, subtractMoney, sumMoney, ZERO_MONEY } from '../../financial/domain/money';
 import { businessDateToPrisma, prismaDateToBusinessDate } from '../../financial/domain/business-date';
 import {
   assertIdempotentReplay,
@@ -168,6 +169,17 @@ export class SupplierPurchasesService {
         createdById: user.userId,
       }, tx);
 
+      const actor = await loadActor(user.userId, tx);
+      await updateProductCostsFromPurchase({
+        lines,
+        supplierTransactionId: transaction.id,
+        supplierReceivingId: receivingId,
+        receiptNumber,
+        user,
+        actor,
+        context,
+      }, tx);
+
       // The settled portion is a second, ordinary supplier payment rather than a
       // smaller debt: the bill must keep saying what was billed, and the balance
       // still comes from direction and amount exactly as it always has.
@@ -206,7 +218,6 @@ export class SupplierPurchasesService {
         }, tx);
       }
 
-      const actor = await loadActor(user.userId, tx);
       await writeSupplierAudit({
         recordType: SupplierAuditRecordType.SUPPLIER_TRANSACTION,
         recordId: transaction.id,
@@ -267,6 +278,71 @@ export class SupplierPurchasesService {
       })),
     };
   }
+}
+
+interface PurchaseCostUpdateContext {
+  lines: ResolvedLine[];
+  supplierTransactionId: string;
+  supplierReceivingId: string | null;
+  receiptNumber: string | null;
+  user: SupplierMutationUser;
+  actor: { fullName: string; username: string };
+  context: SupplierRequestContext;
+}
+
+/**
+ * Updates each purchased product once, using the weighted price of every
+ * qualifying PRODUCT line in this purchase. This deliberately runs inside the
+ * purchase's existing transaction: a later payment, line, or audit failure
+ * rolls the product update and its audit back with the rest of the document.
+ */
+async function updateProductCostsFromPurchase(input: PurchaseCostUpdateContext, tx: Prisma.TransactionClient) {
+  const byProduct = new Map<string, { quantity: number; extendedCost: Decimal; lineCount: number }>();
+  for (const line of input.lines) {
+    if (line.kind !== SupplierPurchaseLineKind.PRODUCT || !line.productId || line.quantity == null || line.unitPrice == null) continue;
+    const current = byProduct.get(line.productId) ?? { quantity: 0, extendedCost: new Decimal(0), lineCount: 0 };
+    current.quantity += line.quantity;
+    current.extendedCost = current.extendedCost.plus(line.unitPrice.mul(line.quantity));
+    current.lineCount += 1;
+    byProduct.set(line.productId, current);
+  }
+
+  for (const [productId, weighted] of byProduct) {
+    if (weighted.quantity === 0) continue;
+    const product = await ProductsRepository.findById(productId, tx);
+    if (!product) throw new NotFoundError('Product not found / المنتج غير موجود');
+    const nextCost = divideMoney(weighted.extendedCost, new Decimal(weighted.quantity), Decimal.ROUND_HALF_UP);
+    const previousCost = product.costPrice == null ? null : parseMoney(product.costPrice);
+    if (previousCost?.equals(nextCost)) continue;
+
+    await ProductsRepository.update(productId, { costPrice: nextCost, updatedById: input.user.userId }, tx);
+    await writeServiceAudit({
+      recordType: ServiceAuditRecordType.PRODUCT,
+      recordId: productId,
+      action: ServiceAuditAction.CHANGE_PRICE,
+      changedById: input.user.userId,
+      changedByName: input.actor.fullName,
+      changedByUsername: input.actor.username,
+      reason: purchaseCostReason(input.receiptNumber, input.supplierTransactionId),
+      beforeValues: { costPrice: previousCost ? moneyToApiString(previousCost) : null },
+      afterValues: {
+        costPrice: moneyToApiString(nextCost),
+        costSource: 'SUPPLIER_PURCHASE',
+        supplierTransactionId: input.supplierTransactionId,
+        supplierReceivingId: input.supplierReceivingId,
+        receiptNumber: input.receiptNumber,
+        weightedQuantity: weighted.quantity,
+        weightedLineCount: weighted.lineCount,
+      },
+      requestId: input.context.requestId,
+      ipAddress: input.context.ipAddress,
+    }, tx);
+  }
+}
+
+function purchaseCostReason(receiptNumber: string | null, supplierTransactionId: string): string {
+  const purchase = receiptNumber ? `receipt ${receiptNumber}` : `purchase ${supplierTransactionId}`;
+  return `Product cost updated from supplier ${purchase} / تحديث كلفة المنتج من ${purchase}`;
 }
 
 /**

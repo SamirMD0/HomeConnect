@@ -255,6 +255,40 @@ export class ReportRowsService {
       };
     }
 
+    if (slice === 'products-cost-changes') {
+      const records = await ReportRowsRepository.productCostChanges(period);
+      const rows = records.map((record) => {
+        const oldCost = record.oldCost == null ? null : moneyToApiString(record.oldCost);
+        const newCost = record.newCost == null ? null : moneyToApiString(record.newCost);
+        const percentageChange = oldCost && newCost && !new Decimal(oldCost).equals(ZERO_MONEY)
+          ? new Decimal(newCost).minus(oldCost).div(oldCost).mul(100).toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toFixed(2)
+          : null;
+        return {
+          id: record.auditId,
+          changedAt: record.changedAt.toISOString(),
+          product: { id: record.productId, name: record.productName, sku: record.productSku },
+          oldCost,
+          newCost,
+          percentageChange,
+          source: record.costSource === 'SUPPLIER_PURCHASE' ? 'SUPPLIER_PURCHASE' as const : 'MANUAL' as const,
+          supplierTransactionId: record.supplierTransactionId,
+          supplierReceivingId: record.supplierReceivingId,
+          receiptNumber: record.receiptNumber,
+          changedBy: { fullName: record.changedByName, username: record.changedByUsername },
+          reason: record.reason,
+        };
+      });
+      return {
+        summary: {
+          count: rows.length,
+          increases: rows.filter((row) => row.oldCost != null && row.newCost != null && new Decimal(row.newCost).greaterThan(row.oldCost)).length,
+          decreases: rows.filter((row) => row.oldCost != null && row.newCost != null && new Decimal(row.newCost).lessThan(row.oldCost)).length,
+          fromPurchases: rows.filter((row) => row.source === 'SUPPLIER_PURCHASE').length,
+        },
+        rows,
+      };
+    }
+
     if (slice === 'suppliers-debts') {
       const records = await ReportRowsRepository.supplierTransactions(period);
       const increases = records.filter((record) => record.direction === 'INCREASE_OWED').map((record) => record.amount);
@@ -463,6 +497,7 @@ function csvDefinition(slice: ReportSlice, rows: Array<Record<string, unknown>>)
     'customers-not-paid': { headers: movementCsvHeaders, values: movementCsvRow },
     'customers-paid': { headers: movementCsvHeaders, values: movementCsvRow },
     'products-bought': { headers: ['Date', 'SKU', 'Product', 'Supplier', 'Reference', 'Quantity', 'Current stock', 'Sold in period', 'Line status', 'Received by', 'Linked debt'], values: (r) => { const p = r.product as Record<string, unknown>; const s = r.supplier as Record<string, unknown> | null; const b = r.receivedBy as Record<string, unknown> | null; const d = r.linkedDebt as Record<string, unknown> | null; return [r.receivedOn as string, p.sku as string, p.name as string, s?.name as string | undefined, r.referenceNumber as string | null, r.quantity as number, r.currentStock as number, r.soldInPeriod as number, r.status as string, b?.fullName as string | undefined, d?.amount as string | undefined]; } },
+    'products-cost-changes': { headers: ['Changed at', 'SKU', 'Product', 'Old cost', 'New cost', 'Change %', 'Source', 'Receipt', 'Changed by', 'Reason'], values: (r) => { const p = r.product as Record<string, unknown>; const a = r.changedBy as Record<string, unknown>; return [r.changedAt as string, p.sku as string, p.name as string, r.oldCost as string | null, r.newCost as string | null, r.percentageChange as string | null, r.source as string, r.receiptNumber as string | null, a.fullName as string, r.reason as string]; } },
     'suppliers-debts': { headers: ['Date', 'Supplier', 'Type', 'Direction', 'Amount', 'Description', 'Reference', 'Receipt'], values: (r) => { const s = r.supplier as Record<string, unknown>; return [r.transactionDate as string, s.name as string, r.type as string, r.direction as string, r.amount as string, r.description as string, r.reference as string | null, r.receiptNumber as string | null]; } },
     'suppliers-receiving': { headers: ['Date', 'Supplier', 'Reference', 'Status', 'Lines', 'Quantity', 'Linked debt'], values: (r) => { const s = r.supplier as Record<string, unknown> | null; const d = r.linkedDebt as Record<string, unknown> | null; return [r.receivedOn as string, s?.name as string | undefined, r.referenceNumber as string | null, r.status as string, r.lineCount as number, r.totalQuantity as number, d?.amount as string | undefined]; } },
     'sales-orders': { headers: ['Date', 'Order', 'Customer', 'Payment status', 'Fulfillment', 'Total', 'Paid', 'Remaining'], values: salesCsvRow },

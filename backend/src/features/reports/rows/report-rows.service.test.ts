@@ -9,7 +9,7 @@ const { repository, metrics, debts, receivables, suppliers } = vi.hoisted(() => 
     stockMovements: vi.fn(), receivingReconciliation: vi.fn(), openDebtsAsOf: vi.fn(),
     paymentsThrough: vi.fn(), receivedProducts: vi.fn(), soldQuantityByProduct: vi.fn(),
     receivedQuantityTotal: vi.fn(), customerFinancialIntegrity: vi.fn(),
-    supplierFinancialIntegrity: vi.fn(),
+    supplierFinancialIntegrity: vi.fn(), productCostChanges: vi.fn(),
   },
   metrics: { get: vi.fn() },
   debts: { getDebtReportForRange: vi.fn(), getFinancialActivityForRange: vi.fn() },
@@ -152,6 +152,24 @@ describe('ReportRowsService', () => {
 
     expect(report.data.summary).toEqual({ count: 1, ok: 1, mismatches: 0, reportedTotal: '380.00', independentTotal: '380.00', difference: '0.00' });
     expect(report.data.rows[0]).toMatchObject({ status: 'OK', independentBalance: '380.00', issues: [] });
+  });
+
+  it('reports audited product cost changes with percentage and purchase source', async () => {
+    repository.productCostChanges.mockResolvedValue([{
+      auditId: 'a1', changedAt: new Date('2026-08-15T10:00:00.000Z'),
+      productId: 'p1', productName: 'AC', productSku: 'HC-1',
+      oldCost: '100.00', newCost: '120.00', costSource: 'SUPPLIER_PURCHASE',
+      supplierTransactionId: 't1', supplierReceivingId: 'r1', receiptNumber: 'INV-1',
+      changedByName: 'Owner', changedByUsername: 'owner', reason: 'Supplier purchase',
+    }]);
+
+    const report = await ReportRowsService.get('products-cost-changes', { period: 'thisMonth' }, options);
+
+    expect(report.data.summary).toEqual({ count: 1, increases: 1, decreases: 0, fromPurchases: 1 });
+    expect(report.data.rows[0]).toMatchObject({
+      oldCost: '100.00', newCost: '120.00', percentageChange: '20.00',
+      source: 'SUPPLIER_PURCHASE', receiptNumber: 'INV-1',
+    });
   });
 
   it('treats a supplier with no transactions as a clean zero balance', async () => {

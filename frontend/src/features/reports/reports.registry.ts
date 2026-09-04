@@ -1,7 +1,7 @@
 import {
   Activity, Banknote, Boxes, CircleDollarSign, ClipboardList, FileText, Hourglass,
   PackageSearch, ReceiptText, ScrollText, ShoppingCart, Truck, UserCheck, UserPlus,
-  UserX, Users, ShieldCheck, type LucideIcon,
+  UserX, Users, ShieldCheck, TrendingUp, type LucideIcon,
 } from 'lucide-react';
 import type { MonthlyReviewData } from './types/monthly-review.types';
 import type { ReportSlice } from './types/report-rows.types';
@@ -105,6 +105,15 @@ export const reportDefinitions: ReportDefinition[] = [
     category: 'inventory',
     kind: 'rows',
     slice: 'products-bought',
+  },
+  {
+    id: 'product-cost-changes',
+    title: 'Product Cost Changes / تغييرات كلفة المنتجات',
+    description: 'Audited product cost changes in the selected period, including old and new cost, percentage change, and source purchase.',
+    icon: TrendingUp,
+    category: 'inventory',
+    kind: 'rows',
+    slice: 'products-cost-changes',
   },
   {
     id: 'new-customers',

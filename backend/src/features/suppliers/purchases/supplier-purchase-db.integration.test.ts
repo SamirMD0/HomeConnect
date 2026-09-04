@@ -146,6 +146,10 @@ describeDatabase('supplier purchase database contract', () => {
         where: { productId, movementType: StockMovementType.PURCHASE_RECEIPT },
       })).toBe(1);
       expect((await prisma.product.findUniqueOrThrow({ where: { id: productId } })).stockQuantity).toBe(2);
+      expect((await prisma.product.findUniqueOrThrow({ where: { id: productId } })).costPrice?.toFixed(2)).toBe('15.00');
+      expect(await prisma.serviceAudit.count({
+        where: { recordType: 'PRODUCT', recordId: productId, action: 'CHANGE_PRICE' },
+      })).toBe(1);
 
       await expect(SupplierPurchasesService.create(
         supplierId,
@@ -154,13 +158,48 @@ describeDatabase('supplier purchase database contract', () => {
         context
       )).rejects.toMatchObject({ statusCode: 409, code: 'PAYMENT_IDEMPOTENCY_CONFLICT' });
 
+      // The product update and its audit happen before this deliberately late
+      // validation. PostgreSQL must roll both back with the rejected purchase.
+      const debtCountBeforeFailure = await prisma.supplierTransaction.count({ where: { supplierId } });
+      await expect(SupplierPurchasesService.create(
+        supplierId,
+        {
+          ...input,
+          idempotencyKey: null,
+          receiveStock: false,
+          description: 'Deliberate rollback after cost update',
+          paidAmount: '999.00',
+          lines: [{ ...input.lines[0], unitPrice: '20.00' }],
+        },
+        user,
+        context
+      )).rejects.toThrow('Paid amount cannot exceed the purchase total');
+      expect((await prisma.product.findUniqueOrThrow({ where: { id: productId } })).costPrice?.toFixed(2)).toBe('15.00');
+      expect(await prisma.serviceAudit.count({
+        where: { recordType: 'PRODUCT', recordId: productId, action: 'CHANGE_PRICE' },
+      })).toBe(1);
+      expect(await prisma.supplierTransaction.count({ where: { supplierId } })).toBe(debtCountBeforeFailure);
+
       const withoutKey = await SupplierPurchasesService.create(
         supplierId,
-        { ...input, idempotencyKey: null, receiveStock: false, description: 'Backward-compatible no-key purchase' },
+        {
+          ...input,
+          idempotencyKey: null,
+          receiveStock: false,
+          description: 'Backward-compatible weighted no-key purchase',
+          lines: [
+            { ...input.lines[0], quantity: 1, unitPrice: '10.00' },
+            { ...input.lines[0], quantity: 1, unitPrice: '10.01' },
+          ],
+        },
         user,
         context
       );
       expect(withoutKey.id).not.toBe(original.id);
+      expect((await prisma.product.findUniqueOrThrow({ where: { id: productId } })).costPrice?.toFixed(2)).toBe('10.01');
+      expect(await prisma.serviceAudit.count({
+        where: { recordType: 'PRODUCT', recordId: productId, action: 'CHANGE_PRICE' },
+      })).toBe(2);
 
       const concurrentInput = {
         ...input,
@@ -194,6 +233,7 @@ describeDatabase('supplier purchase database contract', () => {
       const receivingIds = (await prisma.supplierReceiving.findMany({ where: { supplierId }, select: { id: true } })).map(({ id }) => id);
       const transactionIds = (await prisma.supplierTransaction.findMany({ where: { supplierId }, select: { id: true } })).map(({ id }) => id);
       await prisma.supplierAudit.deleteMany({ where: { supplierId } });
+      await prisma.serviceAudit.deleteMany({ where: { recordType: 'PRODUCT', recordId: productId } });
       await prisma.supplierPurchaseLine.deleteMany({ where: { supplierTransactionId: { in: transactionIds } } });
       await prisma.supplierTransaction.deleteMany({ where: { id: { in: transactionIds } } });
       await prisma.supplierReceivingItem.deleteMany({ where: { receivingId: { in: receivingIds } } });

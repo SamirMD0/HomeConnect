@@ -14,6 +14,7 @@ const paths = [
   'customers/new', 'customers/debts', 'customers/payments', 'suppliers/debts',
   'suppliers/receiving', 'sales/orders', 'sales/unpaid', 'inventory/movements',
   'inventory/reconciliation',
+  'products/cost-changes',
   'customers/financial-integrity', 'suppliers/financial-integrity',
 ];
 

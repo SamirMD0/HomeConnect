@@ -1,4 +1,4 @@
-import { Prisma, SupplierReceivingItemStatus, SupplierReceivingStatus } from '@prisma/client';
+import { Prisma, ServiceAuditAction, ServiceAuditRecordType, SupplierReceivingItemStatus, SupplierReceivingStatus } from '@prisma/client';
 import { prisma } from '../../../lib/prisma';
 
 const actorSelect = { select: { id: true, fullName: true, username: true } };
@@ -50,6 +50,15 @@ export class SupplierReceivingsRepository {
   }
   static findByIdempotencyKey(tx: Prisma.TransactionClient, idempotencyKey: string) {
     return tx.supplierReceiving.findUnique({ where: { idempotencyKey }, include: detailInclude });
+  }
+  static costChangeCount(receivingId: string, tx?: Prisma.TransactionClient) {
+    return (tx ?? prisma).serviceAudit.count({
+      where: {
+        recordType: ServiceAuditRecordType.PRODUCT,
+        action: ServiceAuditAction.CHANGE_PRICE,
+        afterValues: { path: ['supplierReceivingId'], equals: receivingId },
+      },
+    });
   }
   /** The correction paths read only what they may act on: metadata, status, and the lines to reverse. */
   static findForCorrection(id: string, tx: Prisma.TransactionClient) {

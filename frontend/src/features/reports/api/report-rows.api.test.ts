@@ -17,6 +17,9 @@ describe('reportRowsApi', () => {
 
     await reportRowsApi.get('suppliers-financial-integrity', { period: 'lastMonth' });
     expect(apiMock.get).toHaveBeenCalledWith('/reports/suppliers/financial-integrity', { params: { period: 'lastMonth' } });
+
+    await reportRowsApi.get('products-cost-changes', { period: 'lastMonth' });
+    expect(apiMock.get).toHaveBeenCalledWith('/reports/products/cost-changes', { params: { period: 'lastMonth' } });
   });
 
   it('exports the selected custom slice without changing its range', async () => {

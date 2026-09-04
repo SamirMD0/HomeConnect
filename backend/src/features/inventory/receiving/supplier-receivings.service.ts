@@ -176,7 +176,10 @@ export class SupplierReceivingsService {
     assertRole(user);
     const receiving = await SupplierReceivingsRepository.findById(id);
     if (!receiving) throw new NotFoundError('Receiving not found / مستند الاستلام غير موجود');
-    return serializeReceiving(receiving);
+    const costPriceReviewCount = user.role === Role.ADMIN
+      ? await SupplierReceivingsRepository.costChangeCount(id)
+      : 0;
+    return { ...serializeReceiving(receiving), costPriceReviewCount };
   }
 
   static async duplicateCheck(input: SupplierReceivingDuplicateInput, user: InventoryUser) {
@@ -353,7 +356,8 @@ function assertAdmin(user: InventoryUser, capability: string): void {
 async function loadDetail(id: string, tx: Prisma.TransactionClient) {
   const result = await SupplierReceivingsRepository.findById(id, tx);
   if (!result) throw new NotFoundError('Receiving not found / مستند الاستلام غير موجود');
-  return serializeReceiving(result);
+  const costPriceReviewCount = await SupplierReceivingsRepository.costChangeCount(id, tx);
+  return { ...serializeReceiving(result), costPriceReviewCount };
 }
 
 async function writeReceivingAudit(

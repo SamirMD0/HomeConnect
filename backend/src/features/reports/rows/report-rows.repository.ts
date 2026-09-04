@@ -36,6 +36,23 @@ export interface SupplierFinancialIntegrityEvidence {
   transactionCount: number;
 }
 
+export interface ProductCostChangeEvidence {
+  auditId: string;
+  changedAt: Date;
+  productId: string;
+  productName: string;
+  productSku: string;
+  oldCost: string | null;
+  newCost: string | null;
+  costSource: string | null;
+  supplierTransactionId: string | null;
+  supplierReceivingId: string | null;
+  receiptNumber: string | null;
+  changedByName: string;
+  changedByUsername: string;
+  reason: string;
+}
+
 function boundaries(period: ResolvedReportsPeriod) {
   return {
     from: businessDateToPrisma(period.from),
@@ -280,6 +297,35 @@ export class ReportRowsRepository {
       },
       orderBy: [{ receivedOn: 'asc' }, { id: 'asc' }],
     });
+  }
+
+  static productCostChanges(period: ResolvedReportsPeriod) {
+    const { from, toExclusive } = boundaries(period);
+    return prisma.$queryRaw<ProductCostChangeEvidence[]>`
+      SELECT
+        audit."id" AS "auditId",
+        audit."changedAt",
+        audit."recordId" AS "productId",
+        COALESCE(product."name", 'Unknown product') AS "productName",
+        COALESCE(product."sku", '—') AS "productSku",
+        audit."beforeValues" ->> 'costPrice' AS "oldCost",
+        audit."afterValues" ->> 'costPrice' AS "newCost",
+        audit."afterValues" ->> 'costSource' AS "costSource",
+        audit."afterValues" ->> 'supplierTransactionId' AS "supplierTransactionId",
+        audit."afterValues" ->> 'supplierReceivingId' AS "supplierReceivingId",
+        audit."afterValues" ->> 'receiptNumber' AS "receiptNumber",
+        audit."changedByName",
+        audit."changedByUsername",
+        audit."reason"
+      FROM "service_audits" audit
+      LEFT JOIN "products" product ON product."id" = audit."recordId"
+      WHERE audit."recordType" = 'PRODUCT'
+        AND audit."action" = 'CHANGE_PRICE'
+        AND (audit."beforeValues" ? 'costPrice' OR audit."afterValues" ? 'costPrice')
+        AND audit."changedAt" >= ${from}
+        AND audit."changedAt" < ${toExclusive}
+      ORDER BY audit."changedAt" ASC, audit."id" ASC
+    `;
   }
 
   /**

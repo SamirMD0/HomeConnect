@@ -10,7 +10,7 @@ const {
   transactionsRepository: { create: vi.fn() },
   purchasesRepository: { createLine: vi.fn(), findById: vi.fn(), findByIdempotencyKey: vi.fn(), listForSupplier: vi.fn(), findReceiptMatches: vi.fn() },
   inventoryRepository: { findProduct: vi.fn(), createMovement: vi.fn() },
-  productsRepository: { create: vi.fn(), findByBarcode: vi.fn() },
+  productsRepository: { create: vi.fn(), update: vi.fn(), findById: vi.fn(), findByBarcode: vi.fn() },
   receiving: { postSupplierReceiving: vi.fn(), assertReceivingDateNotFuture: vi.fn() },
   audits: { writeSupplierAudit: vi.fn(), writeServiceAudit: vi.fn() },
   adminVerification: { verifyAdminPassword: vi.fn() },
@@ -62,7 +62,9 @@ describe('SupplierPurchasesService.create', () => {
     process.env.BUSINESS_TIMEZONE = 'Asia/Beirut';
     tx.user.findUnique.mockResolvedValue({ fullName: 'Owner', username: 'owner' });
     suppliersRepository.findById.mockResolvedValue({ id: supplierId, name: 'TCL Distributor', isActive: true });
-    inventoryRepository.findProduct.mockResolvedValue({ id: productId, sku: 'HC-000042', name: 'TCL AC 1.5HP', isActive: true, trackStock: true, stockQuantity: 4, lowStockThreshold: null });
+    inventoryRepository.findProduct.mockResolvedValue({ id: productId, sku: 'HC-000042', name: 'TCL AC 1.5HP', isActive: true, trackStock: true, stockQuantity: 4, lowStockThreshold: null, costPrice: '200.00' });
+    productsRepository.update.mockResolvedValue({});
+    productsRepository.findById.mockResolvedValue({ id: productId, costPrice: '200.00' });
     receiving.postSupplierReceiving.mockResolvedValue({ receivingId, itemIdByProductId: new Map([[productId, itemId]]) });
     transactionsRepository.create.mockResolvedValue({ id: transactionId });
     purchasesRepository.createLine.mockResolvedValue({});
@@ -164,6 +166,48 @@ describe('SupplierPurchasesService.create', () => {
     expect(purchasesRepository.createLine).toHaveBeenCalledWith(expect.objectContaining({
       kind: SupplierPurchaseLineKind.MANUAL, productId: null, quantity: null, unitPrice: null, receivingItemId: null,
     }), tx);
+    expect(productsRepository.update).not.toHaveBeenCalled();
+  });
+
+  it('updates cost from an unreceived PRODUCT line and writes one product audit', async () => {
+    await SupplierPurchasesService.create(supplierId, purchase({ receiveStock: false }), admin, context);
+
+    expect(productsRepository.update).toHaveBeenCalledWith(productId, {
+      costPrice: expect.objectContaining({}), updatedById: admin.userId,
+    }, tx);
+    expect(productsRepository.update.mock.calls[0][1].costPrice.toFixed(2)).toBe('210.00');
+    expect(audits.writeServiceAudit).toHaveBeenCalledWith(expect.objectContaining({
+      recordId: productId,
+      action: 'CHANGE_PRICE',
+      beforeValues: { costPrice: '200.00' },
+      afterValues: expect.objectContaining({
+        costPrice: '210.00', costSource: 'SUPPLIER_PURCHASE',
+        supplierTransactionId: transactionId, supplierReceivingId: null,
+        weightedQuantity: 3, weightedLineCount: 1,
+      }),
+    }), tx);
+  });
+
+  it('uses one 2dp half-up weighted average and one audit for duplicate product lines', async () => {
+    await SupplierPurchasesService.create(supplierId, purchase({
+      receiveStock: false,
+      lines: [productLine({ quantity: 1, unitPrice: '10.00' }), productLine({ quantity: 1, unitPrice: '10.01' })],
+    }), admin, context);
+
+    expect(productsRepository.update).toHaveBeenCalledTimes(1);
+    expect(productsRepository.update.mock.calls[0][1].costPrice.toFixed(2)).toBe('10.01');
+    const costAudits = audits.writeServiceAudit.mock.calls.filter((call) => call[0].afterValues.costSource === 'SUPPLIER_PURCHASE');
+    expect(costAudits).toHaveLength(1);
+    expect(costAudits[0][0].afterValues).toMatchObject({ weightedQuantity: 2, weightedLineCount: 2 });
+  });
+
+  it('does not write cost or a cost audit when the weighted price is unchanged', async () => {
+    productsRepository.findById.mockResolvedValue({ id: productId, costPrice: '210.00' });
+
+    await SupplierPurchasesService.create(supplierId, purchase({ receiveStock: false }), admin, context);
+
+    expect(productsRepository.update).not.toHaveBeenCalled();
+    expect(audits.writeServiceAudit).not.toHaveBeenCalled();
   });
 
   it('records a priced debt with no stock movement when the goods have not arrived', async () => {

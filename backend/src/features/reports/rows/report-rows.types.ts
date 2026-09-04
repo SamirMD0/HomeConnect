@@ -13,6 +13,7 @@ export type ReportSlice =
   | 'inventory-reconciliation'
   | 'customers-financial-integrity'
   | 'suppliers-financial-integrity'
+  | 'products-cost-changes'
   | 'products-bought';
 
 export interface ReportRowsData<Row = unknown, Summary = Record<string, unknown>> {
