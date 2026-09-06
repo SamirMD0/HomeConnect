@@ -30,8 +30,10 @@ jobs:
           # Satisfying all three names at once lets CI run every suite in a
           # single pass without editing those safety checks. The suites clean up
           # only the rows they created (scoped deleteMany on their own generated
-          # ids -- no TRUNCATE, no unscoped delete), so sharing one throwaway
-          # database cannot make them interfere.
+          # ids -- no TRUNCATE, no unscoped delete). test:ci also disables
+          # cross-file parallelism because independent SERIALIZABLE transactions
+          # can still conflict through PostgreSQL predicate locks. Concurrency
+          # tests inside each file continue to run concurrently.
           POSTGRES_DB: homeconnect_ci_phase4_phase5_phase6
         ports:
           - 5432:5432
