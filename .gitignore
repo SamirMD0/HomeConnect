@@ -16,7 +16,9 @@ db-test.js
 prisma/*.db
 prisma/*.db-journal
 .vscode/
-.claude/
+.claude/*
+!.claude/home-connect-erp-upgrade/
+!.claude/home-connect-erp-upgrade/**
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
