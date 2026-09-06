@@ -43,19 +43,22 @@ describe('idempotency helpers', () => {
 });
 
 describe('transaction retry helper', () => {
-  it('retries retryable transaction errors up to success', async () => {
+  it('backs off between retryable transaction errors up to success', async () => {
     const operation = vi
       .fn<(_: number) => Promise<string>>()
       .mockRejectedValueOnce(new Error('serialization conflict'))
       .mockResolvedValueOnce('ok');
+    const retryDelayMs = vi.fn().mockReturnValue(0);
 
     await expect(
       retrySerializableTransaction(operation, {
         maxRetries: 2,
         isRetryable: () => true,
+        retryDelayMs,
       })
     ).resolves.toBe('ok');
     expect(operation).toHaveBeenCalledTimes(2);
+    expect(retryDelayMs).toHaveBeenCalledWith(0);
   });
 
   it('stops at the maximum retry limit', async () => {
@@ -65,6 +68,7 @@ describe('transaction retry helper', () => {
       retrySerializableTransaction(operation, {
         maxRetries: 1,
         isRetryable: () => true,
+        retryDelayMs: () => 0,
       })
     ).rejects.toThrow('retryable');
     expect(operation).toHaveBeenCalledTimes(2);
@@ -77,6 +81,7 @@ describe('transaction retry helper', () => {
       retrySerializableTransaction(operation, {
         maxRetries: 3,
         isRetryable: () => false,
+        retryDelayMs: () => 0,
       })
     ).rejects.toThrow('fatal');
     expect(operation).toHaveBeenCalledTimes(1);
