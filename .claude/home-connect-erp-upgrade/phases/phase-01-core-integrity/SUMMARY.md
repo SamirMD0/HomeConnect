@@ -305,6 +305,7 @@ Identical to the 2026-09-04 baseline. The one `PENDING_ONBOARDING` product (HC-0
 | Gate | Result | Where |
 |---|---|---|
 | Hosted CI on the PR | `passed=2259 failed=0 skipped=0`, 3m45s | [run 34040477880](https://github.com/SamirMD0/HomeConnect/actions/runs/34040477880) |
+| Hosted CI on `develop` workflow checkpoint `1db8b0f` | **Passed**, including migrations, typecheck, lint, all tests, zero-skip assertion, and build; 3m46s | [run 34045637764](https://github.com/SamirMD0/HomeConnect/actions/runs/34045637764) |
 | Deliberate red proof | Failed as intended, then reverted | [run 33882813349](https://github.com/SamirMD0/HomeConnect/actions/runs/33882813349) |
 | Local `test:ci`, 2026-09-06 | 275 files, 2,259 tests, **0 skipped**, 209.95s | this review |
 | Local `test:ci` on `develop`, 2026-09-06 | 276 files, 2,266 tests, **0 failed, 0 skipped**, 199.47s | disposable `homeconnect_test_phase4_phase5_phase6` database |
