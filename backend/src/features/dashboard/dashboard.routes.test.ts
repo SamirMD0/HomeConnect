@@ -12,7 +12,7 @@ const { service } = vi.hoisted(() => ({
 vi.mock('./dashboard.service', () => ({ DashboardAnalyticsService: service }));
 vi.mock('../../lib/prisma', () => ({ prisma: { $queryRaw: vi.fn().mockResolvedValue([{ result: 1 }]) }, transactionModel: {}, activityLogModel: {} }));
 
-const secret = process.env.JWT_SECRET || 'fallback_secret_key_change_in_production';
+const secret = process.env.JWT_SECRET!;
 const employee = jwt.sign({ userId: '44444444-4444-4444-8444-444444444444', role: 'EMPLOYEE' }, secret);
 const admin = jwt.sign({ userId: '55555555-5555-4555-8555-555555555555', role: 'ADMIN' }, secret);
 const envelope = { meta: { businessDate: '2026-08-01', range: { from: '2026-08-01', to: '2026-08-01', preset: 'month' }, generatedAt: new Date().toISOString(), currency: 'USD' }, data: {} };

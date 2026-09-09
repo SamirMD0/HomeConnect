@@ -145,7 +145,7 @@ describeDatabase('inventory database contract', () => {
       }, { userId: employeeId, role: 'EMPLOYEE' })).rejects.toThrow(/verified opening count/);
       expect(await prisma.stockMovement.count({ where: { productId: pendingProductId } })).toBe(0);
 
-      const secret = process.env.JWT_SECRET || 'fallback_secret_key_change_in_production';
+      const secret = process.env.JWT_SECRET!;
       const employeeToken = jwt.sign({ userId: employeeId, role: 'EMPLOYEE' }, secret);
       const adminToken = jwt.sign({ userId: adminId, role: 'ADMIN' }, secret);
       const movementUrl = `/api/v1/products/${productId}/stock-movements`;
@@ -296,5 +296,8 @@ describeDatabase('inventory database contract', () => {
       await prisma.user.deleteMany({ where: { id: { in: [adminId, employeeId] } } });
       await prisma.$disconnect();
     }
-  }, 30_000);
+  // This end-to-end database contract dynamically loads the complete app and
+  // exercises bcrypt, HTTP, constraints, reports, and cleanup. A cold Windows
+  // worker can legitimately exceed 30 seconds without a database deadlock.
+  }, 60_000);
 });

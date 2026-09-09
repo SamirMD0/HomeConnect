@@ -1,10 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { AuthenticationError } from '../lib/errors';
-import { requireEnv } from '../lib/env';
+import { requireSecretEnv } from '../lib/env';
 import { requireActiveUserSession } from '../lib/user-session-status';
 
-const JWT_SECRET = requireEnv('JWT_SECRET');
+const JWT_SECRET = requireSecretEnv('JWT_SECRET');
 
 // Extend Express Request interface to include user
 declare global {

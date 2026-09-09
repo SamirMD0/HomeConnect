@@ -13,7 +13,7 @@ vi.mock('./diagnostics.service', () => ({
   }
 }));
 
-const jwtSecret = process.env.JWT_SECRET || 'fallback_secret_key_change_in_production';
+const jwtSecret = process.env.JWT_SECRET!;
 
 const generateToken = (role: Role) => {
   return jwt.sign(

@@ -1,15 +1,17 @@
 import { PricingCalculationMode, PricingPreset, PricingRoundingMode, Product } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { calculatePricing } from '../domain/pricing-calculator';
+import { moneyToApiString } from '../../financial/domain/money';
 import { percentToApiString } from '../domain/pricing-percent';
 import { PricingConfig } from '../domain/pricing-types';
 
-export type PricingUnavailableReason = 'MISSING_COST_PRICE' | 'MISSING_PRESET' | 'NO_DEFAULT_PRESET' | 'INCOMPLETE_CUSTOM_PRICING';
+export type PricingUnavailableReason = 'MISSING_COST_PRICE' | 'MISSING_PRESET' | 'NO_DEFAULT_PRESET' | 'INCOMPLETE_CUSTOM_PRICING' | 'MANUAL_PRICE_CONFIGURED';
 export type PricingSource = 'PRESET' | 'CUSTOM' | 'DEFAULT_PRESET';
 
 export type ProductPricingRecord = Product & { pricingPreset?: PricingPreset | null };
 
 export function resolveProductPricing(product: ProductPricingRecord, defaultPreset: PricingPreset | null, installmentMonths?: number) {
+  if (!usesAutomaticPricing(product)) return unavailable('MANUAL_PRICE_CONFIGURED');
   if (!product.costPrice) return unavailable('MISSING_COST_PRICE');
 
   const resolved = product.useCustomPricing
@@ -17,7 +19,7 @@ export function resolveProductPricing(product: ProductPricingRecord, defaultPres
     : resolvePreset(product, defaultPreset, installmentMonths);
   if ('pricingAvailable' in resolved) return resolved;
 
-  const result = calculatePricing(new Decimal(product.costPrice.toString()), resolved.config);
+  const result = calculatePricing(new Decimal(product.costPrice.toString()), resolved.config, product.priceCurrency);
   return {
     pricingAvailable: true as const,
     source: resolved.source,
@@ -25,7 +27,7 @@ export function resolveProductPricing(product: ProductPricingRecord, defaultPres
     calculationMode: resolved.config.calculationMode,
     roundingMode: resolved.config.roundingMode,
     inputs: {
-      costPrice: new Decimal(product.costPrice.toString()).toFixed(2),
+      costPrice: moneyToApiString(new Decimal(product.costPrice.toString()), product.priceCurrency),
       expensePercent: percentToApiString(resolved.config.expensePercent),
       profitPercent: percentToApiString(resolved.config.profitPercent),
       discountBufferPercent: percentToApiString(resolved.config.discountBufferPercent),
@@ -51,6 +53,11 @@ export function resolveProductPricing(product: ProductPricingRecord, defaultPres
     },
     warnings: resolved.preset?.archivedAt ? ['PRESET_ARCHIVED' as const] : [],
   };
+}
+
+/** A stored manual price wins unless a preset/custom mode is explicitly selected. */
+export function usesAutomaticPricing(product: Pick<Product, 'price' | 'pricingPresetId' | 'useCustomPricing'>): boolean {
+  return product.useCustomPricing || Boolean(product.pricingPresetId) || product.price == null;
 }
 
 function resolveCustom(product: ProductPricingRecord, defaultPreset: PricingPreset | null, months?: number) {

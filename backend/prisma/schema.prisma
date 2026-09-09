@@ -715,7 +715,7 @@ model Product {
   priceCurrency                          Currency                @default(USD)
   taxProfileId                           String?                 @db.Uuid
   taxProfile                             TaxProfile?             @relation(fields: [taxProfileId], references: [id], onDelete: Restrict)
-  priceIncludesVat                       Boolean                 @default(false)
+  priceIncludesVat                       Boolean                 @default(true)
   pricingPresetId                        String?                 @db.Uuid
   pricingPreset                          PricingPreset?          @relation(fields: [pricingPresetId], references: [id], onDelete: Restrict)
   useCustomPricing                       Boolean                 @default(false)

@@ -88,13 +88,13 @@ priceIncludesVat Boolean
 @@index([taxProfileId])
 ```
 
-> **SUPERSEDED by §7.1 (approved 2026-09-03).** The owner chose *customer pays VAT on top*, which makes stored prices exclusive:
+> **SUPERSEDED by §7.1 (approved 2026-09-08).** Existing and normal retail selling prices are final customer-payable amounts:
 >
 > ```prisma
-> priceIncludesVat Boolean @default(false)
+> priceIncludesVat Boolean @default(true)
 > ```
 >
-> Backfill every existing product to `false`. See §7.1 for the reasoning and §8 for the pricing-engine work this requires.
+> The narrow product-preference migration changes existing products from `false` to `true`. It does not touch a finalized sales or purchase line, VAT snapshot, or historical monetary total. See §7.1 and §8.
 
 At finalization, tax resolution is:
 
@@ -336,34 +336,34 @@ A return references the original finalized line and reverses its stored values. 
 
 This must use the snapshot because configuration can legitimately change after the sale. If a line was sold at 11% and the profile later points to 12%, recalculation would refund tax that was never charged and corrupt both the customer refund and the VAT report. Reading the original line makes the originally charged VAT the only possible reversal amount.
 
-## 7. Business-owner decisions — ANSWERED AND APPROVED 2026-09-03
+## 7. Business-owner decisions — FINAL POLICY APPROVED 2026-09-08
 
-### 7.1 VAT is charged on top of the price — `priceIncludesVat` defaults to `false`
+### 7.1 Normal retail prices are VAT-inclusive — `priceIncludesVat` defaults to `true`
 
-**This reverses the recommendation originally written in this section.**
+This decision supersedes the 2026-09-03 exclusive-default note. Existing shelf/display prices are treated as the final amount the customer pays. A product or explicit workflow may still opt into VAT-exclusive quoting.
 
-The owner's decision: **the customer pays VAT on top; margin percentages keep their meaning.** Shelf prices rise ~11%.
+At the configured 11% rate:
 
 ```
-Cost $100, preset +50%
-  Preset output (ex-VAT)  : $150.00
-  VAT 11%                 : $ 16.50
-  Customer pays / label   : $166.50
-  Shop banks              : $150.00   margin $50.00 — as intended
+Displayed selling price   : $100.00
+Net before VAT            : $ 90.09
+VAT                       : $  9.91
+Customer pays             : $100.00
 ```
 
-The original recommendation of `true` rested on Lebanese retail quoting VAT-inclusive. That conflates **display convention** with **storage basis**. "Customer pays VAT on top" *is* the definition of exclusive pricing.
-
-- **Stored basis: exclusive.** `Product.price` and pricing-preset output are ex-VAT.
-- **Display: inclusive.** Labels, quotes, and the sales screen show the inclusive total the customer actually pays.
+- `Product.price` is interpreted using that product's `priceIncludesVat` flag.
+- Manual-price products retain their stored selling price when supplier cost changes.
+- Explicit automatic/preset products recompute their quoted selling price from cost; the quote is then split or grossed up according to `priceIncludesVat`.
+- `false` remains supported: a $100 exclusive quote at 11% produces a $111 customer total.
+- The rate is resolved from `TaxProfile`/`TaxRate`; no calculation hardcodes 11%.
 
 Therefore:
 
 ```prisma
-priceIncludesVat Boolean @default(false)
+priceIncludesVat Boolean @default(true)
 ```
 
-Backfill every existing product to `false`. Section 2.2's note about the default being deliberately unresolved is now superseded.
+Migration `20260908120000_default_retail_prices_vat_inclusive` changes only the product preference and its schema default. Historical sales/purchase snapshots remain exactly as recorded, including the zero-VAT migration backfill. Rate changes cannot alter them, and a return/reversal negates the original stored snapshot rather than resolving the current rate.
 
 ### 7.2 Standard-rated only
 
@@ -371,37 +371,21 @@ Seed `LB_STANDARD` (11.000) and `LB_ZERO` (0.000). **Do not seed or expose an EX
 
 ---
 
-## 8. Gap this design did not cover — the pricing engine
+## 8. Pricing-engine integration — CLOSED 2026-09-08
 
-Found during approval review. **This must be implemented alongside the schema, or the VAT rollout silently cuts profit.**
+The pricing engine remains the authority for calculating a quoted automatic price from cost and a preset. VAT presentation is a separate, currency-aware step.
 
-`resolveProductPricing` ([pricing-resolution.ts](backend/src/features/pricing/calculator/pricing-resolution.ts)) calls `calculatePricing` ([pricing-calculator.ts:9](backend/src/features/pricing/domain/pricing-calculator.ts#L9)), which derives `cashPrice` from cost + expense% + profit% + buffer%. **It is entirely VAT-unaware.**
+`resolveProductPricing` calls `calculatePricing` with the product currency, then `presentVatPrice` applies the resolved VAT rate and product quote mode. USD rounds to two decimals and LBP to whole units. The service returns the quote, ex-VAT amount, VAT, and customer-payable inclusive amount from the same calculation.
 
-Its output is never stored. It is computed live and feeds three customer-facing paths:
+Automatic pricing is opt-in when a product has an explicit preset or custom automatic parameters. A stored manual price with no explicit automatic configuration is authoritative even when a cost exists. Supplier receipt auditing records old/new cost, old/new displayed selling price, pricing source/preset, currency, VAT mode, source purchase/receiving, actor, reason, and timestamp.
 
-| Path | Location |
-|---|---|
-| Pricing preview | [products.service.ts:366](backend/src/features/service/products/products.service.ts#L366) |
-| **Printed shelf label** | [products.service.ts:801](backend/src/features/service/products/products.service.ts#L801) |
-| Product detail | [products.service.ts:891](backend/src/features/service/products/products.service.ts#L891) |
+Acceptance evidence is automated:
 
-Had `priceIncludesVat` defaulted to `true`, the label's $150 would have become VAT-inclusive, ex-VAT would fall to $135.14, and a "50% profit" preset would silently deliver ~35%.
-
-### Required treatment
-
-- **Do not modify `calculatePricing`.** It correctly returns an ex-VAT price derived from cost. Keeping it a pure function of cost is what makes the margin formula mean what it says.
-- **Make the presentation layer VAT-aware.** Resolve the product's effective rate, then present ex-VAT price, VAT amount, and inclusive total together.
-- **Product form shows both, live, as the owner types:** *"You receive $150.00 · Customer pays $166.50"*. This removes the inclusive/exclusive ambiguity exactly where it would otherwise cause a costly mistake.
-
-### Acceptance check for this gap
-
-Run the label preview for a preset-priced product and confirm:
-
-1. ex-VAT equals the preset output **exactly**, and
-2. inclusive equals ex-VAT × 1.11.
-
-This is the check that proves the margin is intact.
+- inclusive USD $100 at 11% = $90.09 net + $9.91 VAT = $100;
+- exclusive USD $100 at 11% = $100 net + $11 VAT = $111;
+- zero-rated, mixed quote modes, USD/LBP rounding, rate-history immutability, and original-snapshot reversal;
+- manual-price cost update, explicit automatic-price cost update, same-cost no-op, multiple lines, and transaction rollback.
 
 ---
 
-**Approved 2026-09-03. Implementation (Prompt 19) may proceed on the two blocking prerequisites below being met.**
+**Final policy approved and engineering implementation verified 2026-09-08. Production activation still requires the pending tax seed and VAT-default migrations to be applied through the normal verified-backup deployment path.**

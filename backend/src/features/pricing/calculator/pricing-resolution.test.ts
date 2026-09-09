@@ -1,4 +1,4 @@
-import { PricingCalculationMode, PricingRoundingMode } from '@prisma/client';
+import { Currency, PricingCalculationMode, PricingRoundingMode } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { describe, expect, it } from 'vitest';
 import { resolveProductPricing } from './pricing-resolution';
@@ -26,5 +26,13 @@ describe('product pricing resolution', () => {
       customCalculationMode: PricingCalculationMode.SIMPLE,
     } as never, null);
     expect(result).toMatchObject({ pricingAvailable: true, cashPrice: '318.00' });
+  });
+  it('keeps a stored manual selling price authoritative when no automatic mode is selected', () => {
+    const result = resolveProductPricing({ ...product, price: new Decimal('450'), pricingPresetId: null, pricingPreset: null } as never, preset as never);
+    expect(result).toEqual({ pricingAvailable: false, reason: 'MANUAL_PRICE_CONFIGURED' });
+  });
+  it('calculates an explicitly preset-derived LBP product at whole-unit precision', () => {
+    const result = resolveProductPricing({ ...product, priceCurrency: Currency.LBP, costPrice: new Decimal('300000') } as never, null);
+    expect(result).toMatchObject({ pricingAvailable: true, source: 'PRESET', cashPrice: '377817', inputs: { costPrice: '300000' } });
   });
 });

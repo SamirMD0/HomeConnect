@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { requireEnv } from './env';
+import { requireEnv, requireSecretEnv } from './env';
 
 const originalJwtSecret = process.env.JWT_SECRET;
 
@@ -9,6 +9,20 @@ afterEach(() => {
   } else {
     process.env.JWT_SECRET = originalJwtSecret;
   }
+});
+
+describe('requireSecretEnv', () => {
+  it('accepts a strong setup-generated-length secret', () => {
+    process.env.JWT_SECRET = 'a'.repeat(64);
+    expect(requireSecretEnv('JWT_SECRET')).toHaveLength(64);
+  });
+
+  it('rejects a weak legacy value with an actionable upgrade path', () => {
+    process.env.JWT_SECRET = 'short-secret';
+    expect(() => requireSecretEnv('JWT_SECRET')).toThrow(
+      'JWT_SECRET must be at least 32 characters. Re-run Setup-HomeConnect.ps1',
+    );
+  });
 });
 
 describe('requireEnv', () => {

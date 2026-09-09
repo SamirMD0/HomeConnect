@@ -142,7 +142,7 @@ Decisions **already made and evidenced in the code** (ADR-01 to ADR-10) are reco
 
 ## ADR-11 · Extend idempotency to purchases and receivings
 
-**Status:** Proposed · Phase 1
+**Status:** Approved and implemented · Phase 1 · clarified 2026-09-08
 
 **Context.** CP-3 / R-05. A retry or resubmit can create a duplicate payable or a **duplicate stock increase**. The `Button` disabled-on-`isLoading` guard stops the double-click, not the retry.
 
@@ -243,7 +243,7 @@ Decisions **already made and evidenced in the code** (ADR-01 to ADR-10) are reco
 
 **Reason.** Staleness is the bigger and more likely error; the audit entry preserves accountability, and the change report gives the owner oversight without blocking the counter.
 
-**Consequences.** Selling prices derived from presets will shift when costs shift — which is the intended behaviour, but the owner must be told it now happens.
+**Consequences.** A receipt may update cost automatically. A stored manual selling price does not move. Only products explicitly configured with a preset/custom automatic formula recompute their displayed selling price; every such change is recorded with old/new cost, old/new selling price, source/preset, VAT mode, currency, source purchase/receiving, actor, reason, and timestamp. Currency rounding follows the purchase/product currency (USD 2 dp, LBP 0 dp). Until cross-currency product costing is designed, a purchase and its product must use the same currency.
 
 ---
 
@@ -338,6 +338,12 @@ VAT-inclusive pricing derives VAT **by subtraction** (`priceEx = round(priceInc 
 **Reason.** No historical invoice reads `TaxRate`, so **changing a rate cannot alter one**. Same discipline as ADR-15's cost snapshot, applied to tax. It is also what makes a refund reverse the VAT actually charged rather than today's rate.
 
 **Consequences.** Exempt and zero-rated are distinct (`TaxRate.code`, not rate value). A product with no profile inherits the default - it does **not** silently become exempt. VAT reporting is a **report over snapshotted line data and requires no General Ledger** - `GENERAL_LEDGER_DECISION.md` stands unchanged.
+
+### Decision 5 - retail quote mode *(final policy approved 2026-09-08)*
+
+Existing and normal retail selling prices are VAT-inclusive by default. `Product.priceIncludesVat` remains configurable and defaults to `true`. A displayed $100 standard-rated price therefore remains the exact customer total: at 11% it is split into $90.09 net and $9.91 VAT. An explicitly VAT-exclusive $100 quote produces a $111 total.
+
+Migration `20260908120000_default_retail_prices_vat_inclusive` changes only the product preference/default. It does not rewrite finalized sales or purchase lines, their VAT snapshots, or any historical total. Returns reverse the original stored line snapshot; they never resolve today's rate. The 11% rate remains data in the append-only tax configuration, not calculation code.
 
 ---
 

@@ -268,7 +268,7 @@ export class SalesOrdersService {
         unitPrice: input.unitPrice ?? moneyToApiString(item.unitPrice),
         discountAmount: input.discountAmount === undefined ? moneyToApiString(item.discountAmount ?? '0.00') : input.discountAmount,
         taxProfileId: input.taxProfileId,
-        priceIncludesVat: input.priceIncludesVat ?? item.product?.priceIncludesVat ?? false,
+        priceIncludesVat: input.priceIncludesVat ?? item.product?.priceIncludesVat ?? true,
         notes: input.notes === undefined ? item.notes : input.notes,
       };
       const prepared = (await prepareItems([merged], existing.orderDate, tx))[0];
@@ -638,7 +638,7 @@ async function prepareItems(items: Array<{
       quotedUnitPrice: item.unitPrice,
       quantity: item.quantity,
       discountAmount: item.discountAmount,
-      priceIncludesVat: product?.priceIncludesVat ?? item.priceIncludesVat ?? false,
+      priceIncludesVat: product?.priceIncludesVat ?? item.priceIncludesVat ?? true,
       taxRatePercent: profile.taxRate.ratePercent,
       taxCode: profile.code,
     });

@@ -1,4 +1,4 @@
-import { PricingCalculationMode, PricingRoundingMode } from '@prisma/client';
+import { Currency, PricingCalculationMode, PricingRoundingMode } from '@prisma/client';
 import { z } from 'zod';
 import { isDecimalAtMost, isDecimalGreaterThan } from '../../../validators/decimal-bounds';
 
@@ -12,6 +12,8 @@ const overrideSchema = z.object({
 
 export const pricingCalculateSchema = z.object({
   costPrice: z.string().trim().regex(/^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/).refine((value) => isDecimalGreaterThan(value, 0)),
+  currency: z.nativeEnum(Currency).default(Currency.USD),
+  priceIncludesVat: z.boolean().default(true),
   presetId: z.string().uuid().optional(),
   overrides: overrideSchema.optional(),
   installmentMonths: z.coerce.number().int().min(1).max(120).optional(),

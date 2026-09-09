@@ -44,6 +44,11 @@ export interface ProductCostChangeEvidence {
   productSku: string;
   oldCost: string | null;
   newCost: string | null;
+  oldSellingPrice: string | null;
+  newSellingPrice: string | null;
+  sellingPriceSource: string | null;
+  sellingPriceChanged: boolean | null;
+  priceCurrency: string | null;
   costSource: string | null;
   supplierTransactionId: string | null;
   supplierReceivingId: string | null;
@@ -310,6 +315,11 @@ export class ReportRowsRepository {
         COALESCE(product."sku", '—') AS "productSku",
         audit."beforeValues" ->> 'costPrice' AS "oldCost",
         audit."afterValues" ->> 'costPrice' AS "newCost",
+        audit."beforeValues" ->> 'sellingPrice' AS "oldSellingPrice",
+        audit."afterValues" ->> 'sellingPrice' AS "newSellingPrice",
+        audit."afterValues" ->> 'sellingPriceSource' AS "sellingPriceSource",
+        (audit."afterValues" ->> 'sellingPriceChanged')::boolean AS "sellingPriceChanged",
+        audit."afterValues" ->> 'priceCurrency' AS "priceCurrency",
         audit."afterValues" ->> 'costSource' AS "costSource",
         audit."afterValues" ->> 'supplierTransactionId' AS "supplierTransactionId",
         audit."afterValues" ->> 'supplierReceivingId' AS "supplierReceivingId",

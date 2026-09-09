@@ -67,6 +67,7 @@ const RULES: Rule[] = [
 const BOOKKEEPING_TABLE = /^\s*UPDATE\s+"?_prisma_migrations"?\s/i;
 const PRODUCT_LABEL_AUTO_BACKFILL = /^\s*UPDATE\s+"?products"?\s+SET\s+"?labelBarcodeSource"?\s*=\s*''\s+WHERE\s+"?labelBarcodeSource"?\s*=\s*''\s+AND\s+"?barcode"?\s+IS\s+NOT\s+NULL\s*$/i;
 const PRODUCT_LABEL_AUTO_VALUES = /\bSET\s+"?labelBarcodeSource"?\s*=\s*'AUTO'\s+WHERE\s+"?labelBarcodeSource"?\s*=\s*'SKU'\s+AND\s+"?barcode"?\s+IS\s+NOT\s+NULL\b/i;
+const PRODUCT_VAT_INCLUSIVE_BACKFILL = /^\s*UPDATE\s+"?products"?\s+SET\s+"?priceIncludesVat"?\s*=\s*true\s+WHERE\s+"?priceIncludesVat"?\s*=\s*false\s*$/i;
 
 export function scanSqlForUnsafeStatements(sql: string): SqlSafetyResult {
   return scanStatements(sql, false);
@@ -124,6 +125,10 @@ function isPermittedUpdate(cleaned: string, original: string): boolean {
   // rewrite: it touches only rows still carrying the old SKU default and only
   // when a saved barcode exists. Keep this allow-list exact.
   if (PRODUCT_LABEL_AUTO_BACKFILL.test(cleaned) && PRODUCT_LABEL_AUTO_VALUES.test(original)) return true;
+  // Phase 1's reviewed VAT policy migration changes only the product-level
+  // price presentation preference. Historical order/purchase snapshots and
+  // monetary totals are deliberately outside this exact allow-list.
+  if (PRODUCT_VAT_INCLUSIVE_BACKFILL.test(cleaned)) return true;
 
   const match = /\bSET\b([\s\S]+?)\bWHERE\b([\s\S]+)$/i.exec(cleaned);
   if (!match) return false;

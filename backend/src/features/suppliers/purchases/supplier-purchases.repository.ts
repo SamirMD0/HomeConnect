@@ -86,7 +86,7 @@ export class SupplierPurchasesRepository {
         status: SupplierTransactionStatus.ACTIVE,
         receiptNumber: { equals: receiptNumber, mode: 'insensitive' },
       },
-      select: { id: true, receiptNumber: true, amount: true, transactionDate: true, description: true },
+      select: { id: true, receiptNumber: true, amount: true, currency: true, transactionDate: true, description: true },
       orderBy: [{ transactionDate: 'desc' }, { createdAt: 'desc' }],
       take: 5,
     });

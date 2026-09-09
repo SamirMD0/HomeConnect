@@ -159,6 +159,8 @@ describe('ReportRowsService', () => {
       auditId: 'a1', changedAt: new Date('2026-08-15T10:00:00.000Z'),
       productId: 'p1', productName: 'AC', productSku: 'HC-1',
       oldCost: '100.00', newCost: '120.00', costSource: 'SUPPLIER_PURCHASE',
+      oldSellingPrice: '130.00', newSellingPrice: '156.00', sellingPriceSource: 'PRESET',
+      sellingPriceChanged: true, priceCurrency: 'USD',
       supplierTransactionId: 't1', supplierReceivingId: 'r1', receiptNumber: 'INV-1',
       changedByName: 'Owner', changedByUsername: 'owner', reason: 'Supplier purchase',
     }]);
@@ -168,7 +170,8 @@ describe('ReportRowsService', () => {
     expect(report.data.summary).toEqual({ count: 1, increases: 1, decreases: 0, fromPurchases: 1 });
     expect(report.data.rows[0]).toMatchObject({
       oldCost: '100.00', newCost: '120.00', percentageChange: '20.00',
-      source: 'SUPPLIER_PURCHASE', receiptNumber: 'INV-1',
+      oldSellingPrice: '130.00', newSellingPrice: '156.00', sellingPriceSource: 'PRESET',
+      sellingPriceChanged: true, priceCurrency: 'USD', source: 'SUPPLIER_PURCHASE', receiptNumber: 'INV-1',
     });
   });
 

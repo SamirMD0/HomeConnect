@@ -1,6 +1,25 @@
 # RISK REGISTER
 
-Probability and impact are assessed for **this** deployment: one shop, one PC, loopback-bound, one or two users, one developer, no CI.
+Probability and impact were originally assessed for **this** deployment: one shop, one PC, loopback-bound, one or two users, and one developer. The 2026-09-08 overlay below records Phase 1 changes, including the now-active CI pipeline.
+
+## Phase 1 remediation status — 2026-09-08
+
+This table is the current status overlay for risks whose original baseline descriptions remain below for traceability.
+
+| Risk | Current status |
+|---|---|
+| R-05 duplicate supplier writes | **Mitigated:** purchase and receiving idempotency is enforced and database-tested. |
+| R-06 stale cost / silent selling-price movement | **Mitigated:** receipts update cost in the transaction; manual prices remain fixed; explicit automatic pricing changes are currency-correct and fully audited/visible in Product Cost Changes. |
+| R-08 currency conversion | **Partially mitigated:** shared arithmetic and supplier-purchase service boundaries support USD/LBP with snapshotted exchange rates. Sales-order currency selection and full operator UI remain Phase 2 scope. |
+| R-38/R-39 VAT history and rounding | **Mitigated in code:** retail prices default inclusive; per-line currency rounding, immutable snapshots, mixed modes, zero rate, and original-snapshot reversal are tested. Production tax seed/default migrations are pending deployment. |
+| R-12/R-15 backup, restore, disk loss | **OPEN — production deployment blocker:** no off-machine checksum evidence and no timed isolated restore of real data have been performed. |
+| R-13 regression | **Mitigated:** CI and the local zero-skip database suite are active. |
+| R-14 migration failure | **Partially mitigated:** all 37 migrations passed an empty/fresh rehearsal including interrupted-migration detection; a real-data restore rehearsal remains required before deployment. |
+| R-17 JWT secret | **Mitigated in the install/upgrade path:** independent 48-byte CSPRNG access/refresh secrets are generated or repaired; weak/missing/equal secrets fail preflight/startup and are never logged or packaged. Installed production configuration still must be checked during deployment. |
+| R-20 authorization omission | **Mitigated:** a route-mount meta-test requires authentication for every private `/api/v1` router and prevents direct mutating app-route bypasses, without enumerating harmless GET routes. |
+| R-22 legacy transaction API | **Mitigated in `develop`:** live count was zero before removal; table, route, screen, model, and current code references are absent. Owner approval for visible screen removal remains a production blocker. |
+
+Engineering verdict: **COMPLETE WITH DEPLOYMENT FOLLOW-UP**. This is permission to review/start Phase 2 coding, not permission to deploy: the pending production migrations, C4 owner sign-off, C5 off-machine backup, and C6 real restore drill remain explicit release blockers.
 
 **Probability** — Low (<10% per year) · Medium (10–40%) · High (>40%)
 **Impact** — Low (annoyance) · Medium (hours of manual repair) · High (wrong money/stock reaching a customer) · Critical (unrecoverable data loss or breach)

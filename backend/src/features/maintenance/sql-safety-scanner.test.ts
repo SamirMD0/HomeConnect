@@ -93,6 +93,13 @@ describe('sql safety scanner — allows legitimate repair SQL', () => {
     expect(scanSqlForUnsafeStatements(`UPDATE products SET "labelBarcodeSource" = 'AUTO' WHERE "labelBarcodeSource" = 'SKU';`).safe).toBe(false);
   });
 
+  it('allows only the reviewed product VAT presentation preference flip', () => {
+    const safe = `UPDATE "products" SET "priceIncludesVat" = true WHERE "priceIncludesVat" = false;`;
+    expect(scanSqlForUnsafeStatements(safe).safe).toBe(true);
+    expect(scanSqlForUnsafeStatements(`UPDATE "products" SET "priceIncludesVat" = true;`).safe).toBe(false);
+    expect(scanSqlForUnsafeStatements(`UPDATE "sales_order_lines" SET "priceIncludesVat" = true WHERE "priceIncludesVat" = false;`).safe).toBe(false);
+  });
+
   it('still rejects an UPDATE that could overwrite existing values', () => {
     expect(scanSqlForUnsafeStatements(`UPDATE "debts" SET "amount" = 0;`).safe).toBe(false);
     expect(scanSqlForUnsafeStatements(`UPDATE "debts" SET "amount" = 0 WHERE "id" = 'x';`).safe).toBe(false);

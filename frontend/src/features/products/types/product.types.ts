@@ -21,6 +21,7 @@ export interface Product {
   price: string | null;
   discount: string | null;
   netPrice: string | null;
+  priceCurrency?: 'USD' | 'LBP';
   taxProfileId?: string | null;
   priceIncludesVat?: boolean;
   isActive: boolean;
@@ -252,6 +253,6 @@ export interface ProductServiceJobsResult {
   pagination: ProductPaginationMeta;
 }
 
-export interface ProductPricingFields { costPrice?:string|null;pricingPresetId?:string|null;useCustomPricing:boolean;installmentEnabled:boolean;customExpensePercent?:string|null;customProfitPercent?:string|null;customDiscountBufferPercent?:string|null;customInstallmentMarkupPercent?:string|null;customDownPaymentPercent?:string|null;customInstallmentMonths?:number|null;customCalculationMode?:PricingCalculationMode|null;taxProfileId?:string|null;priceIncludesVat?:boolean }
+export interface ProductPricingFields { costPrice?:string|null;priceCurrency?:'USD'|'LBP';pricingPresetId?:string|null;useCustomPricing:boolean;installmentEnabled:boolean;customExpensePercent?:string|null;customProfitPercent?:string|null;customDiscountBufferPercent?:string|null;customInstallmentMarkupPercent?:string|null;customDownPaymentPercent?:string|null;customInstallmentMonths?:number|null;customCalculationMode?:PricingCalculationMode|null;taxProfileId?:string|null;priceIncludesVat?:boolean }
 export type UpdateProductPricingInput=ProductPricingInput;
 export type ProductPricingPreview=PricingPreview;

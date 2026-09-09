@@ -1,4 +1,4 @@
-import { LabelBarcodeSource, PricingCalculationMode } from '@prisma/client';
+import { Currency, LabelBarcodeSource, PricingCalculationMode } from '@prisma/client';
 import { z } from 'zod';
 import { compareMoney } from '../../financial/domain/money';
 import { isDecimalAtMost } from '../../../validators/decimal-bounds';
@@ -54,6 +54,7 @@ const positiveCost = z.preprocess(
 );
 const productPricingValues = {
   costPrice: positiveCost,
+  priceCurrency: z.nativeEnum(Currency).optional(),
   pricingPresetId: z.preprocess(emptyToNull, z.string().uuid().optional().nullable()),
   useCustomPricing: z.boolean().optional(),
   installmentEnabled: z.boolean().optional(),
@@ -120,6 +121,7 @@ export const createProductSchema = z.object({
   validateDiscount(values, context);
   validateCustomPricing(values, context);
   validateLabelBarcodeSource(values, context);
+  validateCurrencyMoney(values, context);
 });
 
 export const updateProductSchema = z
@@ -231,7 +233,18 @@ export const updateProductPricingSchema = z.object({
   const fields = Object.keys(values).filter((field) => !['reason', 'accountPassword'].includes(field));
   if (fields.length === 0) context.addIssue({ code: 'custom', message: 'At least one pricing field is required' });
   validateCustomPricing(values, context);
+  validateCurrencyMoney(values, context);
 });
+
+function validateCurrencyMoney(values: Record<string, unknown>, context: z.RefinementCtx) {
+  if (values.priceCurrency !== Currency.LBP) return;
+  for (const field of ['price', 'discount', 'costPrice'] as const) {
+    const value = values[field];
+    if (typeof value === 'string' && !/^\d+(?:\.0{1,2})?$/.test(value)) {
+      context.addIssue({ code: 'custom', path: [field], message: 'LBP money amounts must be whole numbers' });
+    }
+  }
+}
 
 function validateCustomPricing(values: Record<string, unknown>, context: z.RefinementCtx) {
   const hasPricingConfiguration = PRICING_VALUE_FIELDS.some((field) => values[field] != null)

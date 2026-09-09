@@ -100,3 +100,54 @@ export function presentExVatPrice(
     priceIncVat: result.lineTotalIncVat,
   };
 }
+
+/**
+ * Presents a configured selling price without changing what the price means.
+ * Inclusive retail prices remain the final payable amount; explicitly
+ * exclusive prices have VAT added for the customer-payable presentation.
+ */
+export function presentVatPrice(
+  quotedPrice: MoneyInput,
+  taxRatePercent: MoneyInput,
+  currency: MoneyCurrency,
+  priceIncludesVat: boolean
+) {
+  const line = calculateVatLine({
+    currency,
+    quotedUnitPrice: quotedPrice,
+    quantity: 1,
+    priceIncludesVat,
+    taxRatePercent,
+    taxCode: 'PRESENTATION',
+  });
+  return {
+    priceExVat: line.lineTotalExVat,
+    vatAmount: line.vatAmount,
+    priceIncVat: line.lineTotalIncVat,
+  };
+}
+
+export interface VatSnapshotInput {
+  taxRateSnapshot: MoneyInput;
+  taxCodeSnapshot: string | null;
+  unitPriceExVat: MoneyInput;
+  vatAmount: MoneyInput;
+  lineTotalExVat: MoneyInput;
+  lineTotalIncVat: MoneyInput;
+}
+
+/**
+ * Builds a refund/reversal from the original stored VAT snapshot. It never
+ * accepts or reads a current tax rate, so a later configuration change cannot
+ * rewrite history.
+ */
+export function reverseVatSnapshot(snapshot: VatSnapshotInput, currency: MoneyCurrency) {
+  return {
+    taxRateSnapshot: new Decimal(snapshot.taxRateSnapshot.toString()),
+    taxCodeSnapshot: snapshot.taxCodeSnapshot,
+    unitPriceExVat: roundMoney(new Decimal(snapshot.unitPriceExVat.toString()).negated(), currency, Decimal.ROUND_HALF_UP),
+    vatAmount: roundMoney(new Decimal(snapshot.vatAmount.toString()).negated(), currency, Decimal.ROUND_HALF_UP),
+    lineTotalExVat: roundMoney(new Decimal(snapshot.lineTotalExVat.toString()).negated(), currency, Decimal.ROUND_HALF_UP),
+    lineTotalIncVat: roundMoney(new Decimal(snapshot.lineTotalIncVat.toString()).negated(), currency, Decimal.ROUND_HALF_UP),
+  };
+}

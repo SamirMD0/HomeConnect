@@ -6,7 +6,7 @@ import {
 import { Decimal } from '@prisma/client/runtime/library';
 import { verifyAdminPassword } from '../../../lib/admin-verification';
 import { AppError, NotFoundError, ValidationError } from '../../../lib/errors';
-import { assertPositiveMoney, divideMoney, moneyToApiString, parseMoney, subtractMoney, sumMoney, ZERO_MONEY } from '../../financial/domain/money';
+import { assertPositiveMoney, divideMoney, moneyToApiString, parseMoney, subtractMoney, sumMoney, toBaseAmount, ZERO_MONEY } from '../../financial/domain/money';
 import { businessDateToPrisma, prismaDateToBusinessDate } from '../../financial/domain/business-date';
 import {
   assertIdempotentReplay,
@@ -16,11 +16,13 @@ import {
 import { runFinancialTransaction } from '../../financial/infrastructure/transaction';
 import { calculateVatLine } from '../../tax/domain/vat';
 import { TaxRepository } from '../../tax/tax.repository';
+import { ExchangeRatesService } from '../../financial/exchange-rates/exchange-rates.service';
 import { InventoryRepository } from '../../inventory/inventory.repository';
 import { assertReceivingDateNotFuture, postSupplierReceiving } from '../../inventory/receiving/supplier-receivings.service';
 import { ProductsRepository } from '../../service/products/products.repository';
 import { generateProductSku } from '../../service/products/product-sku';
 import { writeServiceAudit } from '../../service/audit/service-audit';
+import { resolveProductPricing, usesAutomaticPricing } from '../../pricing/calculator/pricing-resolution';
 import { writeSupplierAudit } from '../audit/supplier-audit';
 import { assertSupplierAdmin } from '../authorization/supplier-policy';
 import { SupplierMutationUser, SupplierRequestContext } from '../domain/supplier-types';
@@ -42,6 +44,7 @@ interface ResolvedLine {
   unitPriceExVat: Prisma.Decimal;
   vatAmount: Prisma.Decimal;
   lineTotalIncVat: Prisma.Decimal;
+  currency: Currency;
   /** Product lines that should move stock; manual lines never can. */
   receivesStock: boolean;
 }
@@ -68,6 +71,9 @@ export class SupplierPurchasesService {
     const receiptNumber = input.receiptNumber ?? null;
 
     return runFinancialTransaction(async (tx) => {
+      const currency = input.currency ?? Currency.USD;
+      const effectiveAt = businessDateToPrisma(input.transactionDate);
+      const exchangeRate = await ExchangeRatesService.snapshotFor(currency, effectiveAt, tx);
       const supplier = await SuppliersRepository.findById(supplierId, tx);
       if (!supplier) throw new NotFoundError('Supplier not found / المورد غير موجود');
       if (!supplier.isActive) throw new AppError('Archived suppliers cannot receive new transactions', 409, 'SUPPLIER_ARCHIVED');
@@ -106,7 +112,7 @@ export class SupplierPurchasesService {
         if (line.kind === 'MANUAL') {
           const profile = await TaxRepository.requireEffectiveProfile(line.taxProfileId, businessDateToPrisma(input.transactionDate), tx);
           const vat = calculateVatLine({
-            currency: Currency.USD, quotedUnitPrice: line.amount, quantity: 1,
+            currency, quotedUnitPrice: line.amount, quantity: 1,
             priceIncludesVat: line.priceIncludesVat ?? false, taxRatePercent: profile.taxRate.ratePercent, taxCode: profile.code,
           });
           lines.push({
@@ -115,16 +121,19 @@ export class SupplierPurchasesService {
             lineTotal: vat.lineTotalExVat,
             taxRateSnapshot: vat.taxRateSnapshot, taxCodeSnapshot: vat.taxCodeSnapshot,
             unitPriceExVat: vat.unitPriceExVat, vatAmount: vat.vatAmount, lineTotalIncVat: vat.lineTotalIncVat,
-            receivesStock: false,
+            receivesStock: false, currency,
           });
           continue;
         }
 
         const productId = line.kind === 'NEW_PRODUCT'
-          ? await createQuickAddProduct(line, user, context, tx)
+          ? await createQuickAddProduct(line, currency, user, context, tx)
           : line.productId;
         const product = await InventoryRepository.findProduct(productId, tx);
         if (!product) throw new NotFoundError('Product not found / المنتج غير موجود');
+        if ((product.priceCurrency ?? Currency.USD) !== currency) {
+          throw new ValidationError(`Purchase currency must match ${product.name}'s configured price currency until cross-currency product costing is enabled`);
+        }
 
         // A product that does not track stock can still be bought — it just
         // cannot be received. Refusing here is better than quietly billing for
@@ -135,7 +144,7 @@ export class SupplierPurchasesService {
 
         const profile = await TaxRepository.requireEffectiveProfile(line.taxProfileId ?? product.taxProfileId, businessDateToPrisma(input.transactionDate), tx);
         const vat = calculateVatLine({
-          currency: Currency.USD, quotedUnitPrice: line.unitPrice, quantity: line.quantity,
+          currency, quotedUnitPrice: line.unitPrice, quantity: line.quantity,
           priceIncludesVat: line.priceIncludesVat ?? false, taxRatePercent: profile.taxRate.ratePercent, taxCode: profile.code,
         });
         lines.push({
@@ -143,11 +152,11 @@ export class SupplierPurchasesService {
           productId,
           description: `${product.name} · ${product.sku}`,
           quantity: line.quantity,
-          unitPrice: parseMoney(line.unitPrice),
+          unitPrice: parseMoney(line.unitPrice, currency),
           lineTotal: vat.lineTotalExVat,
           taxRateSnapshot: vat.taxRateSnapshot, taxCodeSnapshot: vat.taxCodeSnapshot,
           unitPriceExVat: vat.unitPriceExVat, vatAmount: vat.vatAmount, lineTotalIncVat: vat.lineTotalIncVat,
-          receivesStock: input.receiveStock,
+          receivesStock: input.receiveStock, currency,
         });
       }
 
@@ -169,10 +178,10 @@ export class SupplierPurchasesService {
         itemIdByProductId = posted.itemIdByProductId;
       }
 
-      const lineSum = sumMoney(lines.map((line) => line.lineTotalIncVat));
+      const lineSum = sumMoney(lines.map((line) => line.lineTotalIncVat), currency);
       // The override is the user's stated total; the line sum is still stored on
       // the lines, so an adjusted invoice keeps both numbers visible.
-      const amount = assertPositiveMoney(input.amountOverride ?? lineSum);
+      const amount = assertPositiveMoney(input.amountOverride ?? lineSum, currency);
 
       const transaction = await SupplierTransactionsRepository.create({
         idempotencyKey,
@@ -181,6 +190,9 @@ export class SupplierPurchasesService {
         type: SupplierTransactionType.SUPPLIER_DEBT,
         direction: SupplierTransactionDirection.INCREASE_OWED,
         amount,
+        currency,
+        exchangeRate,
+        baseAmount: toBaseAmount(amount, currency, exchangeRate, Decimal.ROUND_HALF_UP),
         transactionDate: businessDateToPrisma(input.transactionDate),
         description: input.description,
         reference: input.reference ?? null,
@@ -205,9 +217,9 @@ export class SupplierPurchasesService {
       // The settled portion is a second, ordinary supplier payment rather than a
       // smaller debt: the bill must keep saying what was billed, and the balance
       // still comes from direction and amount exactly as it always has.
-      const paid = parseMoney(input.paidAmount ?? '0');
+      const paid = parseMoney(input.paidAmount ?? '0', currency);
       if (paid.greaterThan(amount)) {
-        throw new ValidationError(`Paid amount cannot exceed the purchase total of ${moneyToApiString(amount)} / المبلغ المدفوع لا يمكن أن يتجاوز إجمالي الفاتورة`);
+        throw new ValidationError(`Paid amount cannot exceed the purchase total of ${moneyToApiString(amount, currency)} / المبلغ المدفوع لا يمكن أن يتجاوز إجمالي الفاتورة`);
       }
       if (paid.greaterThan(ZERO_MONEY)) {
         await SupplierTransactionsRepository.create({
@@ -217,8 +229,11 @@ export class SupplierPurchasesService {
           type: SupplierTransactionType.SUPPLIER_PAYMENT,
           direction: SupplierTransactionDirection.DECREASE_OWED,
           amount: paid,
+          currency,
+          exchangeRate,
+          baseAmount: toBaseAmount(paid, currency, exchangeRate, Decimal.ROUND_HALF_UP),
           transactionDate: businessDateToPrisma(input.transactionDate),
-          description: paymentDescription(receiptNumber, moneyToApiString(paid)),
+          description: paymentDescription(receiptNumber, moneyToApiString(paid, currency)),
           reference: input.paymentReference ?? null,
           notes: null,
           receiptNumber,
@@ -235,6 +250,8 @@ export class SupplierPurchasesService {
           quantity: line.quantity,
           unitPrice: line.unitPrice,
           lineTotal: line.lineTotal,
+          baseUnitPrice: line.unitPrice == null ? null : toBaseAmount(line.unitPrice, currency, exchangeRate, Decimal.ROUND_HALF_UP),
+          baseLineTotal: toBaseAmount(line.lineTotal, currency, exchangeRate, Decimal.ROUND_HALF_UP),
           taxRateSnapshot: line.taxRateSnapshot,
           taxCodeSnapshot: line.taxCodeSnapshot,
           unitPriceExVat: line.unitPriceExVat,
@@ -258,8 +275,10 @@ export class SupplierPurchasesService {
         beforeValues: {},
         afterValues: {
           receiptNumber,
-          amount: moneyToApiString(amount),
-          lineSum: moneyToApiString(lineSum),
+          amount: moneyToApiString(amount, currency),
+          currency,
+          exchangeRate: exchangeRate.toFixed(6),
+          lineSum: moneyToApiString(lineSum, currency),
           amountOverride: Boolean(input.amountOverride),
           amountOverrideReason: input.amountOverride ? input.amountOverrideReason ?? null : null,
           transactionDate: input.transactionDate,
@@ -267,9 +286,9 @@ export class SupplierPurchasesService {
           lineCount: lines.length,
           stockLineCount: stockLines.length,
           quickAddedProducts: quickAddCount,
-          paidAmount: moneyToApiString(paid),
+          paidAmount: moneyToApiString(paid, currency),
           paymentReference: paid.greaterThan(ZERO_MONEY) ? input.paymentReference ?? null : null,
-          remainingOwed: moneyToApiString(subtractMoney(amount, paid)),
+          remainingOwed: moneyToApiString(subtractMoney(amount, paid, currency), currency),
         },
         requestId: context.requestId,
         ipAddress: context.ipAddress,
@@ -300,7 +319,7 @@ export class SupplierPurchasesService {
       duplicate: matches.length > 0,
       matches: matches.map((match) => ({
         ...match,
-        amount: moneyToApiString(match.amount),
+        amount: moneyToApiString(match.amount, match.currency ?? Currency.USD),
         transactionDate: prismaDateToBusinessDate(match.transactionDate),
       })),
     };
@@ -324,10 +343,10 @@ interface PurchaseCostUpdateContext {
  * rolls the product update and its audit back with the rest of the document.
  */
 async function updateProductCostsFromPurchase(input: PurchaseCostUpdateContext, tx: Prisma.TransactionClient) {
-  const byProduct = new Map<string, { quantity: number; extendedCost: Decimal; lineCount: number }>();
+  const byProduct = new Map<string, { quantity: number; extendedCost: Decimal; lineCount: number; currency: Currency }>();
   for (const line of input.lines) {
     if (line.kind !== SupplierPurchaseLineKind.PRODUCT || !line.productId || line.quantity == null || line.unitPrice == null) continue;
-    const current = byProduct.get(line.productId) ?? { quantity: 0, extendedCost: new Decimal(0), lineCount: 0 };
+    const current = byProduct.get(line.productId) ?? { quantity: 0, extendedCost: new Decimal(0), lineCount: 0, currency: line.currency };
     current.quantity += line.quantity;
     current.extendedCost = current.extendedCost.plus(line.unitPriceExVat.mul(line.quantity));
     current.lineCount += 1;
@@ -338,10 +357,13 @@ async function updateProductCostsFromPurchase(input: PurchaseCostUpdateContext, 
     if (weighted.quantity === 0) continue;
     const product = await ProductsRepository.findById(productId, tx);
     if (!product) throw new NotFoundError('Product not found / المنتج غير موجود');
-    const nextCost = divideMoney(weighted.extendedCost, new Decimal(weighted.quantity), Currency.USD, Decimal.ROUND_HALF_UP);
-    const previousCost = product.costPrice == null ? null : parseMoney(product.costPrice);
+    const nextCost = divideMoney(weighted.extendedCost, new Decimal(weighted.quantity), weighted.currency, Decimal.ROUND_HALF_UP);
+    const previousCost = product.costPrice == null ? null : parseMoney(product.costPrice, weighted.currency);
     if (previousCost?.equals(nextCost)) continue;
 
+    const defaultPreset = await ProductsRepository.findActiveDefaultPricingPreset(tx);
+    const beforePricing = sellingPriceAuditSnapshot(product, defaultPreset, weighted.currency);
+    const afterPricing = sellingPriceAuditSnapshot({ ...product, costPrice: nextCost }, defaultPreset, weighted.currency);
     await ProductsRepository.update(productId, { costPrice: nextCost, updatedById: input.user.userId }, tx);
     await writeServiceAudit({
       recordType: ServiceAuditRecordType.PRODUCT,
@@ -351,9 +373,15 @@ async function updateProductCostsFromPurchase(input: PurchaseCostUpdateContext, 
       changedByName: input.actor.fullName,
       changedByUsername: input.actor.username,
       reason: purchaseCostReason(input.receiptNumber, input.supplierTransactionId),
-      beforeValues: { costPrice: previousCost ? moneyToApiString(previousCost) : null },
+      beforeValues: {
+        costPrice: previousCost ? moneyToApiString(previousCost, weighted.currency) : null,
+        ...beforePricing,
+      },
       afterValues: {
-        costPrice: moneyToApiString(nextCost),
+        costPrice: moneyToApiString(nextCost, weighted.currency),
+        ...afterPricing,
+        sellingPriceChanged: beforePricing.sellingPrice !== afterPricing.sellingPrice,
+        priceCurrency: weighted.currency,
         costSource: 'SUPPLIER_PURCHASE',
         supplierTransactionId: input.supplierTransactionId,
         supplierReceivingId: input.supplierReceivingId,
@@ -365,6 +393,31 @@ async function updateProductCostsFromPurchase(input: PurchaseCostUpdateContext, 
       ipAddress: input.context.ipAddress,
     }, tx);
   }
+}
+
+function sellingPriceAuditSnapshot(
+  product: Awaited<ReturnType<typeof ProductsRepository.findById>> & Record<string, unknown>,
+  defaultPreset: Awaited<ReturnType<typeof ProductsRepository.findActiveDefaultPricingPreset>>,
+  currency: Currency
+) {
+  if (!product) return { sellingPrice: null, sellingPriceSource: 'UNAVAILABLE', pricingPreset: null };
+  if (!usesAutomaticPricing(product as never)) {
+    return {
+      sellingPrice: product.price == null ? null : moneyToApiString(product.price as never, currency),
+      sellingPriceSource: 'MANUAL',
+      pricingPreset: null,
+      priceIncludesVat: Boolean(product.priceIncludesVat),
+    };
+  }
+  const resolved = resolveProductPricing(product as never, defaultPreset);
+  return resolved.pricingAvailable
+    ? {
+        sellingPrice: resolved.cashPrice,
+        sellingPriceSource: resolved.source,
+        pricingPreset: resolved.preset ? { id: resolved.preset.id, name: resolved.preset.name } : null,
+        priceIncludesVat: Boolean(product.priceIncludesVat),
+      }
+    : { sellingPrice: null, sellingPriceSource: resolved.reason, pricingPreset: null, priceIncludesVat: Boolean(product.priceIncludesVat) };
 }
 
 function purchaseCostReason(receiptNumber: string | null, supplierTransactionId: string): string {
@@ -384,6 +437,7 @@ function purchaseCostReason(receiptNumber: string | null, supplierTransactionId:
  */
 async function createQuickAddProduct(
   line: { name: string; model: string; barcode?: string | null; brand?: string | null; sellingPrice?: string | null },
+  currency: Currency,
   user: SupplierMutationUser,
   context: SupplierRequestContext,
   tx: Prisma.TransactionClient
@@ -398,7 +452,8 @@ async function createQuickAddProduct(
     model: line.model,
     barcode: line.barcode ?? null,
     brand: line.brand ?? null,
-    price: line.sellingPrice ? parseMoney(line.sellingPrice) : null,
+    price: line.sellingPrice ? parseMoney(line.sellingPrice, currency) : null,
+    priceCurrency: currency,
     labelBarcodeSource: LabelBarcodeSource.AUTO,
     trackStock: true,
     stockQuantity: 0,
@@ -431,7 +486,7 @@ async function createQuickAddProduct(
     afterValues: {
       sku: product.sku, name: product.name, model: product.model, barcode: product.barcode,
       brand: product.brand, trackStock: true, stockQuantity: 0,
-      price: product.price ? moneyToApiString(product.price) : null,
+      price: product.price ? moneyToApiString(product.price, currency) : null,
     },
     requestId: context.requestId,
     ipAddress: context.ipAddress,
@@ -471,25 +526,26 @@ type PurchaseRecord = NonNullable<Awaited<ReturnType<typeof SupplierPurchasesRep
 type IdempotentPurchaseRecord = NonNullable<Awaited<ReturnType<typeof SupplierPurchasesRepository.findByIdempotencyKey>>>;
 
 function serializePurchase(purchase: PurchaseRecord) {
+  const currency = purchase.currency ?? Currency.USD;
   const lineSum = purchase.purchaseLines.length
-    ? sumMoney(purchase.purchaseLines.map((line) => line.lineTotalIncVat ?? line.lineTotal))
+    ? sumMoney(purchase.purchaseLines.map((line) => line.lineTotalIncVat ?? line.lineTotal), currency)
     : ZERO_MONEY;
   return {
     ...purchase,
-    amount: moneyToApiString(purchase.amount),
-    lineSum: moneyToApiString(lineSum),
+    amount: moneyToApiString(purchase.amount, currency),
+    lineSum: moneyToApiString(lineSum, currency),
     transactionDate: prismaDateToBusinessDate(purchase.transactionDate),
     supplierReceiving: purchase.supplierReceiving
       ? { ...purchase.supplierReceiving, receivedOn: prismaDateToBusinessDate(purchase.supplierReceiving.receivedOn) }
       : null,
     purchaseLines: purchase.purchaseLines.map((line) => ({
       ...line,
-      unitPrice: line.unitPrice ? moneyToApiString(line.unitPrice) : null,
-      lineTotal: moneyToApiString(line.lineTotal),
+      unitPrice: line.unitPrice ? moneyToApiString(line.unitPrice, currency) : null,
+      lineTotal: moneyToApiString(line.lineTotal, currency),
       taxRateSnapshot: line.taxRateSnapshot?.toFixed(3) ?? '0.000',
-      unitPriceExVat: moneyToApiString(line.unitPriceExVat ?? line.unitPrice ?? line.lineTotal),
-      vatAmount: moneyToApiString(line.vatAmount ?? ZERO_MONEY),
-      lineTotalIncVat: moneyToApiString(line.lineTotalIncVat ?? line.lineTotal),
+      unitPriceExVat: moneyToApiString(line.unitPriceExVat ?? line.unitPrice ?? line.lineTotal, currency),
+      vatAmount: moneyToApiString(line.vatAmount ?? ZERO_MONEY, currency),
+      lineTotalIncVat: moneyToApiString(line.lineTotalIncVat ?? line.lineTotal, currency),
     })),
   };
 }
@@ -507,22 +563,23 @@ async function createIncomingPurchaseFingerprint(
   createdById: string,
   tx: Prisma.TransactionClient
 ): Promise<string> {
+  const currency = input.currency ?? Currency.USD;
   const lines = [];
   const inclusiveTotals: Decimal[] = [];
   for (const line of input.lines) {
     if (line.kind === 'MANUAL') {
       const profile = await TaxRepository.requireEffectiveProfile(line.taxProfileId, businessDateToPrisma(input.transactionDate), tx);
-      const vat = calculateVatLine({ currency: Currency.USD, quotedUnitPrice: line.amount, quantity: 1, priceIncludesVat: line.priceIncludesVat ?? false, taxRatePercent: profile.taxRate.ratePercent, taxCode: profile.code });
+      const vat = calculateVatLine({ currency, quotedUnitPrice: line.amount, quantity: 1, priceIncludesVat: line.priceIncludesVat ?? false, taxRatePercent: profile.taxRate.ratePercent, taxCode: profile.code });
       inclusiveTotals.push(vat.lineTotalIncVat);
       lines.push({
         kind: 'MANUAL',
         description: line.description,
-        lineTotal: moneyToApiString(vat.lineTotalExVat),
+        lineTotal: moneyToApiString(vat.lineTotalExVat, currency),
         taxRateSnapshot: vat.taxRateSnapshot.toFixed(3),
         taxCodeSnapshot: vat.taxCodeSnapshot,
-        unitPriceExVat: moneyToApiString(vat.unitPriceExVat),
-        vatAmount: moneyToApiString(vat.vatAmount),
-        lineTotalIncVat: moneyToApiString(vat.lineTotalIncVat),
+        unitPriceExVat: moneyToApiString(vat.unitPriceExVat, currency),
+        vatAmount: moneyToApiString(vat.vatAmount, currency),
+        lineTotalIncVat: moneyToApiString(vat.lineTotalIncVat, currency),
       });
       continue;
     }
@@ -530,7 +587,7 @@ async function createIncomingPurchaseFingerprint(
     const product = line.kind === 'EXISTING_PRODUCT' ? await InventoryRepository.findProduct(line.productId, tx) : null;
     if (line.kind === 'EXISTING_PRODUCT' && !product) throw new NotFoundError('Product not found / المنتج غير موجود');
     const profile = await TaxRepository.requireEffectiveProfile(line.taxProfileId ?? product?.taxProfileId, businessDateToPrisma(input.transactionDate), tx);
-    const vat = calculateVatLine({ currency: Currency.USD, quotedUnitPrice: line.unitPrice, quantity: line.quantity, priceIncludesVat: line.priceIncludesVat ?? false, taxRatePercent: profile.taxRate.ratePercent, taxCode: profile.code });
+    const vat = calculateVatLine({ currency, quotedUnitPrice: line.unitPrice, quantity: line.quantity, priceIncludesVat: line.priceIncludesVat ?? false, taxRatePercent: profile.taxRate.ratePercent, taxCode: profile.code });
     inclusiveTotals.push(vat.lineTotalIncVat);
     const identity = line.kind === 'NEW_PRODUCT'
       ? {
@@ -539,27 +596,27 @@ async function createIncomingPurchaseFingerprint(
           model: line.model,
           barcode: line.barcode ?? null,
           brand: line.brand ?? null,
-          sellingPrice: line.sellingPrice ? moneyToApiString(parseMoney(line.sellingPrice)) : null,
+          sellingPrice: line.sellingPrice ? moneyToApiString(parseMoney(line.sellingPrice, currency), currency) : null,
         }
       : await existingProductIdentity(line.productId, tx);
     lines.push({
       kind: 'PRODUCT',
       identity,
       quantity: line.quantity,
-      unitPrice: moneyToApiString(parseMoney(line.unitPrice)),
-      lineTotal: moneyToApiString(vat.lineTotalExVat),
+      unitPrice: moneyToApiString(parseMoney(line.unitPrice, currency), currency),
+      lineTotal: moneyToApiString(vat.lineTotalExVat, currency),
       taxRateSnapshot: vat.taxRateSnapshot.toFixed(3),
       taxCodeSnapshot: vat.taxCodeSnapshot,
-      unitPriceExVat: moneyToApiString(vat.unitPriceExVat),
-      vatAmount: moneyToApiString(vat.vatAmount),
-      lineTotalIncVat: moneyToApiString(vat.lineTotalIncVat),
+      unitPriceExVat: moneyToApiString(vat.unitPriceExVat, currency),
+      vatAmount: moneyToApiString(vat.vatAmount, currency),
+      lineTotalIncVat: moneyToApiString(vat.lineTotalIncVat, currency),
       receivesStock: input.receiveStock,
     });
   }
 
-  const lineSum = sumMoney(inclusiveTotals);
-  const amount = assertPositiveMoney(input.amountOverride ?? lineSum);
-  const paidAmount = parseMoney(input.paidAmount ?? '0');
+  const lineSum = sumMoney(inclusiveTotals, currency);
+  const amount = assertPositiveMoney(input.amountOverride ?? lineSum, currency);
+  const paidAmount = parseMoney(input.paidAmount ?? '0', currency);
 
   return createIdempotencyFingerprint({
     supplierId,
@@ -569,10 +626,11 @@ async function createIncomingPurchaseFingerprint(
     reference: input.reference ?? null,
     notes: input.notes ?? null,
     receiveStock: input.receiveStock && input.lines.some((line) => line.kind !== 'MANUAL'),
-    amount: moneyToApiString(amount),
+    currency,
+    amount: moneyToApiString(amount, currency),
     amountOverride: Boolean(input.amountOverride),
     amountOverrideReason: input.amountOverride ? input.amountOverrideReason ?? null : null,
-    paidAmount: moneyToApiString(paidAmount),
+    paidAmount: moneyToApiString(paidAmount, currency),
     paymentReference: paidAmount.greaterThan(ZERO_MONEY) ? input.paymentReference ?? null : null,
     lines,
     idempotencyKey,
@@ -584,6 +642,7 @@ function createExistingPurchaseFingerprint(
   purchase: IdempotentPurchaseRecord,
   incoming: CreateSupplierPurchaseInput
 ): string {
+  const currency = purchase.currency ?? Currency.USD;
   const auditValues = jsonObject(purchase.audits[0]?.afterValues);
   const lines = purchase.purchaseLines.map((line, index) => {
     const incomingLine = incoming.lines[index];
@@ -591,12 +650,12 @@ function createExistingPurchaseFingerprint(
       return {
         kind: 'MANUAL',
         description: line.description,
-        lineTotal: moneyToApiString(line.lineTotal),
+        lineTotal: moneyToApiString(line.lineTotal, currency),
         taxRateSnapshot: line.taxRateSnapshot?.toFixed(3) ?? '0.000',
         taxCodeSnapshot: line.taxCodeSnapshot ?? null,
-        unitPriceExVat: moneyToApiString(line.unitPriceExVat ?? line.lineTotal),
-        vatAmount: moneyToApiString(line.vatAmount ?? ZERO_MONEY),
-        lineTotalIncVat: moneyToApiString(line.lineTotalIncVat ?? line.lineTotal),
+        unitPriceExVat: moneyToApiString(line.unitPriceExVat ?? line.lineTotal, currency),
+        vatAmount: moneyToApiString(line.vatAmount ?? ZERO_MONEY, currency),
+        lineTotalIncVat: moneyToApiString(line.lineTotalIncVat ?? line.lineTotal, currency),
       };
     }
 
@@ -607,20 +666,20 @@ function createExistingPurchaseFingerprint(
           model: line.product?.model ?? null,
           barcode: line.product?.barcode ?? null,
           brand: line.product?.brand ?? null,
-          sellingPrice: line.product?.price ? moneyToApiString(line.product.price) : null,
+          sellingPrice: line.product?.price ? moneyToApiString(line.product.price, currency) : null,
         }
       : { mode: 'EXISTING_PRODUCT', productId: line.productId };
     return {
       kind: 'PRODUCT',
       identity,
       quantity: line.quantity,
-      unitPrice: line.unitPrice ? moneyToApiString(line.unitPrice) : null,
-      lineTotal: moneyToApiString(line.lineTotal),
+      unitPrice: line.unitPrice ? moneyToApiString(line.unitPrice, currency) : null,
+      lineTotal: moneyToApiString(line.lineTotal, currency),
       taxRateSnapshot: line.taxRateSnapshot?.toFixed(3) ?? '0.000',
       taxCodeSnapshot: line.taxCodeSnapshot ?? null,
-      unitPriceExVat: moneyToApiString(line.unitPriceExVat ?? line.unitPrice ?? line.lineTotal),
-      vatAmount: moneyToApiString(line.vatAmount ?? ZERO_MONEY),
-      lineTotalIncVat: moneyToApiString(line.lineTotalIncVat ?? line.lineTotal),
+      unitPriceExVat: moneyToApiString(line.unitPriceExVat ?? line.unitPrice ?? line.lineTotal, currency),
+      vatAmount: moneyToApiString(line.vatAmount ?? ZERO_MONEY, currency),
+      lineTotalIncVat: moneyToApiString(line.lineTotalIncVat ?? line.lineTotal, currency),
       receivesStock: Boolean(line.receivingItemId),
     };
   });
@@ -633,10 +692,11 @@ function createExistingPurchaseFingerprint(
     reference: purchase.reference,
     notes: purchase.notes,
     receiveStock: Boolean(purchase.supplierReceivingId),
-    amount: moneyToApiString(purchase.amount),
+    currency,
+    amount: moneyToApiString(purchase.amount, currency),
     amountOverride: purchase.amountOverride,
     amountOverrideReason: purchase.amountOverrideReason,
-    paidAmount: typeof auditValues.paidAmount === 'string' ? auditValues.paidAmount : '0.00',
+    paidAmount: typeof auditValues.paidAmount === 'string' ? auditValues.paidAmount : moneyToApiString(ZERO_MONEY, currency),
     paymentReference: typeof auditValues.paymentReference === 'string' ? auditValues.paymentReference : null,
     lines,
     idempotencyKey: purchase.idempotencyKey,

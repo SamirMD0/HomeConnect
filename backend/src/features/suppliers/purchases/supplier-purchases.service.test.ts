@@ -1,21 +1,23 @@
-import { Prisma, Role, StockMovementType, SupplierPurchaseLineKind, SupplierTransactionDirection, SupplierTransactionType } from '@prisma/client';
+import { Currency, Prisma, PricingCalculationMode, PricingRoundingMode, Role, StockMovementType, SupplierPurchaseLineKind, SupplierTransactionDirection, SupplierTransactionType } from '@prisma/client';
+import { Decimal } from '@prisma/client/runtime/library';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const tx = { id: 'tx', user: { findUnique: vi.fn() } };
 const {
   suppliersRepository, transactionsRepository, purchasesRepository, inventoryRepository,
-  productsRepository, receiving, audits, adminVerification, sku, taxRepository,
+  productsRepository, receiving, audits, adminVerification, sku, taxRepository, exchangeRates,
 } = vi.hoisted(() => ({
   suppliersRepository: { findById: vi.fn() },
   transactionsRepository: { create: vi.fn() },
   purchasesRepository: { createLine: vi.fn(), findById: vi.fn(), findByIdempotencyKey: vi.fn(), listForSupplier: vi.fn(), findReceiptMatches: vi.fn() },
   inventoryRepository: { findProduct: vi.fn(), createMovement: vi.fn() },
-  productsRepository: { create: vi.fn(), update: vi.fn(), findById: vi.fn(), findByBarcode: vi.fn() },
+  productsRepository: { create: vi.fn(), update: vi.fn(), findById: vi.fn(), findByBarcode: vi.fn(), findActiveDefaultPricingPreset: vi.fn() },
   receiving: { postSupplierReceiving: vi.fn(), assertReceivingDateNotFuture: vi.fn() },
   audits: { writeSupplierAudit: vi.fn(), writeServiceAudit: vi.fn() },
   adminVerification: { verifyAdminPassword: vi.fn() },
   sku: { generateProductSku: vi.fn() },
   taxRepository: { requireEffectiveProfile: vi.fn() },
+  exchangeRates: { snapshotFor: vi.fn() },
 }));
 
 vi.mock('../suppliers/suppliers.repository', () => ({ SuppliersRepository: suppliersRepository }));
@@ -29,6 +31,7 @@ vi.mock('../../service/audit/service-audit', () => ({ writeServiceAudit: audits.
 vi.mock('../../../lib/admin-verification', () => adminVerification);
 vi.mock('../../service/products/product-sku', () => sku);
 vi.mock('../../tax/tax.repository', () => ({ TaxRepository: taxRepository }));
+vi.mock('../../financial/exchange-rates/exchange-rates.service', () => ({ ExchangeRatesService: exchangeRates }));
 vi.mock('../../financial/infrastructure/transaction', () => ({
   runFinancialTransaction: vi.fn((operation: (client: unknown) => unknown) => operation(tx)),
 }));
@@ -42,6 +45,26 @@ const productId = '33333333-3333-4333-8333-333333333333';
 const transactionId = '44444444-4444-4444-8444-444444444444';
 const receivingId = '55555555-5555-4555-8555-555555555555';
 const itemId = '66666666-6666-4666-8666-666666666666';
+const preset = {
+  id: '77777777-7777-4777-8777-777777777777', name: 'Automatic retail', productType: null,
+  expensePercent: new Decimal(0), profitPercent: new Decimal(10), discountBufferPercent: new Decimal(0),
+  installmentMarkupPercent: new Decimal(0), downPaymentPercent: new Decimal(100), defaultInstallmentMonths: 1,
+  calculationMode: PricingCalculationMode.SIMPLE, roundingMode: PricingRoundingMode.NONE,
+  isDefault: false, isActive: true, notes: null, archivedAt: null, archivedReason: null,
+  createdById: admin.userId, updatedById: null, createdAt: new Date(), updatedAt: new Date(),
+};
+
+const pricingProduct = (overrides: Record<string, unknown> = {}) => ({
+  id: productId, sku: 'HC-000042', name: 'TCL AC 1.5HP', model: 'A1', barcode: null, brand: null,
+  price: null, discount: null, costPrice: new Decimal('200.00'), priceCurrency: Currency.USD,
+  taxProfileId: null, priceIncludesVat: true, pricingPresetId: null, pricingPreset: null,
+  useCustomPricing: false, installmentEnabled: false, customExpensePercent: null, customProfitPercent: null,
+  customDiscountBufferPercent: null, customInstallmentMarkupPercent: null, customDownPaymentPercent: null,
+  customInstallmentMonths: null, customCalculationMode: null, labelBarcodeSource: 'AUTO', isActive: true,
+  notes: null, imageUrl: null, trackStock: true, stockQuantity: 4, lowStockThreshold: null,
+  specifications: null, specificationNotes: null, createdById: admin.userId, updatedById: null,
+  createdAt: new Date(), updatedAt: new Date(), ...overrides,
+});
 
 const today = () => new Date().toISOString().slice(0, 10);
 const productLine = (overrides = {}) => ({ kind: 'EXISTING_PRODUCT' as const, productId, quantity: 3, unitPrice: '210.00', ...overrides });
@@ -64,9 +87,11 @@ describe('SupplierPurchasesService.create', () => {
     process.env.BUSINESS_TIMEZONE = 'Asia/Beirut';
     tx.user.findUnique.mockResolvedValue({ fullName: 'Owner', username: 'owner' });
     suppliersRepository.findById.mockResolvedValue({ id: supplierId, name: 'TCL Distributor', isActive: true });
-    inventoryRepository.findProduct.mockResolvedValue({ id: productId, sku: 'HC-000042', name: 'TCL AC 1.5HP', isActive: true, trackStock: true, stockQuantity: 4, lowStockThreshold: null, costPrice: '200.00', taxProfileId: null });
+    inventoryRepository.findProduct.mockResolvedValue({ id: productId, sku: 'HC-000042', name: 'TCL AC 1.5HP', isActive: true, trackStock: true, stockQuantity: 4, lowStockThreshold: null, costPrice: '200.00', taxProfileId: null, priceCurrency: Currency.USD });
     productsRepository.update.mockResolvedValue({});
-    productsRepository.findById.mockResolvedValue({ id: productId, costPrice: '200.00' });
+    productsRepository.findById.mockResolvedValue(pricingProduct());
+    productsRepository.findActiveDefaultPricingPreset.mockResolvedValue(null);
+    exchangeRates.snapshotFor.mockResolvedValue(new Decimal(1));
     receiving.postSupplierReceiving.mockResolvedValue({ receivingId, itemIdByProductId: new Map([[productId, itemId]]) });
     transactionsRepository.create.mockResolvedValue({ id: transactionId });
     purchasesRepository.createLine.mockResolvedValue({});
@@ -215,7 +240,7 @@ describe('SupplierPurchasesService.create', () => {
     expect(audits.writeServiceAudit).toHaveBeenCalledWith(expect.objectContaining({
       recordId: productId,
       action: 'CHANGE_PRICE',
-      beforeValues: { costPrice: '200.00' },
+      beforeValues: expect.objectContaining({ costPrice: '200.00' }),
       afterValues: expect.objectContaining({
         costPrice: '210.00', costSource: 'SUPPLIER_PURCHASE',
         supplierTransactionId: transactionId, supplierReceivingId: null,
@@ -238,12 +263,53 @@ describe('SupplierPurchasesService.create', () => {
   });
 
   it('does not write cost or a cost audit when the weighted price is unchanged', async () => {
-    productsRepository.findById.mockResolvedValue({ id: productId, costPrice: '210.00' });
+    productsRepository.findById.mockResolvedValue(pricingProduct({ costPrice: new Decimal('210.00') }));
 
     await SupplierPurchasesService.create(supplierId, purchase({ receiveStock: false }), admin, context);
 
     expect(productsRepository.update).not.toHaveBeenCalled();
     expect(audits.writeServiceAudit).not.toHaveBeenCalled();
+  });
+
+  it('updates cost but preserves a stored manual selling price and records that decision', async () => {
+    productsRepository.findById.mockResolvedValue(pricingProduct({ price: new Decimal('450.00') }));
+
+    await SupplierPurchasesService.create(supplierId, purchase({ receiveStock: false }), admin, context);
+
+    expect(productsRepository.update.mock.calls[0][1].costPrice.toFixed(2)).toBe('210.00');
+    expect(productsRepository.update.mock.calls[0][1]).not.toHaveProperty('price');
+    expect(audits.writeServiceAudit).toHaveBeenCalledWith(expect.objectContaining({
+      beforeValues: expect.objectContaining({ sellingPrice: '450.00', sellingPriceSource: 'MANUAL' }),
+      afterValues: expect.objectContaining({ sellingPrice: '450.00', sellingPriceSource: 'MANUAL', sellingPriceChanged: false }),
+    }), tx);
+  });
+
+  it('audits old and new selling prices for an explicitly preset-derived product', async () => {
+    productsRepository.findById.mockResolvedValue(pricingProduct({ pricingPresetId: preset.id, pricingPreset: preset }));
+
+    await SupplierPurchasesService.create(supplierId, purchase({ receiveStock: false }), admin, context);
+
+    expect(audits.writeServiceAudit).toHaveBeenCalledWith(expect.objectContaining({
+      beforeValues: expect.objectContaining({ sellingPrice: '220.00', sellingPriceSource: 'PRESET', pricingPreset: { id: preset.id, name: preset.name } }),
+      afterValues: expect.objectContaining({ sellingPrice: '231.00', sellingPriceSource: 'PRESET', sellingPriceChanged: true, priceIncludesVat: true }),
+    }), tx);
+  });
+
+  it('uses LBP whole-unit VAT and cost rounding for an LBP purchase', async () => {
+    exchangeRates.snapshotFor.mockResolvedValue(new Decimal('90000'));
+    inventoryRepository.findProduct.mockResolvedValue({ ...await inventoryRepository.findProduct(), priceCurrency: Currency.LBP });
+    productsRepository.findById.mockResolvedValue(pricingProduct({ priceCurrency: Currency.LBP, costPrice: new Decimal('80000') }));
+    taxRepository.requireEffectiveProfile.mockResolvedValue({ code: 'LB_STANDARD', taxRate: { ratePercent: '11.000' } });
+
+    await SupplierPurchasesService.create(supplierId, purchase({
+      currency: Currency.LBP, receiveStock: false,
+      lines: [productLine({ quantity: 1, unitPrice: '100000', priceIncludesVat: true })],
+    }), admin, context);
+
+    expect(productsRepository.update.mock.calls[0][1].costPrice.toFixed(0)).toBe('90090');
+    expect(transactionsRepository.create).toHaveBeenCalledWith(expect.objectContaining({
+      currency: Currency.LBP, amount: expect.objectContaining({}), baseAmount: expect.objectContaining({}),
+    }), tx);
   });
 
   it('records a priced debt with no stock movement when the goods have not arrived', async () => {

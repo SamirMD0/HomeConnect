@@ -8,7 +8,7 @@ const { repository, taxRepository } = vi.hoisted(() => ({ repository: { findById
 vi.mock('../presets/pricing-presets.repository', () => ({ PricingPresetsRepository: repository }));
 vi.mock('../../tax/tax.repository', () => ({ TaxRepository: taxRepository }));
 vi.mock('../../../lib/prisma', () => ({ prisma: { $queryRaw: vi.fn().mockResolvedValue([{ result: 1 }]) }, transactionModel: {}, activityLogModel: {} }));
-const secret = process.env.JWT_SECRET || 'fallback_secret_key_change_in_production';
+const secret = process.env.JWT_SECRET!;
 const employee = jwt.sign({ userId: '22222222-2222-4222-8222-222222222222', role: 'EMPLOYEE' }, secret);
 
 describe('pricing calculator route', () => {
@@ -22,7 +22,7 @@ describe('pricing calculator route', () => {
     expect((await request(app).post('/api/v1/pricing/calculate').send({ costPrice: '300.00' })).status).toBe(401);
     const response = await request(app).post('/api/v1/pricing/calculate').set('Authorization', `Bearer ${employee}`).send({ costPrice: '300.00' });
     expect(response.status).toBe(200);
-    expect(response.body.data).toMatchObject({ cashPrice: '377.82', cashPriceExVat: '377.82', vatAmount: '41.56', cashPriceIncVat: '419.38', installmentPrice: '453.38' });
+    expect(response.body.data).toMatchObject({ cashPrice: '377.82', cashPriceExVat: '340.38', vatAmount: '37.44', cashPriceIncVat: '377.82', installmentPrice: '453.38' });
   });
 
   it('uses an active selected preset and applies installment preview overrides', async () => {

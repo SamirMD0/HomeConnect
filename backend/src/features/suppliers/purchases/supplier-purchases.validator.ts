@@ -1,3 +1,4 @@
+import { Currency } from '@prisma/client';
 import { z } from 'zod';
 import { compareBusinessDates, parseBusinessDate, todayInBusinessTimezone } from '../../financial/domain/business-date';
 import { isPositiveMoney } from '../../financial/domain/money';
@@ -68,6 +69,7 @@ export const createSupplierPurchaseSchema = z.object({
   idempotencyKey: z.string().trim().max(128, 'Idempotency key is too long').optional().nullable(),
   receiptNumber: optionalText('Receipt number', 200),
   transactionDate: purchaseDate,
+  currency: z.nativeEnum(Currency).default(Currency.USD),
   description: userTextSchema({ field: 'Description', min: 3, max: 500 }),
   reference: optionalText('Reference', 200),
   notes: optionalText('Notes', 2000),
@@ -128,6 +130,14 @@ export const createSupplierPurchaseSchema = z.object({
   if (!input.amountOverride && input.amountOverrideReason) {
     ctx.addIssue({ code: 'custom', path: ['amountOverride'], message: 'An override reason was given without an override amount' });
   }
+
+  if (input.currency === Currency.LBP) {
+    const values = [input.amountOverride, input.paidAmount];
+    for (const line of input.lines) values.push(line.kind === 'MANUAL' ? line.amount : line.unitPrice);
+    if (values.some((value) => value != null && !/^\d+(?:\.0{1,2})?$/.test(value))) {
+      ctx.addIssue({ code: 'custom', path: ['currency'], message: 'LBP purchase amounts must be whole numbers' });
+    }
+  }
 });
 
 export const supplierPurchaseParamsSchema = z.object({ supplierId: uuid });
@@ -141,7 +151,8 @@ export const receiptCheckSchema = z.object({
   receiptNumber: z.string().trim().min(1).max(200),
 }).strict();
 
-export type CreateSupplierPurchaseInput = z.infer<typeof createSupplierPurchaseSchema>;
+type ParsedSupplierPurchaseInput = z.infer<typeof createSupplierPurchaseSchema>;
+export type CreateSupplierPurchaseInput = Omit<ParsedSupplierPurchaseInput, 'currency'> & { currency?: Currency };
 export type SupplierPurchaseLineInput = z.infer<typeof purchaseLine>;
 export type SupplierPurchaseListInput = z.infer<typeof supplierPurchaseListSchema>;
 export type ReceiptCheckInput = z.infer<typeof receiptCheckSchema>;

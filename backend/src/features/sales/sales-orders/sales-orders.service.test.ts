@@ -155,7 +155,7 @@ describe('sales order service transaction boundary', () => {
     }, user, {});
 
     expect(repository.create).toHaveBeenCalledWith(expect.objectContaining({
-      itemsSubtotal: '150.00', totalAmount: '166.50', remainingAmount: '166.50',
+      itemsSubtotal: '135.14', totalAmount: '150.00', remainingAmount: '150.00',
       items: { create: [expect.objectContaining({
         lineTotal: expect.objectContaining({}), taxRateSnapshot: expect.objectContaining({}),
         taxCodeSnapshot: 'LB_STANDARD', unitPriceExVat: expect.objectContaining({}),
@@ -163,9 +163,9 @@ describe('sales order service transaction boundary', () => {
       })] },
     }), tx);
     const line = repository.create.mock.calls.at(-1)![0].items.create[0];
-    expect(line.lineTotal.toFixed(2)).toBe('150.00');
-    expect(line.vatAmount.toFixed(2)).toBe('16.50');
-    expect(line.lineTotalIncVat.toFixed(2)).toBe('166.50');
+    expect(line.lineTotal.toFixed(2)).toBe('135.14');
+    expect(line.vatAmount.toFixed(2)).toBe('14.86');
+    expect(line.lineTotalIncVat.toFixed(2)).toBe('150.00');
   });
 
   it('INV-21 makes document VAT the exact sum of rounded line VAT instead of independently rounding the subtotal', async () => {
@@ -175,8 +175,8 @@ describe('sales order service transaction boundary', () => {
       fulfillmentStatus: SalesOrderFulfillmentStatus.DRAFT,
       paidAmount: '0.00',
       items: [
-        { manualProductName: 'Small line A', quantity: 1, unitPrice: '0.05' },
-        { manualProductName: 'Small line B', quantity: 1, unitPrice: '0.05' },
+        { manualProductName: 'Small line A', quantity: 1, unitPrice: '0.05', priceIncludesVat: false },
+        { manualProductName: 'Small line B', quantity: 1, unitPrice: '0.05', priceIncludesVat: false },
       ],
     }, user, {});
 

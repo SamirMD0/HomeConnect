@@ -15,7 +15,11 @@ const { repository, pricing, writeAudit, verify, tx } = vi.hoisted(() => {
 });
 
 vi.mock('./products.repository', () => ({ ProductsRepository: repository }));
-vi.mock('../../pricing/calculator/pricing-resolution', () => ({ resolveProductPricing: pricing.resolveProductPricing }));
+vi.mock('../../pricing/calculator/pricing-resolution', () => ({
+  resolveProductPricing: pricing.resolveProductPricing,
+  usesAutomaticPricing: (product: { price: unknown; pricingPresetId: unknown; useCustomPricing: boolean }) =>
+    product.useCustomPricing || Boolean(product.pricingPresetId) || product.price == null,
+}));
 vi.mock('../audit/service-audit', () => ({ writeServiceAudit: writeAudit }));
 vi.mock('../../../lib/admin-verification', () => ({ verifyAdminPassword: verify }));
 vi.mock('../../financial/infrastructure/transaction', () => ({ runFinancialTransaction: (operation: (client: unknown) => unknown) => operation(tx) }));

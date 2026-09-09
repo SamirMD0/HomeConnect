@@ -30,7 +30,7 @@ export interface PricingCalculationResult {
   expensesAmount: string; profitAmount: string; discountBufferAmount: string;
   priceWithoutDiscountBuffer: string; internalPriceCode: string | null;
 }
-export interface PricingCalculateInput { costPrice:string; presetId?:string; overrides?:Partial<Omit<PricingFormulaInput,'defaultInstallmentMonths'>>; installmentMonths?:number }
+export interface PricingCalculateInput { costPrice:string; currency?:'USD'|'LBP'; priceIncludesVat?:boolean; presetId?:string; overrides?:Partial<Omit<PricingFormulaInput,'defaultInstallmentMonths'>>; installmentMonths?:number }
 export interface PricingPreviewAvailable {
   pricingAvailable: true; source: PricingSource; preset:{id:string;name:string;isArchived:boolean}|null;
   calculationMode:PricingCalculationMode; roundingMode:PricingRoundingMode;
@@ -45,6 +45,7 @@ export interface PricingPreviewUnavailable { pricingAvailable:false; reason:Pric
 export type PricingPreview = PricingPreviewAvailable | PricingPreviewUnavailable;
 
 export interface ProductPricingConfigurationInput {
+  priceCurrency?:'USD'|'LBP';
   costPrice?:string|null; pricingPresetId?:string|null; useCustomPricing?:boolean; installmentEnabled?:boolean;
   customExpensePercent?:string|null; customProfitPercent?:string|null; customDiscountBufferPercent?:string|null;
   customInstallmentMarkupPercent?:string|null; customDownPaymentPercent?:string|null;

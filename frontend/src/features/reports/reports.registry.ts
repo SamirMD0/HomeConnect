@@ -109,7 +109,7 @@ export const reportDefinitions: ReportDefinition[] = [
   {
     id: 'product-cost-changes',
     title: 'Product Cost Changes / تغييرات كلفة المنتجات',
-    description: 'Audited product cost changes in the selected period, including old and new cost, percentage change, and source purchase.',
+    description: 'Audited cost changes with old/new selling price, pricing mode, actor, and source purchase.',
     icon: TrendingUp,
     category: 'inventory',
     kind: 'rows',

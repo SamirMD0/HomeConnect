@@ -128,6 +128,12 @@ All four phases are developed sequentially on `develop`. Each phase closes with 
 | **3 · Control & Intelligence** | `develop` | 10–13 | 140–165 h | Cost snapshots, expenses, **profit & margin**, valuation, financial dashboard |
 | **4 · Production Hardening** | `develop` | 14–16 | 110–130 h | E2E, concurrency, migration rehearsal, security closure, runbooks, UAT |
 
+### Phase 1 checkpoint — 2026-09-08
+
+Phase 1 engineering is **COMPLETE WITH DEPLOYMENT FOLLOW-UP**. The VAT retail default, schema/client migration path, manual-versus-automatic pricing behavior, currency-correct supplier costing, production JWT provisioning, and authorization regression guard are settled and tested. Live read-only financial and inventory integrity reports are clean.
+
+Phase 2 coding may begin on `develop` only after the owner reviews the Phase 1 report. This does **not** authorize production deployment. Before any upgrade reaches the business database, apply the two pending migrations through the normal verified-backup release procedure and close C4 (legacy-screen owner sign-off), C5 (verified off-machine backup), and C6 (timed isolated restore of real data with post-restore integrity reports and startup/RTO evidence). `main` remains unchanged.
+
 ### Branch discipline and checkpoints
 
 ```
@@ -335,7 +341,9 @@ The four months are complete when **all** of the following are true, with eviden
 
 > **If BIRD were switched off tomorrow and Home Connect were the only system, would that be a responsible decision — and could you show the evidence?**
 
-Today: **no** — no profit visibility, no printed documents, an unrehearsed restore, no CI.
+At the original baseline: **no** — no profit visibility, no printed documents, an unrehearsed restore, and no CI.
+
+At the 2026-09-08 Phase 1 checkpoint, CI and the correctness foundations are in place, but the answer remains **no for production replacement** until the off-machine backup, real-data restore/RTO rehearsal, production migration, later-phase documents/profit work, and final UAT are complete.
 
 After four months: **yes**, if the Definition of Done is met in full.
 

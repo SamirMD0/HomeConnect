@@ -1,9 +1,11 @@
 import {
+  Currency,
   PricingPreset,
   Prisma,
   Product,
   ServiceAuditAction,
   ServiceAuditRecordType,
+  Role,
 } from '@prisma/client';
 import { compareMoney, moneyToApiString, parseMoney, subtractMoney } from '../../financial/domain/money';
 import { businessDateToPrisma, todayInBusinessTimezone } from '../../financial/domain/business-date';
@@ -39,13 +41,12 @@ import {
 import { ProductsRepository } from './products.repository';
 import { normalizeScanCode } from '../../../lib/scan-code';
 import { serializeServiceJob } from '../service-jobs/service-jobs.service';
-import { resolveProductPricing } from '../../pricing/calculator/pricing-resolution';
-import { Role } from '@prisma/client';
+import { resolveProductPricing, usesAutomaticPricing } from '../../pricing/calculator/pricing-resolution';
 import { parsePricingPercent, percentToApiString } from '../../pricing/domain/pricing-percent';
 import { formatStaffLabelCode } from '../../pricing/domain/internal-price-code';
 import { generateProductSku } from './product-sku';
 import { deriveProductStockStatus, isProductOutsideInventory } from './product-stock';
-import { presentExVatPrice } from '../../tax/domain/vat';
+import { presentVatPrice } from '../../tax/domain/vat';
 
 export interface ProductScanPayload {
   id: string;
@@ -241,8 +242,8 @@ export class ProductsService {
             model: input.model,
             barcode: input.barcode ?? null,
             brand: input.brand ?? null,
-            price: moneyOrNull(input.price),
-            discount: moneyOrNull(input.discount),
+            price: moneyOrNull(input.price, input.priceCurrency),
+            discount: moneyOrNull(input.discount, input.priceCurrency),
             imageUrl: input.imageUrl ?? null,
             notes: input.notes ?? null,
             trackStock: input.trackStock ?? false,
@@ -388,7 +389,7 @@ export class ProductsService {
         const preset = await ProductsRepository.findPricingPreset(input.pricingPresetId, tx);
         assertActivePricingPreset(preset);
       }
-      const data = pricingUpdateData(input, user.userId);
+      const data = pricingUpdateData(input, user.userId, input.priceCurrency ?? existing.priceCurrency);
       assertCompleteCustomPricing({ ...existing, ...data });
       const updated = await ProductsRepository.update(id, data, tx);
       const actor = await loadActor(user.userId, tx);
@@ -424,7 +425,7 @@ export class ProductsService {
           });
           if (duplicate) throw barcodeConflict();
         }
-        const data = productUpdateData(input, user.userId);
+        const data = productUpdateData(input, user.userId, existing.priceCurrency);
         assertValidLabelBarcodeSource({
           barcode: input.barcode === undefined ? existing.barcode : input.barcode,
           labelBarcodeSource: input.labelBarcodeSource === undefined ? existing.labelBarcodeSource : input.labelBarcodeSource,
@@ -760,14 +761,14 @@ function stockSnapshot(product: Product): Prisma.InputJsonObject {
   return { trackStock: product.trackStock, stockQuantity: product.stockQuantity, lowStockThreshold: product.lowStockThreshold };
 }
 
-function productUpdateData(input: UpdateProductInput, updatedById: string): Prisma.ProductUncheckedUpdateInput {
+function productUpdateData(input: UpdateProductInput, updatedById: string, currency: Currency): Prisma.ProductUncheckedUpdateInput {
   const data: Prisma.ProductUncheckedUpdateInput = { updatedById };
   if (input.name !== undefined) data.name = input.name;
   if (input.model !== undefined) data.model = input.model;
   if (input.barcode !== undefined) data.barcode = input.barcode;
   if (input.brand !== undefined) data.brand = input.brand;
-  if (input.price !== undefined) data.price = moneyOrNull(input.price);
-  if (input.discount !== undefined) data.discount = moneyOrNull(input.discount);
+  if (input.price !== undefined) data.price = moneyOrNull(input.price, currency);
+  if (input.discount !== undefined) data.discount = moneyOrNull(input.discount, currency);
   if (input.imageUrl !== undefined) data.imageUrl = input.imageUrl;
   if (input.notes !== undefined) data.notes = input.notes;
   if (input.labelBarcodeSource !== undefined) data.labelBarcodeSource = input.labelBarcodeSource;
@@ -839,8 +840,8 @@ function toLabelPayload(product: ProductRecord, defaultPreset: PricingPreset | n
 
 export type ProductLabelPayload = ReturnType<typeof toLabelPayload>['payload'];
 
-function moneyOrNull(value?: string | null) {
-  return value == null ? null : parseMoney(value);
+function moneyOrNull(value?: string | null, currency: Currency = Currency.USD) {
+  return value == null ? null : parseMoney(value, currency);
 }
 
 function specificationsJson(entries: Array<{ label: string; value: string }>): Prisma.InputJsonArray {
@@ -884,7 +885,7 @@ function addVatPresentation(
   if (!profile || !profile.isActive || !profile.taxRate.isActive) {
     return { ...preview, vatPresentationAvailable: false as const };
   }
-  const presented = presentExVatPrice(preview.cashPrice, profile.taxRate.ratePercent, product.priceCurrency);
+  const presented = presentVatPrice(preview.cashPrice, profile.taxRate.ratePercent, product.priceCurrency, product.priceIncludesVat);
   return {
     ...preview,
     vatPresentationAvailable: true as const,
@@ -942,7 +943,7 @@ function serializeScanResult(product: Product): ProductScanPayload {
 
 function serializeProduct(product: ProductRecord, defaultPreset: Prisma.PricingPresetGetPayload<Record<string, never>> | null = null, isAdmin = false, defaultTax: TaxProfileRecord | null = null) {
   const preview = addVatPresentation(resolveProductPricing(product, defaultPreset), product, defaultTax);
-  const mode = product.costPrice != null
+  const mode = usesAutomaticPricing(product) && product.costPrice != null
     ? product.useCustomPricing ? 'CUSTOM' as const : 'PRESET' as const
     : product.price != null ? 'MANUAL' as const : 'NONE' as const;
   const pricing = preview.pricingAvailable ? {
@@ -966,7 +967,7 @@ function serializeProduct(product: ProductRecord, defaultPreset: Prisma.PricingP
       installmentMonths: preview.installment.installmentMonths,
     } : {}),
     ...(isAdmin ? { costPrice: preview.inputs.costPrice, configuration: pricingConfiguration(product) } : {}), warnings: preview.warnings,
-  } : { ...preview, mode, pricingPresetId: product.pricingPresetId, presetName: product.pricingPreset?.name ?? null, useCustomPricing: product.useCustomPricing, installmentEnabled: product.installmentEnabled, ...(isAdmin ? { costPrice: product.costPrice ? moneyToApiString(product.costPrice) : null, configuration: pricingConfiguration(product) } : {}) };
+  } : { ...preview, mode, pricingPresetId: product.pricingPresetId, presetName: product.pricingPreset?.name ?? null, useCustomPricing: product.useCustomPricing, installmentEnabled: product.installmentEnabled, ...(isAdmin ? { costPrice: product.costPrice ? moneyToApiString(product.costPrice, product.priceCurrency) : null, configuration: pricingConfiguration(product) } : {}) };
   return {
     id: product.id,
     name: product.name,
@@ -974,11 +975,12 @@ function serializeProduct(product: ProductRecord, defaultPreset: Prisma.PricingP
     barcode: product.barcode,
     sku: product.sku,
     brand: product.brand,
-    price: product.price ? moneyToApiString(product.price) : null,
-    discount: product.discount ? moneyToApiString(product.discount) : null,
+    price: product.price ? moneyToApiString(product.price, product.priceCurrency) : null,
+    discount: product.discount ? moneyToApiString(product.discount, product.priceCurrency) : null,
     netPrice: product.price && product.discount
-      ? moneyToApiString(subtractMoney(product.price, product.discount))
-      : product.price ? moneyToApiString(product.price) : null,
+      ? moneyToApiString(subtractMoney(product.price, product.discount, product.priceCurrency), product.priceCurrency)
+      : product.price ? moneyToApiString(product.price, product.priceCurrency) : null,
+    priceCurrency: product.priceCurrency,
     taxProfileId: product.taxProfileId,
     priceIncludesVat: product.priceIncludesVat,
     isActive: product.isActive,
@@ -1004,7 +1006,8 @@ function serializeProduct(product: ProductRecord, defaultPreset: Prisma.PricingP
 
 function pricingConfiguration(product: Product) {
   return {
-    costPrice: product.costPrice ? moneyToApiString(product.costPrice) : null,
+    costPrice: product.costPrice ? moneyToApiString(product.costPrice, product.priceCurrency) : null,
+    priceCurrency: product.priceCurrency,
     pricingPresetId: product.pricingPresetId, useCustomPricing: product.useCustomPricing,
     installmentEnabled: product.installmentEnabled,
     customExpensePercent: product.customExpensePercent ? percentToApiString(product.customExpensePercent) : null,
@@ -1021,14 +1024,15 @@ function pricingConfiguration(product: Product) {
 function productSnapshot(product: Product): Prisma.InputJsonObject {
   return {
     sku: product.sku, name: product.name, model: product.model, barcode: product.barcode,
-    brand: product.brand, price: product.price ? moneyToApiString(product.price) : null,
-    discount: product.discount ? moneyToApiString(product.discount) : null,
+    brand: product.brand, price: product.price ? moneyToApiString(product.price, product.priceCurrency) : null,
+    discount: product.discount ? moneyToApiString(product.discount, product.priceCurrency) : null,
+    priceCurrency: product.priceCurrency,
     isActive: product.isActive, notes: product.notes, imageUrl: product.imageUrl,
     labelBarcodeSource: product.labelBarcodeSource, trackStock: product.trackStock,
     stockQuantity: product.stockQuantity, lowStockThreshold: product.lowStockThreshold,
     specifications: (product.specifications ?? []) as Prisma.InputJsonValue,
     specificationNotes: product.specificationNotes,
-    costPrice: product.costPrice ? moneyToApiString(product.costPrice) : null,
+    costPrice: product.costPrice ? moneyToApiString(product.costPrice, product.priceCurrency) : null,
     pricingPresetId: product.pricingPresetId, useCustomPricing: product.useCustomPricing,
     installmentEnabled: product.installmentEnabled,
     customExpensePercent: product.customExpensePercent ? percentToApiString(product.customExpensePercent) : null,
@@ -1041,9 +1045,10 @@ function productSnapshot(product: Product): Prisma.InputJsonObject {
   };
 }
 
-function pricingUpdateData(input: UpdateProductPricingInput, updatedById: string): Prisma.ProductUncheckedUpdateInput {
+function pricingUpdateData(input: UpdateProductPricingInput, updatedById: string, currency: Currency): Prisma.ProductUncheckedUpdateInput {
   const data: Prisma.ProductUncheckedUpdateInput = { updatedById };
-  if (input.costPrice !== undefined) data.costPrice = input.costPrice == null ? null : parseMoney(input.costPrice);
+  if (input.costPrice !== undefined) data.costPrice = input.costPrice == null ? null : parseMoney(input.costPrice, currency);
+  if (input.priceCurrency !== undefined) data.priceCurrency = input.priceCurrency;
   if (input.pricingPresetId !== undefined) data.pricingPresetId = input.pricingPresetId;
   if (input.useCustomPricing !== undefined) data.useCustomPricing = input.useCustomPricing;
   if (input.installmentEnabled !== undefined) data.installmentEnabled = input.installmentEnabled;
@@ -1072,7 +1077,7 @@ const PRICING_VALUE_FIELDS = [
   'customDownPaymentPercent', 'customInstallmentMonths', 'customCalculationMode',
 ] as const;
 
-type ProductPricingField = typeof PRICING_VALUE_FIELDS[number] | 'useCustomPricing' | 'installmentEnabled' | 'taxProfileId' | 'priceIncludesVat';
+type ProductPricingField = typeof PRICING_VALUE_FIELDS[number] | 'priceCurrency' | 'useCustomPricing' | 'installmentEnabled' | 'taxProfileId' | 'priceIncludesVat';
 
 type ProductPricingCreateData = Partial<Pick<
   Prisma.ProductUncheckedCreateInput,
@@ -1081,7 +1086,8 @@ type ProductPricingCreateData = Partial<Pick<
 
 function pricingCreateData(input: CreateProductInput): ProductPricingCreateData {
   const data: ProductPricingCreateData = {};
-  if (input.costPrice != null) data.costPrice = parseMoney(input.costPrice);
+  if (input.costPrice != null) data.costPrice = parseMoney(input.costPrice, input.priceCurrency ?? Currency.USD);
+  if (input.priceCurrency !== undefined) data.priceCurrency = input.priceCurrency;
   if (input.pricingPresetId != null) data.pricingPresetId = input.pricingPresetId;
   if (input.useCustomPricing !== undefined) data.useCustomPricing = input.useCustomPricing;
   if (input.installmentEnabled !== undefined) data.installmentEnabled = input.installmentEnabled;

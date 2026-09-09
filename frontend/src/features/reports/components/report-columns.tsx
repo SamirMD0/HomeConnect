@@ -64,6 +64,10 @@ export function columnsFor(slice: ReportSlice): ReportColumn[] {
     nestedText('SKU', 'product', 'sku'),
     nullableMoney('Old cost / الكلفة القديمة', 'oldCost'),
     nullableMoney('New cost / الكلفة الجديدة', 'newCost'),
+    nullableMoney('Old selling / البيع القديم', 'oldSellingPrice'),
+    nullableMoney('New selling / البيع الجديد', 'newSellingPrice'),
+    text('Pricing mode / نمط التسعير', 'sellingPriceSource'),
+    booleanStatusBadge('Selling changed / تغيّر البيع', 'sellingPriceChanged'),
     percentage('Change / النسبة', 'percentageChange'),
     text('Source / المصدر', 'source'),
     text('Receipt / الفاتورة', 'receiptNumber'),
@@ -319,6 +323,18 @@ function statusBadge(label: string, key: string, isGood: (value: string) => bool
     render: (row) => {
       const value = String(record(row)[key] ?? '');
       return <span className={`inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${isGood(value) ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-800'}`}>{display(value)}</span>;
+    },
+  };
+}
+
+function booleanStatusBadge(label: string, key: string): ReportColumn {
+  return {
+    label,
+    render: (row) => {
+      const changed = record(row)[key] === true;
+      return <span className={`inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${changed ? 'bg-amber-50 text-amber-800' : 'bg-emerald-50 text-emerald-700'}`}>
+        {changed ? 'Changed / تغيّر' : 'Unchanged / لم يتغيّر'}
+      </span>;
     },
   };
 }
