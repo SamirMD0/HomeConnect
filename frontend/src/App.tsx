@@ -30,6 +30,7 @@ import { SupplierLedgerPage } from './pages/suppliers/SupplierLedgerPage';
 import { PricingPresetsPage } from './pages/pricing/PricingPresetsPage';
 import { SalesOrdersPage } from './pages/sales-orders/SalesOrdersPage';
 import { SalesOrderDetailsPage } from './pages/sales-orders/SalesOrderDetailsPage';
+import { SalesInvoicePage } from './pages/sales-orders/SalesInvoicePage';
 import { InventoryPage } from './pages/inventory/InventoryPage';
 import { InventoryOnboardingPage } from './pages/inventory/InventoryOnboardingPage';
 import { SupplierReceivingListPage } from './features/inventory/receiving/pages/SupplierReceivingListPage';
@@ -70,6 +71,7 @@ const App: React.FC = () => {
               <Route path="service/:id" element={<ServiceJobDetailsPage />} />
               <Route path="sales-orders" element={<SalesOrdersPage />} />
               <Route path="sales-orders/:id" element={<SalesOrderDetailsPage />} />
+              <Route path="sales-orders/:id/invoice" element={<SalesInvoicePage />} />
               <Route path="products" element={<ProductsPage />} />
               <Route path="products/brands" element={<BrandsPage />} />
               <Route path="inventory" element={<InventoryPage />} />

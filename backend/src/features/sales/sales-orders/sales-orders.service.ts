@@ -1,5 +1,6 @@
 import {
   Currency,
+  DeliveryTaxTreatment,
   Prisma,
   Role,
   SalesAuditAction,
@@ -73,7 +74,14 @@ export class SalesOrdersService {
             throw new NotFoundError('Customer not found');
           }
           const preparedItems = await prepareItems(input.items, businessDateToPrisma(input.orderDate), tx);
-          const totals = calculateVatAwareOrderTotals(preparedItems, input.deliveryFee, input.paidAmount);
+          const deliveryVat = await prepareDeliveryVat(
+            input.deliveryFee,
+            input.deliveryTaxTreatment ?? DeliveryTaxTreatment.STANDARD,
+            input.deliveryTaxProfileId,
+            businessDateToPrisma(input.orderDate),
+            tx
+          );
+          const totals = calculateVatAwareOrderTotals(preparedItems, deliveryVat, input.paidAmount);
           const paymentStatus = deriveSalesOrderPaymentStatus(totals.paidAmount, totals.totalAmount);
           validateCustomerRequirement(input.customerId, totals.remainingAmount, user.role === Role.ADMIN);
           validateCreateDebtTerms(input, totals.remainingAmount);
@@ -91,12 +99,12 @@ export class SalesOrdersService {
             paymentStatus,
             settlement: SalesOrderSettlement.NONE,
             itemsSubtotal: totals.itemsSubtotal,
-            deliveryFee: input.deliveryFee ?? null,
+            ...deliveryVat,
             totalAmount: totals.totalAmount,
             paidAmount: totals.paidAmount,
             remainingAmount: totals.remainingAmount,
             baseSubtotal: totals.itemsSubtotal,
-            baseDeliveryFee: input.deliveryFee ?? null,
+            baseDeliveryFee: deliveryVat.deliveryFee,
             baseTotalAmount: totals.totalAmount,
             basePaidAmount: totals.paidAmount,
             baseRemainingAmount: totals.remainingAmount,
@@ -170,12 +178,12 @@ export class SalesOrdersService {
   }
 
   static async update(id: string, input: UpdateSalesOrderInput, user: SalesMutationUser, context: SalesRequestContext) {
-    const fields = Object.keys(input).filter((field) => !['reason', 'accountPassword', 'debtDueDate'].includes(field));
+    const fields = Object.keys(input).filter((field) => !['reason', 'accountPassword', 'debtDueDate', 'deliveryTaxProfileId'].includes(field));
     if (!fields.length) throw new ValidationError('At least one sales order field is required');
     return runFinancialTransaction(async (tx) => {
       const existing = await requiredOrder(id, tx);
       assertEditable(existing);
-      const moneyOrIdentityChange = fields.some((field) => ['customerId', 'orderDate', 'deliveryFee'].includes(field));
+      const moneyOrIdentityChange = fields.some((field) => ['customerId', 'orderDate', 'deliveryFee', 'deliveryTaxTreatment'].includes(field));
       if (moneyOrIdentityChange) assertNoFinancialLink(existing);
       if (!moneyOrIdentityChange && input.debtDueDate) {
         throw new ValidationError('Debt due date is not allowed for this change');
@@ -195,15 +203,22 @@ export class SalesOrdersService {
       if (channel === SalesChannel.SHOP_DIRECT && (deliveryDate || compareMoney(deliveryFee, '0.00') !== 0)) {
         throw new ValidationError('Shop-direct orders cannot contain delivery date or fee');
       }
+      const deliveryChanged = input.deliveryFee !== undefined || input.deliveryTaxTreatment !== undefined;
+      const deliveryVat = deliveryChanged
+        ? await prepareDeliveryVat(
+            input.deliveryFee === undefined ? moneyToApiString(existing.deliveryFee ?? '0.00') : input.deliveryFee,
+            input.deliveryTaxTreatment ?? existing.deliveryTaxTreatment,
+            input.deliveryTaxProfileId,
+            businessDateToPrisma(orderDate),
+            tx
+          )
+        : null;
       let updated = await SalesOrdersRepository.update(id, {
         ...(input.customerId !== undefined ? { customerId } : {}),
         ...(input.salesChannel !== undefined ? { salesChannel: channel } : {}),
         ...(input.orderDate !== undefined ? { orderDate: businessDateToPrisma(orderDate) } : {}),
         ...(input.deliveryDate !== undefined ? { deliveryDate: dateOrNull(deliveryDate) } : {}),
-        ...(input.deliveryFee !== undefined ? {
-          deliveryFee: input.deliveryFee ?? null,
-          baseDeliveryFee: input.deliveryFee ?? null,
-        } : {}),
+        ...(deliveryVat ? { ...deliveryVat, baseDeliveryFee: deliveryVat.deliveryFee } : {}),
         ...(input.deliveryAddressSnapshot !== undefined ? { deliveryAddressSnapshot: input.deliveryAddressSnapshot } : {}),
         ...(input.deliveryNotes !== undefined ? { deliveryNotes: input.deliveryNotes } : {}),
         ...(input.notes !== undefined ? { notes: input.notes } : {}),
@@ -346,7 +361,7 @@ export class SalesOrdersService {
       assertEditable(existing);
       assertNoFinancialLink(existing);
       await requireAdminVerification(input, user, context, id, 'CHANGE_SALES_ORDER_PAYMENT', tx);
-      const totals = calculateVatAwareOrderTotals(existing.items, moneyToApiString(existing.deliveryFee ?? '0.00'), input.paidAmount);
+      const totals = calculateVatAwareOrderTotals(existing.items, deliverySnapshot(existing), input.paidAmount);
       validateCustomerRequirement(existing.customerId, totals.remainingAmount);
       const shouldCreateDebt = validateMutationDebtTerms(existing, totals.remainingAmount, input.debtDueDate);
       let updated = await SalesOrdersRepository.update(id, {
@@ -479,7 +494,7 @@ export class SalesOrdersService {
     tx: Prisma.TransactionClient
   ) {
     const order = await requiredOrder(id, tx);
-    const totals = calculateVatAwareOrderTotals(order.items, moneyToApiString(order.deliveryFee ?? '0.00'), moneyToApiString(order.paidAmount));
+    const totals = calculateVatAwareOrderTotals(order.items, deliverySnapshot(order), moneyToApiString(order.paidAmount));
     validateCustomerRequirement(order.customerId, totals.remainingAmount);
     const shouldCreateDebt = validateMutationDebtTerms(order, totals.remainingAmount, debtDueDate);
     let updated = await SalesOrdersRepository.update(id, {
@@ -666,23 +681,129 @@ async function prepareItems(items: Array<{
   }));
 }
 
+type DeliveryVatSnapshot = {
+  deliveryFee: Prisma.Decimal | string | null;
+  deliveryTaxTreatment: DeliveryTaxTreatment;
+  deliveryTaxRateSnapshot: Prisma.Decimal | string;
+  deliveryTaxCodeSnapshot: string | null;
+  deliveryFeeExVat: Prisma.Decimal | string | null;
+  deliveryVatAmount: Prisma.Decimal | string;
+  deliveryFeeIncVat: Prisma.Decimal | string | null;
+};
+
+async function prepareDeliveryVat(
+  feeInput: Prisma.Decimal | string | null | undefined,
+  treatment: DeliveryTaxTreatment,
+  taxProfileId: string | null | undefined,
+  effectiveOn: Date,
+  tx: Prisma.TransactionClient
+): Promise<DeliveryVatSnapshot> {
+  const hasFee = feeInput !== null && feeInput !== undefined;
+  const fee = parseMoney(feeInput ?? ZERO_MONEY, Currency.USD);
+  if (compareMoney(fee, ZERO_MONEY, Currency.USD) < 0) {
+    throw new ValidationError('Delivery fee cannot be negative');
+  }
+  if (!hasFee || compareMoney(fee, ZERO_MONEY, Currency.USD) === 0) {
+    return {
+      deliveryFee: hasFee ? fee : null,
+      deliveryTaxTreatment: treatment,
+      deliveryTaxRateSnapshot: new Prisma.Decimal(0),
+      deliveryTaxCodeSnapshot: treatment === DeliveryTaxTreatment.EXEMPT ? 'EXEMPT' : null,
+      deliveryFeeExVat: hasFee ? fee : null,
+      deliveryVatAmount: new Prisma.Decimal(0),
+      deliveryFeeIncVat: hasFee ? fee : null,
+    };
+  }
+
+  if (treatment === DeliveryTaxTreatment.EXEMPT) {
+    if (taxProfileId) throw new ValidationError('Exempt delivery cannot use a tax profile');
+    return deliveryVatResult(fee, treatment, '0.000', 'EXEMPT');
+  }
+
+  const profile = taxProfileId
+    ? await TaxRepository.requireEffectiveProfile(taxProfileId, effectiveOn, tx)
+    : treatment === DeliveryTaxTreatment.ZERO_RATED
+      ? await TaxRepository.requireEffectiveZeroRatedProfile(effectiveOn, tx)
+      : await TaxRepository.requireEffectiveProfile(undefined, effectiveOn, tx);
+  const isZeroRate = new Prisma.Decimal(profile.taxRate.ratePercent.toString()).equals(0);
+  if (treatment === DeliveryTaxTreatment.ZERO_RATED && !isZeroRate) {
+    throw new ValidationError('Zero-rated delivery requires a zero-rated tax profile');
+  }
+  if (treatment === DeliveryTaxTreatment.STANDARD && isZeroRate) {
+    throw new ValidationError('Standard delivery requires a non-zero tax profile');
+  }
+  return deliveryVatResult(
+    fee,
+    treatment,
+    profile.taxRate.ratePercent,
+    profile.code
+  );
+}
+
+function deliveryVatResult(
+  fee: Prisma.Decimal,
+  treatment: DeliveryTaxTreatment,
+  rate: Prisma.Decimal | string,
+  taxCode: string
+): DeliveryVatSnapshot {
+  const vat = calculateVatLine({
+    currency: Currency.USD,
+    quotedUnitPrice: fee,
+    quantity: 1,
+    priceIncludesVat: true,
+    taxRatePercent: rate,
+    taxCode,
+  });
+  return {
+    deliveryFee: vat.lineTotalIncVat,
+    deliveryTaxTreatment: treatment,
+    deliveryTaxRateSnapshot: vat.taxRateSnapshot,
+    deliveryTaxCodeSnapshot: vat.taxCodeSnapshot,
+    deliveryFeeExVat: vat.lineTotalExVat,
+    deliveryVatAmount: vat.vatAmount,
+    deliveryFeeIncVat: vat.lineTotalIncVat,
+  };
+}
+
+function deliverySnapshot(order: SalesOrderRecord): DeliveryVatSnapshot {
+  return {
+    deliveryFee: order.deliveryFee,
+    deliveryTaxTreatment: order.deliveryTaxTreatment,
+    deliveryTaxRateSnapshot: order.deliveryTaxRateSnapshot,
+    deliveryTaxCodeSnapshot: order.deliveryTaxCodeSnapshot,
+    deliveryFeeExVat: order.deliveryFeeExVat,
+    deliveryVatAmount: order.deliveryVatAmount,
+    deliveryFeeIncVat: order.deliveryFeeIncVat,
+  };
+}
+
 function calculateVatAwareOrderTotals(
-  items: Array<{ lineTotal: { toString(): string }; lineTotalIncVat?: { toString(): string } }>,
-  deliveryFeeInput?: Prisma.Decimal | string | null,
+  items: Array<{
+    lineTotal: { toString(): string };
+    vatAmount?: { toString(): string };
+    lineTotalIncVat?: { toString(): string };
+  }>,
+  delivery: DeliveryVatSnapshot,
   paidAmountInput?: Prisma.Decimal | string | null
 ) {
   if (!items.length) throw new ValidationError('At least one item is required');
   const itemsSubtotal = sumMoney(items.map((item) => item.lineTotal.toString()));
+  const itemsVatAmount = sumMoney(items.map((item) => (item.vatAmount ?? ZERO_MONEY).toString()));
   const inclusiveItemsTotal = sumMoney(items.map((item) => (item.lineTotalIncVat ?? item.lineTotal).toString()));
-  const deliveryFee = parseMoney(deliveryFeeInput ?? '0.00');
-  if (compareMoney(deliveryFee, ZERO_MONEY) < 0) throw new ValidationError('Delivery fee cannot be negative');
-  const totalAmount = sumMoney([inclusiveItemsTotal, deliveryFee]);
+  const deliveryFeeExVat = parseMoney(delivery.deliveryFeeExVat ?? ZERO_MONEY);
+  const deliveryVatAmount = parseMoney(delivery.deliveryVatAmount);
+  const deliveryFeeIncVat = parseMoney(delivery.deliveryFeeIncVat ?? ZERO_MONEY);
+  const subtotalExVat = sumMoney([itemsSubtotal, deliveryFeeExVat]);
+  const vatAmount = sumMoney([itemsVatAmount, deliveryVatAmount]);
+  const totalAmount = sumMoney([inclusiveItemsTotal, deliveryFeeIncVat]);
   const paidAmount = parseMoney(paidAmountInput ?? '0.00');
   if (compareMoney(paidAmount, ZERO_MONEY) < 0) throw new ValidationError('Paid amount cannot be negative');
   if (compareMoney(paidAmount, totalAmount) > 0) throw new ValidationError('Paid amount cannot exceed the order total');
   return {
     itemsSubtotal: moneyToApiString(itemsSubtotal),
-    deliveryFee: moneyToApiString(deliveryFee),
+    subtotalExVat: moneyToApiString(subtotalExVat),
+    vatAmount: moneyToApiString(vatAmount),
+    deliveryFee: moneyToApiString(delivery.deliveryFeeIncVat ?? ZERO_MONEY),
     totalAmount: moneyToApiString(totalAmount),
     paidAmount: moneyToApiString(paidAmount),
     remainingAmount: moneyToApiString(subtractMoney(totalAmount, paidAmount)),
@@ -802,7 +923,16 @@ function orderSnapshot(order: SalesOrderRecord): Prisma.InputJsonObject {
     fulfillmentStatus: order.fulfillmentStatus,
     paymentStatus: order.paymentStatus,
     settlement: order.settlement,
+    currency: order.currency,
+    exchangeRate: order.exchangeRate.toFixed(6),
     itemsSubtotal: moneyToApiString(order.itemsSubtotal),
+    deliveryFee: moneyToApiString(order.deliveryFee ?? ZERO_MONEY),
+    deliveryTaxTreatment: order.deliveryTaxTreatment,
+    deliveryTaxRateSnapshot: order.deliveryTaxRateSnapshot.toFixed(3),
+    deliveryTaxCodeSnapshot: order.deliveryTaxCodeSnapshot,
+    deliveryFeeExVat: moneyToApiString(order.deliveryFeeExVat ?? ZERO_MONEY),
+    deliveryVatAmount: moneyToApiString(order.deliveryVatAmount),
+    deliveryFeeIncVat: moneyToApiString(order.deliveryFeeIncVat ?? ZERO_MONEY),
     totalAmount: moneyToApiString(order.totalAmount),
     paidAmount: moneyToApiString(order.paidAmount),
     remainingAmount: moneyToApiString(order.remainingAmount),
@@ -846,18 +976,32 @@ function itemSnapshot(item: {
 }
 
 export function serializeSalesOrder(order: SalesOrderRecord) {
-  const vatAmount = sumMoney(order.items.map((item) => item.vatAmount ?? ZERO_MONEY));
+  const itemsVatAmount = sumMoney(order.items.map((item) => item.vatAmount ?? ZERO_MONEY));
+  const vatAmount = sumMoney([itemsVatAmount, order.deliveryVatAmount]);
+  const subtotalExVat = sumMoney([order.itemsSubtotal, order.deliveryFeeExVat ?? ZERO_MONEY]);
   return {
     ...order,
     orderDate: prismaDateToBusinessDate(order.orderDate),
     deliveryDate: dateString(order.deliveryDate),
     deliveredAt: dateString(order.deliveredAt),
     itemsSubtotal: moneyToApiString(order.itemsSubtotal),
+    subtotalExVat: moneyToApiString(subtotalExVat),
+    itemsVatAmount: moneyToApiString(itemsVatAmount),
     deliveryFee: moneyToApiString(order.deliveryFee ?? '0.00'),
+    deliveryTaxRateSnapshot: order.deliveryTaxRateSnapshot.toFixed(3),
+    deliveryFeeExVat: moneyToApiString(order.deliveryFeeExVat ?? ZERO_MONEY),
+    deliveryVatAmount: moneyToApiString(order.deliveryVatAmount),
+    deliveryFeeIncVat: moneyToApiString(order.deliveryFeeIncVat ?? ZERO_MONEY),
     totalAmount: moneyToApiString(order.totalAmount),
     paidAmount: moneyToApiString(order.paidAmount),
     remainingAmount: moneyToApiString(order.remainingAmount),
     vatAmount: moneyToApiString(vatAmount),
+    exchangeRate: order.exchangeRate.toFixed(6),
+    baseSubtotal: moneyToApiString(order.baseSubtotal),
+    baseDeliveryFee: moneyToApiString(order.baseDeliveryFee ?? ZERO_MONEY),
+    baseTotalAmount: moneyToApiString(order.baseTotalAmount),
+    basePaidAmount: moneyToApiString(order.basePaidAmount),
+    baseRemainingAmount: moneyToApiString(order.baseRemainingAmount),
     items: order.items.map((item) => {
       const stockFulfillments = item.stockFulfillments ?? [];
       const openingCount = item.product?.stockMovements?.[0] ?? null;

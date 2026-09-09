@@ -2,6 +2,8 @@ export type SalesChannel = 'SHOP_DIRECT' | 'SHOP_DELIVERY' | 'PHONE_ORDER';
 export type SalesOrderFulfillmentStatus = 'DRAFT' | 'CONFIRMED' | 'PREPARING' | 'READY_FOR_DELIVERY' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'CANCELLED' | 'RETURNED';
 export type SalesOrderPaymentStatus = 'UNPAID' | 'PARTIALLY_PAID' | 'PAID';
 export type SalesOrderSettlement = 'NONE' | 'DEBT' | 'INSTALLMENT';
+export type Currency = 'USD' | 'LBP';
+export type DeliveryTaxTreatment = 'STANDARD' | 'ZERO_RATED' | 'EXEMPT';
 
 export interface SalesOrderCustomer { id: string; name: string; phone: string; address: string | null; isActive: boolean }
 export interface SalesOrderActor { id: string; fullName: string; username: string }
@@ -30,7 +32,8 @@ export interface SalesOrderItem {
   productNameSnapshot: string; productModelSnapshot: string | null; skuSnapshot: string | null;
   quantity: number; unitPrice: string;
   // Reserved for a future per-line discount; the current UI always submits zero.
-  discountAmount: string; lineTotal: string; notes: string | null;
+  discountAmount: string; lineTotal: string; taxRateSnapshot: string; taxCodeSnapshot: string | null;
+  unitPriceExVat: string; vatAmount: string; lineTotalIncVat: string; notes: string | null;
   createdAt: string; updatedAt: string;
   stockFulfillments: SalesOrderStockFulfillment[];
   inventory: { state: SalesOrderInventoryState; activeFulfillmentId: string | null };
@@ -39,7 +42,12 @@ export interface SalesOrder {
   id: string; orderNumber: string; customerId: string | null; customer: SalesOrderCustomer | null;
   salesChannel: SalesChannel; orderDate: string; deliveryDate: string | null; deliveredAt: string | null;
   fulfillmentStatus: SalesOrderFulfillmentStatus; paymentStatus: SalesOrderPaymentStatus; settlement: SalesOrderSettlement;
-  itemsSubtotal: string; deliveryFee: string; totalAmount: string; paidAmount: string; remainingAmount: string;
+  currency: Currency; exchangeRate: string;
+  itemsSubtotal: string; itemsVatAmount: string; subtotalExVat: string;
+  deliveryFee: string; deliveryTaxTreatment: DeliveryTaxTreatment; deliveryTaxRateSnapshot: string;
+  deliveryTaxCodeSnapshot: string | null; deliveryFeeExVat: string; deliveryVatAmount: string; deliveryFeeIncVat: string;
+  vatAmount: string; totalAmount: string; paidAmount: string; remainingAmount: string;
+  baseSubtotal: string; baseDeliveryFee: string; baseTotalAmount: string; basePaidAmount: string; baseRemainingAmount: string;
   deliveryAddressSnapshot: string | null; deliveryNotes: string | null; notes: string | null;
   debtId: string | null; debt: { id: string; status: string; originalAmount: string; dueDate: string } | null;
   installmentPlanId: string | null; installmentPlan: { id: string; status: string; totalAmount: string; startDate: string } | null;
@@ -80,7 +88,8 @@ export interface SalesOrderLineInput {
 export interface CreateSalesOrderInput {
   customerId?: string | null; salesChannel: SalesChannel; orderDate: string;
   fulfillmentStatus?: 'DRAFT' | 'CONFIRMED' | 'DELIVERED'; deliveryDate?: string | null;
-  deliveryFee?: string | null; paidAmount: string; debtDueDate?: string | null;
+  deliveryFee?: string | null; deliveryTaxTreatment?: DeliveryTaxTreatment; deliveryTaxProfileId?: string | null;
+  paidAmount: string; debtDueDate?: string | null;
   deliveryAddressSnapshot?: string | null; deliveryNotes?: string | null; notes?: string | null;
   items: SalesOrderLineInput[];
 }

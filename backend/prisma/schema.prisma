@@ -191,6 +191,12 @@ enum SalesOrderSettlement {
   INSTALLMENT
 }
 
+enum DeliveryTaxTreatment {
+  STANDARD
+  ZERO_RATED
+  EXEMPT
+}
+
 enum SalesAuditRecordType {
   SALES_ORDER
   SALES_ORDER_ITEM
@@ -379,8 +385,26 @@ model User {
   supplierReceivingsVoided       SupplierReceiving[]          @relation("SupplierReceivingVoidedBy")
   supplierReceivingItemsReversed SupplierReceivingItem[]      @relation("ReceivingItemReversedBy")
   supplierReceivingAudits        SupplierReceivingAudit[]     @relation("SupplierReceivingAuditChangedBy")
+  businessSettingsUpdates        BusinessSettings[]            @relation("BusinessSettingsUpdatedBy")
 
   @@map("users")
+}
+
+model BusinessSettings {
+  id        String @id @default("primary")
+  shopName  String?
+  address   String? @db.Text
+  phone     String?
+  taxNumber String?
+  logoUrl   String? @db.Text
+  email     String?
+
+  updatedById String? @db.Uuid
+  updatedBy   User?   @relation("BusinessSettingsUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("business_settings")
 }
 
 model ExchangeRate {
@@ -944,6 +968,12 @@ model SalesOrder {
 
   itemsSubtotal       Decimal  @db.Decimal(12, 2)
   deliveryFee         Decimal? @db.Decimal(12, 2)
+  deliveryTaxTreatment    DeliveryTaxTreatment @default(STANDARD)
+  deliveryTaxRateSnapshot Decimal              @default(0) @db.Decimal(6, 3)
+  deliveryTaxCodeSnapshot String?
+  deliveryFeeExVat        Decimal?             @db.Decimal(12, 2)
+  deliveryVatAmount       Decimal              @default(0) @db.Decimal(12, 2)
+  deliveryFeeIncVat       Decimal?             @db.Decimal(12, 2)
   totalAmount         Decimal  @db.Decimal(12, 2)
   paidAmount          Decimal  @default(0) @db.Decimal(12, 2)
   remainingAmount     Decimal  @db.Decimal(12, 2)

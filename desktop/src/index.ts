@@ -97,6 +97,39 @@ if (!gotTheLock) {
       }
     });
 
+    ipcMain.handle('documents:exportPdf', async (event, options: {
+      suggestedName?: string;
+      paper?: string;
+      orientation?: string;
+    } = {}) => {
+      const paper = options.paper === 'LETTER' ? 'Letter' : 'A4';
+      const landscape = options.orientation === 'landscape';
+      const requestedName = typeof options.suggestedName === 'string' ? path.basename(options.suggestedName.trim()) : '';
+      const suggestedName = requestedName && requestedName.toLowerCase().endsWith('.pdf')
+        ? requestedName
+        : 'document.pdf';
+      const result = await dialog.showSaveDialog({
+        title: 'Save document as PDF',
+        defaultPath: suggestedName,
+        filters: [{ name: 'PDF', extensions: ['pdf'] }],
+      });
+      if (result.canceled || !result.filePath) return { saved: false };
+
+      try {
+        const pdf = await event.sender.printToPDF({
+          pageSize: paper,
+          landscape,
+          preferCSSPageSize: true,
+          printBackground: true,
+          margins: { marginType: 'none' },
+        });
+        await fs.promises.writeFile(result.filePath, pdf);
+        return { saved: true, path: result.filePath };
+      } catch (error) {
+        return { saved: false, error: error instanceof Error ? error.message : 'PDF export failed' };
+      }
+    });
+
     /**
      * Hands a customer-communication deep link to the OS. The URL is validated
      * in `whatsapp-link.ts` — https + `wa.me` only — before it reaches

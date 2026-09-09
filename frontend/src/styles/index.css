@@ -202,3 +202,111 @@
   .label-page:last-child { break-after: auto; page-break-after: auto; }
   .product-label { break-inside: avoid; page-break-inside: avoid; }
 }
+
+/* Shared A4 document surface. Screen and print use the same DOM; only the
+   paper shadow and surrounding application chrome change. */
+.document-page {
+  position: relative;
+  box-sizing: border-box;
+  width: min(100%, 210mm);
+  min-height: 297mm;
+  margin: 0 auto;
+  padding: 12mm;
+  overflow: visible;
+  background: #fff;
+  color: #0f172a;
+  box-shadow: 0 1px 5px rgb(15 23 42 / 0.16);
+}
+
+.document-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8mm;
+  border-bottom: 2px solid #0f766e;
+  padding-bottom: 6mm;
+}
+
+.document-logo {
+  width: 22mm;
+  height: 22mm;
+  flex: none;
+  object-fit: contain;
+}
+
+.document-logo-placeholder {
+  display: flex;
+  width: 22mm;
+  height: 22mm;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed #94a3b8;
+  color: #64748b;
+  text-align: center;
+  font-size: 8pt;
+}
+
+.document-info-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(55mm, 0.65fr);
+  gap: 8mm;
+  margin-top: 7mm;
+  border: 1px solid #cbd5e1;
+  border-radius: 2mm;
+  padding: 4mm;
+}
+
+.document-section-label { font-weight: 700; color: #0f766e; }
+.document-facts { display: grid; gap: 3mm; }
+
+.document-table {
+  width: 100%;
+  margin-top: 7mm;
+  border-collapse: collapse;
+  font-size: 9pt;
+}
+
+.document-table thead { display: table-header-group; }
+.document-table tr { break-inside: avoid; page-break-inside: avoid; }
+.document-table th { border-bottom: 1.5px solid #475569; background: #f1f5f9; padding: 2.5mm 2mm; text-align: left; vertical-align: bottom; }
+.document-table td { border-bottom: 1px solid #e2e8f0; padding: 3mm 2mm; vertical-align: top; }
+
+.document-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(78mm, 0.8fr);
+  gap: 8mm;
+  margin-top: 7mm;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.document-totals { border-top: 1.5px solid #475569; }
+.document-totals > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4mm; border-bottom: 1px solid #e2e8f0; padding: 2mm 0; font-size: 9pt; }
+.document-totals dd { text-align: right; font-weight: 600; }
+.document-total-strong { border-bottom-color: #0f766e !important; color: #0f172a; font-size: 11pt !important; font-weight: 800; }
+
+.document-notes { margin-top: 4mm; border-top: 1px solid #cbd5e1; padding-top: 3mm; font-size: 9pt; }
+.document-footer { margin-top: 2mm; border-top: 1px solid #cbd5e1; padding-top: 1mm; text-align: center; font-size: 9pt; font-weight: 700; color: #475569; }
+.document-watermark { position: absolute; inset: 42% auto auto 22%; transform: rotate(-22deg); color: rgb(185 28 28 / 0.14); font-size: 32pt; font-weight: 900; letter-spacing: 0.08em; pointer-events: none; }
+
+@media screen and (max-width: 720px) {
+  .document-page { min-height: auto; padding: 6mm; }
+  .document-header, .document-info-grid, .document-summary { grid-template-columns: 1fr; }
+  .document-header > :last-child { text-align: left; }
+  .document-table { font-size: 8pt; }
+}
+
+@media print {
+  body { background: #fff !important; }
+  .document-route { margin: 0 !important; }
+  .document-page {
+    width: auto;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+    box-shadow: none;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

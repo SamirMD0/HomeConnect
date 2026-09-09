@@ -86,6 +86,7 @@ declare global {
       openLogsFolder?: () => Promise<void>;
       copyDiagnostics?: (data: string) => Promise<void>;
       exportLabelsPdf?: (options: { suggestedName: string; paper: 'A4' | 'LETTER' }) => Promise<{ saved: boolean; path?: string; error?: string }>;
+      exportDocumentPdf?: (options: { suggestedName: string; paper: 'A4' | 'LETTER'; orientation: 'portrait' | 'landscape' }) => Promise<{ saved: boolean; path?: string; error?: string }>;
       /**
        * Customer communication: opens an `https://wa.me/...` deep link through
        * the main process, which allowlists the protocol and host. Absent when

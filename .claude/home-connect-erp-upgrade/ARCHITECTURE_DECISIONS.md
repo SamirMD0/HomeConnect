@@ -249,17 +249,17 @@ Decisions **already made and evidenced in the code** (ADR-01 to ADR-10) are reco
 
 ## ADR-17 · Documents rendered client-side, printed via the browser
 
-**Status:** Proposed · Phase 2
+**Status:** Approved 2026-09-09 · Phase 2
 
 **Context.** Invoices, receipts, and statements must be printable. None exist today.
 
-**Alternatives.** (a) Server-side PDF (Puppeteer/PDFKit) — heavy, and bundling Chromium into Electron is painful. (b) Client-side jspdf, as bulk labels already use. (c) Print-stylesheet HTML via `window.print()`.
+**Alternatives.** (a) Server-side PDF (Puppeteer/PDFKit) — heavy, and bundling Chromium into Electron is painful. (b) Client-side jsPDF. (c) Print-stylesheet HTML via `window.print()` and Electron `webContents.printToPDF()`.
 
-**Chosen.** (c) as primary, (b) for "save as PDF".
+**Chosen.** (c) for both paper and PDF. The product-label investigation confirmed that labels do not use jsPDF: Electron runs the current renderer through `webContents.printToPDF()`, and a plain browser uses `window.print()` with Save as PDF.
 
 **Reason.** **The pattern already works in this codebase** — product labels prove the whole path, including Electron's print integration. It adds no dependency and no server load.
 
-**Trade-offs.** Fine typographic control is harder than with a PDF library. Acceptable for a shop invoice.
+**Trade-offs.** Fine typographic control is harder than with a PDF library. Chromium is nevertheless the safer renderer here because it preserves SVG and correctly shapes Arabic without a second font/layout implementation.
 
 **Consequences.** Document templates live in the frontend. **Totals must come from the API, never be recomputed in the template** — a template that does its own arithmetic is a second source of financial truth.
 
@@ -344,6 +344,16 @@ VAT-inclusive pricing derives VAT **by subtraction** (`priceEx = round(priceInc 
 Existing and normal retail selling prices are VAT-inclusive by default. `Product.priceIncludesVat` remains configurable and defaults to `true`. A displayed $100 standard-rated price therefore remains the exact customer total: at 11% it is split into $90.09 net and $9.91 VAT. An explicitly VAT-exclusive $100 quote produces a $111 total.
 
 Migration `20260908120000_default_retail_prices_vat_inclusive` changes only the product preference/default. It does not rewrite finalized sales or purchase lines, their VAT snapshots, or any historical total. Returns reverse the original stored line snapshot; they never resolve today's rate. The 11% rate remains data in the append-only tax configuration, not calculation code.
+
+### Decision 6 - delivery VAT *(approved 2026-09-09)*
+
+Delivery is a separately snapshotted invoice charge and is **standard-rated by default**. Its entered price is VAT-inclusive, matching the normal retail quote policy. A specific order may instead mark delivery `ZERO_RATED` or `EXEMPT`; those are distinct treatments even though both produce zero VAT.
+
+`SalesOrder` stores `deliveryTaxTreatment`, `deliveryTaxRateSnapshot`, `deliveryTaxCodeSnapshot`, `deliveryFeeExVat`, `deliveryVatAmount`, and `deliveryFeeIncVat`. Standard and zero-rated delivery resolve an effective configured `TaxProfile` at write time. Exempt delivery stores the explicit `EXEMPT` classification and never consults a current rate. Historical invoice reads use these snapshots only.
+
+Document VAT is the exact sum of rounded item VAT snapshots plus the rounded delivery VAT snapshot. The document subtotal before VAT is likewise assembled server-side from the stored item subtotal and delivery net snapshot; the frontend template performs no financial arithmetic.
+
+Migration `20260909100000_add_delivery_vat_and_business_settings` classifies every existing order as legacy `EXEMPT`, copies its existing delivery fee into both delivery net and inclusive snapshots, and stores zero delivery VAT. Therefore no pre-existing order total or balance changes. Only orders created or explicitly repriced after the migration use the new standard-rated default.
 
 ---
 

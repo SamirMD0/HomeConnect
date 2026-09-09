@@ -3,6 +3,7 @@ import { BackupRestorePanel } from '../../features/backup/components/BackupResto
 import { DiagnosticsPanel } from '../../features/diagnostics/components/DiagnosticsPanel';
 import { MaintenancePanel } from '../../features/maintenance/components/MaintenancePanel';
 import { ExchangeRatePanel } from '../../features/exchange-rates/components/ExchangeRatePanel';
+import { BusinessSettingsPanel } from '../../features/documents/components/BusinessSettingsPanel';
 import { useAuth } from '../../hooks/useAuth';
 
 export const SettingsPage: React.FC = () => {
@@ -27,6 +28,8 @@ export const SettingsPage: React.FC = () => {
       </div>
 
       <BackupRestorePanel />
+
+      <BusinessSettingsPanel />
 
       <ExchangeRatePanel />
 

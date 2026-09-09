@@ -28,6 +28,10 @@ vi.mock('../../features/exchange-rates/components/ExchangeRatePanel', () => ({
   ExchangeRatePanel: () => <section>Exchange rate panel rendered</section>,
 }));
 
+vi.mock('../../features/documents/components/BusinessSettingsPanel', () => ({
+  BusinessSettingsPanel: () => <section>Business settings panel rendered</section>,
+}));
+
 describe('SettingsPage', () => {
   beforeEach(() => {
     authMock.user = { id: 'admin', username: 'admin', fullName: 'Admin', role: 'ADMIN' };
@@ -40,6 +44,7 @@ describe('SettingsPage', () => {
     expect(html).toContain('Backup panel rendered');
     expect(html).toContain('Maintenance panel rendered');
     expect(html).toContain('Exchange rate panel rendered');
+    expect(html).toContain('Business settings panel rendered');
   });
 
   it('hides backup and maintenance controls from non-admin users', () => {
@@ -51,5 +56,6 @@ describe('SettingsPage', () => {
     expect(html).not.toContain('Backup panel rendered');
     expect(html).not.toContain('Maintenance panel rendered');
     expect(html).not.toContain('Exchange rate panel rendered');
+    expect(html).not.toContain('Business settings panel rendered');
   });
 });

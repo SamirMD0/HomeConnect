@@ -8,7 +8,7 @@ import { formatMoney } from '../../customer-financial/utils/financial-format';
 import { useProduct } from '../../products/hooks/useProducts';
 import type { Product } from '../../products/types/product.types';
 import { useCreateSalesOrder } from '../hooks/useSalesOrders';
-import type { CreateSalesOrderInput, SalesChannel, SalesOrderLineInput } from '../types/sales-orders.types';
+import type { CreateSalesOrderInput, DeliveryTaxTreatment, SalesChannel, SalesOrderLineInput } from '../types/sales-orders.types';
 import { SALES_CHANNEL_LABELS } from '../utils/sales-order-labels';
 import { emptySalesLine, SalesOrderItemsEditor } from './SalesOrderItemsEditor';
 import { salesLineForProduct } from './ProductLinePicker';
@@ -39,6 +39,7 @@ export function CreateSalesOrderDialog({ isOpen, onClose, prefill = null }: { is
   const [debtDueDate, setDebtDueDate] = useState('');
   const [deliveryDate, setDeliveryDate] = useState('');
   const [deliveryFee, setDeliveryFee] = useState('0.00');
+  const [deliveryTaxTreatment, setDeliveryTaxTreatment] = useState<DeliveryTaxTreatment>('STANDARD');
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [deliveryNotes, setDeliveryNotes] = useState('');
   const appliedPrefillId = useRef<string | null>(null);
@@ -55,7 +56,7 @@ export function CreateSalesOrderDialog({ isOpen, onClose, prefill = null }: { is
     appliedPrefillId.current = prefill.productId;
   }, [isOpen, prefill?.productId, prefillProduct.data]);
 
-  const reset = () => { setStep(0); setCustomerId(''); setChannel('SHOP_DIRECT'); setItems([emptySalesLine()]); setPaymentMode('FULL'); setPartialAmount('0.00'); setDebtDueDate(''); setDeliveryDate(''); setDeliveryFee('0.00'); setDeliveryAddress(''); setDeliveryNotes(''); };
+  const reset = () => { setStep(0); setCustomerId(''); setChannel('SHOP_DIRECT'); setItems([emptySalesLine()]); setPaymentMode('FULL'); setPartialAmount('0.00'); setDebtDueDate(''); setDeliveryDate(''); setDeliveryFee('0.00'); setDeliveryTaxTreatment('STANDARD'); setDeliveryAddress(''); setDeliveryNotes(''); };
   const close = () => { reset(); appliedPrefillId.current = null; onClose(); };
   const next = () => {
     if (step === 0 && paymentMode !== 'FULL' && !debtDueDate) return toast.error('Enter the debt due date');
@@ -75,7 +76,7 @@ export function CreateSalesOrderDialog({ isOpen, onClose, prefill = null }: { is
       customerId: customerId || null, salesChannel: channel, orderDate: today(), fulfillmentStatus,
       paidAmount, debtDueDate: paymentMode === 'FULL' || fulfillmentStatus === 'DRAFT' ? null : debtDueDate,
       items,
-      ...(channel !== 'SHOP_DIRECT' ? { deliveryDate: deliveryDate || null, deliveryFee, deliveryAddressSnapshot: deliveryAddress || null, deliveryNotes: deliveryNotes || null } : {}),
+      ...(channel !== 'SHOP_DIRECT' ? { deliveryDate: deliveryDate || null, deliveryFee, deliveryTaxTreatment, deliveryAddressSnapshot: deliveryAddress || null, deliveryNotes: deliveryNotes || null } : {}),
     };
     try { await create.mutateAsync(input); toast.success('Sales order created'); close(); } catch { toast.error('Unable to create sales order'); }
   };
@@ -89,7 +90,7 @@ export function CreateSalesOrderDialog({ isOpen, onClose, prefill = null }: { is
     {step === 1 && <div className="space-y-3">{customerOptional && <p className="text-sm text-slate-500">Customer is optional for an admin-recorded fully paid sale / الزبون اختياري للبيع المدفوع بالكامل</p>}<CustomerPicker value={customerId} onChange={setCustomerId} /></div>}
     {step === 2 && <div className="grid gap-3 sm:grid-cols-3">{([['SHOP_DIRECT', <ShoppingBag />], ['SHOP_DELIVERY', <Truck />], ['PHONE_ORDER', <Phone />]] as const).map(([value, icon]) => <Card key={value} variant="interactive" role="button" tabIndex={0} onClick={() => setChannel(value)} className={channel === value ? 'border-brand-500 ring-2 ring-brand-500/20' : ''}><div className="mb-3 text-brand-600 [&>svg]:h-6 [&>svg]:w-6">{icon}</div><p className="font-semibold">{SALES_CHANNEL_LABELS[value]}</p></Card>)}</div>}
     {step === 3 && <SalesOrderItemsEditor items={items} onChange={setItems} />}
-    {step === 4 && <div className="grid gap-4 sm:grid-cols-2"><FormField label="Delivery date / تاريخ التوصيل">{(field) => <Input {...field} type="date" min={today()} value={deliveryDate} onChange={(event) => setDeliveryDate(event.target.value)} />}</FormField><FormField label="Delivery fee / رسم التوصيل">{(field) => <Input {...field} numeric value={deliveryFee} onChange={(event) => setDeliveryFee(event.target.value)} />}</FormField><FormField className="sm:col-span-2" label="Delivery address / عنوان التوصيل">{(field) => <Textarea {...field} userText value={deliveryAddress} onChange={(event) => setDeliveryAddress(event.target.value)} />}</FormField><FormField className="sm:col-span-2" label="Delivery notes / ملاحظات التوصيل">{(field) => <Textarea {...field} userText value={deliveryNotes} onChange={(event) => setDeliveryNotes(event.target.value)} />}</FormField></div>}
+    {step === 4 && <div className="grid gap-4 sm:grid-cols-2"><FormField label="Delivery date / تاريخ التوصيل">{(field) => <Input {...field} type="date" min={today()} value={deliveryDate} onChange={(event) => setDeliveryDate(event.target.value)} />}</FormField><FormField label="Delivery fee / رسم التوصيل">{(field) => <Input {...field} numeric value={deliveryFee} onChange={(event) => setDeliveryFee(event.target.value)} />}</FormField><FormField label="Delivery VAT treatment / معاملة ضريبة التوصيل" hint="Standard VAT is the default. Choose zero-rated or exempt only when that delivery service qualifies.">{(field) => <Select {...field} value={deliveryTaxTreatment} onChange={(event) => setDeliveryTaxTreatment(event.target.value as DeliveryTaxTreatment)}><option value="STANDARD">Standard VAT / الضريبة القياسية</option><option value="ZERO_RATED">Zero-rated / خاضع لنسبة صفر</option><option value="EXEMPT">Exempt / معفى</option></Select>}</FormField><FormField className="sm:col-span-2" label="Delivery address / عنوان التوصيل">{(field) => <Textarea {...field} userText value={deliveryAddress} onChange={(event) => setDeliveryAddress(event.target.value)} />}</FormField><FormField className="sm:col-span-2" label="Delivery notes / ملاحظات التوصيل">{(field) => <Textarea {...field} userText value={deliveryNotes} onChange={(event) => setDeliveryNotes(event.target.value)} />}</FormField></div>}
     {step === 5 && <div className="grid gap-4 sm:grid-cols-2"><Review label="Customer" value={customer.data?.name ?? (customerId ? 'Selected customer / الزبون المحدد' : 'Customer')} userText /><Review label="Channel" value={SALES_CHANNEL_LABELS[channel]} /><Review label="Items" value={`${items.length} line(s)`} /><Review label="Payment" value={`${paymentMode} · paid ${formatMoney(paidAmount)}`} /><Review label="Total" value={formatMoney(total)} /><Review label="Remaining" value={formatMoney(remaining)} />{paymentMode !== 'FULL' && <Review label="Debt due" value={debtDueDate || 'Required to confirm / مطلوب للتأكيد'} />}</div>}
   </Modal>;
 }

@@ -1,4 +1,5 @@
 import {
+  DeliveryTaxTreatment,
   InstallmentPlanFrequency,
   SalesChannel,
   SalesOrderFulfillmentStatus,
@@ -50,6 +51,8 @@ const createOrderObject = z.object({
     SalesOrderFulfillmentStatus.DELIVERED,
   ]).default(SalesOrderFulfillmentStatus.CONFIRMED),
   deliveryFee: moneySchema.optional().nullable(),
+  deliveryTaxTreatment: z.nativeEnum(DeliveryTaxTreatment).default(DeliveryTaxTreatment.STANDARD),
+  deliveryTaxProfileId: uuidSchema.optional().nullable(),
   paidAmount: moneySchema.default('0.00'),
   debtDueDate: dateSchema.optional().nullable(),
   deliveryAddressSnapshot: optionalText('Delivery address', 1000),
@@ -65,6 +68,9 @@ export const createSalesOrderSchema = createOrderObject.superRefine((value, cont
   if (value.fulfillmentStatus === SalesOrderFulfillmentStatus.DELIVERED && value.salesChannel !== SalesChannel.SHOP_DIRECT) {
     context.addIssue({ code: 'custom', path: ['fulfillmentStatus'], message: 'Only shop-direct orders may be created as delivered' });
   }
+  if (value.deliveryTaxTreatment === DeliveryTaxTreatment.EXEMPT && value.deliveryTaxProfileId) {
+    context.addIssue({ code: 'custom', path: ['deliveryTaxProfileId'], message: 'Exempt delivery cannot use a tax profile' });
+  }
 });
 
 export const updateSalesOrderSchema = z.object({
@@ -73,12 +79,18 @@ export const updateSalesOrderSchema = z.object({
   orderDate: dateSchema.optional(),
   deliveryDate: dateSchema.optional().nullable(),
   deliveryFee: moneySchema.optional().nullable(),
+  deliveryTaxTreatment: z.nativeEnum(DeliveryTaxTreatment).optional(),
+  deliveryTaxProfileId: uuidSchema.optional().nullable(),
   debtDueDate: dateSchema.optional().nullable(),
   deliveryAddressSnapshot: optionalText('Delivery address', 1000),
   deliveryNotes: optionalText('Delivery notes', 1000),
   notes: optionalText('Notes', 1000),
   reason: reasonSchema.optional(),
   accountPassword: z.string().min(1).optional(),
+}).superRefine((value, context) => {
+  if (value.deliveryTaxTreatment === DeliveryTaxTreatment.EXEMPT && value.deliveryTaxProfileId) {
+    context.addIssue({ code: 'custom', path: ['deliveryTaxProfileId'], message: 'Exempt delivery cannot use a tax profile' });
+  }
 });
 
 export const addSalesOrderItemSchema = itemSchema.and(z.object({

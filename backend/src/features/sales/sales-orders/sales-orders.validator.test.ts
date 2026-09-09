@@ -1,4 +1,4 @@
-import { SalesChannel, SalesOrderFulfillmentStatus } from '@prisma/client';
+import { DeliveryTaxTreatment, SalesChannel, SalesOrderFulfillmentStatus } from '@prisma/client';
 import { describe, expect, it } from 'vitest';
 import {
   addSalesOrderItemSchema,
@@ -40,6 +40,23 @@ describe('sales order validation', () => {
   it('rejects delivery fields for shop-direct orders', () => {
     expect(() => createSalesOrderSchema.parse({ ...base, deliveryFee: '5.00' })).toThrow('Shop-direct');
     expect(() => createSalesOrderSchema.parse({ ...base, deliveryDate: '2026-08-04' })).toThrow('Shop-direct');
+  });
+
+  it('defaults delivery to standard VAT and distinguishes zero-rated from exempt treatment', () => {
+    expect(createSalesOrderSchema.parse(base).deliveryTaxTreatment).toBe(DeliveryTaxTreatment.STANDARD);
+    expect(createSalesOrderSchema.parse({
+      ...base,
+      salesChannel: SalesChannel.SHOP_DELIVERY,
+      deliveryFee: '10.00',
+      deliveryTaxTreatment: DeliveryTaxTreatment.ZERO_RATED,
+    }).deliveryTaxTreatment).toBe(DeliveryTaxTreatment.ZERO_RATED);
+    expect(() => createSalesOrderSchema.parse({
+      ...base,
+      salesChannel: SalesChannel.SHOP_DELIVERY,
+      deliveryFee: '10.00',
+      deliveryTaxTreatment: DeliveryTaxTreatment.EXEMPT,
+      deliveryTaxProfileId: '22222222-2222-4222-8222-222222222222',
+    })).toThrow('Exempt delivery cannot use a tax profile');
   });
 
   it('rejects zero items and over-precision money', () => {

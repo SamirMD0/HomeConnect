@@ -1,4 +1,7 @@
 import {
+  Currency,
+  DeliveryTaxTreatment,
+  Prisma,
   SalesAuditAction,
   SalesChannel,
   SalesOrderFulfillmentStatus,
@@ -18,7 +21,7 @@ const { repository, debtService, audit, verifyAdmin, taxRepository, tx } = vi.ho
   debtService: { createDebt: vi.fn() },
   audit: vi.fn(),
   verifyAdmin: vi.fn(),
-  taxRepository: { requireEffectiveProfile: vi.fn() },
+  taxRepository: { requireEffectiveProfile: vi.fn(), requireEffectiveZeroRatedProfile: vi.fn() },
 }));
 
 vi.mock('../../financial/infrastructure/transaction', () => ({ runFinancialTransaction: vi.fn((operation) => operation(tx)) }));
@@ -39,6 +42,7 @@ const input = {
   salesChannel: SalesChannel.SHOP_DIRECT,
   orderDate: '2026-08-03',
   fulfillmentStatus: SalesOrderFulfillmentStatus.CONFIRMED,
+  deliveryTaxTreatment: DeliveryTaxTreatment.STANDARD,
   paidAmount: '20.00',
   debtDueDate: '2026-08-10',
   items: [{ manualProductName: 'Fan', quantity: 1, unitPrice: '100.00' }],
@@ -49,7 +53,12 @@ const baseOrder = {
   customerId: input.customerId, customer: { id: input.customerId, name: 'Customer', phone: '1', address: null, isActive: true },
   salesChannel: SalesChannel.SHOP_DIRECT, orderDate: new Date('2026-08-03T00:00:00Z'), deliveryDate: null, deliveredAt: null,
   fulfillmentStatus: SalesOrderFulfillmentStatus.CONFIRMED, paymentStatus: SalesOrderPaymentStatus.PARTIALLY_PAID,
-  settlement: SalesOrderSettlement.NONE, itemsSubtotal: '100.00', deliveryFee: null, totalAmount: '100.00', paidAmount: '20.00', remainingAmount: '80.00',
+  settlement: SalesOrderSettlement.NONE, itemsSubtotal: '100.00', deliveryFee: null,
+  deliveryTaxTreatment: DeliveryTaxTreatment.EXEMPT, deliveryTaxRateSnapshot: new Prisma.Decimal(0), deliveryTaxCodeSnapshot: null,
+  deliveryFeeExVat: null, deliveryVatAmount: new Prisma.Decimal(0), deliveryFeeIncVat: null,
+  totalAmount: '100.00', paidAmount: '20.00', remainingAmount: '80.00',
+  currency: Currency.USD, exchangeRate: new Prisma.Decimal(1), baseSubtotal: '100.00', baseDeliveryFee: null,
+  baseTotalAmount: '100.00', basePaidAmount: '20.00', baseRemainingAmount: '80.00',
   deliveryAddressSnapshot: null, deliveryNotes: null, notes: null, debtId: null, debt: null, installmentPlanId: null, installmentPlan: null,
   createdById: user.userId, createdBy: { id: user.userId, fullName: 'Employee', username: 'employee' }, updatedById: null, updatedBy: null,
   createdAt: new Date(), updatedAt: new Date(), cancelledAt: null, cancelledById: null, cancelledBy: null, cancelledReason: null,
@@ -86,6 +95,19 @@ function orderAfterAddingBalance(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function withTaxableDelivery(order: Record<string, unknown>, fee = '200.00') {
+  return {
+    ...order,
+    deliveryFee: fee,
+    deliveryTaxTreatment: DeliveryTaxTreatment.STANDARD,
+    deliveryTaxRateSnapshot: new Prisma.Decimal('11.000'),
+    deliveryTaxCodeSnapshot: 'LB_STANDARD',
+    deliveryFeeExVat: new Prisma.Decimal('180.18'),
+    deliveryVatAmount: new Prisma.Decimal('19.82'),
+    deliveryFeeIncVat: new Prisma.Decimal(fee),
+  };
+}
+
 describe('sales order service transaction boundary', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -104,6 +126,7 @@ describe('sales order service transaction boundary', () => {
     debtService.createDebt.mockResolvedValue({ id: '55555555-5555-4555-8555-555555555555' });
     verifyAdmin.mockResolvedValue(undefined);
     taxRepository.requireEffectiveProfile.mockResolvedValue({ code: 'LB_ZERO', taxRate: { ratePercent: '0.000' } });
+    taxRepository.requireEffectiveZeroRatedProfile.mockResolvedValue({ code: 'LB_ZERO', taxRate: { ratePercent: new Prisma.Decimal(0) } });
   });
 
   it('serializes authoritative inventory state and active fulfillment id for the frontend', () => {
@@ -187,6 +210,89 @@ describe('sales order service transaction boundary', () => {
     expect(created.totalAmount).toBe('0.12');
     // Independently rounding 0.10 × 11% would be 0.01; the stored line sum is 0.02.
     expect(lines[0].vatAmount.plus(lines[1].vatAmount).toFixed(2)).toBe('0.02');
+  });
+
+  it('taxes a VAT-inclusive delivery fee at the effective standard rate by default and snapshots every component', async () => {
+    taxRepository.requireEffectiveProfile.mockResolvedValue({ code: 'LB_STANDARD', taxRate: { ratePercent: new Prisma.Decimal('11.000') } });
+    await SalesOrdersService.create({
+      ...input,
+      salesChannel: SalesChannel.SHOP_DELIVERY,
+      fulfillmentStatus: SalesOrderFulfillmentStatus.DRAFT,
+      deliveryFee: '10.00',
+      paidAmount: '0.00',
+    }, user, {});
+
+    const created = repository.create.mock.calls.at(-1)![0];
+    expect(created).toMatchObject({
+      deliveryTaxTreatment: DeliveryTaxTreatment.STANDARD,
+      deliveryTaxCodeSnapshot: 'LB_STANDARD',
+      itemsSubtotal: '90.09',
+      totalAmount: '110.00',
+      remainingAmount: '110.00',
+    });
+    expect(created.deliveryTaxRateSnapshot.toFixed(3)).toBe('11.000');
+    expect(created.deliveryFeeExVat.toFixed(2)).toBe('9.01');
+    expect(created.deliveryVatAmount.toFixed(2)).toBe('0.99');
+    expect(created.deliveryFeeIncVat.toFixed(2)).toBe('10.00');
+  });
+
+  it('supports explicit zero-rated and exempt delivery without changing the quoted fee', async () => {
+    taxRepository.requireEffectiveProfile.mockResolvedValue({ code: 'LB_STANDARD', taxRate: { ratePercent: new Prisma.Decimal('11.000') } });
+
+    await SalesOrdersService.create({
+      ...input,
+      salesChannel: SalesChannel.SHOP_DELIVERY,
+      fulfillmentStatus: SalesOrderFulfillmentStatus.DRAFT,
+      deliveryFee: '10.00',
+      deliveryTaxTreatment: DeliveryTaxTreatment.ZERO_RATED,
+      paidAmount: '0.00',
+    }, user, {});
+    let created = repository.create.mock.calls.at(-1)![0];
+    expect(created.deliveryTaxCodeSnapshot).toBe('LB_ZERO');
+    expect(created.deliveryVatAmount.toFixed(2)).toBe('0.00');
+    expect(created.deliveryFeeIncVat.toFixed(2)).toBe('10.00');
+
+    await SalesOrdersService.create({
+      ...input,
+      salesChannel: SalesChannel.SHOP_DELIVERY,
+      fulfillmentStatus: SalesOrderFulfillmentStatus.DRAFT,
+      deliveryFee: '10.00',
+      deliveryTaxTreatment: DeliveryTaxTreatment.EXEMPT,
+      paidAmount: '0.00',
+    }, user, {});
+    created = repository.create.mock.calls.at(-1)![0];
+    expect(created.deliveryTaxCodeSnapshot).toBe('EXEMPT');
+    expect(created.deliveryTaxRateSnapshot.toFixed(3)).toBe('0.000');
+    expect(created.deliveryVatAmount.toFixed(2)).toBe('0.00');
+    expect(created.deliveryFeeIncVat.toFixed(2)).toBe('10.00');
+  });
+
+  it('uses the stored delivery VAT snapshot when a historical order payment changes', async () => {
+    const historical = withTaxableDelivery({
+      ...baseOrder,
+      totalAmount: '300.00',
+      paidAmount: '20.00',
+      remainingAmount: '280.00',
+    });
+    repository.findById.mockResolvedValueOnce(historical);
+    // A later configuration change must be irrelevant to this transaction.
+    taxRepository.requireEffectiveProfile.mockResolvedValue({
+      code: 'LB_STANDARD_NEW',
+      taxRate: { ratePercent: new Prisma.Decimal('20.000') },
+    });
+
+    await SalesOrdersService.changePayment(baseOrder.id, {
+      paidAmount: '300.00',
+      reason: 'Settle historical invoice',
+      accountPassword: 'password',
+    }, { ...user, role: 'ADMIN' }, {});
+
+    expect(taxRepository.requireEffectiveProfile).not.toHaveBeenCalled();
+    expect(taxRepository.requireEffectiveZeroRatedProfile).not.toHaveBeenCalled();
+    expect(repository.update).toHaveBeenCalledWith(baseOrder.id, expect.objectContaining({
+      paidAmount: '300.00',
+      remainingAmount: '0.00',
+    }), tx);
   });
 
   it('does not write an audit when debt creation fails, leaving the transaction to roll back the inserted order', async () => {
@@ -377,9 +483,10 @@ describe('sales order service transaction boundary', () => {
 
   it('update with deliveryFee creates exactly one debt for the new remainder', async () => {
     const existing = fullyPaidOrder({ salesChannel: SalesChannel.SHOP_DELIVERY });
+    taxRepository.requireEffectiveProfile.mockResolvedValue({ code: 'LB_STANDARD', taxRate: { ratePercent: new Prisma.Decimal('11.000') } });
     repository.findById
       .mockResolvedValueOnce(existing)
-      .mockResolvedValueOnce({ ...existing, deliveryFee: '200.00' });
+      .mockResolvedValueOnce(withTaxableDelivery(existing));
 
     await SalesOrdersService.update(baseOrder.id, {
       deliveryFee: '200.00',
@@ -419,10 +526,13 @@ describe('sales order service transaction boundary', () => {
       : entryPoint === 'removeItem'
         ? { ...existing, items: [existing.items[0]] }
         : entryPoint === 'update deliveryFee'
-          ? { ...existing, deliveryFee: '200.00' }
+          ? withTaxableDelivery(existing)
           : { ...existing, items: [existing.items[0], addedItem] };
     repository.findById.mockResolvedValueOnce(existing).mockResolvedValueOnce(recalculated);
     repository.findItemById.mockResolvedValueOnce(existing.items[0]);
+    if (entryPoint === 'update deliveryFee') {
+      taxRepository.requireEffectiveProfile.mockResolvedValue({ code: 'LB_STANDARD', taxRate: { ratePercent: new Prisma.Decimal('11.000') } });
+    }
 
     await expect(mutate()).rejects.toThrow('Debt due date is required');
     expect(debtService.createDebt).not.toHaveBeenCalled();

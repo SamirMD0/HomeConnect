@@ -40,6 +40,7 @@ import { pricingCalculatorRoutes, pricingPresetsRoutes } from './features/pricin
 import { systemRoutes } from './features/system/system.routes';
 import { scannerRoutes } from './features/scanner/scanner.routes';
 import { inventoryRoutes } from './features/inventory/inventory.routes';
+import { businessSettingsRoutes } from './features/documents/business-settings.routes';
 
 export const app = express();
 
@@ -126,6 +127,7 @@ app.use('/api/v1/admin/preflight', requireAuth, preflightRoutes);
 app.use('/api/v1/admin/maintenance', requireAuth, maintenanceRoutes);
 app.use('/api/v1/system', requireAuth, systemRoutes);
 app.use('/api/v1/scanner', requireAuth, scannerRoutes);
+app.use('/api/v1/business-settings', requireAuth, businessSettingsRoutes);
 app.use('/api/v1/dashboard', requireAuth, dashboardRoutes);
 
 // Global Error Handler

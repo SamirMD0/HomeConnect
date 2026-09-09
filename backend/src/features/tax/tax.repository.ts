@@ -42,4 +42,27 @@ export class TaxRepository {
     }
     return profile;
   }
+
+  static async requireEffectiveZeroRatedProfile(
+    effectiveOn: Date,
+    tx?: Prisma.TransactionClient
+  ): Promise<EffectiveTaxProfile> {
+    const profile = await (tx ?? prisma).taxProfile.findFirst({
+      where: {
+        isActive: true,
+        taxRate: {
+          is: {
+            isActive: true,
+            ratePercent: 0,
+            effectiveFrom: { lte: effectiveOn },
+            OR: [{ effectiveTo: null }, { effectiveTo: { gte: effectiveOn } }],
+          },
+        },
+      },
+      include: effectiveTaxInclude,
+      orderBy: [{ isDefault: 'desc' }, { code: 'asc' }],
+    });
+    if (!profile) throw new NotFoundError('No active zero-rated tax profile is effective for delivery');
+    return profile;
+  }
 }
