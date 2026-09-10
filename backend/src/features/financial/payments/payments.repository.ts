@@ -40,7 +40,61 @@ const paymentInclude = {
   },
 } satisfies Prisma.PaymentInclude;
 
+const receiptAllocationHistory = {
+  select: {
+    id: true,
+    amount: true,
+    createdAt: true,
+    voidedAt: true,
+  },
+  orderBy: { createdAt: 'asc' as const },
+};
+
+const paymentReceiptInclude = {
+  customer: {
+    select: { id: true, name: true, phone: true, address: true },
+  },
+  createdBy: {
+    select: { id: true, fullName: true, username: true },
+  },
+  voidedBy: {
+    select: { id: true, fullName: true, username: true },
+  },
+  allocations: {
+    include: {
+      debt: {
+        select: {
+          id: true,
+          description: true,
+          originalAmount: true,
+          currency: true,
+          paymentAllocations: receiptAllocationHistory,
+        },
+      },
+      installment: {
+        select: {
+          id: true,
+          installmentNumber: true,
+          installmentPlan: {
+            select: {
+              id: true,
+              description: true,
+              totalAmount: true,
+              currency: true,
+              installments: {
+                select: { paymentAllocations: receiptAllocationHistory },
+              },
+            },
+          },
+        },
+      },
+    },
+    orderBy: { createdAt: 'asc' as const },
+  },
+} satisfies Prisma.PaymentInclude;
+
 export type PaymentWithDetails = Prisma.PaymentGetPayload<{ include: typeof paymentInclude }>;
+export type PaymentReceiptRecord = Prisma.PaymentGetPayload<{ include: typeof paymentReceiptInclude }>;
 
 export interface CreateReplacementPaymentData {
   customerId: string;
@@ -56,6 +110,10 @@ export interface CreateReplacementPaymentData {
 }
 
 export class PaymentsRepository {
+  static async findPaymentReceipt(paymentId: string): Promise<PaymentReceiptRecord | null> {
+    return prisma.payment.findUnique({ where: { id: paymentId }, include: paymentReceiptInclude });
+  }
+
   static async findUserIdentity(userId: string) {
     return prisma.user.findUnique({
       where: { id: userId },

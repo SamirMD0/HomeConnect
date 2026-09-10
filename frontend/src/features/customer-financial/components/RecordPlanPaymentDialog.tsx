@@ -73,16 +73,19 @@ export const RecordPlanPaymentDialog: React.FC<RecordPlanPaymentDialogProps> = (
   const onSubmit = async (values: InstallmentPlanPaymentFormValues) => {
     setServerError(null);
     try {
-      await recordPayment.mutateAsync({
+      const idempotencyKey = idempotencyKeyRef.current;
+      const result = await recordPayment.mutateAsync({
         amount: canonicalMoneyInput(values.amount),
         paymentDate: values.paymentDate,
         paymentMethod: values.paymentMethod,
         reference: values.reference?.trim() || null,
         notes: values.notes?.trim() || null,
-        idempotencyKey: idempotencyKeyRef.current,
+        idempotencyKey,
       });
+      const receiptPayment = result.payments.find((payment) => payment.idempotencyKey === idempotencyKey);
       idempotencyKeyRef.current = createClientIdempotencyKey('plan-payment');
       onSuccess();
+      if (receiptPayment) window.open(`#/payments/${receiptPayment.id}/receipt`, '_blank', 'noopener,noreferrer');
     } catch (error) {
       const normalized = normalizeFinancialError(error);
       setServerError(normalized.message);

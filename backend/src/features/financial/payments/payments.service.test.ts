@@ -31,6 +31,7 @@ const {
     updatePlanStatus: vi.fn(),
   },
   paymentsRepositoryMock: {
+    findPaymentReceipt: vi.fn(),
     findUserIdentity: vi.fn(),
     findPaymentById: vi.fn(),
     voidPayment: vi.fn(),
@@ -263,6 +264,54 @@ describe('PaymentsService', () => {
       username: 'admin',
     });
     correctionAuditMock.mockResolvedValue({ id: '77777777-7777-4777-8777-777777777777' });
+  });
+
+  it('builds a voided receipt from persisted payment, allocation, balance, and actor data', async () => {
+    const createdAt = new Date('2026-07-27T10:00:00.000Z');
+    const voidedAt = new Date('2026-07-28T11:00:00.000Z');
+    paymentsRepositoryMock.findPaymentReceipt.mockResolvedValue({
+      id: paymentId,
+      customerId,
+      customer: { id: customerId, name: 'Ali Ahmad', phone: '70123456', address: 'Beirut' },
+      totalAmount: new Decimal('200.00'),
+      currency: 'USD',
+      exchangeRate: new Decimal('1.000000'),
+      baseAmount: new Decimal('200.00'),
+      paymentDate: new Date(Date.UTC(2026, 6, 27)),
+      paymentMethod: PaymentMethod.CASH,
+      reference: 'RCPT-27',
+      notes: null,
+      idempotencyKey: 'payment-key',
+      createdById: adminUser.userId,
+      createdBy: { id: adminUser.userId, fullName: 'Admin User', username: 'admin' },
+      createdAt,
+      voidedAt,
+      voidedById: adminUser.userId,
+      voidedBy: { id: adminUser.userId, fullName: 'Admin User', username: 'admin' },
+      voidReason: 'Duplicate receipt',
+      allocations: [{
+        id: 'allocation-1', paymentId, debtId, installmentId: null,
+        amount: new Decimal('200.00'), paymentAmount: new Decimal('200.00'), exchangeRate: new Decimal(1),
+        createdAt, voidedAt, voidedById: adminUser.userId, correctionId: null,
+        installment: null,
+        debt: {
+          id: debtId, description: 'Appliance debt', originalAmount: new Decimal('500.00'), currency: 'USD',
+          paymentAllocations: [{ id: 'allocation-1', amount: new Decimal('200.00'), createdAt, voidedAt }],
+        },
+      }],
+    });
+
+    const result = await PaymentsService.getReceipt(paymentId);
+
+    expect(result).toMatchObject({
+      id: paymentId,
+      totalAmount: '200.00',
+      voidReason: 'Duplicate receipt',
+      voidedAt: voidedAt.toISOString(),
+      voidedBy: { name: 'Admin User', username: 'admin' },
+      allocations: [{ description: 'Appliance debt', paymentAmount: '200.00' }],
+      remainingBalances: [{ amount: '300.00', currency: 'USD' }],
+    });
   });
 
   it('voids payment and allocation rows, recomputes debt status, and writes audit', async () => {

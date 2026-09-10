@@ -288,12 +288,15 @@
 .document-notes { margin-top: 4mm; border-top: 1px solid #cbd5e1; padding-top: 3mm; font-size: 9pt; }
 .document-footer { margin-top: 2mm; border-top: 1px solid #cbd5e1; padding-top: 1mm; text-align: center; font-size: 9pt; font-weight: 700; color: #475569; }
 .document-watermark { position: absolute; inset: 42% auto auto 22%; transform: rotate(-22deg); color: rgb(185 28 28 / 0.14); font-size: 32pt; font-weight: 900; letter-spacing: 0.08em; pointer-events: none; }
+.receipt-void-watermark { inset: 39% 8% auto; z-index: 1; text-align: center; font-size: 46pt; color: rgb(185 28 28 / 0.16); }
+.receipt-void-metadata { position: relative; z-index: 2; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4mm; margin-top: 7mm; border: 2px solid #b91c1c; border-radius: 2mm; background: #fef2f2; padding: 4mm; break-inside: avoid; page-break-inside: avoid; }
 
 @media screen and (max-width: 720px) {
   .document-page { min-height: auto; padding: 6mm; }
   .document-header, .document-info-grid, .document-summary { grid-template-columns: 1fr; }
   .document-header > :last-child { text-align: left; }
   .document-table { font-size: 8pt; }
+  .receipt-void-metadata { grid-template-columns: 1fr; }
 }
 
 @media print {
@@ -306,6 +309,10 @@
     padding: 0;
     overflow: visible;
     box-shadow: none;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .receipt-void-watermark, .receipt-void-metadata {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }

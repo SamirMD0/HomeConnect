@@ -1,4 +1,5 @@
 import React from 'react';
+import { ReceiptText } from 'lucide-react';
 import { RecentFinancialPayment } from '../types/customer-financial.types';
 import { formatBusinessDate, formatDateTime, formatMoney } from '../utils/financial-format';
 import { allocationTargetLabels, paymentMethodLabels } from '../utils/financial-labels';
@@ -52,8 +53,14 @@ export const RecentPaymentsList: React.FC<RecentPaymentsListProps> = ({
                 {payment.notes && <p className="user-text-pre mt-1 text-sm text-slate-600" dir="auto">{payment.notes}</p>}
                 {payment.voidReason && <p className="user-text mt-1 text-sm text-slate-600" dir="auto">Void reason: {payment.voidReason}</p>}
               </div>
-              {canMutate && !payment.voidedAt && (
-                <div className="flex flex-wrap gap-2 sm:justify-end">
+              <div className="flex flex-wrap gap-2 sm:justify-end">
+                <a
+                  href={`#/payments/${payment.id}/receipt`}
+                  className="inline-flex items-center gap-2 rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                >
+                  <ReceiptText className="h-4 w-4" /> Receipt / إيصال
+                </a>
+                {canMutate && !payment.voidedAt && <>
                   {onReallocatePayment && isInstallmentPayment(payment) && (
                     <button
                       type="button"
@@ -72,8 +79,8 @@ export const RecentPaymentsList: React.FC<RecentPaymentsListProps> = ({
                       Void payment
                     </button>
                   )}
-                </div>
-              )}
+                </>}
+              </div>
             </div>
 
             <div className="mt-4 rounded-lg border border-slate-100 bg-slate-50">

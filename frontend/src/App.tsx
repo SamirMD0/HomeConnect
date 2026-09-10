@@ -31,6 +31,7 @@ import { PricingPresetsPage } from './pages/pricing/PricingPresetsPage';
 import { SalesOrdersPage } from './pages/sales-orders/SalesOrdersPage';
 import { SalesOrderDetailsPage } from './pages/sales-orders/SalesOrderDetailsPage';
 import { SalesInvoicePage } from './pages/sales-orders/SalesInvoicePage';
+import { PaymentReceiptPage } from './pages/PaymentReceiptPage';
 import { InventoryPage } from './pages/inventory/InventoryPage';
 import { InventoryOnboardingPage } from './pages/inventory/InventoryOnboardingPage';
 import { SupplierReceivingListPage } from './features/inventory/receiving/pages/SupplierReceivingListPage';
@@ -72,6 +73,7 @@ const App: React.FC = () => {
               <Route path="sales-orders" element={<SalesOrdersPage />} />
               <Route path="sales-orders/:id" element={<SalesOrderDetailsPage />} />
               <Route path="sales-orders/:id/invoice" element={<SalesInvoicePage />} />
+              <Route path="payments/:paymentId/receipt" element={<PaymentReceiptPage />} />
               <Route path="products" element={<ProductsPage />} />
               <Route path="products/brands" element={<BrandsPage />} />
               <Route path="inventory" element={<InventoryPage />} />

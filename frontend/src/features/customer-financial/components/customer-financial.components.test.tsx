@@ -405,7 +405,10 @@ describe('customer financial profile components', () => {
     expect(html).toContain('Voided');
     expect(html.match(/Void payment/g)).toHaveLength(1);
     expect(html).toContain('Duplicate');
+    expect(html).toContain('#/payments/payment-1/receipt');
+    expect(html).toContain('#/payments/payment-2/receipt');
     expect(readOnlyHtml).not.toContain('Void payment');
+    expect(readOnlyHtml).toContain('#/payments/payment-2/receipt');
   });
 
   it('renders read-only debt details and installment plan schedule details', () => {

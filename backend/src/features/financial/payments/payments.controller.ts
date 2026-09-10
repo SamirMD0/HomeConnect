@@ -8,6 +8,19 @@ import {
 import { PaymentsService } from './payments.service';
 
 export class PaymentsController {
+  static async getReceipt(
+    req: Request<PaymentParamsInput>,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const receipt = await PaymentsService.getReceipt(req.params.paymentId);
+      res.status(200).json({ success: true, data: receipt, meta: { timestamp: new Date().toISOString() } });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async voidPayment(
     req: Request<PaymentParamsInput, unknown, VoidPaymentInput>,
     res: Response,

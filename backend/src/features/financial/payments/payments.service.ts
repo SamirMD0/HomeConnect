@@ -35,7 +35,7 @@ import { DebtsRepository } from '../debts/debts.repository';
 import { InstallmentPlansRepository } from '../installment-plans/installment-plans.repository';
 import { FinancialTransactionClient } from '../infrastructure/transaction';
 import { CorrectPaymentInput, ReallocatePaymentInput, VoidPaymentInput } from './payments.validator';
-import { PaymentsRepository, PaymentWithDetails } from './payments.repository';
+import { PaymentsRepository, PaymentReceiptRecord, PaymentWithDetails } from './payments.repository';
 import { convertPaymentAllocation, splitPaymentAmounts } from '../domain/currency-allocation';
 import { ExchangeRatesService } from '../exchange-rates/exchange-rates.service';
 
@@ -52,7 +52,132 @@ interface PaymentCorrectionResult {
   voidedAt: string | null;
 }
 
+export interface PaymentReceiptView {
+  id: string;
+  customer: { id: string; name: string; phone: string; address: string | null };
+  totalAmount: string;
+  currency: Currency;
+  exchangeRate: string;
+  baseAmount: string;
+  paymentDate: string;
+  paymentMethod: PaymentReceiptRecord['paymentMethod'];
+  reference: string | null;
+  notes: string | null;
+  createdAt: string;
+  receivedBy: { id: string; name: string; username: string };
+  allocations: Array<{
+    id: string;
+    targetType: 'DEBT' | 'INSTALLMENT';
+    targetId: string;
+    obligationId: string;
+    description: string;
+    amount: string;
+    currency: Currency;
+    paymentAmount: string;
+    paymentCurrency: Currency;
+    exchangeRate: string;
+  }>;
+  remainingBalances: Array<{
+    obligationType: 'DEBT' | 'INSTALLMENT_PLAN';
+    obligationId: string;
+    description: string;
+    amount: string;
+    currency: Currency;
+  }>;
+  voidedAt: string | null;
+  voidReason: string | null;
+  voidedBy: { id: string; name: string; username: string } | null;
+}
+
 export class PaymentsService {
+  static async getReceipt(paymentId: string): Promise<PaymentReceiptView> {
+    const payment = await PaymentsRepository.findPaymentReceipt(paymentId);
+    if (!payment) throw new NotFoundError('Payment not found');
+
+    const selectedAllocations = this.receiptAllocations(payment);
+    const cutoff = selectedAllocations.reduce(
+      (latest, allocation) => allocation.createdAt > latest ? allocation.createdAt : latest,
+      payment.createdAt
+    );
+    const remainingBalances = new Map<string, PaymentReceiptView['remainingBalances'][number]>();
+
+    for (const allocation of selectedAllocations) {
+      if (allocation.debt) {
+        const paidAtReceipt = sumMoney(allocation.debt.paymentAllocations
+          .filter((candidate) => this.wasAllocationActiveAt(candidate, cutoff))
+          .map((candidate) => candidate.amount));
+        remainingBalances.set(`DEBT:${allocation.debt.id}`, {
+          obligationType: 'DEBT',
+          obligationId: allocation.debt.id,
+          description: allocation.debt.description,
+          amount: moneyToApiString(Decimal.max(new Decimal(0), allocation.debt.originalAmount.minus(paidAtReceipt)), allocation.debt.currency),
+          currency: allocation.debt.currency,
+        });
+      } else if (allocation.installment) {
+        const plan = allocation.installment.installmentPlan;
+        const paidAtReceipt = sumMoney(plan.installments.flatMap((installment) => installment.paymentAllocations)
+          .filter((candidate) => this.wasAllocationActiveAt(candidate, cutoff))
+          .map((candidate) => candidate.amount));
+        remainingBalances.set(`INSTALLMENT_PLAN:${plan.id}`, {
+          obligationType: 'INSTALLMENT_PLAN',
+          obligationId: plan.id,
+          description: plan.description,
+          amount: moneyToApiString(Decimal.max(new Decimal(0), plan.totalAmount.minus(paidAtReceipt)), plan.currency),
+          currency: plan.currency,
+        });
+      }
+    }
+
+    return {
+      id: payment.id,
+      customer: payment.customer,
+      totalAmount: moneyToApiString(payment.totalAmount, payment.currency),
+      currency: payment.currency,
+      exchangeRate: payment.exchangeRate.toFixed(6),
+      baseAmount: moneyToApiString(payment.baseAmount, Currency.USD),
+      paymentDate: prismaDateToBusinessDate(payment.paymentDate),
+      paymentMethod: payment.paymentMethod,
+      reference: payment.reference,
+      notes: payment.notes,
+      createdAt: payment.createdAt.toISOString(),
+      receivedBy: this.toReceiptUser(payment.createdBy),
+      allocations: selectedAllocations.map((allocation) => {
+        if (allocation.debt) {
+          return {
+            id: allocation.id,
+            targetType: 'DEBT' as const,
+            targetId: allocation.debt.id,
+            obligationId: allocation.debt.id,
+            description: allocation.debt.description,
+            amount: moneyToApiString(allocation.amount, allocation.debt.currency),
+            currency: allocation.debt.currency,
+            paymentAmount: moneyToApiString(allocation.paymentAmount, payment.currency),
+            paymentCurrency: payment.currency,
+            exchangeRate: allocation.exchangeRate.toFixed(6),
+          };
+        }
+        const installment = allocation.installment!;
+        const plan = installment.installmentPlan;
+        return {
+          id: allocation.id,
+          targetType: 'INSTALLMENT' as const,
+          targetId: installment.id,
+          obligationId: plan.id,
+          description: `${plan.description} — installment ${installment.installmentNumber}`,
+          amount: moneyToApiString(allocation.amount, plan.currency),
+          currency: plan.currency,
+          paymentAmount: moneyToApiString(allocation.paymentAmount, payment.currency),
+          paymentCurrency: payment.currency,
+          exchangeRate: allocation.exchangeRate.toFixed(6),
+        };
+      }),
+      remainingBalances: [...remainingBalances.values()],
+      voidedAt: payment.voidedAt?.toISOString() ?? null,
+      voidReason: payment.voidReason,
+      voidedBy: payment.voidedBy ? this.toReceiptUser(payment.voidedBy) : null,
+    };
+  }
+
   static async voidPayment(
     paymentId: string,
     input: VoidPaymentInput,
@@ -663,5 +788,24 @@ export class PaymentsService {
         voidedAt: allocation.voidedAt?.toISOString() ?? null,
       })),
     };
+  }
+
+  private static receiptAllocations(payment: PaymentReceiptRecord) {
+    if (!payment.voidedAt) return payment.allocations.filter((allocation) => !allocation.voidedAt);
+    return payment.allocations.filter((allocation) =>
+      allocation.createdAt <= payment.voidedAt! &&
+      (!allocation.voidedAt || allocation.voidedAt >= payment.voidedAt!)
+    );
+  }
+
+  private static wasAllocationActiveAt(
+    allocation: { createdAt: Date; voidedAt: Date | null },
+    cutoff: Date
+  ) {
+    return allocation.createdAt <= cutoff && (!allocation.voidedAt || allocation.voidedAt > cutoff);
+  }
+
+  private static toReceiptUser(user: { id: string; fullName: string; username: string }) {
+    return { id: user.id, name: user.fullName, username: user.username };
   }
 }

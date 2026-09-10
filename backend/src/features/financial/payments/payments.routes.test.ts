@@ -5,6 +5,7 @@ import { app } from '../../../app';
 
 const { paymentsServiceMock } = vi.hoisted(() => ({
   paymentsServiceMock: {
+    getReceipt: vi.fn(),
     voidPayment: vi.fn(),
     correctPayment: vi.fn(),
     reallocatePayment: vi.fn(),
@@ -31,6 +32,7 @@ const employeeToken = jwt.sign({ userId: '44444444-4444-4444-8444-444444444444',
 describe('payment correction routes', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    paymentsServiceMock.getReceipt.mockResolvedValue({ id: paymentId, voidedAt: null });
     paymentsServiceMock.voidPayment.mockResolvedValue({
       paymentId,
       customerId: '22222222-2222-4222-8222-222222222222',
@@ -52,6 +54,15 @@ describe('payment correction routes', () => {
       replacementPaymentId: null,
       voidedAt: null,
     });
+  });
+
+  it('serves normal and voided receipts through the same authenticated route without an admin gate', async () => {
+    const response = await request(app)
+      .get(`/api/v1/payments/${paymentId}/receipt`)
+      .set('Authorization', `Bearer ${employeeToken}`);
+
+    expect(response.status).toBe(200);
+    expect(paymentsServiceMock.getReceipt).toHaveBeenCalledWith(paymentId);
   });
 
   it('requires admin access to void payments', async () => {
