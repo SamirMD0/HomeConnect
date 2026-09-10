@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Modal } from '../../../components/ui/Modal';
 import { useAuth } from '../../../hooks/useAuth';
 import { useCustomerFinancialSummary } from '../hooks/useCustomerFinancialSummary';
@@ -126,6 +127,14 @@ export const CustomerFinancialProfile: React.FC<CustomerFinancialProfileProps> =
           <p className="mt-1 text-sm text-slate-500">Current balances, obligations, and payments.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
+          {data.businessDate && (
+            <Link
+              to={`/customers/${customerId}/statement?from=${data.businessDate.slice(0, 4)}-01-01&to=${data.businessDate}`}
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              Print statement / طباعة كشف الحساب
+            </Link>
+          )}
           {canMutateFinancialRecords && (
             <button
               type="button"

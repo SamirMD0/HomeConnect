@@ -9,6 +9,7 @@ import { Login } from './pages/Login';
 import { Setup } from './pages/Setup';
 import { CustomersListPage } from './pages/customers/CustomersListPage';
 import { CustomerProfilePage } from './pages/customers/CustomerProfilePage';
+import { CustomerStatementPage } from './pages/customers/CustomerStatementPage';
 import { DashboardPage } from './features/dashboard/pages/DashboardPage';
 import { LedgerPage } from './pages/LedgerPage';
 import { AccountsReceivablePage } from './pages/AccountsReceivablePage';
@@ -65,6 +66,7 @@ const App: React.FC = () => {
               <Route index element={<DashboardPage />} />
               <Route path="customers" element={<CustomersListPage />} />
               <Route path="customers/:id" element={<CustomerProfilePage />} />
+              <Route path="customers/:id/statement" element={<CustomerStatementPage />} />
               <Route path="ledger" element={<LedgerPage />} />
               <Route path="receivables" element={<AccountsReceivablePage />} />
               <Route path="prepaid" element={<PrepaidPurchasesPage />} />

@@ -62,3 +62,35 @@ export interface PaymentReceipt {
   voidReason: string | null;
   voidedBy: PaymentReceiptUser | null;
 }
+
+export type CustomerStatementEntryStatus = 'POSTED' | 'VOIDED' | 'CANCELLED';
+
+export interface CustomerStatement {
+  businessDate: string;
+  currency: 'USD';
+  customer: { id: string; name: string; phone: string; address: string | null };
+  range: { from: string; to: string };
+  openingBalance: string;
+  entries: Array<{
+    id: string;
+    type: 'DEBT' | 'INSTALLMENT' | 'PAYMENT';
+    date: string;
+    description: string;
+    reference: string | null;
+    originalAmount: string;
+    currency: 'USD' | 'LBP';
+    exchangeRate: string;
+    baseAmount: string;
+    balanceEffect: string;
+    runningBalance: string;
+    status: CustomerStatementEntryStatus;
+    dueDate: string | null;
+    reason: string | null;
+  }>;
+  closingBalance: string;
+  aging: {
+    asOf: string;
+    total: string;
+    buckets: Array<{ key: string; label: string; amount: string }>;
+  };
+}

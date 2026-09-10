@@ -290,6 +290,13 @@
 .document-watermark { position: absolute; inset: 42% auto auto 22%; transform: rotate(-22deg); color: rgb(185 28 28 / 0.14); font-size: 32pt; font-weight: 900; letter-spacing: 0.08em; pointer-events: none; }
 .receipt-void-watermark { inset: 39% 8% auto; z-index: 1; text-align: center; font-size: 46pt; color: rgb(185 28 28 / 0.16); }
 .receipt-void-metadata { position: relative; z-index: 2; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4mm; margin-top: 7mm; border: 2px solid #b91c1c; border-radius: 2mm; background: #fef2f2; padding: 4mm; break-inside: avoid; page-break-inside: avoid; }
+.statement-table { font-size: 8pt; }
+.statement-entry-inactive { color: #64748b; }
+.statement-status { display: inline-block; margin-left: 1mm; border-radius: 999px; padding: 0.4mm 1.5mm; background: #e2e8f0; font-size: 7pt; white-space: nowrap; }
+.statement-status-voided, .statement-status-cancelled { background: #fee2e2; color: #991b1b; font-weight: 800; }
+.statement-aging { margin-top: 7mm; break-inside: avoid; page-break-inside: avoid; }
+.statement-aging-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 6mm; margin-top: 3mm; border-top: 1.5px solid #475569; }
+.statement-aging-grid > div { display: flex; justify-content: space-between; gap: 3mm; border-bottom: 1px solid #e2e8f0; padding: 2mm 0; font-size: 8pt; }
 
 @media screen and (max-width: 720px) {
   .document-page { min-height: auto; padding: 6mm; }

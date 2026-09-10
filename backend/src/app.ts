@@ -13,6 +13,7 @@ import { dashboardRoutes } from './routes/dashboard.routes';
 import { requireAuth } from './middleware/auth.middleware';
 import { customerDebtsRoutes, debtsRoutes } from './features/financial/debts/debts.routes';
 import { customerFinancialSummaryRoutes } from './features/financial/customer-summary/customer-financial-summary.routes';
+import { customerStatementRoutes } from './features/financial/customer-statement/customer-statement.routes';
 import {
   customerInstallmentPlansRoutes,
   installmentPlansRoutes,
@@ -93,6 +94,7 @@ app.use('/api/v1/users', requireAuth, usersRoutes);
 app.use('/api/v1/customers', requireAuth, customerDebtsRoutes);
 app.use('/api/v1/customers', requireAuth, customerInstallmentPlansRoutes);
 app.use('/api/v1/customers', requireAuth, customerFinancialSummaryRoutes);
+app.use('/api/v1/customers', requireAuth, customerStatementRoutes);
 app.use('/api/v1/customers', requireAuth, customerCorrectionsRoutes);
 app.use('/api/v1/customers', requireAuth, customerServiceJobsRoutes);
 app.use('/api/v1/customers', requireAuth, customerSalesOrdersRoutes);
