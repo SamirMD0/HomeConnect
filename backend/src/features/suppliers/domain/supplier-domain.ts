@@ -40,6 +40,7 @@ export function supplierTransactionSnapshot(transaction: SupplierTransaction): P
     type: transaction.type, direction: transaction.direction,
     amount: moneyToApiString(transaction.amount),
     transactionDate: transaction.transactionDate.toISOString().slice(0, 10),
+    dueDate: transaction.dueDate?.toISOString().slice(0, 10) ?? null,
     description: transaction.description, reference: transaction.reference, notes: transaction.notes,
     status: transaction.status, removedAt: transaction.removedAt?.toISOString() ?? null,
     removedReason: transaction.removedReason,

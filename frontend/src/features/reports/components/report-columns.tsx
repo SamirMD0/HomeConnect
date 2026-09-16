@@ -81,6 +81,23 @@ export function columnsFor(slice: ReportSlice): ReportColumn[] {
     money('Amount / المبلغ', 'amount'), text('Description / الوصف', 'description'),
     text('Receipt / الفاتورة', 'receiptNumber'),
   ];
+  if (slice === 'suppliers-aging') return [
+    partyLink('Supplier / المورد', 'supplier', '/suppliers/'), text('Receipt / الفاتورة', 'receiptNumber'),
+    text('Due date / الاستحقاق', 'dueDate'), text('Currency / العملة', 'currency'),
+    text('Original transaction / الحركة الأصلية', 'transactionAmount'), money('Original USD / الأصلي', 'originalAmount'),
+    money('FIFO settled USD / المسوّى', 'fifoSettledAmount'), money('Remaining USD / الباقي', 'remainingAmount'),
+    count('Days overdue / أيام التأخير', 'daysOverdue'),
+    { label: 'Age band / الفئة', render: (r) => {
+      const labels: Record<string, string> = { CURRENT: 'Current / Not Due / غير مستحق', DAYS_1_30: '1–30 / ١–٣٠', DAYS_31_60: '31–60 / ٣١–٦٠', DAYS_61_90: '61–90 / ٦١–٩٠', DAYS_90_PLUS: '90+ / أكثر من ٩٠', NO_DUE_DATE: 'Unscheduled / No Due Date / بدون تاريخ استحقاق' };
+      const key = String((r as unknown as Record<string, unknown>).bucket);
+      return labels[key] ?? key;
+    } },
+    { label: 'Status / الحالة', render: (r) => {
+      const labels: Record<string, string> = { OVERDUE: 'Overdue / متأخر', DUE_SOON: 'Due soon / مستحق قريباً', FUTURE: 'Future / مستقبلي', UNSCHEDULED: 'Unscheduled / غير مجدول' };
+      const key = String((r as unknown as Record<string, unknown>).status);
+      return labels[key] ?? key;
+    } },
+  ];
   if (slice === 'suppliers-receiving') return [
     text('Date / التاريخ', 'receivedOn'), partyLink('Supplier / المورد', 'supplier', '/suppliers/'),
     linked('Reference / المرجع', 'referenceNumber', '/inventory/receiving/', 'id'),
@@ -152,6 +169,7 @@ export function summariesFor(
     'products-cost-changes': [['Cost changes / تغييرات الكلفة', 'count'], ['Increases / زيادات', 'increases'], ['Decreases / تخفيضات', 'decreases'], ['From purchases / من المشتريات', 'fromPurchases']],
     'suppliers-debts': [['Transactions / الحركات', 'count'], ['New owed / دين جديد', 'increased', true], ['Paid or credited / مدفوع أو دائن', 'decreased', true], ['Net change / صافي التغيير', 'netChange', true]],
     'suppliers-receiving': [['Documents / المستندات', 'count'], ['Posted / مثبت', 'posted'], ['Voided / ملغى', 'voided']],
+    'suppliers-aging': [['Total payables USD / إجمالي المستحقات', 'totalPayables', true], ['Overdue USD / المتأخر', 'totalOverdue', true], ['Due soon / مستحق قريباً', 'dueSoonCount'], ['Due soon USD / المستحق قريباً', 'dueSoonAmount', true], ['Future USD / مستقبلي', 'futureAmount', true], ['Unscheduled / No Due Date / غير مجدول', 'noDueDate', true], ['Unapplied payments/credits USD / رصيد غير مستخدم', 'unappliedCredit', true], ['Net ledger USD / صافي السجل', 'ledgerBalance', true]],
     'sales-orders': [['Orders / الطلبات', 'orderCount'], ['Sales / المبيعات', 'totalAmount', true], ['Paid / المدفوع', 'paidAmount', true], ['Unpaid / غير المدفوع', 'unpaidAmount', true]],
     'sales-unpaid': [['Unpaid orders / طلبات غير مدفوعة', 'count'], ['Remaining / الباقي', 'remainingAmount', true]],
     'inventory-movements': [['Movements / الحركات', 'count']],

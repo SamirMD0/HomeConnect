@@ -5,7 +5,7 @@ import { supplierTransactionsApi } from '../api/supplier-transactions.api';
 import { CreateSupplierInput,CreateSupplierTransactionInput,ProtectedActionInput,UpdateSupplierInput,UpdateSupplierTransactionInput } from '../types/supplier.types';
 import { supplierKeys } from './useSuppliers';
 import { supplierLedgerKeyPrefix } from './useSupplierLedger';
-const useInvalidate=()=>{const q=useQueryClient();return()=>{void q.invalidateQueries({queryKey:supplierKeys.all});void q.invalidateQueries({queryKey:supplierLedgerKeyPrefix});};};
+const useInvalidate=()=>{const q=useQueryClient();return()=>{void q.invalidateQueries({queryKey:supplierKeys.all});void q.invalidateQueries({queryKey:supplierLedgerKeyPrefix});void q.invalidateQueries({queryKey:['reports','rows','suppliers-aging']});void q.invalidateQueries({queryKey:['dashboard']});};};
 export function useSupplierMutations(){const done=useInvalidate();return{
  create:useMutation({mutationFn:(i:CreateSupplierInput)=>suppliersApi.create(i),onSuccess:()=>{done();toast.success('Supplier saved / تم حفظ المورّد');}}),
  update:useMutation({mutationFn:({id,input}:{id:string;input:UpdateSupplierInput})=>suppliersApi.update(id,input),onSuccess:done}),

@@ -8,7 +8,7 @@ describe('dashboard alert configuration', () => {
       agingServiceJobDays: 30,
       companyServiceJobDays: 14,
       readyForPickupDays: 7,
+      supplierPayablesDueSoonDays: 7,
     });
   });
 });
-

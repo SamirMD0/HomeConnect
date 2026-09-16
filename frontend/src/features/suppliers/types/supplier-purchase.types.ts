@@ -32,6 +32,7 @@ export interface CreateSupplierPurchaseInput {
   idempotencyKey?: string | null;
   receiptNumber?: string | null;
   transactionDate: string;
+  dueDate?: string | null;
   description: string;
   reference?: string | null;
   notes?: string | null;
@@ -65,6 +66,7 @@ export interface SupplierPurchaseLine {
 export interface SupplierPurchase extends Pick<SupplierTransaction,
   'id' | 'supplierId' | 'type' | 'direction' | 'amount' | 'transactionDate' | 'description' | 'reference' | 'notes' | 'status'
 > {
+  dueDate?: string | null;
   receiptNumber: string | null;
   /** Sum of the line totals, kept even when the posted amount was overridden. */
   lineSum: string;

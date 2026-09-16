@@ -6,6 +6,7 @@ const paths: Record<ReportSlice, string> = {
   'customers-payments': 'customers/payments', 'customers-aging': 'customers/receivables-aging',
   'customers-not-paid': 'customers/not-paid', 'customers-paid': 'customers/paid',
   'suppliers-debts': 'suppliers/debts',
+  'suppliers-aging': 'suppliers/payables-aging',
   'suppliers-receiving': 'suppliers/receiving', 'sales-orders': 'sales/orders',
   'sales-unpaid': 'sales/unpaid', 'inventory-movements': 'inventory/movements',
   'inventory-reconciliation': 'inventory/reconciliation', 'products-bought': 'products/bought',

@@ -16,6 +16,7 @@ const paths = [
   'inventory/reconciliation',
   'products/cost-changes',
   'customers/financial-integrity', 'suppliers/financial-integrity',
+  'suppliers/payables-aging',
 ];
 
 describe('report row routes', () => {

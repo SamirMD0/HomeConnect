@@ -17,6 +17,7 @@ const routes: Array<[path: string, slice: ReportSlice]> = [
   ['/products/bought', 'products-bought'],
   ['/products/cost-changes', 'products-cost-changes'],
   ['/suppliers/debts', 'suppliers-debts'],
+  ['/suppliers/payables-aging', 'suppliers-aging'],
   ['/suppliers/receiving', 'suppliers-receiving'],
   ['/sales/orders', 'sales-orders'],
   ['/sales/unpaid', 'sales-unpaid'],

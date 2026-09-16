@@ -3,6 +3,7 @@ export const DASHBOARD_ALERT_THRESHOLDS = {
   agingServiceJobDays: 30,
   companyServiceJobDays: 14,
   readyForPickupDays: 7,
+  supplierPayablesDueSoonDays: 7,
 } as const;
 
 export const DASHBOARD_CACHE_TTL_MS = {

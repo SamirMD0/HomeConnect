@@ -14,6 +14,7 @@ import {
 import { addDays, differenceInDays } from '../../dashboard/shared/dashboard-range';
 import { ReceivablesService } from '../../financial/receivables/receivables.service';
 import { SuppliersRepository } from '../../suppliers/suppliers/suppliers.repository';
+import { SupplierPayablesService } from '../../suppliers/payables/supplier-payables.service';
 import { ReportsMetricsService } from '../metrics/reports-metrics.service';
 import { MonthlyDebtsService } from '../monthly-debts/monthly-debts.service';
 import { buildCsv, type CsvValue } from '../shared/csv';
@@ -49,7 +50,9 @@ export class ReportRowsService {
     const businessDate = options.businessDate ?? todayInBusinessTimezone();
     const period = resolveReportsPeriod(query, businessDate);
     const generatedAt = (options.generatedAt ?? new Date()).toISOString();
-    const data = await this.load(slice, period);
+    const data = slice === 'suppliers-aging'
+      ? { ...await SupplierPayablesService.get(businessDate), operationalSnapshot: true }
+      : await this.load(slice, period);
     return {
       meta: { ...period, generatedAt, currency: 'USD' as const },
       data,
@@ -529,6 +532,7 @@ function csvDefinition(slice: ReportSlice, rows: Array<Record<string, unknown>>)
     'products-bought': { headers: ['Date', 'SKU', 'Product', 'Supplier', 'Reference', 'Quantity', 'Current stock', 'Sold in period', 'Line status', 'Received by', 'Linked debt'], values: (r) => { const p = r.product as Record<string, unknown>; const s = r.supplier as Record<string, unknown> | null; const b = r.receivedBy as Record<string, unknown> | null; const d = r.linkedDebt as Record<string, unknown> | null; return [r.receivedOn as string, p.sku as string, p.name as string, s?.name as string | undefined, r.referenceNumber as string | null, r.quantity as number, r.currentStock as number, r.soldInPeriod as number, r.status as string, b?.fullName as string | undefined, d?.amount as string | undefined]; } },
     'products-cost-changes': { headers: ['Changed at', 'SKU', 'Product', 'Currency', 'Old cost', 'New cost', 'Old selling price', 'New selling price', 'Selling price source', 'Selling price changed', 'Change %', 'Source', 'Receipt', 'Changed by', 'Reason'], values: (r) => { const p = r.product as Record<string, unknown>; const a = r.changedBy as Record<string, unknown>; return [r.changedAt as string, p.sku as string, p.name as string, r.priceCurrency as string, r.oldCost as string | null, r.newCost as string | null, r.oldSellingPrice as string | null, r.newSellingPrice as string | null, r.sellingPriceSource as string | null, r.sellingPriceChanged as boolean, r.percentageChange as string | null, r.source as string, r.receiptNumber as string | null, a.fullName as string, r.reason as string]; } },
     'suppliers-debts': { headers: ['Date', 'Supplier', 'Type', 'Direction', 'Amount', 'Description', 'Reference', 'Receipt'], values: (r) => { const s = r.supplier as Record<string, unknown>; return [r.transactionDate as string, s.name as string, r.type as string, r.direction as string, r.amount as string, r.description as string, r.reference as string | null, r.receiptNumber as string | null]; } },
+    'suppliers-aging': { headers: ['Supplier', 'Receipt', 'Transaction date', 'Due date', 'Currency', 'Original transaction amount', 'Original base USD', 'FIFO settled base USD', 'Remaining base USD', 'Days overdue', 'Bucket', 'Status'], values: (r) => { const s = r.supplier as Record<string, unknown>; return [s.name as string, r.receiptNumber as string | null, r.transactionDate as string, r.dueDate as string | null, r.currency as string, r.transactionAmount as string, r.originalAmount as string, r.fifoSettledAmount as string, r.remainingAmount as string, r.daysOverdue as number, r.bucket as string, r.status as string]; } },
     'suppliers-receiving': { headers: ['Date', 'Supplier', 'Reference', 'Status', 'Lines', 'Quantity', 'Linked debt'], values: (r) => { const s = r.supplier as Record<string, unknown> | null; const d = r.linkedDebt as Record<string, unknown> | null; return [r.receivedOn as string, s?.name as string | undefined, r.referenceNumber as string | null, r.status as string, r.lineCount as number, r.totalQuantity as number, d?.amount as string | undefined]; } },
     'sales-orders': { headers: ['Date', 'Order', 'Customer', 'Payment status', 'Fulfillment', 'Total', 'Paid', 'Remaining'], values: salesCsvRow },
     'sales-unpaid': { headers: ['Date', 'Order', 'Customer', 'Payment status', 'Fulfillment', 'Total', 'Paid', 'Remaining'], values: salesCsvRow },

@@ -25,6 +25,10 @@ const render = () => renderToStaticMarkup(
 );
 
 describe('SupplierPurchaseFormDialog', () => {
+  it('offers an optional future due date and explains unscheduled payables', () => {
+    expect(render()).toContain('Due date / تاريخ الاستحقاق');
+    expect(render()).toContain('No Due Date');
+  });
   it('offers all three line modes in one form', () => {
     const html = render();
     expect(html).toContain('Existing product');

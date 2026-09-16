@@ -3,7 +3,7 @@ import type { MonthlyReviewMeta, MonthlyReviewQuery } from './monthly-review.typ
 export type ReportSlice =
   | 'customers-new' | 'customers-debts' | 'customers-payments'
   | 'customers-aging' | 'customers-not-paid' | 'customers-paid'
-  | 'suppliers-debts' | 'suppliers-receiving'
+  | 'suppliers-debts' | 'suppliers-receiving' | 'suppliers-aging'
   | 'sales-orders' | 'sales-unpaid'
   | 'inventory-movements' | 'inventory-reconciliation'
   | 'customers-financial-integrity' | 'suppliers-financial-integrity'
@@ -18,6 +18,7 @@ export interface ReportRowsEnvelope<Row = ReportRow> {
 export interface NamedParty { id: string; name: string; phone?: string; companyName?: string | null }
 
 export type ReportRow =
+  | { id: string; supplier: NamedParty; receiptNumber: string|null; transactionDate: string; dueDate: string|null; currency: string; transactionAmount: string; originalAmount: string; fifoSettledAmount: string; remainingAmount: string; daysOverdue: number; bucket: string; status: string }
   | { id: string; name: string; phone: string; isActive: boolean; createdOn: string }
   | { customer: NamedParty; totalOutstanding: string; amountDueByCutoff: string; overdueAmountAtCutoff: string; lastPaymentDate: string | null }
   | { id: string; customer: NamedParty | null; amount: string; currency?: 'USD' | 'LBP'; exchangeRate?: string; baseAmount?: string; sourceSalesOrder?: { id: string; orderNumber: string } | null; paymentDate: string; paymentMethod: string; reference: string | null }

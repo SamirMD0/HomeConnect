@@ -5,6 +5,7 @@ import { isPositiveMoney } from '../../financial/domain/money';
 import { databaseUuidSchema } from '../../../validators/database-uuid';
 import { userTextSchema } from '../../../validators/user-text';
 import { INVENTORY_QUANTITY_LIMIT } from '../../inventory/inventory.types';
+import { supplierDueDateSchema } from '../transactions/supplier-transactions.validator';
 
 const uuid = databaseUuidSchema();
 const emptyToNull = (value: unknown) => typeof value === 'string' && value.trim() === '' ? null : value;
@@ -69,6 +70,7 @@ export const createSupplierPurchaseSchema = z.object({
   idempotencyKey: z.string().trim().max(128, 'Idempotency key is too long').optional().nullable(),
   receiptNumber: optionalText('Receipt number', 200),
   transactionDate: purchaseDate,
+  dueDate: supplierDueDateSchema,
   currency: z.nativeEnum(Currency).default(Currency.USD),
   description: userTextSchema({ field: 'Description', min: 3, max: 500 }),
   reference: optionalText('Reference', 200),

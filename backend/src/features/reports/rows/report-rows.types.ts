@@ -6,6 +6,7 @@ export type ReportSlice =
   | 'customers-not-paid'
   | 'customers-paid'
   | 'suppliers-debts'
+  | 'suppliers-aging'
   | 'suppliers-receiving'
   | 'sales-orders'
   | 'sales-unpaid'

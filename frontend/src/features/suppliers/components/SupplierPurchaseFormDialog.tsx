@@ -25,6 +25,7 @@ interface Props {
 const emptyForm = () => ({
   receiptNumber: '',
   transactionDate: todayAsBusinessDate(),
+  dueDate: '',
   description: '',
   reference: '',
   notes: '',
@@ -106,6 +107,7 @@ export const SupplierPurchaseFormDialog: React.FC<Props> = ({ open, supplier, on
           idempotencyKey: idempotencyKeyRef.current,
           receiptNumber: form.receiptNumber.trim() || null,
           transactionDate: form.transactionDate,
+          dueDate: form.dueDate || null,
           description: description.trim(),
           reference: form.reference.trim() || null,
           notes: form.notes.trim() || null,
@@ -139,6 +141,10 @@ export const SupplierPurchaseFormDialog: React.FC<Props> = ({ open, supplier, on
         </label>
         <label className="block text-sm font-semibold text-slate-700">Purchase date / تاريخ الشراء
           <input type="date" required value={form.transactionDate} onChange={set('transactionDate')} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 font-normal" />
+        </label>
+        <label className="block text-sm font-semibold text-slate-700">Due date / تاريخ الاستحقاق
+          <input type="date" value={form.dueDate} onChange={set('dueDate')} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 font-normal" />
+          <span className="mt-1 block text-xs font-normal text-slate-500">Optional; blank means Unscheduled / No Due Date / بدون تاريخ استحقاق</span>
         </label>
       </div>
 

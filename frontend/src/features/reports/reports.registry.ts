@@ -182,6 +182,16 @@ export const reportDefinitions: ReportDefinition[] = [
     headline: (data) => ({ label: 'Closing owed / المستحق الختامي', value: data.suppliers.movement.closing, money: true }),
   },
   {
+    id: 'supplier-aging',
+    title: 'Supplier Payables Aging / أعمار مستحقات الموردين',
+    description: 'Current payables after report-only FIFO settlement, by due date; unscheduled balances and excess credit remain visible. Stored base USD values; no ledger changes.',
+    icon: Truck,
+    category: 'suppliers',
+    kind: 'rows',
+    slice: 'suppliers-aging',
+    operational: true,
+  },
+  {
     id: 'supplier-financial-integrity',
     title: 'Supplier Financial Integrity / سلامة حسابات الموردين',
     description: 'Compares each displayed supplier balance with an independent sum of active increases minus active decreases.',

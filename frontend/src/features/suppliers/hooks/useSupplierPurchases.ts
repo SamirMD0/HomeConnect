@@ -57,6 +57,8 @@ export function useCreateSupplierPurchase() {
         queryClient.invalidateQueries({ queryKey: supplierPurchaseKeys.all }),
         queryClient.invalidateQueries({ queryKey: supplierKeys.all }),
         queryClient.invalidateQueries({ queryKey: supplierLedgerKeyPrefix }),
+        queryClient.invalidateQueries({ queryKey: ['reports', 'rows', 'suppliers-aging'] }),
+        queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
         queryClient.invalidateQueries({ queryKey: supplierReceivingKeys.all }),
         queryClient.invalidateQueries({ queryKey: inventoryKeys.all }),
         queryClient.invalidateQueries({ queryKey: productKeys.all }),
