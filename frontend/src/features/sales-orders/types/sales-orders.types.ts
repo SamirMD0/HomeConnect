@@ -1,3 +1,4 @@
+import type { CreditLimitOverride } from '../../customer-financial/components/CreditLimitWarning';
 export type SalesChannel = 'SHOP_DIRECT' | 'SHOP_DELIVERY' | 'PHONE_ORDER';
 export type SalesOrderFulfillmentStatus = 'DRAFT' | 'CONFIRMED' | 'PREPARING' | 'READY_FOR_DELIVERY' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'PARTIALLY_RETURNED' | 'CANCELLED' | 'RETURNED';
 export type SalesOrderPaymentStatus = 'UNPAID' | 'PARTIALLY_PAID' | 'PAID';
@@ -116,7 +117,7 @@ export interface SalesOrderLineInput {
   productId?: string | null; manualProductName?: string | null; manualProductModel?: string | null;
   quantity: number; unitPrice: string; discountAmount?: string | null; notes?: string | null;
 }
-export interface CreateSalesOrderInput {
+export interface CreateSalesOrderInput extends CreditLimitOverride {
   idempotencyKey?: string;
   currency?: 'USD' | 'LBP';
   exchangeRate?: string;

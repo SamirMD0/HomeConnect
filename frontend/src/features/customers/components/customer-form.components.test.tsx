@@ -3,6 +3,13 @@ import { describe, expect, it, vi } from 'vitest';
 import { CustomerForm, customerSchema } from './CustomerForm';
 
 describe('customer form Arabic text support', () => {
+  it('accepts blank, zero, and USD limits but rejects negative/fractional precision limits', () => {
+    for (const creditLimit of ['', '0', '100.00']) expect(customerSchema.safeParse({ name: 'Ali', phone: '03000000', creditLimit }).success).toBe(true);
+    for (const creditLimit of ['-1', '1.001', '10000000000']) expect(customerSchema.safeParse({ name: 'Ali', phone: '03000000', creditLimit }).success).toBe(false);
+    const html = renderToStaticMarkup(<CustomerForm canManageCreditLimit initialData={{ name: 'Ali', phone: '03000000', creditLimit: '100.00' }} onSubmit={vi.fn()} onCancel={vi.fn()} />);
+    expect(html).toContain('Credit limit (USD) / حد الائتمان بالدولار');
+    expect(html).toContain('name="creditLimit"');
+  });
   it('renders customer text inputs with automatic text direction', () => {
     const html = renderToStaticMarkup(
       <CustomerForm
@@ -34,4 +41,10 @@ describe('customer form Arabic text support', () => {
       expect(messages).toContain('Phone is required / رقم الهاتف مطلوب');
     }
   });
+});
+
+
+it('does not expose credit-limit configuration to an employee', () => {
+  const html = renderToStaticMarkup(<CustomerForm initialData={{ name: 'Ali', phone: '03000000', creditLimit: '100.00' }} onSubmit={vi.fn()} onCancel={vi.fn()} />);
+  expect(html).not.toContain('name="creditLimit"');
 });

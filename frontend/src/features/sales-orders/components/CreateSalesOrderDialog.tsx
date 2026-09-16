@@ -15,6 +15,7 @@ import { salesLineForProduct } from './ProductLinePicker';
 import { useAuth } from '../../../hooks/useAuth';
 import { fromCents, normalizeMoney, toCents } from '../utils/sales-money';
 
+import { CreditLimitWarning, useCreditLimitWarning } from '../../customer-financial/components/CreditLimitWarning';
 
 type PaymentMode = 'FULL' | 'PARTIAL' | 'UNPAID';
 const today = () => { const date = new Date(); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; };
@@ -27,6 +28,8 @@ export const salesOrderLineFromPrefill = (product: Product): SalesOrderLineInput
 export function CreateSalesOrderDialog({ isOpen, onClose, prefill = null }: { isOpen: boolean; onClose: () => void; prefill?: SalesOrderPrefill | null }) {
   const { user } = useAuth();
   const create = useCreateSalesOrder();
+  const credit = useCreditLimitWarning();
+  const resetCredit = credit.reset;
   const receiptKey = useRef(crypto.randomUUID());
   const prefillProduct = useProduct(isOpen ? prefill?.productId ?? '' : '');
   const [step, setStep] = useState(prefill ? 3 : 0);
@@ -52,15 +55,15 @@ export function CreateSalesOrderDialog({ isOpen, onClose, prefill = null }: { is
   const customerOptional = user?.role === 'ADMIN' && paymentMode === 'FULL';
   useEffect(() => { if (customer.data?.address && !deliveryAddress) setDeliveryAddress(customer.data.address); }, [customer.data?.address, deliveryAddress]);
   useEffect(() => {
-    if (!isOpen) {  appliedPrefillId.current = null; return; }
+    if (!isOpen) { resetCredit(); appliedPrefillId.current = null; return; }
     if (!prefill?.productId || !prefillProduct.data || appliedPrefillId.current === prefill.productId) return;
     setItems([salesOrderLineFromPrefill(prefillProduct.data)]);
     setCurrency(prefillProduct.data.priceCurrency ?? 'USD');
     setStep(3);
     appliedPrefillId.current = prefill.productId;
-  }, [isOpen, prefill?.productId, prefillProduct.data]);
+  }, [isOpen, prefill?.productId, prefillProduct.data, resetCredit]);
 
-  const reset = () => {  receiptKey.current = crypto.randomUUID(); setCurrency('USD'); setStep(0); setCustomerId(''); setChannel('SHOP_DIRECT'); setItems([emptySalesLine()]); setPaymentMode('FULL'); setPartialAmount('0.00'); setDebtDueDate(''); setDeliveryDate(''); setDeliveryFee('0.00'); setDeliveryTaxTreatment('STANDARD'); setDeliveryAddress(''); setDeliveryNotes(''); };
+  const reset = () => { credit.reset(); receiptKey.current = crypto.randomUUID(); setCurrency('USD'); setStep(0); setCustomerId(''); setChannel('SHOP_DIRECT'); setItems([emptySalesLine()]); setPaymentMode('FULL'); setPartialAmount('0.00'); setDebtDueDate(''); setDeliveryDate(''); setDeliveryFee('0.00'); setDeliveryTaxTreatment('STANDARD'); setDeliveryAddress(''); setDeliveryNotes(''); };
   const close = () => { reset(); appliedPrefillId.current = null; onClose(); };
   const next = () => {
     if (step === 0 && paymentMode !== 'FULL' && !debtDueDate) return toast.error('Enter the debt due date');
@@ -77,14 +80,14 @@ export function CreateSalesOrderDialog({ isOpen, onClose, prefill = null }: { is
       return;
     }
     const input: CreateSalesOrderInput = {
-
+      ...credit.payload,
       idempotencyKey: receiptKey.current, currency,
       customerId: customerId || null, salesChannel: channel, orderDate: today(), fulfillmentStatus,
       paidAmount, debtDueDate: paymentMode === 'FULL' || fulfillmentStatus === 'DRAFT' ? null : debtDueDate,
       items,
       ...(channel !== 'SHOP_DIRECT' ? { deliveryDate: deliveryDate || null, deliveryFee, deliveryTaxTreatment, deliveryAddressSnapshot: deliveryAddress || null, deliveryNotes: deliveryNotes || null } : {}),
     };
-    try { await create.mutateAsync(input); toast.success('Sales order created'); close(); } catch (error) { toast.error('Unable to create sales order'); }
+    try { await create.mutateAsync(input); toast.success('Sales order created'); close(); } catch (error) { if (!credit.capture(error)) toast.error('Unable to create sales order'); }
   };
 
   const footer = <div className="flex w-full items-center justify-between gap-3"><div><p className="text-xs text-slate-500">Total / الإجمالي</p><p className="font-bold tabular-nums text-slate-900">{formatMoney(total, currency)} <span className="ml-2 text-sm font-medium text-slate-500">Remaining {formatMoney(remaining, currency)}</span></p></div><div className="flex gap-2">{step > 0 && <Button variant="secondary" icon={<ChevronLeft />} onClick={back}>Back</Button>}{step < 5 ? <Button icon={<ChevronRight />} iconPosition="right" onClick={next}>Next</Button> : <><Button variant="secondary" icon={<Save />} isLoading={create.isPending} onClick={() => submit('DRAFT')}>Save draft</Button><Button icon={<Check />} isLoading={create.isPending} onClick={() => submit(channel === 'SHOP_DIRECT' ? 'DELIVERED' : 'CONFIRMED')}>Confirm order</Button></>}</div></div>;
@@ -92,7 +95,7 @@ export function CreateSalesOrderDialog({ isOpen, onClose, prefill = null }: { is
   return <Modal isOpen={isOpen} onClose={close} title="Create Sales Order / إنشاء طلب بيع" description={`Step ${step + 1} of 6`} size="xl" footer={footer}>
     {prefill?.productId && prefillProduct.isLoading && <p role="status" className="mb-4 rounded-lg bg-slate-50 p-3 text-sm text-slate-600">Loading scanned product / جارٍ تحميل المنتج الممسوح…</p>}
     {prefill?.productId && prefillProduct.isError && <div role="alert" className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800"><span>Unable to load scanned product / تعذر تحميل المنتج الممسوح</span><Button size="sm" variant="secondary" onClick={() => prefillProduct.refetch()}>Retry / إعادة المحاولة</Button></div>}
-
+    <CreditLimitWarning {...credit} isAdmin={user?.role === 'ADMIN'} />
     <FormField label="Transaction currency / عملة المعاملة">{(field) => <Select {...field} value={currency} onChange={(event) => setCurrency(event.target.value as 'USD' | 'LBP')}><option value="USD">USD</option><option value="LBP">LBP</option></Select>}</FormField>
     {step === 0 && <div className="space-y-4"><FormField label="Payment / الدفع">{(field) => <Select {...field} value={paymentMode} onChange={(event) => setPaymentMode(event.target.value as PaymentMode)}><option value="FULL">Paid in full / مدفوع بالكامل</option><option value="PARTIAL">Partial / جزئي</option><option value="UNPAID">Unpaid / غير مدفوع</option></Select>}</FormField>{paymentMode === 'PARTIAL' && <FormField label="Paid amount / المبلغ المدفوع" required>{(field) => <Input {...field} numeric value={partialAmount} onChange={(event) => setPartialAmount(event.target.value)} />}</FormField>}{paymentMode !== 'FULL' && <FormField label="Debt due date / تاريخ استحقاق الدين" required hint="This authorises creation of a debt for the remaining balance.">{(field) => <Input {...field} type="date" min={today()} value={debtDueDate} onChange={(event) => setDebtDueDate(event.target.value)} />}</FormField>}</div>}
     {step === 1 && <div className="space-y-3">{customerOptional && <p className="text-sm text-slate-500">Customer is optional for an admin-recorded fully paid sale / الزبون اختياري للبيع المدفوع بالكامل</p>}<CustomerPicker value={customerId} onChange={setCustomerId} /></div>}

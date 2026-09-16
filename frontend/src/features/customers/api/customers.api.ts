@@ -38,6 +38,7 @@ export interface Customer {
   phone: string;
   address: string | null;
   notes: string | null;
+  creditLimit?: string | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -93,12 +94,12 @@ export const customersApi = {
     return response.data.data;
   },
 
-  createCustomer: async (data: { name: string; phone: string; address?: string; notes?: string }) => {
+  createCustomer: async (data: { name: string; phone: string; address?: string; notes?: string; creditLimit?: string | null }) => {
     const response = await api.post<CustomerResponse>('/customers', data);
     return response.data.data;
   },
 
-  updateCustomer: async (id: string, data: { name?: string; phone?: string; address?: string | null; notes?: string | null; isActive?: boolean }) => {
+  updateCustomer: async (id: string, data: { name?: string; phone?: string; address?: string | null; notes?: string | null; creditLimit?: string | null; isActive?: boolean }) => {
     const response = await api.put<CustomerResponse>(`/customers/${id}`, data);
     return response.data.data;
   },

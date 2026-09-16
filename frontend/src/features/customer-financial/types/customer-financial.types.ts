@@ -1,3 +1,5 @@
+import type { CreditLimitOverride as importCreditLimitOverride } from '../components/CreditLimitWarning';
+
 export type DebtStatus = 'UNPAID' | 'PARTIALLY_PAID' | 'OVERDUE' | 'PAID' | 'CANCELLED';
 export type DebtKind = 'STANDARD' | 'PREPAID_PURCHASE';
 export type InstallmentPlanStatus = 'ACTIVE' | 'OVERDUE' | 'COMPLETED' | 'CANCELLED';
@@ -224,7 +226,7 @@ export interface InstallmentPlanDetail extends Omit<InstallmentPlanSummaryItem, 
   payments: RecentFinancialPayment[];
 }
 
-export interface CreateDebtRequest {
+export interface CreateDebtRequest extends importCreditLimitOverride {
   amount: string;
   description: string;
   dueDate: string;

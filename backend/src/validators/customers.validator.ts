@@ -1,7 +1,10 @@
 import { z } from 'zod';
 import { userTextSchema } from './user-text';
 
+const creditLimitSchema = z.string().trim().regex(/^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/, 'Credit limit must be non-negative USD with at most two decimal places').refine((value) => Number(value) <= 9999999999.99, 'Credit limit is too large').nullable().optional();
+
 export const createCustomerSchema = z.object({
+  creditLimit: creditLimitSchema,
   name: userTextSchema({ field: 'Name', min: 2, max: 100 }),
   phone: z.string().min(5, 'Phone number must be at least 5 characters long').max(20, 'Phone number is too long'),
   address: userTextSchema({ field: 'Address', max: 255 }).optional(),
@@ -9,6 +12,7 @@ export const createCustomerSchema = z.object({
 });
 
 export const updateCustomerSchema = z.object({
+  creditLimit: creditLimitSchema,
   name: userTextSchema({ field: 'Name', min: 2, max: 100 }).optional(),
   phone: z.string().min(5, 'Phone number must be at least 5 characters long').max(20, 'Phone number is too long').optional(),
   address: userTextSchema({ field: 'Address', max: 255 }).optional().nullable(),

@@ -139,6 +139,7 @@ export class SalesOrdersService {
                 dueDate: input.debtDueDate!,
                 description: `Sales order ${created.orderNumber}`,
                 notes: null,
+                ...creditOverrideInput(input),
               }, user, context, tx)
             : created;
 
@@ -214,7 +215,7 @@ export class SalesOrdersService {
   }
 
   static async update(id: string, input: UpdateSalesOrderInput, user: SalesMutationUser, context: SalesRequestContext) {
-    const fields = Object.keys(input).filter((field) => !['reason', 'accountPassword', 'debtDueDate', 'deliveryTaxProfileId'].includes(field));
+    const fields = Object.keys(input).filter((field) => !['reason', 'accountPassword', 'debtDueDate', 'deliveryTaxProfileId', 'overrideCreditLimit', 'creditLimitOverrideReason'].includes(field));
     if (!fields.length) throw new ValidationError('At least one sales order field is required');
     return runFinancialTransaction(async (tx) => {
       const existing = await requiredOrder(id, tx);
@@ -261,7 +262,7 @@ export class SalesOrdersService {
         updatedById: user.userId,
       }, tx);
       if (moneyOrIdentityChange) {
-        updated = await this.recalculateOrder(id, input.debtDueDate, user, context, tx);
+        updated = await this.recalculateOrder(id, input.debtDueDate, user, context, tx, input);
       }
       await auditMutation(updated, {
         action: SalesAuditAction.UPDATE_DETAILS,
@@ -283,7 +284,7 @@ export class SalesOrdersService {
       }
       const prepared = (await prepareItems([input], existing.orderDate, tx, existing.currency, existing.exchangeRate))[0];
       const item = await SalesOrdersRepository.addItem({ salesOrderId: id, ...prepared }, tx);
-      const updated = await this.recalculateOrder(id, input.debtDueDate, user, context, tx);
+      const updated = await this.recalculateOrder(id, input.debtDueDate, user, context, tx, input);
       await auditMutation(updated, {
         recordType: SalesAuditRecordType.SALES_ORDER_ITEM,
         recordId: item.id,
@@ -297,7 +298,7 @@ export class SalesOrdersService {
   }
 
   static async updateItem(orderId: string, itemId: string, input: UpdateSalesOrderItemInput, user: SalesMutationUser, context: SalesRequestContext) {
-    const fields = Object.keys(input).filter((field) => !['reason', 'accountPassword'].includes(field));
+    const fields = Object.keys(input).filter((field) => !['reason', 'accountPassword', 'overrideCreditLimit', 'creditLimitOverrideReason'].includes(field));
     if (!fields.length) throw new ValidationError('At least one item field is required');
     return runFinancialTransaction(async (tx) => {
       const existing = await requiredOrder(orderId, tx);
@@ -324,7 +325,7 @@ export class SalesOrdersService {
       };
       const prepared = (await prepareItems([merged], existing.orderDate, tx, existing.currency, existing.exchangeRate))[0];
       const changedItem = await SalesOrdersRepository.updateItem(itemId, prepared, tx);
-      const updated = await this.recalculateOrder(orderId, input.debtDueDate, user, context, tx);
+      const updated = await this.recalculateOrder(orderId, input.debtDueDate, user, context, tx, input);
       await auditMutation(updated, {
         recordType: SalesAuditRecordType.SALES_ORDER_ITEM,
         recordId: itemId,
@@ -352,7 +353,7 @@ export class SalesOrdersService {
         await requireAdminVerification(input, user, context, orderId, 'REMOVE_SALES_ORDER_ITEM', tx);
       }
       await SalesOrdersRepository.removeItem(itemId, tx);
-      const updated = await this.recalculateOrder(orderId, input.debtDueDate, user, context, tx);
+      const updated = await this.recalculateOrder(orderId, input.debtDueDate, user, context, tx, input);
       await auditMutation(updated, {
         recordType: SalesAuditRecordType.SALES_ORDER_ITEM,
         recordId: itemId,
@@ -421,7 +422,7 @@ export class SalesOrdersService {
         updatedById: user.userId,
       }, tx);
       if (shouldCreateDebt) {
-        updated = await this.createAndLinkDebt(updated, { dueDate: input.debtDueDate!, description: `Sales order ${updated.orderNumber}`, notes: null }, user, context, tx);
+        updated = await this.createAndLinkDebt(updated, { dueDate: input.debtDueDate!, description: `Sales order ${updated.orderNumber}`, notes: null, ...creditOverrideInput(input) }, user, context, tx);
       }
       const payment = delta.greaterThan(0) ? await recordCounterPayment(tx, {
         sale: updated, customerId: updated.customerId, amount: moneyToApiString(delta, existing.currency),
@@ -538,6 +539,7 @@ export class SalesOrdersService {
       description: input.description ?? `Sales order ${existing.orderNumber}`,
       dueDate: input.dueDate,
       notes: input.notes ?? null,
+      ...creditOverrideInput(input),
     }, user, tx, existing.exchangeRate.toFixed(6));
     const updated = await SalesOrdersRepository.update(existing.id, {
       debtId: debt.id,
@@ -559,6 +561,7 @@ export class SalesOrdersService {
     user: SalesMutationUser,
     context: SalesRequestContext,
     tx: Prisma.TransactionClient,
+    overrideInput: import('../../financial/credit-limits/credit-limit.service').CreditLimitOverrideInput = {}
   ) {
     const order = await requiredOrder(id, tx);
     const totals = calculateVatAwareOrderTotals(order.items, deliverySnapshot(order), moneyToApiString(order.paidAmount, order.currency), order.currency);
@@ -579,6 +582,7 @@ export class SalesOrdersService {
         dueDate: debtDueDate!,
         description: `Sales order ${updated.orderNumber}`,
         notes: null,
+        ...creditOverrideInput(overrideInput),
       }, user, context, tx);
     }
     return updated;
@@ -1187,4 +1191,9 @@ function salesOrderItemInventoryState(
   else state = 'AVAILABLE';
 
   return { state, activeFulfillmentId: activeFulfillment?.id ?? null };
+}
+
+
+function creditOverrideInput(input: import('../../financial/credit-limits/credit-limit.service').CreditLimitOverrideInput) {
+  return input.overrideCreditLimit ? { overrideCreditLimit: true, creditLimitOverrideReason: input.creditLimitOverrideReason, accountPassword: input.accountPassword } : {};
 }

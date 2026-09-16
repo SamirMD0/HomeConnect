@@ -2,6 +2,8 @@ import { Currency, DebtStatus, FinancialCorrectionSourceScreen, PaymentMethod } 
 import { z } from 'zod';
 import { userTextSchema } from '../../../validators/user-text';
 
+import { creditLimitOverrideFields } from '../credit-limits/credit-limit.validator';
+
 const uuidSchema = z.string().uuid('Invalid ID');
 const moneyStringSchema = z
   .string()
@@ -23,6 +25,7 @@ export const debtParamsSchema = z.object({
 
 export const createDebtSchema = z
   .object({
+    ...creditLimitOverrideFields,
     amount: moneyStringSchema,
     currency: z.nativeEnum(Currency).default(Currency.USD),
     description: userTextSchema({ field: 'Description', min: 1, max: 200 }),

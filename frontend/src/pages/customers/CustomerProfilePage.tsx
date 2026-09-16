@@ -252,6 +252,7 @@ export const CustomerProfilePage: React.FC = () => {
 
       <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title={businessLabels.customer.edit}>
         <CustomerForm
+          canManageCreditLimit={user?.role === 'ADMIN'}
           initialData={customer}
           onSubmit={handleEdit}
           onCancel={() => setIsEditModalOpen(false)}

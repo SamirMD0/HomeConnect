@@ -1,3 +1,4 @@
+import { CreditLimitWarning, useCreditLimitWarning } from '../../customer-financial/components/CreditLimitWarning';
 import { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Minus, Plus, ShoppingCart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -60,6 +61,8 @@ export function ScannerQuickOrderDialog({ productId, isOpen, onClose }: ScannerQ
   const initializedProductId = useRef<string | null>(item?.id ?? null);
   const [state, setState] = useState<QuickOrderFormState>(() => item ? initialQuickOrderState(item) : emptyState);
   const [errors, setErrors] = useState<QuickOrderErrors>({});
+  const credit = useCreditLimitWarning();
+  const resetCredit = credit.reset;
   const [serverError, setServerError] = useState('');
   const [createdOrder, setCreatedOrder] = useState<Pick<SalesOrder, 'id' | 'orderNumber'> | null>(null);
   const today = todayString();
@@ -68,24 +71,24 @@ export function ScannerQuickOrderDialog({ productId, isOpen, onClose }: ScannerQ
 
   useEffect(() => {
     if (!isOpen || !item || initializedProductId.current === item.id) return;
-
+    resetCredit();
     setState(initialQuickOrderState(item));
     setErrors({});
     setServerError('');
     setCreatedOrder(null);
     initializedProductId.current = item.id;
-  }, [isOpen, item]);
+  }, [isOpen, item, resetCredit]);
 
   useEffect(() => {
     if (isOpen) return;
-
+    resetCredit();
     receiptKey.current = crypto.randomUUID();
     initializedProductId.current = null;
     setState(emptyState);
     setErrors({});
     setServerError('');
     setCreatedOrder(null);
-  }, [isOpen]);
+  }, [isOpen, resetCredit]);
 
   const change = <K extends keyof QuickOrderFormState>(field: K, value: QuickOrderFormState[K]) => {
     setState((current) => ({ ...current, [field]: value }));
@@ -93,7 +96,7 @@ export function ScannerQuickOrderDialog({ productId, isOpen, onClose }: ScannerQ
     setServerError('');
   };
 
-  const close = () => {
+  const close = () => { credit.reset();
     receiptKey.current = crypto.randomUUID();
     initializedProductId.current = null;
     setState(emptyState);
@@ -113,10 +116,10 @@ export function ScannerQuickOrderDialog({ productId, isOpen, onClose }: ScannerQ
     setErrors({});
     setServerError('');
     try {
-      const order = await create.mutateAsync({ ...buildQuickOrderPayload({ productId: item.id, state, today }),  idempotencyKey: receiptKey.current, currency: item.priceCurrency ?? 'USD' });
+      const order = await create.mutateAsync({ ...buildQuickOrderPayload({ productId: item.id, state, today }), ...credit.payload, idempotencyKey: receiptKey.current, currency: item.priceCurrency ?? 'USD' });
       setCreatedOrder({ id: order.id, orderNumber: order.orderNumber });
     } catch (error) {
-
+      credit.capture(error);
       setServerError(quickOrderErrorMessage(error));
     }
   };
@@ -145,7 +148,7 @@ export function ScannerQuickOrderDialog({ productId, isOpen, onClose }: ScannerQ
     {createdOrder
       ? <ScannerQuickOrderSuccess order={createdOrder} onOpenOrder={openOrder} onScanNext={close} />
       : <div className="space-y-5">
-
+          <CreditLimitWarning {...credit} isAdmin={user?.role === 'ADMIN'} />
           {serverError && <ScannerQuickOrderServerError message={serverError} />}
 
           {product.isLoading && <p role="status" className="rounded-lg bg-slate-50 p-4 text-sm text-slate-600">Loading product / جارٍ تحميل المنتج…</p>}

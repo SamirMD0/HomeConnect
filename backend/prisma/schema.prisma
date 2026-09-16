@@ -444,6 +444,7 @@ model ExchangeRate {
 }
 
 model Customer {
+  creditLimit Decimal? @db.Decimal(12, 2)
   id        String    @id @default(uuid()) @db.Uuid
   name      String
   phone     String

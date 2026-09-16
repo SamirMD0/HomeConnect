@@ -32,6 +32,7 @@ import {
   ZERO_MONEY,
 } from '../index';
 import type { FinancialTransactionClient } from '../infrastructure/transaction';
+import { CreditLimitService } from '../credit-limits/credit-limit.service';
 import { DebtsRepository, DebtWithDetails } from './debts.repository';
 import { PrepaidRepository } from '../prepaid/prepaid.repository';
 import { verifyAccountPassword, verifyAdminPasswordForCorrection } from '../authorization/account-password';
@@ -208,6 +209,7 @@ export class DebtsService {
     tx?: FinancialTransactionClient,
     originalExchangeRate?: string
   ): Promise<DebtView> {
+    if (!tx) return runFinancialTransaction((client) => this.createDebt(customerId, input, user, client, originalExchangeRate));
     const customer = tx
       ? await DebtsRepository.findActiveCustomerById(customerId, tx)
       : await DebtsRepository.findActiveCustomerById(customerId);
@@ -244,9 +246,9 @@ export class DebtsService {
       notes: input.notes ?? null,
       createdById: user.userId,
     };
-    const debt = tx
-      ? await DebtsRepository.createDebt(data, tx)
-      : await DebtsRepository.createDebt(data);
+    const decision = await CreditLimitService.check(tx, customer, data.baseOriginalAmount, input, user);
+    const debt = await DebtsRepository.createDebt(data, tx);
+    await CreditLimitService.audit(tx, customerId, debt.id, decision, user);
 
     return this.toDebtView(debt);
   }

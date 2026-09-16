@@ -243,14 +243,15 @@ interface PlanComputation {
 export class CustomerFinancialSummaryService {
   static async getCustomerFinancialSummary(
     customerId: string,
-    query: CustomerFinancialSummaryQueryInput
+    query: CustomerFinancialSummaryQueryInput,
+    tx?: import('@prisma/client').Prisma.TransactionClient
   ): Promise<CustomerFinancialSummaryView> {
     const records = await CustomerFinancialSummaryRepository.loadCustomerFinancialSummary({
       customerId,
       includeCancelled: query.includeCancelled,
       includePayments: query.includePayments,
       paymentLimit: query.paymentLimit,
-    });
+    }, ...(tx ? [tx] : []));
 
     if (!records.customer) {
       throw new NotFoundError('Customer not found');

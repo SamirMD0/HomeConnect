@@ -138,8 +138,10 @@ export interface CustomerFinancialSummaryRecordSet {
 
 export class CustomerFinancialSummaryRepository {
   static async loadCustomerFinancialSummary(
-    params: LoadCustomerFinancialSummaryParams
+    params: LoadCustomerFinancialSummaryParams,
+    tx?: Prisma.TransactionClient
   ): Promise<CustomerFinancialSummaryRecordSet> {
+    const client = tx ?? prisma;
     const debtWhere: Prisma.DebtWhereInput = {
       customerId: params.customerId,
       ...(!params.includeCancelled ? { status: { not: DebtStatus.CANCELLED } } : {}),
@@ -150,25 +152,25 @@ export class CustomerFinancialSummaryRepository {
     };
 
     const [customer, debts, plans, recentPayments] = await Promise.all([
-      prisma.customer.findFirst({
+      client.customer.findFirst({
         where: {
           id: params.customerId,
           deletedAt: null,
         },
         select: customerSelect,
       }),
-      prisma.debt.findMany({
+      client.debt.findMany({
         where: debtWhere,
         orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
         include: debtInclude,
       }),
-      prisma.installmentPlan.findMany({
+      client.installmentPlan.findMany({
         where: planWhere,
         orderBy: [{ startDate: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
         include: installmentPlanInclude,
       }),
       params.includePayments
-        ? prisma.payment.findMany({
+        ? client.payment.findMany({
             where: {
               customerId: params.customerId,
             },

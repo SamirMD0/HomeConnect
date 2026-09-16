@@ -188,3 +188,14 @@ describe('CustomersService.listCustomers', () => {
     expect(repositoryMock.findAll).toHaveBeenCalledWith(expect.objectContaining({ skip: undefined, take: undefined, sortBy: 'createdAt' }));
   });
 });
+
+
+describe('credit-limit configuration authorization', () => {
+  it.each([null, '0.00', '100000.00'])('rejects employee limit edits, including clearing: %s', async (creditLimit) => {
+    await expect(CustomersService.updateCustomer(alice.id, { creditLimit }, { role: 'EMPLOYEE' })).rejects.toThrow('Only an ADMIN');
+  });
+  it('rejects a supplied limit without an actor and on employee customer creation', async () => {
+    await expect(CustomersService.updateCustomer(alice.id, { creditLimit: null })).rejects.toThrow('Only an ADMIN');
+    await expect(CustomersService.createCustomer({ name: 'New', phone: '70123456', createdBy: 'actor', creditLimit: null }, { role: 'EMPLOYEE' })).rejects.toThrow('Only an ADMIN');
+  });
+});

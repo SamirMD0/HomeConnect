@@ -8,7 +8,7 @@ export class CustomersController {
       const customer = await CustomersService.createCustomer({
         ...req.body,
         createdBy: req.user!.userId,
-      });
+      }, req.user!);
       res.status(201).json({
         success: true,
         data: customer,
@@ -79,7 +79,7 @@ export class CustomersController {
 
   static async updateCustomer(req: Request, res: Response, next: NextFunction) {
     try {
-      const customer = await CustomersService.updateCustomer(req.params.id as string, req.body);
+      const customer = await CustomersService.updateCustomer(req.params.id as string, req.body, req.user!);
       res.status(200).json({
         success: true,
         data: customer,

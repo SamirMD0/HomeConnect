@@ -1,3 +1,4 @@
+import type { CreditLimitOverride } from '../../customer-financial/components/CreditLimitWarning';
 import { api } from '../../../services/api';
 import type {
   CreateSalesOrderInput, DeductSalesOrderStockInput, RestoreSalesOrderStockInput, SalesAudit, SalesOrder,
@@ -34,11 +35,11 @@ export const salesOrdersApi = {
   restoreStock: async (id: string, input: RestoreSalesOrderStockInput): Promise<SalesOrderStockActionResult> =>
     (await api.post(`/sales-orders/${id}/restore-stock`, input)).data.data,
   status: async (id: string, input: { status: string; reason?: string; accountPassword?: string }): Promise<SalesOrder> => (await api.post(`/sales-orders/${id}/fulfillment-status`, input)).data.data,
-  payment: async (id: string, input: { idempotencyKey?: string; paidAmount: string; debtDueDate?: string | null; reason: string; accountPassword: string }): Promise<SalesOrder> => (await api.post(`/sales-orders/${id}/payment`, input)).data.data,
+  payment: async (id: string, input: CreditLimitOverride & { idempotencyKey?: string; paidAmount: string; debtDueDate?: string | null; reason: string; accountPassword: string }): Promise<SalesOrder> => (await api.post(`/sales-orders/${id}/payment`, input)).data.data,
   cancel: async (id: string, input: { reason: string; accountPassword: string }): Promise<SalesOrder> => (await api.post(`/sales-orders/${id}/cancel`, input)).data.data,
   restore: async (id: string, input: { status: string; reason: string; accountPassword: string }): Promise<SalesOrder> => (await api.post(`/sales-orders/${id}/restore`, input)).data.data,
   returnOrder: async (id: string, input: ReturnSalesOrderInput): Promise<SalesReturn> => (await api.post(`/sales-orders/${id}/return`, input)).data.data,
-  createDebt: async (id: string, input: { dueDate: string; description?: string; notes?: string | null }): Promise<SalesOrder> => (await api.post(`/sales-orders/${id}/create-debt`, input)).data.data,
+  createDebt: async (id: string, input: CreditLimitOverride & { dueDate: string; description?: string; notes?: string | null }): Promise<SalesOrder> => (await api.post(`/sales-orders/${id}/create-debt`, input)).data.data,
   createInstallmentPlan: async (id: string, input: { startDate: string; installmentCount: number; frequency?: 'MONTHLY' | 'WEEKLY'; description?: string; notes?: string | null }): Promise<SalesOrder> => (await api.post(`/sales-orders/${id}/create-installment-plan`, input)).data.data,
   unlinkFinancial: async (id: string, input: { reason: string; accountPassword: string }): Promise<SalesOrder> => (await api.post(`/sales-orders/${id}/unlink-financial`, input)).data.data,
   audit: async (id: string): Promise<SalesAudit[]> => (await api.get(`/sales-orders/${id}/audit`)).data.data,

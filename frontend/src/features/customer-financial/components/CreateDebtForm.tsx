@@ -1,3 +1,5 @@
+import { CreditLimitWarning, useCreditLimitWarning } from './CreditLimitWarning';
+import { useAuth } from '../../../hooks/useAuth';
 import React, { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -16,6 +18,8 @@ interface CreateDebtFormProps {
 }
 
 export const CreateDebtForm: React.FC<CreateDebtFormProps> = ({ customer, onBack, onSuccess }) => {
+  const { user } = useAuth();
+  const credit = useCreditLimitWarning();
   const createDebt = useCreateDebt(customer.id);
   const [serverError, setServerError] = useState<string | null>(null);
   const {
@@ -43,13 +47,16 @@ export const CreateDebtForm: React.FC<CreateDebtFormProps> = ({ customer, onBack
     setServerError(null);
     try {
       await createDebt.mutateAsync({
+        ...credit.payload,
         amount: canonicalMoneyInput(values.amount),
         description: values.description.trim(),
         dueDate: values.dueDate,
         notes: values.notes?.trim() || null,
       });
+      credit.reset();
       onSuccess();
     } catch (error) {
+      credit.capture(error);
       const normalized = normalizeFinancialError(error);
       setServerError(normalized.message);
       applyServerFieldErrors(normalized.fieldErrors, setError);
@@ -70,6 +77,8 @@ export const CreateDebtForm: React.FC<CreateDebtFormProps> = ({ customer, onBack
           {serverError}
         </div>
       )}
+
+      <CreditLimitWarning {...credit} isAdmin={user?.role === 'ADMIN'} />
 
       <TextField label={businessLabels.financial.amount} error={errors.amount?.message}>
         <input
