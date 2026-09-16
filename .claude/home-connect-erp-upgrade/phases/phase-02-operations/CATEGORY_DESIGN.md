@@ -1,6 +1,6 @@
 # Prompt 12 — English product categories
 
-Owner requested parent/subcategories, with examples Home Appliances → Kitchen → Cookers and Electronics → TV, then confirmed English only. These are examples, not seeded or hardcoded shop classifications. Prompt 12 brings categories forward despite the older PLAN.md deferral. Remain on `upgrade/phase-02-operations`; do not touch main or merge.
+Owner requested parent/subcategories, with examples Home Appliances → Kitchen → Cookers and Electronics → TV, then confirmed English only. These are examples, not seeded or hardcoded shop classifications. Prompt 12 brings categories forward despite the older PLAN.md deferral. Cumulative work is on `develop`; do not touch main or merge.
 
 ## Presentation and hierarchy
 

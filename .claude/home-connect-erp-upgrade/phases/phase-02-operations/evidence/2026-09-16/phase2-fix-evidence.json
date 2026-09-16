@@ -1,0 +1,1373 @@
+{
+  "database": "homeconnect_ci_phase4_phase5_phase6_review_20260915",
+  "date": "2026-09-15T15:59:33.808Z",
+  "sources": {
+    "invoice": {
+      "id": "41bcaac3-30aa-47ce-bd14-c61b69f3df5b",
+      "orderNumber": "SO-REVIEW-429edba7",
+      "idempotencyKey": null,
+      "idempotencyFingerprint": null,
+      "customerId": "18c81f5d-c883-443e-8fb2-5dd73b9b6fe2",
+      "salesChannel": "SHOP_DIRECT",
+      "orderDate": "2026-09-15",
+      "deliveryDate": null,
+      "deliveredAt": "2026-09-15",
+      "fulfillmentStatus": "DELIVERED",
+      "paymentStatus": "PARTIALLY_PAID",
+      "settlement": "DEBT",
+      "itemsSubtotal": "90.09",
+      "deliveryFee": "0.00",
+      "deliveryTaxTreatment": "STANDARD",
+      "deliveryTaxRateSnapshot": "0.000",
+      "deliveryTaxCodeSnapshot": null,
+      "deliveryFeeExVat": "0.00",
+      "deliveryVatAmount": "0.00",
+      "deliveryFeeIncVat": "0.00",
+      "totalAmount": "100.00",
+      "paidAmount": "50.00",
+      "remainingAmount": "50.00",
+      "currency": "USD",
+      "exchangeRate": "1.000000",
+      "baseSubtotal": "90.09",
+      "baseDeliveryFee": "0.00",
+      "baseTotalAmount": "100.00",
+      "basePaidAmount": "50.00",
+      "baseRemainingAmount": "50.00",
+      "deliveryAddressSnapshot": null,
+      "deliveryNotes": null,
+      "notes": null,
+      "debtId": "15f916cc-40a2-4efa-9b40-f43107eae52c",
+      "installmentPlanId": null,
+      "createdById": "8353a5ec-ffd7-4091-8b0d-d1e6b0858d94",
+      "updatedById": null,
+      "createdAt": "2026-09-15T15:59:34.962Z",
+      "updatedAt": "2026-09-15T15:59:35.024Z",
+      "cancelledAt": null,
+      "cancelledById": null,
+      "cancelledReason": null,
+      "counterPayments": [
+        {
+          "id": "9c177606-78e3-4bdc-8edc-15aebe212d7e",
+          "voidedAt": null
+        }
+      ],
+      "customer": {
+        "id": "18c81f5d-c883-443e-8fb2-5dd73b9b6fe2",
+        "name": "علي الحاج — Review Test",
+        "phone": "return-18c81f5d-c883-443e-8fb2-5dd73b9b6fe2",
+        "address": "بيروت، لبنان",
+        "isActive": true
+      },
+      "items": [
+        {
+          "id": "5581a68d-bb31-47d4-813f-2ee79ba0efa8",
+          "salesOrderId": "41bcaac3-30aa-47ce-bd14-c61b69f3df5b",
+          "productId": "88e7922f-d3d5-42f7-8772-1c59ae41fb1e",
+          "manualProductName": null,
+          "manualProductModel": null,
+          "productNameSnapshot": "براد أبيض",
+          "productModelSnapshot": "RET-1",
+          "skuSnapshot": "RET-88e7922f-d3d5-42f7-8772-1c59ae41fb1e",
+          "quantity": 2,
+          "unitPrice": "50.00",
+          "discountAmount": "0.00",
+          "lineTotal": "90.09",
+          "baseUnitPrice": "50",
+          "baseDiscountAmount": "0",
+          "baseLineTotal": "90.09",
+          "taxRateSnapshot": "11.000",
+          "taxCodeSnapshot": "REVIEW_ORIGINAL_11",
+          "unitPriceExVat": "45.05",
+          "vatAmount": "9.91",
+          "lineTotalIncVat": "100.00",
+          "notes": null,
+          "createdAt": "2026-09-15T15:59:34.971Z",
+          "updatedAt": "2026-09-15T15:59:35.052Z",
+          "product": {
+            "id": "88e7922f-d3d5-42f7-8772-1c59ae41fb1e",
+            "name": "Return Test Product",
+            "model": "RET-1",
+            "sku": "RET-88e7922f-d3d5-42f7-8772-1c59ae41fb1e",
+            "barcode": null,
+            "isActive": true,
+            "trackStock": true,
+            "stockQuantity": 8,
+            "lowStockThreshold": null,
+            "costPrice": null
+          },
+          "stockFulfillments": [
+            {
+              "id": "ae5a2053-86a0-4fa2-bc03-1a2fa65d1095",
+              "quantity": 2,
+              "status": "ACTIVE",
+              "stockMovementId": "1d82ef7c-5185-4e38-bc8a-5486fb3bb03b",
+              "reversalStockMovementId": null,
+              "reversedAt": null,
+              "reversedById": null,
+              "reversalReason": null,
+              "createdById": "8353a5ec-ffd7-4091-8b0d-d1e6b0858d94",
+              "createdAt": "2026-09-15T15:59:34.982Z"
+            }
+          ],
+          "returnItems": [],
+          "returnedQuantity": 0,
+          "remainingReturnableQuantity": 2,
+          "inventory": {
+            "state": "ALREADY_DEDUCTED",
+            "activeFulfillmentId": "ae5a2053-86a0-4fa2-bc03-1a2fa65d1095"
+          }
+        }
+      ],
+      "debt": {
+        "id": "15f916cc-40a2-4efa-9b40-f43107eae52c",
+        "status": "UNPAID",
+        "originalAmount": "50.00",
+        "dueDate": "2026-09-15"
+      },
+      "installmentPlan": null,
+      "createdBy": {
+        "id": "8353a5ec-ffd7-4091-8b0d-d1e6b0858d94",
+        "fullName": "Return Test Admin",
+        "username": "return-8353a5ec-ffd7-4091-8b0d-d1e6b0858d94"
+      },
+      "updatedBy": null,
+      "cancelledBy": null,
+      "returns": [],
+      "subtotalExVat": "90.09",
+      "itemsVatAmount": "9.91",
+      "vatAmount": "9.91"
+    },
+    "receipt": {
+      "id": "bce124cc-0556-4004-bacf-a9d2b863bde3",
+      "customer": {
+        "id": "18c81f5d-c883-443e-8fb2-5dd73b9b6fe2",
+        "name": "علي الحاج — Review Test",
+        "phone": "return-18c81f5d-c883-443e-8fb2-5dd73b9b6fe2",
+        "address": "بيروت، لبنان"
+      },
+      "sourceSalesOrder": null,
+      "sourceSnapshot": null,
+      "totalAmount": "20.00",
+      "currency": "USD",
+      "exchangeRate": "1.000000",
+      "baseAmount": "20.00",
+      "paymentDate": "2026-09-15",
+      "paymentMethod": "CASH",
+      "reference": "REVIEW-SPLIT",
+      "notes": null,
+      "createdAt": "2026-09-15T15:59:35.231Z",
+      "receivedBy": {
+        "id": "8353a5ec-ffd7-4091-8b0d-d1e6b0858d94",
+        "name": "Return Test Admin",
+        "username": "return-8353a5ec-ffd7-4091-8b0d-d1e6b0858d94"
+      },
+      "allocations": [
+        {
+          "id": "e15e5a4e-b988-49d7-8b32-9d728b6ba3f1",
+          "targetType": "DEBT",
+          "targetId": "15f916cc-40a2-4efa-9b40-f43107eae52c",
+          "obligationId": "15f916cc-40a2-4efa-9b40-f43107eae52c",
+          "description": "Return fixture receivable",
+          "amount": "10.00",
+          "currency": "USD",
+          "paymentAmount": "10.00",
+          "paymentCurrency": "USD",
+          "exchangeRate": "1.000000"
+        },
+        {
+          "id": "d9612318-c695-449f-8930-c94b18fce156",
+          "targetType": "DEBT",
+          "targetId": "906a32eb-eb81-493a-ba74-13fdd8dda67a",
+          "obligationId": "906a32eb-eb81-493a-ba74-13fdd8dda67a",
+          "description": "غسالة — second obligation",
+          "amount": "10.00",
+          "currency": "USD",
+          "paymentAmount": "10.00",
+          "paymentCurrency": "USD",
+          "exchangeRate": "1.000000"
+        }
+      ],
+      "remainingBalances": [
+        {
+          "obligationType": "DEBT",
+          "obligationId": "15f916cc-40a2-4efa-9b40-f43107eae52c",
+          "description": "Return fixture receivable",
+          "amount": "40.00",
+          "currency": "USD"
+        },
+        {
+          "obligationType": "DEBT",
+          "obligationId": "906a32eb-eb81-493a-ba74-13fdd8dda67a",
+          "description": "غسالة — second obligation",
+          "amount": "90.00",
+          "currency": "USD"
+        }
+      ],
+      "voidedAt": null,
+      "voidReason": null,
+      "voidedBy": null
+    },
+    "statement": {
+      "businessDate": "2026-09-15",
+      "currency": "USD",
+      "customer": {
+        "id": "18c81f5d-c883-443e-8fb2-5dd73b9b6fe2",
+        "name": "علي الحاج — Review Test",
+        "phone": "return-18c81f5d-c883-443e-8fb2-5dd73b9b6fe2",
+        "address": "بيروت، لبنان"
+      },
+      "range": {
+        "from": "2026-09-15",
+        "to": "2026-09-15"
+      },
+      "openingBalance": "0.00",
+      "entries": [
+        {
+          "id": "15f916cc-40a2-4efa-9b40-f43107eae52c",
+          "type": "DEBT",
+          "date": "2026-09-15",
+          "description": "Return fixture receivable",
+          "reference": "SO-REVIEW-429edba7",
+          "originalAmount": "50.00",
+          "currency": "USD",
+          "exchangeRate": "1",
+          "baseAmount": "50.00",
+          "balanceEffect": "50.00",
+          "runningBalance": "50.00",
+          "status": "POSTED",
+          "dueDate": "2026-09-15",
+          "reason": null
+        },
+        {
+          "id": "906a32eb-eb81-493a-ba74-13fdd8dda67a",
+          "type": "DEBT",
+          "date": "2026-09-15",
+          "description": "غسالة — second obligation",
+          "reference": null,
+          "originalAmount": "100.00",
+          "currency": "USD",
+          "exchangeRate": "1",
+          "baseAmount": "100.00",
+          "balanceEffect": "100.00",
+          "runningBalance": "150.00",
+          "status": "POSTED",
+          "dueDate": "2026-09-15",
+          "reason": null
+        },
+        {
+          "id": "e85ef612-89dc-42fd-85a8-bb2060388f8c",
+          "type": "DEBT",
+          "date": "2026-09-15",
+          "description": "بند كشف الحساب — review line 1",
+          "reference": null,
+          "originalAmount": "1.00",
+          "currency": "USD",
+          "exchangeRate": "1",
+          "baseAmount": "1.00",
+          "balanceEffect": "1.00",
+          "runningBalance": "151.00",
+          "status": "POSTED",
+          "dueDate": "2026-09-15",
+          "reason": null
+        },
+        {
+          "id": "438bcc2d-ec19-4cb5-a106-30306aa6dbd2",
+          "type": "DEBT",
+          "date": "2026-09-15",
+          "description": "بند كشف الحساب — review line 2",
+          "reference": null,
+          "originalAmount": "1.00",
+          "currency": "USD",
+          "exchangeRate": "1",
+          "baseAmount": "1.00",
+          "balanceEffect": "1.00",
+          "runningBalance": "152.00",
+          "status": "POSTED",
+          "dueDate": "2026-09-15",
+          "reason": null
+        },
+        {
+          "id": "6fdfe3c3-ae81-462d-b3bf-704459469ada",
+          "type": "DEBT",
+          "date": "2026-09-15",
+          "description": "بند كشف الحساب — review line 3",
+          "reference": null,
+          "originalAmount": "1.00",
+          "currency": "USD",
+          "exchangeRate": "1",
+          "baseAmount": "1.00",
+          "balanceEffect": "1.00",
+          "runningBalance": "153.00",
+          "status": "POSTED",
+          "dueDate": "2026-09-15",
+          "reason": null
+        },
+        {
+          "id": "d5733794-93a9-47f6-8791-a758dbadd25e",
+          "type": "DEBT",
+          "date": "2026-09-15",
+          "description": "بند كشف الحساب — review line 4",
+          "reference": null,
+          "originalAmount": "1.00",
+          "currency": "USD",
+          "exchangeRate": "1",
+          "baseAmount": "1.00",
+          "balanceEffect": "1.00",
+          "runningBalance": "154.00",
+          "status": "POSTED",
+          "dueDate": "2026-09-15",
+          "reason": null
+        },
+        {
+          "id": "d987e7db-163d-4eaa-a44e-b773304c32d2",
+          "type": "DEBT",
+          "date": "2026-09-15",
+          "description": "بند كشف الحساب — review line 5",
+          "reference": null,
+          "originalAmount": "1.00",
+          "currency": "USD",
+          "exchangeRate": "1",
+          "baseAmount": "1.00",
+          "balanceEffect": "1.00",
+          "runningBalance": "155.00",
+          "status": "POSTED",
+          "dueDate": "2026-09-15",
+          "reason": null
+        },
+        {
+          "id": "df3635f2-d97b-4fd8-9ebe-7e4cab3a233d",
+          "type": "DEBT",
+          "date": "2026-09-15",
+          "description": "بند كشف الحساب — review line 6",
+          "reference": null,
+          "originalAmount": "1.00",
+          "currency": "USD",
+          "exchangeRate": "1",
+          "baseAmount": "1.00",
+          "balanceEffect": "1.00",
+          "runningBalance": "156.00",
+          "status": "POSTED",
+          "dueDate": "2026-09-15",
+          "reason": null
+        },
+        {
+          "id": "374c43e4-4f60-4a3c-b5a9-cad69385f08d",
+          "type": "DEBT",
+          "date": "2026-09-15",
+          "description": "بند كشف الحساب — review line 7",
+          "reference": null,
+          "originalAmount": "1.00",
+          "currency": "USD",
+          "exchangeRate": "1",
+          "baseAmount": "1.00",
+          "balanceEffect": "1.00",
+          "runningBalance": "157.00",
+          "status": "POSTED",
+          "dueDate": "2026-09-15",
+          "reason": null
+        },
+        {
+          "id": "f4af0ad9-f5be-4cc6-bb47-9e2b8dbe3fd7",
+          "type": "DEBT",
+          "date": "2026-09-15",
+          "description": "بند كشف الحساب — review line 8",
+          "reference": null,
+          "originalAmount": "1.00",
+          "currency": "USD",
+          "exchangeRate": "1",
+          "baseAmount": "1.00",
+          "balanceEffect": "1.00",
+          "runningBalance": "158.00",
+          "status": "POSTED",
+          "dueDate": "2026-09-15",
+          "reason": null
+        },
+        {
+          "id": "71e54749-9e6e-4068-8245-fe549349428b",
+          "type": "DEBT",
+          "date": "2026-09-15",
+          "description": "بند كشف الحساب — review line 9",
+          "reference": null,
+          "originalAmount": "1.00",
+          "currency": "USD",
+          "exchangeRate": "1",
+          "baseAmount": "1.00",
+          "balanceEffect": "1.00",
+          "runningBalance": "159.00",
+          "status": "POSTED",
+          "dueDate": "2026-09-15",
+          "reason": null
+        },
+        {
+          "id": "4c812eef-dec8-4953-a394-9867ff487a18",
+          "type": "DEBT",
+          "date": "2026-09-15",
+          "description": "بند كشف الحساب — review line 10",
+          "reference": null,
+          "originalAmount": "1.00",
+          "currency": "USD",
+          "exchangeRate": "1",
+          "baseAmount": "1.00",
+          "balanceEffect": "1.00",
+          "runningBalance": "160.00",
+          "status": "POSTED",
+          "dueDate": "2026-09-15",
+          "reason": null
+        },
+        {
+          "id": "c55730b8-d1c9-48ee-bf7a-5b5f49458548",
+          "type": "DEBT",
+          "date": "2026-09-15",
+          "description": "بند كشف الحساب — review line 11",
+          "reference": null,
+          "originalAmount": "1.00",
+          "currency": "USD",
+          "exchangeRate": "1",
+          "baseAmount": "1.00",
+          "balanceEffect": "1.00",
+          "runningBalance": "161.00",
+          "status": "POSTED",
+          "dueDate": "2026-09-15",
+          "reason": null
+        },
+        {
+          "id": "934e81c6-5f25-4cc8-a37b-790226b13a4e",
+          "type": "DEBT",
+          "date": "2026-09-15",
+          "description": "بند كشف الحساب — review line 12",
+          "reference": null,
+          "originalAmount": "1.00",
+          "currency": "USD",
+          "exchangeRate": "1",
+          "baseAmount": "1.00",
+          "balanceEffect": "1.00",
+          "runningBalance": "162.00",
+          "status": "POSTED",
+          "dueDate": "2026-09-15",
+          "reason": null
+        },
+        {
+          "id": "f32120a2-49d3-42b8-9fb9-dded34aa6f23",
+          "type": "DEBT",
+          "date": "2026-09-15",
+          "description": "بند كشف الحساب — review line 13",
+          "reference": null,
+          "originalAmount": "1.00",
+          "currency": "USD",
+          "exchangeRate": "1",
+          "baseAmount": "1.00",
+          "balanceEffect": "1.00",
+          "runningBalance": "163.00",
+          "status": "POSTED",
+          "dueDate": "2026-09-15",
+          "reason": null
+        },
+        {
+          "id": "23986568-7d3e-4bbb-9c95-11079f610df2",
+          "type": "DEBT",
+          "date": "2026-09-15",
+          "description": "بند كشف الحساب — review line 14",
+          "reference": null,
+          "originalAmount": "1.00",
+          "currency": "USD",
+          "exchangeRate": "1",
+          "baseAmount": "1.00",
+          "balanceEffect": "1.00",
+          "runningBalance": "164.00",
+          "status": "POSTED",
+          "dueDate": "2026-09-15",
+          "reason": null
+        },
+        {
+          "id": "3cfd7859-1d0c-42d7-b3f2-aed3635867b4",
+          "type": "DEBT",
+          "date": "2026-09-15",
+          "description": "بند كشف الحساب — review line 15",
+          "reference": null,
+          "originalAmount": "1.00",
+          "currency": "USD",
+          "exchangeRate": "1",
+          "baseAmount": "1.00",
+          "balanceEffect": "1.00",
+          "runningBalance": "165.00",
+          "status": "POSTED",
+          "dueDate": "2026-09-15",
+          "reason": null
+        },
+        {
+          "id": "410199ee-fb09-4af8-be42-930e53ed0e94",
+          "type": "DEBT",
+          "date": "2026-09-15",
+          "description": "بند كشف الحساب — review line 16",
+          "reference": null,
+          "originalAmount": "1.00",
+          "currency": "USD",
+          "exchangeRate": "1",
+          "baseAmount": "1.00",
+          "balanceEffect": "1.00",
+          "runningBalance": "166.00",
+          "status": "POSTED",
+          "dueDate": "2026-09-15",
+          "reason": null
+        },
+        {
+          "id": "f79af5d1-b0ee-4442-9246-266e52a9e6a9",
+          "type": "DEBT",
+          "date": "2026-09-15",
+          "description": "بند كشف الحساب — review line 17",
+          "reference": null,
+          "originalAmount": "1.00",
+          "currency": "USD",
+          "exchangeRate": "1",
+          "baseAmount": "1.00",
+          "balanceEffect": "1.00",
+          "runningBalance": "167.00",
+          "status": "POSTED",
+          "dueDate": "2026-09-15",
+          "reason": null
+        },
+        {
+          "id": "afdc1301-fd93-4a48-aad2-d49122a1ead1",
+          "type": "DEBT",
+          "date": "2026-09-15",
+          "description": "بند كشف الحساب — review line 18",
+          "reference": null,
+          "originalAmount": "1.00",
+          "currency": "USD",
+          "exchangeRate": "1",
+          "baseAmount": "1.00",
+          "balanceEffect": "1.00",
+          "runningBalance": "168.00",
+          "status": "POSTED",
+          "dueDate": "2026-09-15",
+          "reason": null
+        },
+        {
+          "id": "98e4ee98-c2a0-42f5-9566-e748f5f37572",
+          "type": "DEBT",
+          "date": "2026-09-15",
+          "description": "بند كشف الحساب — review line 19",
+          "reference": null,
+          "originalAmount": "1.00",
+          "currency": "USD",
+          "exchangeRate": "1",
+          "baseAmount": "1.00",
+          "balanceEffect": "1.00",
+          "runningBalance": "169.00",
+          "status": "POSTED",
+          "dueDate": "2026-09-15",
+          "reason": null
+        },
+        {
+          "id": "8358058e-073f-4f87-b515-50c11f95394b",
+          "type": "DEBT",
+          "date": "2026-09-15",
+          "description": "بند كشف الحساب — review line 20",
+          "reference": null,
+          "originalAmount": "1.00",
+          "currency": "USD",
+          "exchangeRate": "1",
+          "baseAmount": "1.00",
+          "balanceEffect": "1.00",
+          "runningBalance": "170.00",
+          "status": "POSTED",
+          "dueDate": "2026-09-15",
+          "reason": null
+        },
+        {
+          "id": "d380a25e-51bb-46f5-a083-689fba927a5c",
+          "type": "DEBT",
+          "date": "2026-09-15",
+          "description": "بند كشف الحساب — review line 21",
+          "reference": null,
+          "originalAmount": "1.00",
+          "currency": "USD",
+          "exchangeRate": "1",
+          "baseAmount": "1.00",
+          "balanceEffect": "1.00",
+          "runningBalance": "171.00",
+          "status": "POSTED",
+          "dueDate": "2026-09-15",
+          "reason": null
+        },
+        {
+          "id": "815fd101-fbff-41dd-a76f-31cf59b28504",
+          "type": "DEBT",
+          "date": "2026-09-15",
+          "description": "بند كشف الحساب — review line 22",
+          "reference": null,
+          "originalAmount": "1.00",
+          "currency": "USD",
+          "exchangeRate": "1",
+          "baseAmount": "1.00",
+          "balanceEffect": "1.00",
+          "runningBalance": "172.00",
+          "status": "POSTED",
+          "dueDate": "2026-09-15",
+          "reason": null
+        },
+        {
+          "id": "e17351dd-4ca4-42ff-9bf2-72d634f193e1",
+          "type": "DEBT",
+          "date": "2026-09-15",
+          "description": "بند كشف الحساب — review line 23",
+          "reference": null,
+          "originalAmount": "1.00",
+          "currency": "USD",
+          "exchangeRate": "1",
+          "baseAmount": "1.00",
+          "balanceEffect": "1.00",
+          "runningBalance": "173.00",
+          "status": "POSTED",
+          "dueDate": "2026-09-15",
+          "reason": null
+        },
+        {
+          "id": "93234023-57f7-4859-88ae-4cfadc0d2cd3",
+          "type": "DEBT",
+          "date": "2026-09-15",
+          "description": "بند كشف الحساب — review line 24",
+          "reference": null,
+          "originalAmount": "1.00",
+          "currency": "USD",
+          "exchangeRate": "1",
+          "baseAmount": "1.00",
+          "balanceEffect": "1.00",
+          "runningBalance": "174.00",
+          "status": "POSTED",
+          "dueDate": "2026-09-15",
+          "reason": null
+        },
+        {
+          "id": "bc2d2f70-7259-4380-8ba4-8f960e32dee7",
+          "type": "DEBT",
+          "date": "2026-09-15",
+          "description": "بند كشف الحساب — review line 25",
+          "reference": null,
+          "originalAmount": "1.00",
+          "currency": "USD",
+          "exchangeRate": "1",
+          "baseAmount": "1.00",
+          "balanceEffect": "1.00",
+          "runningBalance": "175.00",
+          "status": "POSTED",
+          "dueDate": "2026-09-15",
+          "reason": null
+        },
+        {
+          "id": "367415af-f214-4b5e-9b5a-e0d06f0ff004",
+          "type": "DEBT",
+          "date": "2026-09-15",
+          "description": "بند كشف الحساب — review line 26",
+          "reference": null,
+          "originalAmount": "1.00",
+          "currency": "USD",
+          "exchangeRate": "1",
+          "baseAmount": "1.00",
+          "balanceEffect": "1.00",
+          "runningBalance": "176.00",
+          "status": "POSTED",
+          "dueDate": "2026-09-15",
+          "reason": null
+        },
+        {
+          "id": "fb4f2158-fcf0-4dff-8ac1-6cf34e3f864e",
+          "type": "DEBT",
+          "date": "2026-09-15",
+          "description": "بند كشف الحساب — review line 27",
+          "reference": null,
+          "originalAmount": "1.00",
+          "currency": "USD",
+          "exchangeRate": "1",
+          "baseAmount": "1.00",
+          "balanceEffect": "1.00",
+          "runningBalance": "177.00",
+          "status": "POSTED",
+          "dueDate": "2026-09-15",
+          "reason": null
+        },
+        {
+          "id": "b325490c-e932-4608-aeed-de3247335e9a",
+          "type": "DEBT",
+          "date": "2026-09-15",
+          "description": "بند كشف الحساب — review line 28",
+          "reference": null,
+          "originalAmount": "1.00",
+          "currency": "USD",
+          "exchangeRate": "1",
+          "baseAmount": "1.00",
+          "balanceEffect": "1.00",
+          "runningBalance": "178.00",
+          "status": "POSTED",
+          "dueDate": "2026-09-15",
+          "reason": null
+        },
+        {
+          "id": "550663b9-e4f5-40d0-89be-72bf78312cef",
+          "type": "DEBT",
+          "date": "2026-09-15",
+          "description": "بند كشف الحساب — review line 29",
+          "reference": null,
+          "originalAmount": "1.00",
+          "currency": "USD",
+          "exchangeRate": "1",
+          "baseAmount": "1.00",
+          "balanceEffect": "1.00",
+          "runningBalance": "179.00",
+          "status": "POSTED",
+          "dueDate": "2026-09-15",
+          "reason": null
+        },
+        {
+          "id": "18e306f1-0a54-42c3-8fe5-9e40d1e5ce5b",
+          "type": "DEBT",
+          "date": "2026-09-15",
+          "description": "بند كشف الحساب — review line 30",
+          "reference": null,
+          "originalAmount": "1.00",
+          "currency": "USD",
+          "exchangeRate": "1",
+          "baseAmount": "1.00",
+          "balanceEffect": "1.00",
+          "runningBalance": "180.00",
+          "status": "POSTED",
+          "dueDate": "2026-09-15",
+          "reason": null
+        },
+        {
+          "id": "1f7e9a6f-b80d-4b0c-b733-fcd2b6b9f55d",
+          "type": "DEBT",
+          "date": "2026-09-15",
+          "description": "بند كشف الحساب — review line 31",
+          "reference": null,
+          "originalAmount": "1.00",
+          "currency": "USD",
+          "exchangeRate": "1",
+          "baseAmount": "1.00",
+          "balanceEffect": "1.00",
+          "runningBalance": "181.00",
+          "status": "POSTED",
+          "dueDate": "2026-09-15",
+          "reason": null
+        },
+        {
+          "id": "a67bca66-885c-4c72-9cb9-df68829817e1",
+          "type": "DEBT",
+          "date": "2026-09-15",
+          "description": "بند كشف الحساب — review line 32",
+          "reference": null,
+          "originalAmount": "1.00",
+          "currency": "USD",
+          "exchangeRate": "1",
+          "baseAmount": "1.00",
+          "balanceEffect": "1.00",
+          "runningBalance": "182.00",
+          "status": "POSTED",
+          "dueDate": "2026-09-15",
+          "reason": null
+        },
+        {
+          "id": "ec68ed79-f3be-4990-891b-4fe5b26cf9ac",
+          "type": "DEBT",
+          "date": "2026-09-15",
+          "description": "بند كشف الحساب — review line 33",
+          "reference": null,
+          "originalAmount": "1.00",
+          "currency": "USD",
+          "exchangeRate": "1",
+          "baseAmount": "1.00",
+          "balanceEffect": "1.00",
+          "runningBalance": "183.00",
+          "status": "POSTED",
+          "dueDate": "2026-09-15",
+          "reason": null
+        },
+        {
+          "id": "ac5dc9a1-33e3-4de5-9f9e-e041f5d3b63c",
+          "type": "DEBT",
+          "date": "2026-09-15",
+          "description": "بند كشف الحساب — review line 34",
+          "reference": null,
+          "originalAmount": "1.00",
+          "currency": "USD",
+          "exchangeRate": "1",
+          "baseAmount": "1.00",
+          "balanceEffect": "1.00",
+          "runningBalance": "184.00",
+          "status": "POSTED",
+          "dueDate": "2026-09-15",
+          "reason": null
+        },
+        {
+          "id": "5a23690a-816f-435c-bf5a-f976bddd25bf",
+          "type": "DEBT",
+          "date": "2026-09-15",
+          "description": "بند كشف الحساب — review line 35",
+          "reference": null,
+          "originalAmount": "1.00",
+          "currency": "USD",
+          "exchangeRate": "1",
+          "baseAmount": "1.00",
+          "balanceEffect": "1.00",
+          "runningBalance": "185.00",
+          "status": "POSTED",
+          "dueDate": "2026-09-15",
+          "reason": null
+        },
+        {
+          "id": "a8ef86a5-401b-4d01-94c8-f218eaff98c0",
+          "type": "DEBT",
+          "date": "2026-09-15",
+          "description": "بند كشف الحساب — review line 36",
+          "reference": null,
+          "originalAmount": "1.00",
+          "currency": "USD",
+          "exchangeRate": "1",
+          "baseAmount": "1.00",
+          "balanceEffect": "1.00",
+          "runningBalance": "186.00",
+          "status": "POSTED",
+          "dueDate": "2026-09-15",
+          "reason": null
+        },
+        {
+          "id": "0d03d94f-66a2-4b94-a769-0c123da53d36",
+          "type": "DEBT",
+          "date": "2026-09-15",
+          "description": "بند كشف الحساب — review line 37",
+          "reference": null,
+          "originalAmount": "1.00",
+          "currency": "USD",
+          "exchangeRate": "1",
+          "baseAmount": "1.00",
+          "balanceEffect": "1.00",
+          "runningBalance": "187.00",
+          "status": "POSTED",
+          "dueDate": "2026-09-15",
+          "reason": null
+        },
+        {
+          "id": "4114547f-8a97-4da8-8669-543a529f4aab",
+          "type": "DEBT",
+          "date": "2026-09-15",
+          "description": "بند كشف الحساب — review line 38",
+          "reference": null,
+          "originalAmount": "1.00",
+          "currency": "USD",
+          "exchangeRate": "1",
+          "baseAmount": "1.00",
+          "balanceEffect": "1.00",
+          "runningBalance": "188.00",
+          "status": "POSTED",
+          "dueDate": "2026-09-15",
+          "reason": null
+        },
+        {
+          "id": "61865e47-515e-4e23-be14-c0b1d0d4bd1e",
+          "type": "DEBT",
+          "date": "2026-09-15",
+          "description": "بند كشف الحساب — review line 39",
+          "reference": null,
+          "originalAmount": "1.00",
+          "currency": "USD",
+          "exchangeRate": "1",
+          "baseAmount": "1.00",
+          "balanceEffect": "1.00",
+          "runningBalance": "189.00",
+          "status": "POSTED",
+          "dueDate": "2026-09-15",
+          "reason": null
+        },
+        {
+          "id": "f0cabe1d-59b5-4be4-ac39-a76dd135ce0b",
+          "type": "DEBT",
+          "date": "2026-09-15",
+          "description": "بند كشف الحساب — review line 40",
+          "reference": null,
+          "originalAmount": "89500",
+          "currency": "LBP",
+          "exchangeRate": "89500",
+          "baseAmount": "1.00",
+          "balanceEffect": "1.00",
+          "runningBalance": "190.00",
+          "status": "POSTED",
+          "dueDate": "2026-09-15",
+          "reason": null
+        },
+        {
+          "id": "9c177606-78e3-4bdc-8edc-15aebe212d7e",
+          "type": "PAYMENT",
+          "date": "2026-09-15",
+          "description": "Payment · CASH",
+          "reference": null,
+          "originalAmount": "50.00",
+          "currency": "USD",
+          "exchangeRate": "1",
+          "baseAmount": "50.00",
+          "balanceEffect": "0.00",
+          "runningBalance": "190.00",
+          "status": "POSTED",
+          "dueDate": null,
+          "reason": null
+        },
+        {
+          "id": "bce124cc-0556-4004-bacf-a9d2b863bde3",
+          "type": "PAYMENT",
+          "date": "2026-09-15",
+          "description": "Payment · CASH",
+          "reference": "REVIEW-SPLIT",
+          "originalAmount": "20.00",
+          "currency": "USD",
+          "exchangeRate": "1",
+          "baseAmount": "20.00",
+          "balanceEffect": "-20.00",
+          "runningBalance": "170.00",
+          "status": "POSTED",
+          "dueDate": null,
+          "reason": null
+        },
+        {
+          "id": "da0b2cc2-219a-4829-a327-384efc60a0d1",
+          "type": "RETURN",
+          "date": "2026-09-15",
+          "description": "Sales return · CASH_OUT",
+          "reference": "SO-REVIEW-429edba7-R1",
+          "originalAmount": "100.00",
+          "currency": "USD",
+          "exchangeRate": "1",
+          "baseAmount": "100.00",
+          "balanceEffect": "-40.00",
+          "runningBalance": "130.00",
+          "status": "POSTED",
+          "dueDate": null,
+          "reason": "Review full return / إرجاع كامل"
+        }
+      ],
+      "closingBalance": "130.00",
+      "aging": {
+        "asOf": "2026-09-15",
+        "total": "130.00",
+        "buckets": [
+          {
+            "key": "DAYS_0_7",
+            "label": "0–7 days / ٠–٧ أيام",
+            "amount": "130.00"
+          },
+          {
+            "key": "DAYS_8_14",
+            "label": "8–14 days / ٨–١٤ يوم",
+            "amount": "0.00"
+          },
+          {
+            "key": "DAYS_15_30",
+            "label": "15–30 days / ١٥–٣٠ يوم",
+            "amount": "0.00"
+          },
+          {
+            "key": "DAYS_31_60",
+            "label": "31–60 days / ٣١–٦٠ يوم",
+            "amount": "0.00"
+          },
+          {
+            "key": "DAYS_61_90",
+            "label": "61–90 days / ٦١–٩٠ يوم",
+            "amount": "0.00"
+          },
+          {
+            "key": "DAYS_90_PLUS",
+            "label": "90+ days / أكثر من ٩٠ يوم",
+            "amount": "0.00"
+          }
+        ]
+      }
+    }
+  },
+  "before": {
+    "stock": 8,
+    "movementSum": 8,
+    "movementCount": 2,
+    "returnMovements": 0,
+    "outstanding": "170.00",
+    "refunds": {
+      "_sum": {
+        "amount": null
+      },
+      "_count": 0
+    }
+  },
+  "reportsBefore": {
+    "inventory-reconciliation": {
+      "summary": {
+        "count": 0,
+        "ok": 0,
+        "mismatches": 0
+      },
+      "rows": []
+    },
+    "customers-financial-integrity": {
+      "summary": {
+        "count": 1,
+        "ok": 1,
+        "mismatches": 0,
+        "reportedTotal": "170.00",
+        "independentTotal": "170.00",
+        "difference": "0.00"
+      },
+      "rows": [
+        {
+          "customer": {
+            "id": "18c81f5d-c883-443e-8fb2-5dd73b9b6fe2",
+            "name": "علي الحاج — Review Test",
+            "phone": "return-18c81f5d-c883-443e-8fb2-5dd73b9b6fe2"
+          },
+          "obligationTotal": "190.00",
+          "allocationTotal": "20.00",
+          "reportedOutstanding": "170.00",
+          "independentOutstanding": "170.00",
+          "difference": "0.00",
+          "obligationCount": 42,
+          "allocationCount": 2,
+          "status": "OK",
+          "issues": []
+        }
+      ]
+    },
+    "suppliers-financial-integrity": {
+      "summary": {
+        "count": 0,
+        "ok": 0,
+        "mismatches": 0,
+        "reportedTotal": "0.00",
+        "independentTotal": "0.00",
+        "difference": "0.00"
+      },
+      "rows": []
+    },
+    "sales-orders": {
+      "summary": {
+        "orderCount": 1,
+        "returnsAmount": "0.00",
+        "cashRefunds": "0.00",
+        "storeCreditIssued": "0.00",
+        "netSalesAmount": "100.00",
+        "totalAmount": "100.00",
+        "paidAmount": "50.00",
+        "unpaidAmount": "50.00",
+        "averageOrderValue": "100.00"
+      },
+      "rows": [
+        {
+          "id": "41bcaac3-30aa-47ce-bd14-c61b69f3df5b",
+          "orderNumber": "SO-REVIEW-429edba7",
+          "orderDate": "2026-09-15",
+          "salesChannel": "SHOP_DIRECT",
+          "fulfillmentStatus": "DELIVERED",
+          "paymentStatus": "PARTIALLY_PAID",
+          "settlement": "DEBT",
+          "totalAmount": "100.00",
+          "paidAmount": "50.00",
+          "remainingAmount": "50.00",
+          "baseTotalAmount": "100",
+          "basePaidAmount": "50",
+          "baseRemainingAmount": "50",
+          "customer": {
+            "id": "18c81f5d-c883-443e-8fb2-5dd73b9b6fe2",
+            "name": "علي الحاج — Review Test",
+            "phone": "return-18c81f5d-c883-443e-8fb2-5dd73b9b6fe2"
+          }
+        }
+      ]
+    }
+  },
+  "returnResponse": {
+    "status": 201,
+    "body": {
+      "success": true,
+      "data": {
+        "id": "da0b2cc2-219a-4829-a327-384efc60a0d1",
+        "returnNumber": "SO-REVIEW-429edba7-R1",
+        "salesOrderId": "41bcaac3-30aa-47ce-bd14-c61b69f3df5b",
+        "sequence": 1,
+        "customerId": "18c81f5d-c883-443e-8fb2-5dd73b9b6fe2",
+        "returnDate": "2026-09-15",
+        "processedAt": "2026-09-15T15:59:36.006Z",
+        "reason": "Review full return / إرجاع كامل",
+        "windowDaysSnapshot": 14,
+        "returnDeadlineSnapshot": "2026-09-29",
+        "windowOverride": false,
+        "windowOverrideReason": null,
+        "currency": "USD",
+        "exchangeRate": "1.000000",
+        "subtotalExVat": "90.09",
+        "vatAmount": "9.91",
+        "totalIncVat": "100.00",
+        "baseSubtotalExVat": "90.09",
+        "baseVatAmount": "9.91",
+        "baseTotalIncVat": "100.00",
+        "deliveryReturned": false,
+        "deliveryTaxTreatment": null,
+        "deliveryTaxRateSnapshot": null,
+        "deliveryTaxCodeSnapshot": null,
+        "deliveryFeeExVat": null,
+        "deliveryVatAmount": null,
+        "deliveryFeeIncVat": null,
+        "baseDeliveryFeeExVat": null,
+        "baseDeliveryVatAmount": null,
+        "baseDeliveryFeeIncVat": null,
+        "receivableReliefAmount": "40.00",
+        "baseReceivableReliefAmount": "40.00",
+        "refundableAmount": "60.00",
+        "baseRefundableAmount": "60.00",
+        "refundMethod": "CASH_OUT",
+        "idempotencyKey": "daaf0278-a7b0-400b-a064-d3be73fa4e12",
+        "requestFingerprint": "b089303fa48cf09cce18ff4ffcc0bcb1d2e3bd2ce5d9b5269af48ab775ddddfc",
+        "processedById": "8353a5ec-ffd7-4091-8b0d-d1e6b0858d94",
+        "processedByName": "Return Test Admin",
+        "processedByUsername": "return-8353a5ec-ffd7-4091-8b0d-d1e6b0858d94",
+        "createdAt": "2026-09-15T15:59:36.006Z",
+        "salesOrder": {
+          "id": "41bcaac3-30aa-47ce-bd14-c61b69f3df5b",
+          "orderNumber": "SO-REVIEW-429edba7",
+          "orderDate": "2026-09-15"
+        },
+        "customer": {
+          "id": "18c81f5d-c883-443e-8fb2-5dd73b9b6fe2",
+          "name": "علي الحاج — Review Test",
+          "phone": "return-18c81f5d-c883-443e-8fb2-5dd73b9b6fe2",
+          "address": "بيروت، لبنان"
+        },
+        "processedBy": {
+          "id": "8353a5ec-ffd7-4091-8b0d-d1e6b0858d94",
+          "fullName": "Return Test Admin",
+          "username": "return-8353a5ec-ffd7-4091-8b0d-d1e6b0858d94"
+        },
+        "items": [
+          {
+            "id": "d477097a-630e-4c91-80ae-a48cbc3b96f8",
+            "salesReturnId": "da0b2cc2-219a-4829-a327-384efc60a0d1",
+            "salesOrderItemId": "5581a68d-bb31-47d4-813f-2ee79ba0efa8",
+            "salesOrderStockFulfillmentId": "ae5a2053-86a0-4fa2-bc03-1a2fa65d1095",
+            "productId": "88e7922f-d3d5-42f7-8772-1c59ae41fb1e",
+            "quantity": 2,
+            "productNameSnapshot": "براد أبيض",
+            "productModelSnapshot": "RET-1",
+            "skuSnapshot": "RET-88e7922f-d3d5-42f7-8772-1c59ae41fb1e",
+            "soldQuantitySnapshot": 2,
+            "unitPriceSnapshot": "50.00",
+            "discountAmount": "0.00",
+            "subtotalExVat": "90.09",
+            "vatAmount": "9.91",
+            "totalIncVat": "100.00",
+            "baseSubtotalExVat": "90.09",
+            "baseVatAmount": "9.91",
+            "baseTotalIncVat": "100.00",
+            "taxRateSnapshot": "11.000",
+            "taxCodeSnapshot": "REVIEW_ORIGINAL_11",
+            "stockDisposition": "SELLABLE",
+            "conditionNote": "Unopened / غير مفتوح",
+            "stockMovementId": "67d872a0-7d47-4f24-8582-29e2dded52e5",
+            "createdAt": "2026-09-15T15:59:36.006Z"
+          }
+        ],
+        "receivableAllocations": [
+          {
+            "id": "404eee3e-fd61-457a-9f5a-3c3d752d11c1",
+            "salesReturnId": "da0b2cc2-219a-4829-a327-384efc60a0d1",
+            "debtId": "15f916cc-40a2-4efa-9b40-f43107eae52c",
+            "installmentId": null,
+            "amount": "40.00",
+            "exchangeRate": "1.000000",
+            "baseAmount": "40.00",
+            "createdAt": "2026-09-15T15:59:36.006Z"
+          }
+        ],
+        "cashRefund": {
+          "id": "ebebba3f-e051-4c37-8dec-e845fb07012e",
+          "salesReturnId": "da0b2cc2-219a-4829-a327-384efc60a0d1",
+          "customerId": "18c81f5d-c883-443e-8fb2-5dd73b9b6fe2",
+          "amount": "60.00",
+          "currency": "USD",
+          "exchangeRate": "1.000000",
+          "baseAmount": "60.00",
+          "processedAt": "2026-09-15T15:59:36.006Z",
+          "processedById": "8353a5ec-ffd7-4091-8b0d-d1e6b0858d94",
+          "processedByName": "Return Test Admin",
+          "processedByUsername": "return-8353a5ec-ffd7-4091-8b0d-d1e6b0858d94",
+          "reason": "Review full return / إرجاع كامل"
+        },
+        "customerCredit": null,
+        "documentRoute": "/documents/sales-returns/da0b2cc2-219a-4829-a327-384efc60a0d1"
+      }
+    }
+  },
+  "replay": {
+    "status": 201,
+    "sameId": true
+  },
+  "after": {
+    "stock": 10,
+    "movementSum": 10,
+    "movementCount": 3,
+    "returnMovements": 1,
+    "outstanding": "130.00",
+    "refunds": {
+      "_sum": {
+        "amount": "60"
+      },
+      "_count": 1
+    }
+  },
+  "reportsAfter": {
+    "inventory-reconciliation": {
+      "summary": {
+        "count": 0,
+        "ok": 0,
+        "mismatches": 0
+      },
+      "rows": []
+    },
+    "customers-financial-integrity": {
+      "summary": {
+        "count": 1,
+        "ok": 1,
+        "mismatches": 0,
+        "reportedTotal": "130.00",
+        "independentTotal": "130.00",
+        "difference": "0.00"
+      },
+      "rows": [
+        {
+          "customer": {
+            "id": "18c81f5d-c883-443e-8fb2-5dd73b9b6fe2",
+            "name": "علي الحاج — Review Test",
+            "phone": "return-18c81f5d-c883-443e-8fb2-5dd73b9b6fe2"
+          },
+          "obligationTotal": "190.00",
+          "allocationTotal": "60.00",
+          "reportedOutstanding": "130.00",
+          "independentOutstanding": "130.00",
+          "difference": "0.00",
+          "obligationCount": 42,
+          "allocationCount": 3,
+          "status": "OK",
+          "issues": []
+        }
+      ]
+    },
+    "suppliers-financial-integrity": {
+      "summary": {
+        "count": 0,
+        "ok": 0,
+        "mismatches": 0,
+        "reportedTotal": "0.00",
+        "independentTotal": "0.00",
+        "difference": "0.00"
+      },
+      "rows": []
+    },
+    "sales-orders": {
+      "summary": {
+        "orderCount": 1,
+        "returnsAmount": "100.00",
+        "cashRefunds": "60.00",
+        "storeCreditIssued": "0.00",
+        "netSalesAmount": "0.00",
+        "totalAmount": "100.00",
+        "paidAmount": "50.00",
+        "unpaidAmount": "50.00",
+        "averageOrderValue": "100.00"
+      },
+      "rows": [
+        {
+          "id": "41bcaac3-30aa-47ce-bd14-c61b69f3df5b",
+          "orderNumber": "SO-REVIEW-429edba7",
+          "orderDate": "2026-09-15",
+          "salesChannel": "SHOP_DIRECT",
+          "fulfillmentStatus": "RETURNED",
+          "paymentStatus": "PARTIALLY_PAID",
+          "settlement": "DEBT",
+          "totalAmount": "100.00",
+          "paidAmount": "50.00",
+          "remainingAmount": "50.00",
+          "baseTotalAmount": "100",
+          "basePaidAmount": "50",
+          "baseRemainingAmount": "50",
+          "customer": {
+            "id": "18c81f5d-c883-443e-8fb2-5dd73b9b6fe2",
+            "name": "علي الحاج — Review Test",
+            "phone": "return-18c81f5d-c883-443e-8fb2-5dd73b9b6fe2"
+          }
+        }
+      ]
+    }
+  },
+  "statementArithmetic": {
+    "checkedEntries": 45,
+    "closing": "130.00",
+    "independentOutstanding": "130.00"
+  },
+  "receiptReprintIdentical": true,
+  "monthly": {
+    "mode": "SNAPSHOT",
+    "summary": {
+      "month": "2026-09",
+      "cutoffDate": "2026-09-15",
+      "customerCount": 1,
+      "totalOutstanding": "130.00",
+      "singleDebtOutstandingTotal": "130.00",
+      "installmentPlanOutstandingTotal": "0.00",
+      "totalAmountDueByCutoff": "130.00",
+      "totalOverdueAtCutoff": "0.00",
+      "totalPaymentsReceivedDuringMonth": "70.00",
+      "customersWithOverdueDebt": 0,
+      "customersWithActiveInstallmentPlans": 0
+    },
+    "rows": [
+      {
+        "customer": {
+          "id": "18c81f5d-c883-443e-8fb2-5dd73b9b6fe2",
+          "name": "علي الحاج — Review Test",
+          "phone": "return-18c81f5d-c883-443e-8fb2-5dd73b9b6fe2"
+        },
+        "singleDebtOutstanding": "130.00",
+        "installmentPlanOutstanding": "0.00",
+        "totalOutstanding": "130.00",
+        "amountDueByCutoff": "130.00",
+        "overdueAmountAtCutoff": "0.00",
+        "activeDebtCount": 41,
+        "activePlanCount": 0,
+        "overdueDebtCount": 0,
+        "overdueInstallmentCount": 0,
+        "lastPaymentDate": "2026-09-15",
+        "nextDueDateAfterCutoff": null
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 10000,
+      "total": 1,
+      "totalPages": 1
+    }
+  },
+  "creditLimitBypass": {
+    "status": 403,
+    "persistedLimit": "100"
+  },
+  "documentAuth": [
+    {
+      "route": "/api/v1/sales-orders/41bcaac3-30aa-47ce-bd14-c61b69f3df5b",
+      "anonymous": 401,
+      "otherEmployee": 200
+    },
+    {
+      "route": "/api/v1/payments/bce124cc-0556-4004-bacf-a9d2b863bde3/receipt",
+      "anonymous": 401,
+      "otherEmployee": 200
+    },
+    {
+      "route": "/api/v1/customers/18c81f5d-c883-443e-8fb2-5dd73b9b6fe2/statement?from=2026-09-15&to=2026-09-15",
+      "anonymous": 401,
+      "otherEmployee": 200
+    }
+  ]
+}

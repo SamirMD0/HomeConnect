@@ -1,0 +1,58 @@
+[
+  {
+    "name": "20260906150000_seed_default_tax_configuration",
+    "applied": true,
+    "recovered": false,
+    "statementCount": 5,
+    "durationMs": 76
+  },
+  {
+    "name": "20260908120000_default_retail_prices_vat_inclusive",
+    "applied": true,
+    "recovered": false,
+    "statementCount": 3,
+    "durationMs": 357
+  },
+  {
+    "name": "20260909100000_add_delivery_vat_and_business_settings",
+    "applied": true,
+    "recovered": false,
+    "statementCount": 7,
+    "durationMs": 117
+  },
+  {
+    "name": "20260911120000_add_atomic_sales_returns",
+    "applied": true,
+    "recovered": false,
+    "statementCount": 56,
+    "durationMs": 255
+  },
+  {
+    "name": "20260914123000_add_supplier_due_dates",
+    "applied": true,
+    "recovered": false,
+    "statementCount": 3,
+    "durationMs": 6
+  },
+  {
+    "name": "20260914140000_add_counter_payment_sources",
+    "applied": true,
+    "recovered": false,
+    "statementCount": 13,
+    "durationMs": 81
+  },
+  {
+    "name": "20260914160000_add_customer_credit_limits",
+    "applied": true,
+    "recovered": false,
+    "statementCount": 3,
+    "durationMs": 3
+  },
+  {
+    "name": "20260914180000_add_product_categories",
+    "applied": true,
+    "recovered": false,
+    "statementCount": 10,
+    "durationMs": 25
+  }
+]

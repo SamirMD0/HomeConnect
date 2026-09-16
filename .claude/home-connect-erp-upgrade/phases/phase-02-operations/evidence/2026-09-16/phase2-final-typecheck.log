@@ -1,0 +1,11 @@
+
+> home-connect@2.0.0 typecheck
+> npm run typecheck:frontend && npm run typecheck:backend
+
+
+> home-connect@2.0.0 typecheck:frontend
+> tsc -p tsconfig.json --noEmit
+
+
+> home-connect@2.0.0 typecheck:backend
+> tsc -p tsconfig.server.json --noEmit

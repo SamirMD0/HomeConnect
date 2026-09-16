@@ -1,6 +1,6 @@
 # Prompt 10 — new counter receipts in the normal Payment model
 
-Owner approvals: new receipts only; no historical backfill; nullable customer IDs for genuine customerless sales; no synthetic customer. Branch: `upgrade/phase-02-operations`.
+Owner approvals: new receipts only; no historical backfill; nullable customer IDs for genuine customerless sales; no synthetic customer. Cumulative branch: `develop`.
 
 ## Monetary boundary
 
