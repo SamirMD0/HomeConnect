@@ -116,7 +116,7 @@
     "typecheck:frontend": "tsc -p tsconfig.json --noEmit",
     "typecheck:backend": "tsc -p tsconfig.server.json --noEmit",
     "test": "vitest run",
-    "test:ci": "node scripts/assert-test-database.mjs && cross-env RUN_FINANCIAL_DB_TESTS=1 RUN_INVENTORY_DB_TESTS=1 RUN_SALES_FULFILLMENT_DB_TESTS=1 RUN_SUPPLIER_PURCHASE_DB_TESTS=1 RUN_SUPPLIER_RECEIVING_DB_TESTS=1 RUN_PHASE4_DEBT_DB_TESTS=1 RUN_PHASE5_INSTALLMENT_DB_TESTS=1 RUN_PHASE6_CUSTOMER_SUMMARY_DB_TESTS=1 vitest run --no-file-parallelism --reporter=default --reporter=json --outputFile.json=node_modules/.cache/home-connect/vitest-report.json",
+    "test:ci": "node scripts/assert-test-database.mjs && cross-env RUN_FINANCIAL_DB_TESTS=1 RUN_INVENTORY_DB_TESTS=1 RUN_SALES_FULFILLMENT_DB_TESTS=1 RUN_SUPPLIER_PURCHASE_DB_TESTS=1 RUN_SUPPLIER_RECEIVING_DB_TESTS=1 RUN_PHASE4_DEBT_DB_TESTS=1 RUN_PHASE5_INSTALLMENT_DB_TESTS=1 RUN_PHASE6_CUSTOMER_SUMMARY_DB_TESTS=1 vitest run --no-file-parallelism --reporter=default --reporter=json --outputFile.json=node_modules/.cache/home-connect/vitest-report.json && node scripts/assert-zero-skips.mjs",
     "prisma:validate": "tsx backend/prisma/validate.ts",
     "lint": "eslint frontend/src backend/src desktop/src --ext ts,tsx",
     "format": "prettier --write \"{frontend,backend,desktop}/src/**/*.{ts,tsx,css}\"",
