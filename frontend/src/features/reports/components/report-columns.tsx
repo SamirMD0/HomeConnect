@@ -18,6 +18,10 @@ export interface ReportColumn {
   numeric?: boolean;
 }
 
+function categoryColumn(): ReportColumn {
+  return { label: 'Category (current catalogue)', render: (row) => String(record(row).categoryPath ?? 'Uncategorized') };
+}
+
 export function columnsFor(slice: ReportSlice): ReportColumn[] {
   if (slice === 'customers-new') return [
     text('Date / التاريخ', 'createdOn'), text('Customer / الزبون', 'name'),
@@ -51,6 +55,7 @@ export function columnsFor(slice: ReportSlice): ReportColumn[] {
     riskLabelsColumn(),
   ];
   if (slice === 'products-bought') return [
+    categoryColumn(),
     text('Date / التاريخ', 'receivedOn'), nestedText('Product / المنتج', 'product', 'name'),
     text('SKU', 'sku'), partyLink('Supplier / المورد', 'supplier', '/suppliers/'),
     linked('Reference / المرجع', 'referenceNumber', '/inventory/receiving/', 'receivingId'),
@@ -60,6 +65,7 @@ export function columnsFor(slice: ReportSlice): ReportColumn[] {
     nestedMoney('Linked bill / الفاتورة', 'linkedDebt', 'amount'),
   ];
   if (slice === 'products-cost-changes') return [
+    categoryColumn(),
     text('Changed / التغيير', 'changedAt'),
     partyText('Product / المنتج', 'product'),
     nestedText('SKU', 'product', 'sku'),
@@ -113,6 +119,7 @@ export function columnsFor(slice: ReportSlice): ReportColumn[] {
     money('Paid / المدفوع', 'paidAmount'), money('Remaining / الباقي', 'remainingAmount'),
   ];
   if (slice === 'inventory-movements') return [
+    categoryColumn(),
     text('Timestamp / الوقت', 'createdAt'), partyText('Product / المنتج', 'product'),
     nestedText('SKU', 'product', 'sku'), text('Type / النوع', 'movementType'),
     signed('Change / التغيير', 'quantityChange'), count('Before / قبل', 'quantityBefore'),
@@ -142,6 +149,7 @@ export function columnsFor(slice: ReportSlice): ReportColumn[] {
   ];
   return [
     linked('Receiving / الاستلام', 'referenceNumber', '/inventory/receiving/', 'receivingId'),
+    categoryColumn(),
     text('Date / التاريخ', 'receivedOn'), partyText('Supplier / المورد', 'supplier'),
     text('SKU', 'sku'), text('Product / المنتج', 'productName'), count('Quantity / الكمية', 'quantity'),
     statusBadge('Result / النتيجة', 'status', (value) => value === 'OK'), issuesColumn(),

@@ -3,11 +3,13 @@ import { prisma } from '../../../lib/prisma';
 import { findSearchMatchIds } from '../../../lib/search-query';
 import { serviceJobInclude } from '../service-jobs/service-jobs.repository';
 import type { ProductStockFilter } from './product-stock';
+import { categoryInclude } from '../../categories/category-hierarchy';
 
 const productActorInclude = {
   createdBy: { select: { fullName: true, username: true } },
   updatedBy: { select: { fullName: true, username: true } },
   pricingPreset: true,
+  category: { include: categoryInclude },
   taxProfile: { include: { taxRate: true } },
   // Metadata only — never select `data`, or every product query would load image payloads.
   image: { select: { mimeType: true, byteSize: true, updatedAt: true } },
@@ -180,6 +182,7 @@ export class ProductsRepository {
     search?: string;
     isActive?: boolean;
     brand?: string;
+    categoryIds?: string[] | null;
     hasBarcode?: boolean;
     trackStock?: boolean;
     stockStatus?: ProductStockFilter;
@@ -193,6 +196,7 @@ export class ProductsRepository {
     const where: Prisma.ProductWhereInput = {
       ...(params.isActive === undefined ? {} : { isActive: params.isActive }),
       ...(params.brand ? { brand: { equals: params.brand, mode: 'insensitive' } } : {}),
+      ...(params.categoryIds === undefined ? {} : { categoryId: params.categoryIds === null ? null : { in: params.categoryIds } }),
       ...(params.hasBarcode === undefined ? {} : params.hasBarcode ? { barcode: { not: null } } : { barcode: null }),
       ...(params.trackStock === undefined ? {} : { trackStock: params.trackStock }),
       ...(params.stockStatus ? productStockStatusWhere(params.stockStatus) : {}),

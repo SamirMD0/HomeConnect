@@ -12,6 +12,8 @@ import {
   ProductStockFilter,
 } from '../types/product.types';
 import { productLabels } from '../utils/product-labels';
+import { CategorySelect } from '../../categories/CategorySelect';
+import type { Category } from '../../categories/categories';
 
 export interface ProductFiltersProps {
   filters: ProductFilterValues;
@@ -22,6 +24,8 @@ export interface ProductFiltersProps {
   onReset: () => void;
   searchInputRef: React.RefObject<HTMLInputElement | null>;
   brands?: ProductBrandSummary[];
+  categories?: Category[];
+  categoriesLoading?: boolean;
   brandsLoading?: boolean;
   /** A refetch is in flight — shown in the search box, not as a page-wide spinner. */
   isFetching?: boolean;
@@ -43,6 +47,7 @@ export const productBrandFilterPatch = (value: string): ProductFilterPatch => ({
 export const productFilterResetPatch = (): ProductFilterPatch => ({
   search: undefined,
   brand: undefined,
+  categoryId: undefined,
   hasBarcode: undefined,
   trackStock: undefined,
   stockStatus: undefined,
@@ -54,6 +59,7 @@ export const productFilterResetPatch = (): ProductFilterPatch => ({
 export const hasActiveProductFilters = (filters: ProductFilterValues, search: string): boolean =>
   Boolean(search.trim())
   || Boolean(filters.brand)
+  || Boolean(filters.categoryId)
   || filters.hasBarcode !== undefined
   || filters.trackStock !== undefined
   || filters.stockStatus !== undefined
@@ -108,7 +114,7 @@ const PAGE_SIZE_OPTIONS = [25, 50, 100];
 
 export const ProductFilters: React.FC<ProductFiltersProps> = ({
   filters, search, onSearchChange, onChange, onSearchSubmit, onReset, searchInputRef,
-  brands = [], brandsLoading = false, isFetching = false, resultCount,
+  brands = [], brandsLoading = false, categories = [], categoriesLoading = false, isFetching = false, resultCount,
 }) => {
   const [advancedOpen, setAdvancedOpen] = useState(
     filters.hasBarcode !== undefined || filters.trackStock !== undefined
@@ -124,6 +130,8 @@ export const ProductFilters: React.FC<ProductFiltersProps> = ({
     searchInputRef={searchInputRef}
     brands={brands}
     brandsLoading={brandsLoading}
+    categories={categories}
+    categoriesLoading={categoriesLoading}
     isFetching={isFetching}
     resultCount={resultCount}
     advancedOpen={advancedOpen}
@@ -138,7 +146,7 @@ export const ProductFiltersView: React.FC<ProductFiltersProps & {
   onToggleAdvanced: () => void;
 }> = ({
   filters, search, onSearchChange, onChange, onSearchSubmit, onReset, searchInputRef,
-  brands = [], brandsLoading = false, isFetching = false, resultCount,
+  brands = [], brandsLoading = false, categories = [], categoriesLoading = false, isFetching = false, resultCount,
   advancedOpen, advancedId, onToggleAdvanced,
 }) => {
   const canReset = hasActiveProductFilters(filters, search);
@@ -187,6 +195,7 @@ export const ProductFiltersView: React.FC<ProductFiltersProps & {
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
+        <div className="w-72"><CategorySelect categories={categories} value={filters.categoryId ?? ''} onChange={(value) => onChange({ categoryId: value || undefined, page: 1 })} filter loading={categoriesLoading} /></div>
         <Select
           aria-label="Filter by brand / تصفية حسب الماركة"
           value={filters.brand ?? ''}

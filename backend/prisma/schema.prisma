@@ -759,6 +759,22 @@ model TaxProfile {
   @@map("tax_profiles")
 }
 
+model Category {
+  id        String     @id @default(uuid()) @db.Uuid
+  name      String
+  parentId  String?    @db.Uuid
+  parent    Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children  Category[] @relation("CategoryHierarchy")
+  isActive  Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  products  Product[]
+
+  @@index([parentId])
+  @@index([isActive])
+  @@map("categories")
+}
+
 model Product {
   id                                     String                  @id @default(uuid()) @db.Uuid
   sku                                    String                  @unique
@@ -766,6 +782,8 @@ model Product {
   model                                  String
   barcode                                String?                 @unique
   brand                                  String?
+  categoryId String? @db.Uuid
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   price                                  Decimal?                @db.Decimal(12, 2)
   discount                               Decimal?                @db.Decimal(12, 2)
   costPrice                              Decimal?                @db.Decimal(12, 2)
@@ -818,6 +836,7 @@ model Product {
   @@index([pricingPresetId])
   @@index([taxProfileId])
   @@map("products")
+  @@index([categoryId])
 }
 
 model StockMovement {

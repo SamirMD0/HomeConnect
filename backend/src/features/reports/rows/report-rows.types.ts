@@ -21,4 +21,5 @@ export interface ReportRowsData<Row = unknown, Summary = Record<string, unknown>
   summary: Summary;
   rows: Row[];
   operationalSnapshot?: boolean;
+  categorySource?: 'CURRENT_CATALOGUE';
 }

@@ -12,7 +12,7 @@ export type ReportSlice =
 
 export interface ReportRowsEnvelope<Row = ReportRow> {
   meta: MonthlyReviewMeta;
-  data: { summary: Record<string, string | number | boolean | Record<string, unknown>>; rows: Row[]; operationalSnapshot?: boolean };
+  data: { summary: Record<string, string | number | boolean | Record<string, unknown>>; rows: Row[]; operationalSnapshot?: boolean; categorySource?: 'CURRENT_CATALOGUE' };
 }
 
 export interface NamedParty { id: string; name: string; phone?: string; companyName?: string | null }
@@ -25,15 +25,16 @@ export type ReportRow =
   | { id: string; supplier: NamedParty; type: string; direction: string; amount: string; transactionDate: string; description: string; reference: string | null; receiptNumber: string | null }
   | { id: string; supplier: NamedParty | null; referenceNumber: string | null; receivedOn: string; status: string; lineCount: number; totalQuantity: number; linkedDebt: { id: string; amount: string } | null }
   | { id: string; orderNumber: string; orderDate: string; customer: NamedParty | null; paymentStatus: string; fulfillmentStatus: string; totalAmount: string; paidAmount: string; remainingAmount: string }
-  | { id: string; product: { id: string; name: string; sku: string }; movementType: string; quantityChange: number; quantityBefore: number; quantityAfter: number; reason: string; createdAt: string }
-  | { receivingId: string; referenceNumber: string | null; receivedOn: string; supplier: NamedParty | null; sku: string; productName: string; quantity: number; status: 'OK' | 'MISMATCH'; issues: string[] }
+  | ({ id: string; product: { id: string; name: string; sku: string }; movementType: string; quantityChange: number; quantityBefore: number; quantityAfter: number; reason: string; createdAt: string } & CategoryClassification)
+  | ({ receivingId: string; referenceNumber: string | null; receivedOn: string; supplier: NamedParty | null; sku: string; productName: string; quantity: number; status: 'OK' | 'MISMATCH'; issues: string[] } & CategoryClassification)
   | { customer: NamedParty; obligationTotal: string; allocationTotal: string; reportedOutstanding: string; independentOutstanding: string; difference: string; status: 'OK' | 'MISMATCH'; issues: string[] }
   | { supplier: NamedParty; increaseTotal: string; decreaseTotal: string; reportedBalance: string; independentBalance: string; difference: string; status: 'OK' | 'MISMATCH'; issues: string[] }
-  | { id: string; changedAt: string; product: { id: string; name: string; sku: string }; oldCost: string | null; newCost: string | null; percentageChange: string | null; source: 'SUPPLIER_PURCHASE' | 'MANUAL'; receiptNumber: string | null; reason: string; changedBy: { fullName: string; username: string } }
+  | ({ id: string; changedAt: string; product: { id: string; name: string; sku: string }; oldCost: string | null; newCost: string | null; percentageChange: string | null; source: 'SUPPLIER_PURCHASE' | 'MANUAL'; receiptNumber: string | null; reason: string; changedBy: { fullName: string; username: string } } & CategoryClassification)
   | { debtId: string; customer: NamedParty; description: string; reference: string | null; createdOn: string; dueDate: string; originalAmount: string; paidAmount: string; remainingAmount: string; daysUnpaid: number; bucket: string; lastPaymentDate: string | null; status: string }
   | { customer: NamedParty; openingBalance: string; newDebt: string; returnCredits?: string; paidInPeriod: string; closingBalance: string; paymentCount: number; unpaidDebtCount: number; lastPaymentDate: string | null; daysSinceLastPayment: number | null; riskLabels: string[] }
-  | { itemId: string; product: { id: string; name: string; sku: string }; sku: string; barcode: string | null; currentStock: number; supplier: NamedParty | null; receivingId: string; referenceNumber: string | null; receivedOn: string; quantity: number; status: 'ACTIVE' | 'REVERSED'; soldInPeriod: number; linkedDebt: { id: string; amount: string } | null };
+  | ({ itemId: string; product: { id: string; name: string; sku: string }; sku: string; barcode: string | null; currentStock: number; supplier: NamedParty | null; receivingId: string; referenceNumber: string | null; receivedOn: string; quantity: number; status: 'ACTIVE' | 'REVERSED'; soldInPeriod: number; linkedDebt: { id: string; amount: string } | null } & CategoryClassification);
 
+export interface CategoryClassification { categoryId?: string | null; categoryPath?: string | null }
 export type ReportRowsQuery = MonthlyReviewQuery;
 
 export interface ReportSliceDefinition {

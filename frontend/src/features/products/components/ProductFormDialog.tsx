@@ -17,6 +17,7 @@ import { ProductStockSection } from './ProductStockSection';
 import { ProductSpecificationsEditor } from './ProductSpecificationsEditor';
 import { VerifyOpeningCountDialog } from '../../inventory/components/VerifyOpeningCountDialog';
 import { BrandCombobox } from './BrandCombobox';
+import { CategoryPicker } from '../../categories/CategorySelect';
 
 interface ProductFormDialogProps {
   open: boolean;
@@ -39,6 +40,7 @@ export const ProductFormDialog: React.FC<ProductFormDialogProps> = ({ open, prod
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [savedImageRemoved, setSavedImageRemoved] = useState(false);
   const [form, setForm] = useState<ProductFormValues>(emptyForm);
+  const [categoryId, setCategoryId] = useState('');
   const [pricing, setPricing] = useState<ProductFormPricingValues>(emptyProductFormPricing);
   const [stock, setStock] = useState<ProductStockInput>({ trackStock: false, stockQuantity: 0, lowStockThreshold: null });
   const [specifications, setSpecifications] = useState<ProductSpecification[]>([]);
@@ -69,6 +71,7 @@ export const ProductFormDialog: React.FC<ProductFormDialogProps> = ({ open, prod
       notes: product.notes ?? '',
     } : emptyForm);
     setImageFile(null);
+    setCategoryId(product?.categoryId ?? '');
     setSavedImageRemoved(false);
     setPricing(productPricingForm(product));
     setStock(product ? { trackStock: product.trackStock, stockQuantity: product.stockQuantity, lowStockThreshold: product.lowStockThreshold } : { trackStock: false, stockQuantity: 0, lowStockThreshold: null });
@@ -144,7 +147,7 @@ export const ProductFormDialog: React.FC<ProductFormDialogProps> = ({ open, prod
         // The image endpoint is keyed by product id, so a chosen file uploads
         // only once the product row exists.
         const requestedStockSettings = isAdmin || stock.trackStock || stock.lowStockThreshold !== null ? stock : undefined;
-        const created = await create.mutateAsync(toCreateInput(values, isAdmin ? pricingInput : undefined, specifications, specificationNotes, labelBarcodeSource, requestedStockSettings));
+        const created = await create.mutateAsync({ ...toCreateInput(values, isAdmin ? pricingInput : undefined, specifications, specificationNotes, labelBarcodeSource, requestedStockSettings), ...(categoryId ? { categoryId } : {}) });
         if (imageFile) await uploadImage.mutateAsync({ id: created.id, file: imageFile });
         if (created.trackStock) {
           toast.success((notification) => <CreatedTrackedProductToast onVerify={() => {
@@ -160,6 +163,7 @@ export const ProductFormDialog: React.FC<ProductFormDialogProps> = ({ open, prod
     }
 
     const input = changedInput(product, values, specifications, specificationNotes, labelBarcodeSource);
+    if (isAdmin && categoryId !== (product.categoryId ?? '')) input.categoryId = categoryId || null;
     if (Object.keys(input).length === 0 && !pricingChanged && !stockChanged && !imageFile && !savedImageRemoved) {
       setNotice('No product changes were entered / لم يتم إدخال أي تعديل');
       return;
@@ -198,6 +202,7 @@ export const ProductFormDialog: React.FC<ProductFormDialogProps> = ({ open, prod
           <ProductTextField label={businessLabels.product.name} value={form.name} onChange={(value) => set('name', value)} error={errors.name} disabled={Boolean(product && !isAdmin)} required />
           <ProductTextField label={businessLabels.product.model} value={form.model} onChange={(value) => set('model', value)} error={errors.model} disabled={Boolean(product && !isAdmin)} required />
           <BrandCombobox label={businessLabels.product.brand} value={form.brand} onChange={(value) => set('brand', value)} error={errors.brand} disabled={Boolean(product && !isAdmin)} />
+          <CategoryPicker value={categoryId} onChange={setCategoryId} disabled={Boolean(product && !isAdmin)} />
           <ProductTextField label={businessLabels.product.barcode} value={form.barcode} onChange={(value) => set('barcode', value)} error={errors.barcode} disabled={Boolean(product && !isAdmin)} dir="ltr" userText={false} feedback={<ProductDuplicateInlineError field="Barcode" matches={duplicateMatches} onView={onViewDuplicate} />} />
           <FormField label="Label barcode source / مصدر باركود الملصق" error={errors.labelBarcodeSource} hint={<span dir="auto">{labelPrintPreview(labelBarcodeSource, form.barcode, product?.sku)}</span>}>
             {(field) => <Select {...field} value={labelBarcodeSource} onChange={(event) => setLabelBarcodeSource(event.target.value as LabelBarcodeSource)} disabled={Boolean(product && !isAdmin)}><option value="AUTO">Numeric barcode when available / الباركود الرقمي عند توفره</option><option value="MANUFACTURER">Manufacturer barcode / باركود الشركة</option><option value="SKU">HomeConnect SKU / رمز HomeConnect</option></Select>}

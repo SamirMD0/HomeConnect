@@ -10,6 +10,8 @@ import {
 import { compareMoney, moneyToApiString, parseMoney, subtractMoney } from '../../financial/domain/money';
 import { businessDateToPrisma, todayInBusinessTimezone } from '../../financial/domain/business-date';
 import { runFinancialTransaction } from '../../financial/infrastructure/transaction';
+import { CategoriesService } from '../../categories/categories.service';
+import { categoryPath, type CategoryWithParent } from '../../categories/category-hierarchy';
 import { verifyAdminPassword } from '../../../lib/admin-verification';
 import { NotFoundError, ValidationError } from '../../../lib/errors';
 import { writeServiceAudit } from '../audit/service-audit';
@@ -231,6 +233,7 @@ export class ProductsService {
         if (input.barcode && (await ProductsRepository.findByBarcode(input.barcode, tx, { caseInsensitive: true }))) {
           throw barcodeConflict();
         }
+        if (input.categoryId) await CategoriesService.assertAssignable(input.categoryId, tx);
         if (input.pricingPresetId) {
           const preset = await ProductsRepository.findPricingPreset(input.pricingPresetId, tx);
           assertActivePricingPreset(preset);
@@ -242,6 +245,7 @@ export class ProductsService {
             model: input.model,
             barcode: input.barcode ?? null,
             brand: input.brand ?? null,
+            ...(input.categoryId !== undefined ? { categoryId: input.categoryId } : {}),
             price: moneyOrNull(input.price, input.priceCurrency),
             discount: moneyOrNull(input.discount, input.priceCurrency),
             imageUrl: input.imageUrl ?? null,
@@ -282,6 +286,7 @@ export class ProductsService {
       search: query.search,
       isActive: query.isActive,
       brand: query.brand,
+      ...(query.categoryId === undefined ? {} : { categoryIds: query.categoryId === 'uncategorized' ? null : await CategoriesService.filterIds(query.categoryId) }),
       hasBarcode: query.hasBarcode,
       trackStock: query.trackStock,
       stockStatus: query.stockStatus,
@@ -426,6 +431,7 @@ export class ProductsService {
           if (duplicate) throw barcodeConflict();
         }
         const data = productUpdateData(input, user.userId, existing.priceCurrency);
+        if (input.categoryId && input.categoryId !== existing.categoryId) await CategoriesService.assertAssignable(input.categoryId, tx);
         assertValidLabelBarcodeSource({
           barcode: input.barcode === undefined ? existing.barcode : input.barcode,
           labelBarcodeSource: input.labelBarcodeSource === undefined ? existing.labelBarcodeSource : input.labelBarcodeSource,
@@ -767,6 +773,7 @@ function productUpdateData(input: UpdateProductInput, updatedById: string, curre
   if (input.model !== undefined) data.model = input.model;
   if (input.barcode !== undefined) data.barcode = input.barcode;
   if (input.brand !== undefined) data.brand = input.brand;
+  if (input.categoryId !== undefined) data.categoryId = input.categoryId;
   if (input.price !== undefined) data.price = moneyOrNull(input.price, currency);
   if (input.discount !== undefined) data.discount = moneyOrNull(input.discount, currency);
   if (input.imageUrl !== undefined) data.imageUrl = input.imageUrl;
@@ -855,6 +862,7 @@ function assertDiscountWithinPrice(price: { toString(): string } | string | null
 }
 
 type ProductRecord = Product & {
+  category?: (CategoryWithParent & { id: string }) | null;
   createdBy?: { fullName: string; username: string };
   updatedBy?: { fullName: string; username: string } | null;
   pricingPreset?: Prisma.PricingPresetGetPayload<Record<string, never>> | null;
@@ -984,6 +992,8 @@ function serializeProduct(product: ProductRecord, defaultPreset: Prisma.PricingP
     taxProfileId: product.taxProfileId,
     priceIncludesVat: product.priceIncludesVat,
     isActive: product.isActive,
+    categoryId: product.categoryId ?? null,
+    categoryPath: product.category ? categoryPath(product.category) : null,
     notes: product.notes,
     labelBarcodeSource: product.labelBarcodeSource,
     trackStock: product.trackStock,
@@ -1025,6 +1035,7 @@ function productSnapshot(product: Product): Prisma.InputJsonObject {
   return {
     sku: product.sku, name: product.name, model: product.model, barcode: product.barcode,
     brand: product.brand, price: product.price ? moneyToApiString(product.price, product.priceCurrency) : null,
+    categoryId: product.categoryId ?? null,
     discount: product.discount ? moneyToApiString(product.discount, product.priceCurrency) : null,
     priceCurrency: product.priceCurrency,
     isActive: product.isActive, notes: product.notes, imageUrl: product.imageUrl,

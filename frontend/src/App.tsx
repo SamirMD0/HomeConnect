@@ -23,6 +23,7 @@ import { ServiceJobDetailsPage } from './pages/service/ServiceJobDetailsPage';
 import { ProductLabelPage } from './pages/products/ProductLabelPage';
 import { ProductsPage } from './pages/products/ProductsPage';
 import { BrandsPage } from './pages/products/BrandsPage';
+import { CategoriesPage } from './pages/products/CategoriesPage';
 import { ScannerHubPage } from './pages/scanner/ScannerHubPage';
 import { ProductLabelsPage } from './pages/products/ProductLabelsPage';
 import { SuppliersPage } from './pages/suppliers/SuppliersPage';
@@ -54,8 +55,8 @@ const App: React.FC = () => {
             <Route path="/setup" element={<Setup />} />
 
             {/* Protected Dashboard Routes */}
-            <Route 
-              path="/" 
+            <Route
+              path="/"
               element={
                 <ProtectedRoute>
                   <ErrorBoundary>
@@ -80,6 +81,7 @@ const App: React.FC = () => {
               <Route path="payments/:paymentId/receipt" element={<PaymentReceiptPage />} />
               <Route path="products" element={<ProductsPage />} />
               <Route path="products/brands" element={<BrandsPage />} />
+              <Route path="products/categories" element={<CategoriesPage />} />
               <Route path="inventory" element={<InventoryPage />} />
               <Route path="inventory/onboarding" element={<ProtectedRoute allowedRoles={['ADMIN']}><InventoryOnboardingPage /></ProtectedRoute>} />
               <Route path="inventory/receiving" element={<SupplierReceivingListPage />} />
@@ -96,7 +98,7 @@ const App: React.FC = () => {
               <Route path="reports/:reportId" element={<ReportDetailPage />} />
               <Route path="settings" element={<SettingsPage />} />
             </Route>
-            
+
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

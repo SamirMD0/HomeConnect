@@ -17,6 +17,7 @@ import { ProductRestoreDialog } from '../../features/products/components/Product
 import { ProductStats } from '../../features/products/components/ProductStats';
 import { ProductsTable } from '../../features/products/components/ProductsTable';
 import { useProductBrands, useProducts } from '../../features/products/hooks/useProducts';
+import { useCategories } from '../../features/categories/categories';
 import { Product, ProductFilterPatch, ProductFilters as ProductFilterValues, ProductSortBy, ProductSortOrder, ProductStockFilter } from '../../features/products/types/product.types';
 import { productLabels } from '../../features/products/utils/product-labels';
 import { productSearchParams, productViewSearchParams, resolveProductView } from '../../features/products/utils/product-view';
@@ -56,6 +57,7 @@ export const ProductsPage: React.FC = () => {
     search: params.get('search') || undefined,
     isActive: params.get('status') !== 'archived',
     brand: params.get('brand') || undefined,
+    categoryId: params.get('categoryId') || undefined,
     hasBarcode: params.has('hasBarcode') ? params.get('hasBarcode') === 'true' : undefined,
     trackStock: params.has('trackStock') ? params.get('trackStock') === 'true' : undefined,
     stockStatus: (params.get('stockStatus') as ProductStockFilter | null) ?? undefined,
@@ -66,6 +68,7 @@ export const ProductsPage: React.FC = () => {
   }), [params]);
   const products = useProducts(filters);
   const brands = useProductBrands();
+  const categories = useCategories();
   const focusedId = params.get('focus');
   const focusedSection = params.get('section') === 'stock' ? 'stock' : undefined;
 
@@ -210,6 +213,7 @@ export const ProductsPage: React.FC = () => {
       description="Manage the product catalogue and printable labels / إدارة دليل المنتجات والملصقات."
       actions={<>
         <Link to="/products/brands" className={buttonClasses('secondary', 'md')}><Tags className="h-4 w-4" />Brands / الماركات</Link>
+        <Link to="/products/categories" className={buttonClasses('secondary', 'md')}><Tags className="h-4 w-4" />Categories</Link>
         <Button icon={<Plus />} onClick={() => { setEditingProduct(null); setFormOpen(true); }}>{businessLabels.product.addProduct}</Button>
       </>}
     />
@@ -241,6 +245,8 @@ export const ProductsPage: React.FC = () => {
     <ProductBulkActionsBar selectedIds={[...selectedIds]} visibleIds={visible.map((product) => product.id)} onClear={() => setSelectedIds(new Set())} />
 
     <ProductFilters
+      categories={categories.data}
+      categoriesLoading={categories.isLoading}
       filters={filters}
       search={search}
       onSearchChange={(value) => { setSearch(value); scanner.clear(); }}

@@ -21,6 +21,7 @@ import { buildCsv, type CsvValue } from '../shared/csv';
 import { buildAgingRows, summariseAging } from '../shared/receivables-aging';
 import { resolveReportsPeriod } from '../shared/reports-period';
 import { ReportRowsRepository } from './report-rows.repository';
+import { categoryPath } from '../../categories/category-hierarchy';
 import type { ReportSlice } from './report-rows.types';
 import type { ReportRowsQueryInput } from './report-rows.validator';
 
@@ -30,6 +31,7 @@ interface ReportRowsOptions { businessDate?: string; generatedAt?: Date }
 const STALE_PAYMENT_DAYS = 60;
 /** Balance at or above which a customer is called out regardless of payment behaviour. */
 const HIGH_BALANCE = new Decimal('500.00');
+const CATEGORY_REPORTS = new Set<ReportSlice>(['products-bought', 'products-cost-changes', 'inventory-movements', 'inventory-reconciliation']);
 
 export interface CustomerMovementRow {
   customer: { id: string; name: string; phone: string };
@@ -50,9 +52,17 @@ export class ReportRowsService {
     const businessDate = options.businessDate ?? todayInBusinessTimezone();
     const period = resolveReportsPeriod(query, businessDate);
     const generatedAt = (options.generatedAt ?? new Date()).toISOString();
-    const data = slice === 'suppliers-aging'
+    const payload = slice === 'suppliers-aging'
       ? { ...await SupplierPayablesService.get(businessDate), operationalSnapshot: true }
       : await this.load(slice, period);
+    const classifications = CATEGORY_REPORTS.has(slice) && payload.rows.length
+      ? await ReportRowsRepository.productCategories([...new Set(payload.rows.map((row) => reportProductId(row)).filter((id): id is string => Boolean(id)))])
+      : [];
+    const byId = new Map(classifications.map((row) => [row.id, row]));
+    const data = CATEGORY_REPORTS.has(slice) ? { ...payload, categorySource: 'CURRENT_CATALOGUE' as const, rows: payload.rows.map((row) => {
+      const product = byId.get(reportProductId(row) ?? '');
+      return { ...row, categoryId: product?.categoryId ?? null, categoryPath: product?.category ? categoryPath(product.category) : null };
+    }) } : payload;
     return {
       meta: { ...period, generatedAt, currency: 'USD' as const },
       data,
@@ -467,6 +477,7 @@ export class ReportRowsService {
   }
 }
 
+// Reports classify products from the current catalogue, never from monetary snapshots.
 type SalesOrderRowRecord =
   | Awaited<ReturnType<typeof ReportRowsRepository.salesOrders>>[number]
   | Omit<Awaited<ReturnType<typeof ReportRowsRepository.unpaidSalesOrders>>[number], 'debt' | 'installmentPlan' | 'returns'>;
@@ -477,6 +488,11 @@ function serializeSalesOrder(record: SalesOrderRowRecord) {
     totalAmount: moneyToApiString(record.baseTotalAmount ?? record.totalAmount), paidAmount: moneyToApiString(record.basePaidAmount ?? record.paidAmount),
     remainingAmount: moneyToApiString(record.baseRemainingAmount ?? record.remainingAmount),
   };
+}
+
+function reportProductId(row: unknown): string | undefined {
+  const record = row as { productId?: string; product?: { id?: string } };
+  return record.productId ?? record.product?.id;
 }
 
 function reconciliationIssues(
@@ -542,7 +558,9 @@ function csvDefinition(slice: ReportSlice, rows: Array<Record<string, unknown>>)
     'suppliers-financial-integrity': { headers: ['Supplier', 'Phone', 'Active increases', 'Active decreases', 'Reported balance', 'Independent balance', 'Difference', 'Status', 'Issues'], values: (r) => { const s = r.supplier as Record<string, unknown>; return [s.name as string, s.phone as string, r.increaseTotal as string, r.decreaseTotal as string, r.reportedBalance as string, r.independentBalance as string, r.difference as string, r.status as string, (r.issues as string[]).join('; ')]; } },
   };
   const definition = definitions[slice];
-  return { headers: definition.headers, rows: rows.map(definition.values) };
+  return CATEGORY_REPORTS.has(slice)
+    ? { headers: [...definition.headers, 'Category (current catalogue)'], rows: rows.map((row) => [...definition.values(row), (row.categoryPath as string | null) ?? 'Uncategorized']) }
+    : { headers: definition.headers, rows: rows.map(definition.values) };
 }
 
 const movementCsvHeaders = ['Customer', 'Phone', 'Opening', 'New debt', 'Return credits', 'Paid', 'Closing', 'Payments', 'Unpaid items', 'Last payment', 'Days since payment', 'Risk'];

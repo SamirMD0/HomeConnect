@@ -18,6 +18,8 @@ export interface Product {
   model: string;
   barcode: string | null;
   brand: string | null;
+  categoryId?: string | null;
+  categoryPath?: string | null;
   price: string | null;
   discount: string | null;
   netPrice: string | null;
@@ -165,6 +167,7 @@ export interface ProductFilters {
   search?: string;
   isActive?: boolean;
   brand?: string;
+  categoryId?: string;
   hasBarcode?: boolean;
   trackStock?: boolean;
   stockStatus?: ProductStockFilter;
@@ -199,6 +202,7 @@ export interface CreateProductInput extends ProductPricingConfigurationInput {
   model: string;
   barcode?: string | null;
   brand?: string | null;
+  categoryId?: string | null;
   price?: string | null;
   discount?: string | null;
   imageUrl?: string | null;

@@ -113,14 +113,14 @@ export function useProductLabels(ids: string[], includePriceCode = false, includ
 }
 export function useCreateProduct() {
   const queryClient = useQueryClient();
-  return useMutation({ mutationFn: (input: CreateProductInput) => productsApi.create(input), onSuccess: () => refreshProducts(queryClient) });
+  return useMutation({ mutationFn: (input: CreateProductInput) => productsApi.create(input), onSuccess: () => Promise.all([refreshProducts(queryClient), queryClient.invalidateQueries({ queryKey: ['categories'] })]) });
 }
 
 export function useUpdateProduct() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: UpdateProductInput }) => productsApi.update(id, input),
-    onSuccess: () => refreshProducts(queryClient),
+    onSuccess: (_result, { input }) => Promise.all([refreshProducts(queryClient), ...(input.categoryId === undefined ? [] : [['categories'], ['reports']].map((queryKey) => queryClient.invalidateQueries({ queryKey })))]),
   });
 }
 

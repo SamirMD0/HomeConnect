@@ -102,6 +102,7 @@ export const ProductDetailsDrawer: React.FC<ProductDetailsDrawerProps> = ({ prod
             <div><dt className="text-xs font-medium text-slate-500">SKU</dt><dd className="mt-1 flex items-center gap-2 font-mono text-sm font-bold"><span>{item.sku}</span><button type="button" title="Copy SKU" onClick={() => navigator.clipboard.writeText(item.sku)} className="text-slate-500"><Copy className="h-4 w-4" /></button>{user?.role === 'ADMIN' && <button type="button" onClick={() => setSkuProduct(item)} className="font-sans text-xs font-semibold text-brand-700">Edit</button>}</dd></div>
             <Value label={businessLabels.product.model} value={item.model || 'No model / لا يوجد موديل'} auto empty={!item.model} />
             <Value label={businessLabels.product.brand} value={item.brand || 'No brand / لا توجد ماركة'} auto empty={!item.brand} />
+            <Value label="Category" value={item.categoryPath || 'Uncategorized'} empty={!item.categoryId} />
             <Value label={businessLabels.product.barcode} value={item.barcode || 'No barcode / لا يوجد باركود'} empty={!item.barcode} />
             {/* Both stock settings, read-only. Quantity is an inventory movement, never a form field. */}
             <Value label="Stock tracking / تتبع المخزون" value={item.trackStock ? 'Tracked / متتبع' : 'Not tracked / غير متتبع'} />

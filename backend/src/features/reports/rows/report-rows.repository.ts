@@ -7,6 +7,7 @@ import {
   SupplierTransactionStatus,
 } from '@prisma/client';
 import { prisma } from '../../../lib/prisma';
+import { categoryInclude } from '../../categories/category-hierarchy';
 import { businessDateToPrisma } from '../../financial';
 import { addDays } from '../../dashboard/shared/dashboard-range';
 import type { ResolvedReportsPeriod } from '../shared/reports-period';
@@ -65,6 +66,9 @@ function boundaries(period: ResolvedReportsPeriod) {
 }
 
 export class ReportRowsRepository {
+  static productCategories(ids: string[]) {
+    return prisma.product.findMany({ where: { id: { in: ids } }, select: { id: true, categoryId: true, category: { include: categoryInclude } } });
+  }
   static newCustomers(period: ResolvedReportsPeriod) {
     const { from, toExclusive } = boundaries(period);
     return prisma.customer.findMany({

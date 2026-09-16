@@ -10,6 +10,7 @@ const { repository, metrics, debts, receivables, suppliers } = vi.hoisted(() => 
     paymentsThrough: vi.fn(), receivedProducts: vi.fn(), soldQuantityByProduct: vi.fn(),
     receivedQuantityTotal: vi.fn(), customerFinancialIntegrity: vi.fn(),
     supplierFinancialIntegrity: vi.fn(), productCostChanges: vi.fn(),
+    productCategories: vi.fn(),
   },
   metrics: { get: vi.fn() },
   debts: { getDebtReportForRange: vi.fn(), getFinancialActivityForRange: vi.fn() },
@@ -34,6 +35,21 @@ describe('ReportRowsService', () => {
     metrics.get.mockResolvedValue({ sales: { orderCount: 0, totalAmount: '0.00', paidAmount: '0.00', unpaidAmount: '0.00', averageOrderValue: '0.00' } });
     receivables.computeReceivableProjections.mockResolvedValue(new Map());
     suppliers.balances.mockResolvedValue(new Map());
+  });
+
+  it('adds current English category paths without dropping uncategorized inventory or changing totals', async () => {
+    repository.stockMovements.mockResolvedValue([
+      { id: 'm1', productId: 'p1', product: { id: 'p1', name: 'Cooker', sku: 'SKU1' }, createdAt: new Date('2026-08-03'), movementType: 'SALE_FULFILLMENT', quantityChange: -1 },
+      { id: 'm2', productId: 'p2', product: { id: 'p2', name: 'Fan', sku: 'SKU2' }, createdAt: new Date('2026-08-04'), movementType: 'SALE_FULFILLMENT', quantityChange: -2 },
+    ]);
+    repository.productCategories.mockResolvedValue([{ id: 'p1', categoryId: 'leaf', category: { name: 'Cookers', parent: { name: 'Kitchen', parent: { name: 'Home Appliances' } } } }, { id: 'p2', categoryId: null, category: null }]);
+    const report = await ReportRowsService.get('inventory-movements', { period: 'thisMonth' }, options);
+    expect(report.data.rows).toHaveLength(2);
+    expect(report.data.rows[0]).toMatchObject({ categoryId: 'leaf', categoryPath: 'Home Appliances → Kitchen → Cookers' });
+    expect(report.data.rows[1]).toMatchObject({ categoryId: null, categoryPath: null });
+    expect(report.data.summary).toMatchObject({ count: 2, movementsByType: { SALE_FULFILLMENT: { count: 2, quantityChange: -3 } } });
+    const csv = await ReportRowsService.exportCsv('inventory-movements', { period: 'thisMonth' }, options);
+    expect(csv.csv).toContain('Category (current catalogue)'); expect(csv.csv).toContain('Home Appliances → Kitchen → Cookers'); expect(csv.csv).toContain('Uncategorized');
   });
 
   it('serializes customer payments and keeps the backend authoritative for totals', async () => {
