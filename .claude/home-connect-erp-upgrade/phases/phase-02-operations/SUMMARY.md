@@ -1,8 +1,12 @@
 # PHASE 2 — SUMMARY
 
-**Reviewed:** 2026-09-16 · **Branch:** `develop` · **Verdict:** `NOT COMPLETE`
+**Reviewed:** 2026-09-16 · **Branch:** `develop` · **Verdict:** `COMPLETE WITH DOCUMENTED LIMITATIONS`
 
-The bugs reproduced in the independent review are fixed and committed. Local CI, build, restored-copy reconciliation and the exercised return/print paths pass. This does not satisfy every literal checkpoint criterion: historical counter cash is intentionally unbackfilled, some manual acceptance evidence remains missing, and no hosted CI run covers these new commits. Phase 3 is not authorized by this checkpoint.
+The reviewed correctness defects are fixed. The owner explicitly approved finalizing Phase 2 with documented limitations: historical counter-cash backfill stays deferred under the existing no-backfill decision, existing shop-wide staff authorization is retained, and remaining manual checks are tracked before release. This supersedes the earlier strict all-history checkpoint verdict without waiving failing tests, skips, duplicate money/stock or reconciliation failures. Phase 3 may start only after the requested push/branch/CI confirmation is returned; this task does not start it.
+
+## Hosted CI evidence
+
+The owner reports **CI / Typecheck, lint and full test suite (push): PASSED**. GitHub verification before pushing found [run 34367245795](https://github.com/SamirMD0/HomeConnect/actions/runs/34367245795), completed successfully on `6e8048e62571ebfea20e30a411cecaa1462b865e`. That older invoice run does not cover the final implementation. The authorized finalization push will trigger a current run; its exact SHA, job result and counts will be recorded before final confirmation. Local full validation below remains 2,458 passed, zero skipped.
 
 ## Completed changes and commits
 
@@ -23,7 +27,7 @@ Phase 1 checkpoint `2f6088d` is an ancestor. Its accepted verdict was COMPLETE W
 
 T4 and T8 are separate from categories, credit limits and supplier aging. Each includes its own migration, dependent code and tests. Both staged trees passed independent frontend/backend type checks with their own generated Prisma clients. Reverting after real transactions exist requires the data-compatibility precautions below.
 
-All implementation is on develop. `main` and observed origin/main remain `ac6ae9f555dd69d61ca79be527cc1a80513643d9`; no commit was made to main. The pre-existing phase branch was preserved, with its commits incorporated into develop. Commits are local; this task does not publish, merge or deploy.
+All implementation is on develop. `main` and observed origin/main remain `ac6ae9f555dd69d61ca79be527cc1a80513643d9`; no commit was made to main. The pre-existing phase branch was preserved, with its commits incorporated into develop. The owner authorized pushing all cumulative work to develop. No merge, push to main or deployment is authorized.
 
 ### Review defects closed
 
@@ -108,9 +112,9 @@ Nine real return DB tests cover rollback after an injected audit failure, retry,
 | T5 aging | `supplier-payables.test.ts`: 0/1/30/31/60/61/90/91-day and due-soon 0/7/8 boundaries, FIFO/credits/mixed currencies; DB and dashboard-alert tests pass; restored ledger reconciles. |
 | T6 limits | Derived outstanding read in debt-creation transaction; null/zero/under/equal/over and audited ADMIN override tests pass. Configuration bypass now 403. Live warning visual check pending. |
 | T7 categories | Hierarchy/filter/nullable/RESTRICT and seven DB tests pass. Later owner Prompt 12 brought categories forward from Phase 5; English-only, no seeded example taxonomy. |
-| T8 cash | New receipts/deltas counted once; DB tests cover zero/double-count, replay, rollback. **All-history acceptance not met:** 12 legacy paid snapshots **983.00 USD**, **883.00** excluding draft/cancelled. Owner approved new receipts only, no backfill. |
+| T8 cash | New receipts/deltas counted once; DB tests cover zero/double-count, replay, rollback. **Approved historical limitation:** 12 legacy paid snapshots **983.00 USD**, **883.00** excluding draft/cancelled. Owner approved new receipts only, no backfill. |
 | T10 currency/VAT | Phase 1 settles VAT-inclusive defaults. Services use selected currency/original rates. USD/LBP and original-VAT reversal tests, mixed-currency printed statement pass. Separate LBP invoice print pending. |
-| T9 checkpoint | Local regression/migration/integrity pass; historical cash, manual evidence and hosted CI/PR remain open. |
+| T9 checkpoint | Local regression/migration/integrity pass; historical scope and manual limitations accepted for Phase 2. Current hosted run is verified during finalization. |
 
 ### Remaining REVIEW.md checks
 
@@ -119,11 +123,11 @@ Nine real return DB tests cover rollback after an injected audit failure, retry,
 - **Derived values:** statement running balances are server-side, never persisted. Template inspection found no financial-total arithmetic; snapshots bind figures to API values. Credit-limit checks/audit use the debt transaction.
 - **Database:** additive tables/nullable fields, Decimal money, restrictive refund/credit/category FKs and real constraint tests pass. T8 intentionally allows nullable Payment customer only for source-validated sales. No backfill ran.
 - **Documents/UI:** A4/Arabic/page boundaries/PDF rendering pass as above; VOID labels covered. Pending/loading state inspected across return/settings/credit/category/supplier forms; shared Button disables while loading. Warning amount and disabled-state component tests pass. Comprehensive interactive checks remain missing.
-- **Authorization:** anonymous invoice/receipt/statement requests return 401; ADMIN return checks and endpoint auth tests pass. Existing shop-wide staff access lets another authenticated employee fetch the same documents (200). The literal owner-isolation wording is therefore **not met/proven**; no new ownership policy was silently invented. Credit configuration and audited override boundaries are enforced.
+- **Authorization:** anonymous invoice/receipt/statement requests return 401; ADMIN return checks and endpoint auth tests pass. Existing shop-wide staff access lets another authenticated employee fetch the same documents (200). Authorization is scoped to the existing single shop, not document creator ownership. Changing an ID within an authenticated staff member's permitted shop scope is allowed; anonymous access and prohibited role actions remain denied. The review wording is clarified accordingly; no new access boundary is introduced. Credit configuration and audited override boundaries are enforced.
 - **Logging:** generic redaction tests pass; inspected document request logs contain no document bodies. Dedicated per-document payload-redaction tests were not established.
 - **Tests:** real DB mid-return rollback covers INV-05; counter-payment zero/double-count tests cover INV-09 for new receipts. Zero skipped files/tests; document snapshots exist. Historical task records describe red-first runs, but an independent complete archive of every pre-implementation failure was not reconstructed.
 - **Scope:** VAT/currency approved in Phase 1/PLAN. No POS/till subsystem. Categories reintroduced by recorded owner instruction; T4/T8 not deferred. Currency pickers do not sit over unconditional USD creation writes.
-- **Checkpoint:** full logs/screenshots/migration disclosures and review-ready PR text are included. No published PR or new hosted CI URL; old invoice-only green CI does not cover this work.
+- **Checkpoint:** full logs/screenshots/migration disclosures and review-ready PR text are included. The owner approved direct develop publication; PR_DESCRIPTION.md remains the review text, not a claim that a PR exists. Hosted CI is recorded above with exact commit scope.
 
 ## Migration disclosures
 
@@ -144,10 +148,11 @@ New money columns use Decimal(12,2); rates retain approved higher precision. Reh
 
 | Item | Owner / target | Required action |
 |---|---|---|
-| Historical cash vs literal T8 acceptance | Business owner + engineering / Phase 2 close | Approve compatible remediation or explicitly revise acceptance. Recorded **no backfill** decision remains in force. |
-| Staff-wide documents vs entity-isolation wording | Owner + reviewer / Phase 2 close | Decide whether review intends a new access boundary. |
-| Manual acceptance | QA + shop owner / Phase 2 close | Native print/save, LBP invoice, interactive return, warning/pending UI and document redaction evidence. |
-| Hosted CI/PR | Maintainer / Phase 2 close | Publish/review current commits and attach green run; PR_DESCRIPTION.md provides local review text. |
+| Historical counter cash | Business owner / deferred, outside Phase 2 | **No backfill remains approved.** Historical 983.00 USD (883.00 excluding draft/cancelled) omission is disclosed, not silently counted as fixed. Do not reopen migration work without a new instruction. |
+| Staff-wide documents | Reviewer / resolved at Phase 2 close | Authenticated staff may read shop documents regardless of creator. ID changes cannot bypass actual authentication/role restrictions. |
+| Manual acceptance | QA + shop owner / before production release | A4 Arabic documents/source totals are manually confirmed. Native print/save, separate LBP invoice, interactive return and warning/pending UI remain explicit unperformed follow-ups; existing automated/API evidence supports Phase 2 acceptance. |
+| Additional logging evidence | QA / Phase 4 hardening | Dedicated per-document redaction tests and a complete historical red-first archive are not claimed; generic redaction tests and inspected logs pass. |
+| Hosted CI/publication | Maintainer / finalization | Push to develop only and attach current run; no PR publication or main merge is requested. |
 | Phase 1 C4 | Owner / before release | Legacy Ledger panel-removal sign-off. |
 | Phase 1 C5 | Operator / before release | Off-machine backup, copied checksum and archive readability; same-disk backup insufficient. |
 | Phase 1 C6 | Operator + QA / before release | Local real restore/migrations/integrity now demonstrated; timed full application launch and achieved recovery time still pending. |
@@ -155,4 +160,4 @@ New money columns use Decimal(12,2); rates retain approved higher precision. Reh
 
 Risks: [RISK_REGISTER.md](../../RISK_REGISTER.md), especially R-12/R-15 (restore/backup), R-29 (main), R-32 (separate commits), R-33 (migration history), R-34/R-35 (review and zero-skip CI).
 
-**Final verdict: NOT COMPLETE.** Identified implementation bugs are corrected and local checks pass. COMPLETE or COMPLETE WITH FOLLOW-UP would overstate literal all-money acceptance and missing checkpoint evidence. Any skipped file, double-counted money, failed reconciliation or unsafe unreviewed rollback remains a hard failure; none is waived.
+**Final verdict: COMPLETE WITH DOCUMENTED LIMITATIONS.** This is the owner-requested Phase 2 checkpoint vocabulary and scope decision. No new correctness defect was found in this documentation finalization. Historical omissions are deferred, actual authorization boundaries are enforced, and manual/deployment limitations have named owners and targets. Skipped tests, double-counted money, failed reconciliation and unsafe rollback remain hard failures. Phase 3 is safe to start after the final push/state/CI confirmation is returned; production deployment remains blocked by the listed release prerequisites.

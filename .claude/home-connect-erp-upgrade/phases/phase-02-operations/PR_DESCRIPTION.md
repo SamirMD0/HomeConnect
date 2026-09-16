@@ -48,6 +48,6 @@ Validation: All eight pending migrations applied via the application executor wi
 
 ## Risks, follow-up and checkpoint verdict
 
-**NOT COMPLETE.** Local bug fixes pass; historical cash omission, literal document-isolation wording, remaining manual evidence and hosted checkpoint evidence are unresolved. No published PR or green hosted CI run for these commits is claimed. This file is a review-ready local description, not evidence that a PR exists.
+**COMPLETE WITH DOCUMENTED LIMITATIONS**, as explicitly requested by the owner. Historical counter-cash backfill remains deferred; authorization is clarified as single-shop staff access rather than creator ownership. A4 Arabic/source checks are accepted; remaining interactive/native-print/logging evidence is assigned to pre-release or Phase 4 follow-up, not claimed as performed. See SUMMARY.md for hosted CI coverage and exact run SHA.
 
-[SUMMARY.md](SUMMARY.md) lists owners, target gates, acceptance evidence, migration restrictions and carried-forward Phase 1 C4/C5/C6 deployment requirements. [Risk register](../../RISK_REGISTER.md): R-12/R-15, R-29, R-32 through R-35. Do not merge to main, deploy, or treat this as permission to start Phase 3.
+[SUMMARY.md](SUMMARY.md) lists owners, targets, acceptance evidence, migration restrictions and Phase 1 C4/C5/C6 deployment prerequisites. [Risk register](../../RISK_REGISTER.md): R-12/R-15, R-29, R-32 through R-35. The owner authorizes publication to develop only. No merge/deployment is authorized. Phase 3 may start after the final push/state/CI confirmation; this task does not start it.

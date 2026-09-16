@@ -4,6 +4,21 @@
 
 Evidence required for every item.
 
+## Final checkpoint decision — 2026-09-16
+
+**COMPLETE WITH DOCUMENTED LIMITATIONS**, under the owner's explicit finalization instruction. [SUMMARY.md](SUMMARY.md) contains the criterion-by-criterion evidence, exact money/stock comparisons, full local test output, migration evidence, PDFs/screenshots, and hosted CI results with commit scope.
+
+This dated decision supersedes the earlier verdict vocabulary/scope only for the documented limitations below; it does not waive correctness gates or change application code:
+
+- Historical counter-cash backfill stays **deferred** under the approved no-backfill decision. New counter receipts must count exactly once. The known historical 983.00 USD omission (883.00 excluding draft/cancelled) remains disclosed; no migration is reopened.
+- Document authorization means the existing **single-shop staff scope**, not ownership by creator. Authenticated staff may read shop documents. Changing an ID must not bypass authentication or an actual role/scope restriction. Anonymous document requests return 401; ADMIN return/credit configuration restrictions remain enforced.
+- Arabic A4 invoice, receipt and all statement pages were visually checked against source totals; the owner reconfirmed acceptance. Native Electron save/physical printing, separate LBP invoice printing, interactive return and warning/pending UI checks remain named pre-release follow-ups. They are not represented as performed. Generic logging tests pass; additional per-document evidence is assigned to Phase 4 hardening.
+- Local validation: 308 files, 2,458 passed, **0 skipped files/tests**, typecheck/build passed. Restored-copy inventory has 0 mismatches; customer 22,114.00 USD and supplier 1,205,821.00 USD reconcile with zero difference. Return stock 8 → 10; 100.00 = 40.00 relief + 60.00 refund; replay changes nothing.
+- The owner reported hosted CI green. Independent pre-push verification found successful run [34367245795](https://github.com/SamirMD0/HomeConnect/actions/runs/34367245795) on the earlier invoice commit; final implementation coverage is verified after the authorized push and recorded in SUMMARY.md. An old run is not promoted into evidence for newer code.
+- The owner requests commit/push to develop, not a published PR or a merge. The review-ready PR_DESCRIPTION.md and this review are the checkpoint record. Main must remain unchanged. Phase 3 starts only after final confirmation, not during this task.
+
+**Hard failures remain literal:** any skipped file/test, double-counted money, failed test or reconciliation, duplicate stock/money, actual permission bypass, unvalidated migration, unsafe reversal or high-impact corruption defect makes the phase NOT COMPLETE. The historical gate text below is retained for traceability; this explicit owner decision governs the named scope/wording limitations.
+
 ---
 
 ## Branch and commit hygiene
