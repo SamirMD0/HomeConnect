@@ -1,9 +1,11 @@
 export type SalesChannel = 'SHOP_DIRECT' | 'SHOP_DELIVERY' | 'PHONE_ORDER';
-export type SalesOrderFulfillmentStatus = 'DRAFT' | 'CONFIRMED' | 'PREPARING' | 'READY_FOR_DELIVERY' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'CANCELLED' | 'RETURNED';
+export type SalesOrderFulfillmentStatus = 'DRAFT' | 'CONFIRMED' | 'PREPARING' | 'READY_FOR_DELIVERY' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'PARTIALLY_RETURNED' | 'CANCELLED' | 'RETURNED';
 export type SalesOrderPaymentStatus = 'UNPAID' | 'PARTIALLY_PAID' | 'PAID';
 export type SalesOrderSettlement = 'NONE' | 'DEBT' | 'INSTALLMENT';
 export type Currency = 'USD' | 'LBP';
 export type DeliveryTaxTreatment = 'STANDARD' | 'ZERO_RATED' | 'EXEMPT';
+export type SalesReturnStockDisposition = 'SELLABLE' | 'DAMAGED' | 'QUARANTINE';
+export type SalesReturnRefundMethod = 'NONE' | 'CASH_OUT' | 'STORE_CREDIT';
 
 export interface SalesOrderCustomer { id: string; name: string; phone: string; address: string | null; isActive: boolean }
 export interface SalesOrderActor { id: string; fullName: string; username: string }
@@ -36,6 +38,7 @@ export interface SalesOrderItem {
   unitPriceExVat: string; vatAmount: string; lineTotalIncVat: string; notes: string | null;
   createdAt: string; updatedAt: string;
   stockFulfillments: SalesOrderStockFulfillment[];
+  returnedQuantity?: number; remainingReturnableQuantity?: number;
   inventory: { state: SalesOrderInventoryState; activeFulfillmentId: string | null };
 }
 export interface SalesOrder {
@@ -53,6 +56,7 @@ export interface SalesOrder {
   installmentPlanId: string | null; installmentPlan: { id: string; status: string; totalAmount: string; startDate: string } | null;
   createdBy: SalesOrderActor; updatedBy: SalesOrderActor | null; createdAt: string; updatedAt: string;
   cancelledAt: string | null; cancelledReason: string | null; items: SalesOrderItem[];
+  returns?: Array<{ id: string; returnNumber: string; returnDate: string; totalIncVat: string; refundMethod: SalesReturnRefundMethod; deliveryReturned: boolean; documentRoute: string }>;
 }
 export interface SalesAudit {
   id: string; action: string; changedByName: string; changedByUsername: string; changedAt: string;
@@ -61,8 +65,34 @@ export interface SalesAudit {
 export interface SalesOrderSummary {
   /** Scoped to the date range the page is showing. */
   periodSales: string; periodOrders: number;
+  periodGrossSales?: string; periodReturns?: string; periodNetSales?: string;
   /** Backlog counts, always global — an old unpaid order still matters today. */
   pendingDelivery: number; unpaidOrders: number; partialPayments: number;
+}
+export interface ReturnSalesOrderInput {
+  idempotencyKey: string;
+  items: Array<{ salesOrderItemId: string; quantity: number; stockDisposition: SalesReturnStockDisposition; conditionNote?: string | null }>;
+  returnDeliveryFee: boolean;
+  refundMethod: SalesReturnRefundMethod;
+  reason: string;
+  overrideReturnWindow: boolean;
+  windowOverrideReason?: string | null;
+  accountPassword: string;
+}
+
+export interface SalesReturn {
+  id: string; returnNumber: string; salesOrderId: string; customerId: string | null;
+  salesOrder: { id: string; orderNumber: string; orderDate: string };
+  customer: { id: string; name: string; phone: string; address: string | null } | null;
+  returnDate: string; processedAt: string; reason: string; currency: Currency; exchangeRate: string;
+  subtotalExVat: string; vatAmount: string; totalIncVat: string;
+  receivableReliefAmount: string; refundableAmount: string; refundMethod: SalesReturnRefundMethod;
+  deliveryReturned: boolean; deliveryTaxTreatment: DeliveryTaxTreatment | null; deliveryTaxRateSnapshot: string | null;
+  deliveryFeeExVat: string | null; deliveryVatAmount: string | null; deliveryFeeIncVat: string | null;
+  processedByName: string; processedByUsername: string; documentRoute: string;
+  items: Array<{ id: string; productNameSnapshot: string; productModelSnapshot: string | null; skuSnapshot: string | null; quantity: number; unitPriceSnapshot: string; discountAmount: string; subtotalExVat: string; vatAmount: string; totalIncVat: string; taxRateSnapshot: string; taxCodeSnapshot: string | null; stockDisposition: SalesReturnStockDisposition; conditionNote: string | null }>;
+  cashRefund: { id: string; amount: string } | null;
+  customerCredit: { id: string; issuedAmount: string } | null;
 }
 export interface SalesOrderPagination { page: number; pageSize: number; totalItems: number; totalPages: number }
 export interface SalesOrderFilters {

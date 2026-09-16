@@ -5,6 +5,7 @@ import type { BusinessSettings } from '../types/document.types';
 import { invoiceTotalsFromOrder, SalesInvoiceDocument } from './SalesInvoiceDocument';
 
 const business: BusinessSettings = {
+  returnWindowDays: 14,
   id: 'primary',
   shopName: 'Home Connect هوم كونكت',
   address: 'Beirut / بيروت',

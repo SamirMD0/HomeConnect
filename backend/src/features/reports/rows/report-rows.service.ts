@@ -1,6 +1,7 @@
 import { Currency, StockMovementType, SupplierReceivingItemStatus, SupplierReceivingStatus } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import {
+  calculateDebtBalance, calculateInstallmentBalance, isPaymentAllocationVoided, toBaseAmount,
   moneyToApiString,
   parseBusinessDate,
   prismaDateToBusinessDate,
@@ -33,6 +34,7 @@ export interface CustomerMovementRow {
   customer: { id: string; name: string; phone: string };
   openingBalance: string;
   newDebt: string;
+  returnCredits?: string;
   paidInPeriod: string;
   closingBalance: string;
   paymentCount: number;
@@ -89,12 +91,15 @@ export class ReportRowsService {
 
     const openingByCustomer = new Map(opening.rows.map((row) => [row.customer.id, row]));
     const closingByCustomer = new Map(closing.rows.map((row) => [row.customer.id, row]));
-    const activityByCustomer = new Map<string, { newDebt: Decimal; paid: Decimal; paymentCount: number }>();
+    const activityByCustomer = new Map<string, { newDebt: Decimal; paid: Decimal; paymentCount: number; returnCredits: Decimal }>();
     for (const item of activity.items) {
-      const entry = activityByCustomer.get(item.customer.id) ?? { newDebt: ZERO_MONEY, paid: ZERO_MONEY, paymentCount: 0 };
+      if (!item.customer) continue;
+      const entry = activityByCustomer.get(item.customer.id) ?? { newDebt: ZERO_MONEY, paid: ZERO_MONEY, paymentCount: 0, returnCredits: ZERO_MONEY };
       if (item.type === 'PAYMENT_RECEIVED') {
         entry.paid = sumMoney([entry.paid, new Decimal(item.amount)]);
         entry.paymentCount += 1;
+      } else if (item.type === 'SALES_RETURN') {
+        entry.returnCredits = subtractMoney(entry.returnCredits, item.amount);
       } else {
         entry.newDebt = sumMoney([entry.newDebt, new Decimal(item.amount)]);
       }
@@ -108,22 +113,23 @@ export class ReportRowsService {
       const closingRow = closingByCustomer.get(customerId);
       const openingRow = openingByCustomer.get(customerId);
       const customer = closingRow?.customer ?? openingRow?.customer
-        ?? activity.items.find((item) => item.customer.id === customerId)?.customer;
+        ?? activity.items.find((item) => item.customer?.id === customerId)?.customer;
       if (!customer) continue;
 
-      const entry = activityByCustomer.get(customerId) ?? { newDebt: ZERO_MONEY, paid: ZERO_MONEY, paymentCount: 0 };
+      const entry = activityByCustomer.get(customerId) ?? { newDebt: ZERO_MONEY, paid: ZERO_MONEY, paymentCount: 0, returnCredits: ZERO_MONEY };
       const openingBalance = new Decimal(openingRow?.totalOutstanding ?? '0.00');
       const closingBalance = new Decimal(closingRow?.totalOutstanding ?? '0.00');
       const lastPaymentDate = closingRow?.lastPaymentDate ?? openingRow?.lastPaymentDate ?? null;
       const daysSinceLastPayment = lastPaymentDate ? differenceInDays(lastPaymentDate, period.to) : null;
 
       // A customer with nothing owed and no activity is not part of this story.
-      if (closingBalance.equals(ZERO_MONEY) && openingBalance.equals(ZERO_MONEY) && entry.paymentCount === 0) continue;
+      if (closingBalance.equals(ZERO_MONEY) && openingBalance.equals(ZERO_MONEY) && entry.paymentCount === 0 && entry.returnCredits.equals(ZERO_MONEY)) continue;
 
       rows.push({
         customer,
         openingBalance: moneyToApiString(openingBalance),
         newDebt: moneyToApiString(entry.newDebt),
+        ...(entry.returnCredits.greaterThan(ZERO_MONEY) ? { returnCredits: moneyToApiString(entry.returnCredits) } : {}),
         paidInPeriod: moneyToApiString(entry.paid),
         closingBalance: moneyToApiString(closingBalance),
         paymentCount: entry.paymentCount,
@@ -146,6 +152,7 @@ export class ReportRowsService {
       count: rows.length,
       openingBalance: total('openingBalance'),
       newDebt: total('newDebt'),
+      returnCredits: moneyToApiString(sumMoney(rows.map((row) => row.returnCredits ?? ZERO_MONEY))),
       paidInPeriod: total('paidInPeriod'),
       closingBalance: total('closingBalance'),
       ...(slice === 'customers-paid'
@@ -340,12 +347,27 @@ export class ReportRowsService {
 
     if (slice === 'sales-unpaid') {
       const records = await ReportRowsRepository.unpaidSalesOrders();
-      const rows = records.map(serializeSalesOrder);
+      const rows = records.map((record) => {
+        const balanceInput = (obligation: NonNullable<typeof record.debt> | NonNullable<typeof record.installmentPlan>['installments'][number]) => ({
+          allocations: obligation.paymentAllocations.map((allocation) => ({
+            amount: toBaseAmount(allocation.paymentAmount ?? allocation.amount, allocation.payment.currency, allocation.payment.exchangeRate, Decimal.ROUND_HALF_UP),
+            isVoided: isPaymentAllocationVoided(allocation),
+          })),
+          credits: obligation.returnAllocations.map((allocation) => ({ amount: allocation.baseAmount })),
+        });
+        const remaining = record.debt
+          ? calculateDebtBalance({ originalAmount: record.debt.baseOriginalAmount, ...balanceInput(record.debt) }).remainingBalance
+          : record.installmentPlan
+            ? sumMoney(record.installmentPlan.installments.map((installment) => calculateInstallmentBalance({ amountDue: installment.baseAmountDue, ...balanceInput(installment) }).remainingBalance))
+            : Decimal.max(ZERO_MONEY, subtractMoney(record.baseRemainingAmount ?? record.remainingAmount, sumMoney((record.returns ?? []).map((returned) => returned.baseReceivableReliefAmount))));
+        const { debt: _debt, installmentPlan: _plan, returns: _returns, ...sale } = record;
+        return { ...serializeSalesOrder(sale), remainingAmount: moneyToApiString(remaining) };
+      }).filter((row) => new Decimal(row.remainingAmount).greaterThan(ZERO_MONEY));
       return {
         operationalSnapshot: true,
         summary: {
           count: rows.length,
-          remainingAmount: moneyToApiString(sumMoney(records.map((record) => record.remainingAmount))),
+          remainingAmount: moneyToApiString(sumMoney(rows.map((row) => row.remainingAmount))),
         },
         rows,
       };
@@ -442,13 +464,13 @@ export class ReportRowsService {
 
 type SalesOrderRowRecord =
   | Awaited<ReturnType<typeof ReportRowsRepository.salesOrders>>[number]
-  | Awaited<ReturnType<typeof ReportRowsRepository.unpaidSalesOrders>>[number];
+  | Omit<Awaited<ReturnType<typeof ReportRowsRepository.unpaidSalesOrders>>[number], 'debt' | 'installmentPlan' | 'returns'>;
 
 function serializeSalesOrder(record: SalesOrderRowRecord) {
   return {
     ...record, orderDate: prismaDateToBusinessDate(record.orderDate),
-    totalAmount: moneyToApiString(record.totalAmount), paidAmount: moneyToApiString(record.paidAmount),
-    remainingAmount: moneyToApiString(record.remainingAmount),
+    totalAmount: moneyToApiString(record.baseTotalAmount ?? record.totalAmount), paidAmount: moneyToApiString(record.basePaidAmount ?? record.paidAmount),
+    remainingAmount: moneyToApiString(record.baseRemainingAmount ?? record.remainingAmount),
   };
 }
 
@@ -517,13 +539,13 @@ function csvDefinition(slice: ReportSlice, rows: Array<Record<string, unknown>>)
   return { headers: definition.headers, rows: rows.map(definition.values) };
 }
 
-const movementCsvHeaders = ['Customer', 'Phone', 'Opening', 'New debt', 'Paid', 'Closing', 'Payments', 'Unpaid items', 'Last payment', 'Days since payment', 'Risk'];
+const movementCsvHeaders = ['Customer', 'Phone', 'Opening', 'New debt', 'Return credits', 'Paid', 'Closing', 'Payments', 'Unpaid items', 'Last payment', 'Days since payment', 'Risk'];
 
 function movementCsvRow(row: Record<string, unknown>): CsvValue[] {
   const customer = row.customer as Record<string, unknown>;
   return [
     customer.name as string, customer.phone as string, row.openingBalance as string,
-    row.newDebt as string, row.paidInPeriod as string, row.closingBalance as string,
+    row.newDebt as string, (row.returnCredits as string | undefined) ?? '0.00', row.paidInPeriod as string, row.closingBalance as string,
     row.paymentCount as number, row.unpaidDebtCount as number,
     row.lastPaymentDate as string | null, row.daysSinceLastPayment as number | null,
     (row.riskLabels as string[]).join('; '),
@@ -544,7 +566,7 @@ function rank<T>(entries: Map<string, T>, project: (entry: T) => { units: number
 
 /** Deterministic, explainable labels — no scoring, no AI. */
 function riskLabelsFor(input: {
-  entry: { newDebt: Decimal; paid: Decimal; paymentCount: number };
+  entry: { newDebt: Decimal; paid: Decimal; paymentCount: number; returnCredits: Decimal };
   openingBalance: Decimal;
   closingBalance: Decimal;
   daysSinceLastPayment: number | null;

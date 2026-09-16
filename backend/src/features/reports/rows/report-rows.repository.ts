@@ -14,7 +14,6 @@ import type { ResolvedReportsPeriod } from '../shared/reports-period';
 const excludedSalesStatuses = [
   SalesOrderFulfillmentStatus.DRAFT,
   SalesOrderFulfillmentStatus.CANCELLED,
-  SalesOrderFulfillmentStatus.RETURNED,
 ];
 
 export interface CustomerFinancialIntegrityEvidence {
@@ -134,6 +133,7 @@ export class ReportRowsRepository {
         id: true, orderNumber: true, orderDate: true, salesChannel: true,
         fulfillmentStatus: true, paymentStatus: true, settlement: true,
         totalAmount: true, paidAmount: true, remainingAmount: true,
+        baseTotalAmount: true, basePaidAmount: true, baseRemainingAmount: true,
         customer: { select: { id: true, name: true, phone: true } },
       },
       orderBy: [{ orderDate: 'asc' }, { orderNumber: 'asc' }],
@@ -149,6 +149,10 @@ export class ReportRowsRepository {
       select: {
         id: true, orderNumber: true, orderDate: true, paymentStatus: true,
         fulfillmentStatus: true, totalAmount: true, paidAmount: true, remainingAmount: true,
+        baseTotalAmount: true, basePaidAmount: true, baseRemainingAmount: true,
+        debt: { include: { paymentAllocations: { include: { payment: true } }, returnAllocations: true } },
+        installmentPlan: { include: { installments: { include: { paymentAllocations: { include: { payment: true } }, returnAllocations: true } } } },
+        returns: { select: { baseReceivableReliefAmount: true } },
         customer: { select: { id: true, name: true, phone: true } },
       },
       orderBy: [{ orderDate: 'asc' }, { orderNumber: 'asc' }],
@@ -187,14 +191,16 @@ export class ReportRowsRepository {
         createdAt: { lt: cutoffExclusive },
       },
       select: {
-        id: true, description: true, originalAmount: true, dueDate: true,
+        id: true, description: true, originalAmount: true, baseOriginalAmount: true, dueDate: true,
         status: true, createdAt: true, cancelledAt: true,
         customer: { select: { id: true, name: true, phone: true } },
         salesOrder: { select: { id: true, orderNumber: true } },
+        returnAllocations: { select: { amount: true, baseAmount: true, salesReturn: { select: { returnDate: true } } } },
         paymentAllocations: {
           select: {
             amount: true,
-            payment: { select: { paymentDate: true, voidedAt: true } },
+            paymentAmount: true, voidedAt: true,
+            payment: { select: { paymentDate: true, voidedAt: true, currency: true, exchangeRate: true } },
           },
           orderBy: { createdAt: 'asc' },
         },
@@ -395,6 +401,21 @@ export class ReportRowsRepository {
         WHERE a."voidedAt" IS NULL
           AND payment."voidedAt" IS NULL
           AND p."status" <> 'CANCELLED'
+          AND p."cancelledAt" IS NULL
+          AND i."status" <> 'CANCELLED'
+        UNION ALL
+        SELECT d."customerId", a."baseAmount" AS amount
+        FROM "sales_return_receivable_allocations" a
+        JOIN "debts" d ON d."id" = a."debtId"
+        WHERE d."kind" <> 'PREPAID_PURCHASE'
+          AND d."status" <> 'CANCELLED'
+          AND d."cancelledAt" IS NULL
+        UNION ALL
+        SELECT p."customerId", a."baseAmount" AS amount
+        FROM "sales_return_receivable_allocations" a
+        JOIN "installments" i ON i."id" = a."installmentId"
+        JOIN "installment_plans" p ON p."id" = i."installmentPlanId"
+        WHERE p."status" <> 'CANCELLED'
           AND p."cancelledAt" IS NULL
           AND i."status" <> 'CANCELLED'
       ),

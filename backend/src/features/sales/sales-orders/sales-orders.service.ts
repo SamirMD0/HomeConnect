@@ -168,8 +168,13 @@ export class SalesOrdersService {
     const toExclusive = new Date(toInclusive);
     toExclusive.setUTCDate(toExclusive.getUTCDate() + 1);
     const result = await SalesOrdersRepository.summary(from, toExclusive);
+    const grossSales = parseMoney(result.todayAggregate._sum.baseTotalAmount ?? ZERO_MONEY);
+    const returns = parseMoney(result.returnsAggregate?._sum.baseTotalIncVat ?? ZERO_MONEY);
     return {
-      periodSales: moneyToApiString(result.todayAggregate._sum.baseTotalAmount ?? '0.00'),
+      periodSales: moneyToApiString(grossSales),
+      periodGrossSales: moneyToApiString(grossSales),
+      periodReturns: moneyToApiString(returns),
+      periodNetSales: moneyToApiString(subtractMoney(grossSales, returns)),
       periodOrders: result.todayAggregate._count._all,
       pendingDelivery: result.pendingDelivery,
       unpaidOrders: result.unpaidOrders,
@@ -436,6 +441,9 @@ export class SalesOrdersService {
     return runFinancialTransaction(async (tx) => {
       const existing = await requiredOrder(id, tx);
       if (!isTerminalSalesOrderStatus(existing.fulfillmentStatus)) throw new SalesConflictError('Only final sales orders can be restored');
+      if (await SalesOrdersRepository.hasPostedReturn(id, tx)) {
+        throw new SalesConflictError('Orders with posted returns require a dedicated return reversal and cannot be restored');
+      }
       await requireAdminVerification(input, user, context, id, 'RESTORE_SALES_ORDER', tx);
       const updated = await SalesOrdersRepository.update(id, {
         fulfillmentStatus: input.status,
@@ -550,6 +558,9 @@ export class SalesOrdersService {
     return runFinancialTransaction(async (tx) => {
       const existing = await requiredOrder(id, tx);
       if (!existing.debtId && !existing.installmentPlanId) throw new SalesConflictError('Sales order has no linked financial record');
+      if (await SalesOrdersRepository.hasPostedReturn(id, tx)) {
+        throw new SalesConflictError('Financial records used by a posted return cannot be unlinked');
+      }
       await requireAdminVerification(input, user, context, id, 'UNLINK_SALES_ORDER_FINANCIAL', tx);
       const beforeValues = { debtId: existing.debtId, installmentPlanId: existing.installmentPlanId, settlement: existing.settlement };
       const updated = await SalesOrdersRepository.update(id, {
@@ -581,7 +592,7 @@ async function requiredOrder(id: string, tx: Prisma.TransactionClient): Promise<
 }
 
 function assertEditable(order: SalesOrderRecord): void {
-  if (order.fulfillmentStatus === SalesOrderFulfillmentStatus.CANCELLED || order.fulfillmentStatus === SalesOrderFulfillmentStatus.RETURNED) {
+  if (new Set<SalesOrderFulfillmentStatus>([SalesOrderFulfillmentStatus.PARTIALLY_RETURNED, SalesOrderFulfillmentStatus.CANCELLED, SalesOrderFulfillmentStatus.RETURNED]).has(order.fulfillmentStatus)) {
     throw new SalesConflictError('Restore the sales order before editing it');
   }
 }
@@ -599,7 +610,7 @@ function activeStockLineConflict(): SalesConflictError {
 }
 
 function assertCanConvert(order: SalesOrderRecord): void {
-  if (order.fulfillmentStatus === SalesOrderFulfillmentStatus.CANCELLED || order.fulfillmentStatus === SalesOrderFulfillmentStatus.RETURNED) {
+  if (new Set<SalesOrderFulfillmentStatus>([SalesOrderFulfillmentStatus.PARTIALLY_RETURNED, SalesOrderFulfillmentStatus.CANCELLED, SalesOrderFulfillmentStatus.RETURNED]).has(order.fulfillmentStatus)) {
     throw new SalesConflictError('Final orders cannot be converted');
   }
   if (compareMoney(order.remainingAmount, '0.00') <= 0) throw new SalesConflictError('Sales order has no remaining balance');
@@ -1008,9 +1019,11 @@ export function serializeSalesOrder(order: SalesOrderRecord) {
       const product = item.product ? serializeSalesOrderProduct(item.product) : null;
       return {
         ...item,
-        unitPrice: moneyToApiString(item.unitPrice),
-        discountAmount: moneyToApiString(item.discountAmount ?? '0.00'),
-        lineTotal: moneyToApiString(item.lineTotal),
+        returnedQuantity: (item.returnItems ?? []).reduce((total, returned) => total + returned.quantity, 0),
+        remainingReturnableQuantity: item.quantity - (item.returnItems ?? []).reduce((total, returned) => total + returned.quantity, 0),
+        unitPrice: moneyToApiString(item.unitPrice, order.currency),
+        discountAmount: moneyToApiString(item.discountAmount ?? '0.00', order.currency),
+        lineTotal: moneyToApiString(item.lineTotal, order.currency),
         taxRateSnapshot: item.taxRateSnapshot?.toFixed(3) ?? '0.000',
         unitPriceExVat: moneyToApiString(item.unitPriceExVat ?? item.unitPrice),
         vatAmount: moneyToApiString(item.vatAmount ?? ZERO_MONEY),
@@ -1030,6 +1043,12 @@ export function serializeSalesOrder(order: SalesOrderRecord) {
       totalAmount: moneyToApiString(order.installmentPlan.totalAmount),
       startDate: prismaDateToBusinessDate(order.installmentPlan.startDate),
     } : null,
+    returns: (order.returns ?? []).map((salesReturn) => ({
+      ...salesReturn,
+      returnDate: prismaDateToBusinessDate(salesReturn.returnDate),
+      totalIncVat: moneyToApiString(salesReturn.totalIncVat, order.currency),
+      documentRoute: `/sales-returns/${salesReturn.id}`,
+    })),
   };
 }
 

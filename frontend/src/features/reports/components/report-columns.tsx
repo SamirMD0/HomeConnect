@@ -44,6 +44,7 @@ export function columnsFor(slice: ReportSlice): ReportColumn[] {
   if (slice === 'customers-not-paid' || slice === 'customers-paid') return [
     partyLink('Customer / الزبون', 'customer', '/customers/'), nestedText('Phone / الهاتف', 'customer', 'phone'),
     money('Opening / الافتتاحي', 'openingBalance'), money('New debt / دين جديد', 'newDebt'),
+    money('Return credits / حسم المرتجعات', 'returnCredits'),
     money('Paid / المدفوع', 'paidInPeriod'), money('Closing / الختامي', 'closingBalance'),
     count('Payments / الدفعات', 'paymentCount'), count('Unpaid items / بنود غير مدفوعة', 'unpaidDebtCount'),
     text('Last payment / آخر دفعة', 'lastPaymentDate'), count('Days since / منذ', 'daysSinceLastPayment'),

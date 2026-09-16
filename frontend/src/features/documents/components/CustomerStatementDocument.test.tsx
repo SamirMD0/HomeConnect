@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { BusinessSettings, CustomerStatement } from '../types/document.types';
 import { CustomerStatementDocument } from './CustomerStatementDocument';
 
-const business: BusinessSettings = { id: 'primary', shopName: 'Home Connect', address: 'Beirut', phone: '01', taxNumber: 'VAT-1', logoUrl: null, email: null, updatedAt: null };
+const business: BusinessSettings = { id: 'primary', shopName: 'Home Connect', address: 'Beirut', phone: '01', taxNumber: 'VAT-1', logoUrl: null, email: null, returnWindowDays: 14, updatedAt: null };
 const statement: CustomerStatement = {
   businessDate: '2026-01-31', currency: 'USD', customer: { id: 'c1', name: 'علي الحاج', phone: '70', address: 'بيروت' },
   range: { from: '2026-01-01', to: '2026-01-31' }, openingBalance: '25.00', closingBalance: '75.00',

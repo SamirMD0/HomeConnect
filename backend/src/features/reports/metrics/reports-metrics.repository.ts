@@ -7,7 +7,6 @@ import type { ResolvedReportsPeriod } from '../shared/reports-period';
 const EXCLUDED_SALES_STATUSES = [
   SalesOrderFulfillmentStatus.DRAFT,
   SalesOrderFulfillmentStatus.CANCELLED,
-  SalesOrderFulfillmentStatus.RETURNED,
 ];
 
 export class ReportsMetricsRepository {
@@ -16,7 +15,7 @@ export class ReportsMetricsRepository {
     const toExclusive = businessDateToPrisma(addDays(period.to, 1));
     const activeCustomerWhere = { deletedAt: null, isActive: true } as const;
 
-    const [newCustomers, activeCustomers, payers, salesByPaymentStatus] = await Promise.all([
+    const [newCustomers, activeCustomers, payers, salesByPaymentStatus, returns] = await Promise.all([
       prisma.customer.count({
         where: { deletedAt: null, createdAt: { gte: from, lt: toExclusive } },
       }),
@@ -45,9 +44,13 @@ export class ReportsMetricsRepository {
         _sum: { baseTotalAmount: true, basePaidAmount: true, baseRemainingAmount: true },
         orderBy: { paymentStatus: 'asc' },
       }),
+      prisma.salesReturn.findMany({
+        where: { returnDate: { gte: from, lt: toExclusive } },
+        select: { baseTotalIncVat: true, baseReceivableReliefAmount: true, baseRefundableAmount: true, refundMethod: true },
+      }),
     ]);
 
-    return { newCustomers, activeCustomers, payers, salesByPaymentStatus };
+    return { newCustomers, activeCustomers, payers, salesByPaymentStatus, returns };
   }
 }
 

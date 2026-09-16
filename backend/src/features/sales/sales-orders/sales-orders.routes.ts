@@ -15,6 +15,7 @@ import {
   deductSalesOrderStockSchema,
   restoreSalesOrderSchema,
   restoreSalesOrderStockSchema,
+  returnSalesOrderSchema,
   salesAuditQuerySchema,
   salesOrderActionSchema,
   salesOrderItemParamsSchema,
@@ -37,7 +38,7 @@ salesOrdersRoutes.post('/:salesOrderId/fulfillment-status', validate(salesOrderP
 salesOrdersRoutes.post('/:salesOrderId/payment', validate(salesOrderParamsSchema, 'params'), validate(changeSalesOrderPaymentSchema), SalesOrdersController.payment);
 salesOrdersRoutes.post('/:salesOrderId/cancel', requireSalesAdmin, validate(salesOrderParamsSchema, 'params'), validate(salesOrderActionSchema), SalesOrdersController.cancel);
 salesOrdersRoutes.post('/:salesOrderId/restore', requireSalesAdmin, validate(salesOrderParamsSchema, 'params'), validate(restoreSalesOrderSchema), SalesOrdersController.restore);
-salesOrdersRoutes.post('/:salesOrderId/return', requireSalesAdmin, validate(salesOrderParamsSchema, 'params'), validate(salesOrderActionSchema), SalesOrdersController.returnOrder);
+salesOrdersRoutes.post('/:salesOrderId/return', requireSalesAdmin, validate(salesOrderParamsSchema, 'params'), validate(returnSalesOrderSchema), SalesOrdersController.returnOrder);
 salesOrdersRoutes.post('/:salesOrderId/create-debt', validate(salesOrderParamsSchema, 'params'), validate(createSalesOrderDebtSchema), SalesOrdersController.createDebt);
 salesOrdersRoutes.post('/:salesOrderId/create-installment-plan', validate(salesOrderParamsSchema, 'params'), validate(createSalesOrderInstallmentPlanSchema), SalesOrdersController.createInstallmentPlan);
 salesOrdersRoutes.post('/:salesOrderId/unlink-financial', requireSalesAdmin, validate(salesOrderParamsSchema, 'params'), validate(salesOrderActionSchema), SalesOrdersController.unlinkFinancial);

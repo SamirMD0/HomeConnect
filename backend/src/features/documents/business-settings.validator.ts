@@ -26,6 +26,7 @@ export const updateBusinessSettingsSchema = z.object({
   taxNumber: nullableText('VAT/tax number', 120),
   logoUrl: nullableLogoUrl,
   email: nullableEmail,
+  returnWindowDays: z.coerce.number().int().min(1).max(365).optional(),
 }).strict();
 
 export type UpdateBusinessSettingsInput = z.infer<typeof updateBusinessSettingsSchema>;

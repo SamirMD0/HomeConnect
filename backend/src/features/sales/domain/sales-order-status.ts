@@ -11,6 +11,7 @@ export const OPEN_SALES_ORDER_STATUSES = [
 
 export const TERMINAL_SALES_ORDER_STATUSES = [
   SalesOrderFulfillmentStatus.DELIVERED,
+  SalesOrderFulfillmentStatus.PARTIALLY_RETURNED,
   SalesOrderFulfillmentStatus.CANCELLED,
   SalesOrderFulfillmentStatus.RETURNED,
 ] as const;
@@ -22,8 +23,9 @@ const STATUS_RANK: Record<SalesOrderFulfillmentStatus, number> = {
   READY_FOR_DELIVERY: 3,
   OUT_FOR_DELIVERY: 4,
   DELIVERED: 5,
-  CANCELLED: 6,
-  RETURNED: 7,
+  PARTIALLY_RETURNED: 6,
+  CANCELLED: 7,
+  RETURNED: 8,
 };
 
 export function isTerminalSalesOrderStatus(status: SalesOrderFulfillmentStatus): boolean {

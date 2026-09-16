@@ -16,6 +16,7 @@ const paymentAllocationPaymentSelect = {
 } satisfies Prisma.PaymentSelect;
 
 const receivableDebtInclude = {
+  returnAllocations: { select: { amount: true, baseAmount: true } },
   paymentAllocations: {
     include: {
       payment: { select: paymentAllocationPaymentSelect },
@@ -26,6 +27,7 @@ const receivableDebtInclude = {
 const receivablePlanInclude = {
   installments: {
     include: {
+      returnAllocations: { select: { amount: true, baseAmount: true } },
       paymentAllocations: {
         include: {
           payment: { select: paymentAllocationPaymentSelect },

@@ -90,6 +90,14 @@ export interface PaymentReceiptView {
 }
 
 export class PaymentsService {
+  private static assertPaymentNotUsedForReturn(payment: PaymentWithDetails) {
+    if (payment.allocations.some((allocation) =>
+      (allocation.debt?.returnAllocations?.length ?? 0) > 0
+      || allocation.installment?.installmentPlan?.installments?.some((installment) => installment.returnAllocations.length > 0))) {
+      throw new ValidationError('Payments used to settle a returned sale cannot be corrected independently of its return');
+    }
+  }
+
   static async getReceipt(paymentId: string): Promise<PaymentReceiptView> {
     const payment = await PaymentsRepository.findPaymentReceipt(paymentId);
     if (!payment) throw new NotFoundError('Payment not found');
@@ -106,11 +114,12 @@ export class PaymentsService {
         const paidAtReceipt = sumMoney(allocation.debt.paymentAllocations
           .filter((candidate) => this.wasAllocationActiveAt(candidate, cutoff))
           .map((candidate) => candidate.amount));
+        const creditedAtReceipt = sumMoney((allocation.debt.returnAllocations ?? []).filter((credit) => credit.createdAt <= cutoff).map((credit) => credit.amount));
         remainingBalances.set(`DEBT:${allocation.debt.id}`, {
           obligationType: 'DEBT',
           obligationId: allocation.debt.id,
           description: allocation.debt.description,
-          amount: moneyToApiString(Decimal.max(new Decimal(0), allocation.debt.originalAmount.minus(paidAtReceipt)), allocation.debt.currency),
+          amount: moneyToApiString(Decimal.max(new Decimal(0), allocation.debt.originalAmount.minus(paidAtReceipt).minus(creditedAtReceipt)), allocation.debt.currency),
           currency: allocation.debt.currency,
         });
       } else if (allocation.installment) {
@@ -118,11 +127,12 @@ export class PaymentsService {
         const paidAtReceipt = sumMoney(plan.installments.flatMap((installment) => installment.paymentAllocations)
           .filter((candidate) => this.wasAllocationActiveAt(candidate, cutoff))
           .map((candidate) => candidate.amount));
+        const creditedAtReceipt = sumMoney(plan.installments.flatMap((installment) => installment.returnAllocations ?? []).filter((credit) => credit.createdAt <= cutoff).map((credit) => credit.amount));
         remainingBalances.set(`INSTALLMENT_PLAN:${plan.id}`, {
           obligationType: 'INSTALLMENT_PLAN',
           obligationId: plan.id,
           description: plan.description,
-          amount: moneyToApiString(Decimal.max(new Decimal(0), plan.totalAmount.minus(paidAtReceipt)), plan.currency),
+          amount: moneyToApiString(Decimal.max(new Decimal(0), plan.totalAmount.minus(paidAtReceipt).minus(creditedAtReceipt)), plan.currency),
           currency: plan.currency,
         });
       }
@@ -199,6 +209,7 @@ export class PaymentsService {
       if (!payment) {
         throw new NotFoundError('Payment not found');
       }
+      this.assertPaymentNotUsedForReturn(payment);
 
       assertCanVoidPayment({
         isVoided: Boolean(payment.voidedAt),
@@ -279,6 +290,7 @@ export class PaymentsService {
       if (payment.voidedAt) {
         throw new ValidationError('Voided payments cannot be corrected');
       }
+      this.assertPaymentNotUsedForReturn(payment);
       const correctedAmount = correctedAmountInput
         ? assertPositiveMoney(correctedAmountInput, payment.currency ?? Currency.USD)
         : null;
@@ -357,6 +369,7 @@ export class PaymentsService {
       if (payment.voidedAt) {
         throw new ValidationError('Voided payments cannot be reallocated');
       }
+      this.assertPaymentNotUsedForReturn(payment);
       if (payment.allocations.some((allocation) =>
         !(allocation.exchangeRate ?? new Decimal(1)).equals(1)
         || !(allocation.paymentAmount ?? allocation.amount).equals(allocation.amount))) {
@@ -514,6 +527,7 @@ export class PaymentsService {
       });
       const balance = calculateDebtBalance({
         originalAmount: debt.originalAmount,
+        credits: (debt.returnAllocations ?? []).map((allocation) => ({ amount: allocation.amount })),
         allocations: debt.paymentAllocations.map((allocation) => ({
           amount: allocation.amount,
           isVoided: isPaymentAllocationVoided(allocation),
@@ -553,6 +567,7 @@ export class PaymentsService {
         installments: plan.installments.map((installment) => {
           const balance = calculateInstallmentBalance({
             amountDue: installment.amountDue,
+            credits: (installment.returnAllocations ?? []).map((allocation) => ({ amount: allocation.amount })),
             allocations: installment.paymentAllocations.map((allocation) => ({
               amount: allocation.amount,
               isVoided: isPaymentAllocationVoided(allocation),
@@ -670,6 +685,7 @@ export class PaymentsService {
       }
       const balance = calculateInstallmentBalance({
         amountDue: installment.amountDue,
+        credits: (installment.returnAllocations ?? []).map((allocation) => ({ amount: allocation.amount })),
         allocations: installment.paymentAllocations.map((allocation) => ({
           amount: allocation.amount,
           isVoided: isPaymentAllocationVoided(allocation),
@@ -692,6 +708,7 @@ export class PaymentsService {
       if (!debt) continue;
       const balance = calculateDebtBalance({
         originalAmount: debt.originalAmount,
+        credits: (debt.returnAllocations ?? []).map((allocation) => ({ amount: allocation.amount })),
         allocations: debt.paymentAllocations.map((allocation) => ({
           amount: allocation.amount,
           isVoided: isPaymentAllocationVoided(allocation),
@@ -716,6 +733,7 @@ export class PaymentsService {
       for (const installment of plan.installments) {
         const balance = calculateInstallmentBalance({
           amountDue: installment.amountDue,
+          credits: (installment.returnAllocations ?? []).map((allocation) => ({ amount: allocation.amount })),
           allocations: installment.paymentAllocations.map((allocation) => ({
             amount: allocation.amount,
             isVoided: isPaymentAllocationVoided(allocation),

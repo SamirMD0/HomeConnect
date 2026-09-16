@@ -9,6 +9,7 @@ const EMPTY_SETTINGS = {
   taxNumber: null,
   logoUrl: null,
   email: null,
+  returnWindowDays: 14,
   updatedAt: null,
 } as const;
 
@@ -32,6 +33,7 @@ function serialize(settings: Awaited<ReturnType<typeof BusinessSettingsRepositor
     taxNumber: settings.taxNumber,
     logoUrl: settings.logoUrl,
     email: settings.email,
+    returnWindowDays: settings.returnWindowDays,
     updatedAt: settings.updatedAt.toISOString(),
   };
 }

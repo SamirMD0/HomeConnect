@@ -187,6 +187,7 @@ export class FinancialLedgerService {
   ): DebtComputation {
     const balance = calculateDebtBalance({
       originalAmount: debt.originalAmount,
+      credits: (debt.returnAllocations ?? []).map((allocation) => ({ amount: allocation.amount })),
       allocations: debt.paymentAllocations.map((allocation) => ({
         amount: allocation.amount,
         isVoided: isPaymentAllocationVoided(allocation),
@@ -254,6 +255,7 @@ export class FinancialLedgerService {
     const installments = plan.installments.map((installment) => {
       const balance = calculateInstallmentBalance({
         amountDue: installment.amountDue,
+        credits: (installment.returnAllocations ?? []).map((allocation) => ({ amount: allocation.amount })),
         allocations: installment.paymentAllocations.map((allocation) => ({
           amount: allocation.amount,
           isVoided: isPaymentAllocationVoided(allocation),

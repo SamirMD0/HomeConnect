@@ -230,6 +230,7 @@ export class ReceivablesService {
 
       const balance = calculateDebtBalance({
         originalAmount: debt.originalAmount,
+        credits: (debt.returnAllocations ?? []).map((allocation) => ({ amount: allocation.amount })),
         allocations: debt.paymentAllocations.map((allocation) => ({
           amount: allocation.amount,
           isVoided: isPaymentAllocationVoided(allocation),
@@ -237,6 +238,7 @@ export class ReceivablesService {
       });
       const baseBalance = calculateDebtBalance({
         originalAmount: debt.baseOriginalAmount ?? debt.originalAmount,
+        credits: (debt.returnAllocations ?? []).map((allocation) => ({ amount: allocation.baseAmount })),
         allocations: debt.paymentAllocations.map((allocation) => ({
           amount: allocationBaseAmount(allocation),
           isVoided: isPaymentAllocationVoided(allocation),
@@ -286,6 +288,7 @@ export class ReceivablesService {
 
         const balance = calculateInstallmentBalance({
           amountDue: installment.amountDue,
+          credits: (installment.returnAllocations ?? []).map((allocation) => ({ amount: allocation.amount })),
           allocations: installment.paymentAllocations.map((allocation) => ({
             amount: allocation.amount,
             isVoided: isPaymentAllocationVoided(allocation),
@@ -293,6 +296,7 @@ export class ReceivablesService {
         });
         const baseBalance = calculateInstallmentBalance({
           amountDue: installment.baseAmountDue ?? installment.amountDue,
+          credits: (installment.returnAllocations ?? []).map((allocation) => ({ amount: allocation.baseAmount })),
           allocations: installment.paymentAllocations.map((allocation) => ({
             amount: allocationBaseAmount(allocation),
             isVoided: isPaymentAllocationVoided(allocation),

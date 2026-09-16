@@ -98,6 +98,10 @@ export class MonthlyReviewService {
     const rows = [
       ['Sales', 'Orders', sales.orderCount],
       ['Sales', 'Total sales', sales.totalAmount],
+      ['Sales', 'Returns', sales.returnsAmount],
+      ['Sales', 'Net sales', sales.netSalesAmount],
+      ['Sales', 'Cash refunds', sales.cashRefunds],
+      ['Sales', 'Store credit issued', sales.storeCreditIssued],
       ['Sales', 'Paid', sales.paidAmount],
       ['Sales', 'Unpaid', sales.unpaidAmount],
       ['Sales', 'Average order value', sales.averageOrderValue],
@@ -105,6 +109,7 @@ export class MonthlyReviewService {
       ['Customers', 'Opening receivable', customers.movement.opening],
       ['Customers', 'New debt', customers.movement.newAmount],
       ['Customers', 'Collected', customers.movement.collected],
+      ['Customers', 'Return credits', customers.movement.returnCredits ?? '0.00'],
       ['Customers', 'Adjustments', customers.movement.adjustments],
       ['Customers', 'Closing receivable', customers.movement.closing],
       ['Suppliers', 'Opening payable', suppliers.movement.opening],

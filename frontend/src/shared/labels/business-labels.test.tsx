@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
+import { AuthProvider } from '../../context/AuthContext';
 import { CreateDebtForm } from '../../features/customer-financial/components/CreateDebtForm';
 import { CreateInstallmentPlanForm } from '../../features/customer-financial/components/CreateInstallmentPlanForm';
 import { RecordDebtPaymentDialog } from '../../features/customer-financial/components/RecordDebtPaymentDialog';
@@ -20,7 +21,7 @@ const customer = {
 function renderWithQueryClient(node: ReactNode): string {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return renderToStaticMarkup(
-    <QueryClientProvider client={queryClient}>{node}</QueryClientProvider>
+    <AuthProvider><QueryClientProvider client={queryClient}>{node}</QueryClientProvider></AuthProvider>
   );
 }
 

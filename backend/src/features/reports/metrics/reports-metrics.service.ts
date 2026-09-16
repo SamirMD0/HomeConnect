@@ -1,6 +1,6 @@
 import { Decimal } from '@prisma/client/runtime/library';
 import { Currency } from '@prisma/client';
-import { divideMoney, moneyToApiString, sumMoney, ZERO_MONEY } from '../../financial';
+import { divideMoney, moneyToApiString, sumMoney, subtractMoney, ZERO_MONEY } from '../../financial';
 import { ReportsMetricsRepository, type ReportsMetricRecords } from './reports-metrics.repository';
 import type { ReportsCoreMetrics } from './reports-metrics.types';
 import type { ResolvedReportsPeriod } from '../shared/reports-period';
@@ -27,9 +27,17 @@ export class ReportsMetricsService {
       records.salesByPaymentStatus.map((row) => row._sum.baseRemainingAmount ?? ZERO_MONEY)
     );
 
+    const returns = records.returns ?? [];
+    const returnsAmount = sumMoney(returns.map((record) => record.baseTotalIncVat));
+    const cashRefunds = sumMoney(returns.filter((record) => record.refundMethod === 'CASH_OUT').map((record) => record.baseRefundableAmount));
+    const storeCreditIssued = sumMoney(returns.filter((record) => record.refundMethod === 'STORE_CREDIT').map((record) => record.baseRefundableAmount));
     return {
       sales: {
         orderCount,
+        returnsAmount: moneyToApiString(returnsAmount),
+        cashRefunds: moneyToApiString(cashRefunds),
+        storeCreditIssued: moneyToApiString(storeCreditIssued),
+        netSalesAmount: moneyToApiString(subtractMoney(totalAmount, returnsAmount)),
         totalAmount: moneyToApiString(totalAmount),
         paidAmount: moneyToApiString(paidAmount),
         unpaidAmount: moneyToApiString(unpaidAmount),

@@ -133,7 +133,7 @@ describe('monthly report components', () => {
           items: [
             {
               ...activityReport.items[0],
-              customer: { ...activityReport.items[0].customer, name: 'مريم' },
+              customer: { ...activityReport.items[0].customer!, name: 'مريم' },
               description: 'دفعة شهر تموز',
             },
           ],

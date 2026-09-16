@@ -6,12 +6,13 @@ export interface BusinessSettings {
   taxNumber: string | null;
   logoUrl: string | null;
   email: string | null;
+  returnWindowDays: number;
   updatedAt: string | null;
 }
 
 export type UpdateBusinessSettingsInput = Pick<
   BusinessSettings,
-  'shopName' | 'address' | 'phone' | 'taxNumber' | 'logoUrl' | 'email'
+  'shopName' | 'address' | 'phone' | 'taxNumber' | 'logoUrl' | 'email' | 'returnWindowDays'
 >;
 
 export interface DocumentPdfOptions {
@@ -73,7 +74,7 @@ export interface CustomerStatement {
   openingBalance: string;
   entries: Array<{
     id: string;
-    type: 'DEBT' | 'INSTALLMENT' | 'PAYMENT';
+    type: 'DEBT' | 'INSTALLMENT' | 'PAYMENT' | 'RETURN';
     date: string;
     description: string;
     reference: string | null;

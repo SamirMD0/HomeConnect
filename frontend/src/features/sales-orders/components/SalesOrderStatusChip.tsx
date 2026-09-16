@@ -7,6 +7,6 @@ import { FULFILLMENT_TONES } from '../utils/sales-order-status';
 const ICONS: Record<SalesOrderFulfillmentStatus, React.ReactNode> = {
   DRAFT: <CircleDashed />, CONFIRMED: <ClipboardCheck />, PREPARING: <PackageOpen />,
   READY_FOR_DELIVERY: <PackageCheck />, OUT_FOR_DELIVERY: <Truck />, DELIVERED: <CheckCircle2 />,
-  CANCELLED: <XCircle />, RETURNED: <RotateCcw />,
+  PARTIALLY_RETURNED: <RotateCcw />, CANCELLED: <XCircle />, RETURNED: <RotateCcw />,
 };
 export const SalesOrderStatusChip = ({ status }: { status: SalesOrderFulfillmentStatus }) => <Badge tone={FULFILLMENT_TONES[status]} icon={ICONS[status]}>{FULFILLMENT_STATUS_LABELS[status]}</Badge>;

@@ -6,6 +6,7 @@ const { prismaMock } = vi.hoisted(() => ({
   prismaMock: {
     customer: { count: vi.fn(), findMany: vi.fn() },
     payment: { findMany: vi.fn() },
+    salesReturn: { findMany: vi.fn() },
     salesOrder: { groupBy: vi.fn() },
   },
 }));
@@ -24,6 +25,7 @@ describe('ReportsMetricsRepository', () => {
     prismaMock.customer.count.mockResolvedValue(0);
     prismaMock.customer.findMany.mockResolvedValue([]);
     prismaMock.payment.findMany.mockResolvedValue([]);
+    prismaMock.salesReturn.findMany.mockResolvedValue([]);
     prismaMock.salesOrder.groupBy.mockResolvedValue([]);
   });
 
@@ -57,7 +59,7 @@ describe('ReportsMetricsRepository', () => {
     }));
   });
 
-  it('excludes draft, cancelled, and returned orders from period sales', async () => {
+  it('excludes drafts and cancellations while preserving returned orders in gross sales', async () => {
     await ReportsMetricsRepository.load(resolveReportsPeriod({
       period: 'custom', from: '2026-07-01', to: '2026-07-31',
     }, '2026-08-17'));
@@ -69,7 +71,6 @@ describe('ReportsMetricsRepository', () => {
           notIn: [
             SalesOrderFulfillmentStatus.DRAFT,
             SalesOrderFulfillmentStatus.CANCELLED,
-            SalesOrderFulfillmentStatus.RETURNED,
           ],
         },
       }),

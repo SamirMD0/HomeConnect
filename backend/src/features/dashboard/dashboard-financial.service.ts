@@ -76,6 +76,11 @@ export class DashboardFinancialService {
       }
     }
 
+    const returnCredits = (from: string, to: string) => sumMoney((records.returns ?? []).filter((record) => {
+      const date = prismaDateToBusinessDate(record.returnDate);
+      return date >= from && date <= to;
+    }).map((record) => record.baseReceivableReliefAmount));
+    const receivablePayments = records.payments;
     const paymentsToday = this.paymentTotalForDateRange(records.payments, businessDate, businessDate);
     const paymentsThisMonth = this.paymentTotalForDateRange(records.payments, monthStart, businessDate);
     const obligationsCreatedToday = this.obligationCreatedTotal(records.debts, records.plans, businessDate);
@@ -106,8 +111,8 @@ export class DashboardFinancialService {
         paymentsThisMonth: moneyToApiString(paymentsThisMonth),
         obligationsCreatedToday: moneyToApiString(obligationsCreatedToday),
         obligationsCreatedThisMonth: moneyToApiString(obligationsCreatedThisMonth),
-        netChangeToday: moneyToApiString(subtractMoney(obligationsCreatedToday, paymentsToday)),
-        netChangeThisMonth: moneyToApiString(subtractMoney(obligationsCreatedThisMonth, paymentsThisMonth)),
+        netChangeToday: moneyToApiString(subtractMoney(obligationsCreatedToday, sumMoney([this.paymentTotalForDateRange(receivablePayments, businessDate, businessDate), returnCredits(businessDate, businessDate)]))),
+        netChangeThisMonth: moneyToApiString(subtractMoney(obligationsCreatedThisMonth, sumMoney([this.paymentTotalForDateRange(receivablePayments, monthStart, businessDate), returnCredits(monthStart, businessDate)]))),
       },
       upcomingDue: this.upcomingDue(debtComputations, planComputations, businessDate),
       overdueCustomers: this.overdueCustomers(debtComputations, planComputations),
@@ -118,6 +123,7 @@ export class DashboardFinancialService {
   private static computeDebt(debt: DashboardDebtRecord, businessDate: string): DebtComputation {
     const balance = calculateDebtBalance({
       originalAmount: debt.baseOriginalAmount ?? debt.originalAmount,
+      credits: (debt.returnAllocations ?? []).map((allocation) => ({ amount: allocation.baseAmount })),
       allocations: debt.paymentAllocations.map((allocation) => ({
         amount: allocationBaseAmount(allocation),
         isVoided: isPaymentAllocationVoided(allocation),
@@ -145,6 +151,7 @@ export class DashboardFinancialService {
     const installments = plan.installments.map((installment) => {
       const balance = calculateInstallmentBalance({
         amountDue: installment.baseAmountDue ?? installment.amountDue,
+        credits: (installment.returnAllocations ?? []).map((allocation) => ({ amount: allocation.baseAmount })),
         allocations: installment.paymentAllocations.map((allocation) => ({
           amount: allocationBaseAmount(allocation),
           isVoided: isPaymentAllocationVoided(allocation),
@@ -172,6 +179,7 @@ export class DashboardFinancialService {
           dueDate: prismaDateToBusinessDate(installment.dueDate),
           amountDue: installment.baseAmountDue ?? installment.amountDue,
           status: installment.status,
+          credits: (installment.returnAllocations ?? []).map((allocation) => ({ amount: allocation.baseAmount })),
           allocations: installment.paymentAllocations.map((allocation) => ({
             amount: allocationBaseAmount(allocation),
             isVoided: isPaymentAllocationVoided(allocation),

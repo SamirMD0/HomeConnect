@@ -64,8 +64,8 @@ export function SalesInvoiceDocument({ order, business }: { order: SalesOrder; b
 
   return (
     <article className="document-page sales-invoice" aria-label={`Invoice ${order.orderNumber}`}>
-      {['CANCELLED', 'RETURNED'].includes(order.fulfillmentStatus) && (
-        <div className="document-watermark">{order.fulfillmentStatus} / {order.fulfillmentStatus === 'CANCELLED' ? 'ملغاة' : 'مرتجعة'}</div>
+      {['PARTIALLY_RETURNED', 'CANCELLED', 'RETURNED'].includes(order.fulfillmentStatus) && (
+        <div className="document-watermark">{order.fulfillmentStatus.replaceAll('_', ' ')} / {order.fulfillmentStatus === 'CANCELLED' ? 'ملغاة' : order.fulfillmentStatus === 'PARTIALLY_RETURNED' ? 'مرتجعة جزئياً' : 'مرتجعة'}</div>
       )}
       <header className="document-header">
         <div className="flex min-w-0 items-start gap-4">

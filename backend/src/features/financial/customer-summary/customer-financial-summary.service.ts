@@ -366,6 +366,7 @@ export class CustomerFinancialSummaryService {
         amount: allocation.amount,
         isVoided: isPaymentAllocationVoided(allocation),
       })),
+      credits: (debt.returnAllocations ?? []).map((allocation) => ({ amount: allocation.amount })),
     });
     const baseBalance = calculateDebtBalance({
       originalAmount: debt.baseOriginalAmount ?? debt.originalAmount,
@@ -373,6 +374,7 @@ export class CustomerFinancialSummaryService {
         amount: allocationBaseAmount(allocation),
         isVoided: isPaymentAllocationVoided(allocation),
       })),
+      credits: (debt.returnAllocations ?? []).map((allocation) => ({ amount: allocation.baseAmount })),
     });
     const dueDate = prismaDateToBusinessDate(debt.dueDate);
     const isCancelled = debt.status === DebtStatus.CANCELLED || Boolean(debt.cancelledAt);
@@ -435,6 +437,7 @@ export class CustomerFinancialSummaryService {
           amount: allocation.amount,
           isVoided: isPaymentAllocationVoided(allocation),
         })),
+        credits: (installment.returnAllocations ?? []).map((allocation) => ({ amount: allocation.amount })),
       });
       const baseBalance = calculateInstallmentBalance({
         amountDue: installment.baseAmountDue ?? installment.amountDue,
@@ -442,6 +445,7 @@ export class CustomerFinancialSummaryService {
           amount: allocationBaseAmount(allocation),
           isVoided: isPaymentAllocationVoided(allocation),
         })),
+        credits: (installment.returnAllocations ?? []).map((allocation) => ({ amount: allocation.baseAmount })),
       });
       const dueDate = prismaDateToBusinessDate(installment.dueDate);
       const installmentIsCancelled = planIsCancelled || installment.status === InstallmentStatus.CANCELLED;
@@ -469,10 +473,16 @@ export class CustomerFinancialSummaryService {
       };
     });
     const totalPaid = sumMoney(installments.map((installment) => installment.totalPaid));
-    const remainingBalance = subtractMoney(plan.totalAmount, totalPaid);
+    const totalCredits = sumMoney(plan.installments.flatMap((installment) =>
+      (installment.returnAllocations ?? []).map((allocation) => allocation.amount)
+    ));
+    const remainingBalance = subtractMoney(plan.totalAmount, sumMoney([totalPaid, totalCredits]));
     const baseTotalAmount = plan.baseTotalAmount ?? plan.totalAmount;
     const baseTotalPaid = sumMoney(installments.map((installment) => installment.baseTotalPaid));
-    const baseRemainingBalance = subtractMoney(baseTotalAmount, baseTotalPaid);
+    const baseTotalCredits = sumMoney(plan.installments.flatMap((installment) =>
+      (installment.returnAllocations ?? []).map((allocation) => allocation.baseAmount)
+    ));
+    const baseRemainingBalance = subtractMoney(baseTotalAmount, sumMoney([baseTotalPaid, baseTotalCredits]));
     const activeInstallments = installments.filter((installment) => !installment.isCancelled);
     const completedInstallmentCount = activeInstallments.filter(
       (installment) => installment.status === InstallmentStatus.PAID

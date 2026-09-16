@@ -53,6 +53,7 @@ const installmentPlanInclude = {
           createdAt: 'asc',
         },
       },
+      returnAllocations: { orderBy: { createdAt: 'asc' } },
     },
     orderBy: {
       installmentNumber: 'asc',

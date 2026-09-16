@@ -59,6 +59,7 @@ const debtInclude = {
       createdAt: 'asc',
     },
   },
+  returnAllocations: { orderBy: { createdAt: 'asc' } },
 } satisfies Prisma.DebtInclude;
 
 export type DebtWithDetails = Prisma.DebtGetPayload<{ include: typeof debtInclude }>;

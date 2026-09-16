@@ -25,6 +25,7 @@ const itemId = '55555555-5555-4555-8555-555555555555';
 const fulfillmentId = '66666666-6666-4666-8666-666666666666';
 const order = { id: orderId, orderNumber: 'SO-2026-0001', totalAmount: '10.00', paymentStatus: 'PAID' };
 const body = {
+  idempotencyKey: 'counter-route-create',
   customerId: '44444444-4444-4444-8444-444444444444',
   salesChannel: 'SHOP_DIRECT',
   orderDate: '2026-08-03',

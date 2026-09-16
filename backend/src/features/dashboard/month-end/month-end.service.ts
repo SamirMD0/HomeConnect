@@ -115,6 +115,7 @@ export class MonthEndService {
         activity.summary.newInstallmentPlanAmount,
       ]),
       collected: activity.summary.paymentsReceived,
+      returnCredits: activity.summary.returnCredits ?? '0.00',
       closing: closingReport.summary.totalOutstanding,
     });
     const overdue = closingReport.rows.filter((row) =>
@@ -214,8 +215,10 @@ export function reconcileMovement(input: {
   newAmount: string | Decimal;
   collected: string | Decimal;
   closing: string | Decimal;
+  returnCredits?: string | Decimal;
 }): MonthEndMovement {
-  const expectedBeforeAdjustments = subtractMoney(addMoney(input.opening, input.newAmount), input.collected);
+  const returnCredits = new Decimal(input.returnCredits?.toString() ?? '0');
+  const expectedBeforeAdjustments = subtractMoney(subtractMoney(addMoney(input.opening, input.newAmount), input.collected), returnCredits);
   const adjustments = subtractMoney(input.closing, expectedBeforeAdjustments);
   const reconciledClosing = addMoney(expectedBeforeAdjustments, adjustments);
   const closing = new Decimal(input.closing.toString());
@@ -223,6 +226,7 @@ export function reconcileMovement(input: {
     opening: moneyToApiString(input.opening),
     newAmount: moneyToApiString(input.newAmount),
     collected: moneyToApiString(input.collected),
+    ...(returnCredits.greaterThan(0) ? { returnCredits: moneyToApiString(returnCredits) } : {}),
     adjustments: moneyToApiString(adjustments),
     closing: moneyToApiString(closing),
     reconciled: reconciledClosing.equals(closing),

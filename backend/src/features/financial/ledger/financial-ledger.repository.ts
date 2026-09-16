@@ -27,6 +27,7 @@ const debtInclude = {
       paidAmount: true,
     },
   },
+  returnAllocations: { select: { amount: true, baseAmount: true } },
   paymentAllocations: {
     include: {
       payment: {
@@ -41,6 +42,7 @@ const planInclude = {
   customer: { select: customerSelect },
   installments: {
     include: {
+      returnAllocations: { select: { amount: true, baseAmount: true } },
       paymentAllocations: {
         include: {
           payment: {

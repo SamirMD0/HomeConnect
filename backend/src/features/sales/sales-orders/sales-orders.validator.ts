@@ -5,6 +5,8 @@ import {
   SalesOrderFulfillmentStatus,
   SalesOrderPaymentStatus,
   SalesOrderSettlement,
+  SalesReturnRefundMethod,
+  SalesReturnStockDisposition,
 } from '@prisma/client';
 import { z } from 'zod';
 import { userTextSchema } from '../../../validators/user-text';
@@ -119,6 +121,33 @@ export const salesOrderActionSchema = z.object({
   accountPassword: z.string().min(1, 'Account password is required'),
 });
 
+export const returnSalesOrderSchema = z.object({
+  idempotencyKey: z.string().trim().min(8).max(128).regex(/^[A-Za-z0-9._:-]+$/),
+  items: z.array(z.object({
+    salesOrderItemId: uuidSchema,
+    quantity: z.coerce.number().int().min(1).max(999),
+    stockDisposition: z.nativeEnum(SalesReturnStockDisposition),
+    conditionNote: optionalText('Condition note', 1000),
+  }).strict()).min(1).max(50),
+  returnDeliveryFee: z.boolean().default(false),
+  refundMethod: z.nativeEnum(SalesReturnRefundMethod),
+  reason: reasonSchema,
+  overrideReturnWindow: z.boolean().default(false),
+  windowOverrideReason: userTextSchema({ field: 'Return-window override reason', min: 5, max: 1000 }).optional().nullable(),
+  accountPassword: z.string().min(1, 'Account password is required'),
+}).strict().superRefine((value, context) => {
+  const ids = value.items.map((item) => item.salesOrderItemId);
+  if (new Set(ids).size !== ids.length) {
+    context.addIssue({ code: 'custom', path: ['items'], message: 'Return items must not contain duplicates' });
+  }
+  if (value.overrideReturnWindow && !value.windowOverrideReason) {
+    context.addIssue({ code: 'custom', path: ['windowOverrideReason'], message: 'Override reason is required' });
+  }
+  if (!value.overrideReturnWindow && value.windowOverrideReason) {
+    context.addIssue({ code: 'custom', path: ['windowOverrideReason'], message: 'Override reason is only allowed with an override' });
+  }
+});
+
 export const salesOrderItemActionSchema = z.object({
   debtDueDate: dateSchema.optional().nullable(),
   reason: reasonSchema.optional(),
@@ -218,6 +247,7 @@ export type UpdateSalesOrderInput = z.infer<typeof updateSalesOrderSchema>;
 export type AddSalesOrderItemInput = z.infer<typeof addSalesOrderItemSchema>;
 export type UpdateSalesOrderItemInput = z.infer<typeof updateSalesOrderItemSchema>;
 export type SalesOrderActionInput = z.infer<typeof salesOrderActionSchema>;
+export type ReturnSalesOrderInput = z.infer<typeof returnSalesOrderSchema>;
 export type SalesOrderItemActionInput = z.infer<typeof salesOrderItemActionSchema>;
 export type DeductSalesOrderStockInput = z.infer<typeof deductSalesOrderStockSchema>;
 export type RestoreSalesOrderStockInput = z.infer<typeof restoreSalesOrderStockSchema>;

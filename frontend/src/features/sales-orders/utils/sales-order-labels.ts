@@ -8,7 +8,7 @@ export const SALES_CHANNEL_LABELS: Record<SalesChannel, string> = {
 export const FULFILLMENT_STATUS_LABELS: Record<SalesOrderFulfillmentStatus, string> = {
   DRAFT: 'Draft / مسودة', CONFIRMED: 'Confirmed / مؤكد', PREPARING: 'Preparing / قيد التحضير',
   READY_FOR_DELIVERY: 'Ready for Delivery / جاهز للتوصيل', OUT_FOR_DELIVERY: 'Out for Delivery / في الطريق',
-  DELIVERED: 'Delivered / تم التسليم', CANCELLED: 'Cancelled / ملغى', RETURNED: 'Returned / مرتجع',
+  DELIVERED: 'Delivered / تم التسليم', PARTIALLY_RETURNED: 'Partially returned / مرتجع جزئياً', CANCELLED: 'Cancelled / ملغى', RETURNED: 'Returned / مرتجع',
 };
 export const PAYMENT_STATUS_LABELS: Record<SalesOrderPaymentStatus, string> = {
   UNPAID: 'Unpaid / غير مدفوع', PARTIALLY_PAID: 'Partially Paid / مدفوع جزئياً', PAID: 'Paid / مدفوع',

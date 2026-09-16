@@ -7,7 +7,7 @@ import type {
 
 export const FULFILLMENT_TONES: Record<SalesOrderFulfillmentStatus, BadgeTone> = {
   DRAFT: 'neutral', CONFIRMED: 'info', PREPARING: 'brand', READY_FOR_DELIVERY: 'brand',
-  OUT_FOR_DELIVERY: 'info', DELIVERED: 'success', CANCELLED: 'danger', RETURNED: 'warning',
+  OUT_FOR_DELIVERY: 'info', DELIVERED: 'success', PARTIALLY_RETURNED: 'warning', CANCELLED: 'danger', RETURNED: 'warning',
 };
 export const PAYMENT_TONES: Record<SalesOrderPaymentStatus, BadgeTone> = {
   UNPAID: 'danger', PARTIALLY_PAID: 'warning', PAID: 'success',

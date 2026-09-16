@@ -74,6 +74,8 @@ export class CustomerAnalyticsService {
       inRange(createdBusinessDate(plan.createdAt), range.from, range.to)
     );
     const collected = sumMoney(rangePayments.map((payment) => payment.baseAmount ?? payment.totalAmount));
+    const receivableCollected = sumMoney(rangePayments.map((payment) => payment.baseAmount ?? payment.totalAmount));
+    const returnCredits = sumMoney((records.returns ?? []).filter((record) => inRange(prismaDateToBusinessDate(record.returnDate), range.from, range.to)).map((record) => record.baseReceivableReliefAmount));
     const newDebt = sumMoney([
       ...rangeDebts.filter(notCancelledDebt).map((debt) => debt.baseOriginalAmount ?? debt.originalAmount),
       ...rangePlans.filter(notCancelledPlan).map((plan) => plan.baseTotalAmount ?? plan.totalAmount),
@@ -102,7 +104,7 @@ export class CustomerAnalyticsService {
         outstanding: moneyToApiString(outstanding),
         customersWithBalance: byCustomer.size,
         overdueCustomers: overdueCustomers.size,
-        netMovement: moneyToApiString(subtractMoney(newDebt, collected)),
+        netMovement: moneyToApiString(subtractMoney(newDebt, sumMoney([receivableCollected, returnCredits]))),
       },
       today: {
         collected: moneyToApiString(sumMoney(todayPayments.map((payment) => payment.baseAmount ?? payment.totalAmount))),
@@ -135,6 +137,7 @@ export class CustomerAnalyticsService {
     if (!notCancelledDebt(record)) return [];
     const balance = calculateDebtBalance({
       originalAmount: record.baseOriginalAmount ?? record.originalAmount,
+      credits: (record.returnAllocations ?? []).map((allocation) => ({ amount: allocation.baseAmount })),
       allocations: record.paymentAllocations.map((allocation) => ({
         amount: allocationBaseAmount(allocation),
         isVoided: isPaymentAllocationVoided(allocation),
@@ -159,6 +162,7 @@ export class CustomerAnalyticsService {
           dueDate: prismaDateToBusinessDate(installment.dueDate),
           amountDue: installment.baseAmountDue ?? installment.amountDue,
           status: installment.status,
+          credits: (installment.returnAllocations ?? []).map((allocation) => ({ amount: allocation.baseAmount })),
           allocations: installment.paymentAllocations.map((allocation) => ({
             amount: allocationBaseAmount(allocation),
             isVoided: isPaymentAllocationVoided(allocation),
@@ -171,6 +175,7 @@ export class CustomerAnalyticsService {
       if (installment.status === InstallmentStatus.CANCELLED) return [];
       const balance = calculateInstallmentBalance({
         amountDue: installment.baseAmountDue ?? installment.amountDue,
+        credits: (installment.returnAllocations ?? []).map((allocation) => ({ amount: allocation.baseAmount })),
         allocations: installment.paymentAllocations.map((allocation) => ({
           amount: allocationBaseAmount(allocation),
           isVoided: isPaymentAllocationVoided(allocation),

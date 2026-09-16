@@ -2,7 +2,7 @@ import { api } from '../../../services/api';
 import type {
   CreateSalesOrderInput, DeductSalesOrderStockInput, RestoreSalesOrderStockInput, SalesAudit, SalesOrder,
   SalesOrderFilters, SalesOrderPagination, SalesOrderStockActionResult, SalesOrderSummary,
-  UpdateSalesOrderInput,
+  ReturnSalesOrderInput, SalesReturn, UpdateSalesOrderInput,
 } from '../types/sales-orders.types';
 
 export function salesOrderParams(filters: SalesOrderFilters = {}) {
@@ -37,9 +37,13 @@ export const salesOrdersApi = {
   payment: async (id: string, input: { paidAmount: string; debtDueDate?: string | null; reason: string; accountPassword: string }): Promise<SalesOrder> => (await api.post(`/sales-orders/${id}/payment`, input)).data.data,
   cancel: async (id: string, input: { reason: string; accountPassword: string }): Promise<SalesOrder> => (await api.post(`/sales-orders/${id}/cancel`, input)).data.data,
   restore: async (id: string, input: { status: string; reason: string; accountPassword: string }): Promise<SalesOrder> => (await api.post(`/sales-orders/${id}/restore`, input)).data.data,
-  returnOrder: async (id: string, input: { reason: string; accountPassword: string }): Promise<SalesOrder> => (await api.post(`/sales-orders/${id}/return`, input)).data.data,
+  returnOrder: async (id: string, input: ReturnSalesOrderInput): Promise<SalesReturn> => (await api.post(`/sales-orders/${id}/return`, input)).data.data,
   createDebt: async (id: string, input: { dueDate: string; description?: string; notes?: string | null }): Promise<SalesOrder> => (await api.post(`/sales-orders/${id}/create-debt`, input)).data.data,
   createInstallmentPlan: async (id: string, input: { startDate: string; installmentCount: number; frequency?: 'MONTHLY' | 'WEEKLY'; description?: string; notes?: string | null }): Promise<SalesOrder> => (await api.post(`/sales-orders/${id}/create-installment-plan`, input)).data.data,
   unlinkFinancial: async (id: string, input: { reason: string; accountPassword: string }): Promise<SalesOrder> => (await api.post(`/sales-orders/${id}/unlink-financial`, input)).data.data,
   audit: async (id: string): Promise<SalesAudit[]> => (await api.get(`/sales-orders/${id}/audit`)).data.data,
+};
+
+export const salesReturnsApi = {
+  get: async (id: string): Promise<SalesReturn> => (await api.get(`/sales-returns/${id}`)).data.data,
 };

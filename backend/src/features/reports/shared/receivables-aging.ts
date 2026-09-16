@@ -1,7 +1,8 @@
+import { Currency } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import {
   compareBusinessDates, moneyToApiString, prismaDateToBusinessDate,
-  subtractMoney, sumMoney, ZERO_MONEY,
+  subtractMoney, sumMoney, toBaseAmount, ZERO_MONEY,
 } from '../../financial';
 import { differenceInDays } from '../../dashboard/shared/dashboard-range';
 
@@ -41,12 +42,14 @@ export interface AgingDebtRecord {
   id: string;
   description: string;
   originalAmount: Decimal;
+  baseOriginalAmount?: Decimal;
+  returnAllocations?: Array<{ amount: Decimal; baseAmount: Decimal; salesReturn: { returnDate: Date } }>;
   dueDate: Date;
   createdAt: Date;
   cancelledAt: Date | null;
   customer: { id: string; name: string; phone: string };
   salesOrder: { id: string; orderNumber: string } | null;
-  paymentAllocations: Array<{ amount: Decimal; payment: { paymentDate: Date; voidedAt: Date | null } }>;
+  paymentAllocations: Array<{ amount: Decimal; paymentAmount?: Decimal; voidedAt?: Date | null; payment: { paymentDate: Date; voidedAt: Date | null; currency?: Currency; exchangeRate?: Decimal } }>;
 }
 
 export interface AgingRow {
@@ -81,10 +84,12 @@ export function buildAgingRows(debts: AgingDebtRecord[], cutoff: string, nextDay
 
     const validAllocations = debt.paymentAllocations.filter((allocation) =>
       compareBusinessDates(prismaDateToBusinessDate(allocation.payment.paymentDate), cutoff) <= 0
+      && (!allocation.voidedAt || allocation.voidedAt >= nextDayAfterCutoff)
       && (!allocation.payment.voidedAt || allocation.payment.voidedAt >= nextDayAfterCutoff));
 
-    const paid = sumMoney(validAllocations.map((allocation) => allocation.amount));
-    const remaining = nonNegative(subtractMoney(debt.originalAmount, paid));
+    const paid = sumMoney(validAllocations.map((allocation) => toBaseAmount(allocation.paymentAmount ?? allocation.amount, allocation.payment.currency ?? Currency.USD, allocation.payment.exchangeRate ?? new Decimal(1), Decimal.ROUND_HALF_UP)));
+    const credited = sumMoney((debt.returnAllocations ?? []).filter((allocation) => allocation.salesReturn.returnDate < nextDayAfterCutoff).map((allocation) => allocation.baseAmount));
+    const remaining = nonNegative(subtractMoney(debt.baseOriginalAmount ?? debt.originalAmount, sumMoney([paid, credited])));
     if (!remaining.greaterThan(ZERO_MONEY)) continue;
 
     const createdOn = prismaDateToBusinessDate(debt.createdAt);
@@ -106,7 +111,7 @@ export function buildAgingRows(debts: AgingDebtRecord[], cutoff: string, nextDay
       salesOrderId: debt.salesOrder?.id ?? null,
       createdOn,
       dueDate,
-      originalAmount: moneyToApiString(debt.originalAmount),
+      originalAmount: moneyToApiString(debt.baseOriginalAmount ?? debt.originalAmount),
       paidAmount: moneyToApiString(paid),
       remainingAmount: moneyToApiString(remaining),
       daysUnpaid,

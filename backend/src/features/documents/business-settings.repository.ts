@@ -14,6 +14,7 @@ export class BusinessSettingsRepository {
     taxNumber: string | null;
     logoUrl: string | null;
     email: string | null;
+    returnWindowDays?: number;
     updatedById: string;
   }) {
     return prisma.businessSettings.upsert({

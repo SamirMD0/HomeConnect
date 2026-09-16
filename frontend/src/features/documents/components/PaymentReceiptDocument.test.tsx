@@ -4,7 +4,7 @@ import type { BusinessSettings, PaymentReceipt } from '../types/document.types';
 import { PaymentReceiptDocument } from './PaymentReceiptDocument';
 
 const business: BusinessSettings = {
-  id: 'primary',
+  id: 'primary', returnWindowDays: 14,
   shopName: 'Home Connect هوم كونكت',
   address: 'Beirut / بيروت',
   phone: '01 234 567',

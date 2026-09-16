@@ -9,6 +9,7 @@ export const PRODUCT_FIELD_POLICY = {
   model: true,
   barcode: true,
   brand: true,
+  categoryId: true,
   price: true,
   discount: true,
   costPrice: true,

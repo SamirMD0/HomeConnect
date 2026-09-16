@@ -326,6 +326,7 @@ export class DebtsService {
       if (!debt) {
         throw new NotFoundError('Debt not found');
       }
+      if ((debt.returnAllocations?.length ?? 0) > 0) throw new ValidationError('An obligation credited by a sales return cannot be corrected or cancelled independently');
 
       const correctedAmount = correctedAmountInput
         ? assertPositiveMoney(correctedAmountInput, debt.currency ?? Currency.USD)
@@ -333,8 +334,8 @@ export class DebtsService {
 
       const balance = this.calculateBalance(debt);
       const originalAmount = correctedAmount ?? debt.originalAmount;
-      if (originalAmount.lessThan(balance.totalPaid)) {
-        throw new ValidationError('Debt amount cannot be lower than the amount already paid');
+      if (originalAmount.lessThan(balance.totalSettled ?? balance.totalPaid)) {
+        throw new ValidationError('Debt amount cannot be lower than the amount already paid or credited');
       }
       const status = determineDebtStatus({
         isCancelled: debt.status === DebtStatus.CANCELLED || Boolean(debt.cancelledAt),
@@ -346,6 +347,7 @@ export class DebtsService {
             amount: allocation.amount,
             isVoided: isPaymentAllocationVoided(allocation),
           })),
+          credits: (debt.returnAllocations ?? []).map((allocation) => ({ amount: allocation.amount })),
         }),
         overdueEligible: debt.kind !== DebtKind.PREPAID_PURCHASE,
       });
@@ -532,6 +534,7 @@ export class DebtsService {
       if (!debt) {
         throw new NotFoundError('Debt not found');
       }
+      if ((debt.returnAllocations?.length ?? 0) > 0) throw new ValidationError('An obligation credited by a sales return cannot be corrected or cancelled independently');
 
       const balance = this.calculateBalance(debt);
 
@@ -673,6 +676,7 @@ export class DebtsService {
         amount: allocation.amount,
         isVoided: isPaymentAllocationVoided(allocation),
       })),
+      credits: (debt.returnAllocations ?? []).map((allocation) => ({ amount: allocation.amount })),
     });
   }
 

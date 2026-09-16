@@ -20,7 +20,7 @@ import {
 } from './customer-statement.repository';
 import type { CustomerStatementQuery } from './customer-statement.validator';
 
-type StatementEntryType = 'DEBT' | 'INSTALLMENT' | 'PAYMENT';
+type StatementEntryType = 'DEBT' | 'INSTALLMENT' | 'PAYMENT' | 'RETURN';
 type StatementEntryStatus = 'POSTED' | 'VOIDED' | 'CANCELLED';
 
 interface WorkingEntry {
@@ -41,7 +41,7 @@ interface WorkingEntry {
   reason: string | null;
 }
 
-const TYPE_ORDER: Record<StatementEntryType, number> = { DEBT: 0, INSTALLMENT: 1, PAYMENT: 2 };
+const TYPE_ORDER: Record<StatementEntryType, number> = { DEBT: 0, INSTALLMENT: 1, PAYMENT: 2, RETURN: 3 };
 
 export class CustomerStatementService {
   static async get(customerId: string, query: CustomerStatementQuery) {
@@ -101,6 +101,23 @@ export function buildCustomerStatement(records: CustomerStatementRecordSet, quer
         reason: voided ? payment.voidReason : null,
       };
     }),
+    ...(records.returns ?? []).map((salesReturn): WorkingEntry => ({
+      id: salesReturn.id,
+      type: 'RETURN',
+      date: prismaDateToBusinessDate(salesReturn.returnDate),
+      createdAt: salesReturn.processedAt.toISOString(),
+      sortNumber: 0,
+      description: `Sales return · ${salesReturn.refundMethod}`,
+      reference: salesReturn.returnNumber,
+      originalAmount: moneyToApiString(salesReturn.totalIncVat, salesReturn.currency),
+      currency: salesReturn.currency,
+      exchangeRate: salesReturn.exchangeRate.toString(),
+      baseAmount: salesReturn.baseTotalIncVat,
+      effect: salesReturn.baseReceivableReliefAmount.negated(),
+      status: 'POSTED',
+      dueDate: null,
+      reason: salesReturn.reason,
+    })),
   ].sort(compareEntries);
 
   const opening = sumMoney(allEntries.filter((entry) => entry.date < query.from).map((entry) => entry.effect));
@@ -149,6 +166,14 @@ function buildAgingItems(records: CustomerStatementRecordSet, cutoff: string) {
       const targetId = allocation.debtId ?? allocation.installmentId;
       if (!targetId) continue;
       paidByTarget.set(targetId, sumMoney([paidByTarget.get(targetId) ?? ZERO_MONEY, allocationBaseAmount(payment, allocation.paymentAmount)]));
+    }
+  }
+  for (const salesReturn of records.returns ?? []) {
+    if (prismaDateToBusinessDate(salesReturn.returnDate) > cutoff) continue;
+    for (const allocation of salesReturn.receivableAllocations) {
+      const targetId = allocation.debtId ?? allocation.installmentId;
+      if (!targetId) continue;
+      paidByTarget.set(targetId, sumMoney([paidByTarget.get(targetId) ?? ZERO_MONEY, allocation.baseAmount]));
     }
   }
   const obligations = [

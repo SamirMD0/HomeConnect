@@ -326,6 +326,7 @@ export class InstallmentPlansService {
       if (!plan) {
         throw new NotFoundError('Installment plan not found');
       }
+      if (plan.installments.some((installment) => (installment.returnAllocations?.length ?? 0) > 0)) throw new ValidationError('An obligation credited by a sales return cannot be corrected or cancelled independently');
 
       const correctingUser = await tx.user.findUnique({
         where: { id: user.userId },
@@ -388,6 +389,7 @@ export class InstallmentPlansService {
                 amount: allocation.amount,
                 isVoided: isPaymentAllocationVoided(allocation),
               })),
+              credits: (plan.installments[index].returnAllocations ?? []).map((allocation) => ({ amount: allocation.amount })),
             }),
           })
         ) ?? plan.installments.map((installment) => installment.status);
@@ -647,6 +649,7 @@ export class InstallmentPlansService {
       if (!plan) {
         throw new NotFoundError('Installment plan not found');
       }
+      if (plan.installments.some((installment) => (installment.returnAllocations?.length ?? 0) > 0)) throw new ValidationError('An obligation credited by a sales return cannot be corrected or cancelled independently');
 
       const summary = this.calculatePlanSummary(plan);
 
@@ -1045,6 +1048,7 @@ export class InstallmentPlansService {
             amount: allocation.amount,
             isVoided: isPaymentAllocationVoided(allocation),
           })),
+          credits: (installment.returnAllocations ?? []).map((allocation) => ({ amount: allocation.amount })),
         })),
       },
       todayInBusinessTimezone()
@@ -1060,6 +1064,7 @@ export class InstallmentPlansService {
         amount: allocation.amount,
         isVoided: isPaymentAllocationVoided(allocation),
       })),
+      credits: (installment.returnAllocations ?? []).map((allocation) => ({ amount: allocation.amount })),
     });
   }
 

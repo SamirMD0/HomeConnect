@@ -17,6 +17,7 @@ const paymentAllocationPaymentSelect = {
 
 const dashboardDebtInclude = {
   customer: { select: customerSelect },
+  returnAllocations: { select: { amount: true, baseAmount: true } },
   paymentAllocations: {
     include: {
       payment: { select: paymentAllocationPaymentSelect },
@@ -28,6 +29,7 @@ const dashboardPlanInclude = {
   customer: { select: customerSelect },
   installments: {
     include: {
+      returnAllocations: { select: { amount: true, baseAmount: true } },
       paymentAllocations: {
         include: {
           payment: { select: paymentAllocationPaymentSelect },
@@ -52,6 +54,7 @@ export type DashboardPlanRecord = Prisma.InstallmentPlanGetPayload<{ include: ty
 export type DashboardPaymentRecord = Prisma.PaymentGetPayload<{ include: typeof dashboardPaymentInclude }>;
 
 export interface DashboardFinancialRecordSet {
+  returns?: Array<{ returnDate: Date; baseReceivableReliefAmount: Prisma.Decimal; baseRefundableAmount: Prisma.Decimal; refundMethod: string }>;
   totalCustomers: number;
   debts: DashboardDebtRecord[];
   plans: DashboardPlanRecord[];
@@ -62,7 +65,7 @@ export class DashboardFinancialRepository {
   static async loadFinancialRecords(): Promise<DashboardFinancialRecordSet> {
     const businessDate = todayInBusinessTimezone();
     const monthStart = businessDateToPrisma(`${businessDate.slice(0, 7)}-01`);
-    const [totalCustomers, debts, plans, monthlyPayments, recentPayments] = await Promise.all([
+    const [totalCustomers, debts, plans, monthlyPayments, recentPayments, returns] = await Promise.all([
       prisma.customer.count({
         where: {
           deletedAt: null,
@@ -120,9 +123,14 @@ export class DashboardFinancialRepository {
         orderBy: [{ paymentDate: 'desc' }, { createdAt: 'desc' }, { id: 'asc' }],
         take: 5,
       }),
+      prisma.salesReturn.findMany({
+        where: { returnDate: { gte: monthStart }, OR: [{ customerId: null }, { customer: { deletedAt: null, isActive: true } }] },
+        select: { returnDate: true, baseReceivableReliefAmount: true, baseRefundableAmount: true, refundMethod: true },
+      }),
     ]);
 
     return {
+      returns,
       totalCustomers,
       debts,
       plans,

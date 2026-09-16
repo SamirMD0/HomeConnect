@@ -1,3 +1,4 @@
+import { SalesReturnDialog } from '../../features/sales-orders/components/SalesReturnDialog';
 import { useState } from 'react';
 import { ArrowLeft, Edit3, FileText, History, Plus, RotateCcw, ShoppingCart, Trash2, Truck, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -34,7 +35,6 @@ export function SalesOrderDetailsPage() {
   const statusMutation = useSalesOrderAction(salesOrdersApi.status, id);
   const cancelMutation = useSalesOrderAction(salesOrdersApi.cancel, id);
   const restoreMutation = useSalesOrderAction(salesOrdersApi.restore, id);
-  const returnMutation = useSalesOrderAction(salesOrdersApi.returnOrder, id);
   const debtMutation = useSalesOrderAction(salesOrdersApi.createDebt, id);
   const installmentMutation = useSalesOrderAction(salesOrdersApi.createInstallmentPlan, id);
   const unlinkMutation = useSalesOrderAction(salesOrdersApi.unlinkFinancial, id);
@@ -47,7 +47,7 @@ export function SalesOrderDetailsPage() {
   if (orderQuery.isLoading) return <Card><SkeletonText lines={8} /></Card>;
   if (orderQuery.isError || !orderQuery.data) return <EmptyState title="Sales order not found" description="The order could not be loaded." action={<Link to="/sales-orders" className={buttonClasses('secondary')}>Back to orders</Link>} />;
   const order = orderQuery.data;
-  const isFinal = ['CANCELLED', 'RETURNED'].includes(order.fulfillmentStatus);
+  const isFinal = ['PARTIALLY_RETURNED', 'CANCELLED', 'RETURNED'].includes(order.fulfillmentStatus);
   const canEditItems = !isFinal && (order.fulfillmentStatus === 'DRAFT' || isAdmin);
   const next = order.salesChannel === 'SHOP_DIRECT' && order.fulfillmentStatus === 'CONFIRMED' ? 'DELIVERED' : NEXT_FULFILLMENT_STATUS[order.fulfillmentStatus];
   const close = () => { setDialog(null); setReason(''); setPassword(''); setDueDate(''); setSelectedItem(null); setLine(emptySalesLine()); };
@@ -55,7 +55,6 @@ export function SalesOrderDetailsPage() {
     try {
       if (dialog === 'cancel') await cancelMutation.mutateAsync({ reason, accountPassword: password });
       if (dialog === 'restore') await restoreMutation.mutateAsync({ status: 'CONFIRMED', reason, accountPassword: password });
-      if (dialog === 'return') await returnMutation.mutateAsync({ reason, accountPassword: password });
       if (dialog === 'debt') await debtMutation.mutateAsync({ dueDate });
       if (dialog === 'installment') await installmentMutation.mutateAsync({ startDate: dueDate, installmentCount: count, frequency: 'MONTHLY' });
       if (dialog === 'unlink') await unlinkMutation.mutateAsync({ reason, accountPassword: password });
@@ -86,10 +85,10 @@ export function SalesOrderDetailsPage() {
 
   return <div className="space-y-6">
     <Link to="/sales-orders" className={buttonClasses('link')}><ArrowLeft className="h-4 w-4" /> Back to Sales Orders</Link>
-    <PageHeader title={order.orderNumber} description={`Created ${formatBusinessDate(order.orderDate)} by ${order.createdBy.fullName}`} icon={<ShoppingCart />} actions={<><Link to={`/sales-orders/${order.id}/invoice`} className={buttonClasses('secondary')}><FileText className="h-4 w-4" /> Invoice / فاتورة</Link>{next && !isFinal && <Button icon={<Truck />} isLoading={statusMutation.isPending} onClick={advance}>Advance status</Button>}{isAdmin && !isFinal && <Button variant="danger" icon={<XCircle />} onClick={() => setDialog('cancel')}>Remove / إزالة</Button>}{isAdmin && isFinal && <Button variant="secondary" icon={<RotateCcw />} onClick={() => setDialog('restore')}>Restore</Button>}{isAdmin && order.fulfillmentStatus === 'DELIVERED' && <Button variant="secondary" onClick={() => setDialog('return')}>Return</Button>}</>} />
+    <PageHeader title={order.orderNumber} description={`Created ${formatBusinessDate(order.orderDate)} by ${order.createdBy.fullName}`} icon={<ShoppingCart />} actions={<><Link to={`/sales-orders/${order.id}/invoice`} className={buttonClasses('secondary')}><FileText className="h-4 w-4" /> Invoice / فاتورة</Link>{next && !isFinal && <Button icon={<Truck />} isLoading={statusMutation.isPending} onClick={advance}>Advance status</Button>}{isAdmin && !isFinal && <Button variant="danger" icon={<XCircle />} onClick={() => setDialog('cancel')}>Remove / إزالة</Button>}{isAdmin && isFinal && !(order.returns?.length) && <Button variant="secondary" icon={<RotateCcw />} onClick={() => setDialog('restore')}>Restore</Button>}{isAdmin && ['DELIVERED', 'PARTIALLY_RETURNED'].includes(order.fulfillmentStatus) && <Button variant="secondary" onClick={() => setDialog('return')}>Return</Button>}</>} />
     <div className="flex flex-wrap gap-2"><SalesChannelChip channel={order.salesChannel} /><SalesOrderStatusChip status={order.fulfillmentStatus} /></div>
     <div className="grid gap-6 lg:grid-cols-3"><div className="space-y-6 lg:col-span-2"><Card><CardHeader title="Customer / الزبون" />{order.customer ? <><Link to={`/customers/${order.customer.id}`} className="user-text font-semibold text-brand-700" dir="auto">{order.customer.name}</Link><p className="text-sm text-slate-500">{order.customer.phone}</p></> : <p className="text-sm font-medium text-slate-600">Customer</p>}</Card><Card><CardHeader title="Items / الأصناف" action={canEditItems ? <Button size="sm" variant="secondary" icon={<Plus />} onClick={() => openItem('add-item')}>Add item</Button> : undefined} /><Table data={order.items} columns={itemColumns} keyExtractor={(item) => item.id} /><div className="mt-4 flex justify-end"><dl className="grid grid-cols-2 gap-x-8 gap-y-1 text-sm"><dt>Subtotal</dt><dd className="text-right tabular-nums">{formatMoney(order.itemsSubtotal)}</dd><dt>Delivery</dt><dd className="text-right tabular-nums">{formatMoney(order.deliveryFee)}</dd><dt className="font-semibold">Total</dt><dd className="text-right font-semibold tabular-nums">{formatMoney(order.totalAmount)}</dd></dl></div></Card><SalesOrderInventoryPanel order={order} isAdmin={isAdmin} /><PaymentSummaryCard order={order} actions={paymentActions} /><Card><CardHeader title="Notes / ملاحظات" action={!isFinal ? <Button size="sm" variant="secondary" icon={<Edit3 />} onClick={openDetails}>Edit</Button> : undefined} /><p className="user-text whitespace-pre-wrap text-sm text-slate-700" dir="auto">{order.notes || 'No notes.'}</p></Card>{isAdmin && <Card><CardHeader title="History / السجل" icon={<History />} /><SalesOrderAuditList salesOrderId={order.id} /></Card>}</div><aside><DeliveryCard order={order} /></aside></div>
-    <ActionDialog dialog={dialog} close={close} run={run} loading={[cancelMutation, restoreMutation, returnMutation, debtMutation, installmentMutation, unlinkMutation, paymentMutation, updateMutation, addItemMutation, itemMutation, removeItemMutation].some((mutation) => mutation.isPending)} reason={reason} setReason={setReason} password={password} setPassword={setPassword} dueDate={dueDate} setDueDate={setDueDate} count={count} setCount={setCount} paidAmount={paidAmount} setPaidAmount={setPaidAmount} notes={notes} setNotes={setNotes} line={line} setLine={setLine} requiresAdmin={order.fulfillmentStatus !== 'DRAFT'} />
+    {dialog === 'return' ? <SalesReturnDialog order={order} onClose={close} /> : <ActionDialog dialog={dialog} close={close} run={run} loading={[cancelMutation, restoreMutation, debtMutation, installmentMutation, unlinkMutation, paymentMutation, updateMutation, addItemMutation, itemMutation, removeItemMutation].some((mutation) => mutation.isPending)} reason={reason} setReason={setReason} password={password} setPassword={setPassword} dueDate={dueDate} setDueDate={setDueDate} count={count} setCount={setCount} paidAmount={paidAmount} setPaidAmount={setPaidAmount} notes={notes} setNotes={setNotes} line={line} setLine={setLine} requiresAdmin={order.fulfillmentStatus !== 'DRAFT'} />}
   </div>;
 }
 

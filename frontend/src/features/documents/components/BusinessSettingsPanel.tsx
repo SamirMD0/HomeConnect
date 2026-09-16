@@ -20,6 +20,7 @@ export function BusinessSettingsForm({ settings }: { settings: BusinessSettings 
     taxNumber: settings.taxNumber,
     logoUrl: settings.logoUrl,
     email: settings.email,
+    returnWindowDays: settings.returnWindowDays,
   }));
   const set = (field: keyof UpdateBusinessSettingsInput) => (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm((current) => ({ ...current, [field]: event.target.value || null }));
@@ -47,6 +48,7 @@ export function BusinessSettingsForm({ settings }: { settings: BusinessSettings 
         <FormField label="Email / البريد الإلكتروني">{(field) => <Input {...field} type="email" value={form.email ?? ''} onChange={set('email')} placeholder="shop@example.com" />}</FormField>
         <FormField className="sm:col-span-2" label="Address / العنوان">{(field) => <Textarea {...field} userText value={form.address ?? ''} onChange={set('address')} />}</FormField>
         <FormField className="sm:col-span-2" label="Logo URL or image data URL / رابط الشعار">{(field) => <Input {...field} value={form.logoUrl ?? ''} onChange={set('logoUrl')} placeholder="https://…/logo.png" />}</FormField>
+        <FormField label="Return window (days) / مهلة الإرجاع بالأيام">{(field) => <Input {...field} type="number" min={1} max={365} value={form.returnWindowDays} onChange={(event) => setForm((current) => ({ ...current, returnWindowDays: Number(event.target.value) }))} />}</FormField>
         <div className="sm:col-span-2"><Button type="submit" isLoading={update.isPending}>Save business details / حفظ بيانات المتجر</Button></div>
       </form>
     </section>

@@ -65,20 +65,42 @@ const paymentSelect = {
   },
 } satisfies Prisma.PaymentSelect;
 
+const returnSelect = {
+  id: true,
+  returnNumber: true,
+  returnDate: true,
+  processedAt: true,
+  reason: true,
+  currency: true,
+  exchangeRate: true,
+  totalIncVat: true,
+  baseTotalIncVat: true,
+  receivableReliefAmount: true,
+  baseReceivableReliefAmount: true,
+  refundableAmount: true,
+  refundMethod: true,
+  receivableAllocations: {
+    select: { id: true, debtId: true, installmentId: true, baseAmount: true, createdAt: true },
+    orderBy: [{ createdAt: 'asc' as const }, { id: 'asc' as const }],
+  },
+} satisfies Prisma.SalesReturnSelect;
+
 export type StatementDebtRecord = Prisma.DebtGetPayload<{ select: typeof debtSelect }>;
 export type StatementPlanRecord = Prisma.InstallmentPlanGetPayload<{ select: typeof planSelect }>;
 export type StatementPaymentRecord = Prisma.PaymentGetPayload<{ select: typeof paymentSelect }>;
+export type StatementReturnRecord = Prisma.SalesReturnGetPayload<{ select: typeof returnSelect }>;
 
 export interface CustomerStatementRecordSet {
   customer: { id: string; name: string; phone: string; address: string | null } | null;
   debts: StatementDebtRecord[];
   plans: StatementPlanRecord[];
   payments: StatementPaymentRecord[];
+  returns?: StatementReturnRecord[];
 }
 
 export class CustomerStatementRepository {
   static async load(customerId: string): Promise<CustomerStatementRecordSet> {
-    const [customer, debts, plans, payments] = await Promise.all([
+    const [customer, debts, plans, payments, returns] = await Promise.all([
       prisma.customer.findFirst({
         where: { id: customerId, deletedAt: null },
         select: { id: true, name: true, phone: true, address: true },
@@ -89,7 +111,8 @@ export class CustomerStatementRepository {
       }),
       prisma.installmentPlan.findMany({ where: { customerId }, select: planSelect }),
       prisma.payment.findMany({ where: { customerId }, select: paymentSelect }),
+      prisma.salesReturn.findMany({ where: { customerId }, select: returnSelect }),
     ]);
-    return { customer, debts, plans, payments };
+    return { customer, debts, plans, payments, returns };
   }
 }

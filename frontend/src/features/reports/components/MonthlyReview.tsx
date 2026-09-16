@@ -117,6 +117,10 @@ export function MonthlyReviewContent({
           <StatCard title="Sales / المبيعات" value={formatMoney(data.sales.totalAmount)} icon={<ShoppingCart className="h-5 w-5" />} color="info" />
           <StatCard title="Paid / المدفوع" value={formatMoney(data.sales.paidAmount)} icon={<Banknote className="h-5 w-5" />} color="success" />
           <StatCard title="Unpaid / غير المدفوع" value={formatMoney(data.sales.unpaidAmount)} icon={<CircleDollarSign className="h-5 w-5" />} color="danger" />
+          <StatCard title="Returns / المرتجعات" value={formatMoney(data.sales.returnsAmount ?? '0.00')} icon={<ReceiptText className="h-5 w-5" />} color="warning" />
+          <StatCard title="Net sales / صافي المبيعات" value={formatMoney(data.sales.netSalesAmount ?? data.sales.totalAmount)} icon={<ShoppingCart className="h-5 w-5" />} color="info" />
+          <StatCard title="Cash refunds / الاسترداد النقدي" value={formatMoney(data.sales.cashRefunds ?? '0.00')} icon={<Banknote className="h-5 w-5" />} color="danger" />
+          <StatCard title="Store credit issued / رصيد صادر" value={formatMoney(data.sales.storeCreditIssued ?? '0.00')} icon={<ReceiptText className="h-5 w-5" />} color="warning" />
           <StatCard title="Orders / الطلبات" value={data.sales.orderCount} icon={<ReceiptText className="h-5 w-5" />} color="primary" />
           <StatCard title="New customers / زبائن جدد" value={data.customers.newCustomers} icon={<UserPlus className="h-5 w-5" />} color="warning" />
         </div>
@@ -217,6 +221,7 @@ function MovementComparison({ title, current, previous }: { title: string; curre
     ['Opening', current.opening, previous?.opening, true],
     ['New amount', current.newAmount, previous?.newAmount, true],
     ['Collected', current.collected, previous?.collected, true],
+    ...(current.returnCredits || previous?.returnCredits ? [['Return credits', current.returnCredits ?? '0.00', previous?.returnCredits ?? '0.00', true] as [string, string, string | undefined, boolean]] : []),
     ['Adjustments', current.adjustments, previous?.adjustments, true],
     ['Closing', current.closing, previous?.closing, true],
   ]} />;

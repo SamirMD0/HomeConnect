@@ -175,8 +175,21 @@ enum SalesOrderFulfillmentStatus {
   READY_FOR_DELIVERY
   OUT_FOR_DELIVERY
   DELIVERED
+  PARTIALLY_RETURNED
   CANCELLED
   RETURNED
+}
+
+enum SalesReturnStockDisposition {
+  SELLABLE
+  DAMAGED
+  QUARANTINE
+}
+
+enum SalesReturnRefundMethod {
+  NONE
+  CASH_OUT
+  STORE_CREDIT
 }
 
 enum SalesOrderPaymentStatus {
@@ -253,6 +266,7 @@ enum StockMovementType {
   PURCHASE_RECEIPT
   SALE_FULFILLMENT
   SALE_CANCEL_RESTORE
+  SALE_RETURN_SELLABLE
   SERVICE_PART_USED
   /// Compensating movement written when an admin voids a posted receiving
   /// document. It has its own type — rather than reusing MANUAL_REMOVE — so a
@@ -385,22 +399,27 @@ model User {
   supplierReceivingsVoided       SupplierReceiving[]          @relation("SupplierReceivingVoidedBy")
   supplierReceivingItemsReversed SupplierReceivingItem[]      @relation("ReceivingItemReversedBy")
   supplierReceivingAudits        SupplierReceivingAudit[]     @relation("SupplierReceivingAuditChangedBy")
-  businessSettingsUpdates        BusinessSettings[]            @relation("BusinessSettingsUpdatedBy")
+  businessSettingsUpdates        BusinessSettings[]           @relation("BusinessSettingsUpdatedBy")
+  salesReturnsProcessed          SalesReturn[]                @relation("SalesReturnProcessedBy")
+  cashRefundsProcessed           CashRefund[]                 @relation("CashRefundProcessedBy")
+  customerCreditsIssued          CustomerCredit[]             @relation("CustomerCreditIssuedBy")
+  customerCreditApplications     CustomerCreditApplication[]  @relation("CustomerCreditApplicationAppliedBy")
 
   @@map("users")
 }
 
 model BusinessSettings {
-  id        String @id @default("primary")
-  shopName  String?
-  address   String? @db.Text
-  phone     String?
-  taxNumber String?
-  logoUrl   String? @db.Text
-  email     String?
+  id               String  @id @default("primary")
+  shopName         String?
+  address          String? @db.Text
+  phone            String?
+  taxNumber        String?
+  logoUrl          String? @db.Text
+  email            String?
+  returnWindowDays Int     @default(14)
 
-  updatedById String? @db.Uuid
-  updatedBy   User?   @relation("BusinessSettingsUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  updatedById String?  @db.Uuid
+  updatedBy   User?    @relation("BusinessSettingsUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -443,6 +462,10 @@ model Customer {
   financialCorrections FinancialCorrectionAudit[]
   serviceJobs          ServiceJob[]
   salesOrders          SalesOrder[]
+  salesReturns         SalesReturn[]
+  cashRefunds          CashRefund[]
+  customerCredits      CustomerCredit[]
+  creditApplications   CustomerCreditApplication[]
 
   @@index([name])
   @@index([phone])
@@ -490,6 +513,8 @@ model Debt {
   cancelReason       String?    @db.Text
 
   paymentAllocations PaymentAllocation[]
+  returnAllocations  SalesReturnReceivableAllocation[]
+  creditApplications CustomerCreditApplication[]
 
   prepaidPurchase     PrepaidPurchase? @relation("PrepaidPurchaseDebt")
   prepaidRemainderFor PrepaidPurchase? @relation("PrepaidRemainderDebt")
@@ -582,6 +607,8 @@ model Installment {
   updatedAt         DateTime          @updatedAt
 
   paymentAllocations PaymentAllocation[]
+  returnAllocations  SalesReturnReceivableAllocation[]
+  creditApplications CustomerCreditApplication[]
 
   @@unique([installmentPlanId, installmentNumber])
   @@index([installmentPlanId])
@@ -768,6 +795,7 @@ model Product {
   updatedAt                              DateTime                @updatedAt
 
   serviceJobs      ServiceJob[]
+  salesReturnItems SalesReturnItem[]
   salesOrderItems  SalesOrderItem[]
   prepaidPurchases PrepaidPurchase[]
   stockMovements   StockMovement[]
@@ -806,6 +834,7 @@ model StockMovement {
   salesFulfillmentReversalMovement SalesOrderStockFulfillment? @relation("FulfillmentReversalMovement")
   supplierReceivingItem            SupplierReceivingItem?      @relation("ReceivingMovement")
   supplierReceivingItemReversal    SupplierReceivingItem?      @relation("ReceivingReversalMovement")
+  salesReturnItem                  SalesReturnItem?            @relation("SalesReturnItemStockMovement")
 
   @@index([productId, createdAt])
   @@index([movementType, createdAt])
@@ -1007,9 +1036,11 @@ model SalesOrder {
   cancelledBy     User?     @relation("SalesOrderCancelledBy", fields: [cancelledById], references: [id], onDelete: Restrict)
   cancelledReason String?   @db.Text
 
-  items             SalesOrderItem[]
-  audits            SalesAudit[]
-  stockFulfillments SalesOrderStockFulfillment[]
+  items              SalesOrderItem[]
+  audits             SalesAudit[]
+  stockFulfillments  SalesOrderStockFulfillment[]
+  returns            SalesReturn[]
+  creditApplications CustomerCreditApplication[]
 
   @@index([customerId])
   @@index([orderDate])
@@ -1057,6 +1088,7 @@ model SalesOrderItem {
   updatedAt DateTime @updatedAt
 
   stockFulfillments SalesOrderStockFulfillment[]
+  returnItems       SalesReturnItem[]
 
   @@index([salesOrderId])
   @@index([productId])
@@ -1088,10 +1120,205 @@ model SalesOrderStockFulfillment {
   createdBy   User     @relation("FulfillmentCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
   createdAt   DateTime @default(now())
 
+  returnItems SalesReturnItem[]
+
   @@index([salesOrderId])
   @@index([productId, createdAt])
   @@index([status])
   @@map("sales_order_stock_fulfillments")
+}
+
+model SalesReturn {
+  id           String     @id @default(uuid()) @db.Uuid
+  returnNumber String     @unique
+  salesOrderId String     @db.Uuid
+  salesOrder   SalesOrder @relation(fields: [salesOrderId], references: [id], onDelete: Restrict)
+  sequence     Int
+  customerId   String?    @db.Uuid
+  customer     Customer?  @relation(fields: [customerId], references: [id], onDelete: Restrict)
+
+  returnDate             DateTime @db.Date
+  processedAt            DateTime @default(now())
+  reason                 String   @db.Text
+  windowDaysSnapshot     Int
+  returnDeadlineSnapshot DateTime @db.Date
+  windowOverride         Boolean  @default(false)
+  windowOverrideReason   String?  @db.Text
+
+  currency          Currency
+  exchangeRate      Decimal  @db.Decimal(18, 6)
+  subtotalExVat     Decimal  @db.Decimal(12, 2)
+  vatAmount         Decimal  @db.Decimal(12, 2)
+  totalIncVat       Decimal  @db.Decimal(12, 2)
+  baseSubtotalExVat Decimal  @db.Decimal(12, 2)
+  baseVatAmount     Decimal  @db.Decimal(12, 2)
+  baseTotalIncVat   Decimal  @db.Decimal(12, 2)
+
+  deliveryReturned        Boolean               @default(false)
+  deliveryTaxTreatment    DeliveryTaxTreatment?
+  deliveryTaxRateSnapshot Decimal?              @db.Decimal(6, 3)
+  deliveryTaxCodeSnapshot String?
+  deliveryFeeExVat        Decimal?              @db.Decimal(12, 2)
+  deliveryVatAmount       Decimal?              @db.Decimal(12, 2)
+  deliveryFeeIncVat       Decimal?              @db.Decimal(12, 2)
+  baseDeliveryFeeExVat    Decimal?              @db.Decimal(12, 2)
+  baseDeliveryVatAmount   Decimal?              @db.Decimal(12, 2)
+  baseDeliveryFeeIncVat   Decimal?              @db.Decimal(12, 2)
+
+  receivableReliefAmount     Decimal                 @db.Decimal(12, 2)
+  baseReceivableReliefAmount Decimal                 @db.Decimal(12, 2)
+  refundableAmount           Decimal                 @db.Decimal(12, 2)
+  baseRefundableAmount       Decimal                 @db.Decimal(12, 2)
+  refundMethod               SalesReturnRefundMethod
+
+  idempotencyKey      String   @unique
+  requestFingerprint  String
+  processedById       String   @db.Uuid
+  processedBy         User     @relation("SalesReturnProcessedBy", fields: [processedById], references: [id], onDelete: Restrict)
+  processedByName     String
+  processedByUsername String
+  createdAt           DateTime @default(now())
+
+  items                 SalesReturnItem[]
+  receivableAllocations SalesReturnReceivableAllocation[]
+  cashRefund            CashRefund?
+  customerCredit        CustomerCredit?
+
+  @@unique([salesOrderId, sequence])
+  @@index([salesOrderId, returnDate])
+  @@index([customerId, returnDate])
+  @@index([processedAt])
+  @@map("sales_returns")
+}
+
+model SalesReturnItem {
+  id                           String                      @id @default(uuid()) @db.Uuid
+  salesReturnId                String                      @db.Uuid
+  salesReturn                  SalesReturn                 @relation(fields: [salesReturnId], references: [id], onDelete: Restrict)
+  salesOrderItemId             String                      @db.Uuid
+  salesOrderItem               SalesOrderItem              @relation(fields: [salesOrderItemId], references: [id], onDelete: Restrict)
+  salesOrderStockFulfillmentId String?                     @db.Uuid
+  salesOrderStockFulfillment   SalesOrderStockFulfillment? @relation(fields: [salesOrderStockFulfillmentId], references: [id], onDelete: Restrict)
+  productId                    String?                     @db.Uuid
+  product                      Product?                    @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  quantity             Int
+  productNameSnapshot  String
+  productModelSnapshot String?
+  skuSnapshot          String?
+  soldQuantitySnapshot Int
+  unitPriceSnapshot    Decimal                     @db.Decimal(12, 2)
+  discountAmount       Decimal                     @db.Decimal(12, 2)
+  subtotalExVat        Decimal                     @db.Decimal(12, 2)
+  vatAmount            Decimal                     @db.Decimal(12, 2)
+  totalIncVat          Decimal                     @db.Decimal(12, 2)
+  baseSubtotalExVat    Decimal                     @db.Decimal(12, 2)
+  baseVatAmount        Decimal                     @db.Decimal(12, 2)
+  baseTotalIncVat      Decimal                     @db.Decimal(12, 2)
+  taxRateSnapshot      Decimal                     @db.Decimal(6, 3)
+  taxCodeSnapshot      String?
+  stockDisposition     SalesReturnStockDisposition
+  conditionNote        String?                     @db.Text
+  stockMovementId      String?                     @unique @db.Uuid
+  stockMovement        StockMovement?              @relation("SalesReturnItemStockMovement", fields: [stockMovementId], references: [id], onDelete: Restrict)
+  createdAt            DateTime                    @default(now())
+
+  @@unique([salesReturnId, salesOrderItemId])
+  @@index([salesOrderItemId])
+  @@index([productId, stockDisposition])
+  @@map("sales_return_items")
+}
+
+model SalesReturnReceivableAllocation {
+  id            String       @id @default(uuid()) @db.Uuid
+  salesReturnId String       @db.Uuid
+  salesReturn   SalesReturn  @relation(fields: [salesReturnId], references: [id], onDelete: Restrict)
+  debtId        String?      @db.Uuid
+  debt          Debt?        @relation(fields: [debtId], references: [id], onDelete: Restrict)
+  installmentId String?      @db.Uuid
+  installment   Installment? @relation(fields: [installmentId], references: [id], onDelete: Restrict)
+  amount        Decimal      @db.Decimal(12, 2)
+  exchangeRate  Decimal      @db.Decimal(18, 6)
+  baseAmount    Decimal      @db.Decimal(12, 2)
+  createdAt     DateTime     @default(now())
+
+  @@index([salesReturnId])
+  @@index([debtId])
+  @@index([installmentId])
+  @@map("sales_return_receivable_allocations")
+}
+
+model CashRefund {
+  id                  String      @id @default(uuid()) @db.Uuid
+  salesReturnId       String      @unique @db.Uuid
+  salesReturn         SalesReturn @relation(fields: [salesReturnId], references: [id], onDelete: Restrict)
+  customerId          String?     @db.Uuid
+  customer            Customer?   @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  amount              Decimal     @db.Decimal(12, 2)
+  currency            Currency
+  exchangeRate        Decimal     @db.Decimal(18, 6)
+  baseAmount          Decimal     @db.Decimal(12, 2)
+  processedAt         DateTime    @default(now())
+  processedById       String      @db.Uuid
+  processedBy         User        @relation("CashRefundProcessedBy", fields: [processedById], references: [id], onDelete: Restrict)
+  processedByName     String
+  processedByUsername String
+  reason              String      @db.Text
+
+  @@index([customerId, processedAt])
+  @@map("cash_refunds")
+}
+
+model CustomerCredit {
+  id               String      @id @default(uuid()) @db.Uuid
+  salesReturnId    String      @unique @db.Uuid
+  salesReturn      SalesReturn @relation(fields: [salesReturnId], references: [id], onDelete: Restrict)
+  customerId       String      @db.Uuid
+  customer         Customer    @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  issuedAmount     Decimal     @db.Decimal(12, 2)
+  currency         Currency
+  exchangeRate     Decimal     @db.Decimal(18, 6)
+  baseAmount       Decimal     @db.Decimal(12, 2)
+  issuedAt         DateTime    @default(now())
+  issuedById       String      @db.Uuid
+  issuedBy         User        @relation("CustomerCreditIssuedBy", fields: [issuedById], references: [id], onDelete: Restrict)
+  issuedByName     String
+  issuedByUsername String
+  reason           String      @db.Text
+
+  applications CustomerCreditApplication[]
+
+  @@index([customerId, issuedAt])
+  @@map("customer_credits")
+}
+
+model CustomerCreditApplication {
+  id                 String         @id @default(uuid()) @db.Uuid
+  customerCreditId   String         @db.Uuid
+  customerCredit     CustomerCredit @relation(fields: [customerCreditId], references: [id], onDelete: Restrict)
+  customerId         String         @db.Uuid
+  customer           Customer       @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  salesOrderId       String         @db.Uuid
+  salesOrder         SalesOrder     @relation(fields: [salesOrderId], references: [id], onDelete: Restrict)
+  debtId             String?        @db.Uuid
+  debt               Debt?          @relation(fields: [debtId], references: [id], onDelete: Restrict)
+  installmentId      String?        @db.Uuid
+  installment        Installment?   @relation(fields: [installmentId], references: [id], onDelete: Restrict)
+  amount             Decimal        @db.Decimal(12, 2)
+  baseAmount         Decimal        @db.Decimal(12, 2)
+  exchangeRate       Decimal        @db.Decimal(18, 6)
+  idempotencyKey     String         @unique
+  requestFingerprint String
+  appliedAt          DateTime       @default(now())
+  appliedById        String         @db.Uuid
+  appliedBy          User           @relation("CustomerCreditApplicationAppliedBy", fields: [appliedById], references: [id], onDelete: Restrict)
+  appliedByName      String
+  appliedByUsername  String
+  reason             String         @db.Text
+
+  @@index([customerCreditId, appliedAt])
+  @@index([customerId, appliedAt])
+  @@map("customer_credit_applications")
 }
 
 model SalesAudit {

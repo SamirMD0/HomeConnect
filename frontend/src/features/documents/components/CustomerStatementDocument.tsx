@@ -25,6 +25,7 @@ const typeLabels = {
   DEBT: 'Debt / دين',
   INSTALLMENT: 'Installment / قسط',
   PAYMENT: 'Payment / دفعة',
+  RETURN: 'Sales return / مرتجع مبيعات',
 } as const;
 
 const statusLabels: Record<CustomerStatementEntryStatus, string> = {

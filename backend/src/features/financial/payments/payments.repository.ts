@@ -27,10 +27,12 @@ const paymentInclude = {
   },
   allocations: {
     include: {
+      debt: { select: { returnAllocations: { select: { id: true } } } },
       installment: {
         select: {
           id: true,
           installmentPlanId: true,
+          installmentPlan: { select: { installments: { select: { returnAllocations: { select: { id: true } } } } } },
         },
       },
     },
@@ -68,6 +70,7 @@ const paymentReceiptInclude = {
           description: true,
           originalAmount: true,
           currency: true,
+          returnAllocations: { select: { amount: true, createdAt: true } },
           paymentAllocations: receiptAllocationHistory,
         },
       },
@@ -82,7 +85,7 @@ const paymentReceiptInclude = {
               totalAmount: true,
               currency: true,
               installments: {
-                select: { paymentAllocations: receiptAllocationHistory },
+                select: { paymentAllocations: receiptAllocationHistory, returnAllocations: { select: { amount: true, createdAt: true } } },
               },
             },
           },
@@ -269,6 +272,7 @@ export class PaymentsRepository {
             cancelledAt: true,
           },
         },
+        returnAllocations: { select: { amount: true } },
         paymentAllocations: {
           include: {
             payment: {

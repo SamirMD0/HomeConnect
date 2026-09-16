@@ -30,11 +30,11 @@ export function isPaymentAllocationVoided(allocation: {
 }
 
 export function calculateDebtBalance(input: DebtBalanceInput): ObligationBalance {
-  return calculateObligationBalance(input.originalAmount, input.allocations);
+  return calculateObligationBalance(input.originalAmount, input.allocations, input.credits);
 }
 
 export function calculateInstallmentBalance(input: InstallmentBalanceInput): ObligationBalance {
-  return calculateObligationBalance(input.amountDue, input.allocations);
+  return calculateObligationBalance(input.amountDue, input.allocations, input.credits);
 }
 
 export function calculateInstallmentPlanSummary(
@@ -46,11 +46,15 @@ export function calculateInstallmentPlanSummary(
       calculateInstallmentBalance({
         amountDue: installment.amountDue,
         allocations: installment.allocations,
+        credits: installment.credits,
       }).totalPaid
     )
   );
 
-  const remainingBalance = subtractMoney(input.totalAmount, totalPaid);
+  const totalCredits = sumMoney(input.installments.map((installment) =>
+    calculateTotalPaidFromAllocations(installment.credits)
+  ));
+  const remainingBalance = subtractMoney(input.totalAmount, sumMoney([totalPaid, totalCredits]));
   const activeInstallments = input.installments.filter(
     (installment) => installment.status !== InstallmentStatus.CANCELLED
   );
@@ -59,6 +63,7 @@ export function calculateInstallmentPlanSummary(
     calculateInstallmentBalance({
       amountDue: installment.amountDue,
       allocations: installment.allocations,
+      credits: installment.credits,
     }).isFullyPaid
   ).length;
 
@@ -66,6 +71,7 @@ export function calculateInstallmentPlanSummary(
     const balance = calculateInstallmentBalance({
       amountDue: installment.amountDue,
       allocations: installment.allocations,
+      credits: installment.credits,
     });
     return !balance.isFullyPaid && compareBusinessDates(installment.dueDate, businessDate) < 0;
   }).length;
@@ -75,6 +81,7 @@ export function calculateInstallmentPlanSummary(
       const balance = calculateInstallmentBalance({
         amountDue: installment.amountDue,
         allocations: installment.allocations,
+        credits: installment.credits,
       });
       return !balance.isFullyPaid;
     })
@@ -92,16 +99,21 @@ export function calculateInstallmentPlanSummary(
 
 function calculateObligationBalance(
   originalAmountInput: Parameters<typeof parseMoney>[0],
-  allocations: PaymentAllocationAmount[] = []
+  allocations: PaymentAllocationAmount[] = [],
+  credits: PaymentAllocationAmount[] = []
 ): ObligationBalance {
   const originalAmount = parseMoney(originalAmountInput);
   const totalPaid = calculateTotalPaidFromAllocations(allocations);
-  const remainingBalance = subtractMoney(originalAmount, totalPaid);
+  const totalCredits = calculateTotalPaidFromAllocations(credits);
+  const totalSettled = sumMoney([totalPaid, totalCredits]);
+  const remainingBalance = subtractMoney(originalAmount, totalSettled);
 
   return {
     totalPaid,
+    totalCredits,
+    totalSettled,
     remainingBalance,
     isFullyPaid: remainingBalance.equals(ZERO_MONEY),
-    isPartiallyPaid: totalPaid.greaterThan(ZERO_MONEY) && remainingBalance.greaterThan(ZERO_MONEY),
+    isPartiallyPaid: totalSettled.greaterThan(ZERO_MONEY) && remainingBalance.greaterThan(ZERO_MONEY),
   };
 }

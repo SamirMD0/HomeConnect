@@ -17,9 +17,11 @@ describe('service mutation policy', () => {
         'installmentEnabled', 'taxProfileId', 'priceIncludesVat',
         'sku', 'labelBarcodeSource', 'trackStock', 'stockQuantity', 'lowStockThreshold',
         'specifications', 'specificationNotes',
+        'categoryId',
       ].sort()
     );
     expect(containsSensitiveProductFields(['price'])).toBe(true);
+    expect(containsSensitiveProductFields(['categoryId'])).toBe(true);
     expect(containsSensitiveProductFields(['notes'])).toBe(false);
     expect(containsSensitiveProductFields(['costPrice'])).toBe(true);
     expect(containsSensitiveProductFields(['imageUrl'])).toBe(false);

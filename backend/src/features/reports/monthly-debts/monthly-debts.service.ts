@@ -102,7 +102,7 @@ export class MonthlyDebtsService {
       filename: `monthly-financial-activity-${query.month}.csv`,
       csv: buildCsv(
         ['Date', 'Customer', 'Phone', 'Type', 'Description', 'Amount'],
-        report.items.map((item) => [item.date, item.customer.name, item.customer.phone, item.type, item.description, item.amount])
+        report.items.map((item) => [item.date, item.customer?.name ?? 'Walk-in customer', item.customer?.phone ?? '', item.type, item.description, item.amount])
       ),
     };
   }
@@ -130,7 +130,18 @@ export class MonthlyDebtsService {
     const validPayments = records.payments.filter((payment) =>
       this.paymentValidAtCutoff(payment, boundaries.nextDayAfterEnd)
     );
+    const returns = records.returns ?? [];
+    const returnCredits = sumMoney(returns.map((record) => record.baseReceivableReliefAmount));
+    const cashRefunds = sumMoney(returns.filter((record) => record.refundMethod === 'CASH_OUT').map((record) => record.baseRefundableAmount));
+    const storeCreditIssued = sumMoney(returns.filter((record) => record.refundMethod === 'STORE_CREDIT').map((record) => record.baseRefundableAmount));
     const items = [
+      ...returns.map((record): MonthlyFinancialActivityItem => ({
+        id: record.id, customer: record.customer, type: 'SALES_RETURN',
+        date: prismaDateToBusinessDate(record.returnDate), description: record.returnNumber,
+        amount: moneyToApiString(subtractMoney(ZERO_MONEY, record.baseReceivableReliefAmount)),
+        cashRefundAmount: moneyToApiString(record.refundMethod === 'CASH_OUT' ? record.baseRefundableAmount : ZERO_MONEY),
+        storeCreditAmount: moneyToApiString(record.refundMethod === 'STORE_CREDIT' ? record.baseRefundableAmount : ZERO_MONEY),
+      })),
       ...standardDebts.map((debt) => this.activityDebtItem(debt)),
       ...records.plans.map((plan) => this.activityPlanItem(plan)),
       ...validPayments.map((payment) => this.activityPaymentItem(payment)),
@@ -145,9 +156,10 @@ export class MonthlyDebtsService {
     const paymentsReceived = sumMoney(validPayments.map((payment) => payment.baseAmount ?? payment.totalAmount));
     const netFinancialChange = subtractMoney(
       sumMoney([newSingleDebtAmount, newInstallmentPlanAmount]),
-      paymentsReceived
+      sumMoney([paymentsReceived, returnCredits])
     );
     const affectedCustomerIds = new Set<string>([
+      ...returns.flatMap((record) => record.customer ? [record.customer.id] : []),
       ...standardDebts.map((debt) => debt.customer.id),
       ...records.plans.map((plan) => plan.customer.id),
       ...validPayments.map((payment) => payment.customer.id),
@@ -167,6 +179,10 @@ export class MonthlyDebtsService {
         newSingleDebtAmount: moneyToApiString(newSingleDebtAmount),
         newInstallmentPlanAmount: moneyToApiString(newInstallmentPlanAmount),
         paymentsReceived: moneyToApiString(paymentsReceived),
+        returnCredits: moneyToApiString(returnCredits),
+        cashRefunds: moneyToApiString(cashRefunds),
+        storeCreditIssued: moneyToApiString(storeCreditIssued),
+        netCashCollected: moneyToApiString(subtractMoney(paymentsReceived, cashRefunds)),
         netFinancialChange: moneyToApiString(netFinancialChange),
         debtsCreated: standardDebts.length,
         plansCreated: records.plans.length,
@@ -283,7 +299,10 @@ export class MonthlyDebtsService {
       boundaries.endDate,
       boundaries.nextDayAfterEnd
     );
-    const remaining = this.nonNegative(subtractMoney(debt.baseOriginalAmount ?? debt.originalAmount, totalPaidAtCutoff));
+    const returnCredits = sumMoney((debt.returnAllocations ?? [])
+      .filter((allocation) => allocation.salesReturn.returnDate < boundaries.nextDayAfterEnd)
+      .map((allocation) => allocation.baseAmount));
+    const remaining = this.nonNegative(subtractMoney(debt.baseOriginalAmount ?? debt.originalAmount, sumMoney([totalPaidAtCutoff, returnCredits])));
     if (!remaining.greaterThan(ZERO_MONEY)) return;
 
     const dueDate = prismaDateToBusinessDate(debt.dueDate);
@@ -323,7 +342,13 @@ export class MonthlyDebtsService {
         )
       )
     );
-    const remainingPlanBalance = this.nonNegative(subtractMoney(plan.baseTotalAmount ?? plan.totalAmount, totalPaidAtCutoff));
+    const returnedAtCutoff = (installment: MonthlyInstallmentPlanRecord['installments'][number]) => sumMoney(
+      (installment.returnAllocations ?? [])
+        .filter((allocation) => allocation.salesReturn.returnDate < boundaries.nextDayAfterEnd)
+        .map((allocation) => allocation.baseAmount)
+    );
+    const returnCredits = sumMoney(plan.installments.map(returnedAtCutoff));
+    const remainingPlanBalance = this.nonNegative(subtractMoney(plan.baseTotalAmount ?? plan.totalAmount, sumMoney([totalPaidAtCutoff, returnCredits])));
     if (!remainingPlanBalance.greaterThan(ZERO_MONEY)) return;
 
     bucket.installmentPlanOutstanding = sumMoney([
@@ -338,7 +363,7 @@ export class MonthlyDebtsService {
         boundaries.endDate,
         boundaries.nextDayAfterEnd
       );
-      const remainingInstallment = this.nonNegative(subtractMoney(installment.baseAmountDue ?? installment.amountDue, installmentPaid));
+      const remainingInstallment = this.nonNegative(subtractMoney(installment.baseAmountDue ?? installment.amountDue, sumMoney([installmentPaid, returnedAtCutoff(installment)])));
       if (!remainingInstallment.greaterThan(ZERO_MONEY)) continue;
 
       const dueDate = prismaDateToBusinessDate(installment.dueDate);

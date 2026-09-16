@@ -15,12 +15,24 @@ describe('ReportsMetricsService', () => {
 
     expect(result.sales).toEqual({
       orderCount: 4,
+      returnsAmount: '0.00', cashRefunds: '0.00', storeCreditIssued: '0.00', netSalesAmount: '600.00',
       totalAmount: '600.00',
       paidAmount: '350.00',
       unpaidAmount: '250.00',
       averageOrderValue: '150.00',
     });
     expect(Object.values(result.sales).filter((value) => typeof value === 'number')).toEqual([4]);
+  });
+
+  it('keeps cash refunds and store credits separate from gross receipts and counts returns once', () => {
+    const result = ReportsMetricsService.aggregate(records({
+      salesByPaymentStatus: [salesGroup(SalesOrderPaymentStatus.PAID, 1, '100.00', '100.00', '0.00')],
+      returns: [
+        { baseTotalIncVat: new Decimal(40), baseReceivableReliefAmount: new Decimal(10), baseRefundableAmount: new Decimal(30), refundMethod: 'CASH_OUT' },
+        { baseTotalIncVat: new Decimal(20), baseReceivableReliefAmount: new Decimal(0), baseRefundableAmount: new Decimal(20), refundMethod: 'STORE_CREDIT' },
+      ],
+    }));
+    expect(result.sales).toMatchObject({ totalAmount: '100.00', paidAmount: '100.00', returnsAmount: '60.00', netSalesAmount: '40.00', cashRefunds: '30.00', storeCreditIssued: '20.00' });
   });
 
   it('returns did-not-pay as the exact complement of distinct active-customer payers', () => {
@@ -44,6 +56,7 @@ describe('ReportsMetricsService', () => {
   it('returns zero money strings rather than nulls for an empty period', () => {
     expect(ReportsMetricsService.aggregate(records()).sales).toEqual({
       orderCount: 0,
+      returnsAmount: '0.00', cashRefunds: '0.00', storeCreditIssued: '0.00', netSalesAmount: '0.00',
       totalAmount: '0.00',
       paidAmount: '0.00',
       unpaidAmount: '0.00',

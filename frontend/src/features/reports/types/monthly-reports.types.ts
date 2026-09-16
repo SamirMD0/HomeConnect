@@ -78,6 +78,10 @@ export interface MonthlyFinancialActivitySummary {
   newSingleDebtAmount: string;
   newInstallmentPlanAmount: string;
   paymentsReceived: string;
+  returnCredits?: string;
+  cashRefunds?: string;
+  storeCreditIssued?: string;
+  netCashCollected?: string;
   netFinancialChange: string;
   debtsCreated: number;
   plansCreated: number;
@@ -86,9 +90,11 @@ export interface MonthlyFinancialActivitySummary {
 }
 
 export interface MonthlyFinancialActivityItem {
+  cashRefundAmount?: string;
+  storeCreditAmount?: string;
   id: string;
-  customer: MonthlyDebtCustomer;
-  type: 'DEBT_CREATED' | 'INSTALLMENT_PLAN_CREATED' | 'PAYMENT_RECEIVED';
+  customer: MonthlyDebtCustomer | null;
+  type: 'DEBT_CREATED' | 'INSTALLMENT_PLAN_CREATED' | 'PAYMENT_RECEIVED' | 'SALES_RETURN';
   date: string;
   description: string;
   amount: string;

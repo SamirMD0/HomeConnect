@@ -45,6 +45,7 @@ const debtInclude = {
       createdAt: 'asc',
     },
   },
+  returnAllocations: { orderBy: { createdAt: 'asc' } },
 } satisfies Prisma.DebtInclude;
 
 const installmentPlanInclude = {
@@ -71,6 +72,7 @@ const installmentPlanInclude = {
           createdAt: 'asc',
         },
       },
+      returnAllocations: { orderBy: { createdAt: 'asc' } },
     },
     orderBy: {
       installmentNumber: 'asc',
