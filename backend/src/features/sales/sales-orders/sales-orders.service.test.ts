@@ -10,10 +10,12 @@ import {
 } from '@prisma/client';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { repository, debtService, audit, verifyAdmin, taxRepository, tx } = vi.hoisted(() => ({
+const { repository, debtService, audit, verifyAdmin, taxRepository, counterPayment, paymentRepository, tx } = vi.hoisted(() => ({
   tx: { marker: 'transaction' },
+  counterPayment: vi.fn(),
+  paymentRepository: { findByIdempotencyKey: vi.fn() },
   repository: {
-    findActiveCustomer: vi.fn(), findActiveProduct: vi.fn(), nextOrderNumber: vi.fn(),
+    findByIdempotencyKey: vi.fn(), findActiveCustomer: vi.fn(), findActiveProduct: vi.fn(), nextOrderNumber: vi.fn(),
     create: vi.fn(), update: vi.fn(), findActor: vi.fn(), findById: vi.fn(),
     addItem: vi.fn(), updateItem: vi.fn(), removeItem: vi.fn(), findItemById: vi.fn(),
     hasActiveStockFulfillmentForItem: vi.fn(), hasActiveStockFulfillmentForOrder: vi.fn(),
@@ -25,6 +27,8 @@ const { repository, debtService, audit, verifyAdmin, taxRepository, tx } = vi.ho
 }));
 
 vi.mock('../../financial/infrastructure/transaction', () => ({ runFinancialTransaction: vi.fn((operation) => operation(tx)) }));
+vi.mock('../../financial/payments/counter-payment', () => ({ recordCounterPayment: counterPayment }));
+vi.mock('../../financial/payments/payments.repository', () => ({ PaymentsRepository: paymentRepository }));
 vi.mock('../../financial/debts/debts.service', () => ({ DebtsService: debtService }));
 vi.mock('../audit/sales-audit', () => ({ writeSalesAudit: audit }));
 vi.mock('../../../lib/admin-verification', () => ({ verifyAdminPassword: verifyAdmin }));
@@ -35,9 +39,11 @@ vi.mock('./sales-orders.repository', async (importOriginal) => {
 });
 
 import { SalesOrdersService, serializeSalesOrder } from './sales-orders.service';
+import { createIdempotencyFingerprint } from '../../financial/infrastructure/idempotency';
 
 const user = { userId: '11111111-1111-4111-8111-111111111111', role: 'EMPLOYEE' };
 const input = {
+  idempotencyKey: 'counter-unit-create', exchangeRate: '1.000000',
   customerId: '22222222-2222-4222-8222-222222222222',
   salesChannel: SalesChannel.SHOP_DIRECT,
   orderDate: '2026-08-03',
@@ -62,7 +68,7 @@ const baseOrder = {
   deliveryAddressSnapshot: null, deliveryNotes: null, notes: null, debtId: null, debt: null, installmentPlanId: null, installmentPlan: null,
   createdById: user.userId, createdBy: { id: user.userId, fullName: 'Employee', username: 'employee' }, updatedById: null, updatedBy: null,
   createdAt: new Date(), updatedAt: new Date(), cancelledAt: null, cancelledById: null, cancelledBy: null, cancelledReason: null,
-  items: [{ id: '44444444-4444-4444-8444-444444444444', salesOrderId: '33333333-3333-4333-8333-333333333333', productId: null, product: null, manualProductName: 'Fan', manualProductModel: null, productNameSnapshot: 'Fan', productModelSnapshot: null, skuSnapshot: null, quantity: 1, unitPrice: '100.00', discountAmount: null, lineTotal: '100.00', notes: null, createdAt: new Date(), updatedAt: new Date() }],
+  items: [{ id: '44444444-4444-4444-8444-444444444444', salesOrderId: '33333333-3333-4333-8333-333333333333', productId: null, product: null, manualProductName: 'Fan', manualProductModel: null, productNameSnapshot: 'Fan', productModelSnapshot: null, skuSnapshot: null, quantity: 1, unitPrice: '100.00', discountAmount: null, lineTotal: '100.00', notes: null, baseUnitPrice: '100.00', baseDiscountAmount: null, baseLineTotal: '100.00', createdAt: new Date(), updatedAt: new Date() }],
 };
 
 const addedItem = {
@@ -109,8 +115,20 @@ function withTaxableDelivery(order: Record<string, unknown>, fee = '200.00') {
 }
 
 describe('sales order service transaction boundary', () => {
+  it('replays a committed additional receipt after a concurrent unique-key race', async () => {
+    const command = { paidAmount: '100.00', idempotencyKey: 'counter-race-change', reason: 'Cash received', accountPassword: 'password' };
+    const admin = { ...user, role: 'ADMIN' };
+    const fingerprint = createIdempotencyFingerprint({ orderId: baseOrder.id, input: { ...command, accountPassword: undefined }, userId: admin.userId });
+    paymentRepository.findByIdempotencyKey.mockResolvedValueOnce(null).mockResolvedValueOnce({ idempotencyFingerprint: fingerprint });
+    repository.update.mockRejectedValueOnce(new Prisma.PrismaClientKnownRequestError('Unique receipt key', { code: 'P2002', clientVersion: 'test' }));
+    await expect(SalesOrdersService.changePayment(baseOrder.id, command, admin, {})).resolves.toMatchObject({ id: baseOrder.id });
+    expect(counterPayment).not.toHaveBeenCalled();
+  });
   beforeEach(() => {
     vi.clearAllMocks();
+    repository.findByIdempotencyKey.mockResolvedValue(null);
+    paymentRepository.findByIdempotencyKey.mockResolvedValue(null);
+    counterPayment.mockResolvedValue({ id: 'counter-payment-id' });
     repository.findActiveCustomer.mockResolvedValue({ id: input.customerId });
     repository.nextOrderNumber.mockResolvedValue('SO-2026-0001');
     repository.create.mockResolvedValue(baseOrder);
@@ -160,7 +178,7 @@ describe('sales order service transaction boundary', () => {
     expect(result.totalAmount).toBe('100.00');
     expect(result.paidAmount).toBe('20.00');
     expect(result.remainingAmount).toBe('80.00');
-    expect(debtService.createDebt).toHaveBeenCalledWith(input.customerId, expect.objectContaining({ amount: '80.00', dueDate: '2026-08-10' }), user, tx);
+    expect(debtService.createDebt).toHaveBeenCalledWith(input.customerId, expect.objectContaining({ amount: '80.00', dueDate: '2026-08-10' }), user, tx, '1.000000');
     expect(audit).toHaveBeenCalledTimes(2);
     expect(audit.mock.calls.map(([entry]) => entry.action)).toEqual([
       SalesAuditAction.LINK_DEBT,
@@ -282,7 +300,7 @@ describe('sales order service transaction boundary', () => {
     });
 
     await SalesOrdersService.changePayment(baseOrder.id, {
-      paidAmount: '300.00',
+      paidAmount: '300.00', idempotencyKey: 'counter-unit-change',
       reason: 'Settle historical invoice',
       accountPassword: 'password',
     }, { ...user, role: 'ADMIN' }, {});
@@ -301,11 +319,13 @@ describe('sales order service transaction boundary', () => {
     expect(audit).not.toHaveBeenCalled();
   });
 
-  it('creates no financial record for a fully-paid cash sale and returns money as strings', async () => {
+  it('creates a recognized Payment but no debt for a fully-paid cash sale and returns money as strings', async () => {
     const paidOrder = { ...baseOrder, paymentStatus: SalesOrderPaymentStatus.PAID, paidAmount: '100.00', remainingAmount: '0.00' };
     repository.create.mockResolvedValueOnce(paidOrder);
     const result = await SalesOrdersService.create({ ...input, paidAmount: '100.00', debtDueDate: null }, user, {});
     expect(debtService.createDebt).not.toHaveBeenCalled();
+    expect(counterPayment).toHaveBeenCalledTimes(1);
+    expect(counterPayment).toHaveBeenCalledWith(tx, expect.objectContaining({ amount: '100.00', customerId: input.customerId, idempotencyKey: 'counter-create:counter-unit-create' }));
     expect(typeof result.totalAmount).toBe('string');
     expect(typeof result.itemsSubtotal).toBe('string');
     expect(typeof result.deliveryFee).toBe('string');
@@ -422,7 +442,8 @@ describe('sales order service transaction boundary', () => {
       input.customerId,
       expect.objectContaining({ amount: '200.00', dueDate: '2026-08-10' }),
       expect.objectContaining({ role: 'ADMIN' }),
-      tx
+      tx,
+      '1.000000'
     );
   });
 
@@ -447,7 +468,8 @@ describe('sales order service transaction boundary', () => {
       input.customerId,
       expect.objectContaining({ amount: '200.00', dueDate: '2026-08-10' }),
       expect.objectContaining({ role: 'ADMIN' }),
-      tx
+      tx,
+      '1.000000'
     );
   });
 
@@ -477,7 +499,8 @@ describe('sales order service transaction boundary', () => {
       input.customerId,
       expect.objectContaining({ amount: '200.00', dueDate: '2026-08-10' }),
       expect.objectContaining({ role: 'ADMIN' }),
-      tx
+      tx,
+      '1.000000'
     );
   });
 
@@ -500,7 +523,8 @@ describe('sales order service transaction boundary', () => {
       input.customerId,
       expect.objectContaining({ amount: '200.00', dueDate: '2026-08-10' }),
       expect.objectContaining({ role: 'ADMIN' }),
-      tx
+      tx,
+      '1.000000'
     );
   });
 

@@ -45,6 +45,7 @@ export interface SalesOrder {
   id: string; orderNumber: string; customerId: string | null; customer: SalesOrderCustomer | null;
   salesChannel: SalesChannel; orderDate: string; deliveryDate: string | null; deliveredAt: string | null;
   fulfillmentStatus: SalesOrderFulfillmentStatus; paymentStatus: SalesOrderPaymentStatus; settlement: SalesOrderSettlement;
+  counterPayments?: Array<{ id: string; voidedAt: string | null }>;
   currency: Currency; exchangeRate: string;
   itemsSubtotal: string; itemsVatAmount: string; subtotalExVat: string;
   deliveryFee: string; deliveryTaxTreatment: DeliveryTaxTreatment; deliveryTaxRateSnapshot: string;
@@ -116,6 +117,9 @@ export interface SalesOrderLineInput {
   quantity: number; unitPrice: string; discountAmount?: string | null; notes?: string | null;
 }
 export interface CreateSalesOrderInput {
+  idempotencyKey?: string;
+  currency?: 'USD' | 'LBP';
+  exchangeRate?: string;
   customerId?: string | null; salesChannel: SalesChannel; orderDate: string;
   fulfillmentStatus?: 'DRAFT' | 'CONFIRMED' | 'DELIVERED'; deliveryDate?: string | null;
   deliveryFee?: string | null; deliveryTaxTreatment?: DeliveryTaxTreatment; deliveryTaxProfileId?: string | null;

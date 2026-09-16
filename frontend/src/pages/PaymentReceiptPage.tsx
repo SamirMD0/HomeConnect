@@ -19,7 +19,7 @@ export function PaymentReceiptPage() {
     <div className="document-route space-y-4">
       <DocumentPrintStyles />
       <div className="no-print mx-auto flex max-w-[210mm] flex-wrap items-center justify-between gap-3">
-        <Link to={`/customers/${receipt.data.customer.id}`} className={buttonClasses('secondary')}><ArrowLeft className="h-4 w-4" /> Customer / الزبون</Link>
+        <Link to={receipt.data.customer ? `/customers/${receipt.data.customer.id}` : receipt.data.sourceSalesOrder ? `/sales-orders/${receipt.data.sourceSalesOrder.id}` : '/ledger'} className={buttonClasses('secondary')}><ArrowLeft className="h-4 w-4" /> Back / رجوع</Link>
         <DocumentActions fileName={`payment-receipt-${receipt.data.id}.pdf`} />
       </div>
       <PaymentReceiptDocument receipt={receipt.data} business={business.data} />

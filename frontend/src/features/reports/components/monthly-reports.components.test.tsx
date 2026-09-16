@@ -101,6 +101,14 @@ describe('monthly report components', () => {
     expect(html).toContain('Include cancelled');
   });
 
+  it('renders a recognized customerless receipt without a customer link or crash', () => {
+    const html = renderToStaticMarkup(<MonthlyActivityReportTable report={{
+      ...activityReport, items: [{ ...activityReport.items[0], customer: null }],
+    }} />);
+    expect(html).toContain('Walk-in / زبون عابر');
+    expect(html).not.toContain('/customers/null');
+  });
+
   it('renders activity summary and activity rows separately', () => {
     const summaryHtml = renderToStaticMarkup(<MonthlyActivitySummaryCards summary={activityReport.summary} />);
     const tableHtml = renderToStaticMarkup(<MonthlyActivityReportTable report={activityReport} />);

@@ -1,4 +1,5 @@
 import {
+  Currency,
   DeliveryTaxTreatment,
   InstallmentPlanFrequency,
   SalesChannel,
@@ -11,6 +12,7 @@ import {
 import { z } from 'zod';
 import { userTextSchema } from '../../../validators/user-text';
 import { databaseUuidSchema } from '../../../validators/database-uuid';
+
 
 const uuidSchema = databaseUuidSchema();
 const dateSchema = z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must use YYYY-MM-DD format');
@@ -43,6 +45,10 @@ function validateItemIdentity(value: { productId?: string | null; manualProductN
 }
 
 const createOrderObject = z.object({
+
+  idempotencyKey: z.string().trim().min(8).max(128).regex(/^[A-Za-z0-9._:-]+$/).optional(),
+  currency: z.nativeEnum(Currency).optional(),
+  exchangeRate: z.string().trim().regex(/^[0-9]+(?:\.[0-9]{1,6})?$/).optional(),
   customerId: uuidSchema.optional().nullable(),
   salesChannel: z.nativeEnum(SalesChannel),
   orderDate: dateSchema,
@@ -64,6 +70,12 @@ const createOrderObject = z.object({
 });
 
 export const createSalesOrderSchema = createOrderObject.superRefine((value, context) => {
+  if (Number(value.paidAmount) > 0 && !value.idempotencyKey) {
+    context.addIssue({ code: 'custom', path: ['idempotencyKey'], message: 'An idempotency key is required for a cash receipt' });
+  }
+  if (value.currency === Currency.LBP && [value.paidAmount, value.deliveryFee, ...value.items.flatMap((i) => [i.unitPrice, i.discountAmount])].some((v) => v && !Number.isInteger(Number(v)))) {
+    context.addIssue({ code: 'custom', path: ['currency'], message: 'LBP amounts must be whole numbers' });
+  }
   if (value.salesChannel === SalesChannel.SHOP_DIRECT && (value.deliveryDate || value.deliveryFee)) {
     context.addIssue({ code: 'custom', path: ['deliveryDate'], message: 'Shop-direct orders cannot contain delivery date or fee' });
   }
@@ -76,6 +88,7 @@ export const createSalesOrderSchema = createOrderObject.superRefine((value, cont
 });
 
 export const updateSalesOrderSchema = z.object({
+
   customerId: uuidSchema.optional().nullable(),
   salesChannel: z.nativeEnum(SalesChannel).optional(),
   orderDate: dateSchema.optional(),
@@ -96,12 +109,14 @@ export const updateSalesOrderSchema = z.object({
 });
 
 export const addSalesOrderItemSchema = itemSchema.and(z.object({
+
   debtDueDate: dateSchema.optional().nullable(),
   reason: reasonSchema.optional(),
   accountPassword: z.string().min(1).optional(),
 }));
 
 export const updateSalesOrderItemSchema = z.object({
+
   productId: uuidSchema.optional().nullable(),
   manualProductName: userTextSchema({ field: 'Manual product name', min: 2, max: 200 }).optional().nullable(),
   manualProductModel: optionalText('Manual product model', 120),
@@ -149,6 +164,7 @@ export const returnSalesOrderSchema = z.object({
 });
 
 export const salesOrderItemActionSchema = z.object({
+
   debtDueDate: dateSchema.optional().nullable(),
   reason: reasonSchema.optional(),
   accountPassword: z.string().min(1).optional(),
@@ -182,6 +198,8 @@ export const restoreSalesOrderSchema = salesOrderActionSchema.extend({
 });
 
 export const changeSalesOrderPaymentSchema = z.object({
+
+  idempotencyKey: z.string().trim().min(8).max(128).regex(/^[A-Za-z0-9._:-]+$/).optional(),
   paidAmount: moneySchema,
   debtDueDate: dateSchema.optional().nullable(),
   reason: reasonSchema,
@@ -189,6 +207,7 @@ export const changeSalesOrderPaymentSchema = z.object({
 });
 
 export const createSalesOrderDebtSchema = z.object({
+
   dueDate: dateSchema,
   description: userTextSchema({ field: 'Description', min: 1, max: 200 }).optional(),
   notes: optionalText('Notes', 1000),

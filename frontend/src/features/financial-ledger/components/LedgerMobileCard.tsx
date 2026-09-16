@@ -65,7 +65,7 @@ export const LedgerMobileCard: React.FC<LedgerMobileCardProps> = ({
           </div>
           <PaymentStatus status={item.status} />
         </div>
-        <p className="mt-2 text-xl font-semibold tabular-nums text-slate-900 transition-colors group-hover:text-yellow-300">{formatMoney(item.amount)}</p>
+        <p className="mt-2 text-xl font-semibold tabular-nums text-slate-900 transition-colors group-hover:text-yellow-300">{formatMoney(item.amount, item.currency)}</p>
         <p className="mt-1 line-clamp-2 text-sm text-slate-600 transition-colors group-hover:text-yellow-200">{paymentDescription(item)}</p>
         <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
           <p className="text-xs text-slate-500 transition-colors group-hover:text-yellow-200">Created {formatDateTime(item.createdAt)}</p>
@@ -73,7 +73,7 @@ export const LedgerMobileCard: React.FC<LedgerMobileCardProps> = ({
             menuKey={`mobile-${item.type}-${item.id}`}
             openMenuKey={openMenuKey}
             actions={
-              canMutate && item.status !== 'VOIDED'
+              canMutate && item.customer && !item.sourceSalesOrderId && item.status !== 'VOIDED'
                 ? [{ label: 'Void payment', onClick: () => onVoidPayment(item), tone: 'cancel' }]
                 : []
             }

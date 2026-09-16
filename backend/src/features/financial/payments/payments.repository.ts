@@ -53,6 +53,7 @@ const receiptAllocationHistory = {
 };
 
 const paymentReceiptInclude = {
+  salesOrder: { select: { id: true, orderNumber: true } },
   customer: {
     select: { id: true, name: true, phone: true, address: true },
   },
@@ -113,6 +114,12 @@ export interface CreateReplacementPaymentData {
 }
 
 export class PaymentsRepository {
+  static findByIdempotencyKey(idempotencyKey: string, tx: FinancialTransactionClient) {
+    return tx.payment.findUnique({ where: { idempotencyKey } });
+  }
+  static createCounterReceipt(tx: FinancialTransactionClient, data: Prisma.PaymentUncheckedCreateInput) {
+    return tx.payment.create({ data });
+  }
   static async findPaymentReceipt(paymentId: string): Promise<PaymentReceiptRecord | null> {
     return prisma.payment.findUnique({ where: { id: paymentId }, include: paymentReceiptInclude });
   }

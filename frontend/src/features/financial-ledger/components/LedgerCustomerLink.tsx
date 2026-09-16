@@ -2,11 +2,11 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 
 interface LedgerCustomerLinkProps {
-  customer: { id: string; name: string };
+  customer: { id: string; name: string } | null;
   className?: string;
 }
 
-export const LedgerCustomerLink: React.FC<LedgerCustomerLinkProps> = ({ customer, className = '' }) => (
+export const LedgerCustomerLink: React.FC<LedgerCustomerLinkProps> = ({ customer, className = '' }) => customer ? (
   <Link
     to={`/customers/${customer.id}`}
     onClick={(event) => event.stopPropagation()}
@@ -16,4 +16,4 @@ export const LedgerCustomerLink: React.FC<LedgerCustomerLinkProps> = ({ customer
   >
     {customer.name}
   </Link>
-);
+) : <span className={`user-text ${className}`} dir="auto">Walk-in / زبون عابر</span>;

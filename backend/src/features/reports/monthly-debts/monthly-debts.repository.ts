@@ -64,6 +64,7 @@ const activityPlanSelect = {
 } satisfies Prisma.InstallmentPlanSelect;
 
 const activityPaymentSelect = {
+  salesOrderId: true,
   id: true,
   customer: { select: customerSelect },
   totalAmount: true,
@@ -147,7 +148,7 @@ export class MonthlyDebtsRepository {
       }),
       prisma.payment.findMany({
         where: {
-          ...customerWhere,
+          ...(params.search ? customerWhere : { OR: [{ customerId: null }, customerWhere] }),
           paymentDate: { gte: params.startDate, lte: params.cutoffDate },
         },
         select: activityPaymentSelect,
@@ -185,7 +186,7 @@ export class MonthlyDebtsRepository {
       prisma.payment.findMany({
         where: {
           ...customerIdWhere,
-          customer: { deletedAt: null },
+          OR: [{ customerId: null }, { customer: { deletedAt: null } }],
           paymentDate: { gte: params.startDate, lte: params.endDate },
         },
         select: activityPaymentSelect,

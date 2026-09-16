@@ -379,7 +379,7 @@ export const LedgerPage: React.FC = () => {
         title="Void Payment / إبطال الدفعة"
         maxWidth="max-w-xl"
       >
-        {paymentForVoid && (
+        {paymentForVoid?.customer && (
           <VoidPaymentDialog
             customerId={paymentForVoid.customer.id}
             payment={{

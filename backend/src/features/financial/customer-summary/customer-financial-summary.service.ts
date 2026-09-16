@@ -141,6 +141,10 @@ interface NextDueView {
 }
 
 interface RecentPaymentView {
+  currency?: Currency;
+  exchangeRate?: string;
+  baseAmount?: string;
+  sourceSalesOrderId?: string | null;
   id: string;
   totalAmount: string;
   paymentDate: string;
@@ -646,7 +650,11 @@ export class CustomerFinancialSummaryService {
   private static toPaymentView(payment: FinancialSummaryPayment): RecentPaymentView {
     return {
       id: payment.id,
-      totalAmount: moneyToApiString(payment.totalAmount),
+      totalAmount: moneyToApiString(payment.totalAmount, payment.currency),
+      currency: payment.currency,
+      exchangeRate: payment.exchangeRate?.toFixed(6) ?? '1.000000',
+      baseAmount: moneyToApiString(payment.baseAmount ?? payment.totalAmount),
+      sourceSalesOrderId: payment.salesOrderId ?? null,
       paymentDate: prismaDateToBusinessDate(payment.paymentDate),
       paymentMethod: payment.paymentMethod,
       reference: payment.reference,

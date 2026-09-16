@@ -83,7 +83,7 @@ export class CustomerAnalyticsRepository {
         }),
         prisma.payment.findMany({
           where: {
-            customer: customerWhere,
+            OR: [{ customerId: null }, { customer: customerWhere }],
             voidedAt: null,
             paymentDate: { gte: historyDate, lt: historyEnd },
           },

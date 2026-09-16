@@ -6,6 +6,7 @@ import {
   FinancialCorrectionRecordType,
   PaymentMethod,
 } from '@prisma/client';
+import { parseExchangeRate } from '../domain/money';
 import { Decimal } from '@prisma/client/runtime/library';
 import { NotFoundError, ValidationError } from '../../../lib/errors';
 import {
@@ -204,7 +205,8 @@ export class DebtsService {
     customerId: string,
     input: CreateDebtInput,
     user: AuthenticatedUser,
-    tx?: FinancialTransactionClient
+    tx?: FinancialTransactionClient,
+    originalExchangeRate?: string
   ): Promise<DebtView> {
     const customer = tx
       ? await DebtsRepository.findActiveCustomerById(customerId, tx)
@@ -225,7 +227,7 @@ export class DebtsService {
       overdueEligible: true,
     });
 
-    const exchangeRate = await ExchangeRatesService.snapshotFor(
+    const exchangeRate = originalExchangeRate ? parseExchangeRate(originalExchangeRate) : await ExchangeRatesService.snapshotFor(
       currency,
       new Date(),
       tx

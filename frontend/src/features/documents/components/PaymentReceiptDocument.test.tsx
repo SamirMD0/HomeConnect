@@ -4,7 +4,8 @@ import type { BusinessSettings, PaymentReceipt } from '../types/document.types';
 import { PaymentReceiptDocument } from './PaymentReceiptDocument';
 
 const business: BusinessSettings = {
-  id: 'primary', returnWindowDays: 14,
+  returnWindowDays: 14,
+  id: 'primary',
   shopName: 'Home Connect هوم كونكت',
   address: 'Beirut / بيروت',
   phone: '01 234 567',
@@ -46,6 +47,20 @@ const receipt: PaymentReceipt = {
 };
 
 describe('PaymentReceiptDocument', () => {
+  it('prints a walk-in receipt through the same document with immutable sale VAT and balance values', () => {
+    const html = renderToStaticMarkup(<PaymentReceiptDocument business={business} receipt={{
+      ...receipt, customer: null, allocations: [], remainingBalances: [],
+      sourceSalesOrder: { id: 'sale-1', orderNumber: 'SO-2026-1000' },
+      sourceSnapshot: { subtotalExVat: '90.09', vatAmount: '9.91', totalAmount: '100.00',
+        remainingAmount: '75.00', paymentStatus: 'PARTIALLY_PAID' },
+    }} />);
+    expect(html).toContain('Walk-in / زبون عابر');
+    expect(html).toContain('SO-2026-1000');
+    expect(html).toContain('data-api-value="9.91"');
+    expect(html).toContain('data-api-value="75.00"');
+    expect(html).not.toContain('VOID / ملغاة');
+  });
+
   it('matches the bilingual receipt snapshot and prints split API allocations', () => {
     const html = renderToStaticMarkup(<PaymentReceiptDocument receipt={receipt} business={business} />);
     expect(html).toMatchSnapshot();

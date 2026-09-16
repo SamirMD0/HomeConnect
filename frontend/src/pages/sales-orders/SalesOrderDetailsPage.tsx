@@ -1,5 +1,4 @@
-import { SalesReturnDialog } from '../../features/sales-orders/components/SalesReturnDialog';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { ArrowLeft, Edit3, FileText, History, Plus, RotateCcw, ShoppingCart, Trash2, Truck, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Link, useParams } from 'react-router-dom';
@@ -12,6 +11,7 @@ import { ProductLinePicker } from '../../features/sales-orders/components/Produc
 import { SalesChannelChip } from '../../features/sales-orders/components/SalesChannelChip';
 import { SalesOrderAuditList } from '../../features/sales-orders/components/SalesOrderAuditList';
 import { SalesOrderInventoryPanel } from '../../features/sales-orders/components/SalesOrderInventoryPanel';
+import { SalesReturnDialog } from '../../features/sales-orders/components/SalesReturnDialog';
 import { SalesOrderStatusChip } from '../../features/sales-orders/components/SalesOrderStatusChip';
 import { emptySalesLine } from '../../features/sales-orders/components/SalesOrderItemsEditor';
 import { useSalesOrder, useSalesOrderAction, useUpdateSalesOrder } from '../../features/sales-orders/hooks/useSalesOrders';
@@ -26,6 +26,7 @@ export function SalesOrderDetailsPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
   const orderQuery = useSalesOrder(id);
+  const receiptKey = useRef(crypto.randomUUID());
   const [dialog, setDialog] = useState<Dialog>(null);
   const [selectedItem, setSelectedItem] = useState<SalesOrderItem | null>(null);
   const [reason, setReason] = useState(''); const [password, setPassword] = useState('');
@@ -50,7 +51,7 @@ export function SalesOrderDetailsPage() {
   const isFinal = ['PARTIALLY_RETURNED', 'CANCELLED', 'RETURNED'].includes(order.fulfillmentStatus);
   const canEditItems = !isFinal && (order.fulfillmentStatus === 'DRAFT' || isAdmin);
   const next = order.salesChannel === 'SHOP_DIRECT' && order.fulfillmentStatus === 'CONFIRMED' ? 'DELIVERED' : NEXT_FULFILLMENT_STATUS[order.fulfillmentStatus];
-  const close = () => { setDialog(null); setReason(''); setPassword(''); setDueDate(''); setSelectedItem(null); setLine(emptySalesLine()); };
+  const close = () => {  receiptKey.current = crypto.randomUUID(); setDialog(null); setReason(''); setPassword(''); setDueDate(''); setSelectedItem(null); setLine(emptySalesLine()); };
   const run = async () => {
     try {
       if (dialog === 'cancel') await cancelMutation.mutateAsync({ reason, accountPassword: password });
@@ -58,13 +59,13 @@ export function SalesOrderDetailsPage() {
       if (dialog === 'debt') await debtMutation.mutateAsync({ dueDate });
       if (dialog === 'installment') await installmentMutation.mutateAsync({ startDate: dueDate, installmentCount: count, frequency: 'MONTHLY' });
       if (dialog === 'unlink') await unlinkMutation.mutateAsync({ reason, accountPassword: password });
-      if (dialog === 'payment') await paymentMutation.mutateAsync({ paidAmount, debtDueDate: dueDate || null, reason, accountPassword: password });
+      if (dialog === 'payment') await paymentMutation.mutateAsync({ idempotencyKey: receiptKey.current, paidAmount, debtDueDate: dueDate || null, reason, accountPassword: password });
       if (dialog === 'edit-details') await updateMutation.mutateAsync({ notes: notes || null });
-      if (dialog === 'add-item') await addItemMutation.mutateAsync({ ...line, ...(dueDate ? { debtDueDate: dueDate } : {}), ...(order.fulfillmentStatus !== 'DRAFT' ? { reason, accountPassword: password } : {}) });
-      if (dialog === 'edit-item' && selectedItem) await itemMutation.mutateAsync({ itemId: selectedItem.id, data: { ...line, ...(dueDate ? { debtDueDate: dueDate } : {}), ...(order.fulfillmentStatus !== 'DRAFT' ? { reason, accountPassword: password } : {}) } });
+      if (dialog === 'add-item') await addItemMutation.mutateAsync({ ...line,  ...(dueDate ? { debtDueDate: dueDate } : {}), ...(order.fulfillmentStatus !== 'DRAFT' ? { reason, accountPassword: password } : {}) });
+      if (dialog === 'edit-item' && selectedItem) await itemMutation.mutateAsync({ itemId: selectedItem.id, data: { ...line,  ...(dueDate ? { debtDueDate: dueDate } : {}), ...(order.fulfillmentStatus !== 'DRAFT' ? { reason, accountPassword: password } : {}) } });
       if (dialog === 'remove-item' && selectedItem) await removeItemMutation.mutateAsync({ itemId: selectedItem.id, data: order.fulfillmentStatus === 'DRAFT' ? {} : { ...(dueDate ? { debtDueDate: dueDate } : {}), reason, accountPassword: password } });
       toast.success('Sales order updated'); close();
-    } catch { toast.error('Unable to update sales order'); }
+    } catch (error) { toast.error('Unable to update sales order'); }
   };
   const openItem = (mode: Dialog, item?: SalesOrderItem) => { setDueDate(''); setSelectedItem(item ?? null); if (item) setLine({ productId: item.productId, manualProductName: item.manualProductName, manualProductModel: item.manualProductModel, quantity: item.quantity, unitPrice: item.unitPrice, discountAmount: item.discountAmount, notes: item.notes }); else setLine(emptySalesLine()); setDialog(mode); };
   const openPayment = () => { setPaidAmount(order.paidAmount); setDueDate(''); setDialog('payment'); };
@@ -73,9 +74,9 @@ export function SalesOrderDetailsPage() {
   const itemColumns = [
     { header: 'Product', accessor: (item: SalesOrderItem) => <div dir="auto"><p className="user-text font-medium">{item.productNameSnapshot}</p><p className="user-text text-xs text-slate-500">{item.productModelSnapshot ?? item.skuSnapshot ?? ''}</p></div> },
     { header: 'Qty', accessor: (item: SalesOrderItem) => item.quantity },
-    { header: 'Unit price', accessor: (item: SalesOrderItem) => formatMoney(item.unitPrice) },
-    { header: 'Discount', accessor: (item: SalesOrderItem) => formatMoney(item.discountAmount) },
-    { header: 'Line total', accessor: (item: SalesOrderItem) => <strong>{formatMoney(item.lineTotal)}</strong> },
+    { header: 'Unit price', accessor: (item: SalesOrderItem) => formatMoney(item.unitPrice, order.currency) },
+    { header: 'Discount', accessor: (item: SalesOrderItem) => formatMoney(item.discountAmount, order.currency) },
+    { header: 'Line total', accessor: (item: SalesOrderItem) => <strong>{formatMoney(item.lineTotal, order.currency)}</strong> },
     ...(canEditItems ? [{ header: 'Actions', accessor: (item: SalesOrderItem) => {
       const stockLocked = item.inventory?.state === 'ALREADY_DEDUCTED';
       return <div className="flex gap-1"><Button disabled={stockLocked} title={stockLocked ? 'Restore stock before editing' : undefined} size="sm" variant="ghost" icon={<Edit3 />} onClick={(event) => { event.stopPropagation(); openItem('edit-item', item); }}>Edit</Button><Button disabled={stockLocked} title={stockLocked ? 'Restore stock before removing' : undefined} size="sm" variant="ghost" icon={<Trash2 />} onClick={(event) => { event.stopPropagation(); openItem('remove-item', item); }}>Remove</Button></div>;
@@ -85,10 +86,11 @@ export function SalesOrderDetailsPage() {
 
   return <div className="space-y-6">
     <Link to="/sales-orders" className={buttonClasses('link')}><ArrowLeft className="h-4 w-4" /> Back to Sales Orders</Link>
-    <PageHeader title={order.orderNumber} description={`Created ${formatBusinessDate(order.orderDate)} by ${order.createdBy.fullName}`} icon={<ShoppingCart />} actions={<><Link to={`/sales-orders/${order.id}/invoice`} className={buttonClasses('secondary')}><FileText className="h-4 w-4" /> Invoice / فاتورة</Link>{next && !isFinal && <Button icon={<Truck />} isLoading={statusMutation.isPending} onClick={advance}>Advance status</Button>}{isAdmin && !isFinal && <Button variant="danger" icon={<XCircle />} onClick={() => setDialog('cancel')}>Remove / إزالة</Button>}{isAdmin && isFinal && !(order.returns?.length) && <Button variant="secondary" icon={<RotateCcw />} onClick={() => setDialog('restore')}>Restore</Button>}{isAdmin && ['DELIVERED', 'PARTIALLY_RETURNED'].includes(order.fulfillmentStatus) && <Button variant="secondary" onClick={() => setDialog('return')}>Return</Button>}</>} />
+    <PageHeader title={order.orderNumber} description={`Created ${formatBusinessDate(order.orderDate)} by ${order.createdBy.fullName}`} icon={<ShoppingCart />} actions={<><Link to={`/sales-orders/${order.id}/invoice`} className={buttonClasses('secondary')}><FileText className="h-4 w-4" /> Invoice / فاتورة</Link>{next && !isFinal && <Button icon={<Truck />} isLoading={statusMutation.isPending} onClick={advance}>Advance status</Button>}{isAdmin && !isFinal && <Button variant="danger" icon={<XCircle />} onClick={() => setDialog('cancel')}>Remove / إزالة</Button>}{isAdmin && isFinal && (order.returns ?? []).length === 0 && <Button variant="secondary" icon={<RotateCcw />} onClick={() => setDialog('restore')}>Restore</Button>}{isAdmin && ['DELIVERED', 'PARTIALLY_RETURNED'].includes(order.fulfillmentStatus) && <Button variant="secondary" onClick={() => setDialog('return')}>Return</Button>}</>} />
     <div className="flex flex-wrap gap-2"><SalesChannelChip channel={order.salesChannel} /><SalesOrderStatusChip status={order.fulfillmentStatus} /></div>
-    <div className="grid gap-6 lg:grid-cols-3"><div className="space-y-6 lg:col-span-2"><Card><CardHeader title="Customer / الزبون" />{order.customer ? <><Link to={`/customers/${order.customer.id}`} className="user-text font-semibold text-brand-700" dir="auto">{order.customer.name}</Link><p className="text-sm text-slate-500">{order.customer.phone}</p></> : <p className="text-sm font-medium text-slate-600">Customer</p>}</Card><Card><CardHeader title="Items / الأصناف" action={canEditItems ? <Button size="sm" variant="secondary" icon={<Plus />} onClick={() => openItem('add-item')}>Add item</Button> : undefined} /><Table data={order.items} columns={itemColumns} keyExtractor={(item) => item.id} /><div className="mt-4 flex justify-end"><dl className="grid grid-cols-2 gap-x-8 gap-y-1 text-sm"><dt>Subtotal</dt><dd className="text-right tabular-nums">{formatMoney(order.itemsSubtotal)}</dd><dt>Delivery</dt><dd className="text-right tabular-nums">{formatMoney(order.deliveryFee)}</dd><dt className="font-semibold">Total</dt><dd className="text-right font-semibold tabular-nums">{formatMoney(order.totalAmount)}</dd></dl></div></Card><SalesOrderInventoryPanel order={order} isAdmin={isAdmin} /><PaymentSummaryCard order={order} actions={paymentActions} /><Card><CardHeader title="Notes / ملاحظات" action={!isFinal ? <Button size="sm" variant="secondary" icon={<Edit3 />} onClick={openDetails}>Edit</Button> : undefined} /><p className="user-text whitespace-pre-wrap text-sm text-slate-700" dir="auto">{order.notes || 'No notes.'}</p></Card>{isAdmin && <Card><CardHeader title="History / السجل" icon={<History />} /><SalesOrderAuditList salesOrderId={order.id} /></Card>}</div><aside><DeliveryCard order={order} /></aside></div>
-    {dialog === 'return' ? <SalesReturnDialog order={order} onClose={close} /> : <ActionDialog dialog={dialog} close={close} run={run} loading={[cancelMutation, restoreMutation, debtMutation, installmentMutation, unlinkMutation, paymentMutation, updateMutation, addItemMutation, itemMutation, removeItemMutation].some((mutation) => mutation.isPending)} reason={reason} setReason={setReason} password={password} setPassword={setPassword} dueDate={dueDate} setDueDate={setDueDate} count={count} setCount={setCount} paidAmount={paidAmount} setPaidAmount={setPaidAmount} notes={notes} setNotes={setNotes} line={line} setLine={setLine} requiresAdmin={order.fulfillmentStatus !== 'DRAFT'} />}
+    <div className="grid gap-6 lg:grid-cols-3"><div className="space-y-6 lg:col-span-2"><Card><CardHeader title="Customer / الزبون" />{order.customer ? <><Link to={`/customers/${order.customer.id}`} className="user-text font-semibold text-brand-700" dir="auto">{order.customer.name}</Link><p className="text-sm text-slate-500">{order.customer.phone}</p></> : <p className="text-sm font-medium text-slate-600">Customer</p>}</Card><Card><CardHeader title="Items / الأصناف" action={canEditItems ? <Button size="sm" variant="secondary" icon={<Plus />} onClick={() => openItem('add-item')}>Add item</Button> : undefined} /><Table data={order.items} columns={itemColumns} keyExtractor={(item) => item.id} /><div className="mt-4 flex justify-end"><dl className="grid grid-cols-2 gap-x-8 gap-y-1 text-sm"><dt>Subtotal</dt><dd className="text-right tabular-nums">{formatMoney(order.itemsSubtotal, order.currency)}</dd><dt>Delivery</dt><dd className="text-right tabular-nums">{formatMoney(order.deliveryFee, order.currency)}</dd><dt className="font-semibold">Total</dt><dd className="text-right font-semibold tabular-nums">{formatMoney(order.totalAmount, order.currency)}</dd></dl></div></Card><SalesOrderInventoryPanel order={order} isAdmin={isAdmin} /><PaymentSummaryCard order={order} actions={paymentActions} /><Card><CardHeader title="Notes / ملاحظات" action={!isFinal ? <Button size="sm" variant="secondary" icon={<Edit3 />} onClick={openDetails}>Edit</Button> : undefined} /><p className="user-text whitespace-pre-wrap text-sm text-slate-700" dir="auto">{order.notes || 'No notes.'}</p></Card>{isAdmin && <Card><CardHeader title="History / السجل" icon={<History />} /><SalesOrderAuditList salesOrderId={order.id} /></Card>}</div><aside><DeliveryCard order={order} /></aside></div>
+    {dialog === 'return' && <SalesReturnDialog order={order} onClose={close} />}
+    <ActionDialog dialog={dialog === 'return' ? null : dialog} close={close} run={run} loading={[cancelMutation, restoreMutation, debtMutation, installmentMutation, unlinkMutation, paymentMutation, updateMutation, addItemMutation, itemMutation, removeItemMutation].some((mutation) => mutation.isPending)} reason={reason} setReason={setReason} password={password} setPassword={setPassword} dueDate={dueDate} setDueDate={setDueDate} count={count} setCount={setCount} paidAmount={paidAmount} setPaidAmount={setPaidAmount} notes={notes} setNotes={setNotes} line={line} setLine={setLine} requiresAdmin={order.fulfillmentStatus !== 'DRAFT'} />
   </div>;
 }
 

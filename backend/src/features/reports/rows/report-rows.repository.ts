@@ -84,6 +84,8 @@ export class ReportRowsRepository {
       select: {
         id: true, totalAmount: true, paymentDate: true, paymentMethod: true,
         reference: true, notes: true,
+        currency: true, exchangeRate: true, baseAmount: true,
+        salesOrder: { select: { id: true, orderNumber: true } },
         customer: { select: { id: true, name: true, phone: true } },
         createdBy: { select: { fullName: true, username: true } },
       },

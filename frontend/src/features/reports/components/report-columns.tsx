@@ -30,7 +30,7 @@ export function columnsFor(slice: ReportSlice): ReportColumn[] {
   ];
   if (slice === 'customers-payments') return [
     text('Date / التاريخ', 'paymentDate'), partyLink('Customer / الزبون', 'customer', '/customers/'),
-    money('Amount / المبلغ', 'amount'), text('Method / الطريقة', 'paymentMethod'),
+    { label: 'Amount / المبلغ', numeric: true, render: (row) => formatMoney(String(record(row).amount), record(row).currency === 'LBP' ? 'LBP' : 'USD') }, text('Currency / العملة', 'currency'), text('Method / الطريقة', 'paymentMethod'),
     text('Reference / المرجع', 'reference'),
   ];
   if (slice === 'customers-aging') return [
@@ -305,7 +305,7 @@ function partyLink(label: string, key: string, base: string): ReportColumn {
       const party = record(row)[key] as Record<string, unknown> | null;
       return party?.id
         ? <Link to={`${base}${party.id}`} className="user-text font-semibold text-emerald-700 hover:underline" dir="auto">{display(party.name)}</Link>
-        : '—';
+        : key === 'customer' ? 'Walk-in / زبون عابر' : '—';
     },
   };
 }

@@ -183,11 +183,13 @@ export class ReportRowsService {
     if (slice === 'customers-payments') {
       const records = await ReportRowsRepository.customerPayments(period);
       const rows = records.map((record) => ({
-        id: record.id, customer: record.customer, amount: moneyToApiString(record.totalAmount),
+        id: record.id, customer: record.customer, amount: moneyToApiString(record.totalAmount, record.currency),
+        currency: record.currency, exchangeRate: record.exchangeRate?.toFixed(6) ?? '1.000000',
+        baseAmount: moneyToApiString(record.baseAmount ?? record.totalAmount), sourceSalesOrder: record.salesOrder ?? null,
         paymentDate: prismaDateToBusinessDate(record.paymentDate), paymentMethod: record.paymentMethod,
         reference: record.reference, notes: record.notes, receivedBy: record.createdBy,
       }));
-      return { summary: { count: rows.length, totalAmount: moneyToApiString(sumMoney(records.map((record) => record.totalAmount))) }, rows };
+      return { summary: { count: rows.length, totalAmount: moneyToApiString(sumMoney(records.map((record) => record.baseAmount ?? record.totalAmount))) }, rows };
     }
 
     if (slice === 'customers-aging') {
@@ -520,7 +522,7 @@ function csvDefinition(slice: ReportSlice, rows: Array<Record<string, unknown>>)
   const definitions: Record<ReportSlice, { headers: string[]; values: (row: Record<string, unknown>) => CsvValue[] }> = {
     'customers-new': { headers: ['Date', 'Customer', 'Phone', 'Active'], values: (r) => [r.createdOn as string, r.name as string, r.phone as string, r.isActive as boolean] },
     'customers-debts': { headers: ['Customer', 'Phone', 'Outstanding', 'Due by cutoff', 'Overdue', 'Last payment'], values: (r) => { const c = r.customer as Record<string, unknown>; return [c.name as string, c.phone as string, r.totalOutstanding as string, r.amountDueByCutoff as string, r.overdueAmountAtCutoff as string, r.lastPaymentDate as string | null]; } },
-    'customers-payments': { headers: ['Date', 'Customer', 'Phone', 'Amount', 'Method', 'Reference'], values: (r) => { const c = r.customer as Record<string, unknown>; return [r.paymentDate as string, c.name as string, c.phone as string, r.amount as string, r.paymentMethod as string, r.reference as string | null]; } },
+    'customers-payments': { headers: ['Date', 'Customer', 'Phone', 'Amount', 'Currency', 'Exchange rate', 'Base USD', 'Method', 'Reference'], values: (r) => { const c = r.customer as Record<string, unknown> | null; return [r.paymentDate as string, c?.name as string ?? 'Walk-in / زبون عابر', c?.phone as string ?? '', r.amount as string, r.currency as string, r.exchangeRate as string, r.baseAmount as string, r.paymentMethod as string, r.reference as string | null]; } },
     'customers-aging': { headers: ['Customer', 'Phone', 'Reference', 'Created', 'Due', 'Original', 'Paid', 'Remaining', 'Days unpaid', 'Bucket', 'Last payment', 'Status'], values: (r) => { const c = r.customer as Record<string, unknown>; return [c.name as string, c.phone as string, r.reference as string | null, r.createdOn as string, r.dueDate as string, r.originalAmount as string, r.paidAmount as string, r.remainingAmount as string, r.daysUnpaid as number, r.bucket as string, r.lastPaymentDate as string | null, r.status as string]; } },
     'customers-not-paid': { headers: movementCsvHeaders, values: movementCsvRow },
     'customers-paid': { headers: movementCsvHeaders, values: movementCsvRow },

@@ -1,5 +1,6 @@
 import {
   Currency,
+  Prisma,
   DebtKind,
   DebtStatus,
   FinancialCorrectionAction,
@@ -46,7 +47,7 @@ interface AuthenticatedUser {
 
 interface PaymentCorrectionResult {
   paymentId: string;
-  customerId: string;
+  customerId: string | null;
   action: FinancialCorrectionAction;
   replacementPaymentId: string | null;
   voidedAt: string | null;
@@ -54,7 +55,9 @@ interface PaymentCorrectionResult {
 
 export interface PaymentReceiptView {
   id: string;
-  customer: { id: string; name: string; phone: string; address: string | null };
+  customer: { id: string; name: string; phone: string; address: string | null } | null;
+  sourceSalesOrder?: { id: string; orderNumber: string } | null;
+  sourceSnapshot?: Prisma.JsonValue | null;
   totalAmount: string;
   currency: Currency;
   exchangeRate: string;
@@ -141,6 +144,8 @@ export class PaymentsService {
     return {
       id: payment.id,
       customer: payment.customer,
+      sourceSalesOrder: payment.salesOrder ?? null,
+      sourceSnapshot: payment.sourceSnapshot ?? null,
       totalAmount: moneyToApiString(payment.totalAmount, payment.currency),
       currency: payment.currency,
       exchangeRate: payment.exchangeRate.toFixed(6),
@@ -210,6 +215,7 @@ export class PaymentsService {
         throw new NotFoundError('Payment not found');
       }
       this.assertPaymentNotUsedForReturn(payment);
+      if (payment.salesOrderId) throw new ValidationError('Counter receipts require an audited sale correction; standalone void is not supported');
 
       assertCanVoidPayment({
         isVoided: Boolean(payment.voidedAt),
@@ -291,6 +297,7 @@ export class PaymentsService {
         throw new ValidationError('Voided payments cannot be corrected');
       }
       this.assertPaymentNotUsedForReturn(payment);
+      if (payment.salesOrderId) throw new ValidationError('Counter receipt snapshots cannot be rewritten by a standalone payment correction');
       const correctedAmount = correctedAmountInput
         ? assertPositiveMoney(correctedAmountInput, payment.currency ?? Currency.USD)
         : null;
@@ -370,6 +377,7 @@ export class PaymentsService {
         throw new ValidationError('Voided payments cannot be reallocated');
       }
       this.assertPaymentNotUsedForReturn(payment);
+      if (payment.salesOrderId) throw new ValidationError('Counter cash is not an allocation against unrelated customer debt');
       if (payment.allocations.some((allocation) =>
         !(allocation.exchangeRate ?? new Decimal(1)).equals(1)
         || !(allocation.paymentAmount ?? allocation.amount).equals(allocation.amount))) {
@@ -492,7 +500,7 @@ export class PaymentsService {
     await this.recomputeAffectedStatuses(tx, affected, null);
 
     const replacement = await PaymentsRepository.createReplacementPayment(tx, {
-      customerId: payment.customerId,
+      customerId: requireNamedPaymentCustomer(payment),
       totalAmount: correctedAmount,
       currency: paymentCurrency,
       exchangeRate: paymentExchangeRate,
@@ -826,4 +834,9 @@ export class PaymentsService {
   private static toReceiptUser(user: { id: string; fullName: string; username: string }) {
     return { id: user.id, name: user.fullName, username: user.username };
   }
+}
+
+function requireNamedPaymentCustomer(payment: { customerId: string | null }): string {
+  if (!payment.customerId) throw new ValidationError('A receivable payment must have a real customer');
+  return payment.customerId;
 }

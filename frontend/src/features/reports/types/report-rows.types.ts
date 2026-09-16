@@ -20,7 +20,7 @@ export interface NamedParty { id: string; name: string; phone?: string; companyN
 export type ReportRow =
   | { id: string; name: string; phone: string; isActive: boolean; createdOn: string }
   | { customer: NamedParty; totalOutstanding: string; amountDueByCutoff: string; overdueAmountAtCutoff: string; lastPaymentDate: string | null }
-  | { id: string; customer: NamedParty; amount: string; paymentDate: string; paymentMethod: string; reference: string | null }
+  | { id: string; customer: NamedParty | null; amount: string; currency?: 'USD' | 'LBP'; exchangeRate?: string; baseAmount?: string; sourceSalesOrder?: { id: string; orderNumber: string } | null; paymentDate: string; paymentMethod: string; reference: string | null }
   | { id: string; supplier: NamedParty; type: string; direction: string; amount: string; transactionDate: string; description: string; reference: string | null; receiptNumber: string | null }
   | { id: string; supplier: NamedParty | null; referenceNumber: string | null; receivedOn: string; status: string; lineCount: number; totalQuantity: number; linkedDebt: { id: string; amount: string } | null }
   | { id: string; orderNumber: string; orderDate: string; customer: NamedParty | null; paymentStatus: string; fulfillmentStatus: string; totalAmount: string; paidAmount: string; remainingAmount: string }

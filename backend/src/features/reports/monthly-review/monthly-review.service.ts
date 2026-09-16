@@ -109,6 +109,7 @@ export class MonthlyReviewService {
       ['Customers', 'Opening receivable', customers.movement.opening],
       ['Customers', 'New debt', customers.movement.newAmount],
       ['Customers', 'Collected', customers.movement.collected],
+      ...(customers.movement.nonReceivableCollected ? [['Customers', 'Counter cash (not receivable)', customers.movement.nonReceivableCollected]] : []),
       ['Customers', 'Return credits', customers.movement.returnCredits ?? '0.00'],
       ['Customers', 'Adjustments', customers.movement.adjustments],
       ['Customers', 'Closing receivable', customers.movement.closing],

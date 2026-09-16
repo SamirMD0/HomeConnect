@@ -173,7 +173,7 @@ export class FinancialLedgerRepository {
         : {}),
     };
     const paymentWhere: Prisma.PaymentWhereInput = {
-      ...customerWhere,
+      OR: [{ customerId: null }, customerWhere],
       ...customerSearchWhere,
       ...(params.customerId ? { customerId: params.customerId } : {}),
       ...(!params.includeCancelled ? { voidedAt: null } : {}),

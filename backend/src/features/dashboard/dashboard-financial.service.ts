@@ -80,7 +80,7 @@ export class DashboardFinancialService {
       const date = prismaDateToBusinessDate(record.returnDate);
       return date >= from && date <= to;
     }).map((record) => record.baseReceivableReliefAmount));
-    const receivablePayments = records.payments;
+    const receivablePayments = records.payments.filter((payment) => !payment.salesOrderId);
     const paymentsToday = this.paymentTotalForDateRange(records.payments, businessDate, businessDate);
     const paymentsThisMonth = this.paymentTotalForDateRange(records.payments, monthStart, businessDate);
     const obligationsCreatedToday = this.obligationCreatedTotal(records.debts, records.plans, businessDate);

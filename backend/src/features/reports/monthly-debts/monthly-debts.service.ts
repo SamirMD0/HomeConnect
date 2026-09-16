@@ -102,7 +102,7 @@ export class MonthlyDebtsService {
       filename: `monthly-financial-activity-${query.month}.csv`,
       csv: buildCsv(
         ['Date', 'Customer', 'Phone', 'Type', 'Description', 'Amount'],
-        report.items.map((item) => [item.date, item.customer?.name ?? 'Walk-in customer', item.customer?.phone ?? '', item.type, item.description, item.amount])
+        report.items.map((item) => [item.date, item.customer?.name ?? 'Walk-in / زبون عابر', item.customer?.phone ?? '', item.type, item.description, item.amount])
       ),
     };
   }
@@ -154,15 +154,16 @@ export class MonthlyDebtsService {
     const newSingleDebtAmount = sumMoney(standardDebts.map((debt) => debt.baseOriginalAmount ?? debt.originalAmount));
     const newInstallmentPlanAmount = sumMoney(records.plans.map((plan) => plan.baseTotalAmount ?? plan.totalAmount));
     const paymentsReceived = sumMoney(validPayments.map((payment) => payment.baseAmount ?? payment.totalAmount));
+    const counterReceipts = sumMoney(validPayments.filter((payment) => payment.salesOrderId).map((payment) => payment.baseAmount ?? payment.totalAmount));
     const netFinancialChange = subtractMoney(
       sumMoney([newSingleDebtAmount, newInstallmentPlanAmount]),
-      sumMoney([paymentsReceived, returnCredits])
+      sumMoney([subtractMoney(paymentsReceived, counterReceipts), returnCredits])
     );
     const affectedCustomerIds = new Set<string>([
       ...returns.flatMap((record) => record.customer ? [record.customer.id] : []),
       ...standardDebts.map((debt) => debt.customer.id),
       ...records.plans.map((plan) => plan.customer.id),
-      ...validPayments.map((payment) => payment.customer.id),
+      ...validPayments.flatMap((payment) => payment.customer ? [payment.customer.id] : []),
     ]);
 
     const page = query.page;
@@ -179,6 +180,7 @@ export class MonthlyDebtsService {
         newSingleDebtAmount: moneyToApiString(newSingleDebtAmount),
         newInstallmentPlanAmount: moneyToApiString(newInstallmentPlanAmount),
         paymentsReceived: moneyToApiString(paymentsReceived),
+        counterReceipts: moneyToApiString(counterReceipts),
         returnCredits: moneyToApiString(returnCredits),
         cashRefunds: moneyToApiString(cashRefunds),
         storeCreditIssued: moneyToApiString(storeCreditIssued),
@@ -208,6 +210,7 @@ export class MonthlyDebtsService {
     const buckets = new Map<string, CustomerBucket>();
 
     for (const payment of records.paymentsThroughCutoff) {
+      if (!payment.customer) continue;
       if (!this.paymentValidAtCutoff(payment, boundaries.nextDayAfterEnd)) continue;
       const bucket = this.getBucket(buckets, payment.customer);
       const paymentDate = prismaDateToBusinessDate(payment.paymentDate);

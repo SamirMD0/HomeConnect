@@ -6,6 +6,10 @@ import { DocumentMoney } from './DocumentMoney';
 
 const labels = {
   receipt: { en: 'PAYMENT RECEIPT', ar: 'إيصال دفع' },
+  sourceSale: { en: 'Source sale', ar: 'عملية البيع الأصلية' },
+  subtotal: { en: 'Sale subtotal before VAT', ar: 'المجموع قبل الضريبة' },
+  vat: { en: 'Sale VAT', ar: 'ضريبة البيع' },
+  saleTotal: { en: 'Sale total including VAT', ar: 'إجمالي البيع مع الضريبة' },
   receiptNumber: { en: 'Receipt no.', ar: 'رقم الإيصال' },
   date: { en: 'Date', ar: 'التاريخ' },
   currency: { en: 'Currency', ar: 'العملة' },
@@ -58,14 +62,15 @@ export function PaymentReceiptDocument({ receipt, business }: { receipt: Payment
       <section className="document-info-grid">
         <div>
           <BilingualLabel compact label={labels.customer} className="document-section-label" />
-          <p className="user-text mt-2 font-bold" dir="auto">{receipt.customer.name}</p>
-          <p className="mt-1 text-sm" dir="ltr">{receipt.customer.phone}</p>
-          <p className="user-text-pre mt-1 text-sm" dir="auto">{receipt.customer.address ?? '[Address not available / العنوان غير متوفر]'}</p>
+          <p className="user-text mt-2 font-bold" dir="auto">{receipt.customer?.name ?? 'Walk-in / زبون عابر'}</p>
+          <p className="mt-1 text-sm" dir="ltr">{receipt.customer?.phone ?? '—'}</p>
+          <p className="user-text-pre mt-1 text-sm" dir="auto">{receipt.customer?.address ?? '[Address not available / العنوان غير متوفر]'}</p>
         </div>
         <dl className="document-facts">
           <Fact label={labels.amountReceived}><DocumentMoney field="totalAmount" value={receipt.totalAmount} currency={receipt.currency} /></Fact>
           <Fact label={labels.paymentMethod}><span>{paymentMethodLabels[receipt.paymentMethod]}</span></Fact>
           {receipt.reference && <Fact label={labels.reference}><span className="user-text" dir="auto">{receipt.reference}</span></Fact>}
+          {receipt.sourceSalesOrder && <Fact label={labels.sourceSale}><span dir="ltr">{receipt.sourceSalesOrder.orderNumber}</span></Fact>}
           <Fact label={labels.receivedBy}><span className="user-text" dir="auto">{receipt.receivedBy.name}</span></Fact>
         </dl>
       </section>
@@ -88,6 +93,10 @@ export function PaymentReceiptDocument({ receipt, business }: { receipt: Payment
       <div className="document-summary">
         <div />
         <dl className="document-totals">
+          {receipt.sourceSalesOrder && receipt.sourceSnapshot && ([['subtotalExVat', labels.subtotal], ['vatAmount', labels.vat], ['totalAmount', labels.saleTotal], ['remainingAmount', labels.remaining]] as const).map(([field, label]) => {
+            const value = receipt.sourceSnapshot?.[field];
+            return typeof value === 'string' ? <div key={field}><dt><BilingualLabel compact label={label} /></dt><dd><DocumentMoney field={`sourceSnapshot.${field}`} value={value} currency={receipt.currency} /></dd></div> : null;
+          })}
           {receipt.remainingBalances.map((balance) => (
             <div className="document-total-strong" key={`${balance.obligationType}-${balance.obligationId}`}>
               <dt><BilingualLabel compact label={labels.remaining} /><p className="user-text mt-1 text-xs font-normal text-slate-500" dir="auto">{balance.description}</p></dt>

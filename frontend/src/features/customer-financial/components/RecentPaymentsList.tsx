@@ -38,7 +38,7 @@ export const RecentPaymentsList: React.FC<RecentPaymentsListProps> = ({
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="font-semibold text-slate-900">{formatMoney(payment.totalAmount)}</h3>
+                  <h3 className="font-semibold text-slate-900">{formatMoney(payment.totalAmount, payment.currency)}</h3>
                   {payment.voidedAt && (
                     <span className="inline-flex rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700 ring-1 ring-inset ring-slate-600/10">
                       Voided
@@ -60,7 +60,7 @@ export const RecentPaymentsList: React.FC<RecentPaymentsListProps> = ({
                 >
                   <ReceiptText className="h-4 w-4" /> Receipt / إيصال
                 </a>
-                {canMutate && !payment.voidedAt && <>
+                {canMutate && !payment.sourceSalesOrderId && !payment.voidedAt && <>
                   {onReallocatePayment && isInstallmentPayment(payment) && (
                     <button
                       type="button"

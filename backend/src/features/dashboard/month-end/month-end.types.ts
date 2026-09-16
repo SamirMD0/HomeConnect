@@ -2,6 +2,7 @@ export interface MonthEndMovement {
   opening: string;
   newAmount: string;
   collected: string;
+  nonReceivableCollected?: string;
   returnCredits?: string;
   adjustments: string;
   closing: string;

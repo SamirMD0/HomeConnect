@@ -104,10 +104,7 @@ export class DashboardFinancialRepository {
       }),
       prisma.payment.findMany({
         where: {
-          customer: {
-            deletedAt: null,
-            isActive: true,
-          },
+          OR: [{ customerId: null }, { customer: { deletedAt: null, isActive: true } }],
           voidedAt: null,
           paymentDate: { gte: monthStart },
         },
@@ -116,7 +113,7 @@ export class DashboardFinancialRepository {
       }),
       prisma.payment.findMany({
         where: {
-          customer: { deletedAt: null, isActive: true },
+          OR: [{ customerId: null }, { customer: { deletedAt: null, isActive: true } }],
           voidedAt: null,
         },
         include: dashboardPaymentInclude,

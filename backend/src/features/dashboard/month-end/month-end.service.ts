@@ -115,6 +115,7 @@ export class MonthEndService {
         activity.summary.newInstallmentPlanAmount,
       ]),
       collected: activity.summary.paymentsReceived,
+      nonReceivableCollected: activity.summary.counterReceipts ?? '0.00',
       returnCredits: activity.summary.returnCredits ?? '0.00',
       closing: closingReport.summary.totalOutstanding,
     });
@@ -215,10 +216,12 @@ export function reconcileMovement(input: {
   newAmount: string | Decimal;
   collected: string | Decimal;
   closing: string | Decimal;
+  nonReceivableCollected?: string | Decimal;
   returnCredits?: string | Decimal;
 }): MonthEndMovement {
+  const nonReceivableCollected = new Decimal(input.nonReceivableCollected?.toString() ?? '0');
   const returnCredits = new Decimal(input.returnCredits?.toString() ?? '0');
-  const expectedBeforeAdjustments = subtractMoney(subtractMoney(addMoney(input.opening, input.newAmount), input.collected), returnCredits);
+  const expectedBeforeAdjustments = subtractMoney(addMoney(subtractMoney(addMoney(input.opening, input.newAmount), input.collected), nonReceivableCollected), returnCredits);
   const adjustments = subtractMoney(input.closing, expectedBeforeAdjustments);
   const reconciledClosing = addMoney(expectedBeforeAdjustments, adjustments);
   const closing = new Decimal(input.closing.toString());
@@ -226,6 +229,7 @@ export function reconcileMovement(input: {
     opening: moneyToApiString(input.opening),
     newAmount: moneyToApiString(input.newAmount),
     collected: moneyToApiString(input.collected),
+    ...(nonReceivableCollected.greaterThan(0) ? { nonReceivableCollected: moneyToApiString(nonReceivableCollected) } : {}),
     ...(returnCredits.greaterThan(0) ? { returnCredits: moneyToApiString(returnCredits) } : {}),
     adjustments: moneyToApiString(adjustments),
     closing: moneyToApiString(closing),

@@ -78,6 +78,7 @@ export interface MonthlyFinancialActivitySummary {
   newSingleDebtAmount: string;
   newInstallmentPlanAmount: string;
   paymentsReceived: string;
+  counterReceipts?: string;
   returnCredits?: string;
   cashRefunds?: string;
   storeCreditIssued?: string;

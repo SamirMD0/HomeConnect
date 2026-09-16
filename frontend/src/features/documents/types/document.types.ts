@@ -29,7 +29,9 @@ export interface PaymentReceiptUser {
 
 export interface PaymentReceipt {
   id: string;
-  customer: { id: string; name: string; phone: string; address: string | null };
+  customer: { id: string; name: string; phone: string; address: string | null } | null;
+  sourceSnapshot?: Record<string, unknown> | null;
+  sourceSalesOrder?: { id: string; orderNumber: string } | null;
   totalAmount: string;
   currency: 'USD' | 'LBP';
   exchangeRate: string;

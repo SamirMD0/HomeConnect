@@ -221,6 +221,7 @@ function MovementComparison({ title, current, previous }: { title: string; curre
     ['Opening', current.opening, previous?.opening, true],
     ['New amount', current.newAmount, previous?.newAmount, true],
     ['Collected', current.collected, previous?.collected, true],
+    ...(current.nonReceivableCollected || previous?.nonReceivableCollected ? [['Counter cash (not receivable)', current.nonReceivableCollected ?? '0.00', previous?.nonReceivableCollected ?? '0.00', true] as [string, string, string | undefined, boolean]] : []),
     ...(current.returnCredits || previous?.returnCredits ? [['Return credits', current.returnCredits ?? '0.00', previous?.returnCredits ?? '0.00', true] as [string, string, string | undefined, boolean]] : []),
     ['Adjustments', current.adjustments, previous?.adjustments, true],
     ['Closing', current.closing, previous?.closing, true],

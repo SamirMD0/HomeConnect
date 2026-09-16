@@ -20,7 +20,11 @@ import {
   timestampToBusinessDate,
   todayInBusinessTimezone,
 } from '../../financial/domain/business-date';
-import { compareMoney, moneyToApiString, parseMoney, subtractMoney, sumMoney, ZERO_MONEY } from '../../financial/domain/money';
+import { compareMoney, moneyToApiString, parseMoney, parseExchangeRate, subtractMoney, sumMoney, toBaseAmount, ZERO_MONEY } from '../../financial/domain/money';
+import { ExchangeRatesService } from '../../financial/exchange-rates/exchange-rates.service';
+import { assertIdempotentReplay, createIdempotencyFingerprint, normalizeIdempotencyKey } from '../../financial/infrastructure/idempotency';
+import { recordCounterPayment } from '../../financial/payments/counter-payment';
+import { PaymentsRepository } from '../../financial/payments/payments.repository';
 import { runFinancialTransaction } from '../../financial/infrastructure/transaction';
 import { DebtsService } from '../../financial/debts/debts.service';
 import { InstallmentPlansService } from '../../financial/installment-plans/installment-plans.service';
@@ -66,28 +70,43 @@ const INVENTORY_DEDUCTIBLE_STATUSES = new Set<SalesOrderFulfillmentStatus>([
 export class SalesOrdersService {
   static async create(input: CreateSalesOrderInput, user: SalesMutationUser, context: SalesRequestContext) {
     validateOrderDates(input.orderDate, input.deliveryDate);
+    const currency = input.currency ?? Currency.USD;
+    const key = normalizeIdempotencyKey(input.idempotencyKey);
+    if (compareMoney(input.paidAmount, ZERO_MONEY, currency) > 0 && !key) throw new ValidationError('Idempotency key is required for a counter receipt');
+    const fingerprint = createIdempotencyFingerprint({ input: { ...input, accountPassword: undefined }, userId: user.userId });
 
     for (let attempt = 0; attempt < 2; attempt += 1) {
       try {
         return await runFinancialTransaction(async (tx) => {
+          if (key) {
+            const replay = await SalesOrdersRepository.findByIdempotencyKey(key, tx);
+            if (replay) {
+              assertIdempotentReplay({ existingFingerprint: replay.idempotencyFingerprint ?? '', incomingFingerprint: fingerprint });
+              return serializeSalesOrder(replay);
+            }
+          }
+          const rate = input.exchangeRate ? parseExchangeRate(input.exchangeRate) : await ExchangeRatesService.snapshotFor(currency, businessDateToPrisma(input.orderDate), tx);
+          const base = (amount: string | Prisma.Decimal) => toBaseAmount(amount, currency, rate, Prisma.Decimal.ROUND_HALF_UP);
           if (input.customerId && !(await SalesOrdersRepository.findActiveCustomer(input.customerId, tx))) {
             throw new NotFoundError('Customer not found');
           }
-          const preparedItems = await prepareItems(input.items, businessDateToPrisma(input.orderDate), tx);
+          const preparedItems = await prepareItems(input.items, businessDateToPrisma(input.orderDate), tx, currency, rate);
           const deliveryVat = await prepareDeliveryVat(
             input.deliveryFee,
             input.deliveryTaxTreatment ?? DeliveryTaxTreatment.STANDARD,
             input.deliveryTaxProfileId,
             businessDateToPrisma(input.orderDate),
-            tx
+            tx, currency
           );
-          const totals = calculateVatAwareOrderTotals(preparedItems, deliveryVat, input.paidAmount);
+          const totals = calculateVatAwareOrderTotals(preparedItems, deliveryVat, input.paidAmount, currency);
           const paymentStatus = deriveSalesOrderPaymentStatus(totals.paidAmount, totals.totalAmount);
           validateCustomerRequirement(input.customerId, totals.remainingAmount, user.role === Role.ADMIN);
           validateCreateDebtTerms(input, totals.remainingAmount);
           const orderNumber = await SalesOrdersRepository.nextOrderNumber(Number(input.orderDate.slice(0, 4)), tx);
           const created = await SalesOrdersRepository.create({
             orderNumber,
+            idempotencyKey: key, idempotencyFingerprint: key ? fingerprint : null,
+            currency, exchangeRate: rate,
             customerId: input.customerId ?? null,
             salesChannel: input.salesChannel,
             orderDate: businessDateToPrisma(input.orderDate),
@@ -103,11 +122,11 @@ export class SalesOrdersService {
             totalAmount: totals.totalAmount,
             paidAmount: totals.paidAmount,
             remainingAmount: totals.remainingAmount,
-            baseSubtotal: totals.itemsSubtotal,
-            baseDeliveryFee: deliveryVat.deliveryFee,
-            baseTotalAmount: totals.totalAmount,
-            basePaidAmount: totals.paidAmount,
-            baseRemainingAmount: totals.remainingAmount,
+            baseSubtotal: base(totals.itemsSubtotal),
+            baseDeliveryFee: deliveryVat.deliveryFee === null ? null : base(new Prisma.Decimal(deliveryVat.deliveryFee.toString())),
+            baseTotalAmount: base(totals.totalAmount),
+            basePaidAmount: base(totals.paidAmount),
+            baseRemainingAmount: base(totals.remainingAmount),
             deliveryAddressSnapshot: input.deliveryAddressSnapshot ?? null,
             deliveryNotes: input.deliveryNotes ?? null,
             notes: input.notes ?? null,
@@ -123,15 +142,27 @@ export class SalesOrdersService {
               }, user, context, tx)
             : created;
 
+          const payment = compareMoney(totals.paidAmount, ZERO_MONEY, currency) > 0
+            ? await recordCounterPayment(tx, {
+              sale: finalOrder, customerId: finalOrder.customerId, amount: totals.paidAmount, paymentDate: input.orderDate,
+              idempotencyKey: `counter-create:${key}`, fingerprint, snapshot: counterReceiptSnapshot(finalOrder), userId: user.userId,
+            }) : null;
           await auditMutation(finalOrder, {
             action: SalesAuditAction.CREATE,
             reason: 'Sales order created',
             beforeValues: {},
-            afterValues: orderSnapshot(finalOrder),
+            afterValues: { ...orderSnapshot(finalOrder), counterPaymentId: payment?.id ?? null },
           }, user, context, tx);
           return serializeSalesOrder(finalOrder);
         });
       } catch (error) {
+        if (key && error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+          const replay = await SalesOrdersRepository.findByIdempotencyKey(key);
+          if (replay) {
+            assertIdempotentReplay({ existingFingerprint: replay.idempotencyFingerprint ?? '', incomingFingerprint: fingerprint });
+            return serializeSalesOrder(replay);
+          }
+        }
         if (isOrderNumberCollision(error) && attempt === 0) continue;
         throw error;
       }
@@ -203,7 +234,7 @@ export class SalesOrdersService {
       const channel = input.salesChannel ?? existing.salesChannel;
       const orderDate = input.orderDate ?? prismaDateToBusinessDate(existing.orderDate);
       const deliveryDate = input.deliveryDate === undefined ? dateString(existing.deliveryDate) : input.deliveryDate;
-      const deliveryFee = input.deliveryFee === undefined ? moneyToApiString(existing.deliveryFee ?? '0.00') : input.deliveryFee ?? '0.00';
+      const deliveryFee = input.deliveryFee === undefined ? moneyToApiString(existing.deliveryFee ?? '0.00', existing.currency) : input.deliveryFee ?? '0.00';
       validateOrderDates(orderDate, deliveryDate);
       if (channel === SalesChannel.SHOP_DIRECT && (deliveryDate || compareMoney(deliveryFee, '0.00') !== 0)) {
         throw new ValidationError('Shop-direct orders cannot contain delivery date or fee');
@@ -211,11 +242,11 @@ export class SalesOrdersService {
       const deliveryChanged = input.deliveryFee !== undefined || input.deliveryTaxTreatment !== undefined;
       const deliveryVat = deliveryChanged
         ? await prepareDeliveryVat(
-            input.deliveryFee === undefined ? moneyToApiString(existing.deliveryFee ?? '0.00') : input.deliveryFee,
+            input.deliveryFee === undefined ? moneyToApiString(existing.deliveryFee ?? '0.00', existing.currency) : input.deliveryFee,
             input.deliveryTaxTreatment ?? existing.deliveryTaxTreatment,
             input.deliveryTaxProfileId,
             businessDateToPrisma(orderDate),
-            tx
+            tx, existing.currency
           )
         : null;
       let updated = await SalesOrdersRepository.update(id, {
@@ -223,7 +254,7 @@ export class SalesOrdersService {
         ...(input.salesChannel !== undefined ? { salesChannel: channel } : {}),
         ...(input.orderDate !== undefined ? { orderDate: businessDateToPrisma(orderDate) } : {}),
         ...(input.deliveryDate !== undefined ? { deliveryDate: dateOrNull(deliveryDate) } : {}),
-        ...(deliveryVat ? { ...deliveryVat, baseDeliveryFee: deliveryVat.deliveryFee } : {}),
+        ...(deliveryVat ? { ...deliveryVat, baseDeliveryFee: deliveryVat.deliveryFee === null ? null : toBaseAmount(new Prisma.Decimal(deliveryVat.deliveryFee.toString()), existing.currency, existing.exchangeRate, Prisma.Decimal.ROUND_HALF_UP) } : {}),
         ...(input.deliveryAddressSnapshot !== undefined ? { deliveryAddressSnapshot: input.deliveryAddressSnapshot } : {}),
         ...(input.deliveryNotes !== undefined ? { deliveryNotes: input.deliveryNotes } : {}),
         ...(input.notes !== undefined ? { notes: input.notes } : {}),
@@ -250,7 +281,7 @@ export class SalesOrdersService {
       if (existing.fulfillmentStatus !== SalesOrderFulfillmentStatus.DRAFT) {
         await requireAdminVerification(input, user, context, id, 'ADD_SALES_ORDER_ITEM', tx);
       }
-      const prepared = (await prepareItems([input], existing.orderDate, tx))[0];
+      const prepared = (await prepareItems([input], existing.orderDate, tx, existing.currency, existing.exchangeRate))[0];
       const item = await SalesOrdersRepository.addItem({ salesOrderId: id, ...prepared }, tx);
       const updated = await this.recalculateOrder(id, input.debtDueDate, user, context, tx);
       await auditMutation(updated, {
@@ -259,7 +290,7 @@ export class SalesOrdersService {
         action: SalesAuditAction.ADD_ITEM,
         reason: input.reason ?? 'Sales order item added',
         beforeValues: {},
-        afterValues: itemSnapshot(item),
+        afterValues: itemSnapshot(item, existing.currency),
       }, user, context, tx);
       return serializeSalesOrder(updated);
     });
@@ -285,13 +316,13 @@ export class SalesOrdersService {
         manualProductName: input.manualProductName === undefined ? item.manualProductName : input.manualProductName,
         manualProductModel: input.manualProductModel === undefined ? item.manualProductModel : input.manualProductModel,
         quantity: input.quantity ?? item.quantity,
-        unitPrice: input.unitPrice ?? moneyToApiString(item.unitPrice),
-        discountAmount: input.discountAmount === undefined ? moneyToApiString(item.discountAmount ?? '0.00') : input.discountAmount,
+        unitPrice: input.unitPrice ?? moneyToApiString(item.unitPrice, existing.currency),
+        discountAmount: input.discountAmount === undefined ? moneyToApiString(item.discountAmount ?? '0.00', existing.currency) : input.discountAmount,
         taxProfileId: input.taxProfileId,
         priceIncludesVat: input.priceIncludesVat ?? item.product?.priceIncludesVat ?? true,
         notes: input.notes === undefined ? item.notes : input.notes,
       };
-      const prepared = (await prepareItems([merged], existing.orderDate, tx))[0];
+      const prepared = (await prepareItems([merged], existing.orderDate, tx, existing.currency, existing.exchangeRate))[0];
       const changedItem = await SalesOrdersRepository.updateItem(itemId, prepared, tx);
       const updated = await this.recalculateOrder(orderId, input.debtDueDate, user, context, tx);
       await auditMutation(updated, {
@@ -299,8 +330,8 @@ export class SalesOrdersService {
         recordId: itemId,
         action: SalesAuditAction.UPDATE_ITEM,
         reason: input.reason ?? 'Sales order item updated',
-        beforeValues: itemSnapshot(item),
-        afterValues: itemSnapshot(changedItem),
+        beforeValues: itemSnapshot(item, existing.currency),
+        afterValues: itemSnapshot(changedItem, existing.currency),
       }, user, context, tx);
       return serializeSalesOrder(updated);
     });
@@ -327,7 +358,7 @@ export class SalesOrdersService {
         recordId: itemId,
         action: SalesAuditAction.REMOVE_ITEM,
         reason: input.reason ?? 'Sales order item removed',
-        beforeValues: itemSnapshot(item),
+        beforeValues: itemSnapshot(item, existing.currency),
         afterValues: {},
       }, user, context, tx);
       return serializeSalesOrder(updated);
@@ -361,32 +392,59 @@ export class SalesOrdersService {
   }
 
   static async changePayment(id: string, input: ChangeSalesOrderPaymentInput, user: SalesMutationUser, context: SalesRequestContext) {
+    const key = normalizeIdempotencyKey(input.idempotencyKey);
+    const fingerprint = createIdempotencyFingerprint({ orderId: id, input: { ...input, accountPassword: undefined }, userId: user.userId });
     return runFinancialTransaction(async (tx) => {
+      if (key) {
+        const replay = await PaymentsRepository.findByIdempotencyKey(`counter-change:${key}`, tx);
+        if (replay) {
+          assertIdempotentReplay({ existingFingerprint: replay.idempotencyFingerprint ?? '', incomingFingerprint: fingerprint });
+          return serializeSalesOrder(await requiredOrder(id, tx));
+        }
+      }
       const existing = await requiredOrder(id, tx);
       assertEditable(existing);
-      assertNoFinancialLink(existing);
+      assertNoFinancialLink({ ...existing, counterPayments: [] });
       await requireAdminVerification(input, user, context, id, 'CHANGE_SALES_ORDER_PAYMENT', tx);
-      const totals = calculateVatAwareOrderTotals(existing.items, deliverySnapshot(existing), input.paidAmount);
-      validateCustomerRequirement(existing.customerId, totals.remainingAmount);
+      const totals = calculateVatAwareOrderTotals(existing.items, deliverySnapshot(existing), input.paidAmount, existing.currency);
+      const delta = subtractMoney(totals.paidAmount, existing.paidAmount, existing.currency);
+      if (delta.greaterThan(0) && !key) throw new ValidationError('Idempotency key is required for a counter receipt');
+      if (delta.lessThan(0) && existing.counterPayments?.length) throw new SalesConflictError('Recognized counter cash cannot be reduced by rewriting a paid snapshot');
+      validateCustomerRequirement(existing.customerId, totals.remainingAmount, user.role === Role.ADMIN);
       const shouldCreateDebt = validateMutationDebtTerms(existing, totals.remainingAmount, input.debtDueDate);
       let updated = await SalesOrdersRepository.update(id, {
         paidAmount: totals.paidAmount,
         remainingAmount: totals.remainingAmount,
-        basePaidAmount: totals.paidAmount,
-        baseRemainingAmount: totals.remainingAmount,
+        basePaidAmount: toBaseAmount(totals.paidAmount, existing.currency, existing.exchangeRate, Prisma.Decimal.ROUND_HALF_UP),
+        baseRemainingAmount: toBaseAmount(totals.remainingAmount, existing.currency, existing.exchangeRate, Prisma.Decimal.ROUND_HALF_UP),
         paymentStatus: deriveSalesOrderPaymentStatus(totals.paidAmount, totals.totalAmount),
         updatedById: user.userId,
       }, tx);
       if (shouldCreateDebt) {
         updated = await this.createAndLinkDebt(updated, { dueDate: input.debtDueDate!, description: `Sales order ${updated.orderNumber}`, notes: null }, user, context, tx);
       }
+      const payment = delta.greaterThan(0) ? await recordCounterPayment(tx, {
+        sale: updated, customerId: updated.customerId, amount: moneyToApiString(delta, existing.currency),
+        paymentDate: todayInBusinessTimezone(), idempotencyKey: `counter-change:${key}`, fingerprint,
+        snapshot: counterReceiptSnapshot(updated), userId: user.userId,
+      }) : null;
       await auditMutation(updated, {
         action: SalesAuditAction.CHANGE_PAYMENT,
         reason: input.reason,
         beforeValues: { paidAmount: moneyToApiString(existing.paidAmount), remainingAmount: moneyToApiString(existing.remainingAmount), paymentStatus: existing.paymentStatus },
-        afterValues: { paidAmount: totals.paidAmount, remainingAmount: totals.remainingAmount, paymentStatus: updated.paymentStatus },
+        afterValues: { paidAmount: totals.paidAmount, remainingAmount: totals.remainingAmount, paymentStatus: updated.paymentStatus, counterPaymentId: payment?.id ?? null },
       }, user, context, tx);
       return serializeSalesOrder(updated);
+    }).catch(async (error: unknown) => {
+      if (key && error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        return runFinancialTransaction(async (tx) => {
+          const replay = await PaymentsRepository.findByIdempotencyKey(`counter-change:${key}`, tx);
+          if (!replay) throw error;
+          assertIdempotentReplay({ existingFingerprint: replay.idempotencyFingerprint ?? '', incomingFingerprint: fingerprint });
+          return serializeSalesOrder(await requiredOrder(id, tx));
+        });
+      }
+      throw error;
     });
   }
 
@@ -475,11 +533,12 @@ export class SalesOrdersService {
     assertCanConvert(existing);
     assertDateNotBefore(input.dueDate, prismaDateToBusinessDate(existing.orderDate), 'Debt due date cannot be before order date');
     const debt = await DebtsService.createDebt(requiredCustomerId(existing), {
-      amount: moneyToApiString(existing.remainingAmount),
+      amount: moneyToApiString(existing.remainingAmount, existing.currency),
+      currency: existing.currency,
       description: input.description ?? `Sales order ${existing.orderNumber}`,
       dueDate: input.dueDate,
       notes: input.notes ?? null,
-    }, user, tx);
+    }, user, tx, existing.exchangeRate.toFixed(6));
     const updated = await SalesOrdersRepository.update(existing.id, {
       debtId: debt.id,
       settlement: SalesOrderSettlement.DEBT,
@@ -499,19 +558,19 @@ export class SalesOrdersService {
     debtDueDate: string | null | undefined,
     user: SalesMutationUser,
     context: SalesRequestContext,
-    tx: Prisma.TransactionClient
+    tx: Prisma.TransactionClient,
   ) {
     const order = await requiredOrder(id, tx);
-    const totals = calculateVatAwareOrderTotals(order.items, deliverySnapshot(order), moneyToApiString(order.paidAmount));
+    const totals = calculateVatAwareOrderTotals(order.items, deliverySnapshot(order), moneyToApiString(order.paidAmount, order.currency), order.currency);
     validateCustomerRequirement(order.customerId, totals.remainingAmount);
     const shouldCreateDebt = validateMutationDebtTerms(order, totals.remainingAmount, debtDueDate);
     let updated = await SalesOrdersRepository.update(id, {
       itemsSubtotal: totals.itemsSubtotal,
       totalAmount: totals.totalAmount,
       remainingAmount: totals.remainingAmount,
-      baseSubtotal: totals.itemsSubtotal,
-      baseTotalAmount: totals.totalAmount,
-      baseRemainingAmount: totals.remainingAmount,
+      baseSubtotal: toBaseAmount(totals.itemsSubtotal, order.currency, order.exchangeRate, Prisma.Decimal.ROUND_HALF_UP),
+      baseTotalAmount: toBaseAmount(totals.totalAmount, order.currency, order.exchangeRate, Prisma.Decimal.ROUND_HALF_UP),
+      baseRemainingAmount: toBaseAmount(totals.remainingAmount, order.currency, order.exchangeRate, Prisma.Decimal.ROUND_HALF_UP),
       paymentStatus: deriveSalesOrderPaymentStatus(totals.paidAmount, totals.totalAmount),
       updatedById: user.userId,
     }, tx);
@@ -601,6 +660,7 @@ function assertNoFinancialLink(order: SalesOrderRecord): void {
   if (order.debtId || order.installmentPlanId) {
     throw new SalesConflictError('Unlink the financial record before changing order money or identity');
   }
+  if (order.counterPayments?.length) throw new SalesConflictError('Receipted sale money/identity cannot be rewritten; a coherent correction workflow is required');
 }
 
 function activeStockLineConflict(): SalesConflictError {
@@ -647,20 +707,21 @@ async function prepareItems(items: Array<{
   taxProfileId?: string | null;
   priceIncludesVat?: boolean;
   notes?: string | null;
-}>, effectiveOn: Date, tx: Prisma.TransactionClient): Promise<Prisma.SalesOrderItemUncheckedCreateWithoutSalesOrderInput[]> {
+}>, effectiveOn: Date, tx: Prisma.TransactionClient, currency: Currency = Currency.USD, rate: Prisma.Decimal = new Prisma.Decimal(1)): Promise<Prisma.SalesOrderItemUncheckedCreateWithoutSalesOrderInput[]> {
   return Promise.all(items.map(async (item) => {
     if (Boolean(item.productId) === Boolean(item.manualProductName)) {
       throw new ValidationError('Choose one existing product or enter a manual product name');
     }
     const product = item.productId ? await SalesOrdersRepository.findActiveProduct(item.productId, tx) : null;
     if (item.productId && !product) throw new NotFoundError('Product not found');
+    if (product && product.priceCurrency !== currency) throw new ValidationError('Product and sale currencies must match');
     const profile = await TaxRepository.requireEffectiveProfile(
       product?.taxProfileId ?? item.taxProfileId,
       effectiveOn,
       tx
     );
     const vat = calculateVatLine({
-      currency: Currency.USD,
+      currency,
       quotedUnitPrice: item.unitPrice,
       quantity: item.quantity,
       discountAmount: item.discountAmount,
@@ -679,9 +740,9 @@ async function prepareItems(items: Array<{
       unitPrice: item.unitPrice,
       discountAmount: item.discountAmount ?? null,
       lineTotal: vat.lineTotalExVat,
-      baseUnitPrice: item.unitPrice,
-      baseDiscountAmount: item.discountAmount ?? null,
-      baseLineTotal: vat.lineTotalExVat,
+      baseUnitPrice: toBaseAmount(item.unitPrice, currency, rate, Prisma.Decimal.ROUND_HALF_UP),
+      baseDiscountAmount: item.discountAmount == null ? null : toBaseAmount(item.discountAmount, currency, rate, Prisma.Decimal.ROUND_HALF_UP),
+      baseLineTotal: toBaseAmount(vat.lineTotalExVat, currency, rate, Prisma.Decimal.ROUND_HALF_UP),
       taxRateSnapshot: vat.taxRateSnapshot,
       taxCodeSnapshot: vat.taxCodeSnapshot,
       unitPriceExVat: vat.unitPriceExVat,
@@ -707,14 +768,15 @@ async function prepareDeliveryVat(
   treatment: DeliveryTaxTreatment,
   taxProfileId: string | null | undefined,
   effectiveOn: Date,
-  tx: Prisma.TransactionClient
+  tx: Prisma.TransactionClient,
+  currency: Currency = Currency.USD
 ): Promise<DeliveryVatSnapshot> {
   const hasFee = feeInput !== null && feeInput !== undefined;
-  const fee = parseMoney(feeInput ?? ZERO_MONEY, Currency.USD);
-  if (compareMoney(fee, ZERO_MONEY, Currency.USD) < 0) {
+  const fee = parseMoney(feeInput ?? ZERO_MONEY, currency);
+  if (compareMoney(fee, ZERO_MONEY, currency) < 0) {
     throw new ValidationError('Delivery fee cannot be negative');
   }
-  if (!hasFee || compareMoney(fee, ZERO_MONEY, Currency.USD) === 0) {
+  if (!hasFee || compareMoney(fee, ZERO_MONEY, currency) === 0) {
     return {
       deliveryFee: hasFee ? fee : null,
       deliveryTaxTreatment: treatment,
@@ -728,7 +790,7 @@ async function prepareDeliveryVat(
 
   if (treatment === DeliveryTaxTreatment.EXEMPT) {
     if (taxProfileId) throw new ValidationError('Exempt delivery cannot use a tax profile');
-    return deliveryVatResult(fee, treatment, '0.000', 'EXEMPT');
+    return deliveryVatResult(fee, treatment, '0.000', 'EXEMPT', currency);
   }
 
   const profile = taxProfileId
@@ -747,7 +809,7 @@ async function prepareDeliveryVat(
     fee,
     treatment,
     profile.taxRate.ratePercent,
-    profile.code
+    profile.code, currency
   );
 }
 
@@ -755,10 +817,11 @@ function deliveryVatResult(
   fee: Prisma.Decimal,
   treatment: DeliveryTaxTreatment,
   rate: Prisma.Decimal | string,
-  taxCode: string
+  taxCode: string,
+  currency: Currency
 ): DeliveryVatSnapshot {
   const vat = calculateVatLine({
-    currency: Currency.USD,
+    currency: currency,
     quotedUnitPrice: fee,
     quantity: 1,
     priceIncludesVat: true,
@@ -795,29 +858,30 @@ function calculateVatAwareOrderTotals(
     lineTotalIncVat?: { toString(): string };
   }>,
   delivery: DeliveryVatSnapshot,
-  paidAmountInput?: Prisma.Decimal | string | null
+  paidAmountInput?: Prisma.Decimal | string | null,
+  currency: Currency = Currency.USD
 ) {
   if (!items.length) throw new ValidationError('At least one item is required');
-  const itemsSubtotal = sumMoney(items.map((item) => item.lineTotal.toString()));
-  const itemsVatAmount = sumMoney(items.map((item) => (item.vatAmount ?? ZERO_MONEY).toString()));
-  const inclusiveItemsTotal = sumMoney(items.map((item) => (item.lineTotalIncVat ?? item.lineTotal).toString()));
-  const deliveryFeeExVat = parseMoney(delivery.deliveryFeeExVat ?? ZERO_MONEY);
-  const deliveryVatAmount = parseMoney(delivery.deliveryVatAmount);
-  const deliveryFeeIncVat = parseMoney(delivery.deliveryFeeIncVat ?? ZERO_MONEY);
-  const subtotalExVat = sumMoney([itemsSubtotal, deliveryFeeExVat]);
-  const vatAmount = sumMoney([itemsVatAmount, deliveryVatAmount]);
-  const totalAmount = sumMoney([inclusiveItemsTotal, deliveryFeeIncVat]);
-  const paidAmount = parseMoney(paidAmountInput ?? '0.00');
-  if (compareMoney(paidAmount, ZERO_MONEY) < 0) throw new ValidationError('Paid amount cannot be negative');
-  if (compareMoney(paidAmount, totalAmount) > 0) throw new ValidationError('Paid amount cannot exceed the order total');
+  const itemsSubtotal = sumMoney(items.map((item) => item.lineTotal.toString()), currency);
+  const itemsVatAmount = sumMoney(items.map((item) => (item.vatAmount ?? ZERO_MONEY).toString()), currency);
+  const inclusiveItemsTotal = sumMoney(items.map((item) => (item.lineTotalIncVat ?? item.lineTotal).toString()), currency);
+  const deliveryFeeExVat = parseMoney(delivery.deliveryFeeExVat ?? ZERO_MONEY, currency);
+  const deliveryVatAmount = parseMoney(delivery.deliveryVatAmount, currency);
+  const deliveryFeeIncVat = parseMoney(delivery.deliveryFeeIncVat ?? ZERO_MONEY, currency);
+  const subtotalExVat = sumMoney([itemsSubtotal, deliveryFeeExVat], currency);
+  const vatAmount = sumMoney([itemsVatAmount, deliveryVatAmount], currency);
+  const totalAmount = sumMoney([inclusiveItemsTotal, deliveryFeeIncVat], currency);
+  const paidAmount = parseMoney(paidAmountInput ?? '0.00', currency);
+  if (compareMoney(paidAmount, ZERO_MONEY, currency) < 0) throw new ValidationError('Paid amount cannot be negative');
+  if (compareMoney(paidAmount, totalAmount, currency) > 0) throw new ValidationError('Paid amount cannot exceed the order total');
   return {
-    itemsSubtotal: moneyToApiString(itemsSubtotal),
-    subtotalExVat: moneyToApiString(subtotalExVat),
-    vatAmount: moneyToApiString(vatAmount),
-    deliveryFee: moneyToApiString(delivery.deliveryFeeIncVat ?? ZERO_MONEY),
-    totalAmount: moneyToApiString(totalAmount),
-    paidAmount: moneyToApiString(paidAmount),
-    remainingAmount: moneyToApiString(subtractMoney(totalAmount, paidAmount)),
+    itemsSubtotal: moneyToApiString(itemsSubtotal, currency),
+    subtotalExVat: moneyToApiString(subtotalExVat, currency),
+    vatAmount: moneyToApiString(vatAmount, currency),
+    deliveryFee: moneyToApiString(delivery.deliveryFeeIncVat ?? ZERO_MONEY, currency),
+    totalAmount: moneyToApiString(totalAmount, currency),
+    paidAmount: moneyToApiString(paidAmount, currency),
+    remainingAmount: moneyToApiString(subtractMoney(totalAmount, paidAmount, currency), currency),
   };
 }
 
@@ -936,17 +1000,17 @@ function orderSnapshot(order: SalesOrderRecord): Prisma.InputJsonObject {
     settlement: order.settlement,
     currency: order.currency,
     exchangeRate: order.exchangeRate.toFixed(6),
-    itemsSubtotal: moneyToApiString(order.itemsSubtotal),
-    deliveryFee: moneyToApiString(order.deliveryFee ?? ZERO_MONEY),
+    itemsSubtotal: moneyToApiString(order.itemsSubtotal, order.currency),
+    deliveryFee: moneyToApiString(order.deliveryFee ?? ZERO_MONEY, order.currency),
     deliveryTaxTreatment: order.deliveryTaxTreatment,
     deliveryTaxRateSnapshot: order.deliveryTaxRateSnapshot.toFixed(3),
     deliveryTaxCodeSnapshot: order.deliveryTaxCodeSnapshot,
-    deliveryFeeExVat: moneyToApiString(order.deliveryFeeExVat ?? ZERO_MONEY),
-    deliveryVatAmount: moneyToApiString(order.deliveryVatAmount),
-    deliveryFeeIncVat: moneyToApiString(order.deliveryFeeIncVat ?? ZERO_MONEY),
-    totalAmount: moneyToApiString(order.totalAmount),
-    paidAmount: moneyToApiString(order.paidAmount),
-    remainingAmount: moneyToApiString(order.remainingAmount),
+    deliveryFeeExVat: moneyToApiString(order.deliveryFeeExVat ?? ZERO_MONEY, order.currency),
+    deliveryVatAmount: moneyToApiString(order.deliveryVatAmount, order.currency),
+    deliveryFeeIncVat: moneyToApiString(order.deliveryFeeIncVat ?? ZERO_MONEY, order.currency),
+    totalAmount: moneyToApiString(order.totalAmount, order.currency),
+    paidAmount: moneyToApiString(order.paidAmount, order.currency),
+    remainingAmount: moneyToApiString(order.remainingAmount, order.currency),
     debtId: order.debtId,
     installmentPlanId: order.installmentPlanId,
   };
@@ -967,22 +1031,41 @@ function itemSnapshot(item: {
   vatAmount?: Prisma.Decimal;
   lineTotalIncVat?: Prisma.Decimal;
   notes: string | null;
-}): Prisma.InputJsonObject {
+}, currency: Currency = Currency.USD): Prisma.InputJsonObject {
   return {
     id: item.id,
     productId: item.productId,
     manualProductName: item.manualProductName,
     manualProductModel: item.manualProductModel,
     quantity: item.quantity,
-    unitPrice: moneyToApiString(item.unitPrice),
-    discountAmount: moneyToApiString(item.discountAmount ?? '0.00'),
-    lineTotal: moneyToApiString(item.lineTotal),
+    unitPrice: moneyToApiString(item.unitPrice, currency),
+    discountAmount: moneyToApiString(item.discountAmount ?? '0.00', currency),
+    lineTotal: moneyToApiString(item.lineTotal, currency),
     taxRateSnapshot: item.taxRateSnapshot?.toFixed(3) ?? '0.000',
     taxCodeSnapshot: item.taxCodeSnapshot ?? null,
-    unitPriceExVat: moneyToApiString(item.unitPriceExVat ?? item.unitPrice),
-    vatAmount: moneyToApiString(item.vatAmount ?? ZERO_MONEY),
-    lineTotalIncVat: moneyToApiString(item.lineTotalIncVat ?? item.lineTotal),
+    unitPriceExVat: moneyToApiString(item.unitPriceExVat ?? item.unitPrice, currency),
+    vatAmount: moneyToApiString(item.vatAmount ?? ZERO_MONEY, currency),
+    lineTotalIncVat: moneyToApiString(item.lineTotalIncVat ?? item.lineTotal, currency),
     notes: item.notes,
+  };
+}
+
+function counterReceiptSnapshot(order: SalesOrderRecord): Prisma.InputJsonObject {
+  const serialized = serializeSalesOrder(order);
+  return {
+    ...orderSnapshot(order), salesOrderId: order.id,
+    subtotalExVat: serialized.subtotalExVat, vatAmount: serialized.vatAmount,
+    baseSubtotal: serialized.baseSubtotal, baseDeliveryFee: serialized.baseDeliveryFee,
+    baseTotalAmount: serialized.baseTotalAmount, basePaidAmount: serialized.basePaidAmount,
+    baseRemainingAmount: serialized.baseRemainingAmount,
+    items: order.items.map((item) => ({
+      ...itemSnapshot(item, order.currency),
+      productName: item.productNameSnapshot,
+      productModel: item.productModelSnapshot,
+      baseUnitPrice: moneyToApiString(item.baseUnitPrice),
+      baseDiscountAmount: moneyToApiString(item.baseDiscountAmount ?? ZERO_MONEY),
+      baseLineTotal: moneyToApiString(item.baseLineTotal),
+    })),
   };
 }
 
@@ -995,18 +1078,18 @@ export function serializeSalesOrder(order: SalesOrderRecord) {
     orderDate: prismaDateToBusinessDate(order.orderDate),
     deliveryDate: dateString(order.deliveryDate),
     deliveredAt: dateString(order.deliveredAt),
-    itemsSubtotal: moneyToApiString(order.itemsSubtotal),
-    subtotalExVat: moneyToApiString(subtotalExVat),
-    itemsVatAmount: moneyToApiString(itemsVatAmount),
-    deliveryFee: moneyToApiString(order.deliveryFee ?? '0.00'),
+    itemsSubtotal: moneyToApiString(order.itemsSubtotal, order.currency),
+    subtotalExVat: moneyToApiString(subtotalExVat, order.currency),
+    itemsVatAmount: moneyToApiString(itemsVatAmount, order.currency),
+    deliveryFee: moneyToApiString(order.deliveryFee ?? '0.00', order.currency),
     deliveryTaxRateSnapshot: order.deliveryTaxRateSnapshot.toFixed(3),
-    deliveryFeeExVat: moneyToApiString(order.deliveryFeeExVat ?? ZERO_MONEY),
-    deliveryVatAmount: moneyToApiString(order.deliveryVatAmount),
-    deliveryFeeIncVat: moneyToApiString(order.deliveryFeeIncVat ?? ZERO_MONEY),
-    totalAmount: moneyToApiString(order.totalAmount),
-    paidAmount: moneyToApiString(order.paidAmount),
-    remainingAmount: moneyToApiString(order.remainingAmount),
-    vatAmount: moneyToApiString(vatAmount),
+    deliveryFeeExVat: moneyToApiString(order.deliveryFeeExVat ?? ZERO_MONEY, order.currency),
+    deliveryVatAmount: moneyToApiString(order.deliveryVatAmount, order.currency),
+    deliveryFeeIncVat: moneyToApiString(order.deliveryFeeIncVat ?? ZERO_MONEY, order.currency),
+    totalAmount: moneyToApiString(order.totalAmount, order.currency),
+    paidAmount: moneyToApiString(order.paidAmount, order.currency),
+    remainingAmount: moneyToApiString(order.remainingAmount, order.currency),
+    vatAmount: moneyToApiString(vatAmount, order.currency),
     exchangeRate: order.exchangeRate.toFixed(6),
     baseSubtotal: moneyToApiString(order.baseSubtotal),
     baseDeliveryFee: moneyToApiString(order.baseDeliveryFee ?? ZERO_MONEY),
@@ -1025,9 +1108,9 @@ export function serializeSalesOrder(order: SalesOrderRecord) {
         discountAmount: moneyToApiString(item.discountAmount ?? '0.00', order.currency),
         lineTotal: moneyToApiString(item.lineTotal, order.currency),
         taxRateSnapshot: item.taxRateSnapshot?.toFixed(3) ?? '0.000',
-        unitPriceExVat: moneyToApiString(item.unitPriceExVat ?? item.unitPrice),
-        vatAmount: moneyToApiString(item.vatAmount ?? ZERO_MONEY),
-        lineTotalIncVat: moneyToApiString(item.lineTotalIncVat ?? item.lineTotal),
+        unitPriceExVat: moneyToApiString(item.unitPriceExVat ?? item.unitPrice, order.currency),
+        vatAmount: moneyToApiString(item.vatAmount ?? ZERO_MONEY, order.currency),
+        lineTotalIncVat: moneyToApiString(item.lineTotalIncVat ?? item.lineTotal, order.currency),
         product,
         stockFulfillments,
         inventory: salesOrderItemInventoryState(order, item, openingCount?.createdAt ?? null, stockFulfillments),
@@ -1035,12 +1118,12 @@ export function serializeSalesOrder(order: SalesOrderRecord) {
     }),
     debt: order.debt ? {
       ...order.debt,
-      originalAmount: moneyToApiString(order.debt.originalAmount),
+      originalAmount: moneyToApiString(order.debt.originalAmount, order.currency),
       dueDate: prismaDateToBusinessDate(order.debt.dueDate),
     } : null,
     installmentPlan: order.installmentPlan ? {
       ...order.installmentPlan,
-      totalAmount: moneyToApiString(order.installmentPlan.totalAmount),
+      totalAmount: moneyToApiString(order.installmentPlan.totalAmount, order.currency),
       startDate: prismaDateToBusinessDate(order.installmentPlan.startDate),
     } : null,
     returns: (order.returns ?? []).map((salesReturn) => ({

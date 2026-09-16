@@ -55,6 +55,7 @@ export function ScannerQuickOrderDialog({ productId, isOpen, onClose }: ScannerQ
   const { user } = useAuth();
   const product = useProduct(isOpen ? productId ?? '' : '');
   const create = useCreateSalesOrder();
+  const receiptKey = useRef(crypto.randomUUID());
   const item = product.data;
   const initializedProductId = useRef<string | null>(item?.id ?? null);
   const [state, setState] = useState<QuickOrderFormState>(() => item ? initialQuickOrderState(item) : emptyState);
@@ -67,6 +68,7 @@ export function ScannerQuickOrderDialog({ productId, isOpen, onClose }: ScannerQ
 
   useEffect(() => {
     if (!isOpen || !item || initializedProductId.current === item.id) return;
+
     setState(initialQuickOrderState(item));
     setErrors({});
     setServerError('');
@@ -76,6 +78,8 @@ export function ScannerQuickOrderDialog({ productId, isOpen, onClose }: ScannerQ
 
   useEffect(() => {
     if (isOpen) return;
+
+    receiptKey.current = crypto.randomUUID();
     initializedProductId.current = null;
     setState(emptyState);
     setErrors({});
@@ -90,6 +94,7 @@ export function ScannerQuickOrderDialog({ productId, isOpen, onClose }: ScannerQ
   };
 
   const close = () => {
+    receiptKey.current = crypto.randomUUID();
     initializedProductId.current = null;
     setState(emptyState);
     setErrors({});
@@ -108,9 +113,10 @@ export function ScannerQuickOrderDialog({ productId, isOpen, onClose }: ScannerQ
     setErrors({});
     setServerError('');
     try {
-      const order = await create.mutateAsync(buildQuickOrderPayload({ productId: item.id, state, today }));
+      const order = await create.mutateAsync({ ...buildQuickOrderPayload({ productId: item.id, state, today }),  idempotencyKey: receiptKey.current, currency: item.priceCurrency ?? 'USD' });
       setCreatedOrder({ id: order.id, orderNumber: order.orderNumber });
     } catch (error) {
+
       setServerError(quickOrderErrorMessage(error));
     }
   };
@@ -126,8 +132,8 @@ export function ScannerQuickOrderDialog({ productId, isOpen, onClose }: ScannerQ
     ? undefined
     : <div className="flex w-full flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-x-5 gap-y-1">
-          <MoneySummary label="Total / الإجمالي" value={totals.total} />
-          <MoneySummary label="Remaining / المتبقي" value={totals.remaining} />
+          <MoneySummary label="Total / الإجمالي" value={totals.total} currency={item?.priceCurrency} />
+          <MoneySummary label="Remaining / المتبقي" value={totals.remaining} currency={item?.priceCurrency} />
         </div>
         <div className="flex gap-2">
           <Button variant="secondary" onClick={close}>{businessLabels.common.cancel}</Button>
@@ -139,6 +145,7 @@ export function ScannerQuickOrderDialog({ productId, isOpen, onClose }: ScannerQ
     {createdOrder
       ? <ScannerQuickOrderSuccess order={createdOrder} onOpenOrder={openOrder} onScanNext={close} />
       : <div className="space-y-5">
+
           {serverError && <ScannerQuickOrderServerError message={serverError} />}
 
           {product.isLoading && <p role="status" className="rounded-lg bg-slate-50 p-4 text-sm text-slate-600">Loading product / جارٍ تحميل المنتج…</p>}
@@ -170,7 +177,7 @@ export function ScannerQuickOrderDialog({ productId, isOpen, onClose }: ScannerQ
                   </FormField>
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3">
-                  <MoneySummary label="Line total / إجمالي السطر" value={totals.lineTotal} />
+                  <MoneySummary label="Line total / إجمالي السطر" value={totals.lineTotal} currency={item?.priceCurrency} />
                   <StockAdvice product={item} quantity={state.quantity} />
                 </div>
               </Card>
@@ -251,7 +258,7 @@ const QuickOrderProductHeader = ({ product, unitPrice }: { product: Product; uni
       <p className="mt-2 break-words font-mono text-xs text-slate-500">SKU {product.sku}{product.barcode ? ` · ${product.barcode}` : ''}</p>
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <ProductStockBadge status={product.stockStatus} />
-        <span className="text-sm font-bold tabular-nums text-brand-700">{formatMoney(unitPrice)}</span>
+        <span className="text-sm font-bold tabular-nums text-brand-700">{formatMoney(unitPrice, product.priceCurrency)}</span>
       </div>
     </div>
   </div>
@@ -266,7 +273,7 @@ const SectionTitle = ({ number, title }: { number: string; title: string }) => (
   <h3 className="font-semibold text-slate-900"><span className="text-brand-700">{number} ·</span> {title}</h3>
 );
 
-const MoneySummary = ({ label, value }: { label: string; value: string }) => <div>
+const MoneySummary = ({ label, value, currency }: { label: string; value: string; currency?: 'USD' | 'LBP' }) => <div>
   <p className="text-xs text-slate-500">{label}</p>
-  <p className="font-bold tabular-nums text-slate-900">{formatMoney(value)}</p>
+  <p className="font-bold tabular-nums text-slate-900">{formatMoney(value, currency)}</p>
 </div>;

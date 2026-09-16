@@ -34,7 +34,7 @@ export const salesOrdersApi = {
   restoreStock: async (id: string, input: RestoreSalesOrderStockInput): Promise<SalesOrderStockActionResult> =>
     (await api.post(`/sales-orders/${id}/restore-stock`, input)).data.data,
   status: async (id: string, input: { status: string; reason?: string; accountPassword?: string }): Promise<SalesOrder> => (await api.post(`/sales-orders/${id}/fulfillment-status`, input)).data.data,
-  payment: async (id: string, input: { paidAmount: string; debtDueDate?: string | null; reason: string; accountPassword: string }): Promise<SalesOrder> => (await api.post(`/sales-orders/${id}/payment`, input)).data.data,
+  payment: async (id: string, input: { idempotencyKey?: string; paidAmount: string; debtDueDate?: string | null; reason: string; accountPassword: string }): Promise<SalesOrder> => (await api.post(`/sales-orders/${id}/payment`, input)).data.data,
   cancel: async (id: string, input: { reason: string; accountPassword: string }): Promise<SalesOrder> => (await api.post(`/sales-orders/${id}/cancel`, input)).data.data,
   restore: async (id: string, input: { status: string; reason: string; accountPassword: string }): Promise<SalesOrder> => (await api.post(`/sales-orders/${id}/restore`, input)).data.data,
   returnOrder: async (id: string, input: ReturnSalesOrderInput): Promise<SalesReturn> => (await api.post(`/sales-orders/${id}/return`, input)).data.data,

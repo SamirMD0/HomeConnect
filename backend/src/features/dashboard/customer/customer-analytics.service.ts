@@ -74,7 +74,7 @@ export class CustomerAnalyticsService {
       inRange(createdBusinessDate(plan.createdAt), range.from, range.to)
     );
     const collected = sumMoney(rangePayments.map((payment) => payment.baseAmount ?? payment.totalAmount));
-    const receivableCollected = sumMoney(rangePayments.map((payment) => payment.baseAmount ?? payment.totalAmount));
+    const receivableCollected = sumMoney(rangePayments.filter((payment) => !payment.salesOrderId).map((payment) => payment.baseAmount ?? payment.totalAmount));
     const returnCredits = sumMoney((records.returns ?? []).filter((record) => inRange(prismaDateToBusinessDate(record.returnDate), range.from, range.to)).map((record) => record.baseReceivableReliefAmount));
     const newDebt = sumMoney([
       ...rangeDebts.filter(notCancelledDebt).map((debt) => debt.baseOriginalAmount ?? debt.originalAmount),
@@ -99,7 +99,7 @@ export class CustomerAnalyticsService {
       totals: {
         totalCustomers: records.totalCustomers,
         collected: moneyToApiString(collected),
-        distinctPayers: new Set(rangePayments.map((payment) => payment.customerId)).size,
+        distinctPayers: new Set(rangePayments.flatMap((payment) => payment.customerId ? [payment.customerId] : [])).size,
         newDebt: moneyToApiString(newDebt),
         outstanding: moneyToApiString(outstanding),
         customersWithBalance: byCustomer.size,
@@ -108,7 +108,7 @@ export class CustomerAnalyticsService {
       },
       today: {
         collected: moneyToApiString(sumMoney(todayPayments.map((payment) => payment.baseAmount ?? payment.totalAmount))),
-        distinctPayers: new Set(todayPayments.map((payment) => payment.customerId)).size,
+        distinctPayers: new Set(todayPayments.flatMap((payment) => payment.customerId ? [payment.customerId] : [])).size,
         newDebt: moneyToApiString(todayDebt),
       },
       trend: buildTrend(records, range),

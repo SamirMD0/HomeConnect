@@ -154,6 +154,10 @@ export interface NextDueSummary {
 }
 
 export interface RecentFinancialPayment {
+  currency?: 'USD' | 'LBP';
+  exchangeRate?: string;
+  baseAmount?: string;
+  sourceSalesOrderId?: string | null;
   id: string;
   totalAmount: string;
   paymentDate: string;

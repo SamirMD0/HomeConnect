@@ -13,6 +13,7 @@ import { nextSalesOrderNumber } from '../domain/order-number';
 import type { SalesOrderListQueryInput } from './sales-orders.validator';
 
 export const salesOrderInclude = {
+  counterPayments: { select: { id: true, voidedAt: true } },
   customer: { select: { id: true, name: true, phone: true, address: true, isActive: true } },
   items: {
     include: {
@@ -68,6 +69,9 @@ export const salesOrderInclude = {
 export type SalesOrderRecord = Prisma.SalesOrderGetPayload<{ include: typeof salesOrderInclude }>;
 
 export class SalesOrdersRepository {
+  static findByIdempotencyKey(idempotencyKey: string, tx?: Prisma.TransactionClient) {
+    return (tx ?? prisma).salesOrder.findUnique({ where: { idempotencyKey }, include: salesOrderInclude });
+  }
   static findById(id: string, tx?: Prisma.TransactionClient) {
     return (tx ?? prisma).salesOrder.findUnique({ where: { id }, include: salesOrderInclude });
   }

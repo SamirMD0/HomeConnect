@@ -85,7 +85,7 @@ export class ReceivablesService {
 
     const debtsByCustomer = groupBy(records.debts, (debt) => debt.customerId);
     const plansByCustomer = groupBy(records.plans, (plan) => plan.customerId);
-    const paymentsByCustomer = groupBy(records.payments, (payment) => payment.customerId);
+    const paymentsByCustomer = groupBy(records.payments.filter((payment): payment is typeof payment & { customerId: string } => payment.customerId !== null), (payment) => payment.customerId);
 
     const computations = records.customers.map((customer) =>
       this.computeCustomer(
@@ -161,7 +161,7 @@ export class ReceivablesService {
 
     const debtsByCustomer = groupBy(records.debts, (debt) => debt.customerId);
     const plansByCustomer = groupBy(records.plans, (plan) => plan.customerId);
-    const paymentsByCustomer = groupBy(records.payments, (payment) => payment.customerId);
+    const paymentsByCustomer = groupBy(records.payments.filter((payment): payment is typeof payment & { customerId: string } => payment.customerId !== null), (payment) => payment.customerId);
 
     for (const customer of records.customers) {
       const { item } = this.computeCustomer(

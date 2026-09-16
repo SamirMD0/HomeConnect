@@ -12,6 +12,7 @@ import {
 } from './sales-orders.validator';
 
 const base = {
+  idempotencyKey: 'counter-validation-key',
   customerId: '11111111-1111-4111-8111-111111111111',
   salesChannel: SalesChannel.SHOP_DIRECT,
   orderDate: '2026-08-03',
@@ -21,6 +22,15 @@ const base = {
 };
 
 describe('sales order validation', () => {
+  it('requires a durable key for positive cash but not an unpaid draft', () => {
+    expect(createSalesOrderSchema.safeParse({ ...base, idempotencyKey: undefined }).success).toBe(false);
+    expect(createSalesOrderSchema.safeParse({ ...base, idempotencyKey: undefined, paidAmount: '0.00', fulfillmentStatus: 'DRAFT' }).success).toBe(true);
+  });
+  it('rejects fractional LBP snapshots without changing USD precision', () => {
+    expect(createSalesOrderSchema.safeParse({ ...base, currency: 'LBP', paidAmount: '10.01' }).success).toBe(false);
+    expect(createSalesOrderSchema.safeParse({ ...base, currency: 'LBP', exchangeRate: '89500', paidAmount: '10', items: [{ manualProductName: 'Fan', quantity: 1, unitPrice: '10' }] }).success).toBe(true);
+  });
+
   it('strips client-calculated money and accepts exactly one product mode', () => {
     const parsed = createSalesOrderSchema.parse({
       ...base,
