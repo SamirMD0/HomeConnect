@@ -6,7 +6,11 @@ The reviewed correctness defects are fixed. The owner explicitly approved finali
 
 ## Hosted CI evidence
 
-The owner reports **CI / Typecheck, lint and full test suite (push): PASSED**. GitHub verification before pushing found [run 34367245795](https://github.com/SamirMD0/HomeConnect/actions/runs/34367245795), completed successfully on `6e8048e62571ebfea20e30a411cecaa1462b865e`. That older invoice run does not cover the final implementation. The authorized finalization push will trigger a current run; its exact SHA, job result and counts will be recorded before final confirmation. Local full validation below remains 2,458 passed, zero skipped.
+**CI / Typecheck, lint and full test suite (push): PASSED.** Independently verified [run 35087762077](https://github.com/SamirMD0/HomeConnect/actions/runs/35087762077) on **`27190f2b1df31735cb8b716d6d2ddc67b02d0030`**, branch develop. Job `104766538759` completed successfully in **3m27s** on 2026-09-16. Migrations, typecheck, lint, full DB-inclusive tests, zero-skips assertion and build all passed.
+
+Hosted output: **308 files, 2,458 tests, 0 skipped files, 0 skipped tests**; independent workflow assertion: `passed=2458 failed=0 skipped=0`. [Machine-readable job/step metadata and exact output lines](evidence/2026-09-16/hosted-ci-35087762077.json).
+
+The owner's initial green-CI report was verified before pushing as older invoice-only run 34367245795 on `6e8048e62571ebfea20e30a411cecaa1462b865e`. It was not used to certify later changes. The current run above covers the complete Phase 2 implementation and finalization documentation. The subsequent evidence-only commit updates this record; it changes no executable code, tests, dependencies, schema or CI configuration.
 
 ## Completed changes and commits
 
@@ -114,7 +118,7 @@ Nine real return DB tests cover rollback after an injected audit failure, retry,
 | T7 categories | Hierarchy/filter/nullable/RESTRICT and seven DB tests pass. Later owner Prompt 12 brought categories forward from Phase 5; English-only, no seeded example taxonomy. |
 | T8 cash | New receipts/deltas counted once; DB tests cover zero/double-count, replay, rollback. **Approved historical limitation:** 12 legacy paid snapshots **983.00 USD**, **883.00** excluding draft/cancelled. Owner approved new receipts only, no backfill. |
 | T10 currency/VAT | Phase 1 settles VAT-inclusive defaults. Services use selected currency/original rates. USD/LBP and original-VAT reversal tests, mixed-currency printed statement pass. Separate LBP invoice print pending. |
-| T9 checkpoint | Local regression/migration/integrity pass; historical scope and manual limitations accepted for Phase 2. Current hosted run is verified during finalization. |
+| T9 checkpoint | Local regression/migration/integrity pass; historical scope and manual limitations accepted for Phase 2. Current hosted run passed all gates. |
 
 ### Remaining REVIEW.md checks
 
@@ -152,7 +156,7 @@ New money columns use Decimal(12,2); rates retain approved higher precision. Reh
 | Staff-wide documents | Reviewer / resolved at Phase 2 close | Authenticated staff may read shop documents regardless of creator. ID changes cannot bypass actual authentication/role restrictions. |
 | Manual acceptance | QA + shop owner / before production release | A4 Arabic documents/source totals are manually confirmed. Native print/save, separate LBP invoice, interactive return and warning/pending UI remain explicit unperformed follow-ups; existing automated/API evidence supports Phase 2 acceptance. |
 | Additional logging evidence | QA / Phase 4 hardening | Dedicated per-document redaction tests and a complete historical red-first archive are not claimed; generic redaction tests and inspected logs pass. |
-| Hosted CI/publication | Maintainer / finalization | Push to develop only and attach current run; no PR publication or main merge is requested. |
+| Hosted CI/publication | Maintainer / finalization | Current implementation run 35087762077 passed; cumulative commits pushed to develop only. Final evidence-only push/state verification follows; no PR publication/main merge requested. |
 | Phase 1 C4 | Owner / before release | Legacy Ledger panel-removal sign-off. |
 | Phase 1 C5 | Operator / before release | Off-machine backup, copied checksum and archive readability; same-disk backup insufficient. |
 | Phase 1 C6 | Operator + QA / before release | Local real restore/migrations/integrity now demonstrated; timed full application launch and achieved recovery time still pending. |

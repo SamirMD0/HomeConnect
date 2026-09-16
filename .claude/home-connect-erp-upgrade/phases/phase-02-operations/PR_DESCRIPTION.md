@@ -33,6 +33,8 @@ Validation: All eight pending migrations applied via the application executor wi
 
 ## Validation
 
+- Hosted [CI run 35087762077](https://github.com/SamirMD0/HomeConnect/actions/runs/35087762077) passed on `27190f2b1df31735cb8b716d6d2ddc67b02d0030`: all steps, 308 files, 2,458 tests, zero skips. Final evidence-only commit changes no executable content.
+
 - Full test:ci: **308 files, 2,458 passed, 0 skipped files/tests**. [Unabridged output](evidence/2026-09-16/phase2-final-ci.log).
 - Frontend/backend typecheck and production build pass; lint 0 errors/70 warnings.
 - Isolated return and counter-cash staged trees each typecheck with their own schema.
