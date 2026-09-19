@@ -17,6 +17,11 @@ describe('label printing from the main process', () => {
     }
   });
 
+  it('accepts large pricing cards up to 210 mm while preserving the 20 mm floor', () => {
+    expect(labelPrintOptions({ widthMm: 200, heightMm: 105 }).pageSize).toEqual({ width: 200000, height: 105000 });
+    expect(() => labelPrintOptions({ widthMm: 19.9, heightMm: 105 })).toThrow('between 20 and 210 mm');
+  });
+
   it('reports success, treats a cancelled dialog as no error, and surfaces real failures', async () => {
     const contents = (success: boolean, reason: string) => ({ print: vi.fn((_options, callback) => callback(success, reason)) });
     await expect(printLabels(contents(true, ''), { widthMm: 58, heightMm: 40 })).resolves.toEqual({ printed: true });

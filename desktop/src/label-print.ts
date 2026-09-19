@@ -5,9 +5,9 @@ export const LABEL_PRINT_CHANNEL = 'labels:print';
 export interface LabelPrintRequest { widthMm: number; heightMm: number }
 export interface LabelPrintResult { printed: boolean; error?: string }
 
-/** Same bounds the label settings accept (`product-label-settings.ts`). */
+/** Physical bounds accepted by both legacy labels and the larger card templates. */
 const MIN_MM = 20;
-const MAX_MM = 150;
+const MAX_MM = 210;
 
 /**
  * Print options for one label per page on the thermal roll.

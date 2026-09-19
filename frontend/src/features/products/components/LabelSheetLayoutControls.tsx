@@ -83,8 +83,8 @@ export const LabelSheetLayoutControls: React.FC<LabelSheetLayoutControlsProps> =
             </Field>
           )}
 
-          <NumberField label="Label width mm" value={settings.labelWidthMm} min={20} max={150} onChange={(value) => changeNumber('labelWidthMm', value)} />
-          <NumberField label="Label height mm" value={settings.labelHeightMm} min={20} max={150} onChange={(value) => changeNumber('labelHeightMm', value)} />
+          <NumberField label="Label width mm" value={settings.labelWidthMm} min={20} max={210} onChange={(value) => changeNumber('labelWidthMm', value)} />
+          <NumberField label="Label height mm" value={settings.labelHeightMm} min={20} max={210} onChange={(value) => changeNumber('labelHeightMm', value)} />
 
           {settings.mode === 'SHEET' && (
             <>
