@@ -152,6 +152,7 @@ enum ServiceAuditRecordType {
   LABEL_SECRET_SETTINGS
   SHOP_PROFILE
   BRAND_LOGO
+  PRICING_CARD_FEATURE_ICON
 }
 
 enum ServiceAuditAction {
@@ -406,6 +407,8 @@ model User {
   labelSecretEncodingsUpdated LabelSecretEncodingPreset[] @relation("LabelSecretEncodingUpdatedBy")
   shopProfilesUpdated         ShopProfile[]                @relation("ShopProfileUpdatedBy")
   brandLogosCreated           BrandLogo[]                   @relation("BrandLogoCreatedBy")
+  pricingCardFeatureIconsCreated PricingCardFeatureIcon[]   @relation("PricingCardFeatureIconCreatedBy")
+  pricingCardFeatureIconsUpdated PricingCardFeatureIcon[]   @relation("PricingCardFeatureIconUpdatedBy")
   repairsApplied              RepairHistory[]             @relation("RepairHistoryAppliedBy")
   stockMovements              StockMovement[]             @relation("StockMovementCreatedBy")
   salesStockFulfillmentsCreated  SalesOrderStockFulfillment[] @relation("FulfillmentCreatedBy")
@@ -833,6 +836,26 @@ model BrandLogo {
 
   @@index([canonicalName])
   @@map("brand_logos")
+}
+
+model PricingCardFeatureIcon {
+  id          String   @id @default(uuid()) @db.Uuid
+  code        String   @unique
+  label       String
+  category    String?
+  svg         String   @db.Text
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdById String?  @db.Uuid
+  createdBy   User?    @relation("PricingCardFeatureIconCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt   DateTime @default(now())
+  updatedById String?  @db.Uuid
+  updatedBy   User?    @relation("PricingCardFeatureIconUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  updatedAt   DateTime @updatedAt
+
+  @@index([category, sortOrder])
+  @@index([isActive])
+  @@map("pricing_card_feature_icons")
 }
 
 model PricingPreset {
