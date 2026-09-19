@@ -11,6 +11,7 @@ import type {
   ShopProfile,
   UpdateShopProfileInput,
   UpdateShopProfileLogoInput,
+  FeatureIconInput,
 } from '../types/pricing-card.types';
 
 const labelParams = (query: PricingCardQuery) => ({
@@ -32,6 +33,12 @@ export const pricingCardApi = {
     (await api.get(`/pricing-card-templates/${templateId}`)).data.data,
   featureIcons: async (activeOnly = true, category?: string): Promise<PricingCardFeatureIcon[]> =>
     (await api.get('/pricing-card-feature-icons', { params: { activeOnly, category } })).data.data,
+  createFeatureIcon: async (input: FeatureIconInput): Promise<PricingCardFeatureIcon> =>
+    (await api.post('/pricing-card-feature-icons', input)).data.data,
+  updateFeatureIcon: async (id: string, input: FeatureIconInput): Promise<PricingCardFeatureIcon> =>
+    (await api.patch(`/pricing-card-feature-icons/${id}`, input)).data.data,
+  archiveFeatureIcon: async (id: string, accountPassword: string): Promise<PricingCardFeatureIcon> =>
+    (await api.post(`/pricing-card-feature-icons/${id}/archive`, { accountPassword })).data.data,
   brandLogos: async (activeOnly = true): Promise<BrandLogo[]> =>
     (await api.get('/brand-logos', { params: { activeOnly } })).data.data,
   pricingCard: async (productId: string, query: PricingCardQuery): Promise<PricingCardResult> =>

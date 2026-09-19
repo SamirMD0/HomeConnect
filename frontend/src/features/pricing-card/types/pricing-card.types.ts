@@ -38,6 +38,16 @@ export interface UpdateShopProfileLogoInput {
   accountPassword: string;
 }
 
+export interface FeatureIconInput {
+  code: string;
+  label: string;
+  category?: string | null;
+  svg: string;
+  sortOrder?: number;
+  isActive?: boolean;
+  accountPassword: string;
+}
+
 export interface PricingCardTemplate {
   id: string;
   name: string;
