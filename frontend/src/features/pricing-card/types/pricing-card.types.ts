@@ -83,7 +83,16 @@ export interface BrandLogo {
   hasLogo: boolean;
   logoMimeType: string | null;
   logoByteSize: number | null;
+  logoDataUrl: string | null;
   isActive: boolean;
+}
+
+export interface BrandLogoInput {
+  displayName: string;
+  canonicalName?: string;
+  dataBase64: string;
+  mimeType: 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif';
+  accountPassword: string;
 }
 
 export interface PricingCardBrand {

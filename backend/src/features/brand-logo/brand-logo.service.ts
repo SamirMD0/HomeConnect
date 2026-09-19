@@ -67,13 +67,23 @@ export class BrandLogoService {
   }
 }
 
-const serialize = (row: BrandLogoRecord) => ({
-  id: row.id, canonicalName: row.canonicalName, displayName: row.displayName,
-  hasLogo: Boolean(row.logoBytes?.length), logoMimeType: row.logoMimeType,
-  logoByteSize: row.logoByteSize, isActive: row.isActive,
-});
+const serialize = (row: BrandLogoRecord) => {
+  const hasLogo = Boolean(row.logoBytes?.length);
+  return {
+    id: row.id, canonicalName: row.canonicalName, displayName: row.displayName,
+    hasLogo, logoMimeType: row.logoMimeType, logoByteSize: row.logoByteSize,
+    logoDataUrl: hasLogo && row.logoMimeType
+      ? `data:${row.logoMimeType};base64,${Buffer.from(row.logoBytes!).toString('base64')}`
+      : null,
+    isActive: row.isActive,
+  };
+};
 
-const snapshot = (row: BrandLogoRecord | null): Prisma.InputJsonObject => row ? serialize(row) : {};
+const snapshot = (row: BrandLogoRecord | null): Prisma.InputJsonObject => {
+  if (!row) return {};
+  const { logoDataUrl: _logoDataUrl, ...rest } = serialize(row);
+  return rest;
+};
 
 async function verify(user: ServiceMutationUser, password: string, action: string, recordId: string, context: RequestContext, tx: Prisma.TransactionClient) {
   return verifyAdminPassword(user.userId, password, { action, recordType: 'BRAND_LOGO', recordId, ipAddress: context.ipAddress, domainLabel: 'brand logos' }, tx);

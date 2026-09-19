@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Building2, Sparkles } from 'lucide-react';
+import { Building2, Palette, Sparkles } from 'lucide-react';
 import { BackupRestorePanel } from '../../features/backup/components/BackupRestorePanel';
 import { DiagnosticsPanel } from '../../features/diagnostics/components/DiagnosticsPanel';
 import { MaintenancePanel } from '../../features/maintenance/components/MaintenancePanel';
@@ -50,6 +50,19 @@ export const SettingsPage: React.FC = () => {
             </div>
           </div>
           <Link to="/settings/pricing-cards/feature-icons" className="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white">Open</Link>
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Palette className="h-6 w-6 text-slate-500" />
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">Brand logos</h2>
+              <p className="text-sm text-slate-500">Attach logo images to brands so they render on every card that uses them.</p>
+            </div>
+          </div>
+          <Link to="/settings/pricing-cards/brand-logos" className="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white">Open</Link>
         </div>
       </section>
 
