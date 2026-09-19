@@ -15,7 +15,7 @@ const preset: PricingPreset = {
   id: '33333333-3333-4333-8333-333333333333', name: 'Standard AC', productType: 'AC',
   expensePercent: '10', profitPercent: '7', discountBufferPercent: '7',
   installmentMarkupPercent: '20', downPaymentPercent: '40', defaultInstallmentMonths: 3,
-  calculationMode: 'COMPOUND', roundingMode: 'NONE', isDefault: true, isActive: true,
+  calculationMode: 'COMPOUND', roundingMode: 'NONE', isDefault: true, isLabelSecretAllowed: false, isActive: true,
   isArchived: false, notes: null, archivedAt: null, archivedReason: null,
   createdAt: '2026-07-31T00:00:00.000Z', updatedAt: '2026-07-31T00:00:00.000Z',
 };

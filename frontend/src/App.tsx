@@ -16,6 +16,12 @@ import { PrepaidPurchasesPage } from './pages/PrepaidPurchasesPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { ReportDetailPage } from './pages/ReportDetailPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
+import { ShopProfileSettingsPage } from './pages/settings/ShopProfileSettingsPage';
+import { FeatureIconsPage } from './pages/settings/FeatureIconsPage';
+import { BrandLogosPage } from './pages/settings/BrandLogosPage';
+import { PricingCardTemplatesPage } from './pages/settings/PricingCardTemplatesPage';
+import { PricingCardTemplateEditorPage } from './pages/settings/PricingCardTemplateEditorPage';
+import { RolloutGuard } from './features/pricing-card/components/RolloutGuard';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ServiceJobsPage } from './pages/service/ServiceJobsPage';
 import { ServiceJobDetailsPage } from './pages/service/ServiceJobDetailsPage';
@@ -24,6 +30,8 @@ import { ProductsPage } from './pages/products/ProductsPage';
 import { BrandsPage } from './pages/products/BrandsPage';
 import { ScannerHubPage } from './pages/scanner/ScannerHubPage';
 import { ProductLabelsPage } from './pages/products/ProductLabelsPage';
+import { ProductPricingCardPage } from './pages/products/ProductPricingCardPage';
+import { ProductPricingCardsPage } from './pages/products/ProductPricingCardsPage';
 import { SuppliersPage } from './pages/suppliers/SuppliersPage';
 import { SupplierProfilePage } from './pages/suppliers/SupplierProfilePage';
 import { SupplierLedgerPage } from './pages/suppliers/SupplierLedgerPage';
@@ -79,14 +87,21 @@ const App: React.FC = () => {
               <Route path="inventory/receiving/:receivingId" element={<SupplierReceivingDetailPage />} />
               <Route path="scanner" element={<ScannerHubPage />} />
               <Route path="pricing-presets" element={<PricingPresetsPage />} />
-              <Route path="products/labels" element={<ProductLabelsPage />} />
-              <Route path="products/:id/label" element={<ProductLabelPage />} />
+              <Route path="products/labels" element={<RolloutGuard surface="legacy" fallback={({ search }) => `/products/pricing-cards${search}`}><ProductLabelsPage /></RolloutGuard>} />
+              <Route path="products/pricing-cards" element={<RolloutGuard surface="pricing-card" fallback={({ search }) => `/products/labels${search}`}><ProductPricingCardsPage /></RolloutGuard>} />
+              <Route path="products/:id/label" element={<RolloutGuard surface="legacy" fallback={({ params }) => `/products/${params.id}/pricing-card`}><ProductLabelPage /></RolloutGuard>} />
+              <Route path="products/:id/pricing-card" element={<RolloutGuard surface="pricing-card" fallback={({ params }) => `/products/${params.id}/label`}><ProductPricingCardPage /></RolloutGuard>} />
               <Route path="suppliers" element={<SuppliersPage />} />
               <Route path="suppliers/:id" element={<SupplierProfilePage />} />
               <Route path="supplier-ledger" element={<SupplierLedgerPage />} />
               <Route path="reports" element={<ReportsPage />} />
               <Route path="reports/:reportId" element={<ReportDetailPage />} />
               <Route path="settings" element={<SettingsPage />} />
+              <Route path="settings/pricing-cards/shop-profile" element={<ProtectedRoute allowedRoles={['ADMIN']}><ShopProfileSettingsPage /></ProtectedRoute>} />
+              <Route path="settings/pricing-cards/feature-icons" element={<ProtectedRoute allowedRoles={['ADMIN']}><FeatureIconsPage /></ProtectedRoute>} />
+              <Route path="settings/pricing-cards/brand-logos" element={<ProtectedRoute allowedRoles={['ADMIN']}><BrandLogosPage /></ProtectedRoute>} />
+              <Route path="settings/pricing-cards" element={<ProtectedRoute allowedRoles={['ADMIN']}><PricingCardTemplatesPage /></ProtectedRoute>} />
+              <Route path="settings/pricing-cards/templates/:templateId" element={<ProtectedRoute allowedRoles={['ADMIN']}><PricingCardTemplateEditorPage /></ProtectedRoute>} />
             </Route>
             
             {/* Fallback */}

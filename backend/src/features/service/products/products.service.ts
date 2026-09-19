@@ -30,20 +30,35 @@ import {
   ProductPricingPreviewQueryInput,
   ProductLabelQueryInput,
   ProductLabelsQueryInput,
+  ProductLabelOverrideInput,
+  ProductPricingCardOverrideInput,
+  ProductLabelsOverrideInput,
   NormalizeProductBrandsInput,
   UpdateProductSkuInput,
   UpdateProductStockInput,
   UpdateProductInput,
+  UpdateProductFeaturesInput,
 } from './products.validator';
 import { ProductsRepository } from './products.repository';
+import { generateInternalBarcode } from './product-internal-barcode';
 import { normalizeScanCode } from '../../../lib/scan-code';
 import { serializeServiceJob } from '../service-jobs/service-jobs.service';
-import { ProductPricingRecord, resolveProductPricing } from '../../pricing/calculator/pricing-resolution';
+import { ProductPricingRecord, resolveLabelSecretPrice, resolveProductPricing } from '../../pricing/calculator/pricing-resolution';
 import { Role } from '@prisma/client';
 import { parsePricingPercent, percentToApiString } from '../../pricing/domain/pricing-percent';
-import { formatStaffLabelCode } from '../../pricing/domain/internal-price-code';
+import { encodeLabelSecretValue, formatStaffLabelCode, UnsafeDiscountStagesError } from '../../pricing/domain/internal-price-code';
+import { Decimal } from '@prisma/client/runtime/library';
+import { LABEL_SECRET_SETTINGS_ID } from '../../pricing/label-secret/label-secret-config.repository';
+import { normalizeBrandKey, normalizeBrandSpelling } from '../../brand-logo/brand-key';
 import { generateProductSku } from './product-sku';
 import { deriveProductStockStatus, isProductOutsideInventory } from './product-stock';
+import { PricingCardTemplateRepository } from '../../pricing-card/template/template.repository';
+import { ShopProfileRepository } from '../../shop/shop-profile.repository';
+import { BrandLogoRepository } from '../../brand-logo/brand-logo.repository';
+import { FeatureIconRepository } from '../../pricing-card/feature-icon/feature-icon.repository';
+import { CANONICAL_SPEC_KEYS, CanonicalSpecKey, parseDimensions, resolveSpec } from '../../pricing-card/spec-catalog';
+import { PrintSnapshotService } from '../../pricing-card/print-snapshot/print-snapshot.service';
+import { RecordPrintSnapshotInput } from '../../pricing-card/print-snapshot/print-snapshot.validator';
 
 export interface ProductScanPayload {
   id: string;
@@ -77,7 +92,6 @@ interface ProductBrandSpellingCount {
   _count: { _all: number };
 }
 
-const collapseBrandWhitespace = (value: string) => value.trim().replace(/\s+/gu, ' ');
 const compareBrandNames = (left: string, right: string) =>
   left.localeCompare(right, 'en', { sensitivity: 'variant' });
 const isTitleCaseBrand = (value: string) => value.split(' ').every((word) => {
@@ -99,9 +113,9 @@ export function summarizeProductBrands(rows: readonly ProductBrandSpellingCount[
 
   for (const row of rows) {
     if (!row.brand || row._count._all <= 0) continue;
-    const spelling = collapseBrandWhitespace(row.brand);
+    const spelling = normalizeBrandSpelling(row.brand);
     if (!spelling) continue;
-    const key = spelling.toLowerCase();
+    const key = normalizeBrandKey(spelling)!;
     const spellings = groups.get(key) ?? new Map<string, number>();
     spellings.set(spelling, (spellings.get(spelling) ?? 0) + row._count._all);
     groups.set(key, spellings);
@@ -223,8 +237,16 @@ export class ProductsService {
     if (includesPricing) assertServiceAdmin(user);
     const includesStockSettings = input.trackStock !== undefined || input.lowStockThreshold !== undefined;
     if (includesStockSettings) assertServiceAdmin(user);
+    if (input.featureHighlights !== undefined) assertServiceAdmin(user);
     try {
       return await runFinancialTransaction(async (tx) => {
+        if (input.featureHighlights !== undefined) {
+          await verifyAdminPassword(user.userId, input.accountPassword!, {
+            action: 'UPDATE_PRODUCT_PRICING_CARD_FEATURES', recordType: 'PRODUCT',
+            ipAddress: context.ipAddress, domainLabel: 'product pricing-card features',
+          }, tx);
+          await assertFeatureIconCodesExist(input.featureHighlights.map(({ iconCode }) => iconCode), tx);
+        }
         if (input.barcode && (await ProductsRepository.findByBarcode(input.barcode, tx, { caseInsensitive: true }))) {
           throw barcodeConflict();
         }
@@ -232,12 +254,14 @@ export class ProductsService {
           const preset = await ProductsRepository.findPricingPreset(input.pricingPresetId, tx);
           assertActivePricingPreset(preset);
         }
-        const product = await ProductsRepository.create(
+        let product = await ProductsRepository.create(
           {
             sku: await generateProductSku(tx),
             name: input.name,
             model: input.model,
-            barcode: input.barcode ?? null,
+            // No manufacturer barcode: give the product a shop-internal EAN-13 so its
+            // label prints a compact numeric barcode instead of the SKU.
+            barcode: input.barcode || await generateInternalBarcode(tx),
             brand: input.brand ?? null,
             price: moneyOrNull(input.price),
             discount: moneyOrNull(input.discount),
@@ -253,6 +277,10 @@ export class ProductsService {
           },
           tx
         );
+        if (input.featureHighlights !== undefined) {
+          await ProductsRepository.replacePricingCardFeatures(product.id, input.featureHighlights, tx);
+          product = (await ProductsRepository.findById(product.id, tx))!;
+        }
         const actor = await loadActor(user.userId, tx);
         await writeServiceAudit({
           recordType: ServiceAuditRecordType.PRODUCT,
@@ -400,7 +428,7 @@ export class ProductsService {
     user: ServiceMutationUser,
     context: RequestContext
   ) {
-    const fields = Object.keys(input);
+    const fields = Object.keys(input).filter((field) => field !== 'accountPassword');
     if (fields.length === 0) throw new ValidationError('At least one product field is required');
     // The field policy still decides WHO may edit what — it just no longer decides
     // whether a password is demanded. Cosmetic fields stay open to any authenticated
@@ -411,6 +439,13 @@ export class ProductsService {
       return await runFinancialTransaction(async (tx) => {
         const existing = await ProductsRepository.findById(id, tx);
         if (!existing) throw new NotFoundError('Product not found');
+        if (input.featureHighlights !== undefined) {
+          await verifyAdminPassword(user.userId, input.accountPassword!, {
+            action: 'UPDATE_PRODUCT_PRICING_CARD_FEATURES', recordType: 'PRODUCT', recordId: id,
+            ipAddress: context.ipAddress, domainLabel: 'product pricing-card features',
+          }, tx);
+          await assertFeatureIconCodesExist(input.featureHighlights.map(({ iconCode }) => iconCode), tx);
+        }
         if (input.barcode && input.barcode !== existing.barcode) {
           const duplicate = await ProductsRepository.findByBarcode(input.barcode, tx, {
             caseInsensitive: true,
@@ -429,7 +464,11 @@ export class ProductsService {
         );
         // A product carries one image source: pointing at a URL drops uploaded bytes.
         if (input.imageUrl) await ProductsRepository.deleteImage(id, tx);
-        const updated = await ProductsRepository.update(id, data, tx);
+        let updated = await ProductsRepository.update(id, data, tx);
+        if (input.featureHighlights !== undefined) {
+          await ProductsRepository.replacePricingCardFeatures(id, input.featureHighlights, tx);
+          updated = (await ProductsRepository.findById(id, tx))!;
+        }
         const actor = await loadActor(user.userId, tx);
         await writeServiceAudit({
           recordType: ServiceAuditRecordType.PRODUCT,
@@ -451,6 +490,15 @@ export class ProductsService {
     } catch (error) {
       throw mapProductError(error);
     }
+  }
+
+  static updateFeatures(
+    id: string,
+    input: UpdateProductFeaturesInput,
+    user: ServiceMutationUser,
+    context: RequestContext
+  ) {
+    return this.update(id, input, user, context);
   }
 
   static async getImage(id: string) {
@@ -534,8 +582,12 @@ export class ProductsService {
   static async label(id: string, query: ProductLabelQueryInput) {
     const product = await ProductsRepository.findById(id);
     if (!product) throw new NotFoundError('Product not found');
+    const templateContext = query.templateId ? await loadTemplateLabelContext(query.templateId, [product]) : null;
     const defaultPreset = labelNeedsPricing(query) ? await ProductsRepository.findActiveDefaultPricingPreset() : null;
-    return toLabelPayload(product, defaultPreset, query);
+    const configuration = query.includePriceCode ? await ProductsRepository.findLabelSecretConfiguration() : null;
+    const fields = { ...query, includePriceCode: query.includePriceCode && (configuration?.settings?.showCodeOnLabel ?? true) };
+    const { payload, warnings } = toLabelPayload(product, defaultPreset, configuration?.pricingPreset ?? null, configuration?.encodingPreset ?? null, fields, templateContext);
+    return { payload, warnings: onceSecretPresetNotSet(warnings) };
   }
 
   /**
@@ -545,8 +597,11 @@ export class ProductsService {
    */
   static async labels(query: ProductLabelsQueryInput) {
     const products = await ProductsRepository.findManyForLabels(query.ids);
+    const templateContext = query.templateId ? await loadTemplateLabelContext(query.templateId, products) : null;
     const byId = new Map(products.map((product) => [product.id, product]));
     const defaultPreset = labelNeedsPricing(query) ? await ProductsRepository.findActiveDefaultPricingPreset() : null;
+    const configuration = query.includePriceCode ? await ProductsRepository.findLabelSecretConfiguration() : null;
+    const fields = { ...query, includePriceCode: query.includePriceCode && (configuration?.settings?.showCodeOnLabel ?? true) };
 
     const labels: ProductLabelPayload[] = [];
     const warnings: ProductLabelWarning[] = [];
@@ -560,12 +615,69 @@ export class ProductsService {
         warnings.push({ productId: id, code: 'ARCHIVED_EXCLUDED', name: product.name });
         continue;
       }
-      const { payload, warnings: itemWarnings } = toLabelPayload(product, defaultPreset, query);
+      const { payload, warnings: itemWarnings } = toLabelPayload(product, defaultPreset, configuration?.pricingPreset ?? null, configuration?.encodingPreset ?? null, fields, templateContext);
       labels.push(payload);
       warnings.push(...itemWarnings);
     }
 
-    return { labels, warnings };
+    return { labels, warnings: onceSecretPresetNotSet(warnings) };
+  }
+
+  static recordPricingCardPrint(input: RecordPrintSnapshotInput, user: ServiceMutationUser, context: RequestContext) {
+    return PrintSnapshotService.recordPrint(input, user, context);
+  }
+
+  static listPricingCardPrints(productId: string, limit: number) {
+    return PrintSnapshotService.listPrintsForProduct(productId, limit);
+  }
+
+  static async labelSecretPreview(id: string, input: ProductLabelOverrideInput, user: ServiceMutationUser, context: RequestContext) {
+    await authorizeLabelSecretOverride(input.hiddenPricingPresetId, input.encodingPresetId, input.manualDiscountStages, input.accountPassword, user, context);
+    const product = await ProductsRepository.findById(id);
+    if (!product) throw new NotFoundError('Product not found');
+    const defaultPreset = await ProductsRepository.findActiveDefaultPricingPreset();
+    const configuration = await ProductsRepository.findLabelSecretConfiguration(input.hiddenPricingPresetId, input.encodingPresetId);
+    assertRequestedLabelSecretConfiguration(configuration, input.hiddenPricingPresetId, input.encodingPresetId);
+    const result = toLabelPayload(product, defaultPreset, configuration.pricingPreset, configuration.encodingPreset, { ...input, exposeSecretPrice: true });
+    return { payload: result.payload, warnings: onceSecretPresetNotSet(result.warnings) };
+  }
+
+  static async pricingCardSecretPreview(id: string, input: ProductPricingCardOverrideInput, user: ServiceMutationUser, context: RequestContext) {
+    await authorizeLabelSecretOverride(input.hiddenPricingPresetId, input.encodingPresetId, input.manualDiscountStages, input.accountPassword, user, context);
+    const product = await ProductsRepository.findById(id);
+    if (!product) throw new NotFoundError('Product not found');
+    const templateContext = await loadTemplateLabelContext(input.templateId, [product]);
+    const defaultPreset = await ProductsRepository.findActiveDefaultPricingPreset();
+    const configuration = await ProductsRepository.findLabelSecretConfiguration(input.hiddenPricingPresetId, input.encodingPresetId);
+    assertRequestedLabelSecretConfiguration(configuration, input.hiddenPricingPresetId, input.encodingPresetId);
+    const result = toLabelPayload(
+      product,
+      defaultPreset,
+      configuration.pricingPreset,
+      configuration.encodingPreset,
+      { ...input, exposeSecretPrice: true },
+      templateContext,
+    );
+    return { payload: result.payload, warnings: onceSecretPresetNotSet(result.warnings) };
+  }
+
+  static async labelsSecretPreview(input: ProductLabelsOverrideInput, user: ServiceMutationUser, context: RequestContext) {
+    await authorizeLabelSecretOverride(input.hiddenPricingPresetId, input.encodingPresetId, input.manualDiscountStages, input.accountPassword, user, context);
+    const configuration = await ProductsRepository.findLabelSecretConfiguration(input.hiddenPricingPresetId, input.encodingPresetId);
+    assertRequestedLabelSecretConfiguration(configuration, input.hiddenPricingPresetId, input.encodingPresetId);
+    const products = await ProductsRepository.findManyForLabels(input.ids);
+    const byId = new Map(products.map((product) => [product.id, product]));
+    const defaultPreset = await ProductsRepository.findActiveDefaultPricingPreset();
+    const labels: ProductLabelPayload[] = [];
+    const warnings: ProductLabelWarning[] = [];
+    for (const id of input.ids) {
+      const product = byId.get(id);
+      if (!product) { warnings.push({ productId: id, code: 'NOT_FOUND' }); continue; }
+      if (!product.isActive && !input.includeArchived) { warnings.push({ productId: id, code: 'ARCHIVED_EXCLUDED', name: product.name }); continue; }
+      const item = toLabelPayload(product, defaultPreset, configuration.pricingPreset, configuration.encodingPreset, { ...input, exposeSecretPrice: true });
+      labels.push(item.payload); warnings.push(...item.warnings);
+    }
+    return { labels, warnings: onceSecretPresetNotSet(warnings) };
   }
 
   static updateSku(id: string, input: UpdateProductSkuInput, user: ServiceMutationUser, context: RequestContext) {
@@ -768,10 +880,20 @@ function productUpdateData(input: UpdateProductInput, updatedById: string): Pris
   return data;
 }
 
-export type ProductLabelWarningCode = 'NOT_FOUND' | 'ARCHIVED_EXCLUDED' | 'NO_PRICING' | 'MANUFACTURER_BARCODE_MISSING' | 'FALLBACK_TO_SKU';
+export type ProductLabelWarningCode = 'NOT_FOUND' | 'ARCHIVED_EXCLUDED' | 'NO_PRICING' | 'MANUFACTURER_BARCODE_MISSING' | 'FALLBACK_TO_SKU' | 'TEMPLATE_INACTIVE'
+  | 'SECRET_PRESET_NOT_SET' | 'SECRET_ABOVE_PUBLIC' | 'SECRET_EQUALS_PUBLIC' | 'SECRET_BELOW_COST' | 'SECRET_NO_COST'
+  | 'SECRET_ENCODING_NOT_SET' | 'SECRET_ENCODING_FAILED' | 'SECRET_DISCOUNT_STAGES_UNSAFE' | 'SECRET_PRICE_FAILED';
 export interface ProductLabelWarning { productId: string; code: ProductLabelWarningCode; name?: string }
 
-interface LabelFieldFlags { includePriceCode: boolean; includePrice: boolean }
+interface LabelFieldFlags {
+  includePriceCode: boolean;
+  includePrice: boolean;
+  exposeSecretPrice?: boolean;
+  manualDiscountStages?: number[];
+  templateId?: string;
+  validUntil?: string;
+  featureCodes?: string[];
+}
 
 const labelNeedsPricing = (query: LabelFieldFlags) => query.includePriceCode || query.includePrice;
 
@@ -784,7 +906,42 @@ const labelNeedsPricing = (query: LabelFieldFlags) => query.includePriceCode || 
  * never receives is a label that cannot leak through the network tab or an
  * exported PDF. `products.routes.test.ts` asserts the exact key set.
  */
-function toLabelPayload(product: ProductPricingRecord, defaultPreset: PricingPreset | null, query: LabelFieldFlags) {
+interface TemplateBrandPayload { canonicalName: string; displayName: string; hasLogo: boolean }
+interface TemplateFeaturePayload { iconCode: string; label: string; value?: string; position: number; iconSvg?: string; iconMissing?: boolean }
+interface TemplateResolvedSpecPayload { canonicalKey: string; label: string; value: string; unit?: string }
+export interface ProductLabelPayload {
+  id: string;
+  name: string;
+  model: string;
+  brand: string | null | TemplateBrandPayload;
+  sku: string;
+  barcodeValue: string;
+  barcodeSource: 'MANUFACTURER' | 'SKU';
+  internalPriceCode?: string | null;
+  staffLabelCode?: string | null;
+  secretPrice?: string | null;
+  cashPrice?: string | null;
+  templateId?: string;
+  resolvedSpecs?: TemplateResolvedSpecPayload[];
+  features?: TemplateFeaturePayload[];
+  currency?: { code: string; display: 'SYMBOL' | 'CODE' | 'SYMBOL_AND_CODE'; symbol: string };
+  validUntil?: string;
+  dimensionsMm?: { widthMm?: number; heightMm?: number; depthMm?: number };
+}
+
+type TemplateLabelProduct = ProductPricingRecord & {
+  specifications?: Prisma.JsonValue | null;
+  pricingCardFeatures?: Array<{ iconCode: string; label: string | null; value: string | null; position: number }>;
+};
+
+interface TemplateLabelContext {
+  template: NonNullable<Awaited<ReturnType<typeof PricingCardTemplateRepository.findById>>>;
+  profile: NonNullable<Awaited<ReturnType<typeof ShopProfileRepository.findSingleton>>>;
+  brandLogos: Map<string, NonNullable<Awaited<ReturnType<typeof BrandLogoRepository.findByCanonical>>>>;
+  icons: Map<string, NonNullable<Awaited<ReturnType<typeof FeatureIconRepository.getByCode>>>>;
+}
+
+function toLabelPayload(product: TemplateLabelProduct, defaultPreset: PricingPreset | null, secretPreset: PricingPreset | null, encodingPreset: Parameters<typeof encodeLabelSecretValue>[2] | null, query: LabelFieldFlags, templateContext: TemplateLabelContext | null = null) {
   const warnings: ProductLabelWarning[] = [];
   const wantsManufacturer = product.labelBarcodeSource === 'MANUFACTURER' || product.labelBarcodeSource === 'AUTO';
   const usesManufacturer = wantsManufacturer && Boolean(product.barcode);
@@ -799,10 +956,37 @@ function toLabelPayload(product: ProductPricingRecord, defaultPreset: PricingPre
   }
 
   const preview = labelNeedsPricing(query) ? resolveProductPricing(product, defaultPreset) : null;
-  if (preview && !preview.pricingAvailable) warnings.push({ productId: product.id, code: 'NO_PRICING', name: product.name });
-  const internalPriceCode = preview?.pricingAvailable ? preview.internalPriceCode : null;
+  // A product priced by hand (no cost, so no formula) still has a selling price
+  // the customer should see on the label.
+  const manualPrice = preview && !preview.pricingAvailable ? manualSellingPrice(product) : null;
+  const missingPrice = query.includePrice && !manualPrice;
+  if (preview && !preview.pricingAvailable && (query.includePriceCode || missingPrice)) {
+    warnings.push({ productId: product.id, code: 'NO_PRICING', name: product.name });
+  }
+  // The hidden staff code comes from the admin-chosen secret label preset; the
+  // public cashPrice below still comes from `preview` and is never affected.
+  const secret = query.includePriceCode
+    ? resolveLabelSecretPrice(product, secretPreset, preview)
+    : { hiddenPrice: null, candidatePrice: undefined, warning: undefined };
+  if (secret.warning) warnings.push({ productId: product.id, code: secret.warning, name: product.name });
+  let internalPriceCode: string | null = null;
+  if (secret.hiddenPrice && preview?.pricingAvailable) {
+    if (!encodingPreset) warnings.push({ productId: product.id, code: 'SECRET_ENCODING_NOT_SET', name: product.name });
+    else {
+      try {
+        internalPriceCode = encodeLabelSecretValue(
+          new Decimal(preview.cashPrice),
+          new Decimal(secret.hiddenPrice),
+          encodingPreset,
+          { discountStages: query.manualDiscountStages },
+        );
+      } catch (error) {
+        warnings.push({ productId: product.id, code: error instanceof UnsafeDiscountStagesError ? 'SECRET_DISCOUNT_STAGES_UNSAFE' : 'SECRET_ENCODING_FAILED', name: product.name });
+      }
+    }
+  }
 
-  const payload = {
+  const basePayload = {
     id: product.id,
     name: product.name,
     model: product.model,
@@ -813,14 +997,185 @@ function toLabelPayload(product: ProductPricingRecord, defaultPreset: PricingPre
     ...(query.includePriceCode ? {
       internalPriceCode,
       staffLabelCode: internalPriceCode ? formatStaffLabelCode(product.sku, internalPriceCode) : null,
+      ...(query.exposeSecretPrice ? { secretPrice: secret.candidatePrice ?? secret.hiddenPrice } : {}),
     } : {}),
-    ...(query.includePrice ? { cashPrice: preview?.pricingAvailable ? preview.cashPrice : null } : {}),
-  };
+    ...(query.includePrice ? { cashPrice: preview?.pricingAvailable ? preview.cashPrice : manualPrice } : {}),
+  } satisfies ProductLabelPayload;
+  const payload: ProductLabelPayload = templateContext
+    ? { ...basePayload, ...templateFields(product, query, templateContext) }
+    : basePayload;
+
+  if (templateContext && !templateContext.template.isActive) {
+    warnings.push({ productId: product.id, code: 'TEMPLATE_INACTIVE', name: product.name });
+  }
 
   return { payload, warnings };
 }
 
-export type ProductLabelPayload = ReturnType<typeof toLabelPayload>['payload'];
+async function loadTemplateLabelContext(
+  templateId: string,
+  products: readonly TemplateLabelProduct[]
+): Promise<TemplateLabelContext> {
+  const template = await PricingCardTemplateRepository.findById(templateId);
+  if (!template) throw new NotFoundError('Pricing card template not found');
+  const profile = await ShopProfileRepository.findSingleton();
+  if (!profile) throw new NotFoundError('Shop profile not found');
+
+  const brandKeys = [...new Set(products.map((product) => normalizeBrandKey(product.brand)).filter((key): key is string => Boolean(key)))];
+  const iconCodes = [...new Set(products.flatMap((product) => (product.pricingCardFeatures ?? []).map(({ iconCode }) => iconCode)))];
+  const [brandRows, iconRows] = await Promise.all([
+    Promise.all(brandKeys.map((key) => BrandLogoRepository.findByCanonical(key))),
+    Promise.all(iconCodes.map((code) => FeatureIconRepository.getByCode(code))),
+  ]);
+  return {
+    template,
+    profile,
+    brandLogos: new Map(brandRows.filter((row): row is NonNullable<typeof row> => row != null).map((row) => [row.canonicalName, row])),
+    icons: new Map(iconRows.filter((row): row is NonNullable<typeof row> => row != null).map((row) => [row.code, row])),
+  };
+}
+
+function templateFields(
+  product: TemplateLabelProduct,
+  query: LabelFieldFlags,
+  context: TemplateLabelContext
+): Pick<ProductLabelPayload, 'brand' | 'templateId' | 'resolvedSpecs' | 'features' | 'currency' | 'validUntil' | 'dimensionsMm'> {
+  const specifications = productSpecifications(product.specifications);
+  const aliases = templateSpecAliases(context.template.config);
+  const resolvedSpecs = context.template.specKeyOrder.flatMap((canonicalKey) => {
+    if (!(canonicalKey in CANONICAL_SPEC_KEYS)) return [];
+    const key = canonicalKey as CanonicalSpecKey;
+    const resolved = resolveSpec(specifications, key, aliases[key]);
+    return resolved ? [{ canonicalKey, ...resolved }] : [];
+  });
+  const selectedFeatures = selectTemplateFeatures(product.pricingCardFeatures ?? [], query.featureCodes)
+    .slice(0, context.template.featureMax);
+  const features = selectedFeatures.map((feature) => {
+    const icon = context.icons.get(feature.iconCode);
+    if (!icon?.isActive) return {
+      iconCode: feature.iconCode,
+      label: feature.label ?? feature.iconCode,
+      ...(feature.value ? { value: feature.value } : {}),
+      position: feature.position,
+      iconMissing: true as const,
+    };
+    return {
+      iconCode: feature.iconCode,
+      label: feature.label ?? icon.label,
+      ...(feature.value ? { value: feature.value } : {}),
+      position: feature.position,
+      iconSvg: icon.svg,
+    };
+  });
+  const canonicalName = normalizeBrandKey(product.brand);
+  const brandLogo = canonicalName ? context.brandLogos.get(canonicalName) : null;
+  const brand = canonicalName ? {
+    canonicalName,
+    displayName: brandLogo?.displayName ?? product.brand!,
+    hasLogo: Boolean(brandLogo?.isActive && brandLogo.logoBytes && brandLogo.logoBytes.length > 0),
+  } : null;
+  return {
+    brand,
+    templateId: context.template.id,
+    resolvedSpecs,
+    features,
+    currency: {
+      code: context.profile.currencyCode,
+      display: context.profile.currencyDisplay,
+      symbol: currencySymbol(context.profile.currencyCode),
+    },
+    ...(query.validUntil ? { validUntil: query.validUntil } : {}),
+    dimensionsMm: parseDimensions(specifications, aliases.dimensions),
+  };
+}
+
+function productSpecifications(value: Prisma.JsonValue | null | undefined): Array<{ label: string; value: string }> {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((entry) => {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return [];
+    const row = entry as Record<string, unknown>;
+    return typeof row.label === 'string' && typeof row.value === 'string'
+      ? [{ label: row.label, value: row.value }]
+      : [];
+  });
+}
+
+function templateSpecAliases(value: Prisma.JsonValue): Partial<Record<CanonicalSpecKey, string[]>> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  const candidate = (value as Record<string, unknown>).specKeyAliases;
+  if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return {};
+  return Object.fromEntries(Object.entries(candidate).flatMap(([key, aliases]) =>
+    key in CANONICAL_SPEC_KEYS && Array.isArray(aliases) && aliases.every((alias) => typeof alias === 'string')
+      ? [[key, aliases]]
+      : []
+  ));
+}
+
+function selectTemplateFeatures(
+  features: Array<{ iconCode: string; label: string | null; value: string | null; position: number }>,
+  featureCodes?: string[]
+) {
+  const ordered = [...features].sort((left, right) => left.position - right.position);
+  if (!featureCodes) return ordered;
+  const byCode = new Map(ordered.map((feature) => [feature.iconCode, feature]));
+  return featureCodes.flatMap((code, index) => {
+    const feature = byCode.get(code);
+    return feature ? [{ ...feature, position: index + 1 }] : [];
+  });
+}
+
+function currencySymbol(code: string): string {
+  const known: Record<string, string> = { USD: '$', EUR: '€', GBP: '£', LBP: 'ل.ل.' };
+  if (known[code]) return known[code];
+  try {
+    return new Intl.NumberFormat('en', { style: 'currency', currency: code, currencyDisplay: 'narrowSymbol' })
+      .formatToParts(0).find(({ type }) => type === 'currency')?.value ?? code;
+  } catch {
+    return code;
+  }
+}
+
+function assertRequestedLabelSecretConfiguration(configuration: Awaited<ReturnType<typeof ProductsRepository.findLabelSecretConfiguration>>, pricingPresetId: string, encodingPresetId: string) {
+  if (configuration.pricingPreset?.id !== pricingPresetId) throw new ValidationError('The selected hidden pricing preset is not allowed and active');
+  if (configuration.encodingPreset?.id !== encodingPresetId) throw new ValidationError('The selected encoding preset is not active');
+}
+
+async function authorizeLabelSecretOverride(pricingPresetId: string, encodingPresetId: string, manualDiscountStages: number[] | undefined, password: string, user: ServiceMutationUser, context: RequestContext) {
+  assertServiceAdmin(user);
+  return runFinancialTransaction(async (tx) => {
+    await verifyAdminPassword(user.userId, password, { action: 'USE_LABEL_SECRET_PRINT_OVERRIDE', recordType: 'LABEL_SECRET_SETTINGS', recordId: LABEL_SECRET_SETTINGS_ID, ipAddress: context.ipAddress, domainLabel: 'label secret pricing' }, tx);
+    const actor = await tx.user.findUnique({ where: { id: user.userId }, select: { fullName: true, username: true } });
+    if (!actor) throw new NotFoundError('User not found');
+    const settings = await tx.labelSecretSettings.findUnique({ where: { id: LABEL_SECRET_SETTINGS_ID } });
+    await writeServiceAudit({
+      recordType: ServiceAuditRecordType.LABEL_SECRET_SETTINGS,
+      recordId: LABEL_SECRET_SETTINGS_ID,
+      action: ServiceAuditAction.UPDATE_DETAILS,
+      changedById: user.userId,
+      changedByName: actor.fullName,
+      changedByUsername: actor.username,
+      reason: 'Label print override selected',
+      beforeValues: { pricingPresetId: settings?.defaultPricingPresetId ?? null, encodingPresetId: settings?.defaultEncodingPresetId ?? null },
+      afterValues: { pricingPresetId, encodingPresetId, manualDiscountStages: manualDiscountStages ?? null },
+      requestId: context.requestId,
+      ipAddress: context.ipAddress,
+    }, tx);
+  });
+}
+
+/** The hand-set price less the product's own discount — what the customer pays. */
+function manualSellingPrice(product: ProductPricingRecord): string | null {
+  if (product.price == null) return null;
+  const net = product.discount != null ? subtractMoney(product.price, product.discount) : parseMoney(product.price);
+  return moneyToApiString(net);
+}
+
+/** "No secret preset chosen" is a setting, not a per-product fault: report it once per print run. */
+function onceSecretPresetNotSet(warnings: ProductLabelWarning[]): ProductLabelWarning[] {
+  const first = warnings.find((warning) => warning.code === 'SECRET_PRESET_NOT_SET');
+  if (!first) return warnings;
+  return [...warnings.filter((warning) => warning.code !== 'SECRET_PRESET_NOT_SET'), { productId: first.productId, code: 'SECRET_PRESET_NOT_SET' }];
+}
 
 function moneyOrNull(value?: string | null) {
   return value == null ? null : parseMoney(value);
@@ -841,6 +1196,10 @@ type ProductRecord = Product & {
   updatedBy?: { fullName: string; username: string } | null;
   pricingPreset?: Prisma.PricingPresetGetPayload<Record<string, never>> | null;
   image?: { mimeType: string; byteSize: number; updatedAt: Date } | null;
+  pricingCardFeatures?: Array<{
+    productId: string; iconCode: string; label: string | null; value: string | null;
+    position: number; createdAt: Date; updatedAt: Date;
+  }>;
 };
 
 /**
@@ -928,6 +1287,7 @@ function serializeProduct(product: ProductRecord, defaultPreset: Prisma.PricingP
     stockStatus: deriveProductStockStatus(product),
     specifications: product.specifications ?? [],
     specificationNotes: product.specificationNotes,
+    featureHighlights: product.pricingCardFeatures ?? [],
     imageUrl: product.imageUrl,
     image: serializeProductImage(product),
     createdById: product.createdById,
@@ -954,7 +1314,7 @@ function pricingConfiguration(product: Product) {
   };
 }
 
-function productSnapshot(product: Product): Prisma.InputJsonObject {
+function productSnapshot(product: ProductRecord): Prisma.InputJsonObject {
   return {
     sku: product.sku, name: product.name, model: product.model, barcode: product.barcode,
     brand: product.brand, price: product.price ? moneyToApiString(product.price) : null,
@@ -964,6 +1324,7 @@ function productSnapshot(product: Product): Prisma.InputJsonObject {
     stockQuantity: product.stockQuantity, lowStockThreshold: product.lowStockThreshold,
     specifications: (product.specifications ?? []) as Prisma.InputJsonValue,
     specificationNotes: product.specificationNotes,
+    featureHighlights: (product.pricingCardFeatures ?? []).map(({ iconCode, label, value, position }) => ({ iconCode, label, value, position })),
     costPrice: product.costPrice ? moneyToApiString(product.costPrice) : null,
     pricingPresetId: product.pricingPresetId, useCustomPricing: product.useCustomPricing,
     installmentEnabled: product.installmentEnabled,
@@ -1048,9 +1409,19 @@ function assertValidLabelBarcodeSource(product: { barcode: string | null; labelB
   }
 }
 
-function changedSnapshot(product: Product, fields: string[]): Prisma.InputJsonObject {
+function changedSnapshot(product: ProductRecord, fields: string[]): Prisma.InputJsonObject {
   const snapshot = productSnapshot(product);
   return Object.fromEntries(fields.map((field) => [field, snapshot[field] ?? null]));
+}
+
+async function assertFeatureIconCodesExist(codes: string[], tx: Prisma.TransactionClient) {
+  if (!codes.length) return;
+  const found = await ProductsRepository.findActiveFeatureIconCodes(codes, tx);
+  const activeCodes = new Set(found.map(({ code }) => code));
+  const missing = codes.filter((code) => !activeCodes.has(code));
+  if (missing.length) throw new ValidationError('Unknown or inactive pricing-card feature icon', {
+    field: 'featureHighlights', iconCodes: missing,
+  });
 }
 
 async function loadActor(userId: string, tx: Prisma.TransactionClient) {

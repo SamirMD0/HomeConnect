@@ -1,6 +1,6 @@
 {
   "name": "home-connect",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "main": "dist/electron/desktop/src/index.js",
   "build": {
     "appId": "com.homeconnect.desktop",
@@ -183,6 +183,7 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "helmet": "^8.3.0",
+    "isomorphic-dompurify": "^3.19.0",
     "jsbarcode": "^3.12.3",
     "jsonwebtoken": "^9.0.3",
     "node-cron": "^4.6.0",

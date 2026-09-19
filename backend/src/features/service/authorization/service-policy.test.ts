@@ -17,6 +17,7 @@ describe('service mutation policy', () => {
         'installmentEnabled',
         'sku', 'labelBarcodeSource', 'trackStock', 'stockQuantity', 'lowStockThreshold',
         'specifications', 'specificationNotes',
+        'featureHighlights',
       ].sort()
     );
     expect(containsSensitiveProductFields(['price'])).toBe(true);
@@ -25,6 +26,7 @@ describe('service mutation policy', () => {
     expect(containsSensitiveProductFields(['imageUrl'])).toBe(false);
     expect(containsSensitiveProductFields(['sku', 'stockQuantity'])).toBe(true);
     expect(containsSensitiveProductFields(['specifications', 'specificationNotes'])).toBe(false);
+    expect(containsSensitiveProductFields(['featureHighlights'])).toBe(true);
   });
 
   it('keeps routine service notes and manual text non-sensitive', () => {

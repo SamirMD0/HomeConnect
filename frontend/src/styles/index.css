@@ -1,3 +1,4 @@
+@import "../features/pricing-card/components/PricingCard.css";
 @import "tailwindcss";
 
 /*
@@ -102,12 +103,15 @@
 .product-label h2 { display: -webkit-box; margin: 0; overflow: hidden; font-size: 12pt; line-height: 1.1; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .product-label p { margin: 1mm 0 0; font-size: 8pt; }
 .product-label-brand { text-transform: uppercase; font-weight: 700; color: #475569; }
-.product-label-barcode { display: block; width: 100%; max-height: 12mm; margin-top: 1mm; }
+/* Sized in mm by ProductLabel (see barcode-geometry.ts). Never fit it to the box:
+   scaling makes modules fractional printer dots and the bars merge on thermal paper. */
+.product-label-barcode { display: block; margin: 1mm auto 0; }
 .product-label-barcode-text { font-family: monospace; text-align: center; overflow-wrap: anywhere; }
 .product-label-sku { font-family: 'Courier New', monospace; font-weight: 700; }
 .product-label-price { margin-top: 1mm !important; border-top: 1px solid #000; padding-top: 0.6mm; text-align: right; font-size: 10pt !important; font-weight: 800; }
 
 @layer components {
+  .control { @apply mt-1 block h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm; }
   .dashboard-shell { @apply mx-auto max-w-[1600px] space-y-5 pb-8; }
   .dashboard-section { @apply border-t border-slate-200 pt-5; }
   .dashboard-filter-bar { @apply sticky top-0 z-20 flex flex-col justify-between gap-3 rounded-lg border border-slate-200 bg-white/95 p-3 shadow-sm backdrop-blur lg:flex-row lg:items-center; }
@@ -189,6 +193,24 @@
 
 .product-label-guides { border: 1px dashed #cbd5e1; }
 
+.pricing-card-page-viewport { width: 100%; overflow: auto; }
+.pricing-card-page-preview { width: max-content; transform: scale(var(--preview-scale, 1)); transform-origin: top left; }
+.pricing-card-page {
+  box-sizing: border-box;
+  display: grid;
+  width: var(--pricing-card-paper-width);
+  height: var(--pricing-card-paper-height);
+  padding: var(--pricing-card-page-margin);
+  grid-template-columns: repeat(var(--pricing-card-columns), var(--pricing-card-cell-width));
+  grid-auto-rows: var(--pricing-card-cell-height);
+  gap: var(--pricing-card-page-gap);
+  align-content: start;
+  justify-content: start;
+  background: #fff;
+}
+.pricing-card-page-preview .pricing-card-page { margin: 0 0 6mm; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgb(15 23 42 / 0.12); }
+.pricing-card-cut-guides { outline: 1px dashed #94a3b8; outline-offset: -1px; }
+
 @media print {
   .product-label-grid { display: grid; grid-template-columns: var(--label-width, 50mm); gap: 0; }
   .product-label { border: 0; font-family: Tahoma, Arial, 'Segoe UI', sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -201,4 +223,15 @@
   .label-page { break-after: page; page-break-after: always; }
   .label-page:last-child { break-after: auto; page-break-after: auto; }
   .product-label { break-inside: avoid; page-break-inside: avoid; }
+  .pricing-card-page-viewport { overflow: visible; }
+  .pricing-card-page-preview { transform: none; }
+  .pricing-card-page-preview .pricing-card-page { margin: 0; border: 0; box-shadow: none; }
+  .pricing-card-page { break-after: page; page-break-after: always; }
+  .pricing-card-page:last-child { break-after: auto; page-break-after: auto; }
+  .pricing-card { break-inside: avoid; page-break-inside: avoid; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  /* Sticker / roll printing: one label per page. A label exactly as tall as the
+     page can spill a fraction of a millimetre and feed a blank label, so it sits
+     just inside the page and always ends its own page. */
+  .product-label-grid > .product-label:not(.product-label-auto) { height: calc(var(--label-height, 30mm) - 0.5mm); break-after: page; page-break-after: always; }
+  .product-label-grid > .product-label:last-child { break-after: auto; page-break-after: auto; }
 }

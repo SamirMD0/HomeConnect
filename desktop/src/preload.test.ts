@@ -44,7 +44,7 @@ describe('preload', () => {
     // Check surface area
     const allowedMethods = [
       'ping', 'openWhatsApp', 'selectBackupDirectory', 'openBackupDirectory', 'selectBackupFile', 'openLogsFolder', 'copyDiagnostics',
-      'exportLabelsPdf', 'retryStartup', 'closeApp', 'onStartupLog', 'onStartupState'
+      'exportLabelsPdf', 'printLabels', 'retryStartup', 'closeApp', 'onStartupLog', 'onStartupState'
     ];
     const actualMethods = Object.keys(apiObj as object);
     
@@ -80,6 +80,9 @@ describe('preload', () => {
     const exportOptions = { suggestedName: 'product-labels-2026-08-04-12.pdf', paper: 'A4' };
     (apiObj as any).exportLabelsPdf(exportOptions);
     expect(ipcRenderer.invoke).toHaveBeenCalledWith('labels:exportPdf', exportOptions);
+
+    (apiObj as any).printLabels({ widthMm: 72, heightMm: 50 });
+    expect(ipcRenderer.invoke).toHaveBeenCalledWith('labels:print', { widthMm: 72, heightMm: 50 });
 
     // Verify onStartupLog returns an unsubscribe function
     const onStartupLogFn = (apiObj as any).onStartupLog;

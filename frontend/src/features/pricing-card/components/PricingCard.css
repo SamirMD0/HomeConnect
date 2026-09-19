@@ -1,0 +1,59 @@
+.pricing-card {
+  box-sizing: border-box;
+  display: grid;
+  width: var(--pricing-card-width);
+  height: var(--pricing-card-height);
+  padding: var(--pricing-card-margin);
+  gap: var(--pricing-card-gap);
+  overflow: hidden;
+  color: #111827;
+  background: #fff;
+  border: var(--pricing-card-border) solid #111827;
+  font-family: Tahoma, Arial, "Segoe UI", sans-serif;
+  font-size: calc(3mm * var(--pricing-card-font-scale));
+  line-height: 1.15;
+  container-type: size;
+  grid-template-rows: min-content minmax(0, 1fr) min-content min-content min-content;
+}
+
+.pricing-card p, .pricing-card h2, .pricing-card dl, .pricing-card dd { margin: 0; }
+.pricing-card-header { display: flex; align-items: center; justify-content: space-between; min-height: 0; }
+.pricing-card-company-logo { order: var(--pricing-card-company-order); max-width: 48%; height: var(--pricing-card-company-logo-size); object-fit: contain; }
+.pricing-card-brand-mark { order: var(--pricing-card-brand-order); display: flex; align-items: center; gap: 1mm; font-weight: 800; }
+.pricing-card-brand-logo { width: var(--pricing-card-brand-logo-size); height: var(--pricing-card-brand-logo-size); object-fit: contain; }
+
+.pricing-card-body { display: grid; min-height: 0; align-content: start; }
+.pricing-card-body-with-image { grid-template-columns: minmax(0, calc(100% - var(--pricing-card-image-width))) var(--pricing-card-image-width); gap: var(--pricing-card-gap); }
+.pricing-card-copy { display: grid; min-width: 0; align-content: start; grid-auto-rows: min-content; gap: calc(var(--pricing-card-gap) / 2); }
+.pricing-card-title { overflow: hidden; font-size: calc(5mm * var(--pricing-card-title-scale)); line-height: 1.05; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: var(--pricing-card-title-lines); }
+.pricing-card-model, .pricing-card-sku { font-family: "Courier New", monospace; overflow-wrap: anywhere; }
+.pricing-card-dimensions { color: #374151; }
+.pricing-card-specs { display: grid; gap: 0.5mm; }
+.pricing-card-spec-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 1mm; }
+.pricing-card-spec-row dt { color: #4b5563; }
+.pricing-card-spec-row dd { font-weight: 700; text-align: right; }
+.pricing-card-image { width: 100%; height: 100%; min-height: 0; object-fit: contain; }
+
+.pricing-card-features { display: grid; grid-template-columns: repeat(var(--pricing-card-feature-columns), minmax(0, 1fr)); gap: 1mm; }
+.pricing-card-feature { display: flex; min-width: 0; align-items: center; gap: 1mm; padding: 1mm; border: 1px solid #d1d5db; border-radius: 1mm; }
+.pricing-card-feature-icon { display: inline-flex; width: 5mm; height: 5mm; flex: 0 0 5mm; }
+.pricing-card-feature-icon svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.5; }
+.pricing-card-feature-copy { display: grid; min-width: 0; }
+.pricing-card-feature-copy strong, .pricing-card-feature-copy span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.pricing-card-price-code { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); gap: var(--pricing-card-gap); align-items: end; }
+.pricing-card-price-region, .pricing-card-code-region { display: grid; align-content: end; gap: 0.5mm; min-width: 0; }
+.pricing-card-price { width: fit-content; font-size: calc(6mm * var(--pricing-card-price-scale)); font-weight: var(--pricing-card-price-weight); line-height: 1; white-space: nowrap; }
+.pricing-card-price-boxed { padding: 1mm 1.5mm; border: 1px solid currentColor; }
+.pricing-card-price-underlined { border-bottom: 1px solid currentColor; }
+.pricing-card-valid-until { font-size: 0.82em; }
+.pricing-card-barcode { display: block; max-width: 100%; }
+.pricing-card-sku { font-size: 0.85em; }
+.pricing-card-footer { text-align: right; color: #4b5563; font-size: 0.78em; }
+
+.pricing-card-dividers > * + * { border-top: 1px solid #d1d5db; padding-top: calc(var(--pricing-card-gap) / 2); }
+
+@container (max-width: 80mm) {
+  .pricing-card-price-code { grid-template-columns: 1fr; }
+  .pricing-card-features { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

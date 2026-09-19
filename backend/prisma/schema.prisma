@@ -149,6 +149,12 @@ enum ServiceAuditRecordType {
   PRODUCT
   SERVICE_JOB
   PRICING_PRESET
+  LABEL_SECRET_SETTINGS
+  SHOP_PROFILE
+  BRAND_LOGO
+  PRICING_CARD_FEATURE_ICON
+  PRICING_CARD_TEMPLATE
+  PRICING_CARD_PRINT
 }
 
 enum ServiceAuditAction {
@@ -168,6 +174,28 @@ enum ServiceAuditAction {
   REGENERATE_SKU
   CHANGE_STOCK
   CHANGE_SPECIFICATIONS
+}
+
+enum CurrencyDisplayMode {
+  SYMBOL
+  CODE
+  SYMBOL_AND_CODE
+}
+
+enum PricingCardRolloutMode {
+  LEGACY_ONLY
+  BOTH
+  PRICING_CARD_ONLY
+}
+
+enum PricingCardPaperMode {
+  SINGLE_STICKER
+  SHEET
+}
+
+enum PricingCardPaperSize {
+  A4
+  LETTER
 }
 
 enum SalesChannel {
@@ -243,6 +271,14 @@ enum PricingRoundingMode {
   NEAREST_0_50
   NEAREST_1
   CEIL_1
+}
+
+enum LabelSecretEncodingMode {
+  STAGED_DISCOUNT
+  PRICE
+  DISCOUNT_PERCENTAGE
+  OFFSET_PRICE
+  DIGIT_MAP_PRICE
 }
 
 enum StockMovementType {
@@ -348,38 +384,48 @@ model User {
   deletedAt           DateTime?
   branchId            String?   @db.Uuid
 
-  transactions                Transaction[]
-  activityLogs                ActivityLog[]
-  debtsCreated                Debt[]                     @relation("DebtCreatedBy")
-  debtsCancelled              Debt[]                     @relation("DebtCancelledBy")
-  installmentPlansCreated     InstallmentPlan[]          @relation("InstallmentPlanCreatedBy")
-  installmentPlansCancelled   InstallmentPlan[]          @relation("InstallmentPlanCancelledBy")
-  paymentsCreated             Payment[]                  @relation("PaymentCreatedBy")
-  paymentsVoided              Payment[]                  @relation("PaymentVoidedBy")
-  financialCorrections        FinancialCorrectionAudit[] @relation("FinancialCorrectionCorrectedBy")
-  adminVerificationLogs       AdminVerificationLog[]
-  paymentAllocationsVoided    PaymentAllocation[]        @relation("PaymentAllocationVoidedBy")
-  productsCreated             Product[]                  @relation("ProductCreatedBy")
-  productsUpdated             Product[]                  @relation("ProductUpdatedBy")
-  serviceJobsCreated          ServiceJob[]               @relation("ServiceJobCreatedBy")
-  serviceJobsUpdated          ServiceJob[]               @relation("ServiceJobUpdatedBy")
-  serviceJobsCancelled        ServiceJob[]               @relation("ServiceJobCancelledBy")
-  serviceAudits               ServiceAudit[]             @relation("ServiceAuditChangedBy")
-  salesOrdersCreated          SalesOrder[]               @relation("SalesOrderCreatedBy")
-  salesOrdersUpdated          SalesOrder[]               @relation("SalesOrderUpdatedBy")
-  salesOrdersCancelled        SalesOrder[]               @relation("SalesOrderCancelledBy")
-  salesAudits                 SalesAudit[]               @relation("SalesAuditChangedBy")
-  suppliersCreated            Supplier[]                 @relation("SupplierCreatedBy")
-  suppliersUpdated            Supplier[]                 @relation("SupplierUpdatedBy")
-  supplierTransactionsCreated SupplierTransaction[]      @relation("SupplierTxCreatedBy")
-  supplierTransactionsUpdated SupplierTransaction[]      @relation("SupplierTxUpdatedBy")
-  supplierTransactionsRemoved SupplierTransaction[]      @relation("SupplierTxRemovedBy")
-  supplierAudits              SupplierAudit[]            @relation("SupplierAuditChangedBy")
-  prepaidDeliveries           PrepaidPurchase[]          @relation("PrepaidDeliveredBy")
-  pricingPresetsCreated       PricingPreset[]             @relation("PricingPresetCreatedBy")
-  pricingPresetsUpdated       PricingPreset[]             @relation("PricingPresetUpdatedBy")
-  repairsApplied              RepairHistory[]             @relation("RepairHistoryAppliedBy")
-  stockMovements              StockMovement[]             @relation("StockMovementCreatedBy")
+  transactions                   Transaction[]
+  activityLogs                   ActivityLog[]
+  debtsCreated                   Debt[]                       @relation("DebtCreatedBy")
+  debtsCancelled                 Debt[]                       @relation("DebtCancelledBy")
+  installmentPlansCreated        InstallmentPlan[]            @relation("InstallmentPlanCreatedBy")
+  installmentPlansCancelled      InstallmentPlan[]            @relation("InstallmentPlanCancelledBy")
+  paymentsCreated                Payment[]                    @relation("PaymentCreatedBy")
+  paymentsVoided                 Payment[]                    @relation("PaymentVoidedBy")
+  financialCorrections           FinancialCorrectionAudit[]   @relation("FinancialCorrectionCorrectedBy")
+  adminVerificationLogs          AdminVerificationLog[]
+  paymentAllocationsVoided       PaymentAllocation[]          @relation("PaymentAllocationVoidedBy")
+  productsCreated                Product[]                    @relation("ProductCreatedBy")
+  productsUpdated                Product[]                    @relation("ProductUpdatedBy")
+  serviceJobsCreated             ServiceJob[]                 @relation("ServiceJobCreatedBy")
+  serviceJobsUpdated             ServiceJob[]                 @relation("ServiceJobUpdatedBy")
+  serviceJobsCancelled           ServiceJob[]                 @relation("ServiceJobCancelledBy")
+  serviceAudits                  ServiceAudit[]               @relation("ServiceAuditChangedBy")
+  salesOrdersCreated             SalesOrder[]                 @relation("SalesOrderCreatedBy")
+  salesOrdersUpdated             SalesOrder[]                 @relation("SalesOrderUpdatedBy")
+  salesOrdersCancelled           SalesOrder[]                 @relation("SalesOrderCancelledBy")
+  salesAudits                    SalesAudit[]                 @relation("SalesAuditChangedBy")
+  suppliersCreated               Supplier[]                   @relation("SupplierCreatedBy")
+  suppliersUpdated               Supplier[]                   @relation("SupplierUpdatedBy")
+  supplierTransactionsCreated    SupplierTransaction[]        @relation("SupplierTxCreatedBy")
+  supplierTransactionsUpdated    SupplierTransaction[]        @relation("SupplierTxUpdatedBy")
+  supplierTransactionsRemoved    SupplierTransaction[]        @relation("SupplierTxRemovedBy")
+  supplierAudits                 SupplierAudit[]              @relation("SupplierAuditChangedBy")
+  prepaidDeliveries              PrepaidPurchase[]            @relation("PrepaidDeliveredBy")
+  pricingPresetsCreated          PricingPreset[]              @relation("PricingPresetCreatedBy")
+  pricingPresetsUpdated          PricingPreset[]              @relation("PricingPresetUpdatedBy")
+  labelSecretSettingsUpdated     LabelSecretSettings[]        @relation("LabelSecretSettingsUpdatedBy")
+  labelSecretEncodingsCreated    LabelSecretEncodingPreset[]  @relation("LabelSecretEncodingCreatedBy")
+  labelSecretEncodingsUpdated    LabelSecretEncodingPreset[]  @relation("LabelSecretEncodingUpdatedBy")
+  shopProfilesUpdated            ShopProfile[]                @relation("ShopProfileUpdatedBy")
+  brandLogosCreated              BrandLogo[]                  @relation("BrandLogoCreatedBy")
+  pricingCardFeatureIconsCreated PricingCardFeatureIcon[]     @relation("PricingCardFeatureIconCreatedBy")
+  pricingCardFeatureIconsUpdated PricingCardFeatureIcon[]     @relation("PricingCardFeatureIconUpdatedBy")
+  pricingCardTemplatesCreated    PricingCardTemplate[]        @relation("PricingCardTemplateCreatedBy")
+  pricingCardTemplatesUpdated    PricingCardTemplate[]        @relation("PricingCardTemplateUpdatedBy")
+  pricingCardPrintsGenerated     PricingCardPrint[]            @relation("PricingCardPrintGeneratedBy")
+  repairsApplied                 RepairHistory[]              @relation("RepairHistoryAppliedBy")
+  stockMovements                 StockMovement[]              @relation("StockMovementCreatedBy")
   salesStockFulfillmentsCreated  SalesOrderStockFulfillment[] @relation("FulfillmentCreatedBy")
   salesStockFulfillmentsReversed SalesOrderStockFulfillment[] @relation("FulfillmentReversedBy")
   supplierReceivingsReceived     SupplierReceiving[]          @relation("SupplierReceivingReceivedBy")
@@ -674,50 +720,52 @@ model AdminVerificationLog {
 }
 
 model Product {
-  id                                     String                  @id @default(uuid()) @db.Uuid
-  sku                                    String                  @unique
-  name                                   String
-  model                                  String
-  barcode                                String?                 @unique
-  brand                                  String?
-  price                                  Decimal?                @db.Decimal(12, 2)
-  discount                               Decimal?                @db.Decimal(12, 2)
-  costPrice                              Decimal?                @db.Decimal(12, 2)
-  pricingPresetId                        String?                 @db.Uuid
-  pricingPreset                          PricingPreset?          @relation(fields: [pricingPresetId], references: [id], onDelete: Restrict)
-  useCustomPricing                       Boolean                 @default(false)
-  installmentEnabled                     Boolean                 @default(false)
-  customExpensePercent                   Decimal?                @db.Decimal(6, 3)
-  customProfitPercent                    Decimal?                @db.Decimal(6, 3)
-  customDiscountBufferPercent            Decimal?                @db.Decimal(6, 3)
-  customInstallmentMarkupPercent         Decimal?                @db.Decimal(6, 3)
-  customDownPaymentPercent               Decimal?                @db.Decimal(6, 3)
-  customInstallmentMonths                Int?
-  customCalculationMode                  PricingCalculationMode?
-  imageUrl                               String?                 @db.Text
-  isActive                               Boolean                 @default(true)
-  notes                                  String?                 @db.Text
-  labelBarcodeSource                     LabelBarcodeSource      @default(AUTO)
-  trackStock                             Boolean                 @default(false)
-  stockQuantity                          Int                     @default(0)
-  lowStockThreshold                      Int?
-  specifications                         Json?
-  specificationNotes                     String?                 @db.Text
-  createdById                            String                  @db.Uuid
-  createdBy                              User                    @relation("ProductCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
-  updatedById                            String?                 @db.Uuid
-  updatedBy                              User?                   @relation("ProductUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
-  createdAt                              DateTime                @default(now())
-  updatedAt                              DateTime                @updatedAt
+  id                             String                  @id @default(uuid()) @db.Uuid
+  sku                            String                  @unique
+  name                           String
+  model                          String
+  barcode                        String?                 @unique
+  brand                          String?
+  price                          Decimal?                @db.Decimal(12, 2)
+  discount                       Decimal?                @db.Decimal(12, 2)
+  costPrice                      Decimal?                @db.Decimal(12, 2)
+  pricingPresetId                String?                 @db.Uuid
+  pricingPreset                  PricingPreset?          @relation(fields: [pricingPresetId], references: [id], onDelete: Restrict)
+  useCustomPricing               Boolean                 @default(false)
+  installmentEnabled             Boolean                 @default(false)
+  customExpensePercent           Decimal?                @db.Decimal(6, 3)
+  customProfitPercent            Decimal?                @db.Decimal(6, 3)
+  customDiscountBufferPercent    Decimal?                @db.Decimal(6, 3)
+  customInstallmentMarkupPercent Decimal?                @db.Decimal(6, 3)
+  customDownPaymentPercent       Decimal?                @db.Decimal(6, 3)
+  customInstallmentMonths        Int?
+  customCalculationMode          PricingCalculationMode?
+  imageUrl                       String?                 @db.Text
+  isActive                       Boolean                 @default(true)
+  notes                          String?                 @db.Text
+  labelBarcodeSource             LabelBarcodeSource      @default(AUTO)
+  trackStock                     Boolean                 @default(false)
+  stockQuantity                  Int                     @default(0)
+  lowStockThreshold              Int?
+  specifications                 Json?
+  specificationNotes             String?                 @db.Text
+  createdById                    String                  @db.Uuid
+  createdBy                      User                    @relation("ProductCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedById                    String?                 @db.Uuid
+  updatedBy                      User?                   @relation("ProductUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  createdAt                      DateTime                @default(now())
+  updatedAt                      DateTime                @updatedAt
 
-  serviceJobs      ServiceJob[]
-  salesOrderItems  SalesOrderItem[]
-  prepaidPurchases PrepaidPurchase[]
-  stockMovements   StockMovement[]
+  serviceJobs            ServiceJob[]
+  salesOrderItems        SalesOrderItem[]
+  prepaidPurchases       PrepaidPurchase[]
+  stockMovements         StockMovement[]
   salesStockFulfillments SalesOrderStockFulfillment[]
   supplierReceivingItems SupplierReceivingItem[]
   supplierPurchaseLines  SupplierPurchaseLine[]
-  image            ProductImage?
+  image                  ProductImage?
+  pricingCardFeatures    ProductPricingCardFeature[]
+  pricingCardPrints      PricingCardPrint[]
 
   @@index([name])
   @@index([sku])
@@ -726,6 +774,21 @@ model Product {
   @@index([isActive])
   @@index([pricingPresetId])
   @@map("products")
+}
+
+model ProductPricingCardFeature {
+  productId String   @db.Uuid
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  iconCode  String
+  label     String?
+  value     String?
+  position  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@id([productId, position])
+  @@index([productId])
+  @@map("product_pricing_card_features")
 }
 
 model StockMovement {
@@ -769,35 +832,190 @@ model ProductImage {
   @@map("product_images")
 }
 
-model PricingPreset {
+model ShopProfile {
   id                           String                 @id @default(uuid()) @db.Uuid
-  name                         String
-  productType                  String?
-  expensePercent               Decimal                @db.Decimal(6, 3)
-  profitPercent                Decimal                @db.Decimal(6, 3)
-  discountBufferPercent        Decimal                @db.Decimal(6, 3)
-  installmentMarkupPercent     Decimal                @db.Decimal(6, 3)
-  downPaymentPercent           Decimal                @db.Decimal(6, 3)
-  defaultInstallmentMonths     Int
-  calculationMode              PricingCalculationMode @default(COMPOUND)
-  roundingMode                 PricingRoundingMode    @default(NONE)
-  isDefault                    Boolean                @default(false)
-  isActive                     Boolean                @default(true)
-  notes                        String?                @db.Text
-  archivedAt                   DateTime?
-  archivedReason               String?                @db.Text
-  createdById                  String                 @db.Uuid
-  createdBy                    User                   @relation("PricingPresetCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  name                         String                 @default("Home Connect")
+  tagline                      String?
+  logoBytes                    Bytes?
+  logoMimeType                 String?
+  logoByteSize                 Int?
+  currencyCode                 String                 @default("USD")
+  currencyDisplay              CurrencyDisplayMode    @default(SYMBOL)
+  defaultPricingCardTemplateId String?                @db.Uuid
+  defaultPricingCardTemplate   PricingCardTemplate?   @relation("ShopDefaultCardTemplate", fields: [defaultPricingCardTemplateId], references: [id], onDelete: SetNull)
+  defaultCardValidityDays      Int                    @default(30)
+  snapshotPrintedCards         Boolean                @default(true)
+  pricingCardRolloutMode       PricingCardRolloutMode @default(BOTH)
   updatedById                  String?                @db.Uuid
-  updatedBy                    User?                  @relation("PricingPresetUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  updatedBy                    User?                  @relation("ShopProfileUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
   createdAt                    DateTime               @default(now())
   updatedAt                    DateTime               @updatedAt
-  products                     Product[]
+
+  @@map("shop_profiles")
+}
+
+model BrandLogo {
+  id            String   @id @default(uuid()) @db.Uuid
+  canonicalName String   @unique
+  displayName   String
+  logoBytes     Bytes?
+  logoMimeType  String?
+  logoByteSize  Int?
+  isActive      Boolean  @default(true)
+  createdById   String?  @db.Uuid
+  createdBy     User?    @relation("BrandLogoCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([canonicalName])
+  @@map("brand_logos")
+}
+
+model PricingCardFeatureIcon {
+  id          String   @id @default(uuid()) @db.Uuid
+  code        String   @unique
+  label       String
+  category    String?
+  svg         String   @db.Text
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdById String?  @db.Uuid
+  createdBy   User?    @relation("PricingCardFeatureIconCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt   DateTime @default(now())
+  updatedById String?  @db.Uuid
+  updatedBy   User?    @relation("PricingCardFeatureIconUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  updatedAt   DateTime @updatedAt
+
+  @@index([category, sortOrder])
+  @@index([isActive])
+  @@map("pricing_card_feature_icons")
+}
+
+model PricingCardTemplate {
+  id                  String                @id @default(uuid()) @db.Uuid
+  name                String                @unique
+  description         String?
+  paperMode           PricingCardPaperMode
+  paperSize           PricingCardPaperSize?
+  cardWidthMm         Decimal               @db.Decimal(6, 2)
+  cardHeightMm        Decimal               @db.Decimal(6, 2)
+  configVersion       Int                   @default(1)
+  config              Json
+  featureMax          Int                   @default(4)
+  specKeyOrder        String[]              @default([])
+  defaultValidityDays Int?
+  isActive            Boolean               @default(true)
+  archivedAt          DateTime?
+  archivedReason      String?               @db.Text
+  createdById         String?               @db.Uuid
+  createdBy           User?                 @relation("PricingCardTemplateCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedById         String?               @db.Uuid
+  updatedBy           User?                 @relation("PricingCardTemplateUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+
+  shopDefaultFor ShopProfile[] @relation("ShopDefaultCardTemplate")
+  pricingCardPrints PricingCardPrint[]
+
+  @@index([isActive])
+  @@map("pricing_card_templates")
+}
+
+model PricingCardPrint {
+  id                    String              @id @default(uuid()) @db.Uuid
+  productId             String              @db.Uuid
+  product               Product             @relation(fields: [productId], references: [id], onDelete: Restrict)
+  templateId            String              @db.Uuid
+  template              PricingCardTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  snapshot              Json
+  validUntil            DateTime?           @db.Date
+  currencyCode          String
+  publicPrice           Decimal             @db.Decimal(12, 2)
+  staffLabelCode        String?
+  barcodeValue          String
+  copiesPrinted         Int                 @default(1)
+  generatedAt           DateTime            @default(now())
+  generatedById         String              @db.Uuid
+  generatedBy           User                @relation("PricingCardPrintGeneratedBy", fields: [generatedById], references: [id], onDelete: Restrict)
+  hiddenPricingPresetId String?              @db.Uuid
+  encodingPresetId      String?              @db.Uuid
+
+  @@index([productId, generatedAt])
+  @@index([templateId, generatedAt])
+  @@index([generatedAt])
+  @@map("pricing_card_prints")
+}
+
+model PricingPreset {
+  id                       String                 @id @default(uuid()) @db.Uuid
+  name                     String
+  productType              String?
+  expensePercent           Decimal                @db.Decimal(6, 3)
+  profitPercent            Decimal                @db.Decimal(6, 3)
+  discountBufferPercent    Decimal                @db.Decimal(6, 3)
+  installmentMarkupPercent Decimal                @db.Decimal(6, 3)
+  downPaymentPercent       Decimal                @db.Decimal(6, 3)
+  defaultInstallmentMonths Int
+  calculationMode          PricingCalculationMode @default(COMPOUND)
+  roundingMode             PricingRoundingMode    @default(NONE)
+  isDefault                Boolean                @default(false)
+  /// Whether this preset may be selected as the source for a staff label code.
+  isLabelSecretAllowed     Boolean                @default(false)
+  isActive                 Boolean                @default(true)
+  notes                    String?                @db.Text
+  archivedAt               DateTime?
+  archivedReason           String?                @db.Text
+  createdById              String                 @db.Uuid
+  createdBy                User                   @relation("PricingPresetCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedById              String?                @db.Uuid
+  updatedBy                User?                  @relation("PricingPresetUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  createdAt                DateTime               @default(now())
+  updatedAt                DateTime               @updatedAt
+  products                 Product[]
+  labelSecretDefaultFor    LabelSecretSettings[]  @relation("LabelSecretDefaultPricingPreset")
 
   @@index([name])
   @@index([productType])
   @@index([isActive])
   @@map("pricing_presets")
+}
+
+model LabelSecretSettings {
+  id                      String                     @id @default(uuid()) @db.Uuid
+  defaultPricingPresetId  String?                    @db.Uuid
+  defaultPricingPreset    PricingPreset?             @relation("LabelSecretDefaultPricingPreset", fields: [defaultPricingPresetId], references: [id], onDelete: Restrict)
+  defaultEncodingPresetId String?                    @db.Uuid
+  defaultEncodingPreset   LabelSecretEncodingPreset? @relation("LabelSecretDefaultEncodingPreset", fields: [defaultEncodingPresetId], references: [id], onDelete: Restrict)
+  showCodeOnLabel         Boolean                    @default(true)
+  updatedById             String?                    @db.Uuid
+  updatedBy               User?                      @relation("LabelSecretSettingsUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  createdAt               DateTime                   @default(now())
+  updatedAt               DateTime                   @updatedAt
+
+  @@map("label_secret_settings")
+}
+
+model LabelSecretEncodingPreset {
+  id            String                  @id @default(uuid()) @db.Uuid
+  name          String
+  mode          LabelSecretEncodingMode
+  prefix        String                  @default("")
+  suffix        String                  @default("")
+  offset        Decimal                 @default(0) @db.Decimal(12, 2)
+  digitMap      String?
+  decimalPlaces Int                     @default(0)
+  isActive      Boolean                 @default(true)
+  createdById   String?                 @db.Uuid
+  createdBy     User?                   @relation("LabelSecretEncodingCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedById   String?                 @db.Uuid
+  updatedBy     User?                   @relation("LabelSecretEncodingUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+  defaultFor    LabelSecretSettings[]   @relation("LabelSecretDefaultEncodingPreset")
+
+  @@index([name])
+  @@index([isActive])
+  @@map("label_secret_encoding_presets")
 }
 
 model ServiceJob {
@@ -1089,11 +1307,11 @@ model SupplierReceiving {
   transactions SupplierTransaction[]
   audits       SupplierReceivingAudit[]
 
+  @@unique([id, supplierId])
   @@index([supplierId, receivedOn])
   @@index([receivedOn])
   @@index([receivedById])
   @@index([status])
-  @@unique([id, supplierId])
   @@map("supplier_receivings")
 }
 
@@ -1121,7 +1339,7 @@ model SupplierReceivingItem {
   reversedBy              User?          @relation("ReceivingItemReversedBy", fields: [reversedById], references: [id], onDelete: Restrict)
   reversalReason          String?        @db.Text
 
-  purchaseLine    SupplierPurchaseLine? @relation("PurchaseLineReceivingItem")
+  purchaseLine SupplierPurchaseLine? @relation("PurchaseLineReceivingItem")
 
   @@unique([receivingId, productId])
   @@index([productId, createdAt])
@@ -1187,37 +1405,37 @@ model SupplierPurchaseLine {
 }
 
 model SupplierTransaction {
-  id              String                       @id @default(uuid()) @db.Uuid
-  supplierId      String                       @db.Uuid
-  supplier        Supplier                     @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  id                   String                       @id @default(uuid()) @db.Uuid
+  supplierId           String                       @db.Uuid
+  supplier             Supplier                     @relation(fields: [supplierId], references: [id], onDelete: Restrict)
   supplierReceivingId String?                   @unique @db.Uuid
-  supplierReceiving   SupplierReceiving?        @relation(fields: [supplierReceivingId, supplierId], references: [id, supplierId], onDelete: Restrict)
-  type            SupplierTransactionType
-  direction       SupplierTransactionDirection
-  amount          Decimal                      @db.Decimal(12, 2)
-  transactionDate DateTime                     @db.Date
-  description     String
-  reference       String?
-  notes           String?                      @db.Text
+  supplierReceiving    SupplierReceiving?           @relation(fields: [supplierReceivingId, supplierId], references: [id, supplierId], onDelete: Restrict)
+  type                 SupplierTransactionType
+  direction            SupplierTransactionDirection
+  amount               Decimal                      @db.Decimal(12, 2)
+  transactionDate      DateTime                     @db.Date
+  description          String
+  reference            String?
+  notes                String?                      @db.Text
   /// Supplier's own invoice/receipt number. Deliberately not unique: suppliers
   /// reuse and re-issue numbers, and a hard constraint would block a real
   /// purchase at the counter. Duplicates surface as a warning instead.
-  receiptNumber   String?
+  receiptNumber        String?
   /// True when the posted amount was set by hand instead of the line sum
   /// (freight, rounding, a supplier discount). The line sum is still retained.
-  amountOverride       Boolean                 @default(false)
-  amountOverrideReason String?                 @db.Text
-  status          SupplierTransactionStatus    @default(ACTIVE)
-  removedAt       DateTime?
-  removedById     String?                      @db.Uuid
-  removedBy       User?                        @relation("SupplierTxRemovedBy", fields: [removedById], references: [id], onDelete: Restrict)
-  removedReason   String?                      @db.Text
-  createdById     String                       @db.Uuid
-  createdBy       User                         @relation("SupplierTxCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
-  updatedById     String?                      @db.Uuid
-  updatedBy       User?                        @relation("SupplierTxUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
-  createdAt       DateTime                     @default(now())
-  updatedAt       DateTime                     @updatedAt
+  amountOverride       Boolean                      @default(false)
+  amountOverrideReason String?                      @db.Text
+  status               SupplierTransactionStatus    @default(ACTIVE)
+  removedAt            DateTime?
+  removedById          String?                      @db.Uuid
+  removedBy            User?                        @relation("SupplierTxRemovedBy", fields: [removedById], references: [id], onDelete: Restrict)
+  removedReason        String?                      @db.Text
+  createdById          String                       @db.Uuid
+  createdBy            User                         @relation("SupplierTxCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedById          String?                      @db.Uuid
+  updatedBy            User?                        @relation("SupplierTxUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  createdAt            DateTime                     @default(now())
+  updatedAt            DateTime                     @updatedAt
 
   audits        SupplierAudit[]
   purchaseLines SupplierPurchaseLine[]

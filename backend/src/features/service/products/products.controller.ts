@@ -8,7 +8,11 @@ import {
   UpdateProductPricingInput, ProductPricingPreviewQueryInput,
   ProductLabelQueryInput, ProductLabelsQueryInput, UpdateProductSkuInput, UpdateProductStockInput,
   NormalizeProductBrandsInput,
+  UpdateProductFeaturesInput,
+  ProductPricingCardQueryInput, ProductPricingCardsQueryInput,
+  ProductPricingCardOverrideInput,
 } from './products.validator';
+import { RecordPrintSnapshotInput } from '../../pricing-card/print-snapshot/print-snapshot.validator';
 
 const contextFrom = (req: { headers: Request['headers']; ip?: string }) => ({
   requestId: typeof req.headers['x-request-id'] === 'string' ? req.headers['x-request-id'] : null,
@@ -93,6 +97,42 @@ export class ProductsController {
   }
   static async labels(req: Request, res: Response, next: NextFunction) {
     try { res.json({ success: true, data: await ProductsService.labels(req.query as unknown as ProductLabelsQueryInput) }); }
+    catch (error) { next(error); }
+  }
+  static async pricingCard(req: Request<ProductParamsInput>, res: Response, next: NextFunction) {
+    try {
+      const query = req.query as unknown as ProductPricingCardQueryInput;
+      res.json({ success: true, data: await ProductsService.label(req.params.productId, { ...query, includePrice: true }) });
+    } catch (error) { next(error); }
+  }
+  static async pricingCards(req: Request, res: Response, next: NextFunction) {
+    try {
+      const query = req.query as unknown as ProductPricingCardsQueryInput;
+      res.json({ success: true, data: await ProductsService.labels({ ...query, includePrice: true }) });
+    } catch (error) { next(error); }
+  }
+  static async recordPricingCardPrint(req: Request<unknown, unknown, RecordPrintSnapshotInput>, res: Response, next: NextFunction) {
+    try { res.status(201).json({ success: true, data: await ProductsService.recordPricingCardPrint(req.body, req.user!, contextFrom(req)) }); }
+    catch (error) { next(error); }
+  }
+  static async pricingCardPrints(req: Request<ProductParamsInput>, res: Response, next: NextFunction) {
+    try { res.json({ success: true, data: await ProductsService.listPricingCardPrints(req.params.productId, Number(req.query.limit)) }); }
+    catch (error) { next(error); }
+  }
+  static async updateFeatures(req: Request<ProductParamsInput, unknown, UpdateProductFeaturesInput>, res: Response, next: NextFunction) {
+    try { res.json({ success: true, data: await ProductsService.updateFeatures(req.params.productId, req.body, req.user!, contextFrom(req)) }); }
+    catch (error) { next(error); }
+  }
+  static async labelSecretPreview(req: Request, res: Response, next: NextFunction) {
+    try { res.json({ success: true, data: await ProductsService.labelSecretPreview(String(req.params.productId), req.body, req.user!, contextFrom(req)) }); }
+    catch (error) { next(error); }
+  }
+  static async pricingCardSecretPreview(req: Request<ProductParamsInput, unknown, ProductPricingCardOverrideInput>, res: Response, next: NextFunction) {
+    try { res.json({ success: true, data: await ProductsService.pricingCardSecretPreview(req.params.productId, req.body, req.user!, contextFrom(req)) }); }
+    catch (error) { next(error); }
+  }
+  static async labelsSecretPreview(req: Request, res: Response, next: NextFunction) {
+    try { res.json({ success: true, data: await ProductsService.labelsSecretPreview(req.body, req.user!, contextFrom(req)) }); }
     catch (error) { next(error); }
   }
   static async updateSku(req: Request<ProductParamsInput, unknown, UpdateProductSkuInput>, res: Response, next: NextFunction) {

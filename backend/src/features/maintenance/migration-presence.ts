@@ -32,6 +32,7 @@ export interface SchemaObjects {
   indexes: Set<string>;
   enumValues: Set<string>;
   extensions: Set<string>;
+  sequences: Set<string>;
 }
 
 export interface PresenceClient {
@@ -60,6 +61,12 @@ const ADD_ENUM_VALUE = new RegExp(
   String.raw`ALTER\s+TYPE\s+${SCHEMA}${IDENT}\s+ADD\s+VALUE\s+(?:IF\s+NOT\s+EXISTS\s+)?'([^']+)'`,
   'gi'
 );
+/**
+ * Sequences matter for data migrations: one whose only DDL is a sequence would
+ * otherwise read as UNKNOWN, and UNKNOWN may be resolved without running — so a
+ * backfill could be recorded as done while no row was touched.
+ */
+const CREATE_SEQUENCE = new RegExp(String.raw`CREATE\s+SEQUENCE\s+(?:IF\s+NOT\s+EXISTS\s+)?${SCHEMA}${IDENT}`, 'gi');
 const CREATE_EXTENSION = new RegExp(String.raw`CREATE\s+EXTENSION\s+(?:IF\s+NOT\s+EXISTS\s+)?${IDENT}`, 'gi');
 
 /** Anything that removes or renames makes "already present" meaningless. */
@@ -89,6 +96,7 @@ export function expectedObjects(sql: string): string[] {
     ...matchAll(stripped, CREATE_INDEX, (m) => `index:${unquote(m[1])}`),
     ...matchAll(stripped, ADD_ENUM_VALUE, (m) => `enum:${unquote(m[1])}.${m[2]}`),
     ...matchAll(stripped, CREATE_EXTENSION, (m) => `extension:${unquote(m[1])}`),
+    ...matchAll(stripped, CREATE_SEQUENCE, (m) => `sequence:${unquote(m[1])}`),
   ].filter((value, index, all) => all.indexOf(value) === index);
 }
 
@@ -108,7 +116,7 @@ export function classifyPresence(migration: BundledMigration, schema: SchemaObje
       verdict: 'UNKNOWN',
       expected,
       missing: [],
-      reason: 'No table, column, type or index could be detected in this update, so it cannot be checked automatically.',
+      reason: 'No table, column, type, index or sequence could be detected in this update, so it cannot be checked automatically.',
     };
   }
 
@@ -139,12 +147,13 @@ function hasObject(object: string, schema: SchemaObjects): boolean {
   if (kind === 'index') return schema.indexes.has(identifier);
   if (kind === 'enum') return schema.enumValues.has(identifier);
   if (kind === 'extension') return schema.extensions.has(identifier);
+  if (kind === 'sequence') return schema.sequences.has(identifier);
   return false;
 }
 
 /** One round trip for the whole public schema, rather than a query per object. */
 export async function readSchemaObjects(client: PresenceClient): Promise<SchemaObjects> {
-  const [columns, types, indexes, enumValues, extensions] = await Promise.all([
+  const [columns, types, indexes, enumValues, extensions, sequences] = await Promise.all([
     client.$queryRawUnsafe<Array<{ table_name: string; column_name: string }>>(
       `SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = 'public'`
     ),
@@ -160,6 +169,9 @@ export async function readSchemaObjects(client: PresenceClient): Promise<SchemaO
       `SELECT t.typname, e.enumlabel FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid`
     ),
     client.$queryRawUnsafe<Array<{ extname: string }>>(`SELECT extname FROM pg_extension`),
+    client.$queryRawUnsafe<Array<{ sequencename: string }>>(
+      `SELECT sequencename FROM pg_sequences WHERE schemaname = 'public'`
+    ),
   ]);
 
   return {
@@ -169,5 +181,6 @@ export async function readSchemaObjects(client: PresenceClient): Promise<SchemaO
     indexes: new Set(indexes.map((row) => row.indexname)),
     enumValues: new Set(enumValues.map((row) => `${row.typname}.${row.enumlabel}`)),
     extensions: new Set(extensions.map((row) => row.extname)),
+    sequences: new Set(sequences.map((row) => row.sequencename)),
   };
 }

@@ -1,4 +1,5 @@
 import { renderToStaticMarkup } from 'react-dom/server';
+import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SettingsPage } from './SettingsPage';
 
@@ -30,7 +31,7 @@ describe('SettingsPage', () => {
   });
 
   it('renders backup controls for admins', () => {
-    const html = renderToStaticMarkup(<SettingsPage />);
+    const html = renderToStaticMarkup(<MemoryRouter><SettingsPage /></MemoryRouter>);
 
     expect(html).toContain('Settings');
     expect(html).toContain('Backup panel rendered');
@@ -40,7 +41,7 @@ describe('SettingsPage', () => {
   it('hides backup and maintenance controls from non-admin users', () => {
     authMock.user = { id: 'employee', username: 'employee', fullName: 'Employee', role: 'EMPLOYEE' };
 
-    const html = renderToStaticMarkup(<SettingsPage />);
+    const html = renderToStaticMarkup(<MemoryRouter><SettingsPage /></MemoryRouter>);
 
     expect(html).toContain('Settings are admin-only');
     expect(html).not.toContain('Backup panel rendered');

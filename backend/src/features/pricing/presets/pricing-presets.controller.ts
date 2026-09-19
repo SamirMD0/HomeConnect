@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import { PricingPresetsService } from './pricing-presets.service';
-import { CreatePricingPresetInput, PricingPresetActionInput, PricingPresetAuditQueryInput, PricingPresetListQueryInput, PricingPresetParamsInput, UpdatePricingPresetInput } from './pricing-presets.validator';
+import { CreatePricingPresetInput, PricingPresetActionInput, PricingPresetAuditQueryInput, PricingPresetListQueryInput, PricingPresetParamsInput, PricingPresetPasswordActionInput, UpdatePricingPresetInput } from './pricing-presets.validator';
 
 const context = (req: { headers: Request['headers']; ip?: string }) => ({ requestId: typeof req.headers['x-request-id'] === 'string' ? req.headers['x-request-id'] : null, ipAddress: req.ip ?? null });
 export class PricingPresetsController {
@@ -11,5 +11,7 @@ export class PricingPresetsController {
   static async archive(req: Request<PricingPresetParamsInput, unknown, PricingPresetActionInput>, res: Response, next: NextFunction) { try { res.json({ success: true, data: await PricingPresetsService.archive(req.params.presetId, req.body, req.user!, context(req)) }); } catch (e) { next(e); } }
   static async restore(req: Request<PricingPresetParamsInput, unknown, PricingPresetActionInput>, res: Response, next: NextFunction) { try { res.json({ success: true, data: await PricingPresetsService.restore(req.params.presetId, req.body, req.user!, context(req)) }); } catch (e) { next(e); } }
   static async setDefault(req: Request<PricingPresetParamsInput, unknown, PricingPresetActionInput>, res: Response, next: NextFunction) { try { res.json({ success: true, data: await PricingPresetsService.setDefault(req.params.presetId, req.body, req.user!, context(req)) }); } catch (e) { next(e); } }
+  static async setLabelSecret(req: Request<PricingPresetParamsInput, unknown, PricingPresetPasswordActionInput>, res: Response, next: NextFunction) { try { res.json({ success: true, data: await PricingPresetsService.setLabelSecret(req.params.presetId, req.body, req.user!, context(req)) }); } catch (e) { next(e); } }
+  static async clearLabelSecret(req: Request<PricingPresetParamsInput, unknown, PricingPresetPasswordActionInput>, res: Response, next: NextFunction) { try { res.json({ success: true, data: await PricingPresetsService.clearLabelSecret(req.params.presetId, req.body, req.user!, context(req)) }); } catch (e) { next(e); } }
   static async audit(req: Request<PricingPresetParamsInput>, res: Response, next: NextFunction) { try { const r = await PricingPresetsService.audit(req.params.presetId, req.query as unknown as PricingPresetAuditQueryInput); res.json({ success: true, data: r.items, meta: { pagination: { page: r.page, pageSize: r.pageSize, totalItems: r.total, totalPages: Math.ceil(r.total / r.pageSize) } } }); } catch (e) { next(e); } }
 }

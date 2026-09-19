@@ -7,7 +7,7 @@ const { repository, pricing, writeAudit, verify, tx } = vi.hoisted(() => {
     repository: {
       findByBarcode: vi.fn(), findBySku: vi.fn(), findDuplicates: vi.fn(), findPricingPreset: vi.fn(), create: vi.fn(),
       findActiveDefaultPricingPreset: vi.fn(), findById: vi.fn(), update: vi.fn(), deleteImage: vi.fn(),
-      groupBrandSpellings: vi.fn(), list: vi.fn(),
+      groupBrandSpellings: vi.fn(), list: vi.fn(), findActiveFeatureIconCodes: vi.fn(), replacePricingCardFeatures: vi.fn(),
     },
     pricing: { resolveProductPricing: vi.fn() },
     writeAudit: vi.fn(), verify: vi.fn(), tx: transaction,
@@ -20,6 +20,7 @@ vi.mock('../audit/service-audit', () => ({ writeServiceAudit: writeAudit }));
 vi.mock('../../../lib/admin-verification', () => ({ verifyAdminPassword: verify }));
 vi.mock('../../financial/infrastructure/transaction', () => ({ runFinancialTransaction: (operation: (client: unknown) => unknown) => operation(tx) }));
 vi.mock('./product-sku', () => ({ generateProductSku: vi.fn().mockResolvedValue('HC-000001') }));
+vi.mock('./product-internal-barcode', () => ({ generateInternalBarcode: vi.fn().mockResolvedValue('2000000000015') }));
 vi.mock('../../../lib/prisma', () => ({ prisma: {}, transactionModel: {}, activityLogModel: {} }));
 
 import { ProductsService, summarizeProductBrands } from './products.service';
@@ -39,6 +40,7 @@ const productOf = (overrides: Record<string, unknown> = {}) => ({
   trackStock: false, stockQuantity: 0, lowStockThreshold: null, specifications: [], specificationNotes: null,
   createdById: user.userId, updatedById: null, createdAt: new Date('2026-08-05T00:00:00Z'), updatedAt: new Date('2026-08-05T00:00:00Z'),
   pricingPreset: null, image: null, createdBy: { fullName: 'Admin User', username: 'admin' }, updatedBy: null,
+  pricingCardFeatures: [],
   ...overrides,
 });
 
@@ -58,9 +60,20 @@ describe('product service workflow', () => {
     repository.findPricingPreset.mockResolvedValue(null);
     repository.findActiveDefaultPricingPreset.mockResolvedValue(null);
     repository.list.mockResolvedValue({ items: [], total: 0 });
+    repository.findActiveFeatureIconCodes.mockResolvedValue([]);
     pricing.resolveProductPricing.mockReturnValue(unavailable);
     repository.create.mockImplementation((data) => Promise.resolve(productOf({ ...data })));
     repository.update.mockImplementation((_id, data) => Promise.resolve(productOf({ ...data })));
+  });
+
+  it('gives a new product without a barcode a shop-internal EAN-13', async () => {
+    await ProductsService.create({ name: 'Fan', model: 'F1' }, employee, context);
+    expect(repository.create).toHaveBeenCalledWith(expect.objectContaining({ barcode: '2000000000015' }), expect.anything());
+  });
+
+  it('keeps a manufacturer barcode entered on create', async () => {
+    await ProductsService.create({ name: 'TV', model: '55QNED70A6A', barcode: '6222048413923' }, employee, context);
+    expect(repository.create).toHaveBeenCalledWith(expect.objectContaining({ barcode: '6222048413923' }), expect.anything());
   });
 
   it('persists an image URL on create, returns it after a fresh get, and audits it', async () => {
@@ -101,6 +114,41 @@ describe('product service workflow', () => {
     await expect(ProductsService.create({ name: 'Threshold fan', model: 'TH-1', lowStockThreshold: 2 }, employee, context))
       .rejects.toMatchObject({ statusCode: 403 });
     expect(repository.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('creates ordered highlights only for a password-verified admin and includes them in the audit', async () => {
+    const featureHighlights = [
+      { iconCode: 'spin-1400', label: null, value: '1400 RPM', position: 1 },
+      { iconCode: 'capacity', label: 'Capacity', value: '9 kg', position: 2 },
+    ];
+    repository.findActiveFeatureIconCodes.mockResolvedValue(featureHighlights.map(({ iconCode }) => ({ code: iconCode })));
+    repository.findById.mockResolvedValue(productOf({ pricingCardFeatures: featureHighlights.map((entry) => ({
+      productId: '22222222-2222-4222-8222-222222222222', ...entry,
+      createdAt: new Date(), updatedAt: new Date(),
+    })) }));
+
+    await expect(ProductsService.create({
+      name: 'Washer', model: 'W1', featureHighlights, accountPassword: 'secret',
+    }, employee, context)).rejects.toMatchObject({ statusCode: 403 });
+
+    const created = await ProductsService.create({
+      name: 'Washer', model: 'W1', featureHighlights, accountPassword: 'secret',
+    }, user, context);
+    expect(verify).toHaveBeenCalledWith(user.userId, 'secret', expect.objectContaining({ action: 'UPDATE_PRODUCT_PRICING_CARD_FEATURES' }), tx);
+    expect(repository.replacePricingCardFeatures).toHaveBeenCalledWith(created.id, featureHighlights, tx);
+    expect(created.featureHighlights).toHaveLength(2);
+    expect(writeAudit.mock.calls.at(-1)?.[0].afterValues.featureHighlights).toHaveLength(2);
+  });
+
+  it('rejects unknown feature icons before replacing persisted highlights', async () => {
+    const existing = productOf();
+    repository.findById.mockResolvedValue(existing);
+    await expect(ProductsService.updateFeatures(existing.id, {
+      featureHighlights: [{ iconCode: 'missing-icon', label: null, value: null, position: 1 }],
+      accountPassword: 'secret',
+    }, user, context)).rejects.toMatchObject({ statusCode: 400 });
+    expect(repository.replacePricingCardFeatures).not.toHaveBeenCalled();
+    expect(writeAudit).not.toHaveBeenCalled();
   });
 
   it('updates imageUrl only when supplied and returns resolved pricing from PATCH', async () => {

@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useDebouncedValue } from '../../../hooks/useDebouncedValue';
 import { pricingApi } from '../api/pricing.api';
-import { CreatePricingPresetInput, PricingPresetFilters, PricingProtectedAction, UpdatePricingPresetInput } from '../types/pricing.types';
+import { CreatePricingPresetInput, LabelSecretEncodingInput, PricingPasswordAction, PricingPresetFilters, PricingProtectedAction, UpdateLabelSecretSettingsInput, UpdatePricingPresetInput } from '../types/pricing.types';
 
-export const pricingKeys={all:['pricing-presets'] as const,list:(filters:PricingPresetFilters)=>['pricing-presets','list',filters] as const,detail:(id:string)=>['pricing-presets','detail',id] as const,audit:(id:string)=>['pricing-presets','audit',id] as const};
+export const pricingKeys={all:['pricing-presets'] as const,list:(filters:PricingPresetFilters)=>['pricing-presets','list',filters] as const,detail:(id:string)=>['pricing-presets','detail',id] as const,audit:(id:string)=>['pricing-presets','audit',id] as const,labelSecret:()=>['pricing-presets','label-secret'] as const};
 export function usePricingPresets(filters:PricingPresetFilters={}){const search=useDebouncedValue(filters.search??'',300);const normalized={...filters,search:search||undefined};return useQuery({queryKey:pricingKeys.list(normalized),queryFn:()=>pricingApi.list(normalized)});}
 export const usePricingPreset=(id:string)=>useQuery({queryKey:pricingKeys.detail(id),queryFn:()=>pricingApi.get(id),enabled:Boolean(id)});
 export const usePricingPresetAudit=(id:string,enabled=true)=>useQuery({queryKey:pricingKeys.audit(id),queryFn:()=>pricingApi.audit(id),enabled:Boolean(id)&&enabled});
@@ -13,3 +13,9 @@ export const useUpdatePricingPreset=mutation<{id:string;input:UpdatePricingPrese
 export const useArchivePricingPreset=mutation<{id:string;input:PricingProtectedAction}>(({id,input})=>pricingApi.archive(id,input));
 export const useRestorePricingPreset=mutation<{id:string;input:PricingProtectedAction}>(({id,input})=>pricingApi.restore(id,input));
 export const useSetDefaultPricingPreset=mutation<{id:string;input:PricingProtectedAction}>(({id,input})=>pricingApi.setDefault(id,input));
+export const useSetLabelSecretPricingPreset=mutation<{id:string;input:PricingPasswordAction}>(({id,input})=>pricingApi.setLabelSecret(id,input));
+export const useClearLabelSecretPricingPreset=mutation<{id:string;input:PricingPasswordAction}>(({id,input})=>pricingApi.clearLabelSecret(id,input));
+export const useLabelSecretConfiguration=()=>useQuery({queryKey:pricingKeys.labelSecret(),queryFn:pricingApi.labelSecretConfiguration});
+export const useUpdateLabelSecretSettings=mutation<UpdateLabelSecretSettingsInput>(pricingApi.updateLabelSecretSettings);
+export const useCreateLabelSecretEncoding=mutation<LabelSecretEncodingInput>(pricingApi.createLabelSecretEncoding);
+export const useUpdateLabelSecretEncoding=mutation<{id:string;input:LabelSecretEncodingInput}>(({id,input})=>pricingApi.updateLabelSecretEncoding(id,input));

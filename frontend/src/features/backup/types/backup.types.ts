@@ -86,6 +86,8 @@ declare global {
       openLogsFolder?: () => Promise<void>;
       copyDiagnostics?: (data: string) => Promise<void>;
       exportLabelsPdf?: (options: { suggestedName: string; paper: 'A4' | 'LETTER' }) => Promise<{ saved: boolean; path?: string; error?: string }>;
+      /** Desktop only: one label per page at exactly this size, no margins, no URL header. */
+      printLabels?: (options: { widthMm: number; heightMm: number }) => Promise<{ printed: boolean; error?: string }>;
       /**
        * Customer communication: opens an `https://wa.me/...` deep link through
        * the main process, which allowlists the protocol and host. Absent when
