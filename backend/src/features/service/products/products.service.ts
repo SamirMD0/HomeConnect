@@ -56,6 +56,8 @@ import { ShopProfileRepository } from '../../shop/shop-profile.repository';
 import { BrandLogoRepository } from '../../brand-logo/brand-logo.repository';
 import { FeatureIconRepository } from '../../pricing-card/feature-icon/feature-icon.repository';
 import { CANONICAL_SPEC_KEYS, CanonicalSpecKey, parseDimensions, resolveSpec } from '../../pricing-card/spec-catalog';
+import { PrintSnapshotService } from '../../pricing-card/print-snapshot/print-snapshot.service';
+import { RecordPrintSnapshotInput } from '../../pricing-card/print-snapshot/print-snapshot.validator';
 
 export interface ProductScanPayload {
   id: string;
@@ -618,6 +620,14 @@ export class ProductsService {
     }
 
     return { labels, warnings: onceSecretPresetNotSet(warnings) };
+  }
+
+  static recordPricingCardPrint(input: RecordPrintSnapshotInput, user: ServiceMutationUser, context: RequestContext) {
+    return PrintSnapshotService.recordPrint(input, user, context);
+  }
+
+  static listPricingCardPrints(productId: string, limit: number) {
+    return PrintSnapshotService.listPrintsForProduct(productId, limit);
   }
 
   static async labelSecretPreview(id: string, input: ProductLabelOverrideInput, user: ServiceMutationUser, context: RequestContext) {

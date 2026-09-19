@@ -45,4 +45,21 @@ describe('pricing-card print snapshot routes', () => {
     expect((await request(app).get(`/api/v1/pricing-card-prints/product/${productId}?limit=25`).set('Authorization', `Bearer ${employee}`)).status).toBe(200);
     expect(service.listPrintsForProduct).toHaveBeenCalledWith(productId, 25);
   });
+
+  it('exposes the product-scoped print snapshot and history routes', async () => {
+    expect((await request(app).post('/api/v1/products/pricing-cards/print-snapshot').send(input)).status).toBe(401);
+    expect((await request(app).post('/api/v1/products/pricing-cards/print-snapshot').set('Authorization', `Bearer ${employee}`).send(input)).status).toBe(403);
+    expect((await request(app).post('/api/v1/products/pricing-cards/print-snapshot').set('Authorization', `Bearer ${admin}`).send({ ...input, accountPassword: undefined })).status).toBe(401);
+    const record = await request(app).post('/api/v1/products/pricing-cards/print-snapshot')
+      .set('Authorization', `Bearer ${admin}`).send(input);
+    expect(record.status).toBe(201);
+    expect(record.body.data).toEqual({ recorded: true, print: { id: '44444444-4444-4444-8444-444444444444' } });
+    expect(service.recordPrint).toHaveBeenCalledWith(expect.objectContaining({ productId, templateId }), expect.objectContaining({ role: 'ADMIN' }), expect.anything());
+
+    const history = await request(app).get(`/api/v1/products/${productId}/pricing-cards/prints?limit=10`)
+      .set('Authorization', `Bearer ${employee}`);
+    expect(history.status).toBe(200);
+    expect(history.body.data).toEqual([]);
+    expect(service.listPrintsForProduct).toHaveBeenCalledWith(productId, 10);
+  });
 });

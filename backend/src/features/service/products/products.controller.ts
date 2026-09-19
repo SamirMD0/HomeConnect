@@ -11,6 +11,7 @@ import {
   UpdateProductFeaturesInput,
   ProductPricingCardQueryInput, ProductPricingCardsQueryInput,
 } from './products.validator';
+import { RecordPrintSnapshotInput } from '../../pricing-card/print-snapshot/print-snapshot.validator';
 
 const contextFrom = (req: { headers: Request['headers']; ip?: string }) => ({
   requestId: typeof req.headers['x-request-id'] === 'string' ? req.headers['x-request-id'] : null,
@@ -108,6 +109,14 @@ export class ProductsController {
       const query = req.query as unknown as ProductPricingCardsQueryInput;
       res.json({ success: true, data: await ProductsService.labels({ ...query, includePrice: true }) });
     } catch (error) { next(error); }
+  }
+  static async recordPricingCardPrint(req: Request<unknown, unknown, RecordPrintSnapshotInput>, res: Response, next: NextFunction) {
+    try { res.status(201).json({ success: true, data: await ProductsService.recordPricingCardPrint(req.body, req.user!, contextFrom(req)) }); }
+    catch (error) { next(error); }
+  }
+  static async pricingCardPrints(req: Request<ProductParamsInput>, res: Response, next: NextFunction) {
+    try { res.json({ success: true, data: await ProductsService.listPricingCardPrints(req.params.productId, Number(req.query.limit)) }); }
+    catch (error) { next(error); }
   }
   static async updateFeatures(req: Request<ProductParamsInput, unknown, UpdateProductFeaturesInput>, res: Response, next: NextFunction) {
     try { res.json({ success: true, data: await ProductsService.updateFeatures(req.params.productId, req.body, req.user!, contextFrom(req)) }); }
