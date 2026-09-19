@@ -1,0 +1,36 @@
+import { api } from '../../../services/api';
+import type {
+  BrandLogo,
+  PricingCardFeatureIcon,
+  PricingCardQuery,
+  PricingCardResult,
+  PricingCardsResult,
+  PricingCardTemplate,
+  RecordPricingCardPrintInput,
+  ShopProfile,
+} from '../types/pricing-card.types';
+
+const labelParams = (query: PricingCardQuery) => ({
+  ...query,
+  featureCodes: query.featureCodes?.join(','),
+  includePriceCode: query.includePriceCode ?? false,
+  includePrice: query.includePrice ?? true,
+});
+
+export const pricingCardApi = {
+  shopProfile: async (): Promise<ShopProfile> => (await api.get('/shop-profile')).data.data,
+  templates: async (activeOnly = true): Promise<PricingCardTemplate[]> =>
+    (await api.get('/pricing-card-templates', { params: { activeOnly } })).data.data,
+  template: async (templateId: string): Promise<PricingCardTemplate> =>
+    (await api.get(`/pricing-card-templates/${templateId}`)).data.data,
+  featureIcons: async (activeOnly = true, category?: string): Promise<PricingCardFeatureIcon[]> =>
+    (await api.get('/pricing-card-feature-icons', { params: { activeOnly, category } })).data.data,
+  brandLogos: async (activeOnly = true): Promise<BrandLogo[]> =>
+    (await api.get('/brand-logos', { params: { activeOnly } })).data.data,
+  pricingCard: async (productId: string, query: PricingCardQuery): Promise<PricingCardResult> =>
+    (await api.get(`/products/${productId}/label`, { params: labelParams(query) })).data.data,
+  pricingCards: async (productIds: string[], query: PricingCardQuery): Promise<PricingCardsResult> =>
+    (await api.get('/products/labels', { params: { ...labelParams(query), ids: productIds.join(',') } })).data.data,
+  recordPrint: async (input: RecordPricingCardPrintInput): Promise<{ recorded: boolean; print: unknown | null }> =>
+    (await api.post('/products/pricing-cards/print-snapshot', input)).data.data,
+};
