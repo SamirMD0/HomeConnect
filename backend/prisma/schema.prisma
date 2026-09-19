@@ -153,6 +153,7 @@ enum ServiceAuditRecordType {
   SHOP_PROFILE
   BRAND_LOGO
   PRICING_CARD_FEATURE_ICON
+  PRICING_CARD_TEMPLATE
 }
 
 enum ServiceAuditAction {
@@ -184,6 +185,16 @@ enum PricingCardRolloutMode {
   LEGACY_ONLY
   BOTH
   PRICING_CARD_ONLY
+}
+
+enum PricingCardPaperMode {
+  SINGLE_STICKER
+  SHEET
+}
+
+enum PricingCardPaperSize {
+  A4
+  LETTER
 }
 
 enum SalesChannel {
@@ -409,6 +420,8 @@ model User {
   brandLogosCreated           BrandLogo[]                   @relation("BrandLogoCreatedBy")
   pricingCardFeatureIconsCreated PricingCardFeatureIcon[]   @relation("PricingCardFeatureIconCreatedBy")
   pricingCardFeatureIconsUpdated PricingCardFeatureIcon[]   @relation("PricingCardFeatureIconUpdatedBy")
+  pricingCardTemplatesCreated    PricingCardTemplate[]      @relation("PricingCardTemplateCreatedBy")
+  pricingCardTemplatesUpdated    PricingCardTemplate[]      @relation("PricingCardTemplateUpdatedBy")
   repairsApplied              RepairHistory[]             @relation("RepairHistoryAppliedBy")
   stockMovements              StockMovement[]             @relation("StockMovementCreatedBy")
   salesStockFulfillmentsCreated  SalesOrderStockFulfillment[] @relation("FulfillmentCreatedBy")
@@ -810,6 +823,7 @@ model ShopProfile {
   currencyCode                 String                 @default("USD")
   currencyDisplay              CurrencyDisplayMode    @default(SYMBOL)
   defaultPricingCardTemplateId String?                @db.Uuid
+  defaultPricingCardTemplate   PricingCardTemplate?   @relation("ShopDefaultCardTemplate", fields: [defaultPricingCardTemplateId], references: [id], onDelete: SetNull)
   defaultCardValidityDays      Int                    @default(30)
   snapshotPrintedCards         Boolean                @default(true)
   pricingCardRolloutMode       PricingCardRolloutMode @default(BOTH)
@@ -856,6 +870,35 @@ model PricingCardFeatureIcon {
   @@index([category, sortOrder])
   @@index([isActive])
   @@map("pricing_card_feature_icons")
+}
+
+model PricingCardTemplate {
+  id                  String               @id @default(uuid()) @db.Uuid
+  name                String               @unique
+  description         String?
+  paperMode           PricingCardPaperMode
+  paperSize           PricingCardPaperSize?
+  cardWidthMm         Decimal              @db.Decimal(6, 2)
+  cardHeightMm        Decimal              @db.Decimal(6, 2)
+  configVersion       Int                  @default(1)
+  config              Json
+  featureMax          Int                  @default(4)
+  specKeyOrder        String[]             @default([])
+  defaultValidityDays Int?
+  isActive            Boolean              @default(true)
+  archivedAt          DateTime?
+  archivedReason      String?              @db.Text
+  createdById         String?              @db.Uuid
+  createdBy           User?                @relation("PricingCardTemplateCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedById         String?              @db.Uuid
+  updatedBy           User?                @relation("PricingCardTemplateUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  shopDefaultFor ShopProfile[] @relation("ShopDefaultCardTemplate")
+
+  @@index([isActive])
+  @@map("pricing_card_templates")
 }
 
 model PricingPreset {

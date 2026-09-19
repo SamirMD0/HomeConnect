@@ -43,6 +43,7 @@ import { inventoryRoutes } from './features/inventory/inventory.routes';
 import { shopProfileRoutes } from './features/shop/shop-profile.routes';
 import { brandLogoRoutes } from './features/brand-logo/brand-logo.routes';
 import { featureIconRoutes } from './features/pricing-card/feature-icon/feature-icon.routes';
+import { pricingCardTemplateRoutes } from './features/pricing-card/template/template.routes';
 
 export const app = express();
 
@@ -120,6 +121,7 @@ app.use('/api/v1/pricing', requireAuth, pricingCalculatorRoutes);
 app.use('/api/v1/shop-profile', requireAuth, shopProfileRoutes);
 app.use('/api/v1/brand-logos', requireAuth, brandLogoRoutes);
 app.use('/api/v1/pricing-card-feature-icons', requireAuth, featureIconRoutes);
+app.use('/api/v1/pricing-card-templates', requireAuth, pricingCardTemplateRoutes);
 app.use('/api/v1/corrections', requireAuth, correctionsRoutes);
 app.use('/api/v1/reports', requireAuth, monthlyDebtsRoutes);
 app.use('/api/v1/reports', requireAuth, monthlyReviewRoutes);
