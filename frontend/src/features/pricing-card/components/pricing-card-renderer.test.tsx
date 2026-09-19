@@ -18,7 +18,7 @@ const template = (
   id,
   name,
   description: null,
-  paperMode: 'FIXED',
+  paperMode: 'SINGLE_STICKER',
   paperSize: null,
   cardWidthMm: width,
   cardHeightMm: height,
@@ -34,7 +34,7 @@ const template = (
 
 const templates = [
   template('tv-large', 'TV Large', '148', '105', tvConfig),
-  template('appliance-shelf', 'Appliance Shelf', '105', '74', applianceConfig),
+  template('appliance-shelf', 'Appliance Shelf', '120', '80', applianceConfig),
   template('compact-legacy', 'Compact Legacy', '58', '40', compactConfig),
   template('large-legacy', 'Legacy Large', '72', '50', largeConfig),
 ];

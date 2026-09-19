@@ -2,7 +2,7 @@ import type { PricingCardTemplateConfig } from '../schema/template-config.z';
 
 export type CurrencyDisplayMode = 'SYMBOL' | 'CODE' | 'SYMBOL_AND_CODE';
 export type PricingCardRolloutMode = 'LEGACY_ONLY' | 'TEMPLATE_ONLY' | 'BOTH';
-export type PricingCardPaperMode = 'FIXED' | 'SHEET';
+export type PricingCardPaperMode = 'SINGLE_STICKER' | 'SHEET';
 
 export interface ShopProfile {
   id: string;
@@ -24,7 +24,7 @@ export interface PricingCardTemplate {
   name: string;
   description: string | null;
   paperMode: PricingCardPaperMode;
-  paperSize: string | null;
+  paperSize: 'A4' | 'LETTER' | null;
   cardWidthMm: string;
   cardHeightMm: string;
   configVersion: number;

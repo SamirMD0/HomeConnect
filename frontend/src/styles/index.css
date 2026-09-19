@@ -193,6 +193,24 @@
 
 .product-label-guides { border: 1px dashed #cbd5e1; }
 
+.pricing-card-page-viewport { width: 100%; overflow: auto; }
+.pricing-card-page-preview { width: max-content; transform: scale(var(--preview-scale, 1)); transform-origin: top left; }
+.pricing-card-page {
+  box-sizing: border-box;
+  display: grid;
+  width: var(--pricing-card-paper-width);
+  height: var(--pricing-card-paper-height);
+  padding: var(--pricing-card-page-margin);
+  grid-template-columns: repeat(var(--pricing-card-columns), var(--pricing-card-cell-width));
+  grid-auto-rows: var(--pricing-card-cell-height);
+  gap: var(--pricing-card-page-gap);
+  align-content: start;
+  justify-content: start;
+  background: #fff;
+}
+.pricing-card-page-preview .pricing-card-page { margin: 0 0 6mm; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgb(15 23 42 / 0.12); }
+.pricing-card-cut-guides { outline: 1px dashed #94a3b8; outline-offset: -1px; }
+
 @media print {
   .product-label-grid { display: grid; grid-template-columns: var(--label-width, 50mm); gap: 0; }
   .product-label { border: 0; font-family: Tahoma, Arial, 'Segoe UI', sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -205,6 +223,12 @@
   .label-page { break-after: page; page-break-after: always; }
   .label-page:last-child { break-after: auto; page-break-after: auto; }
   .product-label { break-inside: avoid; page-break-inside: avoid; }
+  .pricing-card-page-viewport { overflow: visible; }
+  .pricing-card-page-preview { transform: none; }
+  .pricing-card-page-preview .pricing-card-page { margin: 0; border: 0; box-shadow: none; }
+  .pricing-card-page { break-after: page; page-break-after: always; }
+  .pricing-card-page:last-child { break-after: auto; page-break-after: auto; }
+  .pricing-card { break-inside: avoid; page-break-inside: avoid; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   /* Sticker / roll printing: one label per page. A label exactly as tall as the
      page can spill a fraction of a millimetre and feed a blank label, so it sits
      just inside the page and always ends its own page. */
