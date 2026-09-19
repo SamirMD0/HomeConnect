@@ -44,6 +44,7 @@ import { shopProfileRoutes } from './features/shop/shop-profile.routes';
 import { brandLogoRoutes } from './features/brand-logo/brand-logo.routes';
 import { featureIconRoutes } from './features/pricing-card/feature-icon/feature-icon.routes';
 import { pricingCardTemplateRoutes } from './features/pricing-card/template/template.routes';
+import { printSnapshotRoutes } from './features/pricing-card/print-snapshot/print-snapshot.routes';
 
 export const app = express();
 
@@ -122,6 +123,7 @@ app.use('/api/v1/shop-profile', requireAuth, shopProfileRoutes);
 app.use('/api/v1/brand-logos', requireAuth, brandLogoRoutes);
 app.use('/api/v1/pricing-card-feature-icons', requireAuth, featureIconRoutes);
 app.use('/api/v1/pricing-card-templates', requireAuth, pricingCardTemplateRoutes);
+app.use('/api/v1/pricing-card-prints', requireAuth, printSnapshotRoutes);
 app.use('/api/v1/corrections', requireAuth, correctionsRoutes);
 app.use('/api/v1/reports', requireAuth, monthlyDebtsRoutes);
 app.use('/api/v1/reports', requireAuth, monthlyReviewRoutes);

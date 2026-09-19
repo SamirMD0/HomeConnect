@@ -154,6 +154,7 @@ enum ServiceAuditRecordType {
   BRAND_LOGO
   PRICING_CARD_FEATURE_ICON
   PRICING_CARD_TEMPLATE
+  PRICING_CARD_PRINT
 }
 
 enum ServiceAuditAction {
@@ -422,6 +423,7 @@ model User {
   pricingCardFeatureIconsUpdated PricingCardFeatureIcon[]     @relation("PricingCardFeatureIconUpdatedBy")
   pricingCardTemplatesCreated    PricingCardTemplate[]        @relation("PricingCardTemplateCreatedBy")
   pricingCardTemplatesUpdated    PricingCardTemplate[]        @relation("PricingCardTemplateUpdatedBy")
+  pricingCardPrintsGenerated     PricingCardPrint[]            @relation("PricingCardPrintGeneratedBy")
   repairsApplied                 RepairHistory[]              @relation("RepairHistoryAppliedBy")
   stockMovements                 StockMovement[]              @relation("StockMovementCreatedBy")
   salesStockFulfillmentsCreated  SalesOrderStockFulfillment[] @relation("FulfillmentCreatedBy")
@@ -763,6 +765,7 @@ model Product {
   supplierPurchaseLines  SupplierPurchaseLine[]
   image                  ProductImage?
   pricingCardFeatures    ProductPricingCardFeature[]
+  pricingCardPrints      PricingCardPrint[]
 
   @@index([name])
   @@index([sku])
@@ -912,9 +915,35 @@ model PricingCardTemplate {
   updatedAt           DateTime              @updatedAt
 
   shopDefaultFor ShopProfile[] @relation("ShopDefaultCardTemplate")
+  pricingCardPrints PricingCardPrint[]
 
   @@index([isActive])
   @@map("pricing_card_templates")
+}
+
+model PricingCardPrint {
+  id                    String              @id @default(uuid()) @db.Uuid
+  productId             String              @db.Uuid
+  product               Product             @relation(fields: [productId], references: [id], onDelete: Restrict)
+  templateId            String              @db.Uuid
+  template              PricingCardTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  snapshot              Json
+  validUntil            DateTime?           @db.Date
+  currencyCode          String
+  publicPrice           Decimal             @db.Decimal(12, 2)
+  staffLabelCode        String?
+  barcodeValue          String
+  copiesPrinted         Int                 @default(1)
+  generatedAt           DateTime            @default(now())
+  generatedById         String              @db.Uuid
+  generatedBy           User                @relation("PricingCardPrintGeneratedBy", fields: [generatedById], references: [id], onDelete: Restrict)
+  hiddenPricingPresetId String?              @db.Uuid
+  encodingPresetId      String?              @db.Uuid
+
+  @@index([productId, generatedAt])
+  @@index([templateId, generatedAt])
+  @@index([generatedAt])
+  @@map("pricing_card_prints")
 }
 
 model PricingPreset {
