@@ -47,6 +47,7 @@ import { parsePricingPercent, percentToApiString } from '../../pricing/domain/pr
 import { encodeLabelSecretValue, formatStaffLabelCode, UnsafeDiscountStagesError } from '../../pricing/domain/internal-price-code';
 import { Decimal } from '@prisma/client/runtime/library';
 import { LABEL_SECRET_SETTINGS_ID } from '../../pricing/label-secret/label-secret-config.repository';
+import { normalizeBrandKey, normalizeBrandSpelling } from '../../brand-logo/brand-key';
 import { generateProductSku } from './product-sku';
 import { deriveProductStockStatus, isProductOutsideInventory } from './product-stock';
 
@@ -82,7 +83,6 @@ interface ProductBrandSpellingCount {
   _count: { _all: number };
 }
 
-const collapseBrandWhitespace = (value: string) => value.trim().replace(/\s+/gu, ' ');
 const compareBrandNames = (left: string, right: string) =>
   left.localeCompare(right, 'en', { sensitivity: 'variant' });
 const isTitleCaseBrand = (value: string) => value.split(' ').every((word) => {
@@ -104,9 +104,9 @@ export function summarizeProductBrands(rows: readonly ProductBrandSpellingCount[
 
   for (const row of rows) {
     if (!row.brand || row._count._all <= 0) continue;
-    const spelling = collapseBrandWhitespace(row.brand);
+    const spelling = normalizeBrandSpelling(row.brand);
     if (!spelling) continue;
-    const key = spelling.toLowerCase();
+    const key = normalizeBrandKey(spelling)!;
     const spellings = groups.get(key) ?? new Map<string, number>();
     spellings.set(spelling, (spellings.get(spelling) ?? 0) + row._count._all);
     groups.set(key, spellings);

@@ -151,6 +151,7 @@ enum ServiceAuditRecordType {
   PRICING_PRESET
   LABEL_SECRET_SETTINGS
   SHOP_PROFILE
+  BRAND_LOGO
 }
 
 enum ServiceAuditAction {
@@ -404,6 +405,7 @@ model User {
   labelSecretEncodingsCreated LabelSecretEncodingPreset[] @relation("LabelSecretEncodingCreatedBy")
   labelSecretEncodingsUpdated LabelSecretEncodingPreset[] @relation("LabelSecretEncodingUpdatedBy")
   shopProfilesUpdated         ShopProfile[]                @relation("ShopProfileUpdatedBy")
+  brandLogosCreated           BrandLogo[]                   @relation("BrandLogoCreatedBy")
   repairsApplied              RepairHistory[]             @relation("RepairHistoryAppliedBy")
   stockMovements              StockMovement[]             @relation("StockMovementCreatedBy")
   salesStockFulfillmentsCreated  SalesOrderStockFulfillment[] @relation("FulfillmentCreatedBy")
@@ -814,6 +816,23 @@ model ShopProfile {
   updatedAt                    DateTime               @updatedAt
 
   @@map("shop_profiles")
+}
+
+model BrandLogo {
+  id            String   @id @default(uuid()) @db.Uuid
+  canonicalName String   @unique
+  displayName   String
+  logoBytes     Bytes?
+  logoMimeType  String?
+  logoByteSize  Int?
+  isActive      Boolean  @default(true)
+  createdById   String?  @db.Uuid
+  createdBy     User?    @relation("BrandLogoCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([canonicalName])
+  @@map("brand_logos")
 }
 
 model PricingPreset {

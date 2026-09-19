@@ -41,6 +41,7 @@ import { systemRoutes } from './features/system/system.routes';
 import { scannerRoutes } from './features/scanner/scanner.routes';
 import { inventoryRoutes } from './features/inventory/inventory.routes';
 import { shopProfileRoutes } from './features/shop/shop-profile.routes';
+import { brandLogoRoutes } from './features/brand-logo/brand-logo.routes';
 
 export const app = express();
 
@@ -116,6 +117,7 @@ app.use('/api/v1/supplier-ledger', requireAuth, supplierLedgerRoutes);
 app.use('/api/v1/pricing-presets', requireAuth, pricingPresetsRoutes);
 app.use('/api/v1/pricing', requireAuth, pricingCalculatorRoutes);
 app.use('/api/v1/shop-profile', requireAuth, shopProfileRoutes);
+app.use('/api/v1/brand-logos', requireAuth, brandLogoRoutes);
 app.use('/api/v1/corrections', requireAuth, correctionsRoutes);
 app.use('/api/v1/reports', requireAuth, monthlyDebtsRoutes);
 app.use('/api/v1/reports', requireAuth, monthlyReviewRoutes);
