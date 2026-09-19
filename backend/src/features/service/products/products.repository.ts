@@ -114,7 +114,7 @@ export class ProductsRepository {
   static findManyForLabels(ids: string[], tx?: Prisma.TransactionClient) {
     return (tx ?? prisma).product.findMany({
       where: { id: { in: ids } },
-      include: { pricingPreset: true },
+      include: { pricingPreset: true, pricingCardFeatures: { orderBy: { position: 'asc' } } },
     });
   }
 

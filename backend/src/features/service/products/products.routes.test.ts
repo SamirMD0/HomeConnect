@@ -81,6 +81,25 @@ describe('product routes', () => {
     expect(response.status).toBe(200);
     expect(response.body.data.warnings).toContainEqual({ productId, code: 'FALLBACK_TO_SKU', name: 'Fan' });
   });
+  it('threads template options and exposes single and bulk pricing-card reads', async () => {
+    const templateId = '44444444-4444-4444-8444-444444444444';
+    const options = `templateId=${templateId}&validUntil=2026-10-31&featureCodes=wifi,qled`;
+    expect((await request(app).get(`/api/v1/products/${productId}/label?${options}`).set('Authorization', `Bearer ${employee}`)).status).toBe(200);
+    expect(service.label).toHaveBeenLastCalledWith(productId, expect.objectContaining({
+      templateId, validUntil: '2026-10-31', featureCodes: ['wifi', 'qled'],
+    }));
+
+    expect((await request(app).get(`/api/v1/products/${productId}/pricing-card?${options}`).set('Authorization', `Bearer ${employee}`)).status).toBe(200);
+    expect(service.label).toHaveBeenLastCalledWith(productId, expect.objectContaining({ templateId, includePrice: true }));
+
+    expect((await request(app).get(`/api/v1/products/pricing-cards?ids=${productId}&${options}`).set('Authorization', `Bearer ${employee}`)).status).toBe(200);
+    expect(service.labels).toHaveBeenLastCalledWith(expect.objectContaining({ ids: [productId], templateId, includePrice: true }));
+  });
+
+  it('requires a valid template and date on pricing-card reads', async () => {
+    expect((await request(app).get(`/api/v1/products/${productId}/pricing-card`).set('Authorization', `Bearer ${employee}`)).status).toBe(400);
+    expect((await request(app).get(`/api/v1/products/${productId}/pricing-card?templateId=bad&validUntil=31-10-2026`).set('Authorization', `Bearer ${employee}`)).status).toBe(400);
+  });
 
   it('keeps pricing-card feature replacement admin-only and password-protected', async () => {
     const featureHighlights = [

@@ -9,6 +9,7 @@ import {
   ProductLabelQueryInput, ProductLabelsQueryInput, UpdateProductSkuInput, UpdateProductStockInput,
   NormalizeProductBrandsInput,
   UpdateProductFeaturesInput,
+  ProductPricingCardQueryInput, ProductPricingCardsQueryInput,
 } from './products.validator';
 
 const contextFrom = (req: { headers: Request['headers']; ip?: string }) => ({
@@ -95,6 +96,18 @@ export class ProductsController {
   static async labels(req: Request, res: Response, next: NextFunction) {
     try { res.json({ success: true, data: await ProductsService.labels(req.query as unknown as ProductLabelsQueryInput) }); }
     catch (error) { next(error); }
+  }
+  static async pricingCard(req: Request<ProductParamsInput>, res: Response, next: NextFunction) {
+    try {
+      const query = req.query as unknown as ProductPricingCardQueryInput;
+      res.json({ success: true, data: await ProductsService.label(req.params.productId, { ...query, includePrice: true }) });
+    } catch (error) { next(error); }
+  }
+  static async pricingCards(req: Request, res: Response, next: NextFunction) {
+    try {
+      const query = req.query as unknown as ProductPricingCardsQueryInput;
+      res.json({ success: true, data: await ProductsService.labels({ ...query, includePrice: true }) });
+    } catch (error) { next(error); }
   }
   static async updateFeatures(req: Request<ProductParamsInput, unknown, UpdateProductFeaturesInput>, res: Response, next: NextFunction) {
     try { res.json({ success: true, data: await ProductsService.updateFeatures(req.params.productId, req.body, req.user!, contextFrom(req)) }); }

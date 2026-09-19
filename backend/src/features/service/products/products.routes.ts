@@ -13,6 +13,7 @@ import {
   regenerateProductSkuSchema,
   normalizeProductBrandsSchema,
   updateProductFeaturesSchema,
+  productPricingCardQuerySchema, productPricingCardsQuerySchema,
 } from './products.validator';
 import { requireAccountPassword } from '../../../middleware/admin-password.middleware';
 import { InventoryController } from '../../inventory/inventory.controller';
@@ -28,11 +29,13 @@ productsRoutes.post('/brands/normalize', requireServiceAdmin, validate(normalize
 productsRoutes.get('/brands', ProductsController.brands);
 // Must stay above `GET /:productId`, or "labels" is parsed as a product id.
 productsRoutes.get('/labels', validate(productLabelsQuerySchema, 'query'), ProductsController.labels);
+productsRoutes.get('/pricing-cards', validate(productPricingCardsQuerySchema, 'query'), ProductsController.pricingCards);
 productsRoutes.post('/labels/secret-preview', requireServiceAdmin, validate(productLabelsOverrideSchema), ProductsController.labelsSecretPreview);
 // Same ordering rule as `/labels`. Any authenticated user may scan: it is a
 // read of the same catalogue the Products page already shows, minus pricing.
 productsRoutes.get('/scan', validate(productScanQuerySchema, 'query'), ProductsController.scan);
 productsRoutes.get('/:productId/label', validate(productParamsSchema, 'params'), validate(productLabelQuerySchema, 'query'), ProductsController.label);
+productsRoutes.get('/:productId/pricing-card', validate(productParamsSchema, 'params'), validate(productPricingCardQuerySchema, 'query'), ProductsController.pricingCard);
 productsRoutes.post('/:productId/label/secret-preview', requireServiceAdmin, validate(productParamsSchema, 'params'), validate(productLabelOverrideSchema), ProductsController.labelSecretPreview);
 
 // Raw binary upload: the file is PUT as-is with an image Content-Type, so no

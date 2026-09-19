@@ -1,13 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { repository, pricing } = vi.hoisted(() => ({
+const { repository, pricing, catalogs } = vi.hoisted(() => ({
   repository: { findManyForLabels: vi.fn(), findById: vi.fn(), findActiveDefaultPricingPreset: vi.fn(), findLabelSecretConfiguration: vi.fn() },
   pricing: { resolveProductPricing: vi.fn() },
+  catalogs: {
+    template: { findById: vi.fn() }, shop: { findSingleton: vi.fn() },
+    brand: { findByCanonical: vi.fn() }, icon: { getByCode: vi.fn() },
+  },
 }));
 
 vi.mock('./products.repository', () => ({ ProductsRepository: repository }));
 vi.mock('../../pricing/calculator/pricing-resolution', async (importOriginal) => ({ ...(await importOriginal<object>()), ...pricing }));
 vi.mock('../../../lib/prisma', () => ({ prisma: {}, transactionModel: {}, activityLogModel: {} }));
+vi.mock('../../pricing-card/template/template.repository', () => ({ PricingCardTemplateRepository: catalogs.template }));
+vi.mock('../../shop/shop-profile.repository', () => ({ ShopProfileRepository: catalogs.shop }));
+vi.mock('../../brand-logo/brand-logo.repository', () => ({ BrandLogoRepository: catalogs.brand }));
+vi.mock('../../pricing-card/feature-icon/feature-icon.repository', () => ({ FeatureIconRepository: catalogs.icon }));
 
 import { PricingCalculationMode, PricingRoundingMode } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
@@ -17,6 +25,7 @@ const idOf = (suffix: string) => `${suffix.repeat(8)}-${suffix.repeat(4)}-4${suf
 const FAN = idOf('1');
 const OVEN = idOf('2');
 const GHOST = idOf('3');
+const TEMPLATE = idOf('4');
 
 const productOf = (overrides: Record<string, unknown> = {}) => ({
   id: FAN,
@@ -57,6 +66,14 @@ describe('bulk product labels', () => {
     repository.findActiveDefaultPricingPreset.mockResolvedValue(null);
     repository.findLabelSecretConfiguration.mockResolvedValue(secretConfiguration());
     pricing.resolveProductPricing.mockReturnValue({ pricingAvailable: true, internalPriceCode: 'P353', cashPrice: '377.82' });
+    catalogs.template.findById.mockResolvedValue({
+      id: TEMPLATE, isActive: true, featureMax: 4,
+      specKeyOrder: ['screen_size', 'resolution', 'dimensions'],
+      config: { specKeyAliases: { screen_size: ['diagonal'] } },
+    });
+    catalogs.shop.findSingleton.mockResolvedValue({ currencyCode: 'USD', currencyDisplay: 'SYMBOL' });
+    catalogs.brand.findByCanonical.mockResolvedValue({ canonicalName: 'ariete', displayName: 'Ariete', logoBytes: Buffer.from('logo'), isActive: true });
+    catalogs.icon.getByCode.mockImplementation((code: string) => Promise.resolve({ code, label: code === 'wifi' ? 'Wi-Fi' : 'QLED', svg: `<svg data-code="${code}"/>`, isActive: true }));
   });
 
   it('returns labels in the order the products were selected, not the order the database returned them', async () => {
@@ -80,6 +97,73 @@ describe('bulk product labels', () => {
     expect(Object.keys(result.labels[0]).sort()).toEqual(
       ['barcodeSource', 'barcodeValue', 'brand', 'id', 'model', 'name', 'sku'].sort()
     );
+  });
+
+  it('adds resolved pricing-card fields only when a template is requested', async () => {
+    const product = productOf({
+      specifications: [
+        { label: 'Diagonal', value: '55' },
+        { label: 'Display Resolution', value: '4K UHD' },
+        { label: 'Dimensions', value: '120 x 75 x 8 cm' },
+      ],
+      pricingCardFeatures: [
+        { iconCode: 'wifi', label: null, value: null, position: 1 },
+        { iconCode: 'qled', label: 'Quantum display', value: '4K', position: 2 },
+      ],
+    });
+    repository.findById.mockResolvedValue(product);
+
+    const result = await ProductsService.label(FAN, {
+      includePriceCode: false, includePrice: true, templateId: TEMPLATE, validUntil: '2026-10-31',
+    });
+
+    expect(result.payload).toMatchObject({
+      id: FAN,
+      templateId: TEMPLATE,
+      brand: { canonicalName: 'ariete', displayName: 'Ariete', hasLogo: true },
+      currency: { code: 'USD', display: 'SYMBOL', symbol: '$' },
+      validUntil: '2026-10-31',
+      dimensionsMm: { widthMm: 1200, heightMm: 750, depthMm: 80 },
+      resolvedSpecs: [
+        { canonicalKey: 'screen_size', label: 'Diagonal', value: '55', unit: 'inch' },
+        { canonicalKey: 'resolution', label: 'Display Resolution', value: '4K UHD' },
+        { canonicalKey: 'dimensions', label: 'Dimensions', value: '120 x 75 x 8 cm' },
+      ],
+      features: [
+        { iconCode: 'wifi', label: 'Wi-Fi', position: 1, iconSvg: '<svg data-code="wifi"/>' },
+        { iconCode: 'qled', label: 'Quantum display', value: '4K', position: 2, iconSvg: '<svg data-code="qled"/>' },
+      ],
+    });
+  });
+
+  it('rejects an unknown template and warns while still rendering an archived template', async () => {
+    repository.findById.mockResolvedValue(productOf({ specifications: [], pricingCardFeatures: [] }));
+    catalogs.template.findById.mockResolvedValueOnce(null);
+    await expect(ProductsService.label(FAN, {
+      includePriceCode: false, includePrice: true, templateId: TEMPLATE,
+    })).rejects.toThrow('Pricing card template not found');
+
+    catalogs.template.findById.mockResolvedValueOnce({
+      id: TEMPLATE, isActive: false, featureMax: 4, specKeyOrder: [], config: {},
+    });
+    const result = await ProductsService.label(FAN, {
+      includePriceCode: false, includePrice: true, templateId: TEMPLATE,
+    });
+    expect(result.payload).toMatchObject({ templateId: TEMPLATE });
+    expect(result.warnings).toContainEqual({ productId: FAN, code: 'TEMPLATE_INACTIVE', name: 'Ceiling Fan' });
+  });
+
+  it('renders a deactivated feature icon as text-only and marks it missing', async () => {
+    repository.findById.mockResolvedValue(productOf({
+      specifications: [],
+      pricingCardFeatures: [{ iconCode: 'wifi', label: null, value: null, position: 1 }],
+    }));
+    catalogs.icon.getByCode.mockResolvedValue({ code: 'wifi', label: 'Wi-Fi', svg: '<svg/>', isActive: false });
+    const result = await ProductsService.label(FAN, {
+      includePriceCode: false, includePrice: true, templateId: TEMPLATE,
+    });
+    expect(result.payload.features).toEqual([{ iconCode: 'wifi', label: 'wifi', position: 1, iconMissing: true }]);
+    expect(result.payload.features?.[0]).not.toHaveProperty('iconSvg');
   });
 
   it('adds only the price code fields when the price code is requested, and never the cash price', async () => {

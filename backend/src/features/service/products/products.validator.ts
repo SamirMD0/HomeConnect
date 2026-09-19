@@ -286,9 +286,17 @@ function validateLabelBarcodeSource(
 }
 
 export const productPricingPreviewQuerySchema = z.object({ installmentMonths: z.coerce.number().int().min(1).max(120).optional() });
+const pricingCardQueryFields = {
+  templateId: z.string().uuid().optional(),
+  validUntil: z.string().date().optional(),
+  featureCodes: z.string().optional().transform((value) => value === undefined ? undefined : [
+    ...new Set(value.split(',').map((code) => code.trim().toLowerCase()).filter(Boolean)),
+  ]).pipe(z.array(z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)).max(MAX_PRODUCT_FEATURES).optional()),
+};
 export const productLabelQuerySchema = z.object({
   includePriceCode: z.enum(['true', 'false']).optional().transform((value) => value === 'true'),
   includePrice: z.enum(['true', 'false']).optional().transform((value) => value === 'true'),
+  ...pricingCardQueryFields,
 });
 
 /**
@@ -309,7 +317,10 @@ export const productLabelsQuerySchema = z.object({
   includePriceCode: z.enum(['true', 'false']).optional().transform((value) => value === 'true'),
   includePrice: z.enum(['true', 'false']).optional().transform((value) => value === 'true'),
   includeArchived: z.enum(['true', 'false']).optional().transform((value) => value === 'true'),
+  ...pricingCardQueryFields,
 });
+export const productPricingCardQuerySchema = productLabelQuerySchema.extend({ templateId: z.string().uuid() });
+export const productPricingCardsQuerySchema = productLabelsQuerySchema.extend({ templateId: z.string().uuid() });
 
 const labelSecretOverrideFields = {
   includePriceCode: z.boolean(),
@@ -346,3 +357,5 @@ export type UpdateProductSkuInput = z.infer<typeof updateProductSkuSchema>;
 export type UpdateProductStockInput = z.infer<typeof updateProductStockSchema>;
 export type ProductLabelQueryInput = z.infer<typeof productLabelQuerySchema>;
 export type ProductLabelsQueryInput = z.infer<typeof productLabelsQuerySchema>;
+export type ProductPricingCardQueryInput = z.infer<typeof productPricingCardQuerySchema>;
+export type ProductPricingCardsQueryInput = z.infer<typeof productPricingCardsQuerySchema>;
