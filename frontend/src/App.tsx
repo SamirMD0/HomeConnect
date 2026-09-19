@@ -25,6 +25,7 @@ import { BrandsPage } from './pages/products/BrandsPage';
 import { ScannerHubPage } from './pages/scanner/ScannerHubPage';
 import { ProductLabelsPage } from './pages/products/ProductLabelsPage';
 import { ProductPricingCardPage } from './pages/products/ProductPricingCardPage';
+import { ProductPricingCardsPage } from './pages/products/ProductPricingCardsPage';
 import { SuppliersPage } from './pages/suppliers/SuppliersPage';
 import { SupplierProfilePage } from './pages/suppliers/SupplierProfilePage';
 import { SupplierLedgerPage } from './pages/suppliers/SupplierLedgerPage';
@@ -81,6 +82,7 @@ const App: React.FC = () => {
               <Route path="scanner" element={<ScannerHubPage />} />
               <Route path="pricing-presets" element={<PricingPresetsPage />} />
               <Route path="products/labels" element={<ProductLabelsPage />} />
+              <Route path="products/pricing-cards" element={<ProductPricingCardsPage />} />
               <Route path="products/:id/label" element={<ProductLabelPage />} />
               <Route path="products/:id/pricing-card" element={<ProductPricingCardPage />} />
               <Route path="suppliers" element={<SuppliersPage />} />

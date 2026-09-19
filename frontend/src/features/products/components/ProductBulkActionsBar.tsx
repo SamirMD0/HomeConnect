@@ -46,6 +46,12 @@ export const ProductBulkActionsBar: React.FC<ProductBulkActionsBarProps> = ({ se
           <X className="h-4 w-4" /> Clear / مسح
         </button>
         <Link
+          to={`/products/pricing-cards?ids=${encodeURIComponent(printable.join(','))}`}
+          className="inline-flex items-center gap-2 rounded-lg border border-brand-300 bg-white px-4 py-2 text-sm font-semibold text-brand-800 hover:bg-brand-100"
+        >
+          <Printer className="h-4 w-4" /> Print pricing cards ({printable.length})
+        </Link>
+        <Link
           to={`/products/labels?ids=${encodeURIComponent(printable.join(','))}`}
           className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
         >

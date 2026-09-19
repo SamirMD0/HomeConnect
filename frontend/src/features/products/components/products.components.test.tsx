@@ -549,6 +549,8 @@ describe('product bulk actions bar', () => {
     expect(html).toContain('2 selected');
     expect(html).toContain('Print Labels (2)');
     expect(html).toContain('/products/labels?ids=a%2Cb');
+    expect(html).toContain('Print pricing cards (2)');
+    expect(html).toContain('/products/pricing-cards?ids=a%2Cb');
   });
 
   it('says when the selection reaches beyond the page in view', () => {
