@@ -11,6 +11,18 @@ export type ProductImage =
   | { source: 'URL'; url: string }
   | { source: 'UPLOAD'; mimeType: string; byteSize: number; updatedAt: string };
 
+export interface ProductFeatureHighlight {
+  iconCode: string;
+  label?: string | null;
+  value?: string | null;
+  position: number;
+}
+
+export interface UpdateProductFeaturesInput {
+  featureHighlights: ProductFeatureHighlight[];
+  accountPassword: string;
+}
+
 export interface Product {
   id: string;
   sku: string;
@@ -32,6 +44,7 @@ export interface Product {
   stockStatus: ProductStockStatus;
   specifications: ProductSpecification[];
   specificationNotes: string | null;
+  featureHighlights?: ProductFeatureHighlight[];
   exactMatch?: boolean;
   /**
    * List-only. True when the product has never had a stock movement and was

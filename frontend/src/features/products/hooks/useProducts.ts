@@ -171,6 +171,13 @@ export function useUpdateProductStock() {
   const queryClient = useQueryClient();
   return useMutation({ mutationFn: ({ id, input }: { id: string; input: UpdateProductStockInput }) => productsApi.updateStock(id, input), onSuccess: () => invalidateProducts(queryClient) });
 }
+export function useUpdateProductFeatures() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: import('../types/product.types').UpdateProductFeaturesInput }) => productsApi.updateFeatures(id, input),
+    onSuccess: () => refreshProducts(queryClient),
+  });
+}
 
 export function useProductAudit(id: string, enabled = true) {
   return useQuery({

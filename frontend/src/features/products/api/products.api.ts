@@ -19,6 +19,7 @@ import {
   UpdateProductInput,
   UpdateProductPricingInput, ProductPricingPreview,
   UpdateProductSkuInput, UpdateProductStockInput,
+  UpdateProductFeaturesInput,
 } from '../types/product.types';
 
 const paramsFor = <T extends object>(values: T) => Object.fromEntries(
@@ -37,6 +38,7 @@ export const productsApi = {
   get: async (id: string): Promise<Product> => (await api.get(`/products/${id}`)).data.data,
   create: async (input: CreateProductInput): Promise<Product> => (await api.post('/products', input)).data.data,
   update: async (id: string, input: UpdateProductInput): Promise<Product> => (await api.patch(`/products/${id}`, input)).data.data,
+  updateFeatures: async (id: string, input: UpdateProductFeaturesInput): Promise<Product> => (await api.patch(`/products/${id}/features`, input)).data.data,
   archive: async (id: string, input: ProductActionInput): Promise<Product> => (await api.post(`/products/${id}/archive`, input)).data.data,
   restore: async (id: string, input: ProductActionInput): Promise<Product> => (await api.post(`/products/${id}/restore`, input)).data.data,
   label: async (id: string, includePriceCode = false, includePrice = true): Promise<ProductLabelResult> => (await api.get(`/products/${id}/label`, { params: { includePriceCode, includePrice } })).data.data,
