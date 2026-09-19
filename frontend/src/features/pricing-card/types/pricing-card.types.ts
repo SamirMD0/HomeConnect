@@ -95,6 +95,25 @@ export interface BrandLogoInput {
   accountPassword: string;
 }
 
+export interface PricingCardTemplateInput {
+  name: string;
+  description?: string | null;
+  paperMode: PricingCardPaperMode;
+  paperSize?: 'A4' | 'LETTER' | null;
+  cardWidthMm: number;
+  cardHeightMm: number;
+  config: PricingCardTemplateConfig;
+  featureMax: number;
+  specKeyOrder: string[];
+  defaultValidityDays?: number | null;
+  accountPassword: string;
+}
+
+export interface ArchiveTemplateInput {
+  reason: string;
+  accountPassword: string;
+}
+
 export interface PricingCardBrand {
   canonicalName: string;
   displayName: string;

@@ -19,6 +19,8 @@ import { SettingsPage } from './pages/settings/SettingsPage';
 import { ShopProfileSettingsPage } from './pages/settings/ShopProfileSettingsPage';
 import { FeatureIconsPage } from './pages/settings/FeatureIconsPage';
 import { BrandLogosPage } from './pages/settings/BrandLogosPage';
+import { PricingCardTemplatesPage } from './pages/settings/PricingCardTemplatesPage';
+import { PricingCardTemplateEditorPage } from './pages/settings/PricingCardTemplateEditorPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ServiceJobsPage } from './pages/service/ServiceJobsPage';
 import { ServiceJobDetailsPage } from './pages/service/ServiceJobDetailsPage';
@@ -97,6 +99,8 @@ const App: React.FC = () => {
               <Route path="settings/pricing-cards/shop-profile" element={<ProtectedRoute allowedRoles={['ADMIN']}><ShopProfileSettingsPage /></ProtectedRoute>} />
               <Route path="settings/pricing-cards/feature-icons" element={<ProtectedRoute allowedRoles={['ADMIN']}><FeatureIconsPage /></ProtectedRoute>} />
               <Route path="settings/pricing-cards/brand-logos" element={<ProtectedRoute allowedRoles={['ADMIN']}><BrandLogosPage /></ProtectedRoute>} />
+              <Route path="settings/pricing-cards" element={<ProtectedRoute allowedRoles={['ADMIN']}><PricingCardTemplatesPage /></ProtectedRoute>} />
+              <Route path="settings/pricing-cards/templates/:templateId" element={<ProtectedRoute allowedRoles={['ADMIN']}><PricingCardTemplateEditorPage /></ProtectedRoute>} />
             </Route>
             
             {/* Fallback */}
