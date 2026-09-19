@@ -20,6 +20,7 @@ vi.mock('../audit/service-audit', () => ({ writeServiceAudit: writeAudit }));
 vi.mock('../../../lib/admin-verification', () => ({ verifyAdminPassword: verify }));
 vi.mock('../../financial/infrastructure/transaction', () => ({ runFinancialTransaction: (operation: (client: unknown) => unknown) => operation(tx) }));
 vi.mock('./product-sku', () => ({ generateProductSku: vi.fn().mockResolvedValue('HC-000001') }));
+vi.mock('./product-internal-barcode', () => ({ generateInternalBarcode: vi.fn().mockResolvedValue('2000000000015') }));
 vi.mock('../../../lib/prisma', () => ({ prisma: {}, transactionModel: {}, activityLogModel: {} }));
 
 import { ProductsService, summarizeProductBrands } from './products.service';
@@ -61,6 +62,16 @@ describe('product service workflow', () => {
     pricing.resolveProductPricing.mockReturnValue(unavailable);
     repository.create.mockImplementation((data) => Promise.resolve(productOf({ ...data })));
     repository.update.mockImplementation((_id, data) => Promise.resolve(productOf({ ...data })));
+  });
+
+  it('gives a new product without a barcode a shop-internal EAN-13', async () => {
+    await ProductsService.create({ name: 'Fan', model: 'F1' }, employee, context);
+    expect(repository.create).toHaveBeenCalledWith(expect.objectContaining({ barcode: '2000000000015' }), expect.anything());
+  });
+
+  it('keeps a manufacturer barcode entered on create', async () => {
+    await ProductsService.create({ name: 'TV', model: '55QNED70A6A', barcode: '6222048413923' }, employee, context);
+    expect(repository.create).toHaveBeenCalledWith(expect.objectContaining({ barcode: '6222048413923' }), expect.anything());
   });
 
   it('persists an image URL on create, returns it after a fresh get, and audits it', async () => {

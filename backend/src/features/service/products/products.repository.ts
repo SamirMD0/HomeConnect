@@ -287,6 +287,22 @@ export class ProductsRepository {
     return (tx ?? prisma).pricingPreset.findFirst({ where: { isDefault: true, isActive: true, archivedAt: null } });
   }
 
+  /** Resolves either a validated per-print override or the configured defaults. */
+  static async findLabelSecretConfiguration(pricingPresetId?: string | null, encodingPresetId?: string | null, tx?: Prisma.TransactionClient) {
+    const client = tx ?? prisma;
+    const settings = await client.labelSecretSettings.findFirst({ include: { defaultPricingPreset: true, defaultEncodingPreset: true } });
+    if (!settings?.showCodeOnLabel) return { settings, pricingPreset: null, encodingPreset: null };
+    const selectedPricingPresetId = pricingPresetId ?? settings.defaultPricingPresetId;
+    const selectedEncodingPresetId = encodingPresetId ?? settings.defaultEncodingPresetId;
+    const pricingPreset = selectedPricingPresetId
+      ? await client.pricingPreset.findFirst({ where: { id: selectedPricingPresetId, isLabelSecretAllowed: true, isActive: true, archivedAt: null } })
+      : null;
+    const encodingPreset = selectedEncodingPresetId
+      ? await client.labelSecretEncodingPreset.findFirst({ where: { id: selectedEncodingPresetId, isActive: true } })
+      : null;
+    return { settings, pricingPreset, encodingPreset };
+  }
+
   static findPricingPreset(id: string, tx?: Prisma.TransactionClient) {
     return (tx ?? prisma).pricingPreset.findUnique({ where: { id } });
   }

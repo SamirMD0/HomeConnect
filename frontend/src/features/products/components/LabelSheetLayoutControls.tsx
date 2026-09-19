@@ -1,6 +1,7 @@
 import React from 'react';
 import { LabelSheetLayout, LabelPaperSize, PAPER_CSS_SIZE } from '../utils/label-sheet-layout';
-import { ProductLabelSheetSettings, saveProductLabelSheetSettings } from '../utils/product-label-settings';
+import { LABEL_PRESETS, LabelPresetName, matchLabelPreset, ProductLabelSheetSettings, saveProductLabelSheetSettings } from '../utils/product-label-settings';
+import { LabelPresetSelect } from './LabelPresetSelect';
 
 interface LabelSheetLayoutControlsProps {
   settings: ProductLabelSheetSettings;
@@ -34,6 +35,15 @@ export const LabelSheetLayoutControls: React.FC<LabelSheetLayoutControlsProps> =
     update({ [field]: value } as Partial<ProductLabelSheetSettings>);
   };
 
+  // A preset is a sticker-roll label: one label per page, so @page is exactly
+  // the label and the printer driver has nothing to rescale.
+  const applyPreset = (key: LabelPresetName) => {
+    const preset = LABEL_PRESETS[key];
+    update({ mode: 'STICKER', labelWidthMm: preset.widthMm, labelHeightMm: preset.heightMm });
+    onShowPriceChange(preset.showPrice);
+  };
+  const preset = settings.mode === 'STICKER' ? matchLabelPreset(settings.labelWidthMm, settings.labelHeightMm, showPrice) : 'CUSTOM';
+
   // Sheet mode prints a full page of labels; sticker mode keeps one label per
   // page for die-cut stock. Margin is applied by the page element, not the
   // printer, so mixing the two cannot push the last row off the sheet.
@@ -47,6 +57,8 @@ export const LabelSheetLayoutControls: React.FC<LabelSheetLayoutControlsProps> =
 
       <div className="no-print space-y-3 rounded-lg border border-slate-200 bg-white p-3">
         <div className="flex flex-wrap items-end gap-3">
+          <LabelPresetSelect value={preset} onSelect={applyPreset} />
+
           <Field label="Print mode">
             <select
               value={settings.mode}

@@ -281,6 +281,22 @@ export const productLabelsQuerySchema = z.object({
   includeArchived: z.enum(['true', 'false']).optional().transform((value) => value === 'true'),
 });
 
+const labelSecretOverrideFields = {
+  includePriceCode: z.boolean(),
+  includePrice: z.boolean(),
+  hiddenPricingPresetId: z.string().uuid(),
+  encodingPresetId: z.string().uuid(),
+  manualDiscountStages: z.array(z.number().int().min(1).max(99)).min(1).max(12).optional(),
+  accountPassword: z.string().min(1, 'Account password is required'),
+};
+
+export const productLabelOverrideSchema = z.object(labelSecretOverrideFields).strict();
+export const productLabelsOverrideSchema = z.object({
+  ids: z.array(uuidSchema).min(1).max(MAX_LABEL_SELECTION),
+  includeArchived: z.boolean().default(false),
+  ...labelSecretOverrideFields,
+}).strict();
+
 export type CreateProductInput = z.infer<typeof createProductSchema>;
 export type UpdateProductInput = z.infer<typeof updateProductSchema>;
 export type ProductActionInput = z.infer<typeof productActionSchema>;
@@ -293,6 +309,8 @@ export type ProductScanQueryInput = z.infer<typeof productScanQuerySchema>;
 export type ProductServiceJobsQueryInput = z.infer<typeof productServiceJobsQuerySchema>;
 export type UpdateProductPricingInput = z.infer<typeof updateProductPricingSchema>;
 export type ProductPricingPreviewQueryInput = z.infer<typeof productPricingPreviewQuerySchema>;
+export type ProductLabelOverrideInput = z.infer<typeof productLabelOverrideSchema>;
+export type ProductLabelsOverrideInput = z.infer<typeof productLabelsOverrideSchema>;
 export type UpdateProductSkuInput = z.infer<typeof updateProductSkuSchema>;
 export type UpdateProductStockInput = z.infer<typeof updateProductStockSchema>;
 export type ProductLabelQueryInput = z.infer<typeof productLabelQuerySchema>;

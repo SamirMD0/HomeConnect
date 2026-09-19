@@ -95,6 +95,14 @@ export class ProductsController {
     try { res.json({ success: true, data: await ProductsService.labels(req.query as unknown as ProductLabelsQueryInput) }); }
     catch (error) { next(error); }
   }
+  static async labelSecretPreview(req: Request, res: Response, next: NextFunction) {
+    try { res.json({ success: true, data: await ProductsService.labelSecretPreview(String(req.params.productId), req.body, req.user!, contextFrom(req)) }); }
+    catch (error) { next(error); }
+  }
+  static async labelsSecretPreview(req: Request, res: Response, next: NextFunction) {
+    try { res.json({ success: true, data: await ProductsService.labelsSecretPreview(req.body, req.user!, contextFrom(req)) }); }
+    catch (error) { next(error); }
+  }
   static async updateSku(req: Request<ProductParamsInput, unknown, UpdateProductSkuInput>, res: Response, next: NextFunction) {
     try { res.json({ success: true, data: await ProductsService.updateSku(req.params.productId, req.body, req.user!, contextFrom(req)) }); }
     catch (error) { next(error); }

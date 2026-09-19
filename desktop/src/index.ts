@@ -14,6 +14,7 @@ import { describeStartupFailure, startupFailureText } from './startup-failure-me
 import { writeStartupDiagnostics } from './startup-diagnostics';
 import { BACKEND_PORT, FRONTEND_PORT } from './runtime-config';
 import { WHATSAPP_OPEN_CHANNEL, openWhatsAppUrl } from './whatsapp-link';
+import { LABEL_PRINT_CHANNEL, printLabels } from './label-print';
 
 let backendProcess: ChildProcess | null = null;
 let frontendServer: Server | null = null;
@@ -96,6 +97,9 @@ if (!gotTheLock) {
         return { saved: false, error: error instanceof Error ? error.message : 'PDF export failed' };
       }
     });
+
+    /** One label per page at its exact size; see label-print.ts for why not window.print(). */
+    ipcMain.handle(LABEL_PRINT_CHANNEL, (event, request: unknown) => printLabels(event.sender, request));
 
     /**
      * Hands a customer-communication deep link to the OS. The URL is validated

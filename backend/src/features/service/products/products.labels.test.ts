@@ -1,14 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { repository, pricing } = vi.hoisted(() => ({
-  repository: { findManyForLabels: vi.fn(), findById: vi.fn(), findActiveDefaultPricingPreset: vi.fn() },
+  repository: { findManyForLabels: vi.fn(), findById: vi.fn(), findActiveDefaultPricingPreset: vi.fn(), findLabelSecretConfiguration: vi.fn() },
   pricing: { resolveProductPricing: vi.fn() },
 }));
 
 vi.mock('./products.repository', () => ({ ProductsRepository: repository }));
-vi.mock('../../pricing/calculator/pricing-resolution', () => pricing);
+vi.mock('../../pricing/calculator/pricing-resolution', async (importOriginal) => ({ ...(await importOriginal<object>()), ...pricing }));
 vi.mock('../../../lib/prisma', () => ({ prisma: {}, transactionModel: {}, activityLogModel: {} }));
 
+import { PricingCalculationMode, PricingRoundingMode } from '@prisma/client';
+import { Decimal } from '@prisma/client/runtime/library';
 import { ProductsService } from './products.service';
 
 const idOf = (suffix: string) => `${suffix.repeat(8)}-${suffix.repeat(4)}-4${suffix.repeat(3)}-8${suffix.repeat(3)}-${suffix.repeat(12)}`;
@@ -38,10 +40,22 @@ const productOf = (overrides: Record<string, unknown> = {}) => ({
 
 const query = { ids: [FAN], includePriceCode: false, includePrice: false, includeArchived: false };
 
+// Cost 300 → 330.00 cash: a "best price" below the stubbed public price of 377.82.
+const secretPreset = {
+  id: '99999999-9999-4999-8999-999999999999', name: 'Best price', productType: null,
+  expensePercent: new Decimal(0), profitPercent: new Decimal(10), discountBufferPercent: new Decimal(0),
+  installmentMarkupPercent: new Decimal(0), downPaymentPercent: new Decimal(100), defaultInstallmentMonths: 1,
+  calculationMode: PricingCalculationMode.COMPOUND, roundingMode: PricingRoundingMode.NONE,
+  isDefault: false, isLabelSecretAllowed: true, isActive: true, archivedAt: null,
+};
+const encodingPreset = { id: idOf('8'), name: 'Legacy', mode: 'PRICE', prefix: 'K', suffix: 'Z', offset: new Decimal(0), digitMap: null, decimalPlaces: 0, isActive: true };
+const secretConfiguration = (pricingPreset: typeof secretPreset | null = null) => ({ settings: { showCodeOnLabel: true }, pricingPreset, encodingPreset });
+
 describe('bulk product labels', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     repository.findActiveDefaultPricingPreset.mockResolvedValue(null);
+    repository.findLabelSecretConfiguration.mockResolvedValue(secretConfiguration());
     pricing.resolveProductPricing.mockReturnValue({ pricingAvailable: true, internalPriceCode: 'P353', cashPrice: '377.82' });
   });
 
@@ -73,7 +87,7 @@ describe('bulk product labels', () => {
 
     const result = await ProductsService.labels({ ...query, includePriceCode: true });
 
-    expect(result.labels[0]).toMatchObject({ internalPriceCode: 'P353', staffLabelCode: expect.stringContaining('HC-000001') });
+    expect(result.labels[0]).toMatchObject({ internalPriceCode: null, staffLabelCode: null });
     expect(Object.keys(result.labels[0])).not.toContain('cashPrice');
   });
 
@@ -201,5 +215,125 @@ describe('bulk product labels', () => {
 
     expect(result.labels[0].brand).toBeNull();
     expect(result.labels).toHaveLength(1);
+  });
+  describe('manually priced products', () => {
+    beforeEach(() => {
+      pricing.resolveProductPricing.mockReturnValue({ pricingAvailable: false, reason: 'MISSING_COST_PRICE' });
+    });
+
+    it('prints the hand-set price less its discount when there is no cost-based price', async () => {
+      repository.findManyForLabels.mockResolvedValue([productOf({ costPrice: null, price: '450.00', discount: '20.00' })]);
+
+      const result = await ProductsService.labels({ ...query, includePrice: true });
+
+      expect(result.labels[0]).toMatchObject({ cashPrice: '430.00' });
+      expect(result.warnings).toHaveLength(0);
+    });
+
+    it('prints the hand-set price as-is when there is no discount', async () => {
+      repository.findById.mockResolvedValue(productOf({ costPrice: null, price: '583.00', discount: null }));
+
+      const result = await ProductsService.label(FAN, { includePrice: true, includePriceCode: false });
+
+      expect(result.payload).toMatchObject({ cashPrice: '583.00' });
+    });
+
+    it('still warns that the staff code is blank, because a hand-set price has no cost to derive it from', async () => {
+      repository.findManyForLabels.mockResolvedValue([productOf({ costPrice: null, price: '450.00', discount: null })]);
+
+      const result = await ProductsService.labels({ ...query, includePrice: true, includePriceCode: true });
+
+      expect(result.labels[0]).toMatchObject({ cashPrice: '450.00', internalPriceCode: null, staffLabelCode: null });
+      expect(result.warnings).toContainEqual({ productId: FAN, code: 'NO_PRICING', name: 'Ceiling Fan' });
+    });
+
+    it('warns and prints no price when the product has neither a formula nor a hand-set price', async () => {
+      repository.findManyForLabels.mockResolvedValue([productOf({ costPrice: null, price: null })]);
+
+      const result = await ProductsService.labels({ ...query, includePrice: true });
+
+      expect(result.labels[0]).toMatchObject({ cashPrice: null });
+      expect(result.warnings).toContainEqual({ productId: FAN, code: 'NO_PRICING', name: 'Ceiling Fan' });
+    });
+
+    it('prefers the formula price over a stale hand-set price', async () => {
+      pricing.resolveProductPricing.mockReturnValue({ pricingAvailable: true, internalPriceCode: 'P353', cashPrice: '377.82' });
+      repository.findManyForLabels.mockResolvedValue([productOf({ price: '999.00' })]);
+
+      const result = await ProductsService.labels({ ...query, includePrice: true });
+
+      expect(result.labels[0]).toMatchObject({ cashPrice: '377.82' });
+    });
+  });
+
+  describe('secret label pricing preset', () => {
+    it('prints the staff code from the secret preset while the public price stays the resolved one', async () => {
+      repository.findManyForLabels.mockResolvedValue([productOf()]);
+      repository.findLabelSecretConfiguration.mockResolvedValue(secretConfiguration(secretPreset));
+
+      const result = await ProductsService.labels({ ...query, includePriceCode: true, includePrice: true });
+
+      expect(result.labels[0]).toMatchObject({ internalPriceCode: 'K330Z', staffLabelCode: 'HC-000001-K330Z', cashPrice: '377.82' });
+      expect(result.warnings).toHaveLength(0);
+    });
+
+    it('never changes the public price, with or without a secret preset', async () => {
+      repository.findManyForLabels.mockResolvedValue([productOf()]);
+      const priced = { ...query, includePriceCode: true, includePrice: true };
+
+      const without = (await ProductsService.labels(priced)).labels[0];
+      repository.findLabelSecretConfiguration.mockResolvedValue(secretConfiguration(secretPreset));
+      const withSecret = (await ProductsService.labels(priced)).labels[0];
+
+      expect(withSecret).toMatchObject({ cashPrice: without.cashPrice });
+      expect((withSecret as { cashPrice: string }).cashPrice).not.toBe('330.00');
+    });
+
+    it('keeps the barcode payload the plain product identifier', async () => {
+      repository.findManyForLabels.mockResolvedValue([productOf(), productOf({ id: OVEN, sku: 'HC-000002', labelBarcodeSource: 'MANUFACTURER', barcode: '6222048413923' })]);
+      repository.findLabelSecretConfiguration.mockResolvedValue(secretConfiguration(secretPreset));
+
+      const result = await ProductsService.labels({ ...query, ids: [FAN, OVEN], includePriceCode: true });
+
+      expect(result.labels.map((label) => label.barcodeValue)).toEqual(['HC-000001', '6222048413923']);
+      for (const label of result.labels) expect(label.barcodeValue).not.toContain('-K');
+    });
+
+    it('prints no code and warns once per print run when no secret preset is chosen', async () => {
+      repository.findManyForLabels.mockResolvedValue([productOf(), productOf({ id: OVEN, sku: 'HC-000002' })]);
+
+      const result = await ProductsService.labels({ ...query, ids: [FAN, OVEN], includePriceCode: true });
+
+      expect(result.labels[0]).toMatchObject({ internalPriceCode: null, staffLabelCode: null });
+      expect(result.warnings.filter((warning) => warning.code === 'SECRET_PRESET_NOT_SET')).toEqual([{ productId: FAN, code: 'SECRET_PRESET_NOT_SET' }]);
+    });
+
+    it('prints no staff code when the secret price would exceed the selling price', async () => {
+      repository.findManyForLabels.mockResolvedValue([productOf()]);
+      repository.findLabelSecretConfiguration.mockResolvedValue(secretConfiguration({ ...secretPreset, profitPercent: new Decimal(40) }));
+
+      const result = await ProductsService.labels({ ...query, includePriceCode: true });
+
+      expect(result.labels[0]).toMatchObject({ internalPriceCode: null, staffLabelCode: null });
+      expect(result.warnings).toContainEqual({ productId: FAN, code: 'SECRET_ABOVE_PUBLIC', name: 'Ceiling Fan' });
+    });
+
+    it('prints no staff code when the secret preset cannot be calculated', async () => {
+      repository.findById.mockResolvedValue(productOf());
+      repository.findLabelSecretConfiguration.mockResolvedValue(secretConfiguration({ ...secretPreset, defaultInstallmentMonths: 0 }));
+
+      const result = await ProductsService.label(FAN, { includePriceCode: true, includePrice: false });
+
+      expect(result.payload).toMatchObject({ internalPriceCode: null, staffLabelCode: null });
+      expect(result.warnings).toContainEqual({ productId: FAN, code: 'SECRET_PRICE_FAILED', name: 'Ceiling Fan' });
+    });
+
+    it('does not look the secret preset up when no staff code is requested', async () => {
+      repository.findManyForLabels.mockResolvedValue([productOf()]);
+
+      await ProductsService.labels({ ...query, includePrice: true });
+
+      expect(repository.findLabelSecretConfiguration).not.toHaveBeenCalled();
+    });
   });
 });

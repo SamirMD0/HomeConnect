@@ -436,6 +436,8 @@ export function renderedProductFields(
 function labelPrintPreview(source: LabelBarcodeSource, barcode: string, sku?: string): string {
   const savedBarcode = barcode.trim();
   if ((source === 'AUTO' || source === 'MANUFACTURER') && savedBarcode) return `Will print: ${savedBarcode} / ستتم الطباعة: ${savedBarcode}`;
+  // A new product without a barcode gets a shop-internal EAN-13 (200…) when it is saved.
+  if (source === 'AUTO' && !savedBarcode && !sku) return 'Will print: a new shop barcode (200…), generated on save / سيتم إنشاء باركود داخلي عند الحفظ';
   if (source === 'AUTO' && !savedBarcode) return `Will print: ${sku ?? 'SKU'} — no barcode saved / ستتم طباعة رمز المنتج — لا يوجد باركود محفوظ`;
   if (source === 'MANUFACTURER') return 'Manufacturer barcode required / باركود الشركة مطلوب';
   return `Will print: ${sku ?? 'SKU'} / ستتم الطباعة: ${sku ?? 'SKU'}`;

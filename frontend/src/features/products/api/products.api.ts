@@ -12,6 +12,8 @@ import {
   ProductFilters,
   ProductLabelResult,
   ProductLabelsResult,
+  ProductLabelSecretOverrideInput,
+  ProductLabelsSecretOverrideInput,
   ProductPaginationMeta,
   ProductServiceJobsResult,
   UpdateProductInput,
@@ -42,6 +44,10 @@ export const productsApi = {
   // carry the cash price, and a field never requested cannot be leaked.
   labels: async (ids: string[], includePriceCode = false, includePrice = false): Promise<ProductLabelsResult> =>
     (await api.get('/products/labels', { params: { ids: ids.join(','), includePriceCode, includePrice } })).data.data,
+  labelSecretPreview: async (id:string,input:ProductLabelSecretOverrideInput):Promise<ProductLabelResult> =>
+    (await api.post(`/products/${id}/label/secret-preview`,input)).data.data,
+  labelsSecretPreview: async (input:ProductLabelsSecretOverrideInput):Promise<ProductLabelsResult> =>
+    (await api.post('/products/labels/secret-preview',input)).data.data,
   updateSku: async (id: string, input: UpdateProductSkuInput): Promise<Product> => (await api.patch(`/products/${id}/sku`, input)).data.data,
   regenerateSku: async (id: string): Promise<Product> => (await api.post(`/products/${id}/regenerate-sku`, {})).data.data,
   updateStock: async (id: string, input: UpdateProductStockInput): Promise<Product> => (await api.patch(`/products/${id}/stock`, input)).data.data,

@@ -111,6 +111,8 @@ export function useProductLabels(ids: string[], includePriceCode = false, includ
     retry: false,
   });
 }
+export function useProductLabelSecretPreview(){return useMutation({mutationFn:({id,input}:{id:string;input:import('../types/product.types').ProductLabelSecretOverrideInput})=>productsApi.labelSecretPreview(id,input)});}
+export function useProductLabelsSecretPreview(){return useMutation({mutationFn:(input:import('../types/product.types').ProductLabelsSecretOverrideInput)=>productsApi.labelsSecretPreview(input)});}
 export function useCreateProduct() {
   const queryClient = useQueryClient();
   return useMutation({ mutationFn: (input: CreateProductInput) => productsApi.create(input), onSuccess: () => refreshProducts(queryClient) });

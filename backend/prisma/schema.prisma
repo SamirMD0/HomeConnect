@@ -149,6 +149,7 @@ enum ServiceAuditRecordType {
   PRODUCT
   SERVICE_JOB
   PRICING_PRESET
+  LABEL_SECRET_SETTINGS
 }
 
 enum ServiceAuditAction {
@@ -243,6 +244,14 @@ enum PricingRoundingMode {
   NEAREST_0_50
   NEAREST_1
   CEIL_1
+}
+
+enum LabelSecretEncodingMode {
+  STAGED_DISCOUNT
+  PRICE
+  DISCOUNT_PERCENTAGE
+  OFFSET_PRICE
+  DIGIT_MAP_PRICE
 }
 
 enum StockMovementType {
@@ -378,6 +387,9 @@ model User {
   prepaidDeliveries           PrepaidPurchase[]          @relation("PrepaidDeliveredBy")
   pricingPresetsCreated       PricingPreset[]             @relation("PricingPresetCreatedBy")
   pricingPresetsUpdated       PricingPreset[]             @relation("PricingPresetUpdatedBy")
+  labelSecretSettingsUpdated  LabelSecretSettings[]       @relation("LabelSecretSettingsUpdatedBy")
+  labelSecretEncodingsCreated LabelSecretEncodingPreset[] @relation("LabelSecretEncodingCreatedBy")
+  labelSecretEncodingsUpdated LabelSecretEncodingPreset[] @relation("LabelSecretEncodingUpdatedBy")
   repairsApplied              RepairHistory[]             @relation("RepairHistoryAppliedBy")
   stockMovements              StockMovement[]             @relation("StockMovementCreatedBy")
   salesStockFulfillmentsCreated  SalesOrderStockFulfillment[] @relation("FulfillmentCreatedBy")
@@ -782,6 +794,8 @@ model PricingPreset {
   calculationMode              PricingCalculationMode @default(COMPOUND)
   roundingMode                 PricingRoundingMode    @default(NONE)
   isDefault                    Boolean                @default(false)
+  /// Whether this preset may be selected as the source for a staff label code.
+  isLabelSecretAllowed         Boolean                @default(false)
   isActive                     Boolean                @default(true)
   notes                        String?                @db.Text
   archivedAt                   DateTime?
@@ -793,11 +807,50 @@ model PricingPreset {
   createdAt                    DateTime               @default(now())
   updatedAt                    DateTime               @updatedAt
   products                     Product[]
+  labelSecretDefaultFor        LabelSecretSettings[]  @relation("LabelSecretDefaultPricingPreset")
 
   @@index([name])
   @@index([productType])
   @@index([isActive])
   @@map("pricing_presets")
+}
+
+model LabelSecretSettings {
+  id                      String                     @id @default(uuid()) @db.Uuid
+  defaultPricingPresetId  String?                    @db.Uuid
+  defaultPricingPreset    PricingPreset?             @relation("LabelSecretDefaultPricingPreset", fields: [defaultPricingPresetId], references: [id], onDelete: Restrict)
+  defaultEncodingPresetId String?                    @db.Uuid
+  defaultEncodingPreset   LabelSecretEncodingPreset? @relation("LabelSecretDefaultEncodingPreset", fields: [defaultEncodingPresetId], references: [id], onDelete: Restrict)
+  showCodeOnLabel         Boolean                    @default(true)
+  updatedById             String?                    @db.Uuid
+  updatedBy               User?                      @relation("LabelSecretSettingsUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  createdAt               DateTime                   @default(now())
+  updatedAt               DateTime                   @updatedAt
+
+  @@map("label_secret_settings")
+}
+
+model LabelSecretEncodingPreset {
+  id            String                  @id @default(uuid()) @db.Uuid
+  name          String
+  mode          LabelSecretEncodingMode
+  prefix        String                  @default("")
+  suffix        String                  @default("")
+  offset        Decimal                 @default(0) @db.Decimal(12, 2)
+  digitMap      String?
+  decimalPlaces Int                     @default(0)
+  isActive      Boolean                 @default(true)
+  createdById   String?                 @db.Uuid
+  createdBy     User?                   @relation("LabelSecretEncodingCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedById   String?                 @db.Uuid
+  updatedBy     User?                   @relation("LabelSecretEncodingUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+  defaultFor    LabelSecretSettings[]   @relation("LabelSecretDefaultEncodingPreset")
+
+  @@index([name])
+  @@index([isActive])
+  @@map("label_secret_encoding_presets")
 }
 
 model ServiceJob {
