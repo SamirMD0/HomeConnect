@@ -150,6 +150,7 @@ enum ServiceAuditRecordType {
   SERVICE_JOB
   PRICING_PRESET
   LABEL_SECRET_SETTINGS
+  SHOP_PROFILE
 }
 
 enum ServiceAuditAction {
@@ -169,6 +170,18 @@ enum ServiceAuditAction {
   REGENERATE_SKU
   CHANGE_STOCK
   CHANGE_SPECIFICATIONS
+}
+
+enum CurrencyDisplayMode {
+  SYMBOL
+  CODE
+  SYMBOL_AND_CODE
+}
+
+enum PricingCardRolloutMode {
+  LEGACY_ONLY
+  BOTH
+  PRICING_CARD_ONLY
 }
 
 enum SalesChannel {
@@ -390,6 +403,7 @@ model User {
   labelSecretSettingsUpdated  LabelSecretSettings[]       @relation("LabelSecretSettingsUpdatedBy")
   labelSecretEncodingsCreated LabelSecretEncodingPreset[] @relation("LabelSecretEncodingCreatedBy")
   labelSecretEncodingsUpdated LabelSecretEncodingPreset[] @relation("LabelSecretEncodingUpdatedBy")
+  shopProfilesUpdated         ShopProfile[]                @relation("ShopProfileUpdatedBy")
   repairsApplied              RepairHistory[]             @relation("RepairHistoryAppliedBy")
   stockMovements              StockMovement[]             @relation("StockMovementCreatedBy")
   salesStockFulfillmentsCreated  SalesOrderStockFulfillment[] @relation("FulfillmentCreatedBy")
@@ -779,6 +793,27 @@ model ProductImage {
   updatedAt DateTime @updatedAt
 
   @@map("product_images")
+}
+
+model ShopProfile {
+  id                           String                 @id @default(uuid()) @db.Uuid
+  name                         String                 @default("Home Connect")
+  tagline                      String?
+  logoBytes                    Bytes?
+  logoMimeType                 String?
+  logoByteSize                 Int?
+  currencyCode                 String                 @default("USD")
+  currencyDisplay              CurrencyDisplayMode    @default(SYMBOL)
+  defaultPricingCardTemplateId String?                @db.Uuid
+  defaultCardValidityDays      Int                    @default(30)
+  snapshotPrintedCards         Boolean                @default(true)
+  pricingCardRolloutMode       PricingCardRolloutMode @default(BOTH)
+  updatedById                  String?                @db.Uuid
+  updatedBy                    User?                  @relation("ShopProfileUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  createdAt                    DateTime               @default(now())
+  updatedAt                    DateTime               @updatedAt
+
+  @@map("shop_profiles")
 }
 
 model PricingPreset {
