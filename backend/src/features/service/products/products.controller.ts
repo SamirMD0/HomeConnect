@@ -10,6 +10,7 @@ import {
   NormalizeProductBrandsInput,
   UpdateProductFeaturesInput,
   ProductPricingCardQueryInput, ProductPricingCardsQueryInput,
+  ProductPricingCardOverrideInput,
 } from './products.validator';
 import { RecordPrintSnapshotInput } from '../../pricing-card/print-snapshot/print-snapshot.validator';
 
@@ -124,6 +125,10 @@ export class ProductsController {
   }
   static async labelSecretPreview(req: Request, res: Response, next: NextFunction) {
     try { res.json({ success: true, data: await ProductsService.labelSecretPreview(String(req.params.productId), req.body, req.user!, contextFrom(req)) }); }
+    catch (error) { next(error); }
+  }
+  static async pricingCardSecretPreview(req: Request<ProductParamsInput, unknown, ProductPricingCardOverrideInput>, res: Response, next: NextFunction) {
+    try { res.json({ success: true, data: await ProductsService.pricingCardSecretPreview(req.params.productId, req.body, req.user!, contextFrom(req)) }); }
     catch (error) { next(error); }
   }
   static async labelsSecretPreview(req: Request, res: Response, next: NextFunction) {

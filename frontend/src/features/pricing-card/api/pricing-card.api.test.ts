@@ -33,4 +33,16 @@ describe('pricingCardApi', () => {
       },
     });
   });
+
+  it('posts template-aware secret previews to the pricing-card endpoint', async () => {
+    const result = { payload: { id: 'product-1' }, warnings: [] };
+    vi.mocked(api.post).mockResolvedValue({ data: { data: result } });
+    const input = {
+      templateId: 'template-1', includePriceCode: true, includePrice: true,
+      hiddenPricingPresetId: 'preset-1', encodingPresetId: 'encoding-1', accountPassword: 'secret',
+    };
+
+    await expect(pricingCardApi.pricingCardSecretPreview('product-1', input)).resolves.toBe(result);
+    expect(api.post).toHaveBeenCalledWith('/products/product-1/pricing-card/secret-preview', input);
+  });
 });

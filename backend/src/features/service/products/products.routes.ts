@@ -14,6 +14,7 @@ import {
   normalizeProductBrandsSchema,
   updateProductFeaturesSchema,
   productPricingCardQuerySchema, productPricingCardsQuerySchema,
+  productPricingCardOverrideSchema,
 } from './products.validator';
 import { requireAccountPassword } from '../../../middleware/admin-password.middleware';
 import { printSnapshotListQuerySchema, recordPrintSnapshotSchema } from '../../pricing-card/print-snapshot/print-snapshot.validator';
@@ -38,6 +39,7 @@ productsRoutes.post('/labels/secret-preview', requireServiceAdmin, validate(prod
 productsRoutes.get('/scan', validate(productScanQuerySchema, 'query'), ProductsController.scan);
 productsRoutes.get('/:productId/label', validate(productParamsSchema, 'params'), validate(productLabelQuerySchema, 'query'), ProductsController.label);
 productsRoutes.get('/:productId/pricing-card', validate(productParamsSchema, 'params'), validate(productPricingCardQuerySchema, 'query'), ProductsController.pricingCard);
+productsRoutes.post('/:productId/pricing-card/secret-preview', requireServiceAdmin, validate(productParamsSchema, 'params'), validate(productPricingCardOverrideSchema), ProductsController.pricingCardSecretPreview);
 productsRoutes.get('/:productId/pricing-cards/prints', validate(productParamsSchema, 'params'), validate(printSnapshotListQuerySchema, 'query'), ProductsController.pricingCardPrints);
 productsRoutes.post('/:productId/label/secret-preview', requireServiceAdmin, validate(productParamsSchema, 'params'), validate(productLabelOverrideSchema), ProductsController.labelSecretPreview);
 

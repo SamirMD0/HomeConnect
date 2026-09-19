@@ -230,6 +230,8 @@ describe('product management frontend', () => {
     expect(html).toContain('Product sections / أقسام المنتج');
     expect(html).toContain('href="#product-stock"');
     expect(html).toContain('id="product-stock"');
+    expect(html).toContain(`/products/${product.id}/label`);
+    expect(html).toContain(`/products/${product.id}/pricing-card`);
   });
 
   it('labels the temporary brand text field honestly until CP-RW7', () => {

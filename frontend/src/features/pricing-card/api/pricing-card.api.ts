@@ -4,6 +4,7 @@ import type {
   PricingCardFeatureIcon,
   PricingCardQuery,
   PricingCardResult,
+  PricingCardSecretPreviewInput,
   PricingCardsResult,
   PricingCardTemplate,
   RecordPricingCardPrintInput,
@@ -31,6 +32,8 @@ export const pricingCardApi = {
     (await api.get(`/products/${productId}/pricing-card`, { params: labelParams(query) })).data.data,
   pricingCards: async (productIds: string[], query: PricingCardQuery): Promise<PricingCardsResult> =>
     (await api.get('/products/pricing-cards', { params: { ...labelParams(query), ids: productIds.join(',') } })).data.data,
+  pricingCardSecretPreview: async (productId: string, input: PricingCardSecretPreviewInput): Promise<PricingCardResult> =>
+    (await api.post(`/products/${productId}/pricing-card/secret-preview`, input)).data.data,
   recordPrint: async (input: RecordPricingCardPrintInput): Promise<{ recorded: boolean; print: unknown | null }> =>
     (await api.post('/products/pricing-cards/print-snapshot', input)).data.data,
 };

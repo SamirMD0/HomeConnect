@@ -31,6 +31,7 @@ import {
   ProductLabelQueryInput,
   ProductLabelsQueryInput,
   ProductLabelOverrideInput,
+  ProductPricingCardOverrideInput,
   ProductLabelsOverrideInput,
   NormalizeProductBrandsInput,
   UpdateProductSkuInput,
@@ -638,6 +639,25 @@ export class ProductsService {
     const configuration = await ProductsRepository.findLabelSecretConfiguration(input.hiddenPricingPresetId, input.encodingPresetId);
     assertRequestedLabelSecretConfiguration(configuration, input.hiddenPricingPresetId, input.encodingPresetId);
     const result = toLabelPayload(product, defaultPreset, configuration.pricingPreset, configuration.encodingPreset, { ...input, exposeSecretPrice: true });
+    return { payload: result.payload, warnings: onceSecretPresetNotSet(result.warnings) };
+  }
+
+  static async pricingCardSecretPreview(id: string, input: ProductPricingCardOverrideInput, user: ServiceMutationUser, context: RequestContext) {
+    await authorizeLabelSecretOverride(input.hiddenPricingPresetId, input.encodingPresetId, input.manualDiscountStages, input.accountPassword, user, context);
+    const product = await ProductsRepository.findById(id);
+    if (!product) throw new NotFoundError('Product not found');
+    const templateContext = await loadTemplateLabelContext(input.templateId, [product]);
+    const defaultPreset = await ProductsRepository.findActiveDefaultPricingPreset();
+    const configuration = await ProductsRepository.findLabelSecretConfiguration(input.hiddenPricingPresetId, input.encodingPresetId);
+    assertRequestedLabelSecretConfiguration(configuration, input.hiddenPricingPresetId, input.encodingPresetId);
+    const result = toLabelPayload(
+      product,
+      defaultPreset,
+      configuration.pricingPreset,
+      configuration.encodingPreset,
+      { ...input, exposeSecretPrice: true },
+      templateContext,
+    );
     return { payload: result.payload, warnings: onceSecretPresetNotSet(result.warnings) };
   }
 

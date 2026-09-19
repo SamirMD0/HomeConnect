@@ -332,6 +332,11 @@ const labelSecretOverrideFields = {
 };
 
 export const productLabelOverrideSchema = z.object(labelSecretOverrideFields).strict();
+export const productPricingCardOverrideSchema = productLabelOverrideSchema.extend({
+  templateId: z.string().uuid(),
+  validUntil: z.string().date().optional(),
+  featureCodes: z.array(z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)).max(MAX_PRODUCT_FEATURES).optional(),
+}).strict();
 export const productLabelsOverrideSchema = z.object({
   ids: z.array(uuidSchema).min(1).max(MAX_LABEL_SELECTION),
   includeArchived: z.boolean().default(false),
@@ -352,6 +357,7 @@ export type ProductServiceJobsQueryInput = z.infer<typeof productServiceJobsQuer
 export type UpdateProductPricingInput = z.infer<typeof updateProductPricingSchema>;
 export type ProductPricingPreviewQueryInput = z.infer<typeof productPricingPreviewQuerySchema>;
 export type ProductLabelOverrideInput = z.infer<typeof productLabelOverrideSchema>;
+export type ProductPricingCardOverrideInput = z.infer<typeof productPricingCardOverrideSchema>;
 export type ProductLabelsOverrideInput = z.infer<typeof productLabelsOverrideSchema>;
 export type UpdateProductSkuInput = z.infer<typeof updateProductSkuSchema>;
 export type UpdateProductStockInput = z.infer<typeof updateProductStockSchema>;

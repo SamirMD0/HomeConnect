@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { pricingCardApi } from '../api/pricing-card.api';
-import type { PricingCardQuery, RecordPricingCardPrintInput } from '../types/pricing-card.types';
+import type { PricingCardQuery, PricingCardSecretPreviewInput, RecordPricingCardPrintInput } from '../types/pricing-card.types';
 
 export const pricingCardKeys = {
   all: ['pricing-cards'] as const,
@@ -26,4 +26,11 @@ export function usePricingCards(productIds: string[], query: PricingCardQuery) {
 
 export function useRecordPricingCardPrint() {
   return useMutation({ mutationFn: (input: RecordPricingCardPrintInput) => pricingCardApi.recordPrint(input) });
+}
+
+export function usePricingCardSecretPreview() {
+  return useMutation({
+    mutationFn: ({ productId, input }: { productId: string; input: PricingCardSecretPreviewInput }) =>
+      pricingCardApi.pricingCardSecretPreview(productId, input),
+  });
 }

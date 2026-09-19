@@ -124,6 +124,15 @@ export interface PricingCardQuery {
   featureCodes?: string[];
 }
 
+export interface PricingCardSecretPreviewInput extends PricingCardQuery {
+  includePriceCode: boolean;
+  includePrice: boolean;
+  hiddenPricingPresetId: string;
+  encodingPresetId: string;
+  manualDiscountStages?: number[];
+  accountPassword: string;
+}
+
 export interface RecordPricingCardPrintInput {
   productId: string;
   templateId: string;

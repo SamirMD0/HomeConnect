@@ -3,7 +3,7 @@ import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { app } from '../../../app';
 
-const { service } = vi.hoisted(() => ({ service: { create: vi.fn(), list: vi.fn(), brands: vi.fn(), normalizeBrands: vi.fn(), get: vi.fn(), update: vi.fn(), updateFeatures: vi.fn(), archive: vi.fn(), restore: vi.fn(), label: vi.fn(), labels: vi.fn(), labelSecretPreview: vi.fn(), labelsSecretPreview: vi.fn(), audit: vi.fn(), checkDuplicate: vi.fn(), serviceJobs: vi.fn(), updateSku: vi.fn(), regenerateSku: vi.fn(), updateStock: vi.fn() } }));
+const { service } = vi.hoisted(() => ({ service: { create: vi.fn(), list: vi.fn(), brands: vi.fn(), normalizeBrands: vi.fn(), get: vi.fn(), update: vi.fn(), updateFeatures: vi.fn(), archive: vi.fn(), restore: vi.fn(), label: vi.fn(), labels: vi.fn(), labelSecretPreview: vi.fn(), pricingCardSecretPreview: vi.fn(), labelsSecretPreview: vi.fn(), audit: vi.fn(), checkDuplicate: vi.fn(), serviceJobs: vi.fn(), updateSku: vi.fn(), regenerateSku: vi.fn(), updateStock: vi.fn() } }));
 vi.mock('./products.service', () => ({ ProductsService: service }));
 vi.mock('../../../lib/prisma', () => ({ prisma: { $queryRaw: vi.fn().mockResolvedValue([{ result: 1 }]) }, transactionModel: {}, activityLogModel: {} }));
 
@@ -27,6 +27,7 @@ describe('product routes', () => {
     service.label.mockResolvedValue({ payload: { id: productId, sku: 'HC-000001', barcodeValue: 'HC-000001', barcodeSource: 'SKU', internalPriceCode: null }, warnings: [] });
     service.labels.mockResolvedValue({ labels: [], warnings: [] });
     service.labelSecretPreview.mockResolvedValue({ payload: { id: productId, sku: 'HC-000001', barcodeValue: 'HC-000001', staffLabelCode: 'HC-000001-K380Z', secretPrice: '380.00' }, warnings: [] });
+    service.pricingCardSecretPreview.mockResolvedValue({ payload: { id: productId, templateId: '44444444-4444-4444-8444-444444444444', sku: 'HC-000001', barcodeValue: 'HC-000001', staffLabelCode: 'HC-000001-K380Z', secretPrice: '380.00' }, warnings: [] });
     service.labelsSecretPreview.mockResolvedValue({ labels: [], warnings: [] });
     service.updateSku.mockResolvedValue(product);
     service.regenerateSku.mockResolvedValue(product);
@@ -130,6 +131,20 @@ describe('product routes', () => {
     expect((await request(app).post(`/api/v1/products/${productId}/label/secret-preview`).set('Authorization', `Bearer ${admin}`).send(input)).status).toBe(200);
     expect(service.labelSecretPreview).toHaveBeenCalledWith(productId, input, expect.objectContaining({ role: 'ADMIN' }), expect.anything());
     expect((await request(app).post(`/api/v1/products/${productId}/label/secret-preview`).set('Authorization', `Bearer ${admin}`).send({ ...input, manualDiscountStages: [0, 5] })).status).toBe(400);
+  });
+  it('previews secret pricing through the selected pricing-card template', async () => {
+    const input = {
+      includePriceCode: true, includePrice: true,
+      hiddenPricingPresetId: productId,
+      encodingPresetId: '44444444-4444-4444-8444-444444444444',
+      templateId: '55555555-5555-4555-8555-555555555555',
+      validUntil: '2026-10-31', featureCodes: ['wifi', 'qled'], accountPassword: 'secret',
+    };
+    const path = `/api/v1/products/${productId}/pricing-card/secret-preview`;
+    expect((await request(app).post(path).set('Authorization', `Bearer ${employee}`).send(input)).status).toBe(403);
+    expect((await request(app).post(path).set('Authorization', `Bearer ${admin}`).send({ ...input, accountPassword: '' })).status).toBe(400);
+    expect((await request(app).post(path).set('Authorization', `Bearer ${admin}`).send(input)).status).toBe(200);
+    expect(service.pricingCardSecretPreview).toHaveBeenCalledWith(productId, input, expect.objectContaining({ role: 'ADMIN' }), expect.anything());
   });
   it('requires auth and lets employees create/list products', async () => {
     expect((await request(app).get('/api/v1/products')).status).toBe(401);
