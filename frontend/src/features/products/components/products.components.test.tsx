@@ -532,12 +532,16 @@ describe('bulk label sheet', () => {
 });
 
 describe('product bulk actions bar', () => {
-  const bar = (selectedIds: string[], visibleIds: string[] = selectedIds) =>
-    renderToStaticMarkup(
-      <MemoryRouter>
-        <ProductBulkActionsBar selectedIds={selectedIds} visibleIds={visibleIds} onClear={() => undefined} />
-      </MemoryRouter>
+  const bar = (selectedIds: string[], visibleIds: string[] = selectedIds) => {
+    const queryClient = new QueryClient();
+    return renderToStaticMarkup(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <ProductBulkActionsBar selectedIds={selectedIds} visibleIds={visibleIds} onClear={() => undefined} />
+        </MemoryRouter>
+      </QueryClientProvider>
     );
+  };
 
   it('stays hidden until something is selected', () => {
     expect(bar([])).toBe('');

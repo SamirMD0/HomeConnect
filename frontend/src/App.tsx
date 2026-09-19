@@ -21,6 +21,7 @@ import { FeatureIconsPage } from './pages/settings/FeatureIconsPage';
 import { BrandLogosPage } from './pages/settings/BrandLogosPage';
 import { PricingCardTemplatesPage } from './pages/settings/PricingCardTemplatesPage';
 import { PricingCardTemplateEditorPage } from './pages/settings/PricingCardTemplateEditorPage';
+import { RolloutGuard } from './features/pricing-card/components/RolloutGuard';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ServiceJobsPage } from './pages/service/ServiceJobsPage';
 import { ServiceJobDetailsPage } from './pages/service/ServiceJobDetailsPage';
@@ -86,10 +87,10 @@ const App: React.FC = () => {
               <Route path="inventory/receiving/:receivingId" element={<SupplierReceivingDetailPage />} />
               <Route path="scanner" element={<ScannerHubPage />} />
               <Route path="pricing-presets" element={<PricingPresetsPage />} />
-              <Route path="products/labels" element={<ProductLabelsPage />} />
-              <Route path="products/pricing-cards" element={<ProductPricingCardsPage />} />
-              <Route path="products/:id/label" element={<ProductLabelPage />} />
-              <Route path="products/:id/pricing-card" element={<ProductPricingCardPage />} />
+              <Route path="products/labels" element={<RolloutGuard surface="legacy" fallback={({ search }) => `/products/pricing-cards${search}`}><ProductLabelsPage /></RolloutGuard>} />
+              <Route path="products/pricing-cards" element={<RolloutGuard surface="pricing-card" fallback={({ search }) => `/products/labels${search}`}><ProductPricingCardsPage /></RolloutGuard>} />
+              <Route path="products/:id/label" element={<RolloutGuard surface="legacy" fallback={({ params }) => `/products/${params.id}/pricing-card`}><ProductLabelPage /></RolloutGuard>} />
+              <Route path="products/:id/pricing-card" element={<RolloutGuard surface="pricing-card" fallback={({ params }) => `/products/${params.id}/label`}><ProductPricingCardPage /></RolloutGuard>} />
               <Route path="suppliers" element={<SuppliersPage />} />
               <Route path="suppliers/:id" element={<SupplierProfilePage />} />
               <Route path="supplier-ledger" element={<SupplierLedgerPage />} />
