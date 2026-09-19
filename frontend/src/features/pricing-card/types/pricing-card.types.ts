@@ -107,12 +107,12 @@ export interface PricingCardWarning {
 }
 
 export interface PricingCardResult {
-  product: PricingCardData;
+  payload: PricingCardData;
   warnings: PricingCardWarning[];
 }
 
 export interface PricingCardsResult {
-  products: PricingCardData[];
+  labels: PricingCardData[];
   warnings: PricingCardWarning[];
 }
 

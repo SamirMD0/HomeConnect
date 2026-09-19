@@ -28,9 +28,9 @@ export const pricingCardApi = {
   brandLogos: async (activeOnly = true): Promise<BrandLogo[]> =>
     (await api.get('/brand-logos', { params: { activeOnly } })).data.data,
   pricingCard: async (productId: string, query: PricingCardQuery): Promise<PricingCardResult> =>
-    (await api.get(`/products/${productId}/label`, { params: labelParams(query) })).data.data,
+    (await api.get(`/products/${productId}/pricing-card`, { params: labelParams(query) })).data.data,
   pricingCards: async (productIds: string[], query: PricingCardQuery): Promise<PricingCardsResult> =>
-    (await api.get('/products/labels', { params: { ...labelParams(query), ids: productIds.join(',') } })).data.data,
+    (await api.get('/products/pricing-cards', { params: { ...labelParams(query), ids: productIds.join(',') } })).data.data,
   recordPrint: async (input: RecordPricingCardPrintInput): Promise<{ recorded: boolean; print: unknown | null }> =>
     (await api.post('/products/pricing-cards/print-snapshot', input)).data.data,
 };
