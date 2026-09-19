@@ -3,7 +3,7 @@ import { api } from '../../../services/api';
 import { pricingCardApi } from './pricing-card.api';
 
 vi.mock('../../../services/api', () => ({
-  api: { get: vi.fn(), post: vi.fn() },
+  api: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), put: vi.fn() },
 }));
 
 describe('pricingCardApi', () => {
@@ -32,6 +32,22 @@ describe('pricingCardApi', () => {
         includePriceCode: false, includePrice: true,
       },
     });
+  });
+
+  it('patches the shop profile with an admin password payload', async () => {
+    const profile = { id: 'shop-1', name: 'Home Connect Beirut' };
+    vi.mocked(api.patch).mockResolvedValue({ data: { data: profile } });
+
+    await expect(pricingCardApi.updateShopProfile({ name: 'Home Connect Beirut', accountPassword: 'secret' })).resolves.toBe(profile);
+    expect(api.patch).toHaveBeenCalledWith('/shop-profile', { name: 'Home Connect Beirut', accountPassword: 'secret' });
+  });
+
+  it('puts the shop profile logo bytes as base64', async () => {
+    const profile = { id: 'shop-1', hasLogo: true };
+    vi.mocked(api.put).mockResolvedValue({ data: { data: profile } });
+
+    await expect(pricingCardApi.updateShopProfileLogo({ dataBase64: 'AAA', mimeType: 'image/png', accountPassword: 'secret' })).resolves.toBe(profile);
+    expect(api.put).toHaveBeenCalledWith('/shop-profile/logo', { dataBase64: 'AAA', mimeType: 'image/png', accountPassword: 'secret' });
   });
 
   it('posts template-aware secret previews to the pricing-card endpoint', async () => {

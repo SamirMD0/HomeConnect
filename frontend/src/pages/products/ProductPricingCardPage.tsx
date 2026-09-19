@@ -59,7 +59,7 @@ export function ProductPricingCardPage() {
   const payload = result?.payload;
   const features = featureChoices.length ? featureChoices : card.data?.payload.features ?? [];
   const selectedCodes = selectedFeatures ?? features.map(({ iconCode }) => iconCode);
-  const cards = useMemo(() => payload ? Array.from({ length: copies }, () => ({ product: payload })) : [], [copies, payload]);
+  const cards = useMemo(() => payload ? Array.from({ length: copies }, () => ({ product: payload, assets: { companyLogoUrl: profile.data?.logoDataUrl ?? null } })) : [], [copies, payload, profile.data?.logoDataUrl]);
   const ready = Boolean(selectedTemplate && profile.data && payload && validUntil && !card.isLoading);
 
   const changeTemplate = (templateId: string) => {

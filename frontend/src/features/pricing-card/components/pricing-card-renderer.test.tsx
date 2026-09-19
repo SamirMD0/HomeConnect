@@ -39,13 +39,14 @@ const templates = [
   template('large-legacy', 'Legacy Large', '72', '50', largeConfig),
 ];
 
-const shopProfile = {
+const shopProfile: import('../types/pricing-card.types').ShopProfile = {
   id: 'shop-profile',
   name: 'Home Connect',
   tagline: 'Your home, connected.',
   hasLogo: true,
   logoMimeType: 'image/webp',
   logoByteSize: 100,
+  logoDataUrl: null,
   currencyCode: 'USD',
   currencyDisplay: 'SYMBOL' as const,
   defaultPricingCardTemplateId: 'tv-large',

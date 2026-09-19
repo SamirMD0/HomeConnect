@@ -50,13 +50,17 @@ export class ShopProfileService {
 }
 
 function serialize(profile: ShopProfileRecord): ShopProfileDto {
+  const hasLogo = Boolean(profile.logoBytes?.length);
   return {
     id: profile.id,
     name: profile.name,
     tagline: profile.tagline,
-    hasLogo: Boolean(profile.logoBytes?.length),
+    hasLogo,
     logoMimeType: profile.logoMimeType,
     logoByteSize: profile.logoByteSize,
+    logoDataUrl: hasLogo && profile.logoMimeType
+      ? `data:${profile.logoMimeType};base64,${Buffer.from(profile.logoBytes!).toString('base64')}`
+      : null,
     currencyCode: profile.currencyCode,
     currencyDisplay: profile.currencyDisplay,
     defaultPricingCardTemplateId: profile.defaultPricingCardTemplateId,
@@ -68,7 +72,8 @@ function serialize(profile: ShopProfileRecord): ShopProfileDto {
 
 function snapshot(profile: ShopProfileRecord): Prisma.InputJsonObject {
   const serialized = serialize(profile);
-  return { ...serialized } as Prisma.InputJsonObject;
+  const { logoDataUrl: _logoDataUrl, ...rest } = serialized;
+  return { ...rest } as Prisma.InputJsonObject;
 }
 
 async function verify(user: ServiceMutationUser, password: string, action: string, context: RequestContext, tx: Prisma.TransactionClient) {

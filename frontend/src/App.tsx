@@ -16,6 +16,7 @@ import { PrepaidPurchasesPage } from './pages/PrepaidPurchasesPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { ReportDetailPage } from './pages/ReportDetailPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
+import { ShopProfileSettingsPage } from './pages/settings/ShopProfileSettingsPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ServiceJobsPage } from './pages/service/ServiceJobsPage';
 import { ServiceJobDetailsPage } from './pages/service/ServiceJobDetailsPage';
@@ -91,6 +92,7 @@ const App: React.FC = () => {
               <Route path="reports" element={<ReportsPage />} />
               <Route path="reports/:reportId" element={<ReportDetailPage />} />
               <Route path="settings" element={<SettingsPage />} />
+              <Route path="settings/pricing-cards/shop-profile" element={<ProtectedRoute allowedRoles={['ADMIN']}><ShopProfileSettingsPage /></ProtectedRoute>} />
             </Route>
             
             {/* Fallback */}

@@ -29,7 +29,8 @@ export function ProductPricingCardsPage() {
   const validUntil = resolvePricingCardValidUntil(validUntilOverride, selectedTemplate?.defaultValidityDays, profile.data?.defaultCardValidityDays);
   const cardsQuery = usePricingCards(ids, { templateId: selectedTemplateId, validUntil, includePriceCode: true });
   const labels = cardsQuery.data?.labels ?? [];
-  const cards = useMemo(() => Array.from({ length: copies }, () => labels).flat().map((product) => ({ product })), [copies, labels]);
+  const logoUrl = profile.data?.logoDataUrl ?? null;
+  const cards = useMemo(() => Array.from({ length: copies }, () => labels).flat().map((product) => ({ product, assets: { companyLogoUrl: logoUrl } })), [copies, labels, logoUrl]);
   const sheetTemplate = selectedTemplate ? { ...selectedTemplate, paperMode: 'SHEET' as const, paperSize: 'A4' as const } : null;
   const widthMm = Number(selectedTemplate?.cardWidthMm ?? 0);
   const heightMm = Number(selectedTemplate?.cardHeightMm ?? 0);

@@ -69,5 +69,7 @@ describe('shop profile service', () => {
     expect(repository.updateSingleton).toHaveBeenCalledWith(expect.objectContaining({ logoBytes: bytes, logoByteSize: bytes.length }), expect.anything());
     expect(writeAudit).toHaveBeenCalledTimes(1);
     expect(result.hasLogo).toBe(true);
+    expect(result.logoDataUrl).toMatch(/^data:image\/webp;base64,/);
+    expect(JSON.stringify(writeAudit.mock.calls[0][0])).not.toContain('data:image/webp');
   });
 });

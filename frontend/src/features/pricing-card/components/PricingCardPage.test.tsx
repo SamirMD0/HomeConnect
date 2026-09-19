@@ -8,6 +8,7 @@ import { PricingCardPage } from './PricingCardPage';
 
 const profile: ShopProfile = {
   id: 'shop', name: 'Home Connect', tagline: null, hasLogo: false, logoMimeType: null, logoByteSize: null,
+  logoDataUrl: null,
   currencyCode: 'USD', currencyDisplay: 'SYMBOL', defaultPricingCardTemplateId: null,
   defaultCardValidityDays: 30, snapshotPrintedCards: true, pricingCardRolloutMode: 'BOTH',
 };

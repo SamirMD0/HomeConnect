@@ -9,6 +9,8 @@ import type {
   PricingCardTemplate,
   RecordPricingCardPrintInput,
   ShopProfile,
+  UpdateShopProfileInput,
+  UpdateShopProfileLogoInput,
 } from '../types/pricing-card.types';
 
 const labelParams = (query: PricingCardQuery) => ({
@@ -20,6 +22,10 @@ const labelParams = (query: PricingCardQuery) => ({
 
 export const pricingCardApi = {
   shopProfile: async (): Promise<ShopProfile> => (await api.get('/shop-profile')).data.data,
+  updateShopProfile: async (input: UpdateShopProfileInput): Promise<ShopProfile> =>
+    (await api.patch('/shop-profile', input)).data.data,
+  updateShopProfileLogo: async (input: UpdateShopProfileLogoInput): Promise<ShopProfile> =>
+    (await api.put('/shop-profile/logo', input)).data.data,
   templates: async (activeOnly = true): Promise<PricingCardTemplate[]> =>
     (await api.get('/pricing-card-templates', { params: { activeOnly } })).data.data,
   template: async (templateId: string): Promise<PricingCardTemplate> =>

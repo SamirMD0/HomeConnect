@@ -11,12 +11,31 @@ export interface ShopProfile {
   hasLogo: boolean;
   logoMimeType: string | null;
   logoByteSize: number | null;
+  logoDataUrl: string | null;
   currencyCode: string;
   currencyDisplay: CurrencyDisplayMode;
   defaultPricingCardTemplateId: string | null;
   defaultCardValidityDays: number;
   snapshotPrintedCards: boolean;
   pricingCardRolloutMode: PricingCardRolloutMode;
+}
+
+export interface UpdateShopProfileInput {
+  name?: string;
+  tagline?: string | null;
+  currencyCode?: string;
+  currencyDisplay?: CurrencyDisplayMode;
+  defaultPricingCardTemplateId?: string | null;
+  defaultCardValidityDays?: number;
+  snapshotPrintedCards?: boolean;
+  pricingCardRolloutMode?: PricingCardRolloutMode;
+  accountPassword: string;
+}
+
+export interface UpdateShopProfileLogoInput {
+  dataBase64: string;
+  mimeType: 'image/png' | 'image/jpeg' | 'image/webp';
+  accountPassword: string;
 }
 
 export interface PricingCardTemplate {

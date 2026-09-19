@@ -7,6 +7,7 @@ export interface ShopProfileDto {
   hasLogo: boolean;
   logoMimeType: string | null;
   logoByteSize: number | null;
+  logoDataUrl: string | null;
   currencyCode: string;
   currencyDisplay: CurrencyDisplayMode;
   defaultPricingCardTemplateId: string | null;
