@@ -3,7 +3,7 @@ import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { app } from '../../../app';
 
-const { service } = vi.hoisted(() => ({ service: { create: vi.fn(), list: vi.fn(), brands: vi.fn(), normalizeBrands: vi.fn(), get: vi.fn(), update: vi.fn(), archive: vi.fn(), restore: vi.fn(), label: vi.fn(), labels: vi.fn(), labelSecretPreview: vi.fn(), labelsSecretPreview: vi.fn(), audit: vi.fn(), checkDuplicate: vi.fn(), serviceJobs: vi.fn(), updateSku: vi.fn(), regenerateSku: vi.fn(), updateStock: vi.fn() } }));
+const { service } = vi.hoisted(() => ({ service: { create: vi.fn(), list: vi.fn(), brands: vi.fn(), normalizeBrands: vi.fn(), get: vi.fn(), update: vi.fn(), updateFeatures: vi.fn(), archive: vi.fn(), restore: vi.fn(), label: vi.fn(), labels: vi.fn(), labelSecretPreview: vi.fn(), labelsSecretPreview: vi.fn(), audit: vi.fn(), checkDuplicate: vi.fn(), serviceJobs: vi.fn(), updateSku: vi.fn(), regenerateSku: vi.fn(), updateStock: vi.fn() } }));
 vi.mock('./products.service', () => ({ ProductsService: service }));
 vi.mock('../../../lib/prisma', () => ({ prisma: { $queryRaw: vi.fn().mockResolvedValue([{ result: 1 }]) }, transactionModel: {}, activityLogModel: {} }));
 
@@ -31,6 +31,7 @@ describe('product routes', () => {
     service.updateSku.mockResolvedValue(product);
     service.regenerateSku.mockResolvedValue(product);
     service.updateStock.mockResolvedValue(product);
+    service.updateFeatures.mockResolvedValue({ ...product, featureHighlights: [] });
   });
   it('keeps protected SKU and stock routes above the bare product route', async () => {
     expect((await request(app).patch(`/api/v1/products/${productId}/sku`).set('Authorization', `Bearer ${admin}`).send({ sku: 'HC-009999' })).status).toBe(200);
@@ -79,6 +80,29 @@ describe('product routes', () => {
     const response = await request(app).get(`/api/v1/products/${productId}/label`).set('Authorization', `Bearer ${employee}`);
     expect(response.status).toBe(200);
     expect(response.body.data.warnings).toContainEqual({ productId, code: 'FALLBACK_TO_SKU', name: 'Fan' });
+  });
+
+  it('keeps pricing-card feature replacement admin-only and password-protected', async () => {
+    const featureHighlights = [
+      { iconCode: 'capacity', label: 'Capacity', value: '9 kg', position: 2 },
+      { iconCode: 'spin-speed', label: null, value: '1200 rpm', position: 1 },
+    ];
+    const path = `/api/v1/products/${productId}/features`;
+    expect((await request(app).patch(path).send({ featureHighlights, accountPassword: 'secret' })).status).toBe(401);
+    expect((await request(app).patch(path).set('Authorization', `Bearer ${employee}`).send({ featureHighlights, accountPassword: 'secret' })).status).toBe(403);
+    expect((await request(app).patch(path).set('Authorization', `Bearer ${admin}`).send({ featureHighlights })).status).toBe(401);
+    expect((await request(app).patch(path).set('Authorization', `Bearer ${admin}`).send({ featureHighlights, accountPassword: 'secret' })).status).toBe(200);
+    expect(service.updateFeatures).toHaveBeenCalledWith(productId, expect.objectContaining({
+      accountPassword: 'secret',
+      featureHighlights: [featureHighlights[1], featureHighlights[0]],
+    }), expect.objectContaining({ role: 'ADMIN' }), expect.anything());
+  });
+
+  it('supports delete-all highlights and rejects more than eight', async () => {
+    const path = `/api/v1/products/${productId}/features`;
+    expect((await request(app).patch(path).set('Authorization', `Bearer ${admin}`).send({ featureHighlights: [], accountPassword: 'secret' })).status).toBe(200);
+    const tooMany = Array.from({ length: 9 }, (_, index) => ({ iconCode: `feature-${index}`, position: index + 1 }));
+    expect((await request(app).patch(path).set('Authorization', `Bearer ${admin}`).send({ featureHighlights: tooMany, accountPassword: 'secret' })).status).toBe(400);
   });
   it('keeps per-print hidden-preset selection admin-only and password-protected', async () => {
     const input = { includePriceCode: true, includePrice: true, hiddenPricingPresetId: productId, encodingPresetId: '44444444-4444-4444-8444-444444444444', manualDiscountStages: [7, 2, 1], accountPassword: 'secret' };

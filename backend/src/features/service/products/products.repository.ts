@@ -10,6 +10,7 @@ const productActorInclude = {
   pricingPreset: true,
   // Metadata only — never select `data`, or every product query would load image payloads.
   image: { select: { mimeType: true, byteSize: true, updatedAt: true } },
+  pricingCardFeatures: { orderBy: { position: 'asc' as const } },
 } satisfies Prisma.ProductInclude;
 
 /**
@@ -281,6 +282,24 @@ export class ProductsRepository {
 
   static update(id: string, data: Prisma.ProductUncheckedUpdateInput, tx: Prisma.TransactionClient) {
     return tx.product.update({ where: { id }, data, include: productActorInclude });
+  }
+
+  static findActiveFeatureIconCodes(codes: string[], tx: Prisma.TransactionClient) {
+    return tx.pricingCardFeatureIcon.findMany({
+      where: { code: { in: codes }, isActive: true },
+      select: { code: true },
+    });
+  }
+
+  static async replacePricingCardFeatures(
+    productId: string,
+    entries: Array<{ iconCode: string; label: string | null; value: string | null; position: number }>,
+    tx: Prisma.TransactionClient
+  ) {
+    await tx.productPricingCardFeature.deleteMany({ where: { productId } });
+    if (entries.length) await tx.productPricingCardFeature.createMany({
+      data: entries.map((entry) => ({ productId, ...entry })),
+    });
   }
 
   static findActiveDefaultPricingPreset(tx?: Prisma.TransactionClient) {

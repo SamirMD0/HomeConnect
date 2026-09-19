@@ -12,7 +12,9 @@ import {
   productLabelOverrideSchema, productLabelsOverrideSchema,
   regenerateProductSkuSchema,
   normalizeProductBrandsSchema,
+  updateProductFeaturesSchema,
 } from './products.validator';
+import { requireAccountPassword } from '../../../middleware/admin-password.middleware';
 import { InventoryController } from '../../inventory/inventory.controller';
 import { inventoryProductParamsSchema, stockMovementSchema, verifyOpeningCountSchema } from '../../inventory/inventory.validator';
 
@@ -52,6 +54,7 @@ productsRoutes.patch('/:productId/pricing', requireServiceAdmin, validate(produc
 productsRoutes.patch('/:productId/sku', requireServiceAdmin, validate(productParamsSchema, 'params'), validate(updateProductSkuSchema), ProductsController.updateSku);
 productsRoutes.post('/:productId/regenerate-sku', requireServiceAdmin, validate(productParamsSchema, 'params'), validate(regenerateProductSkuSchema), ProductsController.regenerateSku);
 productsRoutes.patch('/:productId/stock', requireServiceAdmin, validate(productParamsSchema, 'params'), validate(updateProductStockSchema), ProductsController.updateStock);
+productsRoutes.patch('/:productId/features', requireServiceAdmin, requireAccountPassword, validate(productParamsSchema, 'params'), validate(updateProductFeaturesSchema), ProductsController.updateFeatures);
 productsRoutes.post('/:productId/archive', requireServiceAdmin, validate(productParamsSchema, 'params'), validate(productActionSchema), ProductsController.archive);
 productsRoutes.post('/:productId/restore', requireServiceAdmin, validate(productParamsSchema, 'params'), validate(productActionSchema), ProductsController.restore);
 productsRoutes.patch('/:productId', validate(productParamsSchema, 'params'), validate(updateProductSchema), ProductsController.update);

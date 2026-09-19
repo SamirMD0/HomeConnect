@@ -36,6 +36,7 @@ import {
   UpdateProductSkuInput,
   UpdateProductStockInput,
   UpdateProductInput,
+  UpdateProductFeaturesInput,
 } from './products.validator';
 import { ProductsRepository } from './products.repository';
 import { generateInternalBarcode } from './product-internal-barcode';
@@ -228,8 +229,16 @@ export class ProductsService {
     if (includesPricing) assertServiceAdmin(user);
     const includesStockSettings = input.trackStock !== undefined || input.lowStockThreshold !== undefined;
     if (includesStockSettings) assertServiceAdmin(user);
+    if (input.featureHighlights !== undefined) assertServiceAdmin(user);
     try {
       return await runFinancialTransaction(async (tx) => {
+        if (input.featureHighlights !== undefined) {
+          await verifyAdminPassword(user.userId, input.accountPassword!, {
+            action: 'UPDATE_PRODUCT_PRICING_CARD_FEATURES', recordType: 'PRODUCT',
+            ipAddress: context.ipAddress, domainLabel: 'product pricing-card features',
+          }, tx);
+          await assertFeatureIconCodesExist(input.featureHighlights.map(({ iconCode }) => iconCode), tx);
+        }
         if (input.barcode && (await ProductsRepository.findByBarcode(input.barcode, tx, { caseInsensitive: true }))) {
           throw barcodeConflict();
         }
@@ -237,7 +246,7 @@ export class ProductsService {
           const preset = await ProductsRepository.findPricingPreset(input.pricingPresetId, tx);
           assertActivePricingPreset(preset);
         }
-        const product = await ProductsRepository.create(
+        let product = await ProductsRepository.create(
           {
             sku: await generateProductSku(tx),
             name: input.name,
@@ -260,6 +269,10 @@ export class ProductsService {
           },
           tx
         );
+        if (input.featureHighlights !== undefined) {
+          await ProductsRepository.replacePricingCardFeatures(product.id, input.featureHighlights, tx);
+          product = (await ProductsRepository.findById(product.id, tx))!;
+        }
         const actor = await loadActor(user.userId, tx);
         await writeServiceAudit({
           recordType: ServiceAuditRecordType.PRODUCT,
@@ -407,7 +420,7 @@ export class ProductsService {
     user: ServiceMutationUser,
     context: RequestContext
   ) {
-    const fields = Object.keys(input);
+    const fields = Object.keys(input).filter((field) => field !== 'accountPassword');
     if (fields.length === 0) throw new ValidationError('At least one product field is required');
     // The field policy still decides WHO may edit what — it just no longer decides
     // whether a password is demanded. Cosmetic fields stay open to any authenticated
@@ -418,6 +431,13 @@ export class ProductsService {
       return await runFinancialTransaction(async (tx) => {
         const existing = await ProductsRepository.findById(id, tx);
         if (!existing) throw new NotFoundError('Product not found');
+        if (input.featureHighlights !== undefined) {
+          await verifyAdminPassword(user.userId, input.accountPassword!, {
+            action: 'UPDATE_PRODUCT_PRICING_CARD_FEATURES', recordType: 'PRODUCT', recordId: id,
+            ipAddress: context.ipAddress, domainLabel: 'product pricing-card features',
+          }, tx);
+          await assertFeatureIconCodesExist(input.featureHighlights.map(({ iconCode }) => iconCode), tx);
+        }
         if (input.barcode && input.barcode !== existing.barcode) {
           const duplicate = await ProductsRepository.findByBarcode(input.barcode, tx, {
             caseInsensitive: true,
@@ -436,7 +456,11 @@ export class ProductsService {
         );
         // A product carries one image source: pointing at a URL drops uploaded bytes.
         if (input.imageUrl) await ProductsRepository.deleteImage(id, tx);
-        const updated = await ProductsRepository.update(id, data, tx);
+        let updated = await ProductsRepository.update(id, data, tx);
+        if (input.featureHighlights !== undefined) {
+          await ProductsRepository.replacePricingCardFeatures(id, input.featureHighlights, tx);
+          updated = (await ProductsRepository.findById(id, tx))!;
+        }
         const actor = await loadActor(user.userId, tx);
         await writeServiceAudit({
           recordType: ServiceAuditRecordType.PRODUCT,
@@ -458,6 +482,15 @@ export class ProductsService {
     } catch (error) {
       throw mapProductError(error);
     }
+  }
+
+  static updateFeatures(
+    id: string,
+    input: UpdateProductFeaturesInput,
+    user: ServiceMutationUser,
+    context: RequestContext
+  ) {
+    return this.update(id, input, user, context);
   }
 
   static async getImage(id: string) {
@@ -955,6 +988,10 @@ type ProductRecord = Product & {
   updatedBy?: { fullName: string; username: string } | null;
   pricingPreset?: Prisma.PricingPresetGetPayload<Record<string, never>> | null;
   image?: { mimeType: string; byteSize: number; updatedAt: Date } | null;
+  pricingCardFeatures?: Array<{
+    productId: string; iconCode: string; label: string | null; value: string | null;
+    position: number; createdAt: Date; updatedAt: Date;
+  }>;
 };
 
 /**
@@ -1042,6 +1079,7 @@ function serializeProduct(product: ProductRecord, defaultPreset: Prisma.PricingP
     stockStatus: deriveProductStockStatus(product),
     specifications: product.specifications ?? [],
     specificationNotes: product.specificationNotes,
+    featureHighlights: product.pricingCardFeatures ?? [],
     imageUrl: product.imageUrl,
     image: serializeProductImage(product),
     createdById: product.createdById,
@@ -1068,7 +1106,7 @@ function pricingConfiguration(product: Product) {
   };
 }
 
-function productSnapshot(product: Product): Prisma.InputJsonObject {
+function productSnapshot(product: ProductRecord): Prisma.InputJsonObject {
   return {
     sku: product.sku, name: product.name, model: product.model, barcode: product.barcode,
     brand: product.brand, price: product.price ? moneyToApiString(product.price) : null,
@@ -1078,6 +1116,7 @@ function productSnapshot(product: Product): Prisma.InputJsonObject {
     stockQuantity: product.stockQuantity, lowStockThreshold: product.lowStockThreshold,
     specifications: (product.specifications ?? []) as Prisma.InputJsonValue,
     specificationNotes: product.specificationNotes,
+    featureHighlights: (product.pricingCardFeatures ?? []).map(({ iconCode, label, value, position }) => ({ iconCode, label, value, position })),
     costPrice: product.costPrice ? moneyToApiString(product.costPrice) : null,
     pricingPresetId: product.pricingPresetId, useCustomPricing: product.useCustomPricing,
     installmentEnabled: product.installmentEnabled,
@@ -1162,9 +1201,19 @@ function assertValidLabelBarcodeSource(product: { barcode: string | null; labelB
   }
 }
 
-function changedSnapshot(product: Product, fields: string[]): Prisma.InputJsonObject {
+function changedSnapshot(product: ProductRecord, fields: string[]): Prisma.InputJsonObject {
   const snapshot = productSnapshot(product);
   return Object.fromEntries(fields.map((field) => [field, snapshot[field] ?? null]));
+}
+
+async function assertFeatureIconCodesExist(codes: string[], tx: Prisma.TransactionClient) {
+  if (!codes.length) return;
+  const found = await ProductsRepository.findActiveFeatureIconCodes(codes, tx);
+  const activeCodes = new Set(found.map(({ code }) => code));
+  const missing = codes.filter((code) => !activeCodes.has(code));
+  if (missing.length) throw new ValidationError('Unknown or inactive pricing-card feature icon', {
+    field: 'featureHighlights', iconCodes: missing,
+  });
 }
 
 async function loadActor(userId: string, tx: Prisma.TransactionClient) {

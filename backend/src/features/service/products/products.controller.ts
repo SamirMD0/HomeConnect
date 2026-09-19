@@ -8,6 +8,7 @@ import {
   UpdateProductPricingInput, ProductPricingPreviewQueryInput,
   ProductLabelQueryInput, ProductLabelsQueryInput, UpdateProductSkuInput, UpdateProductStockInput,
   NormalizeProductBrandsInput,
+  UpdateProductFeaturesInput,
 } from './products.validator';
 
 const contextFrom = (req: { headers: Request['headers']; ip?: string }) => ({
@@ -93,6 +94,10 @@ export class ProductsController {
   }
   static async labels(req: Request, res: Response, next: NextFunction) {
     try { res.json({ success: true, data: await ProductsService.labels(req.query as unknown as ProductLabelsQueryInput) }); }
+    catch (error) { next(error); }
+  }
+  static async updateFeatures(req: Request<ProductParamsInput, unknown, UpdateProductFeaturesInput>, res: Response, next: NextFunction) {
+    try { res.json({ success: true, data: await ProductsService.updateFeatures(req.params.productId, req.body, req.user!, contextFrom(req)) }); }
     catch (error) { next(error); }
   }
   static async labelSecretPreview(req: Request, res: Response, next: NextFunction) {

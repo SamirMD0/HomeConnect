@@ -7,6 +7,7 @@ import { databaseUuidSchema } from '../../../validators/database-uuid';
 import { MAX_PRODUCT_SPECIFICATIONS, MAX_PRODUCT_SPECIFICATIONS_BYTES, normalizeProductSpecifications, serializedSpecificationsSize } from './product-specifications';
 import { PRODUCT_SKU_PATTERN } from './product-sku';
 import { PRODUCT_STOCK_FILTERS } from './product-stock';
+import { MAX_PRODUCT_FEATURES, normalizeProductPricingCardFeatures } from './product-pricing-card-features';
 
 const uuidSchema = databaseUuidSchema('Invalid product ID');
 const moneyPattern = /^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/;
@@ -88,7 +89,24 @@ const productValues = {
   })).max(MAX_PRODUCT_SPECIFICATIONS).transform(normalizeProductSpecifications)
     .refine((entries) => serializedSpecificationsSize(entries) <= MAX_PRODUCT_SPECIFICATIONS_BYTES, 'Specifications cannot exceed 8 KB').optional(),
   specificationNotes: optionalUserText('Specification notes', 4000),
+  featureHighlights: z.array(z.object({
+    iconCode: z.string().trim().toLowerCase().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Feature icon code must be kebab-case').max(80),
+    label: optionalUserText('Feature label', 100),
+    value: optionalUserText('Feature value', 120),
+    position: z.number().int().min(1).max(MAX_PRODUCT_FEATURES),
+  }).strict()).max(MAX_PRODUCT_FEATURES).transform(normalizeProductPricingCardFeatures).optional(),
 };
+
+const accountPassword = z.string().min(1, 'Account password is required').optional();
+
+function validateFeaturePassword(values: { featureHighlights?: unknown; accountPassword?: string }, context: z.RefinementCtx) {
+  if (values.featureHighlights !== undefined && !values.accountPassword) {
+    context.addIssue({ code: 'custom', path: ['accountPassword'], message: 'Account password is required' });
+  }
+  if (values.featureHighlights === undefined && values.accountPassword !== undefined) {
+    context.addIssue({ code: 'custom', path: ['accountPassword'], message: 'Account password is only accepted with feature highlights' });
+  }
+}
 
 export const productSkuSchema = z.string().trim().toUpperCase().min(4).max(32)
   .regex(PRODUCT_SKU_PATTERN, 'SKU may contain only uppercase letters, numbers, and hyphens');
@@ -111,10 +129,12 @@ export const createProductSchema = z.object({
   ...productPricingValues,
   trackStock: z.boolean().optional(),
   lowStockThreshold: z.number().int('Low stock threshold must be an integer').min(0).nullable().optional(),
+  accountPassword,
 }).strict().superRefine((values, context) => {
   validateDiscount(values, context);
   validateCustomPricing(values, context);
   validateLabelBarcodeSource(values, context);
+  validateFeaturePassword(values, context);
 });
 
 export const updateProductSchema = z
@@ -130,13 +150,23 @@ export const updateProductSchema = z
     labelBarcodeSource: productValues.labelBarcodeSource,
     specifications: productValues.specifications,
     specificationNotes: productValues.specificationNotes,
+    featureHighlights: productValues.featureHighlights,
+    accountPassword,
   })
   // Strict so that a pricing field posted here is a 400 rather than a silent
   // strip. Cost and the pricing percentages belong to updateProductPricingSchema,
   // which keeps the admin-password guard; this endpoint must never look like a
   // way around it.
   .strict()
-  .superRefine(validateDiscount);
+  .superRefine((values, context) => {
+    validateDiscount(values, context);
+    validateFeaturePassword(values, context);
+  });
+
+export const updateProductFeaturesSchema = z.object({
+  featureHighlights: productValues.featureHighlights.unwrap(),
+  accountPassword: z.string().min(1, 'Account password is required'),
+}).strict();
 
 /**
  * Archive and restore stay in the strict tier: they are destructive-adjacent and
@@ -299,6 +329,7 @@ export const productLabelsOverrideSchema = z.object({
 
 export type CreateProductInput = z.infer<typeof createProductSchema>;
 export type UpdateProductInput = z.infer<typeof updateProductSchema>;
+export type UpdateProductFeaturesInput = z.infer<typeof updateProductFeaturesSchema>;
 export type ProductActionInput = z.infer<typeof productActionSchema>;
 export type NormalizeProductBrandsInput = z.infer<typeof normalizeProductBrandsSchema>;
 export type ProductParamsInput = z.infer<typeof productParamsSchema>;
