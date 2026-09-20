@@ -22,7 +22,16 @@
 .pricing-card-brand-mark { order: var(--pricing-card-brand-order); display: flex; align-items: center; gap: 1mm; font-weight: 800; }
 .pricing-card-brand-logo { width: var(--pricing-card-brand-logo-size); height: var(--pricing-card-brand-logo-size); object-fit: contain; }
 
-.pricing-card-body { display: grid; min-height: 0; align-content: start; }
+/*
+ * The card is a fixed print size, so the body row is minmax(0, 1fr) and can be
+ * squeezed below its content height by the min-content rows under it. Without
+ * containment the copy keeps painting past the row and lands on top of the
+ * features block — the card's own overflow:hidden only clips at the card edge,
+ * not between rows. Clip here so blocks can never collide; a template whose
+ * content does not fit loses the tail of the copy rather than becoming
+ * unreadable.
+ */
+.pricing-card-body { display: grid; min-height: 0; align-content: start; overflow: hidden; }
 .pricing-card-body-with-image { grid-template-columns: minmax(0, calc(100% - var(--pricing-card-image-width))) var(--pricing-card-image-width); gap: var(--pricing-card-gap); }
 .pricing-card-copy { display: grid; min-width: 0; align-content: start; grid-auto-rows: min-content; gap: calc(var(--pricing-card-gap) / 2); }
 .pricing-card-title { overflow: hidden; font-size: calc(5mm * var(--pricing-card-title-scale)); line-height: 1.05; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: var(--pricing-card-title-lines); }
