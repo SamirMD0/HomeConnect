@@ -24,12 +24,16 @@ const HOST = process.env.HOST || '127.0.0.1';
 
 const startServer = () => {
   try {
-    const server = app.listen(Number(PORT), HOST, () => {
+    const server = app.listen(Number(PORT), HOST);
+    server.once('listening', () => {
       logger.info(`Server running on http://${HOST}:${PORT}`);
       BackupScheduler.start();
     });
     server.on('close', () => console.log('Server closed'));
-    server.on('error', (err) => console.log('Server error', err));
+    server.on('error', (err) => {
+      logger.error('Failed to listen:', err);
+      process.exit(1);
+    });
 
     const shutdown = async (signal: string) => {
       logger.info(`Server shutting down from ${signal}`);

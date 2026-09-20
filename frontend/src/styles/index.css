@@ -1,5 +1,5 @@
 @import "../features/pricing-card/components/PricingCard.css";
-@import "tailwindcss";
+@import "tailwindcss" source("..");
 
 /*
  * Design tokens. Tailwind v4 reads theme values from this block — it does NOT

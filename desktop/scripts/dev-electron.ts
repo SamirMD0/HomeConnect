@@ -26,6 +26,8 @@ async function main() {
   const frontend = startProcess('frontend', process.execPath, [
     'node_modules/vite/bin/vite.js',
     'frontend',
+    '--config',
+    'frontend/vite.config.ts',
     '--host',
     HOST,
     '--port',

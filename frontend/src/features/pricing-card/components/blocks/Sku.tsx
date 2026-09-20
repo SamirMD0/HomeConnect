@@ -1,4 +1,4 @@
-import { formatStaffLabelCode } from '../../../../../../backend/src/features/pricing/domain/internal-price-code';
+import { formatStaffLabelCode } from '../../utils/staff-label-code';
 
 interface SkuProps {
   sku: string;

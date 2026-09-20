@@ -97,7 +97,7 @@
     }
   },
   "scripts": {
-    "dev:vite": "vite frontend",
+    "dev:vite": "vite frontend --config frontend/vite.config.ts",
     "dev:server": "nodemon --watch backend/src -e ts --exec tsx backend/src/index.ts",
     "dev:electron": "tsx desktop/scripts/dev-electron.ts",
     "electron": "npm run build && npm run build:electron-main && electron .",
@@ -110,8 +110,8 @@
     "pack:win": "npm run clean:prisma-tmp && npm run build && npm run build:electron-main && electron-builder --win --dir --config.npmRebuild=false --publish=never",
     "dist:win": "npm run clean:prisma-tmp && npm run build && npm run build:electron-main && electron-builder --win --config.npmRebuild=false --publish=never",
     "dev:urls": "tsx scripts/dev-urls.ts",
-    "dev": "npm run dev:urls && concurrently \"npm run dev:vite\" \"npm run dev:server\"",
-    "build": "vite build frontend && tsc -p tsconfig.server.json",
+    "dev": "npm run dev:urls && concurrently --kill-others \"npm run dev:vite\" \"npm run dev:server\"",
+    "build": "vite build frontend --config frontend/vite.config.ts && tsc -p tsconfig.server.json",
     "typecheck": "npm run typecheck:frontend && npm run typecheck:backend",
     "typecheck:frontend": "tsc -p tsconfig.json --noEmit",
     "typecheck:backend": "tsc -p tsconfig.server.json --noEmit",
