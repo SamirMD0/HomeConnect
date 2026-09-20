@@ -68,6 +68,24 @@ const BOOKKEEPING_TABLE = /^\s*UPDATE\s+"?_prisma_migrations"?\s/i;
 const PRODUCT_LABEL_AUTO_BACKFILL = /^\s*UPDATE\s+"?products"?\s+SET\s+"?labelBarcodeSource"?\s*=\s*''\s+WHERE\s+"?labelBarcodeSource"?\s*=\s*''\s+AND\s+"?barcode"?\s+IS\s+NOT\s+NULL\s*$/i;
 const PRODUCT_LABEL_AUTO_VALUES = /\bSET\s+"?labelBarcodeSource"?\s*=\s*'AUTO'\s+WHERE\s+"?labelBarcodeSource"?\s*=\s*'SKU'\s+AND\s+"?barcode"?\s+IS\s+NOT\s+NULL\b/i;
 
+/**
+ * Migration 20260920200000_update_legacy_template_visuals. The two seeded legacy
+ * templates shipped with borderPx=0 / sectionDividers=false, but the ProductLabel
+ * they replace draws a 1px border and a divider above the price, so the seeded
+ * pair had to be brought back in line. Reviewed and allowed because it is pinned
+ * to those two seeded ids and writes two known appearance keys — it cannot reach
+ * an operator-authored template. Keep this allow-list exact: the shape is matched
+ * against the noise-stripped statement (string literals collapse to '') and every
+ * literal value is matched against the original text.
+ */
+const LEGACY_TEMPLATE_PARITY_SHAPE = /^\s*UPDATE\s+"?pricing_card_templates"?\s+SET\s+"?config"?\s*=\s*jsonb_set\(\s*jsonb_set\(\s*"?config"?\s*,\s*''\s*,\s*''::jsonb\s*,\s*false\s*\)\s*,\s*''\s*,\s*''::jsonb\s*,\s*false\s*\)\s*WHERE\s+"?id"?\s+IN\s*\(\s*''\s*,\s*''\s*,?\s*\)\s*$/i;
+const LEGACY_TEMPLATE_PARITY_VALUES = [
+  /jsonb_set\(\s*"?config"?\s*,\s*'\{appearance,borderPx\}'\s*,\s*'1'::jsonb\s*,\s*false\s*\)/i,
+  /'\{appearance,sectionDividers\}'\s*,\s*'true'::jsonb\s*,\s*false/i,
+  /'20000000-0000-4000-8000-000000000003'/i,
+  /'20000000-0000-4000-8000-000000000004'/i,
+];
+
 export function scanSqlForUnsafeStatements(sql: string): SqlSafetyResult {
   return scanStatements(sql, false);
 }
@@ -124,6 +142,8 @@ function isPermittedUpdate(cleaned: string, original: string): boolean {
   // rewrite: it touches only rows still carrying the old SKU default and only
   // when a saved barcode exists. Keep this allow-list exact.
   if (PRODUCT_LABEL_AUTO_BACKFILL.test(cleaned) && PRODUCT_LABEL_AUTO_VALUES.test(original)) return true;
+  // Seeded legacy template appearance parity — pinned to two seeded ids.
+  if (LEGACY_TEMPLATE_PARITY_SHAPE.test(cleaned) && LEGACY_TEMPLATE_PARITY_VALUES.every((rule) => rule.test(original))) return true;
 
   const match = /\bSET\b([\s\S]+?)\bWHERE\b([\s\S]+)$/i.exec(cleaned);
   if (!match) return false;
