@@ -3,7 +3,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PricingCardTemplate, ShopProfile } from '../../features/pricing-card/types/pricing-card.types';
 import compactConfig from '../../../../backend/prisma/seed-data/pricing-card-templates/compact-legacy.json';
-import { fromTemplate, parseSpecKeys, PricingCardTemplateEditorPage } from './PricingCardTemplateEditorPage';
+import { fromTemplate, PricingCardTemplateEditorPage } from './PricingCardTemplateEditorPage';
 
 const state = vi.hoisted(() => ({
   role: 'ADMIN' as 'ADMIN' | 'EMPLOYEE',
@@ -14,6 +14,15 @@ vi.mock('../../hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'user-1', 
 vi.mock('../../features/pricing-card/hooks/useShopProfile', () => ({ useShopProfile: () => ({ data: profile }) }));
 vi.mock('../../features/pricing-card/hooks/usePricingCardTemplates', () => ({
   usePricingCardTemplate: () => ({ data: state.template, isLoading: false }),
+  usePricingCardSpecCatalog: () => ({
+    data: [
+      { key: 'screen_size', label: 'Screen size', group: 'Display', unit: 'inch' },
+      { key: 'resolution', label: 'Resolution', group: 'Display' },
+      { key: 'capacity_kg', label: 'Capacity (kg)', group: 'Capacity', unit: 'kg' },
+    ],
+    isLoading: false,
+    isError: false,
+  }),
   useCreatePricingCardTemplate: () => ({ mutate: vi.fn(), isPending: false }),
   useUpdatePricingCardTemplate: () => ({ mutate: vi.fn(), isPending: false }),
   useArchivePricingCardTemplate: () => ({ mutate: vi.fn(), isPending: false }),
@@ -22,7 +31,7 @@ vi.mock('../../features/pricing-card/hooks/usePricingCardTemplates', () => ({
 const profile: ShopProfile = {
   id: 'shop', name: 'Home Connect', tagline: 'Connected living', hasLogo: false,
   logoMimeType: null, logoByteSize: null, logoDataUrl: null,
-  currencyCode: 'USD', currencyDisplay: 'SYMBOL', defaultPricingCardTemplateId: null,
+  currencyCode: 'USD', currencyDisplay: 'SYMBOL', defaultPricingCardTemplateId: null, categoryDefaultTemplates: {},
   defaultCardValidityDays: 30, snapshotPrintedCards: true, pricingCardRolloutMode: 'BOTH',
 };
 
@@ -46,20 +55,51 @@ describe('PricingCardTemplateEditorPage', () => {
     expect(renderPage('template-1')).toContain('admin-only');
   });
 
-  it('renders every controls section for an existing template', () => {
+  it('renders every controls group for an existing template', () => {
     const html = renderPage('template-1');
     expect(html).toContain('Compact Legacy');
-    expect(html).toContain('Identity');
-    expect(html).toContain('Paper');
+    expect(html).toContain('Layout');
     expect(html).toContain('Header');
-    expect(html).toContain('Body');
+    expect(html).toContain('Product info');
     expect(html).toContain('Features');
+    expect(html).toContain('Grid chips');
     expect(html).toContain('Price');
-    expect(html).toContain('SKU');
-    expect(html).toContain('Barcode');
+    expect(html).toContain('Barcode &amp; SKU');
+    expect(html).toContain('Validity');
     expect(html).toContain('Appearance');
-    expect(html).toContain('Spec keys (ordered)');
-    expect(html).toContain('screen_size, capacity_kg');
+    expect(html).toContain('Advanced');
+    expect(html).toContain('Available specification keys');
+    expect(html).toContain('Selected order');
+    expect(html).toContain('Screen size');
+    expect(html).toContain('Capacity (kg)');
+    expect(html).toContain('Move Screen size up');
+    expect(html).not.toContain('Comma-separated canonical keys');
+    expect(html).not.toContain('placeholder="screen_size, resolution, refresh_rate"');
+  });
+
+  it('makes the preview column sticky at xl and keeps it in the DOM after every group', () => {
+    const html = renderPage('template-1');
+    expect(html).toContain('xl:sticky');
+    expect(html).toContain('data-testid="template-editor-preview"');
+    const previewIndex = html.indexOf('data-testid="template-editor-preview"');
+    const advancedIndex = html.indexOf('Advanced');
+    expect(previewIndex).toBeGreaterThan(-1);
+    expect(advancedIndex).toBeGreaterThan(-1);
+    // The preview lives in the aside that follows the form; asserting order proves the
+    // sticky container is emitted alongside every group, not before them.
+    expect(previewIndex).toBeGreaterThan(advancedIndex);
+  });
+
+  it('opens the Advanced group collapsed by default and other groups open', () => {
+    const html = renderPage('template-1');
+    const layoutTag = html.match(/<details([^>]*)\bdata-group-id="layout"([^>]*)>/);
+    const advancedTag = html.match(/<details([^>]*)\bdata-group-id="advanced"([^>]*)>/);
+    expect(layoutTag).not.toBeNull();
+    expect(advancedTag).not.toBeNull();
+    const layoutAttrs = `${layoutTag?.[1] ?? ''}${layoutTag?.[2] ?? ''}`;
+    const advancedAttrs = `${advancedTag?.[1] ?? ''}${advancedTag?.[2] ?? ''}`;
+    expect(layoutAttrs).toMatch(/\bopen(=|\s|$)/);
+    expect(advancedAttrs).not.toMatch(/\bopen(=|\s|$)/);
   });
 
   it('renders the new-template form when the id is "new"', () => {
@@ -73,18 +113,13 @@ describe('PricingCardTemplateEditorPage', () => {
     expect(html).toContain('Preview product');
   });
 
-  describe('fromTemplate / parseSpecKeys', () => {
+  describe('fromTemplate', () => {
     it('copies the template into an editable form state without sharing references', () => {
       const form = fromTemplate(seededTemplate);
       form.specKeyOrder.push('resolution');
       expect(seededTemplate.specKeyOrder).toEqual(['screen_size', 'capacity_kg']);
       form.config.header.brand.display = 'logo';
       expect(seededTemplate.config.header.brand.display).toBe('text');
-    });
-
-    it('parses spec keys into a lowercase, filtered list', () => {
-      expect(parseSpecKeys('Screen_Size, resolution, 4-K, valid_key')).toEqual(['screen_size', 'resolution', 'valid_key']);
-      expect(parseSpecKeys('   ')).toEqual([]);
     });
   });
 });
