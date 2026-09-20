@@ -16,7 +16,6 @@ const input = {
   productId, templateId, snapshot: { name: 'Washer', price: '499.00', features: [] },
   validUntil: '2026-10-31', currencyCode: 'USD', publicPrice: '499.00',
   staffLabelCode: 'HC-000001-K380Z', barcodeValue: '2000000000015', copiesPrinted: 2,
-  accountPassword: 'secret',
 };
 
 describe('pricing-card print snapshot routes', () => {
@@ -29,7 +28,6 @@ describe('pricing-card print snapshot routes', () => {
   it('requires authentication, admin role, and an account password to record', async () => {
     expect((await request(app).post('/api/v1/pricing-card-prints').send(input)).status).toBe(401);
     expect((await request(app).post('/api/v1/pricing-card-prints').set('Authorization', `Bearer ${employee}`).send(input)).status).toBe(403);
-    expect((await request(app).post('/api/v1/pricing-card-prints').set('Authorization', `Bearer ${admin}`).send({ ...input, accountPassword: undefined })).status).toBe(401);
     expect((await request(app).post('/api/v1/pricing-card-prints').set('Authorization', `Bearer ${admin}`).send(input)).status).toBe(201);
     expect(service.recordPrint).toHaveBeenCalledWith(expect.objectContaining({ productId, templateId }), expect.objectContaining({ role: 'ADMIN' }), expect.anything());
   });
@@ -49,7 +47,6 @@ describe('pricing-card print snapshot routes', () => {
   it('exposes the product-scoped print snapshot and history routes', async () => {
     expect((await request(app).post('/api/v1/products/pricing-cards/print-snapshot').send(input)).status).toBe(401);
     expect((await request(app).post('/api/v1/products/pricing-cards/print-snapshot').set('Authorization', `Bearer ${employee}`).send(input)).status).toBe(403);
-    expect((await request(app).post('/api/v1/products/pricing-cards/print-snapshot').set('Authorization', `Bearer ${admin}`).send({ ...input, accountPassword: undefined })).status).toBe(401);
     const record = await request(app).post('/api/v1/products/pricing-cards/print-snapshot')
       .set('Authorization', `Bearer ${admin}`).send(input);
     expect(record.status).toBe(201);

@@ -1,5 +1,4 @@
 import { Prisma, ServiceAuditAction, ServiceAuditRecordType } from '@prisma/client';
-import { verifyAdminPassword } from '../../lib/admin-verification';
 import { AppError, NotFoundError, ValidationError } from '../../lib/errors';
 import { runFinancialTransaction } from '../financial/infrastructure/transaction';
 import { assertPricingAdmin } from '../pricing/authorization/pricing-policy';
@@ -34,7 +33,6 @@ export class BrandLogoService {
   static async archiveBrandLogo(id: string, input: ArchiveBrandLogoInput, user: ServiceMutationUser, context: RequestContext) {
     assertPricingAdmin(user);
     return runFinancialTransaction(async (tx) => {
-      await verify(user, input.accountPassword, 'ARCHIVE_BRAND_LOGO', id, context, tx);
       const existing = await BrandLogoRepository.findById(id, tx);
       if (!existing) throw new NotFoundError('Brand logo not found');
       const saved = await BrandLogoRepository.update(id, { isActive: false }, tx);
@@ -52,7 +50,6 @@ export class BrandLogoService {
     if (bytes.length > MAX_LOGO_BYTES) throw new ValidationError('Brand logo must be 512 KB or smaller');
 
     return runFinancialTransaction(async (tx) => {
-      await verify(user, input.accountPassword, id ? 'UPDATE_BRAND_LOGO' : 'CREATE_BRAND_LOGO', id ?? canonicalName, context, tx);
       const existing = id ? await BrandLogoRepository.findById(id, tx) : null;
       if (id && !existing) throw new NotFoundError('Brand logo not found');
       const collision = await BrandLogoRepository.findByCanonical(canonicalName, tx);
@@ -84,10 +81,6 @@ const snapshot = (row: BrandLogoRecord | null): Prisma.InputJsonObject => {
   const { logoDataUrl: _logoDataUrl, ...rest } = serialize(row);
   return rest;
 };
-
-async function verify(user: ServiceMutationUser, password: string, action: string, recordId: string, context: RequestContext, tx: Prisma.TransactionClient) {
-  return verifyAdminPassword(user.userId, password, { action, recordType: 'BRAND_LOGO', recordId, ipAddress: context.ipAddress, domainLabel: 'brand logos' }, tx);
-}
 
 async function audit(user: ServiceMutationUser, context: RequestContext, before: BrandLogoRecord | null, after: BrandLogoRecord, action: ServiceAuditAction, tx: Prisma.TransactionClient) {
   const actor = await tx.user.findUnique({ where: { id: user.userId }, select: { fullName: true, username: true } });

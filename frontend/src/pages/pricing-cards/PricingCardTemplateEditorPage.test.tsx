@@ -91,8 +91,8 @@ describe('PricingCardTemplateEditorPage', () => {
 
 function renderPage(templateId: string) {
   return renderToStaticMarkup(
-    <MemoryRouter initialEntries={[`/settings/pricing-cards/templates/${templateId}`]}>
-      <Routes><Route path="/settings/pricing-cards/templates/:templateId" element={<PricingCardTemplateEditorPage />} /></Routes>
+    <MemoryRouter initialEntries={[`/pricing-cards/templates/${templateId}`]}>
+      <Routes><Route path="/pricing-cards/templates/:templateId" element={<PricingCardTemplateEditorPage />} /></Routes>
     </MemoryRouter>,
   );
 }

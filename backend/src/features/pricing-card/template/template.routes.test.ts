@@ -12,7 +12,7 @@ const secret = process.env.JWT_SECRET || 'fallback_secret_key_change_in_producti
 const admin = jwt.sign({ userId: '11111111-1111-4111-8111-111111111111', role: 'ADMIN' }, secret);
 const employee = jwt.sign({ userId: '22222222-2222-4222-8222-222222222222', role: 'EMPLOYEE' }, secret);
 const templateId = '20000000-0000-4000-8000-000000000001';
-const input = { name: 'TV Large Card', paperMode: 'SINGLE_STICKER', paperSize: null, cardWidthMm: 148, cardHeightMm: 105, config: minimumTemplateConfig, featureMax: 6, specKeyOrder: ['screen_size'], defaultValidityDays: 30, accountPassword: 'secret' };
+const input = { name: 'TV Large Card', paperMode: 'SINGLE_STICKER', paperSize: null, cardWidthMm: 148, cardHeightMm: 105, config: minimumTemplateConfig, featureMax: 6, specKeyOrder: ['screen_size'], defaultValidityDays: 30 };
 
 describe('pricing card template routes', () => {
   beforeEach(() => {
@@ -31,12 +31,11 @@ describe('pricing card template routes', () => {
     expect(response.body.data).toHaveLength(4);
   });
 
-  it('requires admin role and password for CRUD mutations', async () => {
+  it('requires admin role for CRUD mutations', async () => {
     expect((await request(app).post('/api/v1/pricing-card-templates').set('Authorization', `Bearer ${employee}`).send(input)).status).toBe(403);
-    expect((await request(app).post('/api/v1/pricing-card-templates').set('Authorization', `Bearer ${admin}`).send({ ...input, accountPassword: undefined })).status).toBe(401);
     expect((await request(app).post('/api/v1/pricing-card-templates').set('Authorization', `Bearer ${admin}`).send(input)).status).toBe(201);
     expect((await request(app).patch(`/api/v1/pricing-card-templates/${templateId}`).set('Authorization', `Bearer ${admin}`).send(input)).status).toBe(200);
-    expect((await request(app).post(`/api/v1/pricing-card-templates/${templateId}/archive`).set('Authorization', `Bearer ${admin}`).send({ reason: 'Retire duplicate', accountPassword: 'secret' })).status).toBe(200);
+    expect((await request(app).post(`/api/v1/pricing-card-templates/${templateId}/archive`).set('Authorization', `Bearer ${admin}`).send({})).status).toBe(200);
   });
 
   it('returns a structured 400 for malformed config', async () => {

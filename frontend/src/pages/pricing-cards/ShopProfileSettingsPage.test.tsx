@@ -115,8 +115,8 @@ describe('ShopProfileSettingsPage', () => {
 
 function renderPage() {
   return renderToStaticMarkup(
-    <MemoryRouter initialEntries={['/settings/pricing-cards/shop-profile']}>
-      <Routes><Route path="/settings/pricing-cards/shop-profile" element={<ShopProfileSettingsPage />} /></Routes>
+    <MemoryRouter initialEntries={['/pricing-cards/shop-profile']}>
+      <Routes><Route path="/pricing-cards/shop-profile" element={<ShopProfileSettingsPage />} /></Routes>
     </MemoryRouter>,
   );
 }

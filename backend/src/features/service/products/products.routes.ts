@@ -32,7 +32,7 @@ productsRoutes.get('/brands', ProductsController.brands);
 // Must stay above `GET /:productId`, or "labels" is parsed as a product id.
 productsRoutes.get('/labels', validate(productLabelsQuerySchema, 'query'), ProductsController.labels);
 productsRoutes.get('/pricing-cards', validate(productPricingCardsQuerySchema, 'query'), ProductsController.pricingCards);
-productsRoutes.post('/pricing-cards/print-snapshot', requireServiceAdmin, requireAccountPassword, validate(recordPrintSnapshotSchema), ProductsController.recordPricingCardPrint);
+productsRoutes.post('/pricing-cards/print-snapshot', requireServiceAdmin, validate(recordPrintSnapshotSchema), ProductsController.recordPricingCardPrint);
 productsRoutes.post('/labels/secret-preview', requireServiceAdmin, validate(productLabelsOverrideSchema), ProductsController.labelsSecretPreview);
 // Same ordering rule as `/labels`. Any authenticated user may scan: it is a
 // read of the same catalogue the Products page already shows, minus pricing.

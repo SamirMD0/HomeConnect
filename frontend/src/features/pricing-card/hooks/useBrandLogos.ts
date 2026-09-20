@@ -30,7 +30,7 @@ export function useUpdateBrandLogo() {
 export function useArchiveBrandLogo() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, accountPassword }: { id: string; accountPassword: string }) => pricingCardApi.archiveBrandLogo(id, accountPassword),
+    mutationFn: ({ id }: { id: string }) => pricingCardApi.archiveBrandLogo(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: brandLogoKeys.all }),
   });
 }

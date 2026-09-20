@@ -23,7 +23,6 @@ export const recordPrintSnapshotSchema = z.object({
   copiesPrinted: z.number().int().min(1).max(1000).default(1),
   hiddenPricingPresetId: nullableUuid,
   encodingPresetId: nullableUuid,
-  accountPassword: z.string().min(1, 'Account password is required'),
 }).strict();
 
 export const printSnapshotProductParamsSchema = z.object({ productId: uuid });

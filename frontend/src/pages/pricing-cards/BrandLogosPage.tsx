@@ -1,5 +1,5 @@
 import { useMemo, useState, type ChangeEvent } from 'react';
-import { ArrowLeft, KeyRound, Palette, Plus, Sparkles } from 'lucide-react';
+import { ArrowLeft, Palette, Plus, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { useProductBrands } from '../../features/products/hooks/useProducts';
@@ -38,7 +38,6 @@ export function BrandLogosPage() {
   const archive = useArchiveBrandLogo();
   const [selectedId, setSelectedId] = useState<string | 'new'>('new');
   const [draft, setDraft] = useState<DraftLogo>(emptyDraft);
-  const [password, setPassword] = useState('');
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   const missing = useMemo(() => topMissingBrands(brands.data ?? [], logos.data ?? []), [brands.data, logos.data]);
@@ -47,7 +46,7 @@ export function BrandLogosPage() {
     return (
       <div className="mx-auto max-w-3xl space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-6 text-amber-900">
         <h1 className="text-xl font-semibold">Brand logos are admin-only</h1>
-        <button type="button" onClick={() => navigate('/settings')} className="inline-flex items-center gap-2 rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm text-amber-900">Back to settings</button>
+        <button type="button" onClick={() => navigate('/pricing-cards')} className="inline-flex items-center gap-2 rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm text-amber-900">Back to pricing cards</button>
       </div>
     );
   }
@@ -80,17 +79,16 @@ export function BrandLogosPage() {
   };
 
   const save = () => {
-    if (!password) { toast.error('Account password is required'); return; }
     if (selectedId === 'new' && (!draft.dataBase64 || !draft.mimeType)) { toast.error('Choose a logo file first'); return; }
     if (!draft.displayName.trim()) { toast.error('Display name is required'); return; }
 
-    const done = { onSuccess: () => { setPassword(''); toast.success('Brand logo saved'); if (selectedId === 'new') { setDraft(emptyDraft); } }, onError: (error: unknown) => toast.error(errorMessage(error) ?? 'Unable to save brand logo') };
+    const done = { onSuccess: () => { toast.success('Brand logo saved'); if (selectedId === 'new') { setDraft(emptyDraft); } }, onError: (error: unknown) => toast.error(errorMessage(error) ?? 'Unable to save brand logo') };
 
     if (selectedId === 'new') {
       create.mutate({
         displayName: draft.displayName.trim(),
         canonicalName: draft.canonicalName.trim() || undefined,
-        dataBase64: draft.dataBase64!, mimeType: draft.mimeType!, accountPassword: password,
+        dataBase64: draft.dataBase64!, mimeType: draft.mimeType!,
       }, done);
     } else {
       const existing = logos.data?.find((logo) => logo.id === selectedId);
@@ -100,16 +98,15 @@ export function BrandLogosPage() {
         canonicalName: draft.canonicalName.trim() || existing.canonicalName,
         dataBase64: draft.dataBase64 ?? '',
         mimeType: draft.mimeType ?? (existing.logoMimeType as BrandLogoInput['mimeType']),
-        accountPassword: password,
       } }, done);
     }
   };
 
   const archiveLogo = () => {
     if (selectedId === 'new') return;
-    if (!password) { toast.error('Account password is required'); return; }
-    archive.mutate({ id: selectedId, accountPassword: password }, {
-      onSuccess: () => { setPassword(''); toast.success('Brand logo archived'); selectLogo('new'); },
+    if (!window.confirm(`Archive the logo for "${draft.displayName || draft.canonicalName}"? Cards using this brand will fall back to plain text.`)) return;
+    archive.mutate({ id: selectedId }, {
+      onSuccess: () => { toast.success('Brand logo archived'); selectLogo('new'); },
       onError: (error) => toast.error(errorMessage(error) ?? 'Unable to archive brand logo'),
     });
   };
@@ -119,8 +116,8 @@ export function BrandLogosPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <button type="button" onClick={() => navigate('/settings')} className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm">
-        <ArrowLeft className="h-4 w-4" /> Back to settings
+      <button type="button" onClick={() => navigate('/pricing-cards')} className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm">
+        <ArrowLeft className="h-4 w-4" /> Back to pricing cards
       </button>
       <header>
         <h1 className="text-2xl font-bold text-slate-900">Brand logos</h1>
@@ -198,10 +195,7 @@ export function BrandLogosPage() {
           </div>
 
           <div className="flex flex-wrap items-end gap-3 border-t border-slate-100 pt-3">
-            <label className="flex-1 space-y-1 text-sm text-slate-700">
-              <span className="flex items-center gap-1 font-medium"><KeyRound className="h-3.5 w-3.5" /> Account password</span>
-              <input type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} className={inputClass} />
-            </label>
+            <div className="flex-1" />
             <button type="button" onClick={save} disabled={pending || (selectedId === 'new' ? !draft.displayName || !draft.dataBase64 : !canSubmitExisting)} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300">{pending ? 'Saving…' : selectedId === 'new' ? 'Create logo' : 'Save changes'}</button>
             {selectedId !== 'new' && (
               <button type="button" onClick={archiveLogo} disabled={pending} className="rounded-lg border border-amber-400 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-900">Archive</button>

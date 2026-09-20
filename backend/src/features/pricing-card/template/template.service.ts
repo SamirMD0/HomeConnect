@@ -1,6 +1,5 @@
 import { Prisma, ServiceAuditAction, ServiceAuditRecordType } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
-import { verifyAdminPassword } from '../../../lib/admin-verification';
 import { AppError, NotFoundError } from '../../../lib/errors';
 import { runFinancialTransaction } from '../../financial/infrastructure/transaction';
 import { assertPricingAdmin } from '../../pricing/authorization/pricing-policy';
@@ -21,11 +20,10 @@ export class PricingCardTemplateService {
   static async archiveTemplate(id: string, input: ArchivePricingCardTemplateInput, user: ServiceMutationUser, context: RequestContext) {
     assertPricingAdmin(user);
     return runFinancialTransaction(async (tx) => {
-      await verify(user, input.accountPassword, 'ARCHIVE_PRICING_CARD_TEMPLATE', id, context, tx);
       const existing = await PricingCardTemplateRepository.findById(id, tx);
       if (!existing) throw new NotFoundError('Pricing card template not found');
-      const saved = await PricingCardTemplateRepository.update(id, { isActive: false, archivedAt: new Date(), archivedReason: input.reason, updatedBy: { connect: { id: user.userId } } }, tx);
-      await audit(user, context, existing, saved, ServiceAuditAction.ARCHIVE, input.reason, tx);
+      const saved = await PricingCardTemplateRepository.update(id, { isActive: false, archivedAt: new Date(), archivedReason: null, updatedBy: { connect: { id: user.userId } } }, tx);
+      await audit(user, context, existing, saved, ServiceAuditAction.ARCHIVE, 'Pricing card template archived', tx);
       return serialize(saved);
     });
   }
@@ -34,7 +32,6 @@ export class PricingCardTemplateService {
     assertPricingAdmin(user);
     const config = parseTemplateConfig(input.config);
     return runFinancialTransaction(async (tx) => {
-      await verify(user, input.accountPassword, id ? 'UPDATE_PRICING_CARD_TEMPLATE' : 'CREATE_PRICING_CARD_TEMPLATE', id ?? input.name, context, tx);
       const existing = id ? await PricingCardTemplateRepository.findById(id, tx) : null;
       if (id && !existing) throw new NotFoundError('Pricing card template not found');
       const collision = await PricingCardTemplateRepository.findByName(input.name, tx);
@@ -56,5 +53,4 @@ export class PricingCardTemplateService {
 
 async function serialize(row: TemplateRecord) { return { id: row.id, name: row.name, description: row.description, paperMode: row.paperMode, paperSize: row.paperSize, cardWidthMm: row.cardWidthMm.toString(), cardHeightMm: row.cardHeightMm.toString(), configVersion: row.configVersion, config: parseTemplateConfig(row.config), featureMax: row.featureMax, specKeyOrder: row.specKeyOrder, defaultValidityDays: row.defaultValidityDays, isActive: row.isActive, archivedAt: row.archivedAt, archivedReason: row.archivedReason }; }
 const snapshot = (row: TemplateRecord | null): Prisma.InputJsonObject => row ? { id: row.id, name: row.name, paperMode: row.paperMode, paperSize: row.paperSize, cardWidthMm: row.cardWidthMm.toString(), cardHeightMm: row.cardHeightMm.toString(), configVersion: row.configVersion, featureMax: row.featureMax, specKeyOrder: row.specKeyOrder, defaultValidityDays: row.defaultValidityDays, isActive: row.isActive } : {};
-async function verify(user: ServiceMutationUser, password: string, action: string, recordId: string, context: RequestContext, tx: Prisma.TransactionClient) { return verifyAdminPassword(user.userId, password, { action, recordType: 'PRICING_CARD_TEMPLATE', recordId, ipAddress: context.ipAddress, domainLabel: 'pricing card templates' }, tx); }
 async function audit(user: ServiceMutationUser, context: RequestContext, before: TemplateRecord | null, after: TemplateRecord, action: ServiceAuditAction, reason: string, tx: Prisma.TransactionClient) { const actor = await tx.user.findUnique({ where: { id: user.userId }, select: { fullName: true, username: true } }); if (!actor) throw new NotFoundError('User not found'); return writeServiceAudit({ recordType: ServiceAuditRecordType.PRICING_CARD_TEMPLATE, recordId: after.id, action, changedById: user.userId, changedByName: actor.fullName, changedByUsername: actor.username, reason, beforeValues: snapshot(before), afterValues: snapshot(after), requestId: context.requestId, ipAddress: context.ipAddress }, tx); }

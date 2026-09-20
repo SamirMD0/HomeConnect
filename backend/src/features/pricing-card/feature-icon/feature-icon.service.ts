@@ -1,5 +1,4 @@
 import { Prisma, ServiceAuditAction, ServiceAuditRecordType } from '@prisma/client';
-import { verifyAdminPassword } from '../../../lib/admin-verification';
 import { AppError, NotFoundError } from '../../../lib/errors';
 import { runFinancialTransaction } from '../../financial/infrastructure/transaction';
 import { assertPricingAdmin } from '../../pricing/authorization/pricing-policy';
@@ -20,7 +19,6 @@ export class FeatureIconService {
   static async archiveFeatureIcon(id: string, input: ArchiveFeatureIconInput, user: ServiceMutationUser, context: RequestContext) {
     assertPricingAdmin(user);
     return runFinancialTransaction(async (tx) => {
-      await verify(user, input.accountPassword, 'ARCHIVE_PRICING_CARD_FEATURE_ICON', id, context, tx);
       const existing = await FeatureIconRepository.findById(id, tx);
       if (!existing) throw new NotFoundError('Pricing card feature icon not found');
       const saved = await FeatureIconRepository.update(id, { isActive: false, updatedBy: { connect: { id: user.userId } } }, tx);
@@ -33,7 +31,6 @@ export class FeatureIconService {
     assertPricingAdmin(user);
     const cleanSvg = sanitizeSvg(input.svg);
     return runFinancialTransaction(async (tx) => {
-      await verify(user, input.accountPassword, id ? 'UPDATE_PRICING_CARD_FEATURE_ICON' : 'CREATE_PRICING_CARD_FEATURE_ICON', id ?? input.code, context, tx);
       const existing = id ? await FeatureIconRepository.findById(id, tx) : null;
       if (id && !existing) throw new NotFoundError('Pricing card feature icon not found');
       const collision = await FeatureIconRepository.getByCode(input.code, tx);
@@ -49,7 +46,6 @@ export class FeatureIconService {
 }
 
 const snapshot = (row: IconRecord | null): Prisma.InputJsonObject => row ? { id: row.id, code: row.code, label: row.label, category: row.category, svg: row.svg, isActive: row.isActive, sortOrder: row.sortOrder } : {};
-async function verify(user: ServiceMutationUser, password: string, action: string, recordId: string, context: RequestContext, tx: Prisma.TransactionClient) { return verifyAdminPassword(user.userId, password, { action, recordType: 'PRICING_CARD_FEATURE_ICON', recordId, ipAddress: context.ipAddress, domainLabel: 'pricing card feature icons' }, tx); }
 async function audit(user: ServiceMutationUser, context: RequestContext, before: IconRecord | null, after: IconRecord, action: ServiceAuditAction, tx: Prisma.TransactionClient) {
   const actor = await tx.user.findUnique({ where: { id: user.userId }, select: { fullName: true, username: true } });
   if (!actor) throw new NotFoundError('User not found');

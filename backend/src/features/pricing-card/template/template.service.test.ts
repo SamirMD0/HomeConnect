@@ -15,7 +15,7 @@ vi.mock('../../financial/infrastructure/transaction', () => ({ runFinancialTrans
 
 const user = { userId: '11111111-1111-4111-8111-111111111111', role: 'ADMIN' };
 const context = { requestId: null, ipAddress: null };
-const input = { name: 'TV Large Card', description: null, paperMode: PricingCardPaperMode.SINGLE_STICKER, paperSize: null, cardWidthMm: 148, cardHeightMm: 105, config: minimumTemplateConfig, featureMax: 6, specKeyOrder: ['screen_size'], defaultValidityDays: 30, accountPassword: 'secret' };
+const input = { name: 'TV Large Card', description: null, paperMode: PricingCardPaperMode.SINGLE_STICKER, paperSize: null, cardWidthMm: 148, cardHeightMm: 105, config: minimumTemplateConfig, featureMax: 6, specKeyOrder: ['screen_size'], defaultValidityDays: 30 };
 const row = { id: '20000000-0000-4000-8000-000000000001', ...input, cardWidthMm: new Decimal(148), cardHeightMm: new Decimal(105), configVersion: 1, createdById: user.userId, updatedById: user.userId, isActive: true, archivedAt: null, archivedReason: null, createdAt: new Date(), updatedAt: new Date() };
 
 describe('pricing card template service', () => {
@@ -28,7 +28,7 @@ describe('pricing card template service', () => {
 
   it('verifies the password and audits template creation', async () => {
     await PricingCardTemplateService.createTemplate(input, user, context);
-    expect(verify).toHaveBeenCalledWith(user.userId, 'secret', expect.objectContaining({ recordType: 'PRICING_CARD_TEMPLATE' }), expect.anything());
+    expect(verify).not.toHaveBeenCalled();
     expect(repository.create).toHaveBeenCalledWith(expect.objectContaining({ configVersion: 1, featureMax: 6 }), expect.anything());
     expect(writeAudit).toHaveBeenCalledWith(expect.objectContaining({ recordType: 'PRICING_CARD_TEMPLATE', action: 'CREATE' }), expect.anything());
   });

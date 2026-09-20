@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
-import { ArrowLeft, Building2, Image as ImageIcon, KeyRound } from 'lucide-react';
+import { ArrowLeft, Building2, Image as ImageIcon } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { usePricingCardTemplates } from '../../features/pricing-card/hooks/usePricingCardTemplates';
@@ -26,8 +26,6 @@ export function ShopProfileSettingsPage() {
   const updateLogo = useUpdateShopProfileLogo();
 
   const [form, setForm] = useState<FormState>(emptyForm);
-  const [detailPassword, setDetailPassword] = useState('');
-  const [logoPassword, setLogoPassword] = useState('');
   const [pendingLogo, setPendingLogo] = useState<PendingLogo | null>(null);
   const [logoError, setLogoError] = useState<string | null>(null);
 
@@ -48,7 +46,7 @@ export function ShopProfileSettingsPage() {
   const dirty = useMemo(() => profile.data ? isDirty(form, profile.data) : false, [form, profile.data]);
 
   if (user?.role !== 'ADMIN') {
-    return <AdminGate onBack={() => navigate('/settings')} />;
+    return <AdminGate onBack={() => navigate('/pricing-cards')} />;
   }
 
   const onLogoFile = (event: ChangeEvent<HTMLInputElement>) => {
@@ -68,20 +66,18 @@ export function ShopProfileSettingsPage() {
 
   const saveDetails = () => {
     if (!profile.data) return;
-    if (!detailPassword) { toast.error('Account password is required'); return; }
     const changes = detailChanges(form, profile.data);
     if (Object.keys(changes).length === 0) { toast('No changes to save'); return; }
-    updateProfile.mutate({ ...changes, accountPassword: detailPassword }, {
-      onSuccess: () => { setDetailPassword(''); toast.success('Shop profile updated'); },
+    updateProfile.mutate(changes, {
+      onSuccess: () => { toast.success('Shop profile updated'); },
       onError: () => toast.error('Unable to save the shop profile'),
     });
   };
 
   const saveLogo = () => {
     if (!pendingLogo) return;
-    if (!logoPassword) { toast.error('Account password is required'); return; }
-    updateLogo.mutate({ ...pendingLogo, accountPassword: logoPassword }, {
-      onSuccess: () => { setLogoPassword(''); setPendingLogo(null); toast.success('Shop logo updated'); },
+    updateLogo.mutate(pendingLogo, {
+      onSuccess: () => { setPendingLogo(null); toast.success('Shop logo updated'); },
       onError: () => toast.error('Unable to save the shop logo'),
     });
   };
@@ -94,8 +90,8 @@ export function ShopProfileSettingsPage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
-      <button type="button" onClick={() => navigate('/settings')} className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm">
-        <ArrowLeft className="h-4 w-4" /> Back to settings
+      <button type="button" onClick={() => navigate('/pricing-cards')} className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm">
+        <ArrowLeft className="h-4 w-4" /> Back to pricing cards
       </button>
       <header>
         <h1 className="text-2xl font-bold text-slate-900">Shop profile</h1>
@@ -146,9 +142,7 @@ export function ShopProfileSettingsPage() {
                 </label>
               </Field>
             </div>
-            <PasswordRow
-              password={detailPassword}
-              onChange={setDetailPassword}
+            <SaveRow
               onSave={saveDetails}
               disabled={!dirty || updateProfile.isPending}
               label={updateProfile.isPending ? 'Saving…' : 'Save details'}
@@ -171,9 +165,7 @@ export function ShopProfileSettingsPage() {
                 {logoError && <p role="alert" className="text-xs text-red-700">{logoError}</p>}
               </div>
             </div>
-            <PasswordRow
-              password={logoPassword}
-              onChange={setLogoPassword}
+            <SaveRow
               onSave={saveLogo}
               disabled={!pendingLogo || updateLogo.isPending}
               label={updateLogo.isPending ? 'Uploading…' : 'Save logo'}
@@ -220,13 +212,9 @@ function Field({ label, children, fullWidth = false }: { label: string; children
   );
 }
 
-function PasswordRow({ password, onChange, onSave, disabled, label }: { password: string; onChange: (value: string) => void; onSave: () => void; disabled: boolean; label: string }) {
+function SaveRow({ onSave, disabled, label }: { onSave: () => void; disabled: boolean; label: string }) {
   return (
-    <div className="flex flex-wrap items-end gap-3 border-t border-slate-100 pt-3">
-      <label className="flex-1 space-y-1 text-sm text-slate-700">
-        <span className="flex items-center gap-1 font-medium"><KeyRound className="h-3.5 w-3.5" /> Account password</span>
-        <input type="password" autoComplete="current-password" value={password} onChange={(event) => onChange(event.target.value)} className={inputClass} />
-      </label>
+    <div className="flex flex-wrap items-end justify-end gap-3 border-t border-slate-100 pt-3">
       <button type="button" onClick={onSave} disabled={disabled} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300">{label}</button>
     </div>
   );
@@ -237,13 +225,13 @@ function AdminGate({ onBack }: { onBack: () => void }) {
     <div className="mx-auto max-w-3xl space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-6 text-amber-900">
       <h1 className="text-xl font-semibold">Shop profile is admin-only</h1>
       <p className="text-sm">This screen configures the shop identity used on every printed pricing card.</p>
-      <button type="button" onClick={onBack} className="inline-flex items-center gap-2 rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm text-amber-900">Back to settings</button>
+      <button type="button" onClick={onBack} className="inline-flex items-center gap-2 rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm text-amber-900">Back to pricing cards</button>
     </div>
   );
 }
 
-export function detailChanges(form: FormState, current: { name: string; tagline: string | null; currencyCode: string; currencyDisplay: CurrencyDisplayMode; defaultPricingCardTemplateId: string | null; defaultCardValidityDays: number; snapshotPrintedCards: boolean; pricingCardRolloutMode: PricingCardRolloutMode }): Partial<Omit<UpdateShopProfileInput, 'accountPassword'>> {
-  const changes: Partial<Omit<UpdateShopProfileInput, 'accountPassword'>> = {};
+export function detailChanges(form: FormState, current: { name: string; tagline: string | null; currencyCode: string; currencyDisplay: CurrencyDisplayMode; defaultPricingCardTemplateId: string | null; defaultCardValidityDays: number; snapshotPrintedCards: boolean; pricingCardRolloutMode: PricingCardRolloutMode }): Partial<UpdateShopProfileInput> {
+  const changes: Partial<UpdateShopProfileInput> = {};
   const trimmedName = form.name.trim();
   if (trimmedName !== current.name) changes.name = trimmedName;
   const nextTagline = form.tagline.trim() === '' ? null : form.tagline.trim();

@@ -96,8 +96,8 @@ describe('BrandLogosPage', () => {
 
 function renderPage() {
   return renderToStaticMarkup(
-    <MemoryRouter initialEntries={['/settings/pricing-cards/brand-logos']}>
-      <Routes><Route path="/settings/pricing-cards/brand-logos" element={<BrandLogosPage />} /></Routes>
+    <MemoryRouter initialEntries={['/pricing-cards/brand-logos']}>
+      <Routes><Route path="/pricing-cards/brand-logos" element={<BrandLogosPage />} /></Routes>
     </MemoryRouter>,
   );
 }

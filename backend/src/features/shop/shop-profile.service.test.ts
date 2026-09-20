@@ -47,22 +47,21 @@ describe('shop profile service', () => {
     actor.findUnique.mockResolvedValue({ fullName: 'Admin', username: 'admin' });
   });
 
-  it('verifies the password and audits detail mutations without storing the password', async () => {
-    await ShopProfileService.updateShopProfile({ name: 'Home Connect Beirut', accountPassword: 'secret' }, user, context);
+  it('audits detail mutations without verifying an account password', async () => {
+    await ShopProfileService.updateShopProfile({ name: 'Home Connect Beirut' }, user, context);
 
-    expect(verify).toHaveBeenCalledWith(user.userId, 'secret', expect.objectContaining({ action: 'UPDATE_SHOP_PROFILE', recordType: 'SHOP_PROFILE' }), expect.anything());
+    expect(verify).not.toHaveBeenCalled();
     expect(writeAudit).toHaveBeenCalledWith(expect.objectContaining({
       recordType: 'SHOP_PROFILE',
       beforeValues: expect.objectContaining({ name: 'Home Connect' }),
       afterValues: expect.objectContaining({ name: 'Home Connect Beirut' }),
     }), expect.anything());
-    expect(JSON.stringify(writeAudit.mock.calls[0][0])).not.toContain('secret');
   });
 
   it('connects the default template relation instead of writing the foreign key scalar', async () => {
     const templateId = '20000000-0000-4000-8000-000000000002';
 
-    await ShopProfileService.updateShopProfile({ defaultPricingCardTemplateId: templateId, accountPassword: 'secret' }, user, context);
+    await ShopProfileService.updateShopProfile({ defaultPricingCardTemplateId: templateId }, user, context);
 
     const [data] = repository.updateSingleton.mock.calls[0];
     expect(data).toMatchObject({ defaultPricingCardTemplate: { connect: { id: templateId } } });
@@ -70,7 +69,7 @@ describe('shop profile service', () => {
   });
 
   it('disconnects the default template relation when the template id is cleared', async () => {
-    await ShopProfileService.updateShopProfile({ defaultPricingCardTemplateId: null, accountPassword: 'secret' }, user, context);
+    await ShopProfileService.updateShopProfile({ defaultPricingCardTemplateId: null }, user, context);
 
     const [data] = repository.updateSingleton.mock.calls[0];
     expect(data).toMatchObject({ defaultPricingCardTemplate: { disconnect: true } });
@@ -78,20 +77,20 @@ describe('shop profile service', () => {
   });
 
   it('leaves the default template untouched when the field is omitted', async () => {
-    await ShopProfileService.updateShopProfile({ name: 'Home Connect Beirut', accountPassword: 'secret' }, user, context);
+    await ShopProfileService.updateShopProfile({ name: 'Home Connect Beirut' }, user, context);
 
     const [data] = repository.updateSingleton.mock.calls[0];
     expect(data.defaultPricingCardTemplate).toBeUndefined();
     expect(data).not.toHaveProperty('defaultPricingCardTemplateId');
   });
 
-  it('stores logo bytes only after password verification and writes an audit', async () => {
+  it('stores logo bytes and writes an audit, with no password verification', async () => {
     const bytes = Buffer.from('RIFF');
     repository.updateSingleton.mockResolvedValue({ ...profile, logoBytes: bytes, logoMimeType: 'image/webp', logoByteSize: bytes.length });
 
-    const result = await ShopProfileService.updateShopProfileLogo(bytes, 'image/webp', 'secret', user, context);
+    const result = await ShopProfileService.updateShopProfileLogo(bytes, 'image/webp', user, context);
 
-    expect(verify).toHaveBeenCalledWith(user.userId, 'secret', expect.objectContaining({ action: 'UPDATE_SHOP_PROFILE_LOGO' }), expect.anything());
+    expect(verify).not.toHaveBeenCalled();
     expect(repository.updateSingleton).toHaveBeenCalledWith(expect.objectContaining({ logoBytes: bytes, logoByteSize: bytes.length }), expect.anything());
     expect(writeAudit).toHaveBeenCalledTimes(1);
     expect(result.hasLogo).toBe(true);

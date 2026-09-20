@@ -1,5 +1,4 @@
 import { Prisma, ServiceAuditAction, ServiceAuditRecordType } from '@prisma/client';
-import { verifyAdminPassword } from '../../lib/admin-verification';
 import { NotFoundError } from '../../lib/errors';
 import { runFinancialTransaction } from '../financial/infrastructure/transaction';
 import { writeServiceAudit } from '../service/audit/service-audit';
@@ -21,7 +20,6 @@ export class ShopProfileService {
   static async updateShopProfile(input: UpdateShopProfileInput, user: ServiceMutationUser, context: RequestContext): Promise<ShopProfileDto> {
     assertPricingAdmin(user);
     return runFinancialTransaction(async (tx) => {
-      await verify(user, input.accountPassword, 'UPDATE_SHOP_PROFILE', context, tx);
       const existing = await ShopProfileRepository.findSingleton(tx);
       if (!existing) throw new NotFoundError('Shop profile not found');
       const updated = await ShopProfileRepository.updateSingleton({ ...toUpdateData(input), updatedBy: { connect: { id: user.userId } } }, tx);
@@ -30,10 +28,9 @@ export class ShopProfileService {
     });
   }
 
-  static async updateShopProfileLogo(bytes: Buffer, mimeType: string, accountPassword: string, user: ServiceMutationUser, context: RequestContext): Promise<ShopProfileDto> {
+  static async updateShopProfileLogo(bytes: Buffer, mimeType: string, user: ServiceMutationUser, context: RequestContext): Promise<ShopProfileDto> {
     assertPricingAdmin(user);
     return runFinancialTransaction(async (tx) => {
-      await verify(user, accountPassword, 'UPDATE_SHOP_PROFILE_LOGO', context, tx);
       const existing = await ShopProfileRepository.findSingleton(tx);
       if (!existing) throw new NotFoundError('Shop profile not found');
       const updated = await ShopProfileRepository.updateSingleton({
@@ -93,16 +90,6 @@ function snapshot(profile: ShopProfileRecord): Prisma.InputJsonObject {
   const serialized = serialize(profile);
   const { logoDataUrl: _logoDataUrl, ...rest } = serialized;
   return { ...rest } as Prisma.InputJsonObject;
-}
-
-async function verify(user: ServiceMutationUser, password: string, action: string, context: RequestContext, tx: Prisma.TransactionClient) {
-  return verifyAdminPassword(user.userId, password, {
-    action,
-    recordType: 'SHOP_PROFILE',
-    recordId: SHOP_PROFILE_ID,
-    ipAddress: context.ipAddress,
-    domainLabel: 'shop profile settings',
-  }, tx);
 }
 
 async function audit(user: ServiceMutationUser, context: RequestContext, beforeValues: Prisma.InputJsonObject, afterValues: Prisma.InputJsonObject, reason: string, tx: Prisma.TransactionClient) {

@@ -19,7 +19,7 @@ export class ShopProfileController {
   static async updateLogo(req: Request<unknown, unknown, UpdateShopProfileLogoInput>, res: Response, next: NextFunction) {
     try {
       const bytes = Buffer.from(req.body.dataBase64, 'base64');
-      res.json({ success: true, data: await ShopProfileService.updateShopProfileLogo(bytes, req.body.mimeType, req.body.accountPassword, req.user!, context(req)) });
+      res.json({ success: true, data: await ShopProfileService.updateShopProfileLogo(bytes, req.body.mimeType, req.user!, context(req)) });
     } catch (error) { next(error); }
   }
 }

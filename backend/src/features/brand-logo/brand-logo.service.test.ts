@@ -29,10 +29,10 @@ describe('brand logo service', () => {
 
   it('verifies admin password, validates image bytes, and audits creation', async () => {
     const result = await BrandLogoService.createBrandLogo({
-      displayName: ' Samsung ', dataBase64: pngBytes.toString('base64'), mimeType: 'image/png', accountPassword: 'secret',
+      displayName: ' Samsung ', dataBase64: pngBytes.toString('base64'), mimeType: 'image/png',
     }, user, context);
 
-    expect(verify).toHaveBeenCalledWith(user.userId, 'secret', expect.objectContaining({ recordType: 'BRAND_LOGO' }), expect.anything());
+    expect(verify).not.toHaveBeenCalled();
     expect(repository.create).toHaveBeenCalledWith(expect.objectContaining({ canonicalName: 'samsung', logoByteSize: pngBytes.length }), expect.anything());
     expect(writeAudit).toHaveBeenCalledWith(expect.objectContaining({ recordType: 'BRAND_LOGO', action: 'CREATE' }), expect.anything());
     expect(result).toMatchObject({ canonicalName: 'samsung', hasLogo: true });
@@ -42,7 +42,7 @@ describe('brand logo service', () => {
   it('rejects a canonical-name collision', async () => {
     repository.findByCanonical.mockResolvedValue(row);
     await expect(BrandLogoService.createBrandLogo({
-      displayName: 'Samsung', dataBase64: pngBytes.toString('base64'), mimeType: 'image/png', accountPassword: 'secret',
+      displayName: 'Samsung', dataBase64: pngBytes.toString('base64'), mimeType: 'image/png',
     }, user, context)).rejects.toMatchObject({ code: 'BRAND_LOGO_CONFLICT' });
   });
 });

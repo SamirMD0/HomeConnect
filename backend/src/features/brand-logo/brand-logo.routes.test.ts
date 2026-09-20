@@ -29,18 +29,17 @@ describe('brand logo routes', () => {
     expect((await request(app).get('/api/v1/brand-logos').set('Authorization', `Bearer ${employee}`)).status).toBe(200);
   });
 
-  it('requires admin role and password for create, update, and archive', async () => {
-    const create = { displayName: 'Samsung', dataBase64: png, mimeType: 'image/png', accountPassword: 'secret' };
+  it('requires admin role for create, update, and archive', async () => {
+    const create = { displayName: 'Samsung', dataBase64: png, mimeType: 'image/png' };
     expect((await request(app).post('/api/v1/brand-logos').set('Authorization', `Bearer ${employee}`).send(create)).status).toBe(403);
-    expect((await request(app).post('/api/v1/brand-logos').set('Authorization', `Bearer ${admin}`).send({ ...create, accountPassword: undefined })).status).toBe(401);
     expect((await request(app).post('/api/v1/brand-logos').set('Authorization', `Bearer ${admin}`).send(create)).status).toBe(201);
 
     expect((await request(app).patch(`/api/v1/brand-logos/${brandLogoId}`).set('Authorization', `Bearer ${admin}`).send({ ...create, displayName: 'SAMSUNG' })).status).toBe(200);
-    expect((await request(app).post(`/api/v1/brand-logos/${brandLogoId}/archive`).set('Authorization', `Bearer ${admin}`).send({ accountPassword: 'secret' })).status).toBe(200);
+    expect((await request(app).post(`/api/v1/brand-logos/${brandLogoId}/archive`).set('Authorization', `Bearer ${admin}`).send({})).status).toBe(200);
   });
 
   it('rejects SVG and malformed raster payloads at validation/service boundaries', async () => {
     const svg = Buffer.from('<svg/>').toString('base64');
-    expect((await request(app).post('/api/v1/brand-logos').set('Authorization', `Bearer ${admin}`).send({ displayName: 'Unsafe', dataBase64: svg, mimeType: 'image/svg+xml', accountPassword: 'secret' })).status).toBe(400);
+    expect((await request(app).post('/api/v1/brand-logos').set('Authorization', `Bearer ${admin}`).send({ displayName: 'Unsafe', dataBase64: svg, mimeType: 'image/svg+xml' })).status).toBe(400);
   });
 });

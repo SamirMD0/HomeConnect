@@ -71,8 +71,8 @@ describe('FeatureIconsPage', () => {
 
 function renderPage() {
   return renderToStaticMarkup(
-    <MemoryRouter initialEntries={['/settings/pricing-cards/feature-icons']}>
-      <Routes><Route path="/settings/pricing-cards/feature-icons" element={<FeatureIconsPage />} /></Routes>
+    <MemoryRouter initialEntries={['/pricing-cards/feature-icons']}>
+      <Routes><Route path="/pricing-cards/feature-icons" element={<FeatureIconsPage />} /></Routes>
     </MemoryRouter>,
   );
 }

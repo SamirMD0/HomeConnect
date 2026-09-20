@@ -29,13 +29,11 @@ export interface UpdateShopProfileInput {
   defaultCardValidityDays?: number;
   snapshotPrintedCards?: boolean;
   pricingCardRolloutMode?: PricingCardRolloutMode;
-  accountPassword: string;
 }
 
 export interface UpdateShopProfileLogoInput {
   dataBase64: string;
   mimeType: 'image/png' | 'image/jpeg' | 'image/webp';
-  accountPassword: string;
 }
 
 export interface FeatureIconInput {
@@ -45,7 +43,6 @@ export interface FeatureIconInput {
   svg: string;
   sortOrder?: number;
   isActive?: boolean;
-  accountPassword: string;
 }
 
 export interface PricingCardTemplate {
@@ -92,7 +89,6 @@ export interface BrandLogoInput {
   canonicalName?: string;
   dataBase64: string;
   mimeType: 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif';
-  accountPassword: string;
 }
 
 export interface PricingCardTemplateInput {
@@ -106,12 +102,6 @@ export interface PricingCardTemplateInput {
   featureMax: number;
   specKeyOrder: string[];
   defaultValidityDays?: number | null;
-  accountPassword: string;
-}
-
-export interface ArchiveTemplateInput {
-  reason: string;
-  accountPassword: string;
 }
 
 export interface PricingCardBrand {
@@ -202,5 +192,4 @@ export interface RecordPricingCardPrintInput {
   copiesPrinted?: number;
   hiddenPricingPresetId?: string | null;
   encodingPresetId?: string | null;
-  accountPassword: string;
 }

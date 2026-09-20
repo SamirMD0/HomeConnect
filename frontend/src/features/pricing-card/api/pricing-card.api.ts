@@ -14,7 +14,6 @@ import type {
   FeatureIconInput,
   BrandLogoInput,
   PricingCardTemplateInput,
-  ArchiveTemplateInput,
 } from '../types/pricing-card.types';
 
 const labelParams = (query: PricingCardQuery) => ({
@@ -38,24 +37,24 @@ export const pricingCardApi = {
     (await api.post('/pricing-card-templates', input)).data.data,
   updateTemplate: async (id: string, input: PricingCardTemplateInput): Promise<PricingCardTemplate> =>
     (await api.patch(`/pricing-card-templates/${id}`, input)).data.data,
-  archiveTemplate: async (id: string, input: ArchiveTemplateInput): Promise<PricingCardTemplate> =>
-    (await api.post(`/pricing-card-templates/${id}/archive`, input)).data.data,
+  archiveTemplate: async (id: string): Promise<PricingCardTemplate> =>
+    (await api.post(`/pricing-card-templates/${id}/archive`, {})).data.data,
   featureIcons: async (activeOnly = true, category?: string): Promise<PricingCardFeatureIcon[]> =>
     (await api.get('/pricing-card-feature-icons', { params: { activeOnly, category } })).data.data,
   createFeatureIcon: async (input: FeatureIconInput): Promise<PricingCardFeatureIcon> =>
     (await api.post('/pricing-card-feature-icons', input)).data.data,
   updateFeatureIcon: async (id: string, input: FeatureIconInput): Promise<PricingCardFeatureIcon> =>
     (await api.patch(`/pricing-card-feature-icons/${id}`, input)).data.data,
-  archiveFeatureIcon: async (id: string, accountPassword: string): Promise<PricingCardFeatureIcon> =>
-    (await api.post(`/pricing-card-feature-icons/${id}/archive`, { accountPassword })).data.data,
+  archiveFeatureIcon: async (id: string): Promise<PricingCardFeatureIcon> =>
+    (await api.post(`/pricing-card-feature-icons/${id}/archive`, {})).data.data,
   brandLogos: async (activeOnly = true): Promise<BrandLogo[]> =>
     (await api.get('/brand-logos', { params: { activeOnly } })).data.data,
   createBrandLogo: async (input: BrandLogoInput): Promise<BrandLogo> =>
     (await api.post('/brand-logos', input)).data.data,
   updateBrandLogo: async (id: string, input: BrandLogoInput): Promise<BrandLogo> =>
     (await api.patch(`/brand-logos/${id}`, input)).data.data,
-  archiveBrandLogo: async (id: string, accountPassword: string): Promise<BrandLogo> =>
-    (await api.post(`/brand-logos/${id}/archive`, { accountPassword })).data.data,
+  archiveBrandLogo: async (id: string): Promise<BrandLogo> =>
+    (await api.post(`/brand-logos/${id}/archive`, {})).data.data,
   pricingCard: async (productId: string, query: PricingCardQuery): Promise<PricingCardResult> =>
     (await api.get(`/products/${productId}/pricing-card`, { params: labelParams(query) })).data.data,
   pricingCards: async (productIds: string[], query: PricingCardQuery): Promise<PricingCardsResult> =>

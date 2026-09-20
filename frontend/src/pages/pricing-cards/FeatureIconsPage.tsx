@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ArrowLeft, KeyRound, Plus, Sparkles } from 'lucide-react';
+import { ArrowLeft, Plus, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -35,7 +35,6 @@ export function FeatureIconsPage() {
   const archive = useArchiveFeatureIcon();
   const [selectedId, setSelectedId] = useState<string | 'new'>('new');
   const [draft, setDraft] = useState<DraftIcon>(emptyDraft);
-  const [password, setPassword] = useState('');
 
   const categories = useMemo(() => uniqueCategories(icons.data ?? []), [icons.data]);
 
@@ -43,7 +42,7 @@ export function FeatureIconsPage() {
     return (
       <div className="mx-auto max-w-3xl space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-6 text-amber-900">
         <h1 className="text-xl font-semibold">Feature icons are admin-only</h1>
-        <button type="button" onClick={() => navigate('/settings')} className="inline-flex items-center gap-2 rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm text-amber-900">Back to settings</button>
+        <button type="button" onClick={() => navigate('/pricing-cards')} className="inline-flex items-center gap-2 rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm text-amber-900">Back to pricing cards</button>
       </div>
     );
   }
@@ -55,23 +54,21 @@ export function FeatureIconsPage() {
   };
 
   const save = () => {
-    if (!password) { toast.error('Account password is required'); return; }
     const input: FeatureIconInput = {
       code: draft.code.trim(), label: draft.label.trim(),
       category: draft.category.trim() === '' ? null : draft.category.trim(),
       svg: draft.svg.trim(), sortOrder: draft.sortOrder, isActive: draft.isActive,
-      accountPassword: password,
     };
-    const done = { onSuccess: () => { setPassword(''); toast.success('Feature icon saved'); if (selectedId === 'new') { setDraft(emptyDraft); } }, onError: (error: unknown) => toast.error(errorMessage(error) ?? 'Unable to save feature icon') };
+    const done = { onSuccess: () => { toast.success('Feature icon saved'); if (selectedId === 'new') { setDraft(emptyDraft); } }, onError: (error: unknown) => toast.error(errorMessage(error) ?? 'Unable to save feature icon') };
     if (selectedId === 'new') create.mutate(input, done);
     else update.mutate({ id: selectedId, input }, done);
   };
 
   const archiveIcon = () => {
     if (selectedId === 'new') return;
-    if (!password) { toast.error('Account password is required'); return; }
-    archive.mutate({ id: selectedId, accountPassword: password }, {
-      onSuccess: () => { setPassword(''); toast.success('Feature icon archived'); selectIcon('new'); },
+    if (!window.confirm(`Archive the icon "${draft.label || draft.code}"? It will stop appearing in the Features block of every card.`)) return;
+    archive.mutate({ id: selectedId }, {
+      onSuccess: () => { toast.success('Feature icon archived'); selectIcon('new'); },
       onError: (error) => toast.error(errorMessage(error) ?? 'Unable to archive feature icon'),
     });
   };
@@ -80,8 +77,8 @@ export function FeatureIconsPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <button type="button" onClick={() => navigate('/settings')} className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm">
-        <ArrowLeft className="h-4 w-4" /> Back to settings
+      <button type="button" onClick={() => navigate('/pricing-cards')} className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm">
+        <ArrowLeft className="h-4 w-4" /> Back to pricing cards
       </button>
       <header>
         <h1 className="text-2xl font-bold text-slate-900">Feature icons</h1>
@@ -151,10 +148,7 @@ export function FeatureIconsPage() {
           )}
 
           <div className="flex flex-wrap items-end gap-3 border-t border-slate-100 pt-3">
-            <label className="flex-1 space-y-1 text-sm text-slate-700">
-              <span className="flex items-center gap-1 font-medium"><KeyRound className="h-3.5 w-3.5" /> Account password</span>
-              <input type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} className={inputClass} />
-            </label>
+            <div className="flex-1" />
             <button type="button" onClick={save} disabled={pending || !draft.code || !draft.label || !draft.svg} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300">{pending ? 'Saving…' : selectedId === 'new' ? 'Create icon' : 'Save changes'}</button>
             {selectedId !== 'new' && draft.isActive && (
               <button type="button" onClick={archiveIcon} disabled={pending} className="rounded-lg border border-amber-400 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-900">Archive</button>

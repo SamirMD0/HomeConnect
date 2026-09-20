@@ -33,7 +33,7 @@ export function useUpdateFeatureIcon() {
 export function useArchiveFeatureIcon() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, accountPassword }: { id: string; accountPassword: string }) => pricingCardApi.archiveFeatureIcon(id, accountPassword),
+    mutationFn: ({ id }: { id: string }) => pricingCardApi.archiveFeatureIcon(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: featureIconKeys.all }),
   });
 }

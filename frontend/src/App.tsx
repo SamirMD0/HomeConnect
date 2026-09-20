@@ -1,5 +1,5 @@
 import React, { lazy, Suspense } from 'react';
-import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
@@ -41,24 +41,27 @@ const ReportDetailPage = lazy(() =>
 const SettingsPage = lazy(() =>
   import('./pages/settings/SettingsPage').then((m) => ({ default: m.SettingsPage }))
 );
+const PricingCardsPage = lazy(() =>
+  import('./pages/pricing-cards/PricingCardsPage').then((m) => ({ default: m.PricingCardsPage }))
+);
 const ShopProfileSettingsPage = lazy(() =>
-  import('./pages/settings/ShopProfileSettingsPage').then((m) => ({
+  import('./pages/pricing-cards/ShopProfileSettingsPage').then((m) => ({
     default: m.ShopProfileSettingsPage,
   }))
 );
 const FeatureIconsPage = lazy(() =>
-  import('./pages/settings/FeatureIconsPage').then((m) => ({ default: m.FeatureIconsPage }))
+  import('./pages/pricing-cards/FeatureIconsPage').then((m) => ({ default: m.FeatureIconsPage }))
 );
 const BrandLogosPage = lazy(() =>
-  import('./pages/settings/BrandLogosPage').then((m) => ({ default: m.BrandLogosPage }))
+  import('./pages/pricing-cards/BrandLogosPage').then((m) => ({ default: m.BrandLogosPage }))
 );
 const PricingCardTemplatesPage = lazy(() =>
-  import('./pages/settings/PricingCardTemplatesPage').then((m) => ({
+  import('./pages/pricing-cards/PricingCardTemplatesPage').then((m) => ({
     default: m.PricingCardTemplatesPage,
   }))
 );
 const PricingCardTemplateEditorPage = lazy(() =>
-  import('./pages/settings/PricingCardTemplateEditorPage').then((m) => ({
+  import('./pages/pricing-cards/PricingCardTemplateEditorPage').then((m) => ({
     default: m.PricingCardTemplateEditorPage,
   }))
 );
@@ -140,6 +143,12 @@ const SupplierReceivingDetailPage = lazy(() =>
 );
 
 const queryClient = new QueryClient();
+
+/** Old template editor links carried the id in the path, so it has to survive the redirect. */
+const LegacyTemplateEditorRedirect: React.FC = () => {
+  const { templateId } = useParams();
+  return <Navigate to={`/pricing-cards/templates/${templateId}`} replace />;
+};
 
 const App: React.FC = () => {
   return (
@@ -253,8 +262,17 @@ const App: React.FC = () => {
                   <Route path="reports" element={<ReportsPage />} />
                   <Route path="reports/:reportId" element={<ReportDetailPage />} />
                   <Route path="settings" element={<SettingsPage />} />
+                  {/* Pricing cards is its own admin-only section. */}
                   <Route
-                    path="settings/pricing-cards/shop-profile"
+                    path="pricing-cards"
+                    element={
+                      <ProtectedRoute allowedRoles={['ADMIN']}>
+                        <PricingCardsPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="pricing-cards/shop-profile"
                     element={
                       <ProtectedRoute allowedRoles={['ADMIN']}>
                         <ShopProfileSettingsPage />
@@ -262,7 +280,7 @@ const App: React.FC = () => {
                     }
                   />
                   <Route
-                    path="settings/pricing-cards/feature-icons"
+                    path="pricing-cards/feature-icons"
                     element={
                       <ProtectedRoute allowedRoles={['ADMIN']}>
                         <FeatureIconsPage />
@@ -270,7 +288,7 @@ const App: React.FC = () => {
                     }
                   />
                   <Route
-                    path="settings/pricing-cards/brand-logos"
+                    path="pricing-cards/brand-logos"
                     element={
                       <ProtectedRoute allowedRoles={['ADMIN']}>
                         <BrandLogosPage />
@@ -278,7 +296,7 @@ const App: React.FC = () => {
                     }
                   />
                   <Route
-                    path="settings/pricing-cards"
+                    path="pricing-cards/templates"
                     element={
                       <ProtectedRoute allowedRoles={['ADMIN']}>
                         <PricingCardTemplatesPage />
@@ -286,13 +304,20 @@ const App: React.FC = () => {
                     }
                   />
                   <Route
-                    path="settings/pricing-cards/templates/:templateId"
+                    path="pricing-cards/templates/:templateId"
                     element={
                       <ProtectedRoute allowedRoles={['ADMIN']}>
                         <PricingCardTemplateEditorPage />
                       </ProtectedRoute>
                     }
                   />
+
+                  {/* These lived under Settings until v2.1.0; keep old links working. */}
+                  <Route path="settings/pricing-cards" element={<Navigate to="/pricing-cards/templates" replace />} />
+                  <Route path="settings/pricing-cards/shop-profile" element={<Navigate to="/pricing-cards/shop-profile" replace />} />
+                  <Route path="settings/pricing-cards/feature-icons" element={<Navigate to="/pricing-cards/feature-icons" replace />} />
+                  <Route path="settings/pricing-cards/brand-logos" element={<Navigate to="/pricing-cards/brand-logos" replace />} />
+                  <Route path="settings/pricing-cards/templates/:templateId" element={<LegacyTemplateEditorRedirect />} />
                 </Route>
 
                 {/* Fallback */}

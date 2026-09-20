@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { pricingCardApi } from '../api/pricing-card.api';
-import type { ArchiveTemplateInput, PricingCardTemplateInput } from '../types/pricing-card.types';
+import type { PricingCardTemplateInput } from '../types/pricing-card.types';
 
 export const pricingCardTemplateKeys = {
   all: ['pricing-card-templates'] as const,
@@ -35,7 +35,7 @@ export function useUpdatePricingCardTemplate() {
 export function useArchivePricingCardTemplate() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, input }: { id: string; input: ArchiveTemplateInput }) => pricingCardApi.archiveTemplate(id, input),
+    mutationFn: ({ id }: { id: string }) => pricingCardApi.archiveTemplate(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: pricingCardTemplateKeys.all }),
   });
 }

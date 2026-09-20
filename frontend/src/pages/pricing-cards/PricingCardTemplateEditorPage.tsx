@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Copy, KeyRound, Save, Trash2 } from 'lucide-react';
+import { ArrowLeft, Copy, Save, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate, useParams } from 'react-router-dom';
 import { PricingCard } from '../../features/pricing-card/components/PricingCard';
@@ -51,8 +51,6 @@ export function PricingCardTemplateEditorPage() {
   const profile = useShopProfile();
 
   const [form, setForm] = useState<TemplateFormState>(() => templateQuery.data && !isNew ? fromTemplate(templateQuery.data) : emptyForm());
-  const [password, setPassword] = useState('');
-  const [archiveReason, setArchiveReason] = useState('');
   const [sampleIndex, setSampleIndex] = useState(0);
   const [configError, setConfigError] = useState<string | null>(null);
   const [seededTemplateId, setSeededTemplateId] = useState<string | null>(templateQuery.data?.id ?? null);
@@ -78,7 +76,7 @@ export function PricingCardTemplateEditorPage() {
     return (
       <div className="mx-auto max-w-3xl space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-6 text-amber-900">
         <h1 className="text-xl font-semibold">Template editor is admin-only</h1>
-        <button type="button" onClick={() => navigate('/settings/pricing-cards')} className="inline-flex items-center gap-2 rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm text-amber-900">Back to templates</button>
+        <button type="button" onClick={() => navigate('/pricing-cards/templates')} className="inline-flex items-center gap-2 rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm text-amber-900">Back to templates</button>
       </div>
     );
   }
@@ -97,7 +95,6 @@ export function PricingCardTemplateEditorPage() {
   const sample = pricingCardSamples[Math.min(sampleIndex, pricingCardSamples.length - 1)];
 
   const saveDraft = (mode: 'update' | 'create') => {
-    if (!password) { toast.error('Account password is required'); return; }
     if (!parsedConfig) { toast.error(configError ?? 'Template config is invalid'); return; }
     const input: PricingCardTemplateInput = {
       name: form.name.trim(),
@@ -108,13 +105,11 @@ export function PricingCardTemplateEditorPage() {
       config: parsedConfig, featureMax: form.featureMax,
       specKeyOrder: form.specKeyOrder,
       defaultValidityDays: form.defaultValidityDays ?? null,
-      accountPassword: password,
     };
     const done = {
       onSuccess: (saved: PricingCardTemplate) => {
         toast.success(mode === 'create' ? 'Template created' : 'Template saved');
-        setPassword('');
-        if (mode === 'create' || isNew) navigate(`/settings/pricing-cards/templates/${saved.id}`);
+        if (mode === 'create' || isNew) navigate(`/pricing-cards/templates/${saved.id}`);
       },
       onError: (error: unknown) => toast.error(errorMessage(error) ?? 'Unable to save template'),
     };
@@ -124,10 +119,9 @@ export function PricingCardTemplateEditorPage() {
 
   const doArchive = () => {
     if (isNew) return;
-    if (archiveReason.trim().length < 5) { toast.error('Reason must be at least 5 characters'); return; }
-    if (!password) { toast.error('Account password is required'); return; }
-    archive.mutate({ id: templateId, input: { reason: archiveReason.trim(), accountPassword: password } }, {
-      onSuccess: () => { toast.success('Template archived'); navigate('/settings/pricing-cards'); },
+    if (!window.confirm(`Archive the template "${form.name}"? Cards bound to it keep their printed snapshots, but it can no longer be selected.`)) return;
+    archive.mutate({ id: templateId }, {
+      onSuccess: () => { toast.success('Template archived'); navigate('/pricing-cards/templates'); },
       onError: (error) => toast.error(errorMessage(error) ?? 'Unable to archive template'),
     });
   };
@@ -136,10 +130,10 @@ export function PricingCardTemplateEditorPage() {
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-4">
-      <button type="button" onClick={() => navigate('/settings/pricing-cards')} className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm"><ArrowLeft className="h-4 w-4" /> Templates</button>
+      <button type="button" onClick={() => navigate('/pricing-cards/templates')} className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm"><ArrowLeft className="h-4 w-4" /> Templates</button>
       <header>
         <h1 className="text-2xl font-bold text-slate-900">{isNew ? 'New pricing card template' : `Edit template: ${form.name || '…'}`}</h1>
-        <p className="mt-1 text-sm text-slate-500">Every change is admin-password verified and audited under PRICING_CARD_TEMPLATE.</p>
+        <p className="mt-1 text-sm text-slate-500">Every change is audited under PRICING_CARD_TEMPLATE.</p>
       </header>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(320px,2fr)]">
@@ -280,20 +274,13 @@ export function PricingCardTemplateEditorPage() {
           {configError && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{configError}</p>}
 
           <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
-            <label className="space-y-1 text-sm text-slate-700">
-              <span className="flex items-center gap-1 font-medium"><KeyRound className="h-3.5 w-3.5" /> Account password</span>
-              <input type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} className={inputClass} />
-            </label>
             <div className="flex flex-wrap gap-3">
               {!isNew && <button type="submit" disabled={pending || !parsedConfig} className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300"><Save className="h-4 w-4" /> Save</button>}
               <button type="button" onClick={() => saveDraft('create')} disabled={pending || !parsedConfig} className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 disabled:cursor-not-allowed"><Copy className="h-4 w-4" /> Save as new</button>
             </div>
             {!isNew && (
               <div className="space-y-2 border-t border-slate-100 pt-3">
-                <label className="space-y-1 text-sm text-slate-700"><span className="block font-medium">Archive reason</span>
-                  <input type="text" value={archiveReason} onChange={(event) => setArchiveReason(event.target.value)} className={inputClass} maxLength={500} placeholder="Why is this template being archived?" />
-                </label>
-                <button type="button" onClick={doArchive} disabled={pending || archiveReason.trim().length < 5} className="inline-flex items-center gap-2 rounded-lg border border-amber-400 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900 disabled:cursor-not-allowed"><Trash2 className="h-4 w-4" /> Archive template</button>
+                <button type="button" onClick={doArchive} disabled={pending} className="inline-flex items-center gap-2 rounded-lg border border-amber-400 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900 disabled:cursor-not-allowed"><Trash2 className="h-4 w-4" /> Archive template</button>
               </div>
             )}
           </section>

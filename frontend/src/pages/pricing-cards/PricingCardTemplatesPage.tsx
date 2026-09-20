@@ -12,7 +12,7 @@ export function PricingCardTemplatesPage() {
     return (
       <div className="mx-auto max-w-3xl space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-6 text-amber-900">
         <h1 className="text-xl font-semibold">Pricing card templates are admin-only</h1>
-        <button type="button" onClick={() => navigate('/settings')} className="inline-flex items-center gap-2 rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm text-amber-900">Back to settings</button>
+        <button type="button" onClick={() => navigate('/pricing-cards')} className="inline-flex items-center gap-2 rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm text-amber-900">Back to pricing cards</button>
       </div>
     );
   }
@@ -26,7 +26,7 @@ export function PricingCardTemplatesPage() {
           <h1 className="text-2xl font-bold text-slate-900">Pricing card templates</h1>
           <p className="mt-1 text-sm text-slate-500">Each template is a validated JSON config that the renderer consumes with a product to produce one card.</p>
         </div>
-        <Link to="/settings/pricing-cards/templates/new" className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white"><Plus className="h-4 w-4" /> New template</Link>
+        <Link to="/pricing-cards/templates/new" className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white"><Plus className="h-4 w-4" /> New template</Link>
       </div>
 
       {templates.isLoading && <p className="rounded-lg border bg-white p-4 text-sm text-slate-500">Loading templates…</p>}
@@ -50,7 +50,7 @@ export function PricingCardTemplatesPage() {
                   <p className="mt-1 text-xs text-slate-500">Up to {template.featureMax} features · {template.specKeyOrder.length} spec keys · {template.defaultValidityDays ?? 'shop default'} days valid</p>
                 </div>
               </div>
-              <Link to={`/settings/pricing-cards/templates/${template.id}`} className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50">Edit <ArrowRight className="h-3.5 w-3.5" /></Link>
+              <Link to={`/pricing-cards/templates/${template.id}`} className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50">Edit <ArrowRight className="h-3.5 w-3.5" /></Link>
             </div>
           </li>
         ))}

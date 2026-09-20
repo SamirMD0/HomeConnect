@@ -1,6 +1,5 @@
 import { Prisma, ServiceAuditAction, ServiceAuditRecordType } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
-import { verifyAdminPassword } from '../../../lib/admin-verification';
 import { NotFoundError } from '../../../lib/errors';
 import { runFinancialTransaction } from '../../financial/infrastructure/transaction';
 import { assertServiceAdmin } from '../../service/authorization/service-policy';
@@ -13,10 +12,6 @@ export class PrintSnapshotService {
   static recordPrint(input: RecordPrintSnapshotInput, user: ServiceMutationUser, context: RequestContext) {
     assertServiceAdmin(user);
     return runFinancialTransaction(async (tx) => {
-      await verifyAdminPassword(user.userId, input.accountPassword, {
-        action: 'RECORD_PRICING_CARD_PRINT', recordType: 'PRICING_CARD_PRINT',
-        recordId: input.productId, ipAddress: context.ipAddress, domainLabel: 'pricing card print snapshots',
-      }, tx);
       const profile = await PrintSnapshotRepository.getShopProfile(tx);
       if (!profile) throw new NotFoundError('Shop profile not found');
       if (!profile.snapshotPrintedCards) return { recorded: false as const, print: null };

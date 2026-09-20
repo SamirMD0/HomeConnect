@@ -43,11 +43,10 @@ describe('shop profile routes', () => {
     expect(response.body.data.currencyCode).toBe('USD');
   });
 
-  it('requires an admin and an account password to update details', async () => {
-    const input = { name: 'Home Connect Beirut', accountPassword: 'secret' };
+  it('requires an admin to update details, but no account password', async () => {
+    const input = { name: 'Home Connect Beirut' };
     expect((await request(app).patch('/api/v1/shop-profile').send(input)).status).toBe(401);
     expect((await request(app).patch('/api/v1/shop-profile').set('Authorization', `Bearer ${employee}`).send(input)).status).toBe(403);
-    expect((await request(app).patch('/api/v1/shop-profile').set('Authorization', `Bearer ${admin}`).send({ name: input.name })).status).toBe(401);
 
     const response = await request(app)
       .patch('/api/v1/shop-profile')
@@ -58,19 +57,27 @@ describe('shop profile routes', () => {
     expect(service.updateShopProfile).toHaveBeenCalledWith(input, expect.objectContaining({ role: 'ADMIN' }), expect.objectContaining({ requestId: 'shop-profile-update' }));
   });
 
-  it('validates and delegates logo uploads', async () => {
-    const input = { dataBase64: Buffer.from('RIFF').toString('base64'), mimeType: 'image/webp', accountPassword: 'secret' };
-    const response = await request(app).put('/api/v1/shop-profile/logo').set('Authorization', `Bearer ${admin}`).send(input);
-    expect(response.status).toBe(200);
-    expect(service.updateShopProfileLogo).toHaveBeenCalledWith(expect.any(Buffer), 'image/webp', 'secret', expect.objectContaining({ role: 'ADMIN' }), expect.anything());
-  });
-
-  it('returns the authentication error raised for an incorrect password', async () => {
-    service.updateShopProfile.mockRejectedValueOnce(new AuthenticationError('Account password is incorrect'));
+  it('no longer accepts an account password field', async () => {
     const response = await request(app)
       .patch('/api/v1/shop-profile')
       .set('Authorization', `Bearer ${admin}`)
-      .send({ name: 'Home Connect Beirut', accountPassword: 'wrong' });
+      .send({ name: 'Home Connect Beirut', accountPassword: 'secret' });
+    expect(response.status).toBe(400);
+  });
+
+  it('validates and delegates logo uploads', async () => {
+    const input = { dataBase64: Buffer.from('RIFF').toString('base64'), mimeType: 'image/webp' };
+    const response = await request(app).put('/api/v1/shop-profile/logo').set('Authorization', `Bearer ${admin}`).send(input);
+    expect(response.status).toBe(200);
+    expect(service.updateShopProfileLogo).toHaveBeenCalledWith(expect.any(Buffer), 'image/webp', expect.objectContaining({ role: 'ADMIN' }), expect.anything());
+  });
+
+  it('surfaces an error raised by the service', async () => {
+    service.updateShopProfile.mockRejectedValueOnce(new AuthenticationError('Session expired'));
+    const response = await request(app)
+      .patch('/api/v1/shop-profile')
+      .set('Authorization', `Bearer ${admin}`)
+      .send({ name: 'Home Connect Beirut' });
     expect(response.status).toBe(401);
   });
 });

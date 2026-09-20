@@ -13,7 +13,7 @@ const secret = process.env.JWT_SECRET || 'fallback_secret_key_change_in_producti
 const admin = jwt.sign({ userId: '11111111-1111-4111-8111-111111111111', role: 'ADMIN' }, secret);
 const employee = jwt.sign({ userId: '22222222-2222-4222-8222-222222222222', role: 'EMPLOYEE' }, secret);
 const iconId = '10000000-0000-4000-8000-000000000001';
-const input = { code: 'qled', label: 'QLED', category: 'tv', svg: '<svg viewBox="0 0 24 24"><path d="M1 1h2v2z"/></svg>', sortOrder: 1, isActive: true, accountPassword: 'secret' };
+const input = { code: 'qled', label: 'QLED', category: 'tv', svg: '<svg viewBox="0 0 24 24"><path d="M1 1h2v2z"/></svg>', sortOrder: 1, isActive: true };
 
 describe('feature icon routes', () => {
   beforeEach(() => {
@@ -31,12 +31,11 @@ describe('feature icon routes', () => {
     expect(response.body.data).toHaveLength(17);
   });
 
-  it('requires admin role and account password for every mutation', async () => {
+  it('requires admin role for every mutation', async () => {
     expect((await request(app).post('/api/v1/pricing-card-feature-icons').set('Authorization', `Bearer ${employee}`).send(input)).status).toBe(403);
-    expect((await request(app).post('/api/v1/pricing-card-feature-icons').set('Authorization', `Bearer ${admin}`).send({ ...input, accountPassword: undefined })).status).toBe(401);
     expect((await request(app).post('/api/v1/pricing-card-feature-icons').set('Authorization', `Bearer ${admin}`).send(input)).status).toBe(201);
     expect((await request(app).patch(`/api/v1/pricing-card-feature-icons/${iconId}`).set('Authorization', `Bearer ${admin}`).send(input)).status).toBe(200);
-    expect((await request(app).post(`/api/v1/pricing-card-feature-icons/${iconId}/archive`).set('Authorization', `Bearer ${admin}`).send({ accountPassword: 'secret' })).status).toBe(200);
+    expect((await request(app).post(`/api/v1/pricing-card-feature-icons/${iconId}/archive`).set('Authorization', `Bearer ${admin}`).send({})).status).toBe(200);
   });
 
   it('rejects a script-bearing SVG before service dispatch', async () => {

@@ -23,7 +23,7 @@ const input = {
   templateId: '20000000-0000-4000-8000-000000000001',
   snapshot: { name: 'Washer', price: '499.00' }, validUntil: new Date('2026-10-31T00:00:00.000Z'),
   currencyCode: 'USD', publicPrice: '499.00', staffLabelCode: null, barcodeValue: '2000000000015',
-  copiesPrinted: 1, hiddenPricingPresetId: null, encodingPresetId: null, accountPassword: 'secret',
+  copiesPrinted: 1, hiddenPricingPresetId: null, encodingPresetId: null,
 };
 
 describe('PrintSnapshotService', () => {

@@ -13,7 +13,7 @@ import { PricingCardPage } from '../../features/pricing-card/components/PricingC
 import { usePricingCard, usePricingCardSecretPreview, useRecordPricingCardPrint } from '../../features/pricing-card/hooks/usePricingCard';
 import { usePricingCardTemplates } from '../../features/pricing-card/hooks/usePricingCardTemplates';
 import { useShopProfile } from '../../features/pricing-card/hooks/useShopProfile';
-import type { PricingCardData } from '../../features/pricing-card/types/pricing-card.types';
+import type { PricingCardData, RecordPricingCardPrintInput } from '../../features/pricing-card/types/pricing-card.types';
 import { printPricingCards } from '../../features/pricing-card/utils/print-pricing-cards';
 import { useLabelSecretConfiguration } from '../../features/pricing/hooks/usePricingPresets';
 import { useAuth } from '../../hooks/useAuth';
@@ -85,7 +85,7 @@ export function ProductPricingCardPage() {
     void printPricingCardAndSnapshot({
       print: () => printPricingCards(size),
       snapshot: profile.data.snapshotPrintedCards && user?.role === 'ADMIN'
-        ? () => recordPrint.mutateAsync(snapshotInput(payload, selectedTemplate.id, copies, password, pricingPresetId, encodingPresetId))
+        ? () => recordPrint.mutateAsync(snapshotInput(payload, selectedTemplate.id, copies, pricingPresetId, encodingPresetId))
         : undefined,
       onSnapshotError: () => toast.error('Snapshot failed — the print still went out.'),
     }).then((printed) => { if (printed.error) toast.error(`Printing failed: ${printed.error}`); });
@@ -127,9 +127,9 @@ function activeDefaultTemplateId(templates: Array<{ id: string }>, preferred?: s
   return templates.some(({ id }) => id === preferred) ? preferred! : templates[0]?.id ?? '';
 }
 
-function snapshotInput(payload: PricingCardData, templateId: string, copies: number, accountPassword: string, hiddenPricingPresetId: string, encodingPresetId: string) {
+function snapshotInput(payload: PricingCardData, templateId: string, copies: number, hiddenPricingPresetId: string, encodingPresetId: string): RecordPricingCardPrintInput {
   const { internalPriceCode: _internal, secretPrice: _secret, features, ...publicFields } = payload;
-  return { productId: payload.id, templateId, snapshot: { ...publicFields, features: features?.map(({ iconSvg: _svg, ...feature }) => feature) }, validUntil: payload.validUntil, currencyCode: payload.currency?.code ?? 'USD', publicPrice: payload.cashPrice ?? '0.00', staffLabelCode: payload.staffLabelCode, barcodeValue: payload.barcodeValue, copiesPrinted: copies, hiddenPricingPresetId: hiddenPricingPresetId || null, encodingPresetId: encodingPresetId || null, accountPassword };
+  return { productId: payload.id, templateId, snapshot: { ...publicFields, features: features?.map(({ iconSvg: _svg, ...feature }) => feature) }, validUntil: payload.validUntil, currencyCode: payload.currency?.code ?? 'USD', publicPrice: payload.cashPrice ?? '0.00', staffLabelCode: payload.staffLabelCode, barcodeValue: payload.barcodeValue, copiesPrinted: copies, hiddenPricingPresetId: hiddenPricingPresetId || null, encodingPresetId: encodingPresetId || null };
 }
 
 function secretControlsPreview(payload: PricingCardData) {

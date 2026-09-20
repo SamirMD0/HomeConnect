@@ -1,12 +1,11 @@
 import { Router } from 'express';
-import { requireAccountPassword } from '../../../middleware/admin-password.middleware';
 import { validate } from '../../../middleware/validate.middleware';
 import { requirePricingAdmin } from '../../pricing/authorization/pricing-policy';
 import { PricingCardTemplateController } from './template.controller';
 import { archivePricingCardTemplateSchema, createPricingCardTemplateSchema, pricingCardTemplateListQuerySchema, pricingCardTemplateParamsSchema, updatePricingCardTemplateSchema } from './template.validator';
 export const pricingCardTemplateRoutes = Router();
 pricingCardTemplateRoutes.get('/', validate(pricingCardTemplateListQuerySchema, 'query'), PricingCardTemplateController.list);
-pricingCardTemplateRoutes.post('/', requirePricingAdmin, requireAccountPassword, validate(createPricingCardTemplateSchema), PricingCardTemplateController.create);
-pricingCardTemplateRoutes.post('/:templateId/archive', requirePricingAdmin, requireAccountPassword, validate(pricingCardTemplateParamsSchema, 'params'), validate(archivePricingCardTemplateSchema), PricingCardTemplateController.archive);
-pricingCardTemplateRoutes.patch('/:templateId', requirePricingAdmin, requireAccountPassword, validate(pricingCardTemplateParamsSchema, 'params'), validate(updatePricingCardTemplateSchema), PricingCardTemplateController.update);
+pricingCardTemplateRoutes.post('/', requirePricingAdmin, validate(createPricingCardTemplateSchema), PricingCardTemplateController.create);
+pricingCardTemplateRoutes.post('/:templateId/archive', requirePricingAdmin, validate(pricingCardTemplateParamsSchema, 'params'), validate(archivePricingCardTemplateSchema), PricingCardTemplateController.archive);
+pricingCardTemplateRoutes.patch('/:templateId', requirePricingAdmin, validate(pricingCardTemplateParamsSchema, 'params'), validate(updatePricingCardTemplateSchema), PricingCardTemplateController.update);
 pricingCardTemplateRoutes.get('/:templateId', validate(pricingCardTemplateParamsSchema, 'params'), PricingCardTemplateController.get);
