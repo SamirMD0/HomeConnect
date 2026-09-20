@@ -24,8 +24,7 @@ export class ShopProfileService {
       await verify(user, input.accountPassword, 'UPDATE_SHOP_PROFILE', context, tx);
       const existing = await ShopProfileRepository.findSingleton(tx);
       if (!existing) throw new NotFoundError('Shop profile not found');
-      const { accountPassword: _accountPassword, ...changes } = input;
-      const updated = await ShopProfileRepository.updateSingleton({ ...changes, updatedBy: { connect: { id: user.userId } } }, tx);
+      const updated = await ShopProfileRepository.updateSingleton({ ...toUpdateData(input), updatedBy: { connect: { id: user.userId } } }, tx);
       await audit(user, context, snapshot(existing), snapshot(updated), 'Shop profile details changed', tx);
       return serialize(updated);
     });
@@ -47,6 +46,26 @@ export class ShopProfileService {
       return serialize(updated);
     });
   }
+}
+
+// Mapped field by field on purpose: `defaultPricingCardTemplateId` is the foreign key behind the
+// `defaultPricingCardTemplate` relation, so Prisma's checked update input only accepts it as a nested
+// relation write. Spreading the validated body here would smuggle the scalar past the compiler.
+function toUpdateData(input: UpdateShopProfileInput): Prisma.ShopProfileUpdateInput {
+  return {
+    name: input.name,
+    tagline: input.tagline,
+    currencyCode: input.currencyCode,
+    currencyDisplay: input.currencyDisplay,
+    defaultCardValidityDays: input.defaultCardValidityDays,
+    snapshotPrintedCards: input.snapshotPrintedCards,
+    pricingCardRolloutMode: input.pricingCardRolloutMode,
+    ...(input.defaultPricingCardTemplateId === undefined ? {} : {
+      defaultPricingCardTemplate: input.defaultPricingCardTemplateId === null
+        ? { disconnect: true }
+        : { connect: { id: input.defaultPricingCardTemplateId } },
+    }),
+  };
 }
 
 function serialize(profile: ShopProfileRecord): ShopProfileDto {
