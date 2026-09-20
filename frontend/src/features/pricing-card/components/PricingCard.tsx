@@ -27,11 +27,26 @@ interface PricingCardProps {
   shopProfile: ShopProfile;
   assets?: PricingCardAssets;
   className?: string;
+  /**
+   * `thumbnail` skips the barcode block in favor of a lightweight placeholder,
+   * so the browse grid can render hundreds of card previews without paying the
+   * JsBarcode paint cost. Every other block still renders — the thumbnail is
+   * shape-accurate, not a stub.
+   */
+  variant?: 'default' | 'thumbnail';
 }
 
 type CardStyle = CSSProperties & Record<`--pricing-card-${string}`, string | number>;
 
-export function PricingCard({ template, product, shopProfile, assets = {}, className = '' }: PricingCardProps) {
+/**
+ * `brand` is a bare string on non-template label payloads, which carry no logo
+ * at all. Only the template-mode object shape can resolve one.
+ */
+export function brandLogoUrlOf(product: PricingCardData): string | null {
+  return typeof product.brand === 'object' ? product.brand?.logoDataUrl ?? null : null;
+}
+
+export function PricingCard({ template, product, shopProfile, assets = {}, className = '', variant = 'default' }: PricingCardProps) {
   const config = parseTemplateConfig(template.config);
   const style: CardStyle = {
     '--pricing-card-width': `${template.cardWidthMm}mm`,
@@ -43,7 +58,6 @@ export function PricingCard({ template, product, shopProfile, assets = {}, class
     '--pricing-card-title-scale': config.body.title.fontScale,
     '--pricing-card-title-lines': config.body.title.maxLines,
     '--pricing-card-image-width': `${config.body.image.columnWidthPct}%`,
-    '--pricing-card-feature-columns': config.features.layout === 'grid-3x2' ? 3 : config.features.layout === 'grid-2x3' ? 2 : 6,
     '--pricing-card-price-scale': config.price.fontScale,
     '--pricing-card-price-weight': config.price.weight,
     '--pricing-card-company-logo-size': `${config.header.companyLogo.sizeMm}mm`,
@@ -52,6 +66,7 @@ export function PricingCard({ template, product, shopProfile, assets = {}, class
     '--pricing-card-brand-order': config.header.brand.position === 'left' ? 1 : 2,
   };
   const productImageUrl = assets.productImageUrl ?? product.imageUrl;
+  const brandLogoUrl = assets.brandLogoUrl ?? brandLogoUrlOf(product);
   const hasProductImage = config.body.image.show && Boolean(productImageUrl);
   const hasHeader = (config.header.companyLogo.show && Boolean(assets.companyLogoUrl)) || Boolean(product.brand);
 
@@ -59,7 +74,7 @@ export function PricingCard({ template, product, shopProfile, assets = {}, class
     <article className={`pricing-card ${config.appearance.sectionDividers ? 'pricing-card-dividers' : ''} ${className}`.trim()} style={style}>
       {hasHeader && <header className="pricing-card-header">
         {config.header.companyLogo.show && <CompanyLogo name={shopProfile.name} logoUrl={assets.companyLogoUrl} />}
-        <BrandMark brand={product.brand} display={config.header.brand.display} logoUrl={assets.brandLogoUrl} />
+        <BrandMark brand={product.brand} display={config.header.brand.display} logoUrl={brandLogoUrl} />
       </header>}
       <section className={`pricing-card-body ${hasProductImage ? 'pricing-card-body-with-image' : ''}`}>
         <div className="pricing-card-copy">
@@ -70,14 +85,16 @@ export function PricingCard({ template, product, shopProfile, assets = {}, class
         </div>
         {hasProductImage && <Image name={product.name} imageUrl={productImageUrl} />}
       </section>
-      {config.features.show && <Features features={product.features} showLabels={config.features.showLabels} showValues={config.features.showValues} />}
-      <section className="pricing-card-price-code">
+      {config.features.show && <Features features={product.features} layout={config.features.layout} showLabels={config.features.showLabels} showValues={config.features.showValues} />}
+      <section className={`pricing-card-price-code pricing-card-price-code-${config.price.prominence}`}>
         <div className="pricing-card-price-region">
-          {config.price.show && <Price value={product.cashPrice} currency={product.currency} displayOverride={config.price.currencyDisplay} emphasis={config.price.emphasis} />}
+          {config.price.show && <Price value={product.cashPrice} currency={product.currency} displayOverride={config.price.currencyDisplay} emphasis={config.price.emphasis} prominence={config.price.prominence} />}
           {config.price.validUntil.show && <ValidUntil value={product.validUntil} format={config.price.validUntil.format} />}
         </div>
         <div className="pricing-card-code-region">
-          {config.barcode.show && <Barcode value={product.barcodeValue} targetWidthMm={config.barcode.targetWidthMm} showDigits={config.barcode.showDigits} />}
+          {config.barcode.show && (variant === 'thumbnail'
+            ? <div className="pricing-card-barcode-placeholder" aria-hidden style={{ width: `${config.barcode.targetWidthMm}mm`, height: '8mm' }} />
+            : <Barcode value={product.barcodeValue} targetWidthMm={config.barcode.targetWidthMm} showDigits={config.barcode.showDigits} />)}
           {config.sku.show && <Sku sku={product.sku} staffLabelCode={product.staffLabelCode} internalPriceCode={product.internalPriceCode} showSecretCode={config.sku.showSecretCode} prefix={config.sku.prefix} />}
         </div>
       </section>

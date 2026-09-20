@@ -7,6 +7,7 @@ import type {
   PricingCardSecretPreviewInput,
   PricingCardsResult,
   PricingCardTemplate,
+  PricingCardSpecCatalogItem,
   RecordPricingCardPrintInput,
   ShopProfile,
   UpdateShopProfileInput,
@@ -14,6 +15,7 @@ import type {
   FeatureIconInput,
   BrandLogoInput,
   PricingCardTemplateInput,
+  PricingCardIndexEntry,
 } from '../types/pricing-card.types';
 
 const labelParams = (query: PricingCardQuery) => ({
@@ -31,6 +33,12 @@ export const pricingCardApi = {
     (await api.put('/shop-profile/logo', input)).data.data,
   templates: async (activeOnly = true): Promise<PricingCardTemplate[]> =>
     (await api.get('/pricing-card-templates', { params: { activeOnly } })).data.data,
+  pricingCardIndex: async (productIds: string[]): Promise<PricingCardIndexEntry[]> =>
+    productIds.length === 0
+      ? []
+      : (await api.get('/products/pricing-cards/index', { params: { ids: productIds.join(',') } })).data.data,
+  specCatalog: async (): Promise<PricingCardSpecCatalogItem[]> =>
+    (await api.get('/pricing-card-templates/spec-catalog')).data.data,
   template: async (templateId: string): Promise<PricingCardTemplate> =>
     (await api.get(`/pricing-card-templates/${templateId}`)).data.data,
   createTemplate: async (input: PricingCardTemplateInput): Promise<PricingCardTemplate> =>

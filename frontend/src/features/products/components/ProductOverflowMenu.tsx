@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Archive, MoreHorizontal, Printer, RotateCcw, ShoppingCart } from 'lucide-react';
+import { Archive, MoreHorizontal, Printer, RotateCcw, ShoppingCart, Tags } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { salesOrderCreateUrl } from '../../sales-orders/utils/sales-order-links';
+import { useRolloutMode } from '../../pricing-card/hooks/useRolloutMode';
 import type { Product } from '../types/product.types';
 
 interface Props {
@@ -74,10 +75,14 @@ interface MenuItemsProps extends Omit<Props, 'defaultOpen'> {
   menuRef?: React.Ref<HTMLDivElement>;
 }
 
-export const ProductOverflowMenuItems: React.FC<MenuItemsProps> = ({ product, canAdmin, onArchive, onRestore, placement = 'above-start', menuRef }) => <div ref={menuRef} role="menu" aria-label={`Actions for ${product.name}`} className={`absolute z-30 w-56 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 text-left shadow-xl ${menuPlacementClass[placement]}`}>
-  <Link role="menuitem" to={`/products/${product.id}/label`} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Printer className="h-4 w-4" />Print label / طباعة الملصق</Link>
-  <Link role="menuitem" to={salesOrderCreateUrl(product.id)} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><ShoppingCart className="h-4 w-4" />Make Order / إنشاء طلب</Link>
-  {canAdmin && (product.isActive
-    ? <button role="menuitem" type="button" onClick={onArchive} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-700 hover:bg-red-50"><Archive className="h-4 w-4" />Archive / أرشفة</button>
-    : <button role="menuitem" type="button" onClick={onRestore} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-brand-700 hover:bg-brand-50"><RotateCcw className="h-4 w-4" />Restore / استعادة</button>)}
-</div>;
+export const ProductOverflowMenuItems: React.FC<MenuItemsProps> = ({ product, canAdmin, onArchive, onRestore, placement = 'above-start', menuRef }) => {
+  const rollout = useRolloutMode();
+  return <div ref={menuRef} role="menu" aria-label={`Actions for ${product.name}`} className={`absolute z-30 w-56 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 text-left shadow-xl ${menuPlacementClass[placement]}`}>
+    {rollout.legacyEnabled && <Link role="menuitem" to={`/products/${product.id}/label`} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Printer className="h-4 w-4" />Print label / طباعة الملصق</Link>}
+    {rollout.pricingCardEnabled && <Link role="menuitem" to={`/products/${product.id}/pricing-card`} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Tags className="h-4 w-4" />Pricing card / بطاقة السعر</Link>}
+    <Link role="menuitem" to={salesOrderCreateUrl(product.id)} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><ShoppingCart className="h-4 w-4" />Make Order / إنشاء طلب</Link>
+    {canAdmin && (product.isActive
+      ? <button role="menuitem" type="button" onClick={onArchive} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-700 hover:bg-red-50"><Archive className="h-4 w-4" />Archive / أرشفة</button>
+      : <button role="menuitem" type="button" onClick={onRestore} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-brand-700 hover:bg-brand-50"><RotateCcw className="h-4 w-4" />Restore / استعادة</button>)}
+  </div>;
+};

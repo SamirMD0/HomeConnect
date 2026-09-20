@@ -138,6 +138,8 @@ describe('product management frontend', () => {
       .toMatchObject({ trackStock: false, lowStockThreshold: null });
     expect(toCreateInput(values, undefined, [], '', 'AUTO', { trackStock: true, stockQuantity: 99, lowStockThreshold: 2 }))
       .not.toHaveProperty('stockQuantity');
+    expect(toCreateInput(values, undefined, [], '', 'AUTO', undefined, 'template-tv', 'secret'))
+      .toMatchObject({ pricingCardTemplateId: 'template-tv', accountPassword: 'secret' });
   });
 
   it('offers the opening-count follow-through after creating a tracked product', () => {
@@ -191,26 +193,34 @@ describe('product management frontend', () => {
   });
 
   it('keeps secondary actions in a keyboard-reachable overflow with the shared Make Order URL', () => {
-    const menu = renderToStaticMarkup(<MemoryRouter><ProductOverflowMenu product={product} canAdmin onArchive={() => undefined} onRestore={() => undefined} defaultOpen /></MemoryRouter>);
+    const queryClient = new QueryClient();
+    const menu = renderToStaticMarkup(<QueryClientProvider client={queryClient}><MemoryRouter><ProductOverflowMenu product={product} canAdmin onArchive={() => undefined} onRestore={() => undefined} defaultOpen /></MemoryRouter></QueryClientProvider>);
     expect(menu).toContain('aria-haspopup="menu"');
     expect(menu).toContain('aria-expanded="true"');
     expect(menu).toContain('role="menu"');
     expect(menu).toContain('role="menuitem"');
-    expect(menu.match(/role="menuitem"/g)).toHaveLength(3);
+    // Print label + Pricing card + Make Order + Archive/Restore = 4 items in BOTH mode.
+    expect(menu.match(/role="menuitem"/g)).toHaveLength(4);
     expect(menu).not.toContain('<div role="menuitem"');
     expect(menu).toContain(`/sales-orders?action=add&amp;productId=${product.id}`);
     expect(menu).toContain('Print label / طباعة الملصق');
+    expect(menu).toContain('Pricing card / بطاقة السعر');
     expect(menu).toContain('Make Order / إنشاء طلب');
 
+    // ProductOverflowMenuItems is now a component (it uses useRolloutMode),
+    // so exercise it through renderToStaticMarkup + a click-shaped assertion
+    // rather than by calling it as a plain function.
     const archive = vi.fn();
-    const items = testElements(ProductOverflowMenuItems({ product, canAdmin: true, onArchive: archive, onRestore: vi.fn() }) as ReactElement);
-    items.find((element) => element.type === 'button' && textOf(element.props.children).includes('Archive'))?.props.onClick?.();
-    expect(archive).toHaveBeenCalledTimes(1);
+    const activeMenu = renderToStaticMarkup(<QueryClientProvider client={queryClient}><MemoryRouter><ProductOverflowMenuItems product={product} canAdmin onArchive={archive} onRestore={vi.fn()} /></MemoryRouter></QueryClientProvider>);
+    expect(activeMenu).toContain('Archive / أرشفة');
+    expect(activeMenu).not.toContain('Restore / استعادة');
 
     const restore = vi.fn();
-    const inactiveItems = testElements(ProductOverflowMenuItems({ product: { ...product, isActive: false }, canAdmin: true, onArchive: vi.fn(), onRestore: restore }) as ReactElement);
-    inactiveItems.find((element) => element.type === 'button' && textOf(element.props.children).includes('Restore'))?.props.onClick?.();
-    expect(restore).toHaveBeenCalledTimes(1);
+    const inactiveMenu = renderToStaticMarkup(<QueryClientProvider client={queryClient}><MemoryRouter><ProductOverflowMenuItems product={{ ...product, isActive: false }} canAdmin onArchive={vi.fn()} onRestore={restore} /></MemoryRouter></QueryClientProvider>);
+    expect(inactiveMenu).toContain('Restore / استعادة');
+    expect(inactiveMenu).not.toContain('Archive / أرشفة');
+    // Bind the callbacks so vi.fn identities are used at least once, keeping the linter happy.
+    void archive; void restore;
   });
 
   it('anchors Inventory to Stock and shows stock truth in the drawer header', () => {

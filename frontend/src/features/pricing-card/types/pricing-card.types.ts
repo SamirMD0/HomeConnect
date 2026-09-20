@@ -15,6 +15,7 @@ export interface ShopProfile {
   currencyCode: string;
   currencyDisplay: CurrencyDisplayMode;
   defaultPricingCardTemplateId: string | null;
+  categoryDefaultTemplates: Record<string, string | null>;
   defaultCardValidityDays: number;
   snapshotPrintedCards: boolean;
   pricingCardRolloutMode: PricingCardRolloutMode;
@@ -26,9 +27,11 @@ export interface UpdateShopProfileInput {
   currencyCode?: string;
   currencyDisplay?: CurrencyDisplayMode;
   defaultPricingCardTemplateId?: string | null;
+  categoryDefaultTemplates?: Record<string, string | null>;
   defaultCardValidityDays?: number;
   snapshotPrintedCards?: boolean;
   pricingCardRolloutMode?: PricingCardRolloutMode;
+  accountPassword?: string;
 }
 
 export interface UpdateShopProfileLogoInput {
@@ -61,6 +64,19 @@ export interface PricingCardTemplate {
   isActive: boolean;
   archivedAt: string | null;
   archivedReason: string | null;
+}
+
+export interface PricingCardIndexEntry {
+  productId: string;
+  resolvedTemplateId: string | null;
+  missingTemplate: boolean;
+}
+
+export interface PricingCardSpecCatalogItem {
+  key: string;
+  label: string;
+  group: string;
+  unit?: string;
 }
 
 export interface PricingCardFeatureIcon {
@@ -108,6 +124,11 @@ export interface PricingCardBrand {
   canonicalName: string;
   displayName: string;
   hasLogo: boolean;
+  /**
+   * Optional because stored print snapshots predate the field — a live payload
+   * from the server always carries it, `null` when the brand has no artwork.
+   */
+  logoDataUrl?: string | null;
 }
 
 export interface PricingCardFeature {
