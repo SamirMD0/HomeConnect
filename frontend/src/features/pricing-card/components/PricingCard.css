@@ -70,6 +70,104 @@
  * scale. Fixed viewport size keeps the grid tidy across templates of different
  * dimensions.
  */
+/*
+ * Retail-hero (centered) layout. `stack` keeps the classic top-to-bottom
+ * left-aligned card intact; this one flips the composition so the brand mark
+ * dominates the top, the price dominates the middle, and features + sku/
+ * barcode fall to the bottom the way a shelf card actually reads.
+ */
+.pricing-card-centered {
+  display: grid;
+  grid-template-rows: min-content min-content minmax(0, 1fr) min-content min-content min-content;
+  text-align: center;
+  gap: calc(var(--pricing-card-gap) * 0.8);
+}
+.pricing-card-centered-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1mm;
+  padding-top: 1mm;
+}
+.pricing-card-centered .pricing-card-company-logo { max-width: 32%; }
+.pricing-card-centered .pricing-card-brand-mark { justify-content: center; gap: 1.5mm; font-weight: 900; }
+.pricing-card-centered .pricing-card-brand-logo {
+  width: auto;
+  height: calc(var(--pricing-card-brand-logo-size) * 1.6);
+  max-height: 22mm;
+  object-fit: contain;
+}
+.pricing-card-centered .pricing-card-brand-mark > span { font-size: calc(6mm * var(--pricing-card-font-scale)); }
+.pricing-card-centered-divider {
+  height: 0.6mm;
+  border-radius: 0.3mm;
+  background: currentColor;
+  color: #dc2626;
+  margin: 0 5%;
+}
+.pricing-card-centered-body {
+  display: grid;
+  align-content: start;
+  justify-items: center;
+  gap: calc(var(--pricing-card-gap) * 0.5);
+}
+.pricing-card-centered .pricing-card-title {
+  font-size: calc(5mm * var(--pricing-card-title-scale) * var(--pricing-card-font-scale));
+  font-weight: 800;
+  line-height: 1.15;
+  max-width: 96%;
+  text-align: center;
+}
+.pricing-card-centered-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5mm 3mm;
+  font-size: calc(2.4mm * var(--pricing-card-font-scale));
+  color: #374151;
+}
+.pricing-card-centered-model { font-family: "Courier New", monospace; color: #111827; }
+.pricing-card-centered-meta-label { color: #6b7280; }
+.pricing-card-centered .pricing-card-dimensions {
+  font-size: calc(2.4mm * var(--pricing-card-font-scale));
+  color: #4b5563;
+}
+.pricing-card-centered-price {
+  display: grid;
+  justify-items: center;
+  gap: 0.4mm;
+  align-content: center;
+  padding: 0.5mm 0;
+}
+.pricing-card-centered .pricing-card-price {
+  color: #dc2626;
+  font-size: calc(14mm * var(--pricing-card-price-scale));
+  font-weight: 900;
+  line-height: 1;
+}
+.pricing-card-centered .pricing-card-valid-until {
+  color: #6b7280;
+  font-size: calc(2.2mm * var(--pricing-card-font-scale));
+}
+.pricing-card-centered .pricing-card-features {
+  justify-content: center;
+  padding: 0 3mm;
+}
+.pricing-card-centered-footer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 2mm;
+  padding-top: 1mm;
+  border-top: 0.3mm solid #e5e7eb;
+  text-align: left;
+}
+.pricing-card-centered-footer .pricing-card-sku {
+  font-size: calc(2.4mm * var(--pricing-card-font-scale));
+}
+.pricing-card-centered-footer .pricing-card-barcode { margin: 0; }
+
 .pricing-card-thumbnail-viewport {
   position: relative;
   height: 140px;

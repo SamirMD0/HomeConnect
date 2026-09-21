@@ -38,7 +38,7 @@ const defaultConfig: PricingCardTemplateConfig = {
   price: { show: true, fontScale: 1, weight: 800, emphasis: 'plain', prominence: 'large', validUntil: { show: true, format: 'd-mon-y' } },
   sku: { show: true, showSecretCode: true, prefix: 'SKU: ' },
   barcode: { show: true, showDigits: true, targetWidthMm: 40 },
-  appearance: { marginMm: 2, innerGapMm: 1, borderPx: 1, sectionDividers: true, fontScale: 1, orientation: 'portrait' },
+  appearance: { marginMm: 2, innerGapMm: 1, borderPx: 1, sectionDividers: true, fontScale: 1, orientation: 'portrait', layout: 'stack' },
 };
 
 const COLLAPSED_STATE_KEY = 'pricing-card-template-editor:collapsed-sections';

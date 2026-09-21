@@ -69,6 +69,53 @@ export function PricingCard({ template, product, shopProfile, assets = {}, class
   const brandLogoUrl = assets.brandLogoUrl ?? brandLogoUrlOf(product);
   const hasProductImage = config.body.image.show && Boolean(productImageUrl);
   const hasHeader = (config.header.companyLogo.show && Boolean(assets.companyLogoUrl)) || Boolean(product.brand);
+  const layout = config.appearance.layout ?? 'stack';
+  const barcodeBlock = config.barcode.show && (variant === 'thumbnail'
+    ? <div className="pricing-card-barcode-placeholder" aria-hidden style={{ width: `${config.barcode.targetWidthMm}mm`, height: '8mm' }} />
+    : <Barcode value={product.barcodeValue} targetWidthMm={config.barcode.targetWidthMm} showDigits={config.barcode.showDigits} />);
+  const skuBlock = config.sku.show && <Sku sku={product.sku} staffLabelCode={product.staffLabelCode} internalPriceCode={product.internalPriceCode} showSecretCode={config.sku.showSecretCode} prefix={config.sku.prefix} />;
+  const priceBlock = config.price.show && <Price value={product.cashPrice} currency={product.currency} displayOverride={config.price.currencyDisplay} emphasis={config.price.emphasis} prominence={config.price.prominence} />;
+  const validUntilBlock = config.price.validUntil.show && <ValidUntil value={product.validUntil} format={config.price.validUntil.format} />;
+  const featuresBlock = config.features.show && <Features features={product.features} layout={config.features.layout} showLabels={config.features.showLabels} showValues={config.features.showValues} />;
+
+  if (layout === 'centered') {
+    return (
+      <article className={`pricing-card pricing-card-centered ${className}`.trim()} style={style}>
+        {hasHeader && (
+          <header className="pricing-card-centered-header">
+            {config.header.companyLogo.show && Boolean(assets.companyLogoUrl) && <CompanyLogo name={shopProfile.name} logoUrl={assets.companyLogoUrl} />}
+            <BrandMark brand={product.brand} display={config.header.brand.display} logoUrl={brandLogoUrl} />
+          </header>
+        )}
+        <div className="pricing-card-centered-divider" aria-hidden />
+        <section className="pricing-card-centered-body">
+          {config.body.title.show && <Title name={product.name} />}
+          {(config.body.model.show || config.body.specs.show) && (
+            <p className="pricing-card-centered-meta">
+              {config.body.model.show && <span className="pricing-card-centered-model">{config.body.model.prefix ?? 'Model: '}{product.model}</span>}
+              {config.body.specs.show && (product.resolvedSpecs ?? []).slice(0, config.body.specs.maxRows).map((spec) => (
+                <span key={spec.canonicalKey} className="pricing-card-centered-meta-item">
+                  <span className="pricing-card-centered-meta-label">{spec.label}:</span> {spec.value}{spec.unit ? ` ${spec.unit}` : ''}
+                </span>
+              ))}
+            </p>
+          )}
+          {config.body.dimensions.show && <Dimensions dimensions={product.dimensionsMm} />}
+        </section>
+        {(config.price.show || config.price.validUntil.show) && (
+          <div className="pricing-card-centered-price">
+            {priceBlock}
+            {validUntilBlock}
+          </div>
+        )}
+        {featuresBlock}
+        <footer className="pricing-card-centered-footer">
+          {skuBlock}
+          {barcodeBlock}
+        </footer>
+      </article>
+    );
+  }
 
   return (
     <article className={`pricing-card ${config.appearance.sectionDividers ? 'pricing-card-dividers' : ''} ${className}`.trim()} style={style}>
@@ -85,17 +132,15 @@ export function PricingCard({ template, product, shopProfile, assets = {}, class
         </div>
         {hasProductImage && <Image name={product.name} imageUrl={productImageUrl} />}
       </section>
-      {config.features.show && <Features features={product.features} layout={config.features.layout} showLabels={config.features.showLabels} showValues={config.features.showValues} />}
+      {featuresBlock}
       <section className={`pricing-card-price-code pricing-card-price-code-${config.price.prominence}`}>
         <div className="pricing-card-price-region">
-          {config.price.show && <Price value={product.cashPrice} currency={product.currency} displayOverride={config.price.currencyDisplay} emphasis={config.price.emphasis} prominence={config.price.prominence} />}
-          {config.price.validUntil.show && <ValidUntil value={product.validUntil} format={config.price.validUntil.format} />}
+          {priceBlock}
+          {validUntilBlock}
         </div>
         <div className="pricing-card-code-region">
-          {config.barcode.show && (variant === 'thumbnail'
-            ? <div className="pricing-card-barcode-placeholder" aria-hidden style={{ width: `${config.barcode.targetWidthMm}mm`, height: '8mm' }} />
-            : <Barcode value={product.barcodeValue} targetWidthMm={config.barcode.targetWidthMm} showDigits={config.barcode.showDigits} />)}
-          {config.sku.show && <Sku sku={product.sku} staffLabelCode={product.staffLabelCode} internalPriceCode={product.internalPriceCode} showSecretCode={config.sku.showSecretCode} prefix={config.sku.prefix} />}
+          {barcodeBlock}
+          {skuBlock}
         </div>
       </section>
       <Footer tagline={shopProfile.tagline} />

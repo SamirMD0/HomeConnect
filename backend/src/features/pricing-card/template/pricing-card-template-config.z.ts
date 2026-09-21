@@ -18,10 +18,13 @@ export const PricingCardTemplateConfigZ = z.object({
     specs: z.object({ show: z.boolean(), maxRows: z.number().int().min(0).max(40) }).strict(),
     image: z.object({ show: z.boolean(), columnWidthPct: z.number().min(0).max(80) }).strict(),
   }).strict(),
-  features: z.object({ show: z.boolean(), layout: z.enum(['row', 'grid-2x3', 'grid-3x2']), showLabels: z.boolean(), showValues: z.boolean() }).strict(),
+  features: z.object({ show: z.boolean(), layout: z.enum(['row', 'grid-chip']), showLabels: z.boolean(), showValues: z.boolean() }).strict(),
   price: z.object({
     show: z.boolean(), fontScale: positiveScale, weight: z.union([z.literal(500), z.literal(700), z.literal(800), z.literal(900)]),
     emphasis: z.enum(['plain', 'boxed', 'underlined']), currencyDisplay: z.enum(['SYMBOL', 'CODE', 'SYMBOL_AND_CODE']).optional(),
+    // Defaulted, not optional: every config stored before v2.1.0 predates the
+    // field, and 'normal' is the 6 mm base those templates were drawn against.
+    prominence: z.enum(['normal', 'large', 'hero']).default('normal'),
     validUntil: z.object({ show: z.boolean(), format: z.enum(['dmy', 'd-mon-y', 'iso']) }).strict(),
   }).strict(),
   sku: z.object({ show: z.boolean(), showSecretCode: z.boolean(), prefix: z.string().max(40) }).strict(),
@@ -30,6 +33,10 @@ export const PricingCardTemplateConfigZ = z.object({
     marginMm: z.number().min(0).max(30), innerGapMm: z.number().min(0).max(30),
     borderPx: z.union([z.literal(0), z.literal(1), z.literal(2)]), sectionDividers: z.boolean(), fontScale: positiveScale,
     orientation: z.enum(['portrait', 'landscape']),
+    // See the frontend twin. `stack` keeps the classic look; `centered`
+    // switches to the retail-hero layout (brand hero at top, features under
+    // the price hero).
+    layout: z.enum(['stack', 'centered']).default('stack'),
   }).strict(),
   specKeyAliases: z.record(z.string(), z.array(z.string().trim().min(1).max(120)).max(40)).optional(),
 }).strict().refine((value) => Buffer.byteLength(JSON.stringify(value), 'utf8') <= MAX_TEMPLATE_CONFIG_BYTES, {

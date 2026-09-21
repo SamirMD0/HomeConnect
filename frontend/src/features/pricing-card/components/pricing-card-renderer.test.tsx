@@ -50,6 +50,7 @@ const shopProfile: import('../types/pricing-card.types').ShopProfile = {
   currencyCode: 'USD',
   currencyDisplay: 'SYMBOL' as const,
   defaultPricingCardTemplateId: 'tv-large',
+  categoryDefaultTemplates: {},
   defaultCardValidityDays: 30,
   snapshotPrintedCards: true,
   pricingCardRolloutMode: 'BOTH' as const,
@@ -80,10 +81,48 @@ describe('PricingCard renderer', () => {
     for (const feature of pricingCardSamples[0].product.features ?? []) expect(html).toContain(feature.label);
     expect(html).toContain('<svg');
     expect(html).toContain('Valid until');
+    expect(html).toContain('pricing-card-features-grid-chip');
+  });
+
+  it('renders the borderless row layout with its explicit layout class', () => {
+    const rowTemplate = {
+      ...templates[0],
+      config: {
+        ...templates[0].config,
+        features: { ...templates[0].config.features, layout: 'row' as const },
+      },
+    };
+    expect(render(rowTemplate, 0)).toContain('pricing-card-features-row');
+  });
+
+  // VISUAL_DESIGN §4: the tier picks the base size and `price.fontScale` still
+  // multiplies it. TV Large ships at scale 1, so hero lands on the spec's 14 mm.
+  describe('price prominence', () => {
+    // Force the stack layout: the prominence classes live on the stack-layout
+    // price/code region. The centered layout uses its own price container.
+    const atProminence = (prominence: 'normal' | 'large' | 'hero') => renderToStaticMarkup(
+      <PricingCard
+        template={{ ...templates[0], config: { ...templates[0].config, price: { ...templates[0].config.price, prominence }, appearance: { ...templates[0].config.appearance, layout: 'stack' } } }}
+        product={pricingCardSamples[0].product}
+        shopProfile={shopProfile}
+        assets={pricingCardSamples[0].assets}
+      />,
+    );
+
+    it.each(['normal', 'large', 'hero'] as const)('renders TV Large at the %s tier', (prominence) => {
+      const html = atProminence(prominence);
+      expect(html).toContain(`pricing-card-price-${prominence}`);
+      expect(html).toContain(`pricing-card-price-code pricing-card-price-code-${prominence}`);
+      expect(html).toMatchSnapshot();
+    });
   });
 
   it('collapses absent optional blocks without invalid inline values', () => {
-    const html = render(templates[0], 4);
+    // Pin the stack layout so the assertion talks about the classic block markup.
+    const stackTv = { ...templates[0], config: { ...templates[0].config, appearance: { ...templates[0].config.appearance, layout: 'stack' as const } } };
+    const html = renderToStaticMarkup(
+      <PricingCard template={stackTv} product={pricingCardSamples[4].product} shopProfile={shopProfile} assets={pricingCardSamples[4].assets} />,
+    );
     expect(html).not.toContain('pricing-card-dimensions');
     expect(html).not.toContain('pricing-card-features');
     expect(html).not.toContain('<img class="pricing-card-image"');
