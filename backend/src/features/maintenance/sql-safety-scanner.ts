@@ -126,16 +126,19 @@ const PRICE_PROMINENCE_VALUES = [
 ];
 
 /**
- * Migration 20260921100000_switch_tv_large_to_centered_layout. Reviewed and
+ * Migrations 20260921100000_switch_tv_large_to_centered_layout and
+ * 20260921110000_switch_appliance_shelf_to_centered_layout. Reviewed and
  * allowed for the same reasons as the visual-refresh siblings above: pinned
- * to the single seeded TV Large template id, writes exactly one known
+ * to one of the two seeded shelf template ids, writes exactly one known
  * `appearance.layout` key, and guarded on that key being absent — so an
- * admin who has already picked a layout is never overwritten.
+ * admin who has already picked a layout is never overwritten. The same
+ * shape and values apply to both migrations because they only differ in
+ * which of the two seeded ids they touch.
  */
-const TV_LARGE_CENTERED_LAYOUT_SHAPE = /^\s*UPDATE\s+"?pricing_card_templates"?\s+SET\s+"?config"?\s*=\s*jsonb_set\(\s*"?config"?\s*,\s*''\s*,\s*''::jsonb\s*,\s*true\s*\)\s*WHERE\s+"?id"?\s*=\s*''\s+AND\s+"?config"?\s*#>>\s*''\s+IS\s+NULL\s*$/i;
-const TV_LARGE_CENTERED_LAYOUT_VALUES = [
+const CENTERED_LAYOUT_SWITCH_SHAPE = /^\s*UPDATE\s+"?pricing_card_templates"?\s+SET\s+"?config"?\s*=\s*jsonb_set\(\s*"?config"?\s*,\s*''\s*,\s*''::jsonb\s*,\s*true\s*\)\s*WHERE\s+"?id"?\s*=\s*''\s+AND\s+"?config"?\s*#>>\s*''\s+IS\s+NULL\s*$/i;
+const CENTERED_LAYOUT_SWITCH_VALUES = [
   /'\{appearance,layout\}'\s*,\s*'"centered"'::jsonb\s*,\s*true/i,
-  /'20000000-0000-4000-8000-000000000001'/i,
+  /'20000000-0000-4000-8000-00000000000[12]'/i,
   /"?config"?\s*#>>\s*'\{appearance,layout\}'\s+IS\s+NULL/i,
 ];
 
@@ -220,8 +223,9 @@ function isPermittedUpdate(cleaned: string, original: string): boolean {
   if (PRICE_PROMINENCE_SHAPE.test(cleaned) && PRICE_PROMINENCE_VALUES.every((rule) => rule.test(original))) return true;
   // Header mark sizes for the same two templates, guarded on the shipped sizes.
   if (HEADER_MARK_SIZE_SHAPE.test(cleaned) && HEADER_MARK_SIZE_VALUES.every((rule) => rule.test(original))) return true;
-  // TV Large centered-layout switch — pinned to the one seeded id, guarded on absence.
-  if (TV_LARGE_CENTERED_LAYOUT_SHAPE.test(cleaned) && TV_LARGE_CENTERED_LAYOUT_VALUES.every((rule) => rule.test(original))) return true;
+  // Centered-layout switch for either shipped shelf template — pinned to one of
+  // the two seeded ids, guarded on absence of the layout key.
+  if (CENTERED_LAYOUT_SWITCH_SHAPE.test(cleaned) && CENTERED_LAYOUT_SWITCH_VALUES.every((rule) => rule.test(original))) return true;
 
   const match = /\bSET\b([\s\S]+?)\bWHERE\b([\s\S]+)$/i.exec(cleaned);
   if (!match) return false;

@@ -81,7 +81,10 @@ describe('PricingCard renderer', () => {
     for (const feature of pricingCardSamples[0].product.features ?? []) expect(html).toContain(feature.label);
     expect(html).toContain('<svg');
     expect(html).toContain('Valid until');
-    expect(html).toContain('pricing-card-features-grid-chip');
+    // TV Large ships on the centered retail-hero layout; the reference feature
+    // strip is the borderless row with vertical rules, not the grid-chip badges.
+    expect(html).toContain('pricing-card-centered');
+    expect(html).toContain('pricing-card-features-row');
   });
 
   it('renders the borderless row layout with its explicit layout class', () => {

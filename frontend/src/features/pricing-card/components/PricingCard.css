@@ -119,18 +119,37 @@
   max-width: 96%;
   text-align: center;
 }
+/*
+ * Meta row = Model on the left, first spec on the right, with a dotted rule
+ * below that acts as the section separator the reference asks for. Grid so
+ * the two ends stay pinned to the card edges regardless of copy length.
+ */
 .pricing-card-centered-meta {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.5mm 3mm;
-  font-size: calc(2.4mm * var(--pricing-card-font-scale));
-  color: #374151;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: baseline;
+  gap: 2mm;
+  padding-bottom: 1mm;
+  border-bottom: 0.25mm dotted #9ca3af;
+  font-size: calc(3mm * var(--pricing-card-font-scale));
+  color: #111827;
 }
-.pricing-card-centered-model { font-family: "Courier New", monospace; color: #111827; }
-.pricing-card-centered-meta-label { color: #6b7280; }
+.pricing-card-centered-model { justify-self: start; color: #111827; }
+.pricing-card-centered-spec { justify-self: end; color: #111827; }
+.pricing-card-centered-spec-list {
+  display: grid;
+  gap: 0.4mm;
+  font-size: calc(2.8mm * var(--pricing-card-font-scale));
+}
+.pricing-card-centered-spec-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: baseline;
+}
+.pricing-card-centered-spec-row dt { color: #4b5563; text-align: left; }
+.pricing-card-centered-spec-row dd { color: #111827; font-weight: 700; text-align: right; margin: 0; }
 .pricing-card-centered .pricing-card-dimensions {
-  font-size: calc(2.4mm * var(--pricing-card-font-scale));
+  font-size: calc(2.6mm * var(--pricing-card-font-scale));
   color: #4b5563;
 }
 .pricing-card-centered-price {
@@ -150,10 +169,38 @@
   color: #6b7280;
   font-size: calc(2.2mm * var(--pricing-card-font-scale));
 }
+/*
+ * Reference-style feature strip: even columns, each with icon over label,
+ * plain (no chip border), with hairline vertical rules between them so the
+ * four badges read as one banded row. Overrides the badge-chip look the
+ * classic layout uses.
+ */
 .pricing-card-centered .pricing-card-features {
-  justify-content: center;
-  padding: 0 3mm;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  justify-content: stretch;
+  gap: 0;
+  padding: 1mm 2mm;
+  border-top: 0.25mm solid #e5e7eb;
+  border-bottom: 0.25mm solid #e5e7eb;
 }
+.pricing-card-centered .pricing-card-feature {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6mm;
+  padding: 0 2mm;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  text-align: center;
+}
+.pricing-card-centered .pricing-card-feature + .pricing-card-feature {
+  border-left: 0.25mm solid #e5e7eb;
+}
+.pricing-card-centered .pricing-card-feature-icon { width: 7mm; height: 7mm; flex: 0 0 7mm; }
+.pricing-card-centered .pricing-card-feature-copy strong { font-weight: 600; }
 .pricing-card-centered-footer {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

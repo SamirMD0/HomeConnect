@@ -79,6 +79,9 @@ export function PricingCard({ template, product, shopProfile, assets = {}, class
   const featuresBlock = config.features.show && <Features features={product.features} layout={config.features.layout} showLabels={config.features.showLabels} showValues={config.features.showValues} />;
 
   if (layout === 'centered') {
+    const specRows = config.body.specs.show ? (product.resolvedSpecs ?? []).slice(0, config.body.specs.maxRows) : [];
+    const firstSpec = specRows[0];
+    const restSpecs = specRows.slice(1);
     return (
       <article className={`pricing-card pricing-card-centered ${className}`.trim()} style={style}>
         {hasHeader && (
@@ -90,15 +93,25 @@ export function PricingCard({ template, product, shopProfile, assets = {}, class
         <div className="pricing-card-centered-divider" aria-hidden />
         <section className="pricing-card-centered-body">
           {config.body.title.show && <Title name={product.name} />}
-          {(config.body.model.show || config.body.specs.show) && (
-            <p className="pricing-card-centered-meta">
-              {config.body.model.show && <span className="pricing-card-centered-model">{config.body.model.prefix ?? 'Model: '}{product.model}</span>}
-              {config.body.specs.show && (product.resolvedSpecs ?? []).slice(0, config.body.specs.maxRows).map((spec) => (
-                <span key={spec.canonicalKey} className="pricing-card-centered-meta-item">
-                  <span className="pricing-card-centered-meta-label">{spec.label}:</span> {spec.value}{spec.unit ? ` ${spec.unit}` : ''}
-                </span>
+          {(config.body.model.show || firstSpec) && (
+            <div className="pricing-card-centered-meta">
+              {config.body.model.show
+                ? <span className="pricing-card-centered-model">{config.body.model.prefix ?? 'Model: '}{product.model}</span>
+                : <span aria-hidden />}
+              {firstSpec
+                ? <span className="pricing-card-centered-spec">{firstSpec.label}: {firstSpec.value}{firstSpec.unit ? ` ${firstSpec.unit}` : ''}</span>
+                : <span aria-hidden />}
+            </div>
+          )}
+          {restSpecs.length > 0 && (
+            <dl className="pricing-card-centered-spec-list">
+              {restSpecs.map((spec) => (
+                <div key={spec.canonicalKey} className="pricing-card-centered-spec-row">
+                  <dt>{spec.label}</dt>
+                  <dd>{spec.value}{spec.unit ? ` ${spec.unit}` : ''}</dd>
+                </div>
               ))}
-            </p>
+            </dl>
           )}
           {config.body.dimensions.show && <Dimensions dimensions={product.dimensionsMm} />}
         </section>
