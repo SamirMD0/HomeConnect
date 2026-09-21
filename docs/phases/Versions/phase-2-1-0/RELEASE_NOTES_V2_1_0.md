@@ -91,6 +91,51 @@ The shop profile carries a `pricingCardRolloutMode` with three options:
 Flip the mode from Settings → Shop profile → Rollout mode. Each save goes
 through the admin-password chain and is audited under `SHOP_PROFILE`.
 
+## Professionalization pass
+
+Shipped on top of the initial v2.1.0 feature set to close the gaps hands-on
+testing turned up (see
+[.claude/v2.0.1-pricing-card-system-professionalization/](.claude/v2.0.1-pricing-card-system-professionalization/)):
+
+- **Daily browse-and-print tab.** `/pricing-cards` is now tabbed (Cards /
+  Templates / Assets) with Cards as the default landing. The Cards tab
+  lists every active product with a resolved thumbnail, filters (search,
+  brand, template, missing-template only), and a one-click Print button
+  that opens the print page with the resolved template already picked.
+  The tab is hidden in `LEGACY_ONLY` mode; the landing falls back to
+  Templates so admins can still configure.
+- **Category-aware default templates.** A new resolver picks a template
+  per product from `product override → category default →
+  ShopProfile.defaultPricingCardTemplateId → first active`. Admins map
+  categories to templates from the Templates tab. The map lives in
+  `ShopProfile.categoryDefaultTemplates` and the per-product override on
+  `Product.pricingCardTemplateId` — both additive columns.
+- **Sticky preview + collapsible groups in the template editor.** The 11
+  flat sections are now 9 collapsible `<details>` groups (Layout, Header,
+  Product info, Features, Price, Barcode & SKU, Validity, Appearance,
+  Advanced), each remembering its open/collapsed state per group.
+  The right-hand preview aside sticks at the top when scrolling.
+- **Spec-key picker.** Replaces the raw comma-separated canonical-key
+  input with a two-column controlled selector fed from
+  `/pricing-card-templates/spec-catalog`.
+- **Feature icon refresh + de-chip.** 17 curated filled/duotone icons
+  replace the placeholder outlines; the mandatory 1 px badge border
+  around every feature is retired. Templates opt into a `row` layout
+  (no chip) or `grid-chip` (background chip) via
+  `features.layout`.
+- **Brand renderer fix.** `brand.logoDataUrl` now travels on the template
+  payload; `<BrandMark>` renders the logo when present, the text when it
+  is not, and never doubles.
+- **Hero price prominence.** New `price.prominence: normal | large | hero`
+  control lets templates render `$436` as the visually dominant element
+  on the card. TV Large and Appliance Shelf ship as `hero`.
+- **Product row action.** The Products list row overflow now offers
+  "Pricing card / بطاقة السعر" alongside "Print label", both rollout-gated.
+
+Every professionalization change is admin-password verified where a mutation
+lands, and audited under the same `ServiceAudit` record types the initial
+v2.1.0 introduced.
+
 ## Migrations
 
 All additive, all deployed by `npx prisma migrate deploy`:
@@ -124,19 +169,44 @@ Automated tests cover the payload, geometry, sanitizer, and template
 config. Physical print + scan is a manual gate that only the operator can
 close. Do not ship this release until every row is a pass.
 
-| # | Template | Stock / Printer | Barcodes to scan | Result |
-|---|---|---|---|---|
-| 1 | TV Large Card | XP-80T · 148 × 105 mm | one barcode, 5 cm and 20 cm | ☐ |
-| 2 | Appliance Shelf Card | XP-80T · 105 × 74 mm | one barcode, 5 cm and 20 cm | ☐ |
-| 3 | Compact Legacy 58 × 40 | XP-80T thermal roll | one barcode, 5 cm and 20 cm | ☐ |
-| 4 | Legacy Large 72 × 50 | XP-80T thermal roll | one barcode, 5 cm and 20 cm | ☐ |
-| 5 | Any sheet template | Office A4 printer | twelve barcodes on one page | ☐ |
-| 6 | Compact Legacy vs. current `ProductLabel` | XP-80T, side-by-side | visual comparison — "indistinguishable" | ☐ |
-| 7 | Legacy Large vs. current `ProductLabel` | XP-80T, side-by-side | visual comparison — "indistinguishable" | ☐ |
+| #  | Template | Stock / Printer | Check | Result |
+|----|---|---|---|---|
+| 1  | TV Large Card | XP-80T · 148 × 105 mm | one barcode scans at 5 cm and 20 cm | ☐ |
+| 2  | Appliance Shelf Card | XP-80T · 105 × 74 mm | one barcode scans at 5 cm and 20 cm | ☐ |
+| 3  | Compact Legacy 58 × 40 | XP-80T thermal roll | one barcode scans at 5 cm and 20 cm | ☐ |
+| 4  | Legacy Large 72 × 50 | XP-80T thermal roll | one barcode scans at 5 cm and 20 cm | ☐ |
+| 5  | Any sheet template | Office A4 printer | twelve barcodes on one page all scan | ☐ |
+| 6  | Compact Legacy vs. current `ProductLabel` | XP-80T, side-by-side | visual comparison — "indistinguishable" | ☐ |
+| 7  | Legacy Large vs. current `ProductLabel` | XP-80T, side-by-side | visual comparison — "indistinguishable" | ☐ |
+| 8  | TV Large Card, hero price | XP-80T · 148 × 105 mm | price reads as the visually dominant element from ~1 m | ☐ |
+| 9  | Appliance Shelf Card, `row` features | XP-80T · 105 × 74 mm | four feature icons render with labels, no badge border | ☐ |
+| 10 | Appliance Shelf Card, `grid-chip` features | XP-80T · 105 × 74 mm | six feature icons render inside chips, three per row | ☐ |
+| 11 | Brand mark — `text` mode | any template | brand name renders once, no image slot | ☐ |
+| 12 | Brand mark — `logo` mode with a registered logo | any template | brand logo renders alone, no text | ☐ |
+| 13 | Brand mark — `logo+text` mode with a registered logo | any template | logo + text both render, once each | ☐ |
+| 14 | Brand mark — `logo` mode with NO registered logo | any template | falls back to text once, never renders "TCL TCL" | ☐ |
+| 15 | Category default resolver | Products with three categories | each category prints with its assigned default template | ☐ |
+| 16 | Per-product template override | one product override | override wins over category default | ☐ |
+| 17 | Missing-template warning | Cards tab | products with no resolvable template show an amber "Missing template" chip | ☐ |
+| 18 | Sticky editor preview | template editor at 1280 px | preview stays in view after scrolling past Appearance | ☐ |
+| 19 | Rollout mode `LEGACY_ONLY` | Cards tab | Cards tab hidden; direct `/products/:id/pricing-card` redirects | ☐ |
+| 20 | Rollout mode `TEMPLATE_ONLY` | Products page | Print label row action hidden; direct `/products/:id/label` redirects | ☐ |
 
 Every scan must succeed on the first try. Every visual comparison must be
 called indistinguishable by the operator. Record the outcome above and
 attach photographs of any failure to the ticket that blocks the release.
+
+## Screenshots (pending)
+
+Attach authenticated screenshots to
+`docs/phases/Versions/phase-2-1-0/screenshots/` before merge:
+
+- `cards-tab.png` — Cards tab with at least six products.
+- `template-editor-sticky.png` — Template editor scrolled to the Appearance
+  group with the preview visible.
+- `cards-tab-missing-template.png` — Missing-template chip visible.
+- `brand-logo-modes.png` — Header side-by-side across the three brand modes.
+- `hero-price.png` — TV Large Card with a real product, printed and photographed.
 
 ## Upgrade
 

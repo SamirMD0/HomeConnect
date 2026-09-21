@@ -4,6 +4,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { PricingCardThumbnail } from '../../features/pricing-card/components/PricingCardThumbnail';
 import { usePricingCardIndex } from '../../features/pricing-card/hooks/usePricingCardIndex';
 import { usePricingCardTemplates } from '../../features/pricing-card/hooks/usePricingCardTemplates';
+import { useRolloutMode } from '../../features/pricing-card/hooks/useRolloutMode';
 import { useShopProfile } from '../../features/pricing-card/hooks/useShopProfile';
 import { useProductBrands, useProducts } from '../../features/products/hooks/useProducts';
 import type { PricingCardData, PricingCardTemplate } from '../../features/pricing-card/types/pricing-card.types';
@@ -34,7 +35,12 @@ const assetSections = [
 
 export function PricingCardsPage() {
   const [params, setParams] = useSearchParams();
-  const tab = normalizeTab(params.get('tab'));
+  const rollout = useRolloutMode();
+  // The Cards tab is a print entry point and must respect the shop rollout mode.
+  // In LEGACY_ONLY mode the tab is hidden entirely and the landing defaults to
+  // Templates so admins can still edit; Assets stays for the catalogs.
+  const requested = normalizeTab(params.get('tab'));
+  const tab: Tab = requested === 'cards' && !rollout.pricingCardEnabled ? 'templates' : requested;
   const setTab = (next: Tab) => setParams((current) => {
     const merged = new URLSearchParams(current);
     if (next === 'cards') merged.delete('tab'); else merged.set('tab', next);
@@ -51,7 +57,7 @@ export function PricingCardsPage() {
       </div>
 
       <nav role="tablist" aria-label="Pricing cards sections" className="flex gap-1 border-b border-slate-200">
-        <TabButton active={tab === 'cards'} label="Cards" onClick={() => setTab('cards')} />
+        {rollout.pricingCardEnabled && <TabButton active={tab === 'cards'} label="Cards" onClick={() => setTab('cards')} />}
         <TabButton active={tab === 'templates'} label="Templates" onClick={() => setTab('templates')} />
         <TabButton active={tab === 'assets'} label="Assets" onClick={() => setTab('assets')} />
       </nav>

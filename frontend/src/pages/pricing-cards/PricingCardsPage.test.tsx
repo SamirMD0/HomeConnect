@@ -27,6 +27,14 @@ vi.mock('../../features/pricing-card/hooks/usePricingCardTemplates', () => ({
 vi.mock('../../features/pricing-card/hooks/usePricingCardIndex', () => ({
   usePricingCardIndex: () => ({ data: state.index, isLoading: false, isError: false }),
 }));
+vi.mock('../../features/pricing-card/hooks/useRolloutMode', () => ({
+  useRolloutMode: () => ({
+    mode: state.profile?.pricingCardRolloutMode ?? 'BOTH',
+    legacyEnabled: state.profile?.pricingCardRolloutMode !== 'TEMPLATE_ONLY',
+    pricingCardEnabled: state.profile?.pricingCardRolloutMode !== 'LEGACY_ONLY',
+    isLoading: false,
+  }),
+}));
 
 const template = (overrides: Partial<PricingCardTemplate> = {}): PricingCardTemplate => ({
   id: 'template-tv', name: 'TV Large Card', description: null, paperMode: 'SINGLE_STICKER', paperSize: null,
@@ -118,6 +126,16 @@ describe('PricingCardsPage', () => {
     expect(html).toContain('href="/products/a/pricing-card"');
     expect(html).toContain('href="/products/b/pricing-card"');
     expect(html).toContain('Missing template');
+  });
+
+  it('hides the Cards tab and falls back to Templates when the shop is in LEGACY_ONLY mode', () => {
+    state.profile = { ...profile, pricingCardRolloutMode: 'LEGACY_ONLY' };
+    state.templates = [template()];
+    const html = renderPage();
+    expect(html).not.toContain('>Cards<');
+    expect(html).toContain('>Templates<');
+    expect(html).toContain('>Assets<');
+    expect(html).toMatch(/aria-selected="true"[^>]*>Templates</);
   });
 
   it('applies the missing-template filter through the resolver index', () => {
