@@ -261,7 +261,13 @@ export function PricingCardTemplateEditorPage() {
             <Field label="Default validity days (overrides shop default)"><input type="number" min={0} max={3650} value={form.defaultValidityDays ?? ''} onChange={(event) => setForm((current) => ({ ...current, defaultValidityDays: event.target.value === '' ? null : Number(event.target.value) || 0 }))} className={inputClass} /></Field>
           </Group>
 
-          <Group id="appearance" title="Appearance" hint="Margins, border, dividers, and orientation.">
+          <Group id="appearance" title="Appearance" hint="Layout, margins, border, dividers, and orientation.">
+            <Field label="Layout">
+              <select value={form.config.appearance.layout} onChange={(event) => setConfigPart(setForm, 'appearance', (a) => ({ ...a, layout: event.target.value as 'stack' | 'centered' }))} className={inputClass}>
+                <option value="stack">Stack — classic block layout</option>
+                <option value="centered">Centered — retail-hero layout</option>
+              </select>
+            </Field>
             <Field label="Margin (mm)"><input type="number" min={0} max={30} value={form.config.appearance.marginMm} onChange={(event) => setConfigPart(setForm, 'appearance', (a) => ({ ...a, marginMm: Number(event.target.value) || 0 }))} className={inputClass} /></Field>
             <Field label="Inner gap (mm)"><input type="number" min={0} max={30} value={form.config.appearance.innerGapMm} onChange={(event) => setConfigPart(setForm, 'appearance', (a) => ({ ...a, innerGapMm: Number(event.target.value) || 0 }))} className={inputClass} /></Field>
             <Field label="Border (px)">
