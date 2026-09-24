@@ -3,9 +3,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Save } from 'lucide-react';
 import { useProduct, useUpdateProduct } from '../../products/hooks/useProducts';
-import { ProductSpecificationsEditor } from '../../products/components/ProductSpecificationsEditor';
 import type { ProductSpecification } from '../../products/types/product.types';
 import { pricingCardKeys } from '../hooks/usePricingCard';
+import { CanonicalSpecEditor } from './CanonicalSpecEditor';
 
 /**
  * Inline "edit the product data" panel shown next to the pricing-card preview.
@@ -81,16 +81,16 @@ export function InlineProductEditor({ productId }: { productId: string }) {
           <input type="text" value={model} onChange={(event) => setModel(event.target.value)} className={inputClass} maxLength={120} />
         </label>
       </div>
-      <ProductSpecificationsEditor
+      <CanonicalSpecEditor
         value={specifications}
         notes={specificationNotes}
         onChange={setSpecifications}
         onNotesChange={setSpecificationNotes}
       />
       <p className="text-xs text-slate-500">
-        Dimensions on the card come from spec rows with the canonical keys the template asks for
-        (e.g. <code>Width</code>, <code>Height</code>, <code>Depth</code> in mm, or
-        <code>Dimensions</code> as <code>W × H × D mm</code>).
+        Dimensions on the card come from a spec row keyed as <code>Dimensions</code> with
+        a <code>W × H × D mm</code> value — pick <em>Dimensions</em> from the dropdown so the
+        template can find the row.
       </p>
       <div className="flex items-center gap-3">
         <button

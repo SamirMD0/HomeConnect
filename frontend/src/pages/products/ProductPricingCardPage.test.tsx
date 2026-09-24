@@ -22,6 +22,10 @@ vi.mock('../../hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'user-1', 
 vi.mock('../../features/pricing-card/hooks/useShopProfile', () => ({ useShopProfile: () => ({ data: profile, isLoading: false }) }));
 vi.mock('../../features/pricing-card/hooks/usePricingCardTemplates', () => ({
   usePricingCardTemplates: () => ({ data: [template], isLoading: false }),
+  usePricingCardSpecCatalog: () => ({ data: [
+    { key: 'dimensions', label: 'Dimensions', group: 'Physical' },
+    { key: 'screen_size', label: 'Screen size', group: 'Display', unit: 'inch' },
+  ], isLoading: false }),
 }));
 vi.mock('../../features/pricing-card/hooks/usePricingCard', () => ({
   usePricingCard: () => state.card,
