@@ -142,4 +142,9 @@ describe('ProductPricingCardPage', () => {
     // The panel body is present in the DOM even when the <details> element is closed.
     expect(html).toContain('Loading product data');
   });
+
+  it('does not warn about thermal print when the template is a color template', () => {
+    // TV Large ships with palette 'color', so the amber thermal warning must not fire.
+    expect(renderPage()).not.toContain('Thermal template');
+  });
 });

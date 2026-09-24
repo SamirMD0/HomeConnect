@@ -9,6 +9,7 @@ import { canPrintLabelsDirectly } from '../../features/products/utils/print-labe
 import { parseManualDiscountStages } from '../../features/products/utils/discount-stages';
 import { FeatureHighlightPicker } from '../../features/pricing-card/components/FeatureHighlightPicker';
 import { InlineProductEditor } from '../../features/pricing-card/components/InlineProductEditor';
+import { ThermalPrintWarning } from '../../features/pricing-card/components/ThermalPrintWarning';
 import { brandLogoUrlOf } from '../../features/pricing-card/components/PricingCard';
 import { PricingCardControls } from '../../features/pricing-card/components/PricingCardControls';
 import { PricingCardPage } from '../../features/pricing-card/components/PricingCardPage';
@@ -106,6 +107,7 @@ export function ProductPricingCardPage() {
       <div className="mt-3"><InlineProductEditor productId={id} /></div>
     </details>
     {user?.role === 'ADMIN' && secretConfig.data?.settings?.showCodeOnLabel && <LabelSecretPrintControls config={secretConfig.data} pricingPresetId={pricingPresetId} encodingPresetId={encodingPresetId} password={password} manualStages={manualStages} manualStagesEnabled={manualStagesEnabled} onPricingPresetChange={setPricingPresetId} onEncodingPresetChange={setEncodingPresetId} onPasswordChange={setPassword} onManualStagesChange={setManualStages} onManualStagesEnabledChange={setManualStagesEnabled} onApply={applySecret} pending={secret.isPending} preview={payload ? secretControlsPreview(payload) : undefined} />}
+    <ThermalPrintWarning template={selectedTemplate} />
     <BrowserPrintHint />
     <ProductLabelWarnings warnings={(result?.warnings ?? []) as never[]} />
     {card.isLoading && <p className="p-8 text-center text-slate-500">Loading pricing card…</p>}
