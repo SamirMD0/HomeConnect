@@ -7,7 +7,6 @@ import { LabelSecretPrintControls } from '../../features/products/components/Lab
 import { ProductLabelWarnings } from '../../features/products/components/ProductLabelWarnings';
 import { canPrintLabelsDirectly } from '../../features/products/utils/print-labels';
 import { parseManualDiscountStages } from '../../features/products/utils/discount-stages';
-import { FeatureHighlightPicker } from '../../features/pricing-card/components/FeatureHighlightPicker';
 import { PricingCardEditModal } from '../../features/pricing-card/components/PricingCardEditModal';
 import { ThermalPrintWarning } from '../../features/pricing-card/components/ThermalPrintWarning';
 import { brandLogoUrlOf } from '../../features/pricing-card/components/PricingCard';
@@ -112,13 +111,16 @@ export function ProductPricingCardPage() {
       </button>
     </div>
     <PricingCardControls templates={activeTemplates} selectedTemplateId={selectedTemplateId} copies={copies} validUntil={validUntil} disabled={!ready} cardCount={cards.length} onTemplateChange={changeTemplate} onCopiesChange={setCopies} onValidUntilChange={setValidUntilOverride} onPrint={print} />
-    <FeatureHighlightPicker features={features} selectedCodes={selectedCodes} max={selectedTemplate?.featureMax ?? 0} onToggle={(code) => setSelectedFeatures(toggleFeatureSelection(selectedCodes, code))} onReset={() => setSelectedFeatures(null)} />
     <PricingCardEditModal
       isOpen={editOpen}
       onClose={() => setEditOpen(false)}
       productId={id}
       template={selectedTemplate}
       validUntil={validUntil}
+      features={features}
+      selectedFeatureCodes={selectedCodes}
+      onToggleFeature={(code) => setSelectedFeatures(toggleFeatureSelection(selectedCodes, code))}
+      onResetFeatures={() => setSelectedFeatures(null)}
       onOverridesSaved={setOverrides}
     />
     {user?.role === 'ADMIN' && secretConfig.data?.settings?.showCodeOnLabel && <LabelSecretPrintControls config={secretConfig.data} pricingPresetId={pricingPresetId} encodingPresetId={encodingPresetId} password={password} manualStages={manualStages} manualStagesEnabled={manualStagesEnabled} onPricingPresetChange={setPricingPresetId} onEncodingPresetChange={setEncodingPresetId} onPasswordChange={setPassword} onManualStagesChange={setManualStages} onManualStagesEnabledChange={setManualStagesEnabled} onApply={applySecret} pending={secret.isPending} preview={payload ? secretControlsPreview(payload) : undefined} />}

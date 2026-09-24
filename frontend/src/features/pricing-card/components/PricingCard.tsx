@@ -56,9 +56,11 @@ export function PricingCard({ template, product, shopProfile, assets = {}, class
     '--pricing-card-border': `${config.appearance.borderPx}px`,
     '--pricing-card-font-scale': config.appearance.fontScale,
     '--pricing-card-title-scale': config.body.title.fontScale,
+    '--pricing-card-details-scale': config.body.detailsFontScale,
     '--pricing-card-title-lines': config.body.title.maxLines,
     '--pricing-card-image-width': `${config.body.image.columnWidthPct}%`,
     '--pricing-card-price-scale': config.price.fontScale,
+    '--pricing-card-sku-scale': config.sku.fontScale ?? 1,
     '--pricing-card-price-weight': config.price.weight,
     '--pricing-card-company-logo-size': `${config.header.companyLogo.sizeMm}mm`,
     '--pricing-card-brand-logo-size': `${config.header.brand.sizeMm}mm`,
@@ -71,6 +73,7 @@ export function PricingCard({ template, product, shopProfile, assets = {}, class
   const hasHeader = (config.header.companyLogo.show && Boolean(assets.companyLogoUrl)) || Boolean(product.brand);
   const layout = config.appearance.layout ?? 'stack';
   const palette = config.appearance.palette ?? 'color';
+  const detailsClass = config.body.detailsBoldBlack ? ' pricing-card-details-bold' : '';
   const barcodeBlock = config.barcode.show && (variant === 'thumbnail'
     ? <div className="pricing-card-barcode-placeholder" aria-hidden style={{ width: `${config.barcode.targetWidthMm}mm`, height: '8mm' }} />
     : <Barcode value={product.barcodeValue} targetWidthMm={config.barcode.targetWidthMm} showDigits={config.barcode.showDigits} />);
@@ -78,13 +81,18 @@ export function PricingCard({ template, product, shopProfile, assets = {}, class
   const priceBlock = config.price.show && <Price value={product.cashPrice} currency={product.currency} displayOverride={config.price.currencyDisplay} emphasis={config.price.emphasis} prominence={config.price.prominence} />;
   const validUntilBlock = config.price.validUntil.show && <ValidUntil value={product.validUntil} format={config.price.validUntil.format} />;
   const featuresBlock = config.features.show && <Features features={product.features} layout={config.features.layout} showLabels={config.features.showLabels} showValues={config.features.showValues} />;
+  // Dimensions have their own compact W × H × D block. When that block is on,
+  // do not render the same canonical value again as a two-column spec row.
+  const resolvedSpecs = config.body.dimensions.show
+    ? product.resolvedSpecs?.filter((spec) => spec.canonicalKey !== 'dimensions')
+    : product.resolvedSpecs;
 
   if (layout === 'centered') {
-    const specRows = config.body.specs.show ? (product.resolvedSpecs ?? []).slice(0, config.body.specs.maxRows) : [];
+    const specRows = config.body.specs.show ? (resolvedSpecs ?? []).slice(0, config.body.specs.maxRows) : [];
     const firstSpec = specRows[0];
     const restSpecs = specRows.slice(1);
     return (
-      <article className={`pricing-card pricing-card-centered${palette === 'thermal' ? ' pricing-card-thermal' : ''} ${className}`.trim()} style={style}>
+      <article className={`pricing-card pricing-card-centered${palette === 'thermal' ? ' pricing-card-thermal' : ''}${detailsClass} ${className}`.trim()} style={style}>
         {hasHeader && (
           <header className="pricing-card-centered-header">
             {config.header.companyLogo.show && Boolean(assets.companyLogoUrl) && <CompanyLogo name={shopProfile.name} logoUrl={assets.companyLogoUrl} />}
@@ -132,7 +140,7 @@ export function PricingCard({ template, product, shopProfile, assets = {}, class
   }
 
   return (
-    <article className={`pricing-card ${config.appearance.sectionDividers ? 'pricing-card-dividers' : ''}${palette === 'thermal' ? ' pricing-card-thermal' : ''} ${className}`.trim()} style={style}>
+    <article className={`pricing-card ${config.appearance.sectionDividers ? 'pricing-card-dividers' : ''}${palette === 'thermal' ? ' pricing-card-thermal' : ''}${detailsClass} ${className}`.trim()} style={style}>
       {hasHeader && <header className="pricing-card-header">
         {config.header.companyLogo.show && <CompanyLogo name={shopProfile.name} logoUrl={assets.companyLogoUrl} />}
         <BrandMark brand={product.brand} display={config.header.brand.display} logoUrl={brandLogoUrl} />
@@ -142,7 +150,7 @@ export function PricingCard({ template, product, shopProfile, assets = {}, class
           {config.body.title.show && <Title name={product.name} />}
           {config.body.model.show && <Model model={product.model} prefix={config.body.model.prefix} />}
           {config.body.dimensions.show && <Dimensions dimensions={product.dimensionsMm} />}
-          {config.body.specs.show && <Specs specs={product.resolvedSpecs} maxRows={config.body.specs.maxRows} />}
+          {config.body.specs.show && <Specs specs={resolvedSpecs} maxRows={config.body.specs.maxRows} />}
         </div>
         {hasProductImage && <Image name={product.name} imageUrl={productImageUrl} />}
       </section>

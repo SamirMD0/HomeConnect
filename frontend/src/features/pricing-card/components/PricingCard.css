@@ -35,20 +35,33 @@
 .pricing-card-body-with-image { grid-template-columns: minmax(0, calc(100% - var(--pricing-card-image-width))) var(--pricing-card-image-width); gap: var(--pricing-card-gap); }
 .pricing-card-copy { display: grid; min-width: 0; align-content: start; grid-auto-rows: min-content; gap: calc(var(--pricing-card-gap) / 2); }
 /*
- * VISUAL_DESIGN §3 fixes these sizes in millimetres rather than in `em` off the
- * card's base font. The spec is a physical one — 2.4 mm of model text on a
- * 58 mm sticker and on a 148 mm shelf card are the same 2.4 mm — and it is how
- * the title already works. It also means a template's `appearance.fontScale`
- * cannot shrink the meta rows below the legible floor on thermal stock.
+ * These sizes use physical millimetres rather than `em` off the card's base
+ * font. `detailsFontScale` is an explicit editor control shared by the model,
+ * dimensions, and spec rows, so an operator can make that block fit without
+ * unintentionally resizing the rest of the card.
  */
 .pricing-card-title { overflow: hidden; font-size: calc(5mm * var(--pricing-card-title-scale)); font-weight: 700; line-height: 1.05; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: var(--pricing-card-title-lines); }
 .pricing-card-model, .pricing-card-sku { font-family: "Courier New", monospace; overflow-wrap: anywhere; }
-.pricing-card-model, .pricing-card-dimensions { font-size: 2.4mm; font-weight: 400; color: #4b5563; }
-.pricing-card-specs { display: grid; gap: 0.5mm; font-size: 2.6mm; }
+.pricing-card-model, .pricing-card-dimensions { font-size: calc(2.4mm * var(--pricing-card-details-scale)); font-weight: 400; color: #4b5563; }
+.pricing-card-specs { display: grid; gap: 0.5mm; font-size: calc(2.6mm * var(--pricing-card-details-scale)); }
 .pricing-card-spec-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 1mm; }
 .pricing-card-spec-row dt { color: #374151; font-weight: 500; }
 .pricing-card-spec-row dd { font-weight: 700; text-align: right; }
 .pricing-card-image { width: 100%; height: 100%; min-height: 0; object-fit: contain; }
+
+.pricing-card-details-bold .pricing-card-model,
+.pricing-card-details-bold .pricing-card-dimensions,
+.pricing-card-details-bold .pricing-card-specs,
+.pricing-card-details-bold .pricing-card-spec-row dt,
+.pricing-card-details-bold .pricing-card-spec-row dd,
+.pricing-card-details-bold .pricing-card-centered-meta,
+.pricing-card-details-bold .pricing-card-centered-model,
+.pricing-card-details-bold .pricing-card-centered-spec,
+.pricing-card-details-bold .pricing-card-centered-spec-row dt,
+.pricing-card-details-bold .pricing-card-centered-spec-row dd {
+  color: #000000;
+  font-weight: 700;
+}
 
 .pricing-card-features { gap: 1mm; font-size: 2.6mm; }
 .pricing-card-features-row { display: flex; flex-wrap: wrap; align-items: center; column-gap: 3mm; row-gap: 1mm; }
@@ -131,7 +144,7 @@
   gap: 2mm;
   padding-bottom: 1mm;
   border-bottom: 0.25mm dotted #9ca3af;
-  font-size: calc(3mm * var(--pricing-card-font-scale));
+  font-size: calc(3mm * var(--pricing-card-font-scale) * var(--pricing-card-details-scale));
   color: #111827;
 }
 .pricing-card-centered-model { justify-self: start; color: #111827; }
@@ -139,7 +152,7 @@
 .pricing-card-centered-spec-list {
   display: grid;
   gap: 0.4mm;
-  font-size: calc(2.8mm * var(--pricing-card-font-scale));
+  font-size: calc(2.8mm * var(--pricing-card-font-scale) * var(--pricing-card-details-scale));
 }
 .pricing-card-centered-spec-row {
   display: grid;
@@ -149,7 +162,7 @@
 .pricing-card-centered-spec-row dt { color: #4b5563; text-align: left; }
 .pricing-card-centered-spec-row dd { color: #111827; font-weight: 700; text-align: right; margin: 0; }
 .pricing-card-centered .pricing-card-dimensions {
-  font-size: calc(2.6mm * var(--pricing-card-font-scale));
+  font-size: calc(2.6mm * var(--pricing-card-font-scale) * var(--pricing-card-details-scale));
   color: #4b5563;
 }
 .pricing-card-centered-price {
@@ -266,11 +279,14 @@
   border-top-color: #000000;
 }
 .pricing-card-thermal .pricing-card-brand-name,
-.pricing-card-thermal .pricing-card-brand-logo,
 .pricing-card-thermal .pricing-card-feature-icon {
-  /* Any color inside a brand logo or feature icon collapses to black for
-   * thermal — thermal rasterises grayscale unpredictably. */
+  /* Text and simple feature glyphs can safely collapse to solid black. */
   filter: grayscale(1) brightness(0);
+}
+.pricing-card-thermal .pricing-card-brand-logo {
+  /* Keep light/dark detail inside uploaded artwork. `brightness(0)` made every
+   * opaque logo pixel black, turning logos with a background into a square. */
+  filter: grayscale(1) contrast(1.2);
 }
 
 .pricing-card-thumbnail-viewport {
@@ -296,6 +312,8 @@
 
 .pricing-card-price-code { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); gap: var(--pricing-card-gap); align-items: end; }
 .pricing-card-price-region, .pricing-card-code-region { display: grid; align-content: end; gap: 0.5mm; min-width: 0; }
+.pricing-card-code-region { justify-items: start; gap: 1.2mm; }
+.pricing-card-code-region .pricing-card-sku { justify-self: end; text-align: right; }
 .pricing-card-price { width: fit-content; font-size: calc(6mm * var(--pricing-card-price-scale)); font-weight: var(--pricing-card-price-weight); font-variant-numeric: tabular-nums; line-height: 1; white-space: nowrap; }
 .pricing-card-price-boxed { padding: 1mm 1.5mm; border: 1px solid currentColor; }
 .pricing-card-price-underlined { border-bottom: 1px solid currentColor; }
@@ -318,8 +336,8 @@
 .pricing-card-price-code-hero { grid-template-columns: minmax(0, 1fr); }
 
 .pricing-card-valid-until { font-size: 2.4mm; font-weight: 400; color: #6b7280; }
-.pricing-card-barcode { display: block; max-width: 100%; }
-.pricing-card-sku { font-size: 0.85em; }
+.pricing-card-barcode { display: block; }
+.pricing-card-sku { font-size: calc(0.85em * var(--pricing-card-sku-scale, 1)); line-height: 1.2; }
 .pricing-card-footer { text-align: right; color: #4b5563; font-size: 0.78em; }
 
 .pricing-card-dividers > * + * { border-top: 1px solid #d1d5db; padding-top: calc(var(--pricing-card-gap) / 2); }

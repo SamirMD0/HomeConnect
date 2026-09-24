@@ -7,10 +7,11 @@ import { useProduct, useUpdateProduct } from '../../products/hooks/useProducts';
 import type { ProductSpecification } from '../../products/types/product.types';
 import { hasCompleteDimensions, isDimensionLabel } from '../../products/utils/dimension-specification';
 import { CanonicalSpecEditor } from './CanonicalSpecEditor';
+import { FeatureHighlightPicker } from './FeatureHighlightPicker';
 import { PricingCard } from './PricingCard';
 import { pricingCardKeys, usePricingCard } from '../hooks/usePricingCard';
 import { useShopProfile } from '../hooks/useShopProfile';
-import type { PricingCardTemplate } from '../types/pricing-card.types';
+import type { PricingCardFeature, PricingCardTemplate } from '../types/pricing-card.types';
 import type { PricingCardTemplateConfig } from '../schema/template-config.z';
 import { readOverrides, writeOverrides, applyOverridesTo, type PricingCardOverrides } from '../overrides/pricing-card-overrides';
 import { parseDimensionsFromSpecs, resolveSpecsForTemplate } from '../utils/spec-catalog';
@@ -21,6 +22,10 @@ interface PricingCardEditModalProps {
   productId: string;
   template: PricingCardTemplate | undefined;
   validUntil: string;
+  features: PricingCardFeature[];
+  selectedFeatureCodes: string[];
+  onToggleFeature: (code: string) => void;
+  onResetFeatures: () => void;
   onOverridesSaved?: (overrides: PricingCardOverrides) => void;
 }
 
@@ -30,23 +35,29 @@ interface PricingCardEditModalProps {
  * *and* data, without leaving the print flow, without an admin password":
  * product data goes through the same relaxed update endpoint the Product form
  * uses (so the audit trail is identical), while the template tweaks (layout,
- * palette, prominence, font scales, show/hide toggles, card dimensions) are
- * per-product overrides persisted to sessionStorage — never edited on the
- * shared template row, so a shop with 300 washers is not one operator's local
- * tweak away from a global visual regression.
+ * palette, prominence, font scales, show/hide toggles, card dimensions,
+ * header/barcode/appearance) are per-product overrides persisted to
+ * sessionStorage — never edited on the shared template row, so a shop with
+ * 300 washers is not one operator's local tweak away from a global visual
+ * regression. Feature icons live in the parent's state because the
+ * pricing-card query key includes them; the modal drives them through the
+ * callbacks so the query refetches as the operator toggles.
  *
- * Right-hand column is a live preview of the resolved card with both the
- * product-data edits and the tweak overrides applied, so the operator sees
- * exactly what the next print will produce before they Save.
+ * Right-hand column is a live preview of the resolved card with the
+ * product-data edits, the tweak overrides, AND the client-resolved specs
+ * applied, so the operator sees exactly what the next print will produce
+ * before they Save.
  */
 export function PricingCardEditModal({
-  isOpen, onClose, productId, template, validUntil, onOverridesSaved,
+  isOpen, onClose, productId, template, validUntil,
+  features, selectedFeatureCodes, onToggleFeature, onResetFeatures,
+  onOverridesSaved,
 }: PricingCardEditModalProps) {
   const product = useProduct(productId);
   const update = useUpdateProduct();
   const profile = useShopProfile();
   const queryClient = useQueryClient();
-  const card = usePricingCard(productId, { templateId: template?.id ?? '', validUntil, includePriceCode: false });
+  const card = usePricingCard(productId, { templateId: template?.id ?? '', validUntil, includePriceCode: false, featureCodes: selectedFeatureCodes });
 
   const [name, setName] = useState('');
   const [model, setModel] = useState('');
@@ -134,8 +145,8 @@ export function PricingCardEditModal({
       isOpen={isOpen}
       onClose={onClose}
       title="Edit pricing card"
-      description="Product data plus per-product card tweaks. Template tweaks stay on this product."
-      maxWidth="max-w-6xl"
+      description="Product data, feature icons, and per-product card tweaks. Template tweaks stay on this product."
+      maxWidth="max-w-7xl"
       footer={
         <>
           <button type="button" onClick={onClose} className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700">
@@ -153,22 +164,19 @@ export function PricingCardEditModal({
         </>
       }
     >
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <div className="space-y-6">
           {product.isLoading && <p className="text-sm text-slate-500">Loading product data…</p>}
           {product.isError && <p role="alert" className="text-sm text-red-700">Unable to load product for editing.</p>}
           {product.data && (
-            <section className="space-y-3" data-testid="pricing-card-edit-product-data">
-              <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-600">Product data</h3>
+            <Group title="Product data" testId="pricing-card-edit-product-data">
               <div className="grid gap-3 md:grid-cols-2">
-                <label className="space-y-1 text-sm text-slate-700">
-                  <span className="block font-medium">Name / الاسم</span>
+                <Field label="Name / الاسم">
                   <input type="text" value={name} onChange={(event) => setName(event.target.value)} className={inputClass} maxLength={200} />
-                </label>
-                <label className="space-y-1 text-sm text-slate-700">
-                  <span className="block font-medium">Model / الموديل</span>
+                </Field>
+                <Field label="Model / الموديل">
                   <input type="text" value={model} onChange={(event) => setModel(event.target.value)} className={inputClass} maxLength={120} />
-                </label>
+                </Field>
               </div>
               <CanonicalSpecEditor
                 value={specifications}
@@ -176,67 +184,142 @@ export function PricingCardEditModal({
                 onChange={setSpecifications}
                 onNotesChange={setSpecificationNotes}
               />
-            </section>
+            </Group>
+          )}
+
+          {template && (
+            <Group title="Feature icons">
+              <FeatureHighlightPicker
+                features={features}
+                selectedCodes={selectedFeatureCodes}
+                max={template.featureMax}
+                onToggle={onToggleFeature}
+                onReset={onResetFeatures}
+              />
+              <p className="text-xs text-slate-500">
+                Pick up to {template.featureMax} icons for this print run. The badges you tick here show on the card in the order the template lays them out.
+              </p>
+            </Group>
           )}
 
           {template && config && (
-            <section className="space-y-3" data-testid="pricing-card-edit-card-tweaks">
-              <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-600">Card tweaks for this product</h3>
-              <p className="text-xs text-slate-500">
-                Saved locally on this browser for this product only. The shared template is not modified.
-              </p>
-              <div className="grid gap-3 md:grid-cols-2">
-                <Select label="Layout" value={config.appearance.layout} onChange={(value) => setConfigOverride('appearance.layout', value)}>
-                  <option value="stack">Stack — classic block</option>
-                  <option value="centered">Centered — retail-hero</option>
-                </Select>
-                <Select label="Palette" value={config.appearance.palette} onChange={(value) => setConfigOverride('appearance.palette', value)}>
-                  <option value="color">Color</option>
-                  <option value="thermal">Thermal — pure B&amp;W</option>
-                </Select>
-                <Select label="Price prominence" value={config.price.prominence} onChange={(value) => setConfigOverride('price.prominence', value)}>
-                  <option value="normal">Normal — 6 mm</option>
-                  <option value="large">Large — 10 mm</option>
-                  <option value="hero">Hero — 14 mm, own row</option>
-                </Select>
-                <NumberField label="Title font scale" step="0.05" min={0.5} max={3} value={config.body.title.fontScale} onChange={(value) => setConfigOverride('body.title.fontScale', value)} />
-                <NumberField label="Details font scale" step="0.05" min={0.5} max={3} value={config.body.detailsFontScale ?? 1} onChange={(value) => setConfigOverride('body.detailsFontScale', value)} />
-                <Toggle label="Bold black details" checked={config.body.detailsBoldBlack ?? false} onChange={(value) => setConfigOverride('body.detailsBoldBlack', value)} />
-                <NumberField label="Card width (mm)" step="1" min={20} max={210} value={Number(previewTemplate?.cardWidthMm ?? 0)} onChange={(value) => setOverride('cardWidthMm', value)} />
-                <NumberField label="Card height (mm)" step="1" min={20} max={210} value={Number(previewTemplate?.cardHeightMm ?? 0)} onChange={(value) => setOverride('cardHeightMm', value)} />
+            <>
+              <Group title="Layout & palette">
+                <div className="grid gap-3 md:grid-cols-2">
+                  <Select label="Layout" value={config.appearance.layout} onChange={(value) => setConfigOverride('appearance.layout', value)}>
+                    <option value="stack">Stack — classic block</option>
+                    <option value="centered">Centered — retail-hero</option>
+                  </Select>
+                  <Select label="Palette" value={config.appearance.palette} onChange={(value) => setConfigOverride('appearance.palette', value)}>
+                    <option value="color">Color</option>
+                    <option value="thermal">Thermal — pure B&amp;W</option>
+                  </Select>
+                  <NumberField label="Card width (mm)" step="1" min={20} max={210} value={Number(previewTemplate?.cardWidthMm ?? 0)} onChange={(value) => setOverride('cardWidthMm', value)} />
+                  <NumberField label="Card height (mm)" step="1" min={20} max={210} value={Number(previewTemplate?.cardHeightMm ?? 0)} onChange={(value) => setOverride('cardHeightMm', value)} />
+                </div>
+              </Group>
+
+              <Group title="Header">
+                <div className="grid gap-3 md:grid-cols-2">
+                  <Toggle label="Show company logo" checked={config.header.companyLogo.show} onChange={(value) => setConfigOverride('header.companyLogo.show', value)} />
+                  <NumberField label="Company logo size (mm)" step="0.5" min={2} max={40} value={config.header.companyLogo.sizeMm} onChange={(value) => setConfigOverride('header.companyLogo.sizeMm', value)} />
+                  <Select label="Brand display" value={config.header.brand.display} onChange={(value) => setConfigOverride('header.brand.display', value)}>
+                    <option value="text">Text only</option>
+                    <option value="logo">Logo only</option>
+                    <option value="logo+text">Logo + text</option>
+                  </Select>
+                  <NumberField label="Brand mark size (mm)" step="0.5" min={2} max={40} value={config.header.brand.sizeMm} onChange={(value) => setConfigOverride('header.brand.sizeMm', value)} />
+                </div>
+              </Group>
+
+              <Group title="Body — title, model, dimensions, specs">
+                <div className="grid gap-3 md:grid-cols-2">
+                  <NumberField label="Title font scale" step="0.05" min={0.5} max={3} value={config.body.title.fontScale} onChange={(value) => setConfigOverride('body.title.fontScale', value)} />
+                  <Select label="Title max lines" value={String(config.body.title.maxLines)} onChange={(value) => setConfigOverride('body.title.maxLines', Number(value))}>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                  </Select>
+                  <NumberField label="Details font scale (model, dimensions, specs)" step="0.05" min={0.5} max={3} value={config.body.detailsFontScale ?? 1} onChange={(value) => setConfigOverride('body.detailsFontScale', value)} />
+                  <Toggle label="Bold black details" checked={config.body.detailsBoldBlack ?? false} onChange={(value) => setConfigOverride('body.detailsBoldBlack', value)} />
+                </div>
+                <div className="grid gap-2 rounded-lg border border-slate-200 p-3 md:grid-cols-2">
+                  <Toggle label="Show title" checked={config.body.title.show} onChange={(value) => setConfigOverride('body.title.show', value)} />
+                  <Toggle label="Show model" checked={config.body.model.show} onChange={(value) => setConfigOverride('body.model.show', value)} />
+                  <Toggle label="Show dimensions" checked={config.body.dimensions.show} onChange={(value) => setConfigOverride('body.dimensions.show', value)} />
+                  <Toggle label="Show specs" checked={config.body.specs.show} onChange={(value) => setConfigOverride('body.specs.show', value)} />
+                </div>
+              </Group>
+
+              <Group title="Price">
+                <div className="grid gap-3 md:grid-cols-2">
+                  <Select label="Prominence" value={config.price.prominence} onChange={(value) => setConfigOverride('price.prominence', value)}>
+                    <option value="normal">Normal — 6 mm</option>
+                    <option value="large">Large — 10 mm</option>
+                    <option value="hero">Hero — 14 mm, own row</option>
+                  </Select>
+                  <Select label="Emphasis" value={config.price.emphasis} onChange={(value) => setConfigOverride('price.emphasis', value)}>
+                    <option value="plain">Plain</option>
+                    <option value="boxed">Boxed</option>
+                    <option value="underlined">Underlined</option>
+                  </Select>
+                  <Select label="Weight" value={String(config.price.weight)} onChange={(value) => setConfigOverride('price.weight', Number(value))}>
+                    <option value="500">500</option>
+                    <option value="700">700</option>
+                    <option value="800">800</option>
+                    <option value="900">900</option>
+                  </Select>
+                  <NumberField label="Price font scale" step="0.05" min={0.5} max={5} value={config.price.fontScale} onChange={(value) => setConfigOverride('price.fontScale', value)} />
+                  <Toggle label="Show valid-until date" checked={config.price.validUntil.show} onChange={(value) => setConfigOverride('price.validUntil.show', value)} />
+                </div>
+              </Group>
+
+              <Group title="Barcode & SKU">
+                <div className="grid gap-3 md:grid-cols-2">
+                  <Toggle label="Show barcode" checked={config.barcode.show} onChange={(value) => setConfigOverride('barcode.show', value)} />
+                  <Toggle label="Show barcode digits" checked={config.barcode.showDigits} onChange={(value) => setConfigOverride('barcode.showDigits', value)} />
+                  <NumberField label="Barcode target width (mm)" step="1" min={10} max={210} value={config.barcode.targetWidthMm} onChange={(value) => setConfigOverride('barcode.targetWidthMm', value)} />
+                  <Toggle label="Show SKU" checked={config.sku.show} onChange={(value) => setConfigOverride('sku.show', value)} />
+                  <NumberField label="SKU font scale" step="0.05" min={0.5} max={3} value={config.sku.fontScale ?? 1} onChange={(value) => setConfigOverride('sku.fontScale', value)} />
+                </div>
+              </Group>
+
+              <Group title="Appearance — margins, border, gaps">
+                <div className="grid gap-3 md:grid-cols-2">
+                  <NumberField label="Margin (mm)" step="0.5" min={0} max={30} value={config.appearance.marginMm} onChange={(value) => setConfigOverride('appearance.marginMm', value)} />
+                  <NumberField label="Inner gap (mm)" step="0.1" min={0} max={30} value={config.appearance.innerGapMm} onChange={(value) => setConfigOverride('appearance.innerGapMm', value)} />
+                  <Select label="Border" value={String(config.appearance.borderPx)} onChange={(value) => setConfigOverride('appearance.borderPx', Number(value))}>
+                    <option value="0">None</option>
+                    <option value="1">1 px</option>
+                    <option value="2">2 px</option>
+                  </Select>
+                  <NumberField label="Global font scale" step="0.05" min={0.5} max={3} value={config.appearance.fontScale} onChange={(value) => setConfigOverride('appearance.fontScale', value)} />
+                  <Toggle label="Section dividers" checked={config.appearance.sectionDividers} onChange={(value) => setConfigOverride('appearance.sectionDividers', value)} />
+                  <Toggle label="Show features" checked={config.features.show} onChange={(value) => setConfigOverride('features.show', value)} />
+                </div>
+              </Group>
+
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-slate-500">
+                  Saved locally on this browser for this product only. The shared template is not modified.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setOverrides({})}
+                  className="text-xs font-semibold text-slate-500 hover:text-slate-800"
+                >
+                  Reset tweaks to template defaults
+                </button>
               </div>
-              <div className="grid gap-2 rounded-lg border border-slate-200 p-3 md:grid-cols-2">
-                <Toggle label="Show title" checked={config.body.title.show} onChange={(value) => setConfigOverride('body.title.show', value)} />
-                <Toggle label="Show model" checked={config.body.model.show} onChange={(value) => setConfigOverride('body.model.show', value)} />
-                <Toggle label="Show dimensions" checked={config.body.dimensions.show} onChange={(value) => setConfigOverride('body.dimensions.show', value)} />
-                <Toggle label="Show specs" checked={config.body.specs.show} onChange={(value) => setConfigOverride('body.specs.show', value)} />
-                <Toggle label="Show features" checked={config.features.show} onChange={(value) => setConfigOverride('features.show', value)} />
-                <Toggle label="Show barcode" checked={config.barcode.show} onChange={(value) => setConfigOverride('barcode.show', value)} />
-              </div>
-              <button
-                type="button"
-                onClick={() => setOverrides({})}
-                className="text-xs font-semibold text-slate-500 hover:text-slate-800"
-              >
-                Reset tweaks to template defaults
-              </button>
-            </section>
+            </>
           )}
         </div>
 
-        <aside className="space-y-3 lg:sticky lg:top-0" data-testid="pricing-card-edit-preview">
+        <aside className="space-y-3 lg:sticky lg:top-0 lg:self-start" data-testid="pricing-card-edit-preview">
           <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-600">Preview</h3>
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
             {previewTemplate && profile.data && card.data?.payload
               ? (() => {
-                  // The server-cached `card.data.payload` was fetched before
-                  // this modal opened, so its `resolvedSpecs` and
-                  // `dimensionsMm` do not reflect the operator's unsaved
-                  // spec edits — a new "Resolution: 4K" row typed in the
-                  // modal would only appear on the preview after Save.
-                  // Recompute both from the current local `specifications`
-                  // state so the preview matches what the print will look
-                  // like after Save.
                   const specRows = cleanRows(specifications);
                   const localSpecs = previewTemplate.specKeyOrder.length
                     ? resolveSpecsForTemplate(specRows, previewTemplate.specKeyOrder)
@@ -266,21 +349,37 @@ export function PricingCardEditModal({
 
 const inputClass = 'block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500';
 
-function Select({ label, value, onChange, children }: { label: string; value: string; onChange: (value: string) => void; children: React.ReactNode }) {
+function Group({ title, testId, children }: { title: string; testId?: string; children: React.ReactNode }) {
+  return (
+    <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-4" data-testid={testId}>
+      <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-600">{title}</h3>
+      {children}
+    </section>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="space-y-1 text-sm text-slate-700">
       <span className="block font-medium">{label}</span>
-      <select value={value} onChange={(event) => onChange(event.target.value)} className={inputClass}>{children}</select>
+      {children}
     </label>
+  );
+}
+
+function Select({ label, value, onChange, children }: { label: string; value: string; onChange: (value: string) => void; children: React.ReactNode }) {
+  return (
+    <Field label={label}>
+      <select value={value} onChange={(event) => onChange(event.target.value)} className={inputClass}>{children}</select>
+    </Field>
   );
 }
 
 function NumberField({ label, value, onChange, step = '1', min, max }: { label: string; value: number; onChange: (value: number) => void; step?: string; min?: number; max?: number }) {
   return (
-    <label className="space-y-1 text-sm text-slate-700">
-      <span className="block font-medium">{label}</span>
+    <Field label={label}>
       <input type="number" step={step} min={min} max={max} value={value} onChange={(event) => onChange(Number(event.target.value))} className={inputClass} />
-    </label>
+    </Field>
   );
 }
 
@@ -306,8 +405,6 @@ function cleanRows(rows: ProductSpecification[]) {
  */
 function parseTemplateConfigOrNull(config: unknown): PricingCardTemplateConfig | null {
   try {
-    // Cast: we trust the template row from the API. On an override-invalidated
-    // tree, return null and the preview renders a "loading" placeholder.
     return config as PricingCardTemplateConfig;
   } catch {
     return null;

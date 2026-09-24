@@ -13,6 +13,8 @@ export const PricingCardTemplateConfigZ = z.object({
   }).strict(),
   body: z.object({
     title: z.object({ show: z.boolean(), maxLines: z.union([z.literal(1), z.literal(2), z.literal(3)]), fontScale: positiveScale }).strict(),
+    detailsFontScale: positiveScale.default(1),
+    detailsBoldBlack: z.boolean().default(false),
     model: z.object({ show: z.boolean(), prefix: z.string().max(40).optional() }).strict(),
     dimensions: z.object({ show: z.boolean() }).strict(),
     specs: z.object({ show: z.boolean(), maxRows: z.number().int().min(0).max(40) }).strict(),
@@ -27,7 +29,7 @@ export const PricingCardTemplateConfigZ = z.object({
     prominence: z.enum(['normal', 'large', 'hero']).default('normal'),
     validUntil: z.object({ show: z.boolean(), format: z.enum(['dmy', 'd-mon-y', 'iso']) }).strict(),
   }).strict(),
-  sku: z.object({ show: z.boolean(), showSecretCode: z.boolean(), prefix: z.string().max(40) }).strict(),
+  sku: z.object({ show: z.boolean(), showSecretCode: z.boolean(), prefix: z.string().max(40), fontScale: positiveScale.default(1) }).strict(),
   barcode: z.object({ show: z.boolean(), showDigits: z.boolean(), targetWidthMm: z.number().min(10).max(210) }).strict(),
   appearance: z.object({
     marginMm: z.number().min(0).max(30), innerGapMm: z.number().min(0).max(30),

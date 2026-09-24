@@ -29,6 +29,8 @@ const defaultConfig: PricingCardTemplateConfig = {
   },
   body: {
     title: { show: true, maxLines: 2, fontScale: 1 },
+    detailsFontScale: 1,
+    detailsBoldBlack: false,
     model: { show: true, prefix: 'Model: ' },
     dimensions: { show: false },
     specs: { show: true, maxRows: 4 },
@@ -36,7 +38,7 @@ const defaultConfig: PricingCardTemplateConfig = {
   },
   features: { show: true, layout: 'row', showLabels: true, showValues: false },
   price: { show: true, fontScale: 1, weight: 800, emphasis: 'plain', prominence: 'large', validUntil: { show: true, format: 'd-mon-y' } },
-  sku: { show: true, showSecretCode: true, prefix: 'SKU: ' },
+  sku: { show: true, showSecretCode: true, prefix: 'SKU: ', fontScale: 1 },
   barcode: { show: true, showDigits: true, targetWidthMm: 40 },
   appearance: { marginMm: 2, innerGapMm: 1, borderPx: 1, sectionDividers: true, fontScale: 1, orientation: 'portrait', layout: 'stack', palette: 'color' },
 };
@@ -190,6 +192,21 @@ export function PricingCardTemplateEditorPage() {
               <select value={form.config.body.title.maxLines} onChange={(event) => setConfigPart(setForm, 'body', (b) => ({ ...b, title: { ...b.title, maxLines: Number(event.target.value) as 1 | 2 | 3 } }))} className={inputClass}>
                 <option value={1}>1</option><option value={2}>2</option><option value={3}>3</option>
               </select>
+            </Field>
+            <Field label="Title font size">
+              <input type="number" step="0.1" min={0.5} max={5} value={form.config.body.title.fontScale} onChange={(event) => setConfigPart(setForm, 'body', (b) => ({ ...b, title: { ...b.title, fontScale: Number(event.target.value) || 1 } }))} className={inputClass} />
+              <span className="block text-xs text-slate-500">1 is standard; use 0.8 for smaller or 1.2 for larger.</span>
+            </Field>
+            <Field label="Details & specs font size">
+              <input type="number" step="0.1" min={0.5} max={5} value={form.config.body.detailsFontScale ?? 1} onChange={(event) => setConfigPart(setForm, 'body', (b) => ({ ...b, detailsFontScale: Number(event.target.value) || 1 }))} className={inputClass} />
+              <span className="block text-xs text-slate-500">Controls model, dimensions, and specification rows together.</span>
+            </Field>
+            <Field label="Details text style">
+              <select value={(form.config.body.detailsBoldBlack ?? false) ? 'bold-black' : 'muted'} onChange={(event) => setConfigPart(setForm, 'body', (b) => ({ ...b, detailsBoldBlack: event.target.value === 'bold-black' }))} className={inputClass}>
+                <option value="muted">Muted gray</option>
+                <option value="bold-black">Bold black</option>
+              </select>
+              <span className="block text-xs text-slate-500">Applies to model, dimensions, and specification rows.</span>
             </Field>
             <Toggle label="Model" checked={form.config.body.model.show} onChange={(show) => setConfigPart(setForm, 'body', (b) => ({ ...b, model: { ...b.model, show } }))} />
             <Field label="Model prefix"><input type="text" maxLength={40} value={form.config.body.model.prefix ?? ''} onChange={(event) => setConfigPart(setForm, 'body', (b) => ({ ...b, model: { ...b.model, prefix: event.target.value } }))} className={inputClass} /></Field>
