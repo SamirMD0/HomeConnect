@@ -8,6 +8,8 @@ import { ProductLabelWarnings } from '../../features/products/components/Product
 import { canPrintLabelsDirectly } from '../../features/products/utils/print-labels';
 import { parseManualDiscountStages } from '../../features/products/utils/discount-stages';
 import { FeatureHighlightPicker } from '../../features/pricing-card/components/FeatureHighlightPicker';
+import { InlineProductEditor } from '../../features/pricing-card/components/InlineProductEditor';
+import { brandLogoUrlOf } from '../../features/pricing-card/components/PricingCard';
 import { PricingCardControls } from '../../features/pricing-card/components/PricingCardControls';
 import { PricingCardPage } from '../../features/pricing-card/components/PricingCardPage';
 import { usePricingCard, usePricingCardSecretPreview, useRecordPricingCardPrint } from '../../features/pricing-card/hooks/usePricingCard';
@@ -59,7 +61,7 @@ export function ProductPricingCardPage() {
   const payload = result?.payload;
   const features = featureChoices.length ? featureChoices : card.data?.payload.features ?? [];
   const selectedCodes = selectedFeatures ?? features.map(({ iconCode }) => iconCode);
-  const cards = useMemo(() => payload ? Array.from({ length: copies }, () => ({ product: payload, assets: { companyLogoUrl: profile.data?.logoDataUrl ?? null } })) : [], [copies, payload, profile.data?.logoDataUrl]);
+  const cards = useMemo(() => payload ? Array.from({ length: copies }, () => ({ product: payload, assets: { companyLogoUrl: profile.data?.logoDataUrl ?? null, brandLogoUrl: brandLogoUrlOf(payload) } })) : [], [copies, payload, profile.data?.logoDataUrl]);
   const ready = Boolean(selectedTemplate && profile.data && payload && validUntil && !card.isLoading);
 
   const changeTemplate = (templateId: string) => {
@@ -95,6 +97,14 @@ export function ProductPricingCardPage() {
     <button type="button" onClick={() => navigate(-1)} className="no-print inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2"><ArrowLeft className="h-4 w-4" /> Back</button>
     <PricingCardControls templates={activeTemplates} selectedTemplateId={selectedTemplateId} copies={copies} validUntil={validUntil} disabled={!ready} cardCount={cards.length} onTemplateChange={changeTemplate} onCopiesChange={setCopies} onValidUntilChange={setValidUntilOverride} onPrint={print} />
     <FeatureHighlightPicker features={features} selectedCodes={selectedCodes} max={selectedTemplate?.featureMax ?? 0} onToggle={(code) => setSelectedFeatures(toggleFeatureSelection(selectedCodes, code))} onReset={() => setSelectedFeatures(null)} />
+    <details className="no-print group rounded-xl border border-slate-200 bg-white p-4 open:pb-4" data-testid="inline-product-editor">
+      <summary className="flex cursor-pointer select-none items-center gap-2 rounded-md text-sm font-semibold uppercase tracking-wide text-slate-600 [&::-webkit-details-marker]:hidden">
+        <span aria-hidden className="text-slate-400 group-open:rotate-90 transition-transform">▶</span>
+        Edit product data
+        <span className="ml-auto text-xs font-normal normal-case tracking-normal text-slate-400">Name, model, specifications — no price fields</span>
+      </summary>
+      <div className="mt-3"><InlineProductEditor productId={id} /></div>
+    </details>
     {user?.role === 'ADMIN' && secretConfig.data?.settings?.showCodeOnLabel && <LabelSecretPrintControls config={secretConfig.data} pricingPresetId={pricingPresetId} encodingPresetId={encodingPresetId} password={password} manualStages={manualStages} manualStagesEnabled={manualStagesEnabled} onPricingPresetChange={setPricingPresetId} onEncodingPresetChange={setEncodingPresetId} onPasswordChange={setPassword} onManualStagesChange={setManualStages} onManualStagesEnabledChange={setManualStagesEnabled} onApply={applySecret} pending={secret.isPending} preview={payload ? secretControlsPreview(payload) : undefined} />}
     <BrowserPrintHint />
     <ProductLabelWarnings warnings={(result?.warnings ?? []) as never[]} />
@@ -128,8 +138,19 @@ function activeDefaultTemplateId(templates: Array<{ id: string }>, preferred?: s
 }
 
 function snapshotInput(payload: PricingCardData, templateId: string, copies: number, hiddenPricingPresetId: string, encodingPresetId: string): RecordPricingCardPrintInput {
-  const { internalPriceCode: _internal, secretPrice: _secret, features, ...publicFields } = payload;
-  return { productId: payload.id, templateId, snapshot: { ...publicFields, features: features?.map(({ iconSvg: _svg, ...feature }) => feature) }, validUntil: payload.validUntil, currencyCode: payload.currency?.code ?? 'USD', publicPrice: payload.cashPrice ?? '0.00', staffLabelCode: payload.staffLabelCode, barcodeValue: payload.barcodeValue, copiesPrinted: copies, hiddenPricingPresetId: hiddenPricingPresetId || null, encodingPresetId: encodingPresetId || null };
+  const { internalPriceCode: _internal, secretPrice: _secret, features, brand, ...publicFields } = payload;
+  return { productId: payload.id, templateId, snapshot: { ...publicFields, brand: snapshotBrand(brand), features: features?.map(({ iconSvg: _svg, ...feature }) => feature) }, validUntil: payload.validUntil, currencyCode: payload.currency?.code ?? 'USD', publicPrice: payload.cashPrice ?? '0.00', staffLabelCode: payload.staffLabelCode, barcodeValue: payload.barcodeValue, copiesPrinted: copies, hiddenPricingPresetId: hiddenPricingPresetId || null, encodingPresetId: encodingPresetId || null };
+}
+
+/**
+ * The brand logo travels as a base64 data url, which on its own can exceed the
+ * server's 8 KB snapshot cap and reject the print record. A snapshot is a record
+ * of which brand printed, not a copy of its artwork — `hasLogo` says the rest.
+ */
+function snapshotBrand(brand: PricingCardData['brand']) {
+  if (!brand || typeof brand === 'string') return brand;
+  const { logoDataUrl: _logo, ...rest } = brand;
+  return rest;
 }
 
 function secretControlsPreview(payload: PricingCardData) {

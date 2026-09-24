@@ -1,5 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import tvConfig from '../../../../backend/prisma/seed-data/pricing-card-templates/tv-large.json';
 import type { PricingCardTemplate } from '../../features/pricing-card/types/pricing-card.types';
@@ -33,6 +34,10 @@ vi.mock('../../features/pricing/hooks/usePricingPresets', () => ({
 vi.mock('../../features/products/components/LabelSecretPrintControls', () => ({
   LabelSecretPrintControls: () => <div>SECRET PRICE PANEL</div>,
 }));
+vi.mock('../../features/products/hooks/useProducts', () => ({
+  useProduct: () => ({ data: undefined, isLoading: true, isError: false }),
+  useUpdateProduct: () => ({ mutate: vi.fn(), isPending: false }),
+}));
 
 const template: PricingCardTemplate = {
   id: 'template-tv', name: 'TV Large Card', description: null, paperMode: 'SINGLE_STICKER', paperSize: null,
@@ -63,9 +68,11 @@ const secretConfiguration = {
 };
 
 const renderPage = () => renderToStaticMarkup(
-  <MemoryRouter initialEntries={['/products/product-1/pricing-card']}>
-    <Routes><Route path="/products/:id/pricing-card" element={<ProductPricingCardPage />} /></Routes>
-  </MemoryRouter>,
+  <QueryClientProvider client={new QueryClient()}>
+    <MemoryRouter initialEntries={['/products/product-1/pricing-card']}>
+      <Routes><Route path="/products/:id/pricing-card" element={<ProductPricingCardPage />} /></Routes>
+    </MemoryRouter>
+  </QueryClientProvider>,
 );
 
 describe('ProductPricingCardPage', () => {
@@ -122,5 +129,13 @@ describe('ProductPricingCardPage', () => {
     expect(renderPage()).toContain('SECRET PRICE PANEL');
     state.role = 'EMPLOYEE';
     expect(renderPage()).not.toContain('SECRET PRICE PANEL');
+  });
+
+  it('shows the inline product editor so the operator can fix a spec without leaving the print flow', () => {
+    const html = renderPage();
+    expect(html).toContain('Edit product data');
+    expect(html).toContain('data-testid="inline-product-editor"');
+    // The panel body is present in the DOM even when the <details> element is closed.
+    expect(html).toContain('Loading product data');
   });
 });
