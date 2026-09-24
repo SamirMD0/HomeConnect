@@ -164,6 +164,15 @@
   font-size: calc(14mm * var(--pricing-card-price-scale));
   font-weight: 900;
   line-height: 1;
+  /*
+   * The retail-hero price sits on its own vertically-centred row, so the
+   * `.pricing-card-price-boxed` / `-underlined` decorations from the stack
+   * layout add noise (and a rectangle around $436 that survives thermal
+   * printing as heavy ink). Override any emphasis border here — the centered
+   * layout is opinionated: giant red numerals, nothing around them.
+   */
+  border: 0;
+  padding: 0;
 }
 .pricing-card-centered .pricing-card-valid-until {
   color: #6b7280;
