@@ -13,6 +13,7 @@ import { useShopProfile } from '../hooks/useShopProfile';
 import type { PricingCardTemplate } from '../types/pricing-card.types';
 import type { PricingCardTemplateConfig } from '../schema/template-config.z';
 import { readOverrides, writeOverrides, applyOverridesTo, type PricingCardOverrides } from '../overrides/pricing-card-overrides';
+import { parseDimensionsFromSpecs, resolveSpecsForTemplate } from '../utils/spec-catalog';
 
 interface PricingCardEditModalProps {
   isOpen: boolean;
@@ -227,7 +228,34 @@ export function PricingCardEditModal({
           <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-600">Preview</h3>
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
             {previewTemplate && profile.data && card.data?.payload
-              ? <PricingCard template={previewTemplate} product={{ ...card.data.payload, name: name.trim() || card.data.payload.name, model: model.trim() || card.data.payload.model }} shopProfile={profile.data} />
+              ? (() => {
+                  // The server-cached `card.data.payload` was fetched before
+                  // this modal opened, so its `resolvedSpecs` and
+                  // `dimensionsMm` do not reflect the operator's unsaved
+                  // spec edits — a new "Resolution: 4K" row typed in the
+                  // modal would only appear on the preview after Save.
+                  // Recompute both from the current local `specifications`
+                  // state so the preview matches what the print will look
+                  // like after Save.
+                  const specRows = cleanRows(specifications);
+                  const localSpecs = previewTemplate.specKeyOrder.length
+                    ? resolveSpecsForTemplate(specRows, previewTemplate.specKeyOrder)
+                    : card.data.payload.resolvedSpecs;
+                  const localDims = parseDimensionsFromSpecs(specRows);
+                  return (
+                    <PricingCard
+                      template={previewTemplate}
+                      product={{
+                        ...card.data.payload,
+                        name: name.trim() || card.data.payload.name,
+                        model: model.trim() || card.data.payload.model,
+                        resolvedSpecs: localSpecs,
+                        dimensionsMm: Object.keys(localDims).length ? localDims : card.data.payload.dimensionsMm,
+                      }}
+                      shopProfile={profile.data}
+                    />
+                  );
+                })()
               : <p className="text-sm text-slate-500">Loading preview…</p>}
           </div>
         </aside>
