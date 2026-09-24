@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Pencil } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate, useParams } from 'react-router-dom';
 import { BrowserPrintHint } from '../../features/products/components/BrowserPrintHint';
@@ -8,10 +8,11 @@ import { ProductLabelWarnings } from '../../features/products/components/Product
 import { canPrintLabelsDirectly } from '../../features/products/utils/print-labels';
 import { parseManualDiscountStages } from '../../features/products/utils/discount-stages';
 import { FeatureHighlightPicker } from '../../features/pricing-card/components/FeatureHighlightPicker';
-import { InlineProductEditor } from '../../features/pricing-card/components/InlineProductEditor';
+import { PricingCardEditModal } from '../../features/pricing-card/components/PricingCardEditModal';
 import { ThermalPrintWarning } from '../../features/pricing-card/components/ThermalPrintWarning';
 import { brandLogoUrlOf } from '../../features/pricing-card/components/PricingCard';
 import { PricingCardControls } from '../../features/pricing-card/components/PricingCardControls';
+import { applyOverridesTo, readOverrides, type PricingCardOverrides } from '../../features/pricing-card/overrides/pricing-card-overrides';
 import { PricingCardPage } from '../../features/pricing-card/components/PricingCardPage';
 import { usePricingCard, usePricingCardSecretPreview, useRecordPricingCardPrint } from '../../features/pricing-card/hooks/usePricingCard';
 import { usePricingCardTemplates } from '../../features/pricing-card/hooks/usePricingCardTemplates';
@@ -45,6 +46,9 @@ export function ProductPricingCardPage() {
   const [password, setPassword] = useState('');
   const [manualStages, setManualStages] = useState('');
   const [manualStagesEnabled, setManualStagesEnabled] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [overrides, setOverrides] = useState<PricingCardOverrides>(() => (id ? readOverrides(id) : {}));
+  const effectiveTemplate = useMemo(() => (selectedTemplate ? applyOverridesTo(selectedTemplate, overrides) : undefined), [selectedTemplate, overrides]);
 
   useEffect(() => {
     if (!card.data?.payload.features || featureChoices.length) return;
@@ -78,41 +82,52 @@ export function ProductPricingCardPage() {
     onError: () => toast.error('Unable to apply the staff price selection'),
   });
   const print = () => {
-    if (!selectedTemplate || !payload || !profile.data) return;
-    if (Number(selectedTemplate.cardWidthMm) > 100 && !canPrintLabelsDirectly()) {
+    if (!effectiveTemplate || !payload || !profile.data) return;
+    if (Number(effectiveTemplate.cardWidthMm) > 100 && !canPrintLabelsDirectly()) {
       toast('Cards larger than 100 mm print best from the desktop app — the browser may scale the page.');
     }
-    const size = selectedTemplate.paperMode === 'SINGLE_STICKER'
-      ? { widthMm: Number(selectedTemplate.cardWidthMm), heightMm: Number(selectedTemplate.cardHeightMm) }
+    const size = effectiveTemplate.paperMode === 'SINGLE_STICKER'
+      ? { widthMm: Number(effectiveTemplate.cardWidthMm), heightMm: Number(effectiveTemplate.cardHeightMm) }
       : null;
     void printPricingCardAndSnapshot({
       print: () => printPricingCards(size),
       snapshot: profile.data.snapshotPrintedCards && user?.role === 'ADMIN'
-        ? () => recordPrint.mutateAsync(snapshotInput(payload, selectedTemplate.id, copies, pricingPresetId, encodingPresetId))
+        ? () => recordPrint.mutateAsync(snapshotInput(payload, effectiveTemplate.id, copies, pricingPresetId, encodingPresetId))
         : undefined,
       onSnapshotError: () => toast.error('Snapshot failed — the print still went out.'),
     }).then((printed) => { if (printed.error) toast.error(`Printing failed: ${printed.error}`); });
   };
 
   return <div className="product-label-page space-y-5">
-    <button type="button" onClick={() => navigate(-1)} className="no-print inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2"><ArrowLeft className="h-4 w-4" /> Back</button>
+    <div className="no-print flex items-center justify-between gap-3">
+      <button type="button" onClick={() => navigate(-1)} className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2"><ArrowLeft className="h-4 w-4" /> Back</button>
+      <button
+        type="button"
+        onClick={() => setEditOpen(true)}
+        disabled={!selectedTemplate}
+        className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+        data-testid="pricing-card-edit-button"
+      >
+        <Pencil className="h-4 w-4" /> Edit
+      </button>
+    </div>
     <PricingCardControls templates={activeTemplates} selectedTemplateId={selectedTemplateId} copies={copies} validUntil={validUntil} disabled={!ready} cardCount={cards.length} onTemplateChange={changeTemplate} onCopiesChange={setCopies} onValidUntilChange={setValidUntilOverride} onPrint={print} />
     <FeatureHighlightPicker features={features} selectedCodes={selectedCodes} max={selectedTemplate?.featureMax ?? 0} onToggle={(code) => setSelectedFeatures(toggleFeatureSelection(selectedCodes, code))} onReset={() => setSelectedFeatures(null)} />
-    <details className="no-print group rounded-xl border border-slate-200 bg-white p-4 open:pb-4" data-testid="inline-product-editor">
-      <summary className="flex cursor-pointer select-none items-center gap-2 rounded-md text-sm font-semibold uppercase tracking-wide text-slate-600 [&::-webkit-details-marker]:hidden">
-        <span aria-hidden className="text-slate-400 group-open:rotate-90 transition-transform">▶</span>
-        Edit product data
-        <span className="ml-auto text-xs font-normal normal-case tracking-normal text-slate-400">Name, model, specifications — no price fields</span>
-      </summary>
-      <div className="mt-3"><InlineProductEditor productId={id} /></div>
-    </details>
+    <PricingCardEditModal
+      isOpen={editOpen}
+      onClose={() => setEditOpen(false)}
+      productId={id}
+      template={selectedTemplate}
+      validUntil={validUntil}
+      onOverridesSaved={setOverrides}
+    />
     {user?.role === 'ADMIN' && secretConfig.data?.settings?.showCodeOnLabel && <LabelSecretPrintControls config={secretConfig.data} pricingPresetId={pricingPresetId} encodingPresetId={encodingPresetId} password={password} manualStages={manualStages} manualStagesEnabled={manualStagesEnabled} onPricingPresetChange={setPricingPresetId} onEncodingPresetChange={setEncodingPresetId} onPasswordChange={setPassword} onManualStagesChange={setManualStages} onManualStagesEnabledChange={setManualStagesEnabled} onApply={applySecret} pending={secret.isPending} preview={payload ? secretControlsPreview(payload) : undefined} />}
     <ThermalPrintWarning template={selectedTemplate} />
     <BrowserPrintHint />
     <ProductLabelWarnings warnings={(result?.warnings ?? []) as never[]} />
     {card.isLoading && <p className="p-8 text-center text-slate-500">Loading pricing card…</p>}
     {card.isError && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">Pricing card could not be loaded.</p>}
-    {selectedTemplate && profile.data && <PricingCardPage cards={cards} template={selectedTemplate} shopProfile={profile.data} />}
+    {effectiveTemplate && profile.data && <PricingCardPage cards={cards} template={effectiveTemplate} shopProfile={profile.data} />}
   </div>;
 }
 

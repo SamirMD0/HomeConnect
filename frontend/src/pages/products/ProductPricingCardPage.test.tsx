@@ -135,12 +135,14 @@ describe('ProductPricingCardPage', () => {
     expect(renderPage()).not.toContain('SECRET PRICE PANEL');
   });
 
-  it('shows the inline product editor so the operator can fix a spec without leaving the print flow', () => {
+  it('exposes an Edit button that opens the combined product+card modal', () => {
     const html = renderPage();
-    expect(html).toContain('Edit product data');
-    expect(html).toContain('data-testid="inline-product-editor"');
-    // The panel body is present in the DOM even when the <details> element is closed.
-    expect(html).toContain('Loading product data');
+    // Button visible on the page; the modal itself only mounts once opened.
+    expect(html).toContain('data-testid="pricing-card-edit-button"');
+    expect(html).toMatch(/data-testid="pricing-card-edit-button"[^>]*>[\s\S]*?Edit<\/button>/);
+    // The old collapsed "Edit product data" panel is gone — its content is now
+    // inside the modal so it is not in the page HTML at initial render.
+    expect(html).not.toContain('data-testid="inline-product-editor"');
   });
 
   it('does not warn about thermal print when the template is a color template', () => {
