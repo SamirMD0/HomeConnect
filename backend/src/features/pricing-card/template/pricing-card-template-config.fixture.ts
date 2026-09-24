@@ -6,5 +6,5 @@ export const minimumTemplateConfig = {
   price: { show: true, fontScale: 1, weight: 800 as const, emphasis: 'plain' as const, prominence: 'normal' as const, validUntil: { show: true, format: 'dmy' as const } },
   sku: { show: true, showSecretCode: true, prefix: 'SKU:' },
   barcode: { show: true, showDigits: true, targetWidthMm: 50 },
-  appearance: { marginMm: 3, innerGapMm: 2, borderPx: 1 as const, sectionDividers: true, fontScale: 1, orientation: 'landscape' as const, layout: 'stack' as const },
+  appearance: { marginMm: 3, innerGapMm: 2, borderPx: 1 as const, sectionDividers: true, fontScale: 1, orientation: 'landscape' as const, layout: 'stack' as const, palette: 'color' as const },
 };

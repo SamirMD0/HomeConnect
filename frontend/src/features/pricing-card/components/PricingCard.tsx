@@ -70,6 +70,7 @@ export function PricingCard({ template, product, shopProfile, assets = {}, class
   const hasProductImage = config.body.image.show && Boolean(productImageUrl);
   const hasHeader = (config.header.companyLogo.show && Boolean(assets.companyLogoUrl)) || Boolean(product.brand);
   const layout = config.appearance.layout ?? 'stack';
+  const palette = config.appearance.palette ?? 'color';
   const barcodeBlock = config.barcode.show && (variant === 'thumbnail'
     ? <div className="pricing-card-barcode-placeholder" aria-hidden style={{ width: `${config.barcode.targetWidthMm}mm`, height: '8mm' }} />
     : <Barcode value={product.barcodeValue} targetWidthMm={config.barcode.targetWidthMm} showDigits={config.barcode.showDigits} />);
@@ -83,7 +84,7 @@ export function PricingCard({ template, product, shopProfile, assets = {}, class
     const firstSpec = specRows[0];
     const restSpecs = specRows.slice(1);
     return (
-      <article className={`pricing-card pricing-card-centered ${className}`.trim()} style={style}>
+      <article className={`pricing-card pricing-card-centered${palette === 'thermal' ? ' pricing-card-thermal' : ''} ${className}`.trim()} style={style}>
         {hasHeader && (
           <header className="pricing-card-centered-header">
             {config.header.companyLogo.show && Boolean(assets.companyLogoUrl) && <CompanyLogo name={shopProfile.name} logoUrl={assets.companyLogoUrl} />}
@@ -131,7 +132,7 @@ export function PricingCard({ template, product, shopProfile, assets = {}, class
   }
 
   return (
-    <article className={`pricing-card ${config.appearance.sectionDividers ? 'pricing-card-dividers' : ''} ${className}`.trim()} style={style}>
+    <article className={`pricing-card ${config.appearance.sectionDividers ? 'pricing-card-dividers' : ''}${palette === 'thermal' ? ' pricing-card-thermal' : ''} ${className}`.trim()} style={style}>
       {hasHeader && <header className="pricing-card-header">
         {config.header.companyLogo.show && <CompanyLogo name={shopProfile.name} logoUrl={assets.companyLogoUrl} />}
         <BrandMark brand={product.brand} display={config.header.brand.display} logoUrl={brandLogoUrl} />

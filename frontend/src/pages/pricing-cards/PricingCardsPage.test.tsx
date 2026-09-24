@@ -47,7 +47,7 @@ const template = (overrides: Partial<PricingCardTemplate> = {}): PricingCardTemp
     price: { show: true, fontScale: 1, weight: 800, emphasis: 'plain', prominence: 'hero', validUntil: { show: true, format: 'd-mon-y' } },
     sku: { show: true, showSecretCode: true, prefix: 'SKU: ' },
     barcode: { show: true, showDigits: true, targetWidthMm: 40 },
-    appearance: { marginMm: 3, innerGapMm: 1.5, borderPx: 1, sectionDividers: true, fontScale: 1, orientation: 'landscape', layout: 'stack' },
+    appearance: { marginMm: 3, innerGapMm: 1.5, borderPx: 1, sectionDividers: true, fontScale: 1, orientation: 'landscape', layout: 'stack', palette: 'color' },
   },
   featureMax: 4, specKeyOrder: ['screen_size'], defaultValidityDays: 30, isActive: true, archivedAt: null, archivedReason: null,
   ...overrides,

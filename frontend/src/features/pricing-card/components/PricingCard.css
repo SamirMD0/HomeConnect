@@ -224,6 +224,55 @@
 }
 .pricing-card-centered-footer .pricing-card-barcode { margin: 0; }
 
+/*
+ * Thermal palette — XP-80T style 203 dpi printers cannot render red, cannot
+ * hold thin colored rules, and turn light gray into blotchy ink. Force every
+ * chromatic element on the card to pure black-on-white and thicken the few
+ * separator rules that survived in the color palette so they print as clean
+ * hairlines instead of dashed ghosts. Applies over any layout, since a shop
+ * may want a thermal variant of either the stack or the centered card.
+ */
+.pricing-card-thermal,
+.pricing-card-thermal .pricing-card-price,
+.pricing-card-thermal .pricing-card-centered-header,
+.pricing-card-thermal .pricing-card-centered-body,
+.pricing-card-thermal .pricing-card-centered-spec-row dt,
+.pricing-card-thermal .pricing-card-centered-spec-row dd,
+.pricing-card-thermal .pricing-card-centered-model,
+.pricing-card-thermal .pricing-card-centered-spec,
+.pricing-card-thermal .pricing-card-dimensions,
+.pricing-card-thermal .pricing-card-valid-until,
+.pricing-card-thermal .pricing-card-sku,
+.pricing-card-thermal .pricing-card-title,
+.pricing-card-thermal .pricing-card-feature-copy {
+  color: #000000;
+}
+.pricing-card-thermal { background: #ffffff; }
+.pricing-card-thermal .pricing-card-centered-divider {
+  background: #000000;
+  height: 0.4mm;
+}
+.pricing-card-thermal .pricing-card-centered-meta { border-bottom-color: #000000; }
+.pricing-card-thermal .pricing-card-centered .pricing-card-features,
+.pricing-card-thermal .pricing-card-features {
+  border-top-color: #000000;
+  border-bottom-color: #000000;
+}
+.pricing-card-thermal .pricing-card-centered .pricing-card-feature + .pricing-card-feature,
+.pricing-card-thermal .pricing-card-feature + .pricing-card-feature {
+  border-left-color: #000000;
+}
+.pricing-card-thermal .pricing-card-centered-footer {
+  border-top-color: #000000;
+}
+.pricing-card-thermal .pricing-card-brand-name,
+.pricing-card-thermal .pricing-card-brand-logo,
+.pricing-card-thermal .pricing-card-feature-icon {
+  /* Any color inside a brand logo or feature icon collapses to black for
+   * thermal — thermal rasterises grayscale unpredictably. */
+  filter: grayscale(1) brightness(0);
+}
+
 .pricing-card-thumbnail-viewport {
   position: relative;
   height: 140px;

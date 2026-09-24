@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import applianceConfig from '../../../../../backend/prisma/seed-data/pricing-card-templates/appliance-shelf.json';
+import applianceThermalConfig from '../../../../../backend/prisma/seed-data/pricing-card-templates/appliance-shelf-thermal.json';
 import compactConfig from '../../../../../backend/prisma/seed-data/pricing-card-templates/compact-legacy.json';
 import largeConfig from '../../../../../backend/prisma/seed-data/pricing-card-templates/large-legacy.json';
 import tvConfig from '../../../../../backend/prisma/seed-data/pricing-card-templates/tv-large.json';
@@ -35,6 +36,7 @@ const template = (
 const templates = [
   template('tv-large', 'TV Large', '148', '105', tvConfig),
   template('appliance-shelf', 'Appliance Shelf', '120', '80', applianceConfig),
+  template('appliance-shelf-thermal', 'Appliance Shelf Thermal', '120', '80', applianceThermalConfig),
   template('compact-legacy', 'Compact Legacy', '58', '40', compactConfig),
   template('large-legacy', 'Legacy Large', '72', '50', largeConfig),
 ];
@@ -85,6 +87,13 @@ describe('PricingCard renderer', () => {
     // strip is the borderless row with vertical rules, not the grid-chip badges.
     expect(html).toContain('pricing-card-centered');
     expect(html).toContain('pricing-card-features-row');
+  });
+
+  it('opts into the thermal palette only when the template asks for it', () => {
+    // Color palette: no thermal marker class in the HTML.
+    expect(render(templates[1], 0)).not.toContain('pricing-card-thermal');
+    // Thermal palette (Appliance Shelf Thermal, index 2): the thermal class is present.
+    expect(render(templates[2], 0)).toContain('pricing-card-thermal');
   });
 
   it('renders the borderless row layout with its explicit layout class', () => {

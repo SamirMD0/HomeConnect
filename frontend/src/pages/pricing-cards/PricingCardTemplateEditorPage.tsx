@@ -38,7 +38,7 @@ const defaultConfig: PricingCardTemplateConfig = {
   price: { show: true, fontScale: 1, weight: 800, emphasis: 'plain', prominence: 'large', validUntil: { show: true, format: 'd-mon-y' } },
   sku: { show: true, showSecretCode: true, prefix: 'SKU: ' },
   barcode: { show: true, showDigits: true, targetWidthMm: 40 },
-  appearance: { marginMm: 2, innerGapMm: 1, borderPx: 1, sectionDividers: true, fontScale: 1, orientation: 'portrait', layout: 'stack' },
+  appearance: { marginMm: 2, innerGapMm: 1, borderPx: 1, sectionDividers: true, fontScale: 1, orientation: 'portrait', layout: 'stack', palette: 'color' },
 };
 
 const COLLAPSED_STATE_KEY = 'pricing-card-template-editor:collapsed-sections';
@@ -266,6 +266,12 @@ export function PricingCardTemplateEditorPage() {
               <select value={form.config.appearance.layout} onChange={(event) => setConfigPart(setForm, 'appearance', (a) => ({ ...a, layout: event.target.value as 'stack' | 'centered' }))} className={inputClass}>
                 <option value="stack">Stack — classic block layout</option>
                 <option value="centered">Centered — retail-hero layout</option>
+              </select>
+            </Field>
+            <Field label="Palette">
+              <select value={form.config.appearance.palette} onChange={(event) => setConfigPart(setForm, 'appearance', (a) => ({ ...a, palette: event.target.value as 'color' | 'thermal' }))} className={inputClass}>
+                <option value="color">Color — standard palette</option>
+                <option value="thermal">Thermal — pure black on white (XP-80T)</option>
               </select>
             </Field>
             <Field label="Margin (mm)"><input type="number" min={0} max={30} value={form.config.appearance.marginMm} onChange={(event) => setConfigPart(setForm, 'appearance', (a) => ({ ...a, marginMm: Number(event.target.value) || 0 }))} className={inputClass} /></Field>

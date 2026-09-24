@@ -39,6 +39,11 @@ export const PricingCardTemplateConfigZ = z.object({
     // divider, body centered, features under the price hero, and a slim
     // sku/barcode footer. Defaulted so pre-v2.1.0 configs keep rendering.
     layout: z.enum(['stack', 'centered']).default('stack'),
+    // `color` = the standard palette (red price, gray meta rules). `thermal` =
+    // pure black-on-white for XP-80T thermal printers where any grayscale
+    // ink or thin colored rules turn to mush at 203 dpi. Defaulted so every
+    // pre-v2.1.0 config renders in the color palette exactly as before.
+    palette: z.enum(['color', 'thermal']).default('color'),
   }).strict(),
   specKeyAliases: z.record(z.string(), z.array(z.string().trim().min(1).max(120)).max(40)).optional(),
 }).strict().refine((value) => utf8Bytes(value) <= MAX_TEMPLATE_CONFIG_BYTES, {

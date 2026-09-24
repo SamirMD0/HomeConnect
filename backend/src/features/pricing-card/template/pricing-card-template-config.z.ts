@@ -37,6 +37,9 @@ export const PricingCardTemplateConfigZ = z.object({
     // switches to the retail-hero layout (brand hero at top, features under
     // the price hero).
     layout: z.enum(['stack', 'centered']).default('stack'),
+    // See the frontend twin. `color` is the standard palette; `thermal` is
+    // pure black-on-white for XP-80T thermal printers.
+    palette: z.enum(['color', 'thermal']).default('color'),
   }).strict(),
   specKeyAliases: z.record(z.string(), z.array(z.string().trim().min(1).max(120)).max(40)).optional(),
 }).strict().refine((value) => Buffer.byteLength(JSON.stringify(value), 'utf8') <= MAX_TEMPLATE_CONFIG_BYTES, {
