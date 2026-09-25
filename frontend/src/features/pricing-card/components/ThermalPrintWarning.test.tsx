@@ -11,7 +11,7 @@ const template = (widthMm: string): PricingCardTemplate => ({
   config: {
     configVersion: 1,
     header: { companyLogo: { show: false, sizeMm: 8, position: 'left' }, brand: { display: 'text', position: 'right', sizeMm: 8 } },
-    body: { title: { show: true, maxLines: 2, fontScale: 1 }, detailsFontScale: 1, detailsBoldBlack: false, model: { show: true }, dimensions: { show: true }, specs: { show: true, maxRows: 2 }, image: { show: false, columnWidthPct: 0 } },
+    body: { title: { show: true, maxLines: 2, fontScale: 1 }, detailsFontScale: 1, detailsBoldBlack: false, model: { show: true, fontScale: 1 }, dimensions: { show: true }, specs: { show: true, maxRows: 2 }, image: { show: false, columnWidthPct: 0 } },
     features: { show: false, layout: 'row', showLabels: false, showValues: false },
     price: { show: true, fontScale: 1, weight: 800, emphasis: 'plain', prominence: 'normal', validUntil: { show: false, format: 'dmy' } },
     sku: { show: true, showSecretCode: true, prefix: 'SKU: ', fontScale: 1 },

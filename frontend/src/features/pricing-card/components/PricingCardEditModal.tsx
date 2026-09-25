@@ -241,6 +241,7 @@ export function PricingCardEditModal({
                     <option value="3">3</option>
                   </Select>
                   <NumberField label="Details font scale (model, dimensions, specs)" step="0.05" min={0.5} max={3} value={config.body.detailsFontScale ?? 1} onChange={(value) => setConfigOverride('body.detailsFontScale', value)} />
+                  <NumberField label="Model font scale (multiplies details)" step="0.05" min={0.5} max={3} value={config.body.model.fontScale ?? 1} onChange={(value) => setConfigOverride('body.model.fontScale', value)} />
                   <Toggle label="Bold black details" checked={config.body.detailsBoldBlack ?? false} onChange={(value) => setConfigOverride('body.detailsBoldBlack', value)} />
                 </div>
                 <div className="grid gap-2 rounded-lg border border-slate-200 p-3 md:grid-cols-2">

@@ -42,7 +42,8 @@
  */
 .pricing-card-title { overflow: hidden; font-size: calc(5mm * var(--pricing-card-title-scale)); font-weight: 700; line-height: 1.05; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: var(--pricing-card-title-lines); }
 .pricing-card-model, .pricing-card-sku { font-family: "Courier New", monospace; overflow-wrap: anywhere; }
-.pricing-card-model, .pricing-card-dimensions { font-size: calc(2.4mm * var(--pricing-card-details-scale)); font-weight: 400; color: #4b5563; }
+.pricing-card-model { font-size: calc(2.4mm * var(--pricing-card-details-scale) * var(--pricing-card-model-scale, 1)); font-weight: 400; color: #4b5563; }
+.pricing-card-dimensions { font-size: calc(2.4mm * var(--pricing-card-details-scale)); font-weight: 400; color: #4b5563; }
 .pricing-card-specs { display: grid; gap: 0.5mm; font-size: calc(2.6mm * var(--pricing-card-details-scale)); }
 .pricing-card-spec-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 1mm; }
 .pricing-card-spec-row dt { color: #374151; font-weight: 500; }
@@ -147,7 +148,7 @@
   font-size: calc(3mm * var(--pricing-card-font-scale) * var(--pricing-card-details-scale));
   color: #111827;
 }
-.pricing-card-centered-model { justify-self: start; color: #111827; }
+.pricing-card-centered-model { justify-self: start; color: #111827; font-size: calc(1em * var(--pricing-card-model-scale, 1)); }
 .pricing-card-centered-spec { justify-self: end; color: #111827; }
 .pricing-card-centered-spec-list {
   display: grid;

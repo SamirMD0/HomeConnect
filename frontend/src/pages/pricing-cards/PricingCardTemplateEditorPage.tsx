@@ -31,7 +31,7 @@ const defaultConfig: PricingCardTemplateConfig = {
     title: { show: true, maxLines: 2, fontScale: 1 },
     detailsFontScale: 1,
     detailsBoldBlack: false,
-    model: { show: true, prefix: 'Model: ' },
+    model: { show: true, prefix: 'Model: ', fontScale: 1 },
     dimensions: { show: false },
     specs: { show: true, maxRows: 4 },
     image: { show: false, columnWidthPct: 0 },

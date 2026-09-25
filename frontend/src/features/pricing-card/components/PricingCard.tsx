@@ -61,6 +61,7 @@ export function PricingCard({ template, product, shopProfile, assets = {}, class
     '--pricing-card-image-width': `${config.body.image.columnWidthPct}%`,
     '--pricing-card-price-scale': config.price.fontScale,
     '--pricing-card-sku-scale': config.sku.fontScale ?? 1,
+    '--pricing-card-model-scale': config.body.model.fontScale ?? 1,
     '--pricing-card-price-weight': config.price.weight,
     '--pricing-card-company-logo-size': `${config.header.companyLogo.sizeMm}mm`,
     '--pricing-card-brand-logo-size': `${config.header.brand.sizeMm}mm`,

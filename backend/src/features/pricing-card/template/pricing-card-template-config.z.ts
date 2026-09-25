@@ -15,7 +15,7 @@ export const PricingCardTemplateConfigZ = z.object({
     title: z.object({ show: z.boolean(), maxLines: z.union([z.literal(1), z.literal(2), z.literal(3)]), fontScale: positiveScale }).strict(),
     detailsFontScale: positiveScale.default(1),
     detailsBoldBlack: z.boolean().default(false),
-    model: z.object({ show: z.boolean(), prefix: z.string().max(40).optional() }).strict(),
+    model: z.object({ show: z.boolean(), prefix: z.string().max(40).optional(), fontScale: positiveScale.default(1) }).strict(),
     dimensions: z.object({ show: z.boolean() }).strict(),
     specs: z.object({ show: z.boolean(), maxRows: z.number().int().min(0).max(40) }).strict(),
     image: z.object({ show: z.boolean(), columnWidthPct: z.number().min(0).max(80) }).strict(),
