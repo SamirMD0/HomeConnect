@@ -45,6 +45,7 @@ export const refreshAccessToken = (): Promise<string | null> => {
     try {
       const response = await axios.post(`${API_URL}/auth/refresh`, {}, {
         withCredentials: true,
+        timeout: 10_000,
       });
       const newAccessToken: string | null = response.data?.data?.accessToken ?? null;
       if (!newAccessToken) return null;

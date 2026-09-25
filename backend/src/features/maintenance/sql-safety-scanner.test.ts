@@ -93,6 +93,19 @@ describe('sql safety scanner — allows legitimate repair SQL', () => {
     expect(scanSqlForUnsafeStatements(`UPDATE products SET "labelBarcodeSource" = 'AUTO' WHERE "labelBarcodeSource" = 'SKU';`).safe).toBe(false);
   });
 
+  it('allows only the reviewed legacy template appearance parity update', () => {
+    const safe = `UPDATE "pricing_card_templates" SET "config" = jsonb_set(jsonb_set("config", '{appearance,borderPx}', '1'::jsonb, false), '{appearance,sectionDividers}', 'true'::jsonb, false) WHERE "id" IN ('20000000-0000-4000-8000-000000000003', '20000000-0000-4000-8000-000000000004');`;
+    expect(scanSqlForUnsafeStatements(safe).safe).toBe(true);
+    // Unscoped, it would rewrite every operator-authored template.
+    expect(scanSqlForUnsafeStatements(safe.replace(/ WHERE[\s\S]+?(?=;)/, '')).safe).toBe(false);
+    // A different id set is a different review.
+    expect(scanSqlForUnsafeStatements(safe.replace('000000000004', '000000000009')).safe).toBe(false);
+    // Only the two appearance keys are reviewed; anything else is a fresh write.
+    expect(scanSqlForUnsafeStatements(safe.replace('{appearance,sectionDividers}', '{appearance,fontScale}')).safe).toBe(false);
+    // The same shape against another table is not covered.
+    expect(scanSqlForUnsafeStatements(safe.replace('"pricing_card_templates"', '"products"')).safe).toBe(false);
+  });
+
   it('still rejects an UPDATE that could overwrite existing values', () => {
     expect(scanSqlForUnsafeStatements(`UPDATE "debts" SET "amount" = 0;`).safe).toBe(false);
     expect(scanSqlForUnsafeStatements(`UPDATE "debts" SET "amount" = 0 WHERE "id" = 'x';`).safe).toBe(false);

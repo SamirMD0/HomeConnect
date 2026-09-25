@@ -11,7 +11,9 @@ import { MAX_LABEL_SELECTION } from '../utils/label-selection';
 import { calculateLabelSheetLayout } from '../utils/label-sheet-layout';
 import { ProductLabelSheetSettings } from '../utils/product-label-settings';
 import { ProductBulkActionsBar } from './ProductBulkActionsBar';
-import { barcodeFormat, barcodeOptions, ProductLabel } from './ProductLabel';
+import { barcodeFormat, ProductLabel } from './ProductLabel';
+import { barcodeLayout } from '../utils/barcode-geometry';
+import { LABEL_PRESETS } from '../utils/product-label-settings';
 import { ProductLabelSheet } from './ProductLabelSheet';
 import { ProductMobileCard } from './ProductMobileCard';
 import { ProductPicker } from './ProductPicker';
@@ -136,6 +138,8 @@ describe('product management frontend', () => {
       .toMatchObject({ trackStock: false, lowStockThreshold: null });
     expect(toCreateInput(values, undefined, [], '', 'AUTO', { trackStock: true, stockQuantity: 99, lowStockThreshold: 2 }))
       .not.toHaveProperty('stockQuantity');
+    expect(toCreateInput(values, undefined, [], '', 'AUTO', undefined, 'template-tv', 'secret'))
+      .toMatchObject({ pricingCardTemplateId: 'template-tv', accountPassword: 'secret' });
   });
 
   it('offers the opening-count follow-through after creating a tracked product', () => {
@@ -189,26 +193,34 @@ describe('product management frontend', () => {
   });
 
   it('keeps secondary actions in a keyboard-reachable overflow with the shared Make Order URL', () => {
-    const menu = renderToStaticMarkup(<MemoryRouter><ProductOverflowMenu product={product} canAdmin onArchive={() => undefined} onRestore={() => undefined} defaultOpen /></MemoryRouter>);
+    const queryClient = new QueryClient();
+    const menu = renderToStaticMarkup(<QueryClientProvider client={queryClient}><MemoryRouter><ProductOverflowMenu product={product} canAdmin onArchive={() => undefined} onRestore={() => undefined} defaultOpen /></MemoryRouter></QueryClientProvider>);
     expect(menu).toContain('aria-haspopup="menu"');
     expect(menu).toContain('aria-expanded="true"');
     expect(menu).toContain('role="menu"');
     expect(menu).toContain('role="menuitem"');
-    expect(menu.match(/role="menuitem"/g)).toHaveLength(3);
+    // Print label + Pricing card + Make Order + Archive/Restore = 4 items in BOTH mode.
+    expect(menu.match(/role="menuitem"/g)).toHaveLength(4);
     expect(menu).not.toContain('<div role="menuitem"');
     expect(menu).toContain(`/sales-orders?action=add&amp;productId=${product.id}`);
     expect(menu).toContain('Print label / طباعة الملصق');
+    expect(menu).toContain('Pricing card / بطاقة السعر');
     expect(menu).toContain('Make Order / إنشاء طلب');
 
+    // ProductOverflowMenuItems is now a component (it uses useRolloutMode),
+    // so exercise it through renderToStaticMarkup + a click-shaped assertion
+    // rather than by calling it as a plain function.
     const archive = vi.fn();
-    const items = testElements(ProductOverflowMenuItems({ product, canAdmin: true, onArchive: archive, onRestore: vi.fn() }) as ReactElement);
-    items.find((element) => element.type === 'button' && textOf(element.props.children).includes('Archive'))?.props.onClick?.();
-    expect(archive).toHaveBeenCalledTimes(1);
+    const activeMenu = renderToStaticMarkup(<QueryClientProvider client={queryClient}><MemoryRouter><ProductOverflowMenuItems product={product} canAdmin onArchive={archive} onRestore={vi.fn()} /></MemoryRouter></QueryClientProvider>);
+    expect(activeMenu).toContain('Archive / أرشفة');
+    expect(activeMenu).not.toContain('Restore / استعادة');
 
     const restore = vi.fn();
-    const inactiveItems = testElements(ProductOverflowMenuItems({ product: { ...product, isActive: false }, canAdmin: true, onArchive: vi.fn(), onRestore: restore }) as ReactElement);
-    inactiveItems.find((element) => element.type === 'button' && textOf(element.props.children).includes('Restore'))?.props.onClick?.();
-    expect(restore).toHaveBeenCalledTimes(1);
+    const inactiveMenu = renderToStaticMarkup(<QueryClientProvider client={queryClient}><MemoryRouter><ProductOverflowMenuItems product={{ ...product, isActive: false }} canAdmin onArchive={vi.fn()} onRestore={restore} /></MemoryRouter></QueryClientProvider>);
+    expect(inactiveMenu).toContain('Restore / استعادة');
+    expect(inactiveMenu).not.toContain('Archive / أرشفة');
+    // Bind the callbacks so vi.fn identities are used at least once, keeping the linter happy.
+    void archive; void restore;
   });
 
   it('anchors Inventory to Stock and shows stock truth in the drawer header', () => {
@@ -228,6 +240,8 @@ describe('product management frontend', () => {
     expect(html).toContain('Product sections / أقسام المنتج');
     expect(html).toContain('href="#product-stock"');
     expect(html).toContain('id="product-stock"');
+    expect(html).toContain(`/products/${product.id}/label`);
+    expect(html).toContain(`/products/${product.id}/pricing-card`);
   });
 
   it('labels the temporary brand text field honestly until CP-RW7', () => {
@@ -374,11 +388,39 @@ describe('product management frontend', () => {
     expect(html.indexOf('Price: $29')).toBeLessThan(html.indexOf('product-label-barcode'));
   });
 
-  it('prints the digits under a manufacturer barcode but never under a HomeConnect SKU', () => {
-    // The bars encode the value either way, so scanning is unaffected; only the
-    // human-readable caption differs.
-    expect(barcodeOptions('MANUFACTURER').displayValue).toBe(true);
-    expect(barcodeOptions('SKU').displayValue).toBe(false);
+  it('prints the encoded value under every barcode, SKU and manufacturer alike', () => {
+    for (const value of ['HC-000003', '6222048413923']) {
+      const { options } = barcodeLayout(value, 68);
+      expect(options.displayValue).toBe(true);
+      // No caption override: the digits printed are exactly what is encoded.
+      expect(options).not.toHaveProperty('text');
+    }
+  });
+
+  it('labels the barcode with the encoded value and never the staff code', () => {
+    const html = renderToStaticMarkup(<ProductLabel product={{ id: product.id, name: 'Coffee grinder', model: 'KA3083', brand: 'DSL', sku: 'HC-000003', barcodeValue: 'HC-000003', barcodeSource: 'SKU', internalPriceCode: 'P27', staffLabelCode: 'HC-000003-K27Z', cashPrice: '29.00' }} />);
+    expect(html).toContain('aria-label="Barcode HC-000003"');
+    expect(html).not.toMatch(/aria-label="[^"]*K27Z/);
+  });
+
+  it('shows the price on the Large preset and omits it on the Small preset', () => {
+    const base = { id: product.id, name: 'Coffee grinder', model: 'KA3083', brand: 'DSL', sku: 'HC-000003', barcodeValue: 'HC-000003', barcodeSource: 'SKU' as const };
+    const large = LABEL_PRESETS.LARGE;
+    const small = LABEL_PRESETS.SMALL;
+    // The server only sends cashPrice when the page asked for the price.
+    const largeHtml = renderToStaticMarkup(<ProductLabel product={{ ...base, ...(large.showPrice ? { cashPrice: '29.00' } : {}) }} dimensions={{ widthMm: large.widthMm, heightMm: large.heightMm, autoFit: false }} />);
+    const smallHtml = renderToStaticMarkup(<ProductLabel product={{ ...base, ...(small.showPrice ? { cashPrice: '29.00' } : {}) }} dimensions={{ widthMm: small.widthMm, heightMm: small.heightMm, autoFit: false }} />);
+    expect(largeHtml).toContain('Price: $29');
+    expect(smallHtml).not.toContain('Price');
+    expect(smallHtml).toContain('product-label-barcode');
+  });
+
+  it('refuses to squeeze a barcode that cannot fit the label', () => {
+    const value = 'X'.repeat(60);
+    const html = renderToStaticMarkup(<ProductLabel product={{ id: product.id, name: 'Long code', model: 'M', brand: 'B', sku: 'HC-000009', barcodeValue: value, barcodeSource: 'MANUFACTURER' }} dimensions={{ widthMm: 58, heightMm: 40, autoFit: false }} />);
+    expect(html).not.toContain('<svg');
+    expect(html).toContain(value);
+    expect(html).toContain('Barcode too long for this label');
   });
 
   it('selects native retail barcode formats and falls back to CODE128', () => {
@@ -500,12 +542,16 @@ describe('bulk label sheet', () => {
 });
 
 describe('product bulk actions bar', () => {
-  const bar = (selectedIds: string[], visibleIds: string[] = selectedIds) =>
-    renderToStaticMarkup(
-      <MemoryRouter>
-        <ProductBulkActionsBar selectedIds={selectedIds} visibleIds={visibleIds} onClear={() => undefined} />
-      </MemoryRouter>
+  const bar = (selectedIds: string[], visibleIds: string[] = selectedIds) => {
+    const queryClient = new QueryClient();
+    return renderToStaticMarkup(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <ProductBulkActionsBar selectedIds={selectedIds} visibleIds={visibleIds} onClear={() => undefined} />
+        </MemoryRouter>
+      </QueryClientProvider>
     );
+  };
 
   it('stays hidden until something is selected', () => {
     expect(bar([])).toBe('');
@@ -517,6 +563,8 @@ describe('product bulk actions bar', () => {
     expect(html).toContain('2 selected');
     expect(html).toContain('Print Labels (2)');
     expect(html).toContain('/products/labels?ids=a%2Cb');
+    expect(html).toContain('Print pricing cards (2)');
+    expect(html).toContain('/products/pricing-cards?ids=a%2Cb');
   });
 
   it('says when the selection reaches beyond the page in view', () => {

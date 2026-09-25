@@ -1,0 +1,10 @@
+import { Router } from 'express';
+import { validate } from '../../../middleware/validate.middleware';
+import { requirePricingAdmin } from '../../pricing/authorization/pricing-policy';
+import { FeatureIconController } from './feature-icon.controller';
+import { archiveFeatureIconSchema, createFeatureIconSchema, featureIconListQuerySchema, featureIconParamsSchema, updateFeatureIconSchema } from './feature-icon.validator';
+export const featureIconRoutes = Router();
+featureIconRoutes.get('/', validate(featureIconListQuerySchema, 'query'), FeatureIconController.list);
+featureIconRoutes.post('/', requirePricingAdmin, validate(createFeatureIconSchema), FeatureIconController.create);
+featureIconRoutes.patch('/:featureIconId', requirePricingAdmin, validate(featureIconParamsSchema, 'params'), validate(updateFeatureIconSchema), FeatureIconController.update);
+featureIconRoutes.post('/:featureIconId/archive', requirePricingAdmin, validate(featureIconParamsSchema, 'params'), validate(archiveFeatureIconSchema), FeatureIconController.archive);

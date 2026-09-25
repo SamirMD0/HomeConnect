@@ -68,6 +68,95 @@ const BOOKKEEPING_TABLE = /^\s*UPDATE\s+"?_prisma_migrations"?\s/i;
 const PRODUCT_LABEL_AUTO_BACKFILL = /^\s*UPDATE\s+"?products"?\s+SET\s+"?labelBarcodeSource"?\s*=\s*''\s+WHERE\s+"?labelBarcodeSource"?\s*=\s*''\s+AND\s+"?barcode"?\s+IS\s+NOT\s+NULL\s*$/i;
 const PRODUCT_LABEL_AUTO_VALUES = /\bSET\s+"?labelBarcodeSource"?\s*=\s*'AUTO'\s+WHERE\s+"?labelBarcodeSource"?\s*=\s*'SKU'\s+AND\s+"?barcode"?\s+IS\s+NOT\s+NULL\b/i;
 
+/**
+ * Migration 20260920200000_update_legacy_template_visuals. The two seeded legacy
+ * templates shipped with borderPx=0 / sectionDividers=false, but the ProductLabel
+ * they replace draws a 1px border and a divider above the price, so the seeded
+ * pair had to be brought back in line. Reviewed and allowed because it is pinned
+ * to those two seeded ids and writes two known appearance keys — it cannot reach
+ * an operator-authored template. Keep this allow-list exact: the shape is matched
+ * against the noise-stripped statement (string literals collapse to '') and every
+ * literal value is matched against the original text.
+ */
+const LEGACY_TEMPLATE_PARITY_SHAPE = /^\s*UPDATE\s+"?pricing_card_templates"?\s+SET\s+"?config"?\s*=\s*jsonb_set\(\s*jsonb_set\(\s*"?config"?\s*,\s*''\s*,\s*''::jsonb\s*,\s*false\s*\)\s*,\s*''\s*,\s*''::jsonb\s*,\s*false\s*\)\s*WHERE\s+"?id"?\s+IN\s*\(\s*''\s*,\s*''\s*,?\s*\)\s*$/i;
+const LEGACY_TEMPLATE_PARITY_VALUES = [
+  /jsonb_set\(\s*"?config"?\s*,\s*'\{appearance,borderPx\}'\s*,\s*'1'::jsonb\s*,\s*false\s*\)/i,
+  /'\{appearance,sectionDividers\}'\s*,\s*'true'::jsonb\s*,\s*false/i,
+  /'20000000-0000-4000-8000-000000000003'/i,
+  /'20000000-0000-4000-8000-000000000004'/i,
+];
+
+/**
+ * Migration 20260920220000_refresh_pricing_card_feature_icons. This is a
+ * reviewed visual-only refresh pinned to the complete shipped icon code set.
+ * It may replace only the SVG column and cannot reach admin-created rows.
+ */
+const FEATURE_ICON_REFRESH_SHAPE = /^\s*UPDATE\s+"?pricing_card_feature_icons"?\s+SET\s+"?svg"?\s*=\s*refreshed\."?svg"?\s+FROM\s*\(\s*VALUES[\s\S]+\)\s+AS\s+refreshed\s*\(\s*"?code"?\s*,\s*"?svg"?\s*\)\s+WHERE\s+"?pricing_card_feature_icons"?\."?code"?\s*=\s*refreshed\."?code"?\s*$/i;
+const FEATURE_ICON_REFRESH_CODES = [
+  'qled', 'oled', 'uhd-4k', 'dolby-vision', 'google-tv', 'inverter', 'no-frost',
+  'energy-a', 'energy-a-plus', 'spin-1400', 'wifi', 'steam', 'cordless', 'waterproof',
+  'brushless', 'usb-c-charging', 'digital-display',
+];
+
+/** The same reviewed migration converts only the two shipped grid templates. */
+const FEATURE_LAYOUT_REFRESH_SHAPE = /^\s*UPDATE\s+"?pricing_card_templates"?\s+SET\s+"?config"?\s*=\s*jsonb_set\(\s*"?config"?\s*,\s*''\s*,\s*''::jsonb\s*,\s*false\s*\)\s+WHERE\s+"?id"?\s+IN\s*\(\s*''\s*,\s*''\s*\)\s+AND\s+"?config"?\s*#>>\s*''\s+IN\s*\(\s*''\s*,\s*''\s*\)\s*$/i;
+const FEATURE_LAYOUT_REFRESH_VALUES = [
+  /'\{features,layout\}'/i,
+  /'"grid-chip"'::jsonb/i,
+  /'20000000-0000-4000-8000-000000000001'/i,
+  /'20000000-0000-4000-8000-000000000002'/i,
+  /'grid-2x3'/i,
+  /'grid-3x2'/i,
+];
+
+/**
+ * Migration 20260920230000_set_pricing_card_price_prominence. Reviewed and
+ * allowed for the same reasons as the two above: pinned to the two seeded shelf
+ * templates and writing two known `price` keys. It carries its own guard —
+ * `prominence` must still be absent — so it is a backfill in the scanner's own
+ * sense, and a template an operator has since tuned is never overwritten.
+ */
+const PRICE_PROMINENCE_SHAPE = /^\s*UPDATE\s+"?pricing_card_templates"?\s+SET\s+"?config"?\s*=\s*jsonb_set\(\s*jsonb_set\(\s*"?config"?\s*,\s*''\s*,\s*''::jsonb\s*,\s*true\s*\)\s*,\s*''\s*,\s*''::jsonb\s*,\s*false\s*\)\s*WHERE\s+"?id"?\s+IN\s*\(\s*''\s*,\s*''\s*,?\s*\)\s*AND\s+"?config"?\s*#>>\s*''\s+IS\s+NULL\s*$/i;
+const PRICE_PROMINENCE_VALUES = [
+  /jsonb_set\(\s*"?config"?\s*,\s*'\{price,prominence\}'\s*,\s*'"hero"'::jsonb\s*,\s*true\s*\)/i,
+  /'\{price,fontScale\}'\s*,\s*'1'::jsonb\s*,\s*false/i,
+  /'20000000-0000-4000-8000-000000000001'/i,
+  /'20000000-0000-4000-8000-000000000002'/i,
+  /"?config"?\s*#>>\s*'\{price,prominence\}'\s+IS\s+NULL/i,
+];
+
+/**
+ * Migrations 20260921100000_switch_tv_large_to_centered_layout and
+ * 20260921110000_switch_appliance_shelf_to_centered_layout. Reviewed and
+ * allowed for the same reasons as the visual-refresh siblings above: pinned
+ * to one of the two seeded shelf template ids, writes exactly one known
+ * `appearance.layout` key, and guarded on that key being absent — so an
+ * admin who has already picked a layout is never overwritten. The same
+ * shape and values apply to both migrations because they only differ in
+ * which of the two seeded ids they touch.
+ */
+const CENTERED_LAYOUT_SWITCH_SHAPE = /^\s*UPDATE\s+"?pricing_card_templates"?\s+SET\s+"?config"?\s*=\s*jsonb_set\(\s*"?config"?\s*,\s*''\s*,\s*''::jsonb\s*,\s*true\s*\)\s*WHERE\s+"?id"?\s*=\s*''\s+AND\s+"?config"?\s*#>>\s*''\s+IS\s+NULL\s*$/i;
+const CENTERED_LAYOUT_SWITCH_VALUES = [
+  /'\{appearance,layout\}'\s*,\s*'"centered"'::jsonb\s*,\s*true/i,
+  /'20000000-0000-4000-8000-00000000000[12]'/i,
+  /"?config"?\s*#>>\s*'\{appearance,layout\}'\s+IS\s+NULL/i,
+];
+
+/**
+ * The same reviewed migration brings the two shelf templates' header marks down
+ * to the sizes VISUAL_DESIGN §5 and §6 specify, so the hero price has the height
+ * it needs. Same two pinned ids, two known `header` keys, and guarded on the
+ * shipped sizes so a resized template is left alone.
+ */
+const HEADER_MARK_SIZE_SHAPE = /^\s*UPDATE\s+"?pricing_card_templates"?\s+SET\s+"?config"?\s*=\s*jsonb_set\(\s*jsonb_set\(\s*"?config"?\s*,\s*''\s*,\s*''::jsonb\s*,\s*false\s*\)\s*,\s*''\s*,\s*''::jsonb\s*,\s*false\s*\)\s*WHERE\s+"?id"?\s+IN\s*\(\s*''\s*,\s*''\s*,?\s*\)\s*AND\s*\(\s*"?config"?\s*#>>\s*''\s*\)\s+IN\s*\(\s*''\s*,\s*''\s*\)\s*$/i;
+const HEADER_MARK_SIZE_VALUES = [
+  /jsonb_set\(\s*"?config"?\s*,\s*'\{header,companyLogo,sizeMm\}'\s*,\s*'8'::jsonb\s*,\s*false\s*\)/i,
+  /'\{header,brand,sizeMm\}'\s*,\s*'10'::jsonb\s*,\s*false/i,
+  /'20000000-0000-4000-8000-000000000001'/i,
+  /'20000000-0000-4000-8000-000000000002'/i,
+  /"?config"?\s*#>>\s*'\{header,companyLogo,sizeMm\}'\s*\)\s+IN\s*\(\s*'18'\s*,\s*'14'\s*\)/i,
+];
+
 export function scanSqlForUnsafeStatements(sql: string): SqlSafetyResult {
   return scanStatements(sql, false);
 }
@@ -124,6 +213,19 @@ function isPermittedUpdate(cleaned: string, original: string): boolean {
   // rewrite: it touches only rows still carrying the old SKU default and only
   // when a saved barcode exists. Keep this allow-list exact.
   if (PRODUCT_LABEL_AUTO_BACKFILL.test(cleaned) && PRODUCT_LABEL_AUTO_VALUES.test(original)) return true;
+  // Seeded legacy template appearance parity — pinned to two seeded ids.
+  if (LEGACY_TEMPLATE_PARITY_SHAPE.test(cleaned) && LEGACY_TEMPLATE_PARITY_VALUES.every((rule) => rule.test(original))) return true;
+  // Curated feature marks — pinned to all and only the 17 shipped codes.
+  if (FEATURE_ICON_REFRESH_SHAPE.test(cleaned) && hasExactFeatureIconCodes(original)) return true;
+  // Feature layout rename — pinned to the two shipped grid templates.
+  if (FEATURE_LAYOUT_REFRESH_SHAPE.test(cleaned) && FEATURE_LAYOUT_REFRESH_VALUES.every((rule) => rule.test(original))) return true;
+  // Price prominence — pinned to the two shipped shelf templates, guarded on absence.
+  if (PRICE_PROMINENCE_SHAPE.test(cleaned) && PRICE_PROMINENCE_VALUES.every((rule) => rule.test(original))) return true;
+  // Header mark sizes for the same two templates, guarded on the shipped sizes.
+  if (HEADER_MARK_SIZE_SHAPE.test(cleaned) && HEADER_MARK_SIZE_VALUES.every((rule) => rule.test(original))) return true;
+  // Centered-layout switch for either shipped shelf template — pinned to one of
+  // the two seeded ids, guarded on absence of the layout key.
+  if (CENTERED_LAYOUT_SWITCH_SHAPE.test(cleaned) && CENTERED_LAYOUT_SWITCH_VALUES.every((rule) => rule.test(original))) return true;
 
   const match = /\bSET\b([\s\S]+?)\bWHERE\b([\s\S]+)$/i.exec(cleaned);
   if (!match) return false;
@@ -133,6 +235,12 @@ function isPermittedUpdate(cleaned: string, original: string): boolean {
   if (!columns.length) return false;
 
   return columns.every((column) => new RegExp(`(?:"${escapeRegex(column)}"|\\b${escapeRegex(column)}\\b)\\s+IS\\s+NULL`, 'i').test(whereClause));
+}
+
+function hasExactFeatureIconCodes(sql: string): boolean {
+  const codes = [...sql.matchAll(/\(\s*'([^']+)'\s*,\s*'<svg\b/g)].map((match) => match[1]).sort();
+  return codes.length === FEATURE_ICON_REFRESH_CODES.length
+    && codes.every((code, index) => code === [...FEATURE_ICON_REFRESH_CODES].sort()[index]);
 }
 
 /**

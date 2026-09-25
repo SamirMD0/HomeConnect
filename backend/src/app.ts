@@ -40,6 +40,11 @@ import { pricingCalculatorRoutes, pricingPresetsRoutes } from './features/pricin
 import { systemRoutes } from './features/system/system.routes';
 import { scannerRoutes } from './features/scanner/scanner.routes';
 import { inventoryRoutes } from './features/inventory/inventory.routes';
+import { shopProfileRoutes } from './features/shop/shop-profile.routes';
+import { brandLogoRoutes } from './features/brand-logo/brand-logo.routes';
+import { featureIconRoutes } from './features/pricing-card/feature-icon/feature-icon.routes';
+import { pricingCardTemplateRoutes } from './features/pricing-card/template/template.routes';
+import { printSnapshotRoutes } from './features/pricing-card/print-snapshot/print-snapshot.routes';
 
 export const app = express();
 
@@ -59,7 +64,7 @@ app.use(cors({
   credentials: true,
 }));
 app.use(compression());
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
 app.use(requestLogger);
 app.use(blockWritesDuringRestore);
@@ -114,6 +119,11 @@ app.use('/api/v1/supplier-purchases', requireAuth, supplierPurchasesGlobalRoutes
 app.use('/api/v1/supplier-ledger', requireAuth, supplierLedgerRoutes);
 app.use('/api/v1/pricing-presets', requireAuth, pricingPresetsRoutes);
 app.use('/api/v1/pricing', requireAuth, pricingCalculatorRoutes);
+app.use('/api/v1/shop-profile', requireAuth, shopProfileRoutes);
+app.use('/api/v1/brand-logos', requireAuth, brandLogoRoutes);
+app.use('/api/v1/pricing-card-feature-icons', requireAuth, featureIconRoutes);
+app.use('/api/v1/pricing-card-templates', requireAuth, pricingCardTemplateRoutes);
+app.use('/api/v1/pricing-card-prints', requireAuth, printSnapshotRoutes);
 app.use('/api/v1/corrections', requireAuth, correctionsRoutes);
 app.use('/api/v1/reports', requireAuth, monthlyDebtsRoutes);
 app.use('/api/v1/reports', requireAuth, monthlyReviewRoutes);

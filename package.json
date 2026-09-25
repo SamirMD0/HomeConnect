@@ -1,6 +1,6 @@
 {
   "name": "home-connect",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "main": "dist/electron/desktop/src/index.js",
   "build": {
     "appId": "com.homeconnect.desktop",
@@ -97,7 +97,7 @@
     }
   },
   "scripts": {
-    "dev:vite": "vite frontend",
+    "dev:vite": "vite frontend --config frontend/vite.config.ts",
     "dev:server": "nodemon --watch backend/src -e ts --exec tsx backend/src/index.ts",
     "dev:electron": "tsx desktop/scripts/dev-electron.ts",
     "electron": "npm run build && npm run build:electron-main && electron .",
@@ -110,8 +110,8 @@
     "pack:win": "npm run clean:prisma-tmp && npm run build && npm run build:electron-main && electron-builder --win --dir --config.npmRebuild=false --publish=never",
     "dist:win": "npm run clean:prisma-tmp && npm run build && npm run build:electron-main && electron-builder --win --config.npmRebuild=false --publish=never",
     "dev:urls": "tsx scripts/dev-urls.ts",
-    "dev": "npm run dev:urls && concurrently \"npm run dev:vite\" \"npm run dev:server\"",
-    "build": "vite build frontend && tsc -p tsconfig.server.json",
+    "dev": "npm run dev:urls && concurrently --kill-others \"npm run dev:vite\" \"npm run dev:server\"",
+    "build": "vite build frontend --config frontend/vite.config.ts && tsc -p tsconfig.server.json",
     "typecheck": "npm run typecheck:frontend && npm run typecheck:backend",
     "typecheck:frontend": "tsc -p tsconfig.json --noEmit",
     "typecheck:backend": "tsc -p tsconfig.server.json --noEmit",
@@ -183,6 +183,7 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "helmet": "^8.3.0",
+    "isomorphic-dompurify": "^3.19.0",
     "jsbarcode": "^3.12.3",
     "jsonwebtoken": "^9.0.3",
     "node-cron": "^4.6.0",

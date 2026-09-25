@@ -4,10 +4,10 @@ import { Button, FormField, Input, Modal, SectionHeader, Select, Textarea } from
 import { useAuth } from '../../../hooks/useAuth';
 import { businessLabels } from '../../../shared/labels/business-labels';
 import { productCorrectionSchema, productFormSchema, productPricingModeFormSchema, ProductFormValues } from '../schemas/product.schemas';
-import { LabelBarcodeSource, Product, ProductDuplicateMatch, ProductDuplicateQuery, ProductSpecification, ProductStockInput, UpdateProductInput } from '../types/product.types';
+import { LabelBarcodeSource, Product, ProductDuplicateMatch, ProductDuplicateQuery, ProductFeatureHighlight, ProductSpecification, ProductStockInput, UpdateProductInput } from '../types/product.types';
 import { firstUnrenderedProductFieldError, normalizeProductError } from '../utils/product-form-errors';
 import { productLabels } from '../utils/product-labels';
-import { useCheckProductDuplicate, useCreateProduct, useRemoveProductImage, useUpdateProduct, useUpdateProductPricing, useUpdateProductStock, useUploadProductImage } from '../hooks/useProducts';
+import { useCheckProductDuplicate, useCreateProduct, useRemoveProductImage, useUpdateProduct, useUpdateProductFeatures, useUpdateProductPricing, useUpdateProductStock, useUploadProductImage } from '../hooks/useProducts';
 import { ProductImageField } from './ProductImageField';
 import { productPricingConfigurationSchema, productPricingPreviewOverridesSchema } from '../../pricing/schemas/pricing.schemas';
 import { ProductPricingConfigurationInput } from '../../pricing/types/pricing.types';
@@ -15,6 +15,7 @@ import { ProductDuplicateInlineError, ProductDuplicateWarning } from './ProductD
 import { emptyProductFormPricing, ProductFormPricingPanel, ProductFormPricingValues } from './ProductFormPricingPanel';
 import { ProductStockSection } from './ProductStockSection';
 import { ProductSpecificationsEditor } from './ProductSpecificationsEditor';
+import { highlightsChanged, ProductFeatureHighlightsEditor, reposition } from './ProductFeatureHighlightsEditor';
 import { VerifyOpeningCountDialog } from '../../inventory/components/VerifyOpeningCountDialog';
 import { BrandCombobox } from './BrandCombobox';
 
@@ -34,6 +35,7 @@ export const ProductFormDialog: React.FC<ProductFormDialogProps> = ({ open, prod
   const updateProduct = useUpdateProduct();
   const updatePricing = useUpdateProductPricing();
   const updateStock = useUpdateProductStock();
+  const updateFeatures = useUpdateProductFeatures();
   const uploadImage = useUploadProductImage();
   const removeImage = useRemoveProductImage();
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -43,6 +45,7 @@ export const ProductFormDialog: React.FC<ProductFormDialogProps> = ({ open, prod
   const [stock, setStock] = useState<ProductStockInput>({ trackStock: false, stockQuantity: 0, lowStockThreshold: null });
   const [specifications, setSpecifications] = useState<ProductSpecification[]>([]);
   const [specificationNotes, setSpecificationNotes] = useState('');
+  const [featureHighlights, setFeatureHighlights] = useState<ProductFeatureHighlight[]>([]);
   const [labelBarcodeSource, setLabelBarcodeSource] = useState<LabelBarcodeSource>('AUTO');
   const [reason, setReason] = useState('');
   const [accountPassword, setAccountPassword] = useState('');
@@ -74,6 +77,7 @@ export const ProductFormDialog: React.FC<ProductFormDialogProps> = ({ open, prod
     setStock(product ? { trackStock: product.trackStock, stockQuantity: product.stockQuantity, lowStockThreshold: product.lowStockThreshold } : { trackStock: false, stockQuantity: 0, lowStockThreshold: null });
     setSpecifications(product?.specifications ?? []);
     setSpecificationNotes(product?.specificationNotes ?? '');
+    setFeatureHighlights(reposition(product?.featureHighlights ?? []));
     setLabelBarcodeSource(product?.labelBarcodeSource ?? 'AUTO');
     setReason('');
     setAccountPassword('');
@@ -137,6 +141,11 @@ export const ProductFormDialog: React.FC<ProductFormDialogProps> = ({ open, prod
         return;
       }
     }
+    const featuresChanged = Boolean(product) && isAdmin && highlightsChanged(product?.featureHighlights, featureHighlights);
+    if (featuresChanged && !accountPassword.trim()) {
+      setErrors((current) => ({ ...current, accountPassword: 'Account password is required for feature highlights' }));
+      return;
+    }
 
     const values = parsed.data;
     if (!product) {
@@ -160,13 +169,14 @@ export const ProductFormDialog: React.FC<ProductFormDialogProps> = ({ open, prod
     }
 
     const input = changedInput(product, values, specifications, specificationNotes, labelBarcodeSource);
-    if (Object.keys(input).length === 0 && !pricingChanged && !stockChanged && !imageFile && !savedImageRemoved) {
+    if (Object.keys(input).length === 0 && !pricingChanged && !stockChanged && !featuresChanged && !imageFile && !savedImageRemoved) {
       setNotice('No product changes were entered / لم يتم إدخال أي تعديل');
       return;
     }
     try {
       if (Object.keys(input).length > 0) await updateProduct.mutateAsync({ id: product.id, input });
       if (isAdmin && pricingChanged) await updatePricing.mutateAsync({ id: product.id, input: { ...pricingInput, reason: reason.trim(), accountPassword } });
+      if (featuresChanged) await updateFeatures.mutateAsync({ id: product.id, input: { featureHighlights: reposition(featureHighlights), accountPassword } });
       if (stockChanged) await updateStock.mutateAsync({ id: product.id, input: {
         trackStock: stock.trackStock,
         lowStockThreshold: stock.lowStockThreshold,
@@ -221,13 +231,15 @@ export const ProductFormDialog: React.FC<ProductFormDialogProps> = ({ open, prod
 
         <section className="space-y-4"><SectionHeader title="Specifications / المواصفات" divided /><ProductSpecificationsEditor value={specifications} notes={specificationNotes} onChange={setSpecifications} onNotesChange={setSpecificationNotes} /></section>
 
+        {product && <section className="space-y-4"><SectionHeader title="Feature highlights / المميزات المعروضة" description="Icons rendered in the Features block of pricing cards. Up to 8 per product." divided /><ProductFeatureHighlightsEditor value={featureHighlights} onChange={setFeatureHighlights} disabled={!isAdmin} /></section>}
+
         {product && !isAdmin && <p className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">Employees may update product notes. Product identity and pricing require an administrator / يمكن للموظف تعديل الملاحظات فقط.</p>}
 
         {isAdmin && <section className="space-y-4"><SectionHeader title="Pricing / التسعير" divided /><ProductFormPricingPanel value={pricing} onChange={setPricing} manualPrice={form.price} manualDiscount={form.discount} onManualPriceChange={(value) => set('price', value)} onManualDiscountChange={(value) => set('discount', value)} errors={errors} /></section>}
 
-        {product && pricingChanged && <div className="grid gap-4 rounded-lg border border-amber-200 bg-amber-50 p-4 sm:grid-cols-2">
-          <p className="text-xs text-amber-800 sm:col-span-2">Pricing changes need a reason and your account password / تتطلب تعديلات التسعير سببًا وكلمة مرور حسابك</p>
-          <ProductTextField label={productLabels.reason} value={reason} onChange={setReason} error={errors.reason} textarea required />
+        {product && (pricingChanged || (isAdmin && highlightsChanged(product.featureHighlights, featureHighlights))) && <div className="grid gap-4 rounded-lg border border-amber-200 bg-amber-50 p-4 sm:grid-cols-2">
+          <p className="text-xs text-amber-800 sm:col-span-2">{pricingChanged ? 'Pricing changes need a reason and your account password / تتطلب تعديلات التسعير سببًا وكلمة مرور حسابك' : 'Feature-highlight changes need your account password.'}</p>
+          {pricingChanged && <ProductTextField label={productLabels.reason} value={reason} onChange={setReason} error={errors.reason} textarea required />}
           <ProductTextField label={productLabels.accountPassword} value={accountPassword} onChange={setAccountPassword} error={errors.accountPassword} type="password" userText={false} required />
         </div>}
 
@@ -436,6 +448,8 @@ export function renderedProductFields(
 function labelPrintPreview(source: LabelBarcodeSource, barcode: string, sku?: string): string {
   const savedBarcode = barcode.trim();
   if ((source === 'AUTO' || source === 'MANUFACTURER') && savedBarcode) return `Will print: ${savedBarcode} / ستتم الطباعة: ${savedBarcode}`;
+  // A new product without a barcode gets a shop-internal EAN-13 (200…) when it is saved.
+  if (source === 'AUTO' && !savedBarcode && !sku) return 'Will print: a new shop barcode (200…), generated on save / سيتم إنشاء باركود داخلي عند الحفظ';
   if (source === 'AUTO' && !savedBarcode) return `Will print: ${sku ?? 'SKU'} — no barcode saved / ستتم طباعة رمز المنتج — لا يوجد باركود محفوظ`;
   if (source === 'MANUFACTURER') return 'Manufacturer barcode required / باركود الشركة مطلوب';
   return `Will print: ${sku ?? 'SKU'} / ستتم الطباعة: ${sku ?? 'SKU'}`;

@@ -10,6 +10,7 @@ const productActorInclude = {
   pricingPreset: true,
   // Metadata only — never select `data`, or every product query would load image payloads.
   image: { select: { mimeType: true, byteSize: true, updatedAt: true } },
+  pricingCardFeatures: { orderBy: { position: 'asc' as const } },
 } satisfies Prisma.ProductInclude;
 
 /**
@@ -113,7 +114,7 @@ export class ProductsRepository {
   static findManyForLabels(ids: string[], tx?: Prisma.TransactionClient) {
     return (tx ?? prisma).product.findMany({
       where: { id: { in: ids } },
-      include: { pricingPreset: true },
+      include: { pricingPreset: true, pricingCardFeatures: { orderBy: { position: 'asc' } } },
     });
   }
 
@@ -283,8 +284,42 @@ export class ProductsRepository {
     return tx.product.update({ where: { id }, data, include: productActorInclude });
   }
 
+  static findActiveFeatureIconCodes(codes: string[], tx: Prisma.TransactionClient) {
+    return tx.pricingCardFeatureIcon.findMany({
+      where: { code: { in: codes }, isActive: true },
+      select: { code: true },
+    });
+  }
+
+  static async replacePricingCardFeatures(
+    productId: string,
+    entries: Array<{ iconCode: string; label: string | null; value: string | null; position: number }>,
+    tx: Prisma.TransactionClient
+  ) {
+    await tx.productPricingCardFeature.deleteMany({ where: { productId } });
+    if (entries.length) await tx.productPricingCardFeature.createMany({
+      data: entries.map((entry) => ({ productId, ...entry })),
+    });
+  }
+
   static findActiveDefaultPricingPreset(tx?: Prisma.TransactionClient) {
     return (tx ?? prisma).pricingPreset.findFirst({ where: { isDefault: true, isActive: true, archivedAt: null } });
+  }
+
+  /** Resolves either a validated per-print override or the configured defaults. */
+  static async findLabelSecretConfiguration(pricingPresetId?: string | null, encodingPresetId?: string | null, tx?: Prisma.TransactionClient) {
+    const client = tx ?? prisma;
+    const settings = await client.labelSecretSettings.findFirst({ include: { defaultPricingPreset: true, defaultEncodingPreset: true } });
+    if (!settings?.showCodeOnLabel) return { settings, pricingPreset: null, encodingPreset: null };
+    const selectedPricingPresetId = pricingPresetId ?? settings.defaultPricingPresetId;
+    const selectedEncodingPresetId = encodingPresetId ?? settings.defaultEncodingPresetId;
+    const pricingPreset = selectedPricingPresetId
+      ? await client.pricingPreset.findFirst({ where: { id: selectedPricingPresetId, isLabelSecretAllowed: true, isActive: true, archivedAt: null } })
+      : null;
+    const encodingPreset = selectedEncodingPresetId
+      ? await client.labelSecretEncodingPreset.findFirst({ where: { id: selectedEncodingPresetId, isActive: true } })
+      : null;
+    return { settings, pricingPreset, encodingPreset };
   }
 
   static findPricingPreset(id: string, tx?: Prisma.TransactionClient) {
