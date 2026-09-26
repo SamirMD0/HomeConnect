@@ -70,7 +70,7 @@ export const ProductLabelSheet: React.FC<ProductLabelSheetProps> = ({ labels, se
  * a transform. Scaling the container rather than the labels keeps every
  * millimetre measurement intact — the print output is never affected.
  */
-function usePreviewScale(ref: React.RefObject<HTMLDivElement | null>, paperWidthMm: number, enabled: boolean) {
+export function usePreviewScale(ref: React.RefObject<HTMLDivElement | null>, paperWidthMm: number, enabled: boolean) {
   const [scale, setScale] = useState(1);
 
   useEffect(() => {

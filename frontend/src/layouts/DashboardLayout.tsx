@@ -1,7 +1,7 @@
 import React from 'react';
 import { Outlet, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { LayoutDashboard, Users, LogOut, FileText, Menu, X, Settings, BookOpen, Wallet, Wrench, Package, Truck, Landmark, HandCoins, Calculator, ScanLine, ShoppingCart, Warehouse } from 'lucide-react';
+import { LayoutDashboard, Users, LogOut, FileText, Menu, X, Settings, BookOpen, Wallet, Wrench, Package, Truck, Landmark, HandCoins, Calculator, ScanLine, ShoppingCart, Warehouse, LayoutTemplate } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LocalStatusIndicator } from '../features/system/components/LocalStatusIndicator';
 
@@ -31,7 +31,10 @@ export const DashboardLayout: React.FC = () => {
     { name: 'Suppliers / المورّدون', path: '/suppliers', icon: Truck },
     { name: 'Supplier Ledger / حسابات المورّدين', path: '/supplier-ledger', icon: Landmark },
     { name: 'Reports / التقارير', path: '/reports', icon: FileText },
-    ...(user?.role === 'ADMIN' ? [{ name: 'Settings / الإعدادات', path: '/settings', icon: Settings }] : []),
+    ...(user?.role === 'ADMIN' ? [
+      { name: 'Pricing Cards / بطاقات الأسعار', path: '/pricing-cards', icon: LayoutTemplate },
+      { name: 'Settings / الإعدادات', path: '/settings', icon: Settings },
+    ] : []),
   ];
 
   return (

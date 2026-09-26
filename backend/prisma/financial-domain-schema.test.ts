@@ -52,7 +52,7 @@ describe('Phase 2 financial domain schema', () => {
 
   it('defines required uniqueness, index, and raw check constraints', () => {
     expect(schema).toContain('@@unique([installmentPlanId, installmentNumber])');
-    expect(schema).toContain('idempotencyKey String?       @unique');
+    expect(schema).toMatch(/idempotencyKey\s+String\?\s+@unique/);
 
     for (const constraint of [
       'debts_originalAmount_positive_check',

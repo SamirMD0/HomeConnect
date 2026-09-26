@@ -22,6 +22,15 @@ describe('startup failure messages', () => {
     expect(failure.fix).toContain('PostgreSQL');
   });
 
+  it('identifies a missing development backend without blaming PostgreSQL', () => {
+    const failure = expectActionable(
+      'Development Express backend did not become ready within 45s: http://127.0.0.1:3001/api/v1/health'
+    );
+    expect(failure.step).toBe('step-backend');
+    expect(failure.fix).toContain('npm run dev:electron');
+    expect(failure.fix).not.toContain('PostgreSQL');
+  });
+
   it('explains a missing configuration file', () => {
     const failure = expectActionable('Configuration file not found at C:/config/production.env');
     expect(failure.step).toBe('step-config');

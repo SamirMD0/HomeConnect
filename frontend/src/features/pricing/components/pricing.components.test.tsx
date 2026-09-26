@@ -10,7 +10,7 @@ import { PricingPresetsTable } from './PricingPresetsTable';
 const preset: PricingPreset = {
   id:'1',name:'مكيف / AC',productType:'تبريد',expensePercent:'10.000',profitPercent:'7.000',discountBufferPercent:'7.000',
   installmentMarkupPercent:'20.000',downPaymentPercent:'40.000',defaultInstallmentMonths:3,calculationMode:'COMPOUND',roundingMode:'NONE',
-  isDefault:true,isActive:true,isArchived:false,notes:null,archivedAt:null,archivedReason:null,createdAt:'2026-01-01',updatedAt:'2026-01-01',
+  isDefault:true,isLabelSecretAllowed:false,isActive:true,isArchived:false,notes:null,archivedAt:null,archivedReason:null,createdAt:'2026-01-01',updatedAt:'2026-01-01',
 };
 
 describe('pricing frontend', () => {
@@ -19,6 +19,21 @@ describe('pricing frontend', () => {
     expect(pricingLabels.pricingPresets).toContain('صيغ التسعير');
     expect(html).toContain('dir="auto"');
     expect(html).toContain('dir="ltr"');
+  });
+
+  it('marks the secret label preset and offers the toggle to admins only', () => {
+    const secret={...preset,isDefault:false,isLabelSecretAllowed:true};
+    const adminHtml=renderToStaticMarkup(<PricingPresetsTable items={[secret,{...preset,id:'2'}]} admin onEdit={()=>undefined} onAction={()=>undefined}/>);
+    expect(adminHtml).toContain('Allowed for staff labels');
+    expect(adminHtml).toContain('Remove from staff label pricing');
+    expect(adminHtml).toContain('Allow for staff label pricing');
+    const staffHtml=renderToStaticMarkup(<PricingPresetsTable items={[secret]} admin={false} onEdit={()=>undefined} onAction={()=>undefined}/>);
+    expect(staffHtml).not.toContain('hidden label price');
+  });
+
+  it('hides Archive while a preset sets the hidden label price', () => {
+    const html=renderToStaticMarkup(<PricingPresetsTable items={[{...preset,isDefault:false,isLabelSecretAllowed:true}]} admin onEdit={()=>undefined} onAction={()=>undefined}/>);
+    expect(html).not.toContain('aria-label="Archive"');
   });
 
   it('renders a reason-specific unavailable state', () => {

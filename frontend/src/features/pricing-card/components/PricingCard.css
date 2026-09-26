@@ -1,0 +1,349 @@
+.pricing-card {
+  box-sizing: border-box;
+  display: grid;
+  width: var(--pricing-card-width);
+  height: var(--pricing-card-height);
+  padding: var(--pricing-card-margin);
+  gap: var(--pricing-card-gap);
+  overflow: hidden;
+  color: #111827;
+  background: #fff;
+  border: var(--pricing-card-border) solid #111827;
+  font-family: Tahoma, Arial, "Segoe UI", sans-serif;
+  font-size: calc(3mm * var(--pricing-card-font-scale));
+  line-height: 1.15;
+  container-type: size;
+  grid-template-rows: min-content minmax(0, 1fr) min-content min-content min-content;
+}
+
+.pricing-card p, .pricing-card h2, .pricing-card dl, .pricing-card dd { margin: 0; }
+.pricing-card-header { display: flex; align-items: center; justify-content: space-between; min-height: 0; }
+.pricing-card-company-logo { order: var(--pricing-card-company-order); max-width: 48%; height: var(--pricing-card-company-logo-size); object-fit: contain; }
+.pricing-card-brand-mark { order: var(--pricing-card-brand-order); display: flex; align-items: center; gap: 1mm; font-weight: 800; }
+.pricing-card-brand-logo { width: var(--pricing-card-brand-logo-size); height: var(--pricing-card-brand-logo-size); object-fit: contain; }
+
+/*
+ * The card is a fixed print size, so the body row is minmax(0, 1fr) and can be
+ * squeezed below its content height by the min-content rows under it. Without
+ * containment the copy keeps painting past the row and lands on top of the
+ * features block — the card's own overflow:hidden only clips at the card edge,
+ * not between rows. Clip here so blocks can never collide; a template whose
+ * content does not fit loses the tail of the copy rather than becoming
+ * unreadable.
+ */
+.pricing-card-body { display: grid; min-height: 0; align-content: start; overflow: hidden; }
+.pricing-card-body-with-image { grid-template-columns: minmax(0, calc(100% - var(--pricing-card-image-width))) var(--pricing-card-image-width); gap: var(--pricing-card-gap); }
+.pricing-card-copy { display: grid; min-width: 0; align-content: start; grid-auto-rows: min-content; gap: calc(var(--pricing-card-gap) / 2); }
+/*
+ * These sizes use physical millimetres rather than `em` off the card's base
+ * font. `detailsFontScale` is an explicit editor control shared by the model,
+ * dimensions, and spec rows, so an operator can make that block fit without
+ * unintentionally resizing the rest of the card.
+ */
+.pricing-card-title { overflow: hidden; font-size: calc(5mm * var(--pricing-card-title-scale)); font-weight: 700; line-height: 1.05; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: var(--pricing-card-title-lines); }
+.pricing-card-model, .pricing-card-sku { font-family: "Courier New", monospace; overflow-wrap: anywhere; }
+.pricing-card-model { font-size: calc(2.4mm * var(--pricing-card-details-scale) * var(--pricing-card-model-scale, 1)); font-weight: 400; color: #4b5563; }
+.pricing-card-dimensions { font-size: calc(2.4mm * var(--pricing-card-details-scale)); font-weight: 400; color: #4b5563; }
+.pricing-card-specs { display: grid; gap: 0.5mm; font-size: calc(2.6mm * var(--pricing-card-details-scale)); }
+.pricing-card-spec-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 1mm; }
+.pricing-card-spec-row dt { color: #374151; font-weight: 500; }
+.pricing-card-spec-row dd { font-weight: 700; text-align: right; }
+.pricing-card-image { width: 100%; height: 100%; min-height: 0; object-fit: contain; }
+
+.pricing-card-details-bold .pricing-card-model,
+.pricing-card-details-bold .pricing-card-dimensions,
+.pricing-card-details-bold .pricing-card-specs,
+.pricing-card-details-bold .pricing-card-spec-row dt,
+.pricing-card-details-bold .pricing-card-spec-row dd,
+.pricing-card-details-bold .pricing-card-centered-meta,
+.pricing-card-details-bold .pricing-card-centered-model,
+.pricing-card-details-bold .pricing-card-centered-spec,
+.pricing-card-details-bold .pricing-card-centered-spec-row dt,
+.pricing-card-details-bold .pricing-card-centered-spec-row dd {
+  color: #000000;
+  font-weight: 700;
+}
+
+.pricing-card-features { gap: 1mm; font-size: 2.6mm; }
+.pricing-card-features-row { display: flex; flex-wrap: wrap; align-items: center; column-gap: 3mm; row-gap: 1mm; }
+.pricing-card-feature { display: flex; min-width: 0; align-items: center; gap: 1mm; }
+.pricing-card-features-grid-chip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.pricing-card-features-grid-chip .pricing-card-feature { flex-direction: column; justify-content: center; padding: 0.8mm; border-radius: 1.5mm; background: #f1f5f9; text-align: center; }
+.pricing-card-feature-icon { display: inline-flex; width: 5mm; height: 5mm; flex: 0 0 5mm; }
+.pricing-card-feature-icon svg { width: 100%; height: 100%; }
+.pricing-card-feature-icon svg[fill="none"], .pricing-card-feature-icon svg [fill="none"] { fill: none; stroke: currentColor; stroke-width: 1.5; }
+.pricing-card-feature-copy { display: grid; min-width: 0; }
+.pricing-card-feature-copy strong, .pricing-card-feature-copy span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pricing-card-feature-copy strong { font-weight: 600; }
+.feature-icon-preview svg { width: 100%; height: 100%; }
+
+/*
+ * Thumbnail viewport for the daily browse grid. The card renders at its true
+ * millimetre size and is scaled down uniformly with transform:scale so the
+ * layout math and font sizes stay accurate — no re-authoring at a smaller
+ * scale. Fixed viewport size keeps the grid tidy across templates of different
+ * dimensions.
+ */
+/*
+ * Retail-hero (centered) layout. `stack` keeps the classic top-to-bottom
+ * left-aligned card intact; this one flips the composition so the brand mark
+ * dominates the top, the price dominates the middle, and features + sku/
+ * barcode fall to the bottom the way a shelf card actually reads.
+ */
+.pricing-card-centered {
+  display: grid;
+  grid-template-rows: min-content min-content minmax(0, 1fr) min-content min-content min-content;
+  text-align: center;
+  gap: calc(var(--pricing-card-gap) * 0.8);
+}
+.pricing-card-centered-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1mm;
+  padding-top: 1mm;
+}
+.pricing-card-centered .pricing-card-company-logo { max-width: 32%; }
+.pricing-card-centered .pricing-card-brand-mark { justify-content: center; gap: 1.5mm; font-weight: 900; }
+.pricing-card-centered .pricing-card-brand-logo {
+  width: auto;
+  height: calc(var(--pricing-card-brand-logo-size) * 1.6);
+  max-height: 22mm;
+  object-fit: contain;
+}
+.pricing-card-centered .pricing-card-brand-mark > span { font-size: calc(6mm * var(--pricing-card-font-scale)); }
+.pricing-card-centered-divider {
+  height: 0.6mm;
+  border-radius: 0.3mm;
+  background: currentColor;
+  color: #dc2626;
+  margin: 0 5%;
+}
+.pricing-card-centered-body {
+  display: grid;
+  align-content: start;
+  justify-items: center;
+  gap: calc(var(--pricing-card-gap) * 0.5);
+}
+.pricing-card-centered .pricing-card-title {
+  font-size: calc(5mm * var(--pricing-card-title-scale) * var(--pricing-card-font-scale));
+  font-weight: 800;
+  line-height: 1.15;
+  max-width: 96%;
+  text-align: center;
+}
+/*
+ * Meta row = Model on the left, first spec on the right, with a dotted rule
+ * below that acts as the section separator the reference asks for. Grid so
+ * the two ends stay pinned to the card edges regardless of copy length.
+ */
+.pricing-card-centered-meta {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: baseline;
+  gap: 2mm;
+  padding-bottom: 1mm;
+  border-bottom: 0.25mm dotted #9ca3af;
+  font-size: calc(3mm * var(--pricing-card-font-scale) * var(--pricing-card-details-scale));
+  color: #111827;
+}
+.pricing-card-centered-model { justify-self: start; color: #111827; font-size: calc(1em * var(--pricing-card-model-scale, 1)); }
+.pricing-card-centered-spec { justify-self: end; color: #111827; }
+.pricing-card-centered-spec-list {
+  display: grid;
+  gap: 0.4mm;
+  font-size: calc(2.8mm * var(--pricing-card-font-scale) * var(--pricing-card-details-scale));
+}
+.pricing-card-centered-spec-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: baseline;
+}
+.pricing-card-centered-spec-row dt { color: #4b5563; text-align: left; }
+.pricing-card-centered-spec-row dd { color: #111827; font-weight: 700; text-align: right; margin: 0; }
+.pricing-card-centered .pricing-card-dimensions {
+  font-size: calc(2.6mm * var(--pricing-card-font-scale) * var(--pricing-card-details-scale));
+  color: #4b5563;
+}
+.pricing-card-centered-price {
+  display: grid;
+  justify-items: center;
+  gap: 0.4mm;
+  align-content: center;
+  padding: 0.5mm 0;
+}
+.pricing-card-centered .pricing-card-price {
+  color: #dc2626;
+  font-size: calc(14mm * var(--pricing-card-price-scale));
+  font-weight: 900;
+  line-height: 1;
+  /*
+   * The retail-hero price sits on its own vertically-centred row, so the
+   * `.pricing-card-price-boxed` / `-underlined` decorations from the stack
+   * layout add noise (and a rectangle around $436 that survives thermal
+   * printing as heavy ink). Override any emphasis border here — the centered
+   * layout is opinionated: giant red numerals, nothing around them.
+   */
+  border: 0;
+  padding: 0;
+}
+.pricing-card-centered .pricing-card-valid-until {
+  color: #6b7280;
+  font-size: calc(2.2mm * var(--pricing-card-font-scale));
+}
+/*
+ * Reference-style feature strip: even columns, each with icon over label,
+ * plain (no chip border), with hairline vertical rules between them so the
+ * four badges read as one banded row. Overrides the badge-chip look the
+ * classic layout uses.
+ */
+.pricing-card-centered .pricing-card-features {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  justify-content: stretch;
+  gap: 0;
+  padding: 1mm 2mm;
+  border-top: 0.25mm solid #e5e7eb;
+  border-bottom: 0.25mm solid #e5e7eb;
+}
+.pricing-card-centered .pricing-card-feature {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6mm;
+  padding: 0 2mm;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  text-align: center;
+}
+.pricing-card-centered .pricing-card-feature + .pricing-card-feature {
+  border-left: 0.25mm solid #e5e7eb;
+}
+.pricing-card-centered .pricing-card-feature-icon { width: 7mm; height: 7mm; flex: 0 0 7mm; }
+.pricing-card-centered .pricing-card-feature-copy strong { font-weight: 600; }
+.pricing-card-centered-footer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 2mm;
+  padding-top: 1mm;
+  border-top: 0.3mm solid #e5e7eb;
+  text-align: left;
+}
+.pricing-card-centered-footer .pricing-card-sku {
+  font-size: calc(2.4mm * var(--pricing-card-font-scale));
+}
+.pricing-card-centered-footer .pricing-card-barcode { margin: 0; }
+
+/*
+ * Thermal palette — XP-80T style 203 dpi printers cannot render red, cannot
+ * hold thin colored rules, and turn light gray into blotchy ink. Force every
+ * chromatic element on the card to pure black-on-white and thicken the few
+ * separator rules that survived in the color palette so they print as clean
+ * hairlines instead of dashed ghosts. Applies over any layout, since a shop
+ * may want a thermal variant of either the stack or the centered card.
+ */
+.pricing-card-thermal,
+.pricing-card-thermal .pricing-card-price,
+.pricing-card-thermal .pricing-card-centered-header,
+.pricing-card-thermal .pricing-card-centered-body,
+.pricing-card-thermal .pricing-card-centered-spec-row dt,
+.pricing-card-thermal .pricing-card-centered-spec-row dd,
+.pricing-card-thermal .pricing-card-centered-model,
+.pricing-card-thermal .pricing-card-centered-spec,
+.pricing-card-thermal .pricing-card-dimensions,
+.pricing-card-thermal .pricing-card-valid-until,
+.pricing-card-thermal .pricing-card-sku,
+.pricing-card-thermal .pricing-card-title,
+.pricing-card-thermal .pricing-card-feature-copy {
+  color: #000000;
+}
+.pricing-card-thermal { background: #ffffff; }
+.pricing-card-thermal .pricing-card-centered-divider {
+  background: #000000;
+  height: 0.4mm;
+}
+.pricing-card-thermal .pricing-card-centered-meta { border-bottom-color: #000000; }
+.pricing-card-thermal .pricing-card-centered .pricing-card-features,
+.pricing-card-thermal .pricing-card-features {
+  border-top-color: #000000;
+  border-bottom-color: #000000;
+}
+.pricing-card-thermal .pricing-card-centered .pricing-card-feature + .pricing-card-feature,
+.pricing-card-thermal .pricing-card-feature + .pricing-card-feature {
+  border-left-color: #000000;
+}
+.pricing-card-thermal .pricing-card-centered-footer {
+  border-top-color: #000000;
+}
+.pricing-card-thermal .pricing-card-brand-name,
+.pricing-card-thermal .pricing-card-feature-icon {
+  /* Text and simple feature glyphs can safely collapse to solid black. */
+  filter: grayscale(1) brightness(0);
+}
+.pricing-card-thermal .pricing-card-brand-logo {
+  /* Keep light/dark detail inside uploaded artwork. `brightness(0)` made every
+   * opaque logo pixel black, turning logos with a background into a square. */
+  filter: grayscale(1) contrast(1.2);
+}
+
+.pricing-card-thumbnail-viewport {
+  position: relative;
+  height: 140px;
+  overflow: hidden;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+}
+.pricing-card-thumbnail-scale {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  transform-origin: top left;
+  transform: scale(0.55);
+}
+.pricing-card-barcode-placeholder {
+  background: repeating-linear-gradient(90deg, #111827 0 0.4mm, transparent 0.4mm 0.8mm);
+  opacity: 0.6;
+}
+.feature-icon-card-preview { padding: 3mm; color: #111827; background: #fff; border: 1px solid #111827; font-family: Tahoma, Arial, "Segoe UI", sans-serif; font-size: 3mm; line-height: 1.15; }
+
+.pricing-card-price-code { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); gap: var(--pricing-card-gap); align-items: end; }
+.pricing-card-price-region, .pricing-card-code-region { display: grid; align-content: end; gap: 0.5mm; min-width: 0; }
+.pricing-card-code-region { justify-items: start; gap: 1.2mm; }
+.pricing-card-code-region .pricing-card-sku { justify-self: end; text-align: right; }
+.pricing-card-price { width: fit-content; font-size: calc(6mm * var(--pricing-card-price-scale)); font-weight: var(--pricing-card-price-weight); font-variant-numeric: tabular-nums; line-height: 1; white-space: nowrap; }
+.pricing-card-price-boxed { padding: 1mm 1.5mm; border: 1px solid currentColor; }
+.pricing-card-price-underlined { border-bottom: 1px solid currentColor; }
+
+/*
+ * VISUAL_DESIGN §4. The tier picks the base size — 6 / 10 / 14 mm — and the
+ * template's own `price.fontScale` still multiplies it, so an operator keeps a
+ * dial after choosing a tier. The two shelf templates ship at scale 1 so hero
+ * lands on the 14 mm the spec asks for.
+ */
+.pricing-card-price-normal { font-size: calc(6mm * var(--pricing-card-price-scale)); }
+.pricing-card-price-large { font-size: calc(10mm * var(--pricing-card-price-scale)); }
+.pricing-card-price-hero { font-size: calc(14mm * var(--pricing-card-price-scale)); }
+
+/*
+ * At hero size the price cannot share a row with the barcode without crushing
+ * one of them, so it takes the full width and the SKU + barcode block drops
+ * beneath it. `normal` and `large` keep the original side-by-side footer.
+ */
+.pricing-card-price-code-hero { grid-template-columns: minmax(0, 1fr); }
+
+.pricing-card-valid-until { font-size: 2.4mm; font-weight: 400; color: #6b7280; }
+.pricing-card-barcode { display: block; }
+.pricing-card-sku { font-size: calc(0.85em * var(--pricing-card-sku-scale, 1)); line-height: 1.2; }
+.pricing-card-footer { text-align: right; color: #4b5563; font-size: 0.78em; }
+
+.pricing-card-dividers > * + * { border-top: 1px solid #d1d5db; padding-top: calc(var(--pricing-card-gap) / 2); }
+
+@container (max-width: 80mm) {
+  .pricing-card-price-code { grid-template-columns: 1fr; }
+  .pricing-card-features-grid-chip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

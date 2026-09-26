@@ -36,6 +36,8 @@ export const PRODUCT_FIELD_POLICY = {
   lowStockThreshold: true,
   specifications: false,
   specificationNotes: false,
+  featureHighlights: true,
+  pricingCardTemplateId: true,
 } as const;
 
 export const SERVICE_JOB_FIELD_POLICY = {

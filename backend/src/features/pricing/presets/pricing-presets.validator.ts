@@ -58,6 +58,7 @@ export const updatePricingPresetSchema = z.object({
 });
 
 export const pricingPresetActionSchema = z.object({ reason, accountPassword: z.string().min(1, 'Account password is required') }).strict();
+export const pricingPresetPasswordActionSchema = z.object({ accountPassword: z.string().min(1, 'Account password is required') }).strict();
 export const pricingPresetParamsSchema = z.object({ presetId: z.string().uuid('Invalid pricing preset ID') });
 export const pricingPresetListQuerySchema = z.object({
   search: z.string().trim().max(200).optional(),
@@ -76,6 +77,7 @@ export const pricingPresetAuditQuerySchema = z.object({
 export type CreatePricingPresetInput = z.infer<typeof createPricingPresetSchema>;
 export type UpdatePricingPresetInput = z.infer<typeof updatePricingPresetSchema>;
 export type PricingPresetActionInput = z.infer<typeof pricingPresetActionSchema>;
+export type PricingPresetPasswordActionInput = z.infer<typeof pricingPresetPasswordActionSchema>;
 export type PricingPresetParamsInput = z.infer<typeof pricingPresetParamsSchema>;
 export type PricingPresetListQueryInput = z.infer<typeof pricingPresetListQuerySchema>;
 export type PricingPresetAuditQueryInput = z.infer<typeof pricingPresetAuditQuerySchema>;

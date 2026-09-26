@@ -11,6 +11,18 @@ export type ProductImage =
   | { source: 'URL'; url: string }
   | { source: 'UPLOAD'; mimeType: string; byteSize: number; updatedAt: string };
 
+export interface ProductFeatureHighlight {
+  iconCode: string;
+  label?: string | null;
+  value?: string | null;
+  position: number;
+}
+
+export interface UpdateProductFeaturesInput {
+  featureHighlights: ProductFeatureHighlight[];
+  accountPassword: string;
+}
+
 export interface Product {
   id: string;
   sku: string;
@@ -31,12 +43,14 @@ export interface Product {
   image: ProductImage | null;
   notes: string | null;
   labelBarcodeSource: LabelBarcodeSource;
+  pricingCardTemplateId?: string | null;
   trackStock: boolean;
   stockQuantity: number;
   lowStockThreshold: number | null;
   stockStatus: ProductStockStatus;
   specifications: ProductSpecification[];
   specificationNotes: string | null;
+  featureHighlights?: ProductFeatureHighlight[];
   exactMatch?: boolean;
   /**
    * List-only. True when the product has never had a stock movement and was
@@ -64,6 +78,7 @@ export interface ProductLabelData {
   barcodeSource: Exclude<LabelBarcodeSource, 'AUTO'>;
   internalPriceCode?: string | null;
   staffLabelCode?: string | null;
+  secretPrice?: string | null;
   cashPrice?: string | null;
   cashPriceExVat?: string | null;
   cashPriceIncVat?: string | null;
@@ -77,12 +92,35 @@ export type ProductLabelWarningCode =
   | 'ARCHIVED_EXCLUDED'
   | 'NO_PRICING'
   | 'MANUFACTURER_BARCODE_MISSING'
-  | 'FALLBACK_TO_SKU';
+  | 'FALLBACK_TO_SKU'
+  | 'SECRET_PRESET_NOT_SET'
+  | 'SECRET_ABOVE_PUBLIC'
+  | 'SECRET_EQUALS_PUBLIC'
+  | 'SECRET_BELOW_COST'
+  | 'SECRET_NO_COST'
+  | 'SECRET_ENCODING_NOT_SET'
+  | 'SECRET_ENCODING_FAILED'
+  | 'SECRET_DISCOUNT_STAGES_UNSAFE'
+  | 'SECRET_PRICE_FAILED';
 
 export interface ProductLabelWarning {
   productId: string;
   code: ProductLabelWarningCode;
   name?: string;
+}
+
+export interface ProductLabelSecretOverrideInput {
+  includePriceCode:boolean;
+  includePrice:boolean;
+  hiddenPricingPresetId:string;
+  encodingPresetId:string;
+  manualDiscountStages?:number[];
+  accountPassword:string;
+}
+
+export interface ProductLabelsSecretOverrideInput extends ProductLabelSecretOverrideInput {
+  ids:string[];
+  includeArchived:boolean;
 }
 
 export interface ProductLabelsResult {
@@ -212,6 +250,8 @@ export interface CreateProductInput extends ProductPricingConfigurationInput {
   specificationNotes?: string | null;
   trackStock?: boolean;
   lowStockThreshold?: number | null;
+  pricingCardTemplateId?: string | null;
+  accountPassword?: string;
 }
 
 /**
