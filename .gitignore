@@ -19,6 +19,12 @@ prisma/*.db-journal
 .claude/*
 !.claude/home-connect-erp-upgrade/
 !.claude/home-connect-erp-upgrade/**
+!.claude/pre-release-audit/
+!.claude/pre-release-audit/**
+test-results/
+playwright-report/
+test-results-electron/
+e2e/.runtime/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
