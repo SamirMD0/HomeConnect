@@ -1,0 +1,51 @@
+{
+  "version": "2.0.1",
+  "installer": "release/2.0.1/HomeConnect-Setup-2.0.1.exe",
+  "bytes": 113453768,
+  "sha256": "58345ea4a46e4f34d3cdbd91c5878e13e7575f675fdbd1f32e30d4c0ed1cc5bd",
+  "latestVersionMatches": true,
+  "latestFileHashMatches": true,
+  "latestFileSizeMatches": true,
+  "asarVersionMatches": true,
+  "asarMainMatches": true,
+  "electron": {
+    "expected": 19,
+    "missing": [],
+    "changed": []
+  },
+  "frontend": {
+    "expected": 188,
+    "actual": 188,
+    "missing": [],
+    "extra": [],
+    "changed": []
+  },
+  "backend": {
+    "expected": 787,
+    "actual": 787,
+    "missing": [],
+    "extra": [],
+    "changed": []
+  },
+  "migrations": {
+    "expected": 67,
+    "actual": 67,
+    "missing": [],
+    "extra": [],
+    "changed": []
+  },
+  "repair": {
+    "expected": 32,
+    "actual": 32,
+    "missing": [],
+    "extra": [],
+    "changed": []
+  },
+  "runtimePackages": {
+    "dompurify": "3.4.16",
+    "qs": "6.16.0",
+    "undici": "7.30.0"
+  },
+  "clientHasAuditUrl": false,
+  "forbiddenResources": []
+}
