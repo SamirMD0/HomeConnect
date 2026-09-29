@@ -102,7 +102,6 @@ export function DashboardGreetingHeader({ businessDate, alerts }: DashboardGreet
     </header>
   );
 }
-
 interface Summary {
   key: string;
   count: number;
