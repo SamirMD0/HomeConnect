@@ -1,9 +1,9 @@
 {
   "current": {
-    "path": "release/2.0.1/HomeConnect-Setup-2.0.1.exe",
-    "bytes": 113453768,
-    "sha256": "58345ea4a46e4f34d3cdbd91c5878e13e7575f675fdbd1f32e30d4c0ed1cc5bd",
-    "builtAt": "2026-09-28T15:00:00Z",
+    "path": "release/2.0.2/HomeConnect-Setup-2.0.2.exe",
+    "bytes": 113457815,
+    "sha256": "08505c829c9aaefcb1446916ab38b819a092985407aaeaf7577624e1b86a2e4b",
+    "builtAt": "2026-09-29T13:15:00Z",
     "signature": "NotSigned",
     "sourceToPackageDrift": "none (electron/frontend/backend/migrations/repair all match source)",
     "clientHasAuditUrl": false,
@@ -15,14 +15,30 @@
     },
     "acceptedLimitation": "unsigned Windows installer (owner-accepted)",
     "verification": ".claude/pre-release-audit/evidence/current-installer-verification.json",
-    "packageLog": ".claude/pre-release-audit/evidence/dist-win-2026-09-28-final.log"
+    "packageLog": ".claude/pre-release-audit/evidence/dist-win-2.0.2-final.log",
+    "gates": {
+      "testCi": { "files": 368, "tests": 2865, "skipped": 0, "exitCode": 0 },
+      "typecheck": { "exitCode": 0 },
+      "typecheckElectron": { "exitCode": 0 },
+      "playwrightCritical": { "expected": 18, "unexpected": 0, "flaky": 0, "skipped": 0 },
+      "isolatedBackupRestore": { "checkedTables": 50, "changedTables": 0, "failed": 0, "mismatched": 0, "backendReady": true },
+      "productionBuild": { "exitCode": 0, "clientHasAuditUrl": false }
+    }
   },
   "historical": [
+    {
+      "path": "release/2.0.1/HomeConnect-Setup-2.0.1.exe",
+      "bytes": 113453768,
+      "sha256": "58345ea4a46e4f34d3cdbd91c5878e13e7575f675fdbd1f32e30d4c0ed1cc5bd",
+      "builtAt": "2026-09-28T15:00:00Z",
+      "signature": "NotSigned",
+      "status": "previous release build; superseded by 2.0.2"
+    },
     {
       "path": "release/2.0.1/HomeConnect-Setup-2.0.1.pre-final-gates.exe",
       "bytes": 113453551,
       "sha256": "3b6563387b5e3738ee406e9f46b4b6695839cde54f1a5d4232365b5f252d6c8f",
-      "status": "pre-final-gates rebuild (2026-09-28 16:35 GMT+3); superseded by the current artifact after Gate 5 rebuilt frontend/dist and dist/server. Retained for provenance only."
+      "status": "pre-final-gates rebuild (2026-09-28 16:35 GMT+3); retained for provenance only."
     },
     {
       "path": "release/2.0.1/HomeConnect-Setup-2.0.1.pre-overrides.stale.exe",

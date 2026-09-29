@@ -1,14 +1,14 @@
 
-> home-connect@2.0.2 build
+> home-connect@2.0.1 build
 > vite build frontend --config frontend/vite.config.ts && tsc -p tsconfig.server.json
 
 [36mvite v8.1.5 [32mbuilding client environment for production...[36m[39m
-[2Ktransforming...✓ 3499 modules transformed.
+[2Ktransforming...✓ 3495 modules transformed.
 rendering chunks...
 computing gzip size...
 frontend/dist/index.html                                               1.02 kB │ gzip:   0.52 kB
 frontend/dist/assets/ReportDetailPage-Cbyf0vSD.css                     0.91 kB │ gzip:   0.34 kB
-frontend/dist/assets/index-B-uBJHYY.css                              126.93 kB │ gzip:  21.21 kB
+frontend/dist/assets/index-BKoyKmPe.css                              123.19 kB │ gzip:  20.69 kB
 frontend/dist/assets/label-selection-BfSxzQu2.js                       0.11 kB │ gzip:   0.12 kB
 frontend/dist/assets/idempotency-key-BJgxR2I0.js                       0.12 kB │ gzip:   0.13 kB
 frontend/dist/assets/check-gRlr1G9W.js                                 0.12 kB │ gzip:   0.14 kB
@@ -60,6 +60,7 @@ frontend/dist/assets/shield-alert-CjL3vijf.js                          0.35 kB �
 frontend/dist/assets/file-down-WN4iN22P.js                             0.35 kB │ gzip:   0.24 kB
 frontend/dist/assets/key-round-hVH9VRRO.js                             0.35 kB │ gzip:   0.26 kB
 frontend/dist/assets/trending-up-Gcy0gH0Y.js                           0.35 kB │ gzip:   0.26 kB
+frontend/dist/assets/clsx-CjueKrWZ.js                                  0.36 kB │ gzip:   0.23 kB
 frontend/dist/assets/package-BqTWOGbX.js                               0.37 kB │ gzip:   0.25 kB
 frontend/dist/assets/warehouse-DO6PEDDs.js                             0.37 kB │ gzip:   0.25 kB
 frontend/dist/assets/calendar-clock-DBN_FsQy.js                        0.37 kB │ gzip:   0.25 kB
@@ -74,12 +75,12 @@ frontend/dist/assets/package-check-DoSN1MDc.js                         0.41 kB �
 frontend/dist/assets/tags-DMxzq4AP.js                                  0.41 kB │ gzip:   0.28 kB
 frontend/dist/assets/sliders-horizontal-YFjoyoZt.js                    0.42 kB │ gzip:   0.23 kB
 frontend/dist/assets/package-plus-C5_eaK_9.js                          0.44 kB │ gzip:   0.28 kB
+frontend/dist/assets/package-x-uKEbHoF7.js                             0.45 kB │ gzip:   0.28 kB
 frontend/dist/assets/useBusinessSettings-CC6VDqbX.js                   0.46 kB │ gzip:   0.29 kB
 frontend/dist/assets/package-search-CpiW0D40.js                        0.47 kB │ gzip:   0.30 kB
 frontend/dist/assets/calendar-days-DD1ISQY5.js                         0.49 kB │ gzip:   0.26 kB
 frontend/dist/assets/sparkles-CZNNcFgj.js                              0.49 kB │ gzip:   0.28 kB
 frontend/dist/assets/palette-iteozC8f.js                               0.51 kB │ gzip:   0.27 kB
-frontend/dist/assets/package-x-2LxA-K50.js                             0.51 kB │ gzip:   0.31 kB
 frontend/dist/assets/calculator-ln8TZiRX.js                            0.53 kB │ gzip:   0.28 kB
 frontend/dist/assets/package-open-BO6Tyj_c.js                          0.57 kB │ gzip:   0.33 kB
 frontend/dist/assets/LabelPresetSelect-DP0MbQ2q.js                     0.62 kB │ gzip:   0.40 kB
@@ -99,10 +100,10 @@ frontend/dist/assets/usePricingCardTemplates-DS7zjkhM.js               1.00 kB �
 frontend/dist/assets/useFinancialLedger-C_Sh81a5.js                    1.00 kB │ gzip:   0.55 kB
 frontend/dist/assets/financial-form-errors-C6z32YVJ.js                 1.07 kB │ gzip:   0.49 kB
 frontend/dist/assets/useReceivables-DrZCBVax.js                        1.08 kB │ gzip:   0.60 kB
-frontend/dist/assets/PaymentStatusChip-SSwq6N7r.js                     1.31 kB │ gzip:   0.69 kB
+frontend/dist/assets/PaymentStatusChip-C1wQlQSL.js                     1.31 kB │ gzip:   0.69 kB
 frontend/dist/assets/financial-labels-BxYm47CQ.js                      1.52 kB │ gzip:   0.67 kB
 frontend/dist/assets/useSalesOrders-uK-zlE8x.js                        1.55 kB │ gzip:   0.61 kB
-frontend/dist/assets/DocumentMoney-UHbVTOVj.js                         1.59 kB │ gzip:   0.97 kB
+frontend/dist/assets/DocumentMoney-DYr74xst.js                         1.59 kB │ gzip:   0.97 kB
 frontend/dist/assets/useSupplierReceivings-CIfqXXui.js                 1.82 kB │ gzip:   0.76 kB
 frontend/dist/assets/sales-orders.api-A77T_LQC.js                      2.01 kB │ gzip:   0.58 kB
 frontend/dist/assets/pricing-card.api-B3BNjbxL.js                      2.17 kB │ gzip:   0.59 kB
@@ -112,93 +113,93 @@ frontend/dist/assets/useInventory-CpMrOJDG.js                          2.48 kB �
 frontend/dist/assets/CreditLimitWarning-DaNd_wp-.js                    2.49 kB │ gzip:   1.11 kB
 frontend/dist/assets/receivables-tier-DPBU1OTo.js                      2.51 kB │ gzip:   0.68 kB
 frontend/dist/assets/usePricingPresets-C6dxUmr2.js                     2.61 kB │ gzip:   0.85 kB
-frontend/dist/assets/CancelDebtDialog-DDsm2qky.js                      2.64 kB │ gzip:   1.20 kB
-frontend/dist/assets/ReportsPage-B5JZsni8.js                           2.69 kB │ gzip:   1.19 kB
-frontend/dist/assets/useSupplierMutations-BkwQqh9L.js                  2.95 kB │ gzip:   1.29 kB
-frontend/dist/assets/ProductPricingCardsPage-DlJZNA5s.js               3.12 kB │ gzip:   1.49 kB
-frontend/dist/assets/SupplierStatusBadge-7URpTmwG.js                   3.12 kB │ gzip:   1.29 kB
-frontend/dist/assets/CustomerPicker-Bm0aDmpX.js                        3.21 kB │ gzip:   1.41 kB
-frontend/dist/assets/LedgerRowActions-NWXg2ryY.js                      3.65 kB │ gzip:   1.55 kB
-frontend/dist/assets/PricingCardTemplatesPage-BEaFDwqh.js              3.88 kB │ gzip:   1.30 kB
+frontend/dist/assets/CancelDebtDialog-DgGUvBEP.js                      2.64 kB │ gzip:   1.20 kB
+frontend/dist/assets/ReportsPage-TIA46afT.js                           2.69 kB │ gzip:   1.19 kB
+frontend/dist/assets/useSupplierMutations-Bq0Uba5A.js                  2.95 kB │ gzip:   1.29 kB
+frontend/dist/assets/ProductPricingCardsPage-BtvJt-Jv.js               3.12 kB │ gzip:   1.48 kB
+frontend/dist/assets/SupplierStatusBadge-BhME56s-.js                   3.12 kB │ gzip:   1.29 kB
+frontend/dist/assets/CustomerPicker-CkYT51a7.js                        3.21 kB │ gzip:   1.41 kB
+frontend/dist/assets/LedgerRowActions-C_0rk4hC.js                      3.65 kB │ gzip:   1.55 kB
+frontend/dist/assets/PricingCardTemplatesPage-P_yxOijg.js              3.88 kB │ gzip:   1.30 kB
 frontend/dist/assets/service.types-BuY3CzvU.js                         4.37 kB │ gzip:   1.88 kB
-frontend/dist/assets/ProductLabelSheet-BSMXNSoF.js                     4.39 kB │ gzip:   2.10 kB
-frontend/dist/assets/SupplierReceivingListPage-CGslxQRB.js             4.57 kB │ gzip:   1.67 kB
-frontend/dist/assets/SalesOrderItemsEditor-D-CDPZLX.js                 4.60 kB │ gzip:   1.94 kB
-frontend/dist/assets/useRecentScans-CmhQIDjY.js                        4.70 kB │ gzip:   1.86 kB
-frontend/dist/assets/PricingCardTemplateAssignmentsPage-DRpG-7qu.js    4.91 kB │ gzip:   1.81 kB
+frontend/dist/assets/ProductLabelSheet-C2I6xlDG.js                     4.39 kB │ gzip:   2.10 kB
+frontend/dist/assets/SupplierReceivingListPage-Bmp3aAsN.js             4.57 kB │ gzip:   1.67 kB
+frontend/dist/assets/SalesOrderItemsEditor-ZBNHs2E3.js                 4.60 kB │ gzip:   1.94 kB
+frontend/dist/assets/useRecentScans-BmDtyg0q.js                        4.70 kB │ gzip:   1.86 kB
+frontend/dist/assets/PricingCardTemplateAssignmentsPage--en94Eyv.js    4.91 kB │ gzip:   1.81 kB
 frontend/dist/assets/LabelSecretPrintControls-CQlMxKk5.js              4.91 kB │ gzip:   2.02 kB
-frontend/dist/assets/CreateServiceJobDialog-DgtbUkID.js                5.42 kB │ gzip:   1.80 kB
-frontend/dist/assets/ProductLabelPage-Df9EGRvM.js                      5.49 kB │ gzip:   2.25 kB
+frontend/dist/assets/CreateServiceJobDialog-B0ZuEKBR.js                5.42 kB │ gzip:   1.80 kB
+frontend/dist/assets/ProductLabelPage-DX9md0lE.js                      5.49 kB │ gzip:   2.25 kB
 frontend/dist/assets/sales-order-dates-DDJEIA_D.js                     5.56 kB │ gzip:   2.31 kB
 frontend/dist/assets/useMutation-xjcuo9e8.js                           5.56 kB │ gzip:   1.79 kB
-frontend/dist/assets/CategoriesPage-hPGaV4Er.js                        5.60 kB │ gzip:   2.06 kB
-frontend/dist/assets/format-customer-phone-B6jdnXAd.js                 5.70 kB │ gzip:   2.02 kB
-frontend/dist/assets/CustomerSearchInput-DKGf10ki.js                   5.90 kB │ gzip:   2.24 kB
-frontend/dist/assets/SupplierLedgerPage-ClzyB3sv.js                    6.31 kB │ gzip:   2.24 kB
-frontend/dist/assets/Modal-czEis0KI.js                                 7.26 kB │ gzip:   3.13 kB
-frontend/dist/assets/useScannerLookup-Cfu_K-uP.js                      7.26 kB │ gzip:   2.91 kB
+frontend/dist/assets/CategoriesPage-BEAe9G6L.js                        5.60 kB │ gzip:   2.06 kB
+frontend/dist/assets/format-customer-phone-zYAPBjuR.js                 5.70 kB │ gzip:   2.02 kB
+frontend/dist/assets/CustomerSearchInput-Cxq0cRzy.js                   5.90 kB │ gzip:   2.24 kB
+frontend/dist/assets/SupplierLedgerPage-C6_gzhjE.js                    6.31 kB │ gzip:   2.23 kB
+frontend/dist/assets/Modal-CdbrWKFH.js                                 7.26 kB │ gzip:   3.13 kB
 frontend/dist/assets/useProducts-SMo6Yyfy.js                           7.29 kB │ gzip:   2.17 kB
-frontend/dist/assets/prepaid-payment-target-D5AyyVo6.js                7.35 kB │ gzip:   2.09 kB
+frontend/dist/assets/useScannerLookup-Dd1IFe-4.js                      7.32 kB │ gzip:   2.94 kB
+frontend/dist/assets/prepaid-payment-target-hwbdibGD.js                7.35 kB │ gzip:   2.08 kB
 frontend/dist/assets/ProductLabelWarnings-sYbHwKYI.js                  7.38 kB │ gzip:   2.98 kB
-frontend/dist/assets/SuppliersPage-CTHqa7qu.js                         7.47 kB │ gzip:   2.40 kB
-frontend/dist/assets/GlobalReceivePaymentDialog-BKrFp92R.js            8.05 kB │ gzip:   2.70 kB
-frontend/dist/assets/SalesReturnPage-DXDDa1SG.js                       8.27 kB │ gzip:   2.86 kB
-frontend/dist/assets/ProductLabelsPage-BfXjF5fp.js                     8.48 kB │ gzip:   3.07 kB
-frontend/dist/assets/InventoryPage-G5GR0WDZ.js                         8.49 kB │ gzip:   3.00 kB
-frontend/dist/assets/CustomersListPage-DO0jVkSA.js                     8.67 kB │ gzip:   2.90 kB
-frontend/dist/assets/PricingPreviewCard-nbjPwfAc.js                    8.70 kB │ gzip:   3.21 kB
-frontend/dist/assets/CustomerStatementPage-CD0jeHs8.js                 9.25 kB │ gzip:   3.12 kB
-frontend/dist/assets/ui-DmASNbOA.js                                    9.38 kB │ gzip:   3.01 kB
-frontend/dist/assets/PaymentReceiptPage-CV7R0Sok.js                    9.46 kB │ gzip:   3.08 kB
-frontend/dist/assets/Setup-D483mAdA.js                                 9.63 kB │ gzip:   2.29 kB
-frontend/dist/assets/ShopProfileSettingsPage-CvgSnGR6.js              10.01 kB │ gzip:   3.23 kB
-frontend/dist/assets/ProductPicker-DEjBNigt.js                        10.04 kB │ gzip:   3.11 kB
-frontend/dist/assets/PricingCardsPage-ChsTmjTt.js                     10.16 kB │ gzip:   3.09 kB
-frontend/dist/assets/NewSupplierReceivingPage-3zseOOyU.js             10.22 kB │ gzip:   3.60 kB
-frontend/dist/assets/BrandLogosPage-CdAduOO6.js                       10.28 kB │ gzip:   3.26 kB
-frontend/dist/assets/SalesInvoicePage-DH46fcip.js                     10.36 kB │ gzip:   3.19 kB
+frontend/dist/assets/SuppliersPage-DsVwqpg4.js                         7.47 kB │ gzip:   2.40 kB
+frontend/dist/assets/GlobalReceivePaymentDialog-Blc12tfQ.js            8.05 kB │ gzip:   2.70 kB
+frontend/dist/assets/SalesReturnPage-BIKJXl6S.js                       8.27 kB │ gzip:   2.86 kB
+frontend/dist/assets/ProductLabelsPage-EFeK0YWT.js                     8.48 kB │ gzip:   3.07 kB
+frontend/dist/assets/InventoryPage-Cqt2qg4J.js                         8.49 kB │ gzip:   3.00 kB
+frontend/dist/assets/CustomersListPage-DhhM3Zza.js                     8.67 kB │ gzip:   2.90 kB
+frontend/dist/assets/PricingPreviewCard-BItJJAcc.js                    8.70 kB │ gzip:   3.21 kB
+frontend/dist/assets/CustomerStatementPage-ZZ0GTpzD.js                 9.25 kB │ gzip:   3.12 kB
+frontend/dist/assets/ui-D-TtUB8G.js                                    9.38 kB │ gzip:   3.01 kB
+frontend/dist/assets/PaymentReceiptPage-DpojHyDU.js                    9.46 kB │ gzip:   3.08 kB
+frontend/dist/assets/Setup-aMBxuEeJ.js                                 9.63 kB │ gzip:   2.29 kB
+frontend/dist/assets/ShopProfileSettingsPage-BdtvYwA_.js              10.01 kB │ gzip:   3.23 kB
+frontend/dist/assets/ProductPicker-ZXkfCVpL.js                        10.04 kB │ gzip:   3.11 kB
+frontend/dist/assets/PricingCardsPage-DB87Evwn.js                     10.16 kB │ gzip:   3.09 kB
+frontend/dist/assets/NewSupplierReceivingPage-DKsLdgqi.js             10.22 kB │ gzip:   3.60 kB
+frontend/dist/assets/BrandLogosPage-CYcpohL0.js                       10.28 kB │ gzip:   3.26 kB
+frontend/dist/assets/SalesInvoicePage-IgMPJyW-.js                     10.36 kB │ gzip:   3.19 kB
 frontend/dist/assets/reports.registry-v41D0aJO.js                     11.01 kB │ gzip:   3.88 kB
-frontend/dist/assets/PricingCard-B3PyrZuK.js                          11.10 kB │ gzip:   3.59 kB
-frontend/dist/assets/BrandsPage-DPc0uzQ9.js                           11.43 kB │ gzip:   3.63 kB
-frontend/dist/assets/ServiceJobsPage-vebg-xXd.js                      11.70 kB │ gzip:   3.55 kB
+frontend/dist/assets/PricingCard-DVCgCCei.js                          11.10 kB │ gzip:   3.59 kB
+frontend/dist/assets/BrandsPage-OJ7vRkMq.js                           11.43 kB │ gzip:   3.63 kB
+frontend/dist/assets/ServiceJobsPage-BRm_mHY7.js                      11.70 kB │ gzip:   3.55 kB
 frontend/dist/assets/business-labels-bySUtTzF.js                      14.08 kB │ gzip:   4.84 kB
-frontend/dist/assets/ProductInventoryPanel-Bk0Utxg7.js                14.29 kB │ gzip:   4.36 kB
-frontend/dist/assets/ServiceJobDetailsPage-iC4baido.js                14.33 kB │ gzip:   4.30 kB
-frontend/dist/assets/DashboardLayout-BCNbn7BD.js                      15.06 kB │ gzip:   5.06 kB
-frontend/dist/assets/SupplierTransactionTable-HE3WauA1.js             15.08 kB │ gzip:   4.37 kB
-frontend/dist/assets/InventoryOnboardingPage-CWMI1JmI.js              16.13 kB │ gzip:   5.21 kB
-frontend/dist/assets/SupplierReceivingDetailPage-Dqtsh2ws.js          16.21 kB │ gzip:   5.08 kB
-frontend/dist/assets/RecordDebtPaymentDialog-Bw9eSqVI.js              17.07 kB │ gzip:   4.90 kB
-frontend/dist/assets/SalesOrdersPage-BozeFtTp.js                      21.43 kB │ gzip:   7.39 kB
+frontend/dist/assets/ProductInventoryPanel-Bql8XRYC.js                14.25 kB │ gzip:   4.34 kB
+frontend/dist/assets/ServiceJobDetailsPage-DrlY_fnX.js                14.33 kB │ gzip:   4.30 kB
+frontend/dist/assets/DashboardLayout-PEuoU4kM.js                      15.06 kB │ gzip:   5.06 kB
+frontend/dist/assets/SupplierTransactionTable-cNv7JMsZ.js             15.08 kB │ gzip:   4.37 kB
+frontend/dist/assets/InventoryOnboardingPage-BgIlT9q2.js              16.13 kB │ gzip:   5.21 kB
+frontend/dist/assets/SupplierReceivingDetailPage-A1IsgeBX.js          16.21 kB │ gzip:   5.08 kB
+frontend/dist/assets/RecordDebtPaymentDialog-DyjM8zUJ.js              17.07 kB │ gzip:   4.90 kB
+frontend/dist/assets/SalesOrdersPage-CvKJIUhi.js                      21.43 kB │ gzip:   7.39 kB
 frontend/dist/assets/useQuery-DeNJ_Lta.js                             23.81 kB │ gzip:   7.88 kB
-frontend/dist/assets/PrepaidPurchasesPage-DrtDnz3j.js                 25.20 kB │ gzip:   6.31 kB
-frontend/dist/assets/PricingPresetsPage-DLQ_2Y_e.js                   25.52 kB │ gzip:   6.96 kB
-frontend/dist/assets/AccountsReceivablePage-BhvbkHcy.js               26.17 kB │ gzip:   6.45 kB
-frontend/dist/assets/cn-B6KiDbIe.js                                   27.26 kB │ gzip:   8.69 kB
-frontend/dist/assets/ScannerHubPage-CsDU4viA.js                       28.46 kB │ gzip:   8.33 kB
-frontend/dist/assets/SalesOrderDetailsPage-BNL1EZXi.js                28.62 kB │ gzip:   8.79 kB
-frontend/dist/assets/PricingCardTemplateEditorPage-5M9zAAHG.js        32.34 kB │ gzip:   9.15 kB
-frontend/dist/assets/SupplierProfilePage-DHfAJgn_.js                  33.37 kB │ gzip:   9.31 kB
-frontend/dist/assets/ProductPricingCardPage-51lN-H2W.js               33.86 kB │ gzip:  10.75 kB
-frontend/dist/assets/FeatureIconsPage-BjBEnVhx.js                     37.80 kB │ gzip:  13.96 kB
-frontend/dist/assets/AddFinancialObligationDialog-DL8m7xdf.js         40.34 kB │ gzip:   8.58 kB
-frontend/dist/assets/LedgerPage-Ch9ds8N-.js                           41.38 kB │ gzip:   9.73 kB
-frontend/dist/assets/SettingsPage-2gAbREfm.js                         47.99 kB │ gzip:  11.68 kB
+frontend/dist/assets/PrepaidPurchasesPage-C134jDRM.js                 25.20 kB │ gzip:   6.31 kB
+frontend/dist/assets/PricingPresetsPage-BW9Hy-PF.js                   25.52 kB │ gzip:   6.96 kB
+frontend/dist/assets/AccountsReceivablePage-DJ8F5Efn.js               26.17 kB │ gzip:   6.45 kB
+frontend/dist/assets/cn-B9URw_CD.js                                   26.93 kB │ gzip:   8.59 kB
+frontend/dist/assets/ScannerHubPage-DwAkERf8.js                       28.42 kB │ gzip:   8.32 kB
+frontend/dist/assets/SalesOrderDetailsPage-BdNmcMRZ.js                28.62 kB │ gzip:   8.79 kB
+frontend/dist/assets/PricingCardTemplateEditorPage-CYcdPev4.js        32.34 kB │ gzip:   9.15 kB
+frontend/dist/assets/SupplierProfilePage-DJuH002Z.js                  33.37 kB │ gzip:   9.31 kB
+frontend/dist/assets/ProductPricingCardPage-Domvceiz.js               33.86 kB │ gzip:  10.75 kB
+frontend/dist/assets/FeatureIconsPage-KY-uCAQ4.js                     37.80 kB │ gzip:  13.96 kB
+frontend/dist/assets/AddFinancialObligationDialog-BkxuAYe_.js         40.34 kB │ gzip:   8.58 kB
+frontend/dist/assets/LedgerPage-CHxkznUR.js                           41.38 kB │ gzip:   9.72 kB
+frontend/dist/assets/SettingsPage-ahJLjYqd.js                         47.99 kB │ gzip:  11.68 kB
+frontend/dist/assets/DashboardPage-B_8xc14f.js                        50.62 kB │ gzip:  15.20 kB
 frontend/dist/assets/createLucideIcon-Dqwrge7d.js                     56.37 kB │ gzip:  21.20 kB
-frontend/dist/assets/DashboardPage-DLJEDcZY.js                        59.42 kB │ gzip:  17.58 kB
 frontend/dist/assets/barcode-geometry-BAQ4Ofpb.js                     65.14 kB │ gzip:  11.70 kB
-frontend/dist/assets/ReportDetailPage-l2YLhz-8.js                     67.53 kB │ gzip:  16.74 kB
-frontend/dist/assets/CustomerProfilePage-DdeZGiJf.js                  84.23 kB │ gzip:  20.96 kB
-frontend/dist/assets/ProductsPage-IgKjksBy.js                        138.69 kB │ gzip:  36.20 kB
-frontend/dist/assets/TopProductsSoldChart-DJh8MoqC.js                419.02 kB │ gzip: 119.00 kB
-frontend/dist/assets/index-9kUdX2E2.js                               498.07 kB │ gzip: 156.40 kB
+frontend/dist/assets/ReportDetailPage-BV9QuS4H.js                     67.53 kB │ gzip:  16.74 kB
+frontend/dist/assets/CustomerProfilePage-Bcy16W2s.js                  84.23 kB │ gzip:  20.96 kB
+frontend/dist/assets/ProductsPage-BO7hoBD1.js                        138.69 kB │ gzip:  36.20 kB
+frontend/dist/assets/TopProductsSoldChart-hyuccoQQ.js                417.92 kB │ gzip: 118.67 kB
+frontend/dist/assets/index-B_V9iQhL.js                               498.18 kB │ gzip: 156.42 kB
 
 [33m[33m[PLUGIN_TIMINGS] [0mYour build spent significant time in plugins. Here is a breakdown:
-  - vite:css (28%)
-  - vite:terser (25%)
-  - vite:css-post (11%)
-  - vite:asset (11%)
-  - vite:build-html (7%)
+  - vite:css (35%)
+  - vite:build-html (14%)
+  - vite:css-post (13%)
+  - vite:terser (10%)
+  - vite:asset (7%)
 See https://rolldown.rs/reference/InputOptions.checks#plugintimings for more details.
 [39m
-[32m✓ built in 16.78s[39m
+[32m✓ built in 16.56s[39m

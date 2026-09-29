@@ -1,8 +1,8 @@
 {
-  "version": "2.0.2",
-  "installer": "release/2.0.2/HomeConnect-Setup-2.0.2.exe",
-  "bytes": 113457815,
-  "sha256": "08505c829c9aaefcb1446916ab38b819a092985407aaeaf7577624e1b86a2e4b",
+  "version": "2.0.1",
+  "installer": "release/2.0.1/HomeConnect-Setup-2.0.1.exe",
+  "bytes": 113453768,
+  "sha256": "58345ea4a46e4f34d3cdbd91c5878e13e7575f675fdbd1f32e30d4c0ed1cc5bd",
   "latestVersionMatches": true,
   "latestFileHashMatches": true,
   "latestFileSizeMatches": true,

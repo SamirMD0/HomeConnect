@@ -1,8 +1,8 @@
 {
   "sourceDatabase": "hc_audit_test_browser_20260926124725",
-  "restoredDatabase": "hc_audit_test_recovery_isolated_20260928143157",
-  "archiveBytes": 359644,
-  "archiveSha256": "07c1a0985a310bf7e72417525da5125fe3fd803527c2dc8a1f1718c1bb8ec17c",
+  "restoredDatabase": "hc_audit_test_recovery_isolated_20260929131020",
+  "archiveBytes": 380186,
+  "archiveSha256": "f0ce852f371ded5bd5075282a2f2f4f8856888823078b33a37f9a008d5c1a2cd",
   "checkedTables": 50,
   "changedTables": [],
   "addedTables": [
@@ -13,7 +13,7 @@
   "failed": [],
   "mismatched": [],
   "backendReady": true,
-  "backendReadinessMs": 60802,
+  "backendReadinessMs": 25102,
   "backendStopped": true,
-  "backendOutputTail": "[startup] environment loaded at 2026-09-28T14:32:08.448Z\n[startup] application imports complete at 2026-09-28T14:33:08.712Z\n\u001b[32minfo\u001b[39m: Server running on http://127.0.0.1:4512 {\"timestamp\":\"2026-09-28T14:33:08.719Z\"}\r\n\u001b[32minfo\u001b[39m: [GET] /api/v1/health - 200 - 51ms {\"timestamp\":\"2026-09-28T14:33:09.023Z\"}\r\n"
+  "backendOutputTail": "[startup] environment loaded at 2026-09-29T13:10:30.645Z\n[startup] application imports complete at 2026-09-29T13:10:55.274Z\n\u001b[32minfo\u001b[39m: Server running on http://127.0.0.1:4512 {\"timestamp\":\"2026-09-29T13:10:55.281Z\"}\r\n\u001b[32minfo\u001b[39m: [GET] /api/v1/health - 200 - 60ms {\"timestamp\":\"2026-09-29T13:10:55.584Z\"}\r\n"
 }
