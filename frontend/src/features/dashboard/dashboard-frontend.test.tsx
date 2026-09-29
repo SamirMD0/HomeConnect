@@ -29,10 +29,7 @@ describe('ERP DashboardPage', () => {
     hooks.useMonthEnd.mockReturnValue(result({ month: '2026-08', disclosure: { en: 'Computed', ar: 'محسوبة' }, customers: { opening: '0.00', newAmount: '0.00', collected: '0.00', adjustments: '0.00', closing: '0.00', reconciled: true, withDebt: 0, fullyPaid: 0, overdue: 0 }, suppliers: { opening: '0.00', newAmount: '0.00', collected: '0.00', adjustments: '0.00', closing: '0.00', reconciled: true, withBalance: 0 }, service: { opened: 0, completed: 0, pending: 0, cancelled: 0, netOpen: 0, averageDaysOpen: 0 } }));
 
     const html = renderToStaticMarkup(<MemoryRouter><DashboardPage /></MemoryRouter>);
-    // 1 hero + 7 supporting = 8 KPI anchors pointing at their routes.
-    const kpiAnchors = html.match(/aria-label="[^"]+" href="\/[a-z-]*"|href="\/[a-z-]*"[^>]*aria-label/g) ?? [];
-    // The KPI area is entirely made of <Link> elements; count occurrences of
-    // the aria label text baseline instead (Collected Today, etc.).
+    // 1 hero + 7 supporting: every KPI label must render (Collected Today etc.).
     for (const label of ['Collected Today', 'Customers Paid Today', 'New Debts Today', 'Outstanding Debt', 'Owed to Suppliers', 'Open Service Jobs', 'Ready for Pickup', 'Active Products']) {
       expect(html, `Expected KPI "${label}" to render`).toContain(label);
     }

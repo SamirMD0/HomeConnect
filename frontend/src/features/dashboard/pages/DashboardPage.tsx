@@ -6,6 +6,7 @@ import { QuickActions } from '../components/QuickActions';
 import { DashboardFilterBar } from '../components/layout/DashboardFilterBar';
 import { DashboardSection } from '../components/layout/DashboardSection';
 import { DashboardGreetingHeader } from '../components/layout/DashboardGreetingHeader';
+import { DashboardAnchorNav, type DashboardAnchor } from '../components/layout/DashboardAnchorNav';
 import { KpiStrip } from '../components/kpi/KpiStrip';
 import { DashboardSectionBoundary } from '../components/layout/DashboardSectionBoundary';
 import { ActivityFeed } from '../components/sections/ActivityFeed';
@@ -30,6 +31,22 @@ import {
 } from '../hooks/useDashboard';
 import type { DashboardQueryParams } from '../types';
 import { InventoryDashboardCards } from '../../inventory/components/InventoryDashboardCards';
+
+/**
+ * IDs used both as `<section id>` anchors and as jump targets in the sticky
+ * `DashboardAnchorNav`. Extracted so the two sides can't drift.
+ */
+const anchorIds = {
+  alerts: 'dashboard-alerts',
+  inventory: 'dashboard-inventory',
+  customers: 'dashboard-customers',
+  suppliers: 'dashboard-suppliers',
+  sales: 'dashboard-sales',
+  service: 'dashboard-service',
+  products: 'dashboard-products',
+  monthEnd: 'dashboard-month-end',
+  activity: 'dashboard-activity',
+} as const;
 
 export function DashboardPage() {
   const { user } = useAuth();
@@ -58,6 +75,21 @@ export function DashboardPage() {
     (result) => result.isFetching
   );
 
+  const anchors: DashboardAnchor[] = useMemo(() => {
+    const list: DashboardAnchor[] = [
+      { id: anchorIds.alerts, label: 'Alerts' },
+      { id: anchorIds.inventory, label: 'Inventory' },
+      { id: anchorIds.customers, label: 'Customers' },
+      { id: anchorIds.suppliers, label: 'Suppliers' },
+      { id: anchorIds.sales, label: 'Sales' },
+      { id: anchorIds.service, label: 'Service' },
+      { id: anchorIds.products, label: 'Products' },
+    ];
+    if (user?.role === 'ADMIN') list.push({ id: anchorIds.monthEnd, label: 'Month-End' });
+    list.push({ id: anchorIds.activity, label: 'Activity' });
+    return list;
+  }, [user?.role]);
+
   return (
     <div className="dashboard-shell">
       <DashboardGreetingHeader businessDate={businessDate} alerts={alerts.data?.data} />
@@ -79,92 +111,112 @@ export function DashboardPage() {
         />
       </DashboardSectionBoundary>
 
+      <DashboardAnchorNav anchors={anchors} />
+
       <DashboardSectionBoundary>
         <DashboardSection title={dashboardLabels.quickActions} icon={Zap}>
           <QuickActions />
         </DashboardSection>
       </DashboardSectionBoundary>
 
-      <DashboardSectionBoundary>
-        <AlertsCenter
-          data={alerts.data?.data}
-          isLoading={alerts.isLoading}
-          isError={alerts.isError}
-          onRetry={() => alerts.refetch()}
-        />
-      </DashboardSectionBoundary>
-
-      <DashboardSectionBoundary>
-        <InventoryDashboardCards />
-      </DashboardSectionBoundary>
-
-      <DashboardSectionBoundary>
-        <CustomerAnalytics
-          data={customer.data?.data}
-          isLoading={customer.isLoading}
-          isError={customer.isError}
-          onRetry={() => customer.refetch()}
-        />
-      </DashboardSectionBoundary>
-
-      <DashboardSectionBoundary>
-        <SupplierAnalytics
-          data={supplier.data?.data}
-          isLoading={supplier.isLoading}
-          isError={supplier.isError}
-          onRetry={() => supplier.refetch()}
-        />
-      </DashboardSectionBoundary>
-
-      <DashboardSectionBoundary>
-        <SalesAnalytics
-          data={sales.data?.data}
-          isLoading={sales.isLoading}
-          isError={sales.isError}
-          onRetry={() => sales.refetch()}
-        />
-      </DashboardSectionBoundary>
-
-      <DashboardSectionBoundary>
-        <ServiceAnalytics
-          data={service.data?.data}
-          isLoading={service.isLoading}
-          isError={service.isError}
-          onRetry={() => service.refetch()}
-        />
-      </DashboardSectionBoundary>
-
-      <DashboardSectionBoundary>
-        <ProductAnalytics
-          data={product.data?.data}
-          isLoading={product.isLoading}
-          isError={product.isError}
-          onRetry={() => product.refetch()}
-        />
-      </DashboardSectionBoundary>
-
-      {user?.role === 'ADMIN' && (
+      <div id={anchorIds.alerts} className="scroll-mt-24">
         <DashboardSectionBoundary>
-          <MonthEndSnapshot
-            month={month}
-            onMonthChange={setSelectedMonth}
-            data={monthEnd.data?.data}
-            isLoading={monthEnd.isLoading}
-            isError={monthEnd.isError}
-            onRetry={() => monthEnd.refetch()}
+          <AlertsCenter
+            data={alerts.data?.data}
+            isLoading={alerts.isLoading}
+            isError={alerts.isError}
+            onRetry={() => alerts.refetch()}
           />
         </DashboardSectionBoundary>
+      </div>
+
+      <div id={anchorIds.inventory} className="scroll-mt-24">
+        <DashboardSectionBoundary>
+          <InventoryDashboardCards />
+        </DashboardSectionBoundary>
+      </div>
+
+      <div id={anchorIds.customers} className="scroll-mt-24">
+        <DashboardSectionBoundary>
+          <CustomerAnalytics
+            data={customer.data?.data}
+            isLoading={customer.isLoading}
+            isError={customer.isError}
+            onRetry={() => customer.refetch()}
+          />
+        </DashboardSectionBoundary>
+      </div>
+
+      <div id={anchorIds.suppliers} className="scroll-mt-24">
+        <DashboardSectionBoundary>
+          <SupplierAnalytics
+            data={supplier.data?.data}
+            isLoading={supplier.isLoading}
+            isError={supplier.isError}
+            onRetry={() => supplier.refetch()}
+          />
+        </DashboardSectionBoundary>
+      </div>
+
+      <div id={anchorIds.sales} className="scroll-mt-24">
+        <DashboardSectionBoundary>
+          <SalesAnalytics
+            data={sales.data?.data}
+            isLoading={sales.isLoading}
+            isError={sales.isError}
+            onRetry={() => sales.refetch()}
+          />
+        </DashboardSectionBoundary>
+      </div>
+
+      <div id={anchorIds.service} className="scroll-mt-24">
+        <DashboardSectionBoundary>
+          <ServiceAnalytics
+            data={service.data?.data}
+            isLoading={service.isLoading}
+            isError={service.isError}
+            onRetry={() => service.refetch()}
+          />
+        </DashboardSectionBoundary>
+      </div>
+
+      <div id={anchorIds.products} className="scroll-mt-24">
+        <DashboardSectionBoundary>
+          <ProductAnalytics
+            data={product.data?.data}
+            isLoading={product.isLoading}
+            isError={product.isError}
+            onRetry={() => product.refetch()}
+          />
+        </DashboardSectionBoundary>
+      </div>
+
+      {user?.role === 'ADMIN' && (
+        <div id={anchorIds.monthEnd} className="scroll-mt-24">
+          <DashboardSectionBoundary>
+            <MonthEndSnapshot
+              month={month}
+              onMonthChange={setSelectedMonth}
+              data={monthEnd.data?.data}
+              isLoading={monthEnd.isLoading}
+              isError={monthEnd.isError}
+              onRetry={() => monthEnd.refetch()}
+            />
+          </DashboardSectionBoundary>
+        </div>
       )}
 
-      <DashboardSectionBoundary>
-        <ActivityFeed
-          data={activity.data?.data}
-          isLoading={activity.isLoading}
-          isError={activity.isError}
-          onRetry={() => activity.refetch()}
-          businessDate={businessDate}
-        />
-      </DashboardSectionBoundary>
+      <div id={anchorIds.activity} className="scroll-mt-24">
+        <DashboardSectionBoundary>
+          <ActivityFeed
+            data={activity.data?.data}
+            isLoading={activity.isLoading}
+            isError={activity.isError}
+            onRetry={() => activity.refetch()}
+            businessDate={businessDate}
+          />
+        </DashboardSectionBoundary>
+      </div>
     </div>
   );
 }
