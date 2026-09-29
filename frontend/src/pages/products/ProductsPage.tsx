@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { LayoutGrid, List, Package, Plus, ScanLine, Tags } from 'lucide-react';
+import { FileUp, LayoutGrid, List, Package, Plus, ScanLine, Tags } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Button, buttonClasses } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
@@ -12,6 +12,7 @@ import { ProductBulkActionsBar } from '../../features/products/components/Produc
 import { ProductDetailsDrawer } from '../../features/products/components/ProductDetailsDrawer';
 import { ProductFilters, hasActiveProductFilters, productFilterResetPatch } from '../../features/products/components/ProductFilters';
 import { ProductFormDialog } from '../../features/products/components/ProductFormDialog';
+import { ProductCsvImportDialog } from '../../features/products/components/ProductCsvImportDialog';
 import { ProductGrid, ProductGridSkeleton } from '../../features/products/components/ProductGrid';
 import { ProductRestoreDialog } from '../../features/products/components/ProductRestoreDialog';
 import { ProductStats } from '../../features/products/components/ProductStats';
@@ -40,6 +41,7 @@ export const ProductsPage: React.FC = () => {
   const [debouncedSearch, setDebouncedSearch] = useState(search);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [formOpen, setFormOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [archiveProduct, setArchiveProduct] = useState<Product | null>(null);
   const [restoreProduct, setRestoreProduct] = useState<Product | null>(null);
@@ -84,7 +86,7 @@ export const ProductsPage: React.FC = () => {
    * `shouldRefocusScanInput` ignores modifier chords, other fields, and any
    * moment a dialog is open.
    */
-  const dialogOpen = formOpen || Boolean(focusedId) || Boolean(archiveProduct) || Boolean(restoreProduct);
+  const dialogOpen = formOpen || importOpen || Boolean(focusedId) || Boolean(archiveProduct) || Boolean(restoreProduct);
 
   /**
    * Scans made on a paired phone. Recorded into the same list as desk scans;
@@ -214,6 +216,7 @@ export const ProductsPage: React.FC = () => {
       actions={<>
         <Link to="/products/brands" className={buttonClasses('secondary', 'md')}><Tags className="h-4 w-4" />Brands / الماركات</Link>
         <Link to="/products/categories" className={buttonClasses('secondary', 'md')}><Tags className="h-4 w-4" />Categories</Link>
+        {canAdmin && <Button variant="secondary" icon={<FileUp />} onClick={() => setImportOpen(true)}>Import CSV</Button>}
         <Button icon={<Plus />} onClick={() => { setEditingProduct(null); setFormOpen(true); }}>{businessLabels.product.addProduct}</Button>
       </>}
     />
@@ -279,6 +282,7 @@ export const ProductsPage: React.FC = () => {
             />}
 
     <ProductFormDialog open={formOpen} product={editingProduct} onClose={closeForm} onViewDuplicate={(id) => { closeForm(); focus(id); }} />
+    <ProductCsvImportDialog open={importOpen} onClose={() => setImportOpen(false)} />
     <ProductDetailsDrawer productId={focusedId} initialSection={focusedSection} onClose={() => focus(null)} onEdit={openEdit} onArchive={openArchive} onRestore={openRestore} />
     <ProductArchiveDialog key={archiveProduct?.id ?? 'archive'} product={archiveProduct} onClose={() => setArchiveProduct(null)} />
     <ProductRestoreDialog key={restoreProduct?.id ?? 'restore'} product={restoreProduct} onClose={() => setRestoreProduct(null)} />

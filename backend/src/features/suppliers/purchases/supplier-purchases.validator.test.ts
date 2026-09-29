@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createSupplierPurchaseSchema } from './supplier-purchases.validator';
+import { todayInBusinessTimezone } from '../../financial/domain/business-date';
 
 const productId = '33333333-3333-4333-8333-333333333333';
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => todayInBusinessTimezone();
 
 const base = (overrides: Record<string, unknown> = {}) => ({
   receiptNumber: 'INV-2291',

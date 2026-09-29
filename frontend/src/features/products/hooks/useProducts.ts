@@ -11,6 +11,7 @@ import {
   UpdateProductInput,
   UpdateProductPricingInput,
   UpdateProductSkuInput, UpdateProductStockInput,
+  ProductImportDecision,
 } from '../types/product.types';
 
 export const productKeys = {
@@ -176,6 +177,31 @@ export function useUpdateProductFeatures() {
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: import('../types/product.types').UpdateProductFeaturesInput }) => productsApi.updateFeatures(id, input),
     onSuccess: () => refreshProducts(queryClient),
+  });
+}
+
+export function useCreateProductImport() {
+  return useMutation({
+    mutationFn: (input: { fileName: string; csvText: string; sourceSystem: string; brand: string }) => productsApi.createImport(input),
+  });
+}
+
+export function useUpdateProductImport() {
+  return useMutation({
+    mutationFn: ({ id, categoryMappings }: { id: string; categoryMappings: Record<string, string | null> }) => productsApi.updateImport(id, categoryMappings),
+  });
+}
+
+export function useCommitProductImport() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, decisions, accountPassword }: { id: string; decisions: ProductImportDecision[]; accountPassword?: string }) =>
+      productsApi.commitImport(id, { decisions, accountPassword }),
+    onSuccess: () => Promise.all([
+      refreshProducts(queryClient),
+      queryClient.invalidateQueries({ queryKey: ['categories'] }),
+      queryClient.invalidateQueries({ queryKey: ['inventory'] }),
+    ]),
   });
 }
 

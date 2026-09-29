@@ -1,0 +1,21 @@
+[WebServer] (node:19480) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:27260) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 12 tests using 1 worker
+
+  ok  1 [browser] › e2e\critical.spec.ts:8:5 › authentication: UI login/logout and rejected disabled/invalid sessions (5.3s)
+  ok  2 [browser] › e2e\critical.spec.ts:25:5 › products: search, edit notes, preserve price and barcode (4.5s)
+  ok  3 [browser] › e2e\critical.spec.ts:56:7 › customer USD sale: UI mixed cash/debt, stock deduction and partial refund (7.4s)
+  ok  4 [browser] › e2e\critical.spec.ts:56:7 › customer LBP sale: UI mixed cash/debt, stock deduction and partial refund (6.2s)
+  ok  5 [browser] › e2e\critical.spec.ts:158:5 › walk-in cash: UI sale creates exactly one customerless receipt (3.1s)
+  ok  6 [browser] › e2e\critical.spec.ts:178:5 › purchasing and receiving: retry preserves stock, cost, manual price and supplier ledger (3.2s)
+  ok  7 [browser] › e2e\critical.spec.ts:220:7 › pricing card TV-AUDIT: resolved preview and print preserve barcode and price (4.3s)
+  ok  8 [browser] › e2e\critical.spec.ts:220:7 › pricing card WASH-AUDIT: resolved preview and print preserve barcode and price (2.6s)
+  ok  9 [browser] › e2e\critical.spec.ts:220:7 › pricing card FRIDGE-AUDIT: resolved preview and print preserve barcode and price (2.6s)
+  ok 10 [browser] › e2e\critical.spec.ts:220:7 › pricing card KETTLE-AUDIT: resolved preview and print preserve barcode and price (2.7s)
+  ok 11 [browser] › e2e\critical.spec.ts:220:7 › pricing card VGR-AUDIT: resolved preview and print preserve barcode and price (2.8s)
+  ok 12 [browser] › e2e\critical.spec.ts:253:5 › reports reconcile with real workflow data and dashboard loads (3.6s)
+
+  12 passed (1.1m)

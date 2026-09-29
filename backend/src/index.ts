@@ -12,6 +12,7 @@ import { prisma } from './lib/prisma';
 
 const PORT = process.env.PORT || 3001;
 const HOST = process.env.HOST || '127.0.0.1';
+if (process.env.HOME_CONNECT_STARTUP_TRACE === '1') console.info(`[startup] application imports complete at ${new Date().toISOString()}`);
 
 const startServer = () => {
   try {

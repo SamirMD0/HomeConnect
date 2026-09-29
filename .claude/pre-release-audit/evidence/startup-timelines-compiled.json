@@ -1,0 +1,807 @@
+[
+  {
+    "file": "startup-1790458268327.jsonl",
+    "events": [
+      {
+        "timestamp": "2026-09-26T21:31:08.360Z",
+        "elapsedMs": 26,
+        "message": "Electron boot attempt started; mode=production; packaged=false"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:09.331Z",
+        "elapsedMs": 1003,
+        "message": "Checking configuration..."
+      },
+      {
+        "timestamp": "2026-09-26T21:31:09.658Z",
+        "elapsedMs": 1331,
+        "message": "Starting compiled backend process..."
+      },
+      {
+        "timestamp": "2026-09-26T21:31:09.820Z",
+        "elapsedMs": 1493,
+        "message": "Backend spawned pid=20420; waiting for database health"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:09.941Z",
+        "elapsedMs": 1614,
+        "message": "Backend probe: 119ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:10.447Z",
+        "elapsedMs": 2120,
+        "message": "Backend probe: 625ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:10.960Z",
+        "elapsedMs": 2632,
+        "message": "Backend probe: 1137ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:11.473Z",
+        "elapsedMs": 3146,
+        "message": "Backend probe: 1651ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:12.075Z",
+        "elapsedMs": 3748,
+        "message": "Backend probe: 2253ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:12.580Z",
+        "elapsedMs": 4252,
+        "message": "Backend probe: 2757ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:13.088Z",
+        "elapsedMs": 4761,
+        "message": "Backend probe: 3266ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:13.605Z",
+        "elapsedMs": 5277,
+        "message": "Backend probe: 3783ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:14.110Z",
+        "elapsedMs": 5783,
+        "message": "Backend probe: 4288ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:14.626Z",
+        "elapsedMs": 6299,
+        "message": "Backend probe: 4804ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:15.136Z",
+        "elapsedMs": 6809,
+        "message": "Backend probe: 5314ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:15.680Z",
+        "elapsedMs": 7353,
+        "message": "Backend probe: 5858ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:16.189Z",
+        "elapsedMs": 7861,
+        "message": "Backend probe: 6367ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:16.705Z",
+        "elapsedMs": 8378,
+        "message": "Backend probe: 6883ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:17.212Z",
+        "elapsedMs": 8884,
+        "message": "Backend probe: 7390ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:17.721Z",
+        "elapsedMs": 9394,
+        "message": "Backend probe: 7899ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:18.230Z",
+        "elapsedMs": 9902,
+        "message": "Backend probe: 8408ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:18.738Z",
+        "elapsedMs": 10411,
+        "message": "Backend probe: 8916ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:19.244Z",
+        "elapsedMs": 10917,
+        "message": "Backend probe: 9422ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:19.823Z",
+        "elapsedMs": 11496,
+        "message": "Backend probe: 10001ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:20.330Z",
+        "elapsedMs": 12003,
+        "message": "Backend probe: 10508ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:20.847Z",
+        "elapsedMs": 12520,
+        "message": "Backend probe: 11025ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:21.352Z",
+        "elapsedMs": 13025,
+        "message": "Backend probe: 11530ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:21.863Z",
+        "elapsedMs": 13536,
+        "message": "Backend probe: 12041ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:22.378Z",
+        "elapsedMs": 14050,
+        "message": "Backend probe: 12556ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:22.887Z",
+        "elapsedMs": 14560,
+        "message": "Backend probe: 13065ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:23.397Z",
+        "elapsedMs": 15069,
+        "message": "Backend probe: 13575ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:23.905Z",
+        "elapsedMs": 15577,
+        "message": "Backend probe: 14083ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:24.408Z",
+        "elapsedMs": 16081,
+        "message": "Backend probe: 14586ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:24.925Z",
+        "elapsedMs": 16597,
+        "message": "Backend probe: 15103ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:25.437Z",
+        "elapsedMs": 17109,
+        "message": "Backend probe: 15615ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:25.940Z",
+        "elapsedMs": 17613,
+        "message": "Backend probe: 16118ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:26.447Z",
+        "elapsedMs": 18120,
+        "message": "Backend probe: 16625ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:26.950Z",
+        "elapsedMs": 18623,
+        "message": "Backend probe: 17128ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:27.459Z",
+        "elapsedMs": 19132,
+        "message": "Backend probe: 17637ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:27.977Z",
+        "elapsedMs": 19649,
+        "message": "Backend probe: 18155ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:28.484Z",
+        "elapsedMs": 20157,
+        "message": "Backend probe: 18662ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:28.987Z",
+        "elapsedMs": 20660,
+        "message": "Backend probe: 19165ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:29.498Z",
+        "elapsedMs": 21171,
+        "message": "Backend probe: 19676ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:30.002Z",
+        "elapsedMs": 21674,
+        "message": "Backend probe: 20180ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:30.509Z",
+        "elapsedMs": 22181,
+        "message": "Backend probe: 20687ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:31.019Z",
+        "elapsedMs": 22692,
+        "message": "Backend probe: 21197ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:31.526Z",
+        "elapsedMs": 23199,
+        "message": "Backend probe: 21704ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:32.028Z",
+        "elapsedMs": 23701,
+        "message": "Backend probe: 22206ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:32.537Z",
+        "elapsedMs": 24210,
+        "message": "Backend probe: 22715ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:33.052Z",
+        "elapsedMs": 24725,
+        "message": "Backend probe: 23230ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:33.562Z",
+        "elapsedMs": 25234,
+        "message": "Backend probe: 23740ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:34.079Z",
+        "elapsedMs": 25752,
+        "message": "Backend probe: 24257ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:34.587Z",
+        "elapsedMs": 26259,
+        "message": "Backend probe: 24765ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:35.100Z",
+        "elapsedMs": 26773,
+        "message": "Backend probe: 25278ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:35.606Z",
+        "elapsedMs": 27279,
+        "message": "Backend probe: 25784ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:36.114Z",
+        "elapsedMs": 27787,
+        "message": "Backend probe: 26292ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:36.641Z",
+        "elapsedMs": 28313,
+        "message": "Backend probe: 26819ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:37.157Z",
+        "elapsedMs": 28830,
+        "message": "Backend probe: 27335ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:37.665Z",
+        "elapsedMs": 29338,
+        "message": "Backend probe: 27843ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:38.172Z",
+        "elapsedMs": 29845,
+        "message": "Backend probe: 28350ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:38.681Z",
+        "elapsedMs": 30353,
+        "message": "Backend probe: 28859ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:39.196Z",
+        "elapsedMs": 30869,
+        "message": "Backend probe: 29374ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:39.703Z",
+        "elapsedMs": 31376,
+        "message": "Backend probe: 29881ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:40.219Z",
+        "elapsedMs": 31891,
+        "message": "Backend probe: 30397ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:40.726Z",
+        "elapsedMs": 32398,
+        "message": "Backend probe: 30904ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:41.236Z",
+        "elapsedMs": 32909,
+        "message": "Backend probe: 31414ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:41.745Z",
+        "elapsedMs": 33417,
+        "message": "Backend probe: 31923ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:42.259Z",
+        "elapsedMs": 33931,
+        "message": "Backend probe: 32437ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:42.765Z",
+        "elapsedMs": 34438,
+        "message": "Backend probe: 32943ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:43.280Z",
+        "elapsedMs": 34953,
+        "message": "Backend probe: 33458ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:43.787Z",
+        "elapsedMs": 35459,
+        "message": "Backend probe: 33965ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:44.300Z",
+        "elapsedMs": 35972,
+        "message": "Backend probe: 34478ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:44.805Z",
+        "elapsedMs": 36478,
+        "message": "Backend probe: 34983ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:45.307Z",
+        "elapsedMs": 36979,
+        "message": "Backend probe: 35485ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:45.816Z",
+        "elapsedMs": 37489,
+        "message": "Backend probe: 35994ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:46.319Z",
+        "elapsedMs": 37992,
+        "message": "Backend probe: 36497ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:46.822Z",
+        "elapsedMs": 38495,
+        "message": "Backend probe: 37000ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:47.323Z",
+        "elapsedMs": 38996,
+        "message": "Backend probe: 37501ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:47.832Z",
+        "elapsedMs": 39504,
+        "message": "Backend probe: 38010ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:48.349Z",
+        "elapsedMs": 40022,
+        "message": "Backend probe: 38527ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:48.862Z",
+        "elapsedMs": 40535,
+        "message": "Backend probe: 39040ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:49.369Z",
+        "elapsedMs": 41042,
+        "message": "Backend probe: 39547ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:49.877Z",
+        "elapsedMs": 41550,
+        "message": "Backend probe: 40055ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:50.385Z",
+        "elapsedMs": 42057,
+        "message": "Backend probe: 40563ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:50.894Z",
+        "elapsedMs": 42567,
+        "message": "Backend probe: 41072ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:51.400Z",
+        "elapsedMs": 43072,
+        "message": "Backend probe: 41578ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:51.910Z",
+        "elapsedMs": 43583,
+        "message": "Backend probe: 42088ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:52.418Z",
+        "elapsedMs": 44090,
+        "message": "Backend probe: 42596ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:52.922Z",
+        "elapsedMs": 44595,
+        "message": "Backend probe: 43100ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:53.432Z",
+        "elapsedMs": 45105,
+        "message": "Backend probe: 43610ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:53.942Z",
+        "elapsedMs": 45615,
+        "message": "Backend probe: 44120ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:54.513Z",
+        "elapsedMs": 46185,
+        "message": "Backend probe: 44691ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:54.831Z",
+        "elapsedMs": 46504,
+        "message": "[ERROR] Compiled Express backend did not become ready within 45s: http://127.0.0.1:4311/api/v1/health."
+      },
+      {
+        "timestamp": "2026-09-26T21:31:54.832Z",
+        "elapsedMs": 46505,
+        "message": "[WHAT TO DO] This is usually a slow or unreachable database. Check that PostgreSQL is running, then press Retry Startup."
+      },
+      {
+        "timestamp": "2026-09-26T21:31:54.865Z",
+        "elapsedMs": 46538,
+        "message": "Backend process exited: code=null"
+      },
+      {
+        "timestamp": "2026-09-26T21:31:54.866Z",
+        "elapsedMs": 46539,
+        "message": "Failed attempt cleanup complete; owned services stopped."
+      }
+    ]
+  },
+  {
+    "file": "startup-1790458583567.jsonl",
+    "events": [
+      {
+        "timestamp": "2026-09-26T21:36:23.568Z",
+        "elapsedMs": 0,
+        "message": "Electron boot attempt started; mode=production; packaged=false"
+      },
+      {
+        "timestamp": "2026-09-26T21:36:24.075Z",
+        "elapsedMs": 507,
+        "message": "Checking configuration..."
+      },
+      {
+        "timestamp": "2026-09-26T21:36:24.193Z",
+        "elapsedMs": 626,
+        "message": "Starting compiled backend process..."
+      },
+      {
+        "timestamp": "2026-09-26T21:36:24.212Z",
+        "elapsedMs": 645,
+        "message": "Backend spawned pid=3452; waiting for database health"
+      },
+      {
+        "timestamp": "2026-09-26T21:36:24.221Z",
+        "elapsedMs": 654,
+        "message": "Backend probe: 8ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:36:24.322Z",
+        "elapsedMs": 755,
+        "message": "[backend] [startup] environment loaded at 2026-09-26T21:36:24.318Z\n"
+      },
+      {
+        "timestamp": "2026-09-26T21:36:24.735Z",
+        "elapsedMs": 1167,
+        "message": "Backend probe: 522ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:36:25.824Z",
+        "elapsedMs": 2257,
+        "message": "[backend] [startup] application imports complete at 2026-09-26T21:36:25.822Z\n"
+      },
+      {
+        "timestamp": "2026-09-26T21:36:25.826Z",
+        "elapsedMs": 2258,
+        "message": "[backend] (node:3452) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.\n(Use `electron --trace-warnings ...` to show where the warning was created)\n"
+      },
+      {
+        "timestamp": "2026-09-26T21:36:25.878Z",
+        "elapsedMs": 2310,
+        "message": "[backend] \u001b[32minfo\u001b[39m: Server running on http://127.0.0.1:4311 {\"timestamp\":\"2026-09-26T21:36:25.874Z\"}\r\n"
+      },
+      {
+        "timestamp": "2026-09-26T21:36:26.777Z",
+        "elapsedMs": 3210,
+        "message": "Backend probe: 2564ms, 200"
+      },
+      {
+        "timestamp": "2026-09-26T21:36:26.778Z",
+        "elapsedMs": 3210,
+        "message": "Database verified via compiled backend."
+      },
+      {
+        "timestamp": "2026-09-26T21:36:26.778Z",
+        "elapsedMs": 3211,
+        "message": "Starting static React frontend..."
+      },
+      {
+        "timestamp": "2026-09-26T21:36:26.784Z",
+        "elapsedMs": 3217,
+        "message": "[backend] \u001b[32minfo\u001b[39m: [GET] /api/v1/health - 200 - 99ms {\"timestamp\":\"2026-09-26T21:36:26.773Z\"}\r\n"
+      },
+      {
+        "timestamp": "2026-09-26T21:36:26.817Z",
+        "elapsedMs": 3250,
+        "message": "Startup complete. Opening app..."
+      },
+      {
+        "timestamp": "2026-09-26T21:36:33.544Z",
+        "elapsedMs": 9977,
+        "message": "[backend] \u001b[32minfo\u001b[39m: [POST] /api/v1/auth/refresh - 204 - 0ms {\"timestamp\":\"2026-09-26T21:36:33.541Z\"}\r\n"
+      },
+      {
+        "timestamp": "2026-09-26T21:36:34.090Z",
+        "elapsedMs": 10523,
+        "message": "[backend] \u001b[32minfo\u001b[39m: [GET] /api/v1/health - 200 - 2ms {\"timestamp\":\"2026-09-26T21:36:34.088Z\"}\r\n"
+      },
+      {
+        "timestamp": "2026-09-26T21:36:34.712Z",
+        "elapsedMs": 11145,
+        "message": "Backend process exited: code=null"
+      }
+    ]
+  },
+  {
+    "file": "startup-1790458822143.jsonl",
+    "events": [
+      {
+        "timestamp": "2026-09-26T21:40:22.144Z",
+        "elapsedMs": 0,
+        "message": "Electron boot attempt started; mode=production; packaged=false"
+      },
+      {
+        "timestamp": "2026-09-26T21:40:22.652Z",
+        "elapsedMs": 509,
+        "message": "Checking configuration..."
+      },
+      {
+        "timestamp": "2026-09-26T21:40:22.772Z",
+        "elapsedMs": 629,
+        "message": "Starting compiled backend process..."
+      },
+      {
+        "timestamp": "2026-09-26T21:40:24.236Z",
+        "elapsedMs": 2093,
+        "message": "Backend spawned pid=18832; waiting for database health"
+      },
+      {
+        "timestamp": "2026-09-26T21:40:24.246Z",
+        "elapsedMs": 2103,
+        "message": "Backend probe: 10ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:40:24.712Z",
+        "elapsedMs": 2569,
+        "message": "[backend] [startup] environment loaded at 2026-09-26T21:40:24.710Z\n"
+      },
+      {
+        "timestamp": "2026-09-26T21:40:24.758Z",
+        "elapsedMs": 2614,
+        "message": "Backend probe: 521ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:40:25.260Z",
+        "elapsedMs": 3117,
+        "message": "Backend probe: 1024ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:40:25.772Z",
+        "elapsedMs": 3629,
+        "message": "Backend probe: 1536ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:40:26.273Z",
+        "elapsedMs": 4130,
+        "message": "Backend probe: 2037ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:40:26.775Z",
+        "elapsedMs": 4632,
+        "message": "Backend probe: 2539ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:40:27.283Z",
+        "elapsedMs": 5140,
+        "message": "Backend probe: 3047ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:40:27.564Z",
+        "elapsedMs": 5421,
+        "message": "[backend] [startup] application imports complete at 2026-09-26T21:40:27.564Z\n"
+      },
+      {
+        "timestamp": "2026-09-26T21:40:27.567Z",
+        "elapsedMs": 5424,
+        "message": "[backend] (node:18832) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.\n(Use `electron --trace-warnings ...` to show where the warning was created)\n"
+      },
+      {
+        "timestamp": "2026-09-26T21:40:27.576Z",
+        "elapsedMs": 5433,
+        "message": "[backend] \u001b[32minfo\u001b[39m: Server running on http://127.0.0.1:4311 {\"timestamp\":\"2026-09-26T21:40:27.575Z\"}\r\n"
+      },
+      {
+        "timestamp": "2026-09-26T21:40:27.879Z",
+        "elapsedMs": 5736,
+        "message": "Backend probe: 3643ms, 200"
+      },
+      {
+        "timestamp": "2026-09-26T21:40:27.880Z",
+        "elapsedMs": 5736,
+        "message": "Database verified via compiled backend."
+      },
+      {
+        "timestamp": "2026-09-26T21:40:27.880Z",
+        "elapsedMs": 5737,
+        "message": "Starting static React frontend..."
+      },
+      {
+        "timestamp": "2026-09-26T21:40:27.886Z",
+        "elapsedMs": 5743,
+        "message": "[backend] \u001b[32minfo\u001b[39m: [GET] /api/v1/health - 200 - 79ms {\"timestamp\":\"2026-09-26T21:40:27.876Z\"}\r\n"
+      },
+      {
+        "timestamp": "2026-09-26T21:40:27.893Z",
+        "elapsedMs": 5750,
+        "message": "Startup complete. Opening app..."
+      },
+      {
+        "timestamp": "2026-09-26T21:40:29.845Z",
+        "elapsedMs": 7701,
+        "message": "[backend] \u001b[32minfo\u001b[39m: [POST] /api/v1/auth/refresh - 204 - 1ms {\"timestamp\":\"2026-09-26T21:40:29.844Z\"}\r\n"
+      },
+      {
+        "timestamp": "2026-09-26T21:40:30.001Z",
+        "elapsedMs": 7858,
+        "message": "[backend] \u001b[32minfo\u001b[39m: [GET] /api/v1/health - 200 - 2ms {\"timestamp\":\"2026-09-26T21:40:30.000Z\"}\r\n"
+      },
+      {
+        "timestamp": "2026-09-26T21:40:30.618Z",
+        "elapsedMs": 8475,
+        "message": "Backend process exited: code=null"
+      }
+    ]
+  },
+  {
+    "file": "startup-1790458831239.jsonl",
+    "events": [
+      {
+        "timestamp": "2026-09-26T21:40:31.240Z",
+        "elapsedMs": 0,
+        "message": "Electron boot attempt started; mode=production; packaged=false"
+      },
+      {
+        "timestamp": "2026-09-26T21:40:31.742Z",
+        "elapsedMs": 503,
+        "message": "Checking configuration..."
+      },
+      {
+        "timestamp": "2026-09-26T21:40:31.872Z",
+        "elapsedMs": 633,
+        "message": "Starting compiled backend process..."
+      },
+      {
+        "timestamp": "2026-09-26T21:40:31.897Z",
+        "elapsedMs": 658,
+        "message": "Backend spawned pid=2264; waiting for database health"
+      },
+      {
+        "timestamp": "2026-09-26T21:40:31.914Z",
+        "elapsedMs": 675,
+        "message": "Backend probe: 16ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:40:32.059Z",
+        "elapsedMs": 820,
+        "message": "[backend] [startup] environment loaded at 2026-09-26T21:40:32.055Z\n"
+      },
+      {
+        "timestamp": "2026-09-26T21:40:32.423Z",
+        "elapsedMs": 1183,
+        "message": "Backend probe: 524ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:40:32.938Z",
+        "elapsedMs": 1699,
+        "message": "Backend probe: 1040ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:40:33.446Z",
+        "elapsedMs": 2207,
+        "message": "Backend probe: 1548ms, not listening"
+      },
+      {
+        "timestamp": "2026-09-26T21:40:33.837Z",
+        "elapsedMs": 2598,
+        "message": "[backend] [startup] application imports complete at 2026-09-26T21:40:33.835Z\n"
+      },
+      {
+        "timestamp": "2026-09-26T21:40:33.840Z",
+        "elapsedMs": 2601,
+        "message": "[backend] (node:2264) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.\n(Use `electron --trace-warnings ...` to show where the warning was created)\n"
+      },
+      {
+        "timestamp": "2026-09-26T21:40:33.853Z",
+        "elapsedMs": 2614,
+        "message": "[backend] \u001b[32minfo\u001b[39m: Server running on http://127.0.0.1:4311 {\"timestamp\":\"2026-09-26T21:40:33.850Z\"}\r\n"
+      },
+      {
+        "timestamp": "2026-09-26T21:40:34.145Z",
+        "elapsedMs": 2906,
+        "message": "Backend probe: 2247ms, 200"
+      },
+      {
+        "timestamp": "2026-09-26T21:40:34.146Z",
+        "elapsedMs": 2907,
+        "message": "Database verified via compiled backend."
+      },
+      {
+        "timestamp": "2026-09-26T21:40:34.146Z",
+        "elapsedMs": 2907,
+        "message": "Starting static React frontend..."
+      },
+      {
+        "timestamp": "2026-09-26T21:40:34.153Z",
+        "elapsedMs": 2914,
+        "message": "[backend] \u001b[32minfo\u001b[39m: [GET] /api/v1/health - 200 - 184ms {\"timestamp\":\"2026-09-26T21:40:34.142Z\"}\r\n"
+      },
+      {
+        "timestamp": "2026-09-26T21:40:34.163Z",
+        "elapsedMs": 2924,
+        "message": "Startup complete. Opening app..."
+      },
+      {
+        "timestamp": "2026-09-26T21:40:35.154Z",
+        "elapsedMs": 3915,
+        "message": "[backend] \u001b[32minfo\u001b[39m: [POST] /api/v1/auth/refresh - 204 - 1ms {\"timestamp\":\"2026-09-26T21:40:35.153Z\"}\r\n"
+      },
+      {
+        "timestamp": "2026-09-26T21:40:35.336Z",
+        "elapsedMs": 4097,
+        "message": "[backend] \u001b[32minfo\u001b[39m: [GET] /api/v1/health - 200 - 2ms {\"timestamp\":\"2026-09-26T21:40:35.335Z\"}\r\n"
+      },
+      {
+        "timestamp": "2026-09-26T21:40:36.087Z",
+        "elapsedMs": 4848,
+        "message": "Backend process exited: code=null"
+      }
+    ]
+  }
+]

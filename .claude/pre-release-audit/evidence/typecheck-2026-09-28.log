@@ -1,0 +1,23 @@
+
+> home-connect@2.0.1 typecheck
+> npm run typecheck:frontend && npm run typecheck:backend
+
+
+> home-connect@2.0.1 typecheck:frontend
+> tsc -p tsconfig.json --noEmit
+
+
+> home-connect@2.0.1 typecheck:backend
+> tsc -p tsconfig.server.json --noEmit
+
+backend/src/features/maintenance/checksum-allowlist.test.ts(72,51): error TS2345: Argument of type '{ $queryRawUnsafe: () => Promise<never[]>; $executeRawUnsafe: () => Promise<number>; $transaction: (r: (t: unknown) => Promise<unknown>) => Promise<unknown>; }' is not assignable to parameter of type 'MigrationClient'.
+  The types returned by '$queryRawUnsafe(...)' are incompatible between these types.
+    Type 'Promise<never[]>' is not assignable to type 'Promise<T>'.
+      Type 'never[]' is not assignable to type 'T'.
+        'T' could be instantiated with an arbitrary type which could be unrelated to 'never[]'.
+backend/src/features/maintenance/checksum-allowlist.test.ts(88,61): error TS2345: Argument of type '{ $queryRawUnsafe: () => Promise<never[]>; $executeRawUnsafe: () => Promise<number>; $transaction: (r: (t: unknown) => Promise<unknown>) => Promise<unknown>; }' is not assignable to parameter of type 'MigrationClient'.
+  The types returned by '$queryRawUnsafe(...)' are incompatible between these types.
+    Type 'Promise<never[]>' is not assignable to type 'Promise<T>'.
+      Type 'never[]' is not assignable to type 'T'.
+        'T' could be instantiated with an arbitrary type which could be unrelated to 'never[]'.
+backend/src/features/maintenance/checksum-allowlist.ts(1,27): error TS6307: File 'D:/User/Documents/Home Connect/backend/src/features/maintenance/checksum-allowlist.json' is not listed within the file list of project 'D:/User/Documents/Home Connect/tsconfig.server.json'. Projects must list all files or use an 'include' pattern.

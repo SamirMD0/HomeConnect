@@ -8,6 +8,7 @@ import { PreflightReportCard } from './PreflightReportCard';
 import { PendingRepairsList } from './PendingRepairsList';
 import { ResolveMigrationsPanel } from './ResolveMigrationsPanel';
 import { RepairHistoryTable } from './RepairHistoryTable';
+import { ThermalReconcileNotesPanel } from './ThermalReconcileNotesPanel';
 
 /**
  * Settings → Maintenance. Admin-only, mirroring the backup panel's shape.
@@ -93,6 +94,7 @@ export const MaintenancePanel: React.FC = () => {
       )}
 
       <IntegrityReportsLinks />
+      <div className="mt-4"><ThermalReconcileNotesPanel /></div>
 
       {data && (
         <div className="mt-4 space-y-5">

@@ -119,6 +119,7 @@ export class ProductsRepository {
       where: { id: { in: ids } },
       include: {
         pricingPreset: true,
+        category: { select: { name: true } },
         taxProfile: { include: { taxRate: true } },
         pricingCardFeatures: { orderBy: { position: 'asc' } },
       },
@@ -131,6 +132,7 @@ export class ProductsRepository {
       select: {
         id: true,
         pricingCardTemplateId: true,
+        category: { select: { name: true } },
         pricingPreset: { select: { productType: true } },
       },
     });

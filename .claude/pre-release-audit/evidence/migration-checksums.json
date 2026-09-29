@@ -1,0 +1,30 @@
+[
+  {
+    "name": "20260914180000_add_product_categories",
+    "stored": [
+      {
+        "checksum": "3a86cdb1e4e485e19749a6c39ea3ee0d1585417ffe809b8a3bc9c92def6c5372"
+      }
+    ],
+    "working": "b774e3bcf474c2bb8db6c52ce18fd925113dcdf02cd52140c6bd58c84405ff5e",
+    "workingLF": "b774e3bcf474c2bb8db6c52ce18fd925113dcdf02cd52140c6bd58c84405ff5e",
+    "workingCRLF": "3a86cdb1e4e485e19749a6c39ea3ee0d1585417ffe809b8a3bc9c92def6c5372",
+    "head": "b774e3bcf474c2bb8db6c52ce18fd925113dcdf02cd52140c6bd58c84405ff5e",
+    "originalLF": null,
+    "originalCRLF": null
+  },
+  {
+    "name": "20260924100000_add_appliance_shelf_thermal_template",
+    "stored": [
+      {
+        "checksum": "863e3e6e201cd7c99d499a9fe0c5f83ceb8a51ab9e1ea5b185adbcc41259219a"
+      }
+    ],
+    "working": "c0aadf8748468470579ed69df9a9ad28114c2f4044c070de039649e22a283330",
+    "workingLF": "c0aadf8748468470579ed69df9a9ad28114c2f4044c070de039649e22a283330",
+    "workingCRLF": "1e3165e5cb0614a551906966d2f5c28a6cbc123789bf5551912b8375af6d52cb",
+    "head": "c0aadf8748468470579ed69df9a9ad28114c2f4044c070de039649e22a283330",
+    "originalLF": "863e3e6e201cd7c99d499a9fe0c5f83ceb8a51ab9e1ea5b185adbcc41259219a",
+    "originalCRLF": "ac1a888e2d813e758f8189d85b789944c9ccae0c84c1ef653edb2b25b186fc17"
+  }
+]

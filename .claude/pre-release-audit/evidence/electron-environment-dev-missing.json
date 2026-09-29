@@ -1,0 +1,10 @@
+{
+  "execArgv": [],
+  "environmentKeys": [
+    "AUDIT_ELECTRON_EXECUTABLE",
+    "AUDIT_ELECTRON_RUN_ID",
+    "DEBUG",
+    "DEBUG_COLORS",
+    "PLAYWRIGHT_TEST"
+  ]
+}

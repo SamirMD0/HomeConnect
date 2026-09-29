@@ -1,0 +1,15 @@
+  • electron-builder  version=26.15.3 os=10.0.26200
+  • loaded configuration  file=package.json ("build" field)
+  • skipped dependencies rebuild  reason=npmRebuild is set to false
+  • packaging       platform=win32 arch=x64 electron=43.2.0 appOutDir=release\audit-production-20260927\win-unpacked
+  • downloaded      label=electron progress=100%
+  • downloaded electron zip extracted successfully  output=D:\User\Documents\Home Connect\release\audit-production-20260927\win-unpacked
+  • searching for node modules  pm=npm searchDir=D:\User\Documents\Home Connect
+  • duplicate dependency references  dependencies=["@emnapi/wasi-threads@1.2.2","@emnapi/core@1.11.1","@emnapi/runtime@1.11.1","@tybys/wasm-util@0.10.3","@prisma/get-platform@5.22.0","debug@4.4.3","http-errors@2.0.1","on-finished@2.4.1","qs@6.15.3","http-errors@2.0.1","iconv-lite@0.7.3","type-is@2.1.0","debug@4.4.3","on-finished@2.4.1","get-intrinsic@1.3.0","call-bind-apply-helpers@1.0.2","call-bind-apply-helpers@1.0.2","es-object-atoms@1.1.2","call-bound@1.0.4","get-intrinsic@1.3.0","side-channel-map@1.0.1","debug@4.4.3","debug@4.4.3","http-errors@2.0.1","on-finished@2.4.1","send@1.2.1","css-tree@3.2.1","css-tree@3.2.1","css-tree@3.2.1","whatwg-url@16.0.1","logform@2.7.0","string_decoder@1.1.1"]
+  • updating asar integrity executable resource  executablePath=release\audit-production-20260927\win-unpacked\HomeConnect.exe
+  • signing with signtool.exe  path=release\audit-production-20260927\win-unpacked\HomeConnect.exe
+  • building        target=nsis file=release\audit-production-20260927\HomeConnect-Setup-2.0.1.exe archs=x64 oneClick=false perMachine=false
+  • signing with signtool.exe  path=release\audit-production-20260927\win-unpacked\resources\elevate.exe
+  • signing with signtool.exe  path=release\audit-production-20260927\HomeConnect-Setup-2.0.1.__uninstaller.exe
+  • signing with signtool.exe  path=release\audit-production-20260927\HomeConnect-Setup-2.0.1.exe
+  • building block map  blockMapFile=release\audit-production-20260927\HomeConnect-Setup-2.0.1.exe.blockmap

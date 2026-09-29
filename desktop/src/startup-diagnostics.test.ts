@@ -84,5 +84,31 @@ describe('startup-diagnostics', () => {
       expect(loggedData.paths.backend).toBe('/dummy/backend');
       expect(loggedData.ports.backendPortInUse).toBe(false);
     });
+
+    it('reports the effective explicit database instead of an installed env file', async () => {
+      const previous = process.env.DATABASE_URL;
+      process.env.DATABASE_URL = 'postgresql://audit:secret@localhost:5433/hc_audit_test_browser_123';
+      try {
+        vi.mocked(fs.existsSync).mockReturnValue(true);
+        vi.mocked(fs.readFileSync).mockReturnValue('DATABASE_URL=postgresql://user:secret@localhost:5433/homeconnect');
+        await writeStartupDiagnostics('/dummy/user/data', {
+          envFilePath: '/installed/config/production.env',
+          backendReady: true,
+          frontendReady: true,
+          backendPort: 3001,
+          frontendPort: 3002,
+          backendPath: '/dummy/backend',
+          frontendPath: '/dummy/frontend',
+          prismaRuntimePath: '/dummy/prisma',
+          success: true,
+        });
+        const loggedData = JSON.parse(String(vi.mocked(fs.writeFileSync).mock.calls[0][1]));
+        expect(loggedData.dbParsed.database).toBe('hc_audit_test_browser_123');
+        expect(loggedData.dbParsed).not.toHaveProperty('password');
+      } finally {
+        if (previous === undefined) delete process.env.DATABASE_URL;
+        else process.env.DATABASE_URL = previous;
+      }
+    });
   });
 });

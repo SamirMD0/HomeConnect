@@ -73,6 +73,6 @@ export function redactLogChunk(input: string) {
   return input
     .replace(/(DATABASE_URL=)[^\s"]+/gi, '$1[REDACTED]')
     .replace(/(postgres(?:ql)?:\/\/[^:\s]+:)[^@\s]+(@)/gi, '$1[REDACTED]$2')
-    .replace(/(JWT_SECRET=)[^\s"]+/gi, '$1[REDACTED]')
+    .replace(/(JWT_(?:REFRESH_)?SECRET[=:]\s*)[^\s"]+/gi, '$1[REDACTED]')
     .replace(/(PGPASSWORD=)[^\s"]+/gi, '$1[REDACTED]');
 }

@@ -1,0 +1,286 @@
+{
+  "counts": {
+    "_prisma_migrations": [
+      {
+        "count": 66
+      }
+    ],
+    "activity_logs": [
+      {
+        "count": 0
+      }
+    ],
+    "admin_verification_logs": [
+      {
+        "count": 79
+      }
+    ],
+    "brand_logos": [
+      {
+        "count": 2
+      }
+    ],
+    "business_settings": [
+      {
+        "count": 1
+      }
+    ],
+    "cash_refunds": [
+      {
+        "count": 1
+      }
+    ],
+    "categories": [
+      {
+        "count": 1
+      }
+    ],
+    "customer_credit_applications": [
+      {
+        "count": 0
+      }
+    ],
+    "customer_credits": [
+      {
+        "count": 0
+      }
+    ],
+    "customers": [
+      {
+        "count": 107
+      }
+    ],
+    "debts": [
+      {
+        "count": 87
+      }
+    ],
+    "exchange_rates": [
+      {
+        "count": 1
+      }
+    ],
+    "financial_correction_audits": [
+      {
+        "count": 4
+      }
+    ],
+    "installment_plans": [
+      {
+        "count": 30
+      }
+    ],
+    "installments": [
+      {
+        "count": 101
+      }
+    ],
+    "label_secret_encoding_presets": [
+      {
+        "count": 5
+      }
+    ],
+    "label_secret_settings": [
+      {
+        "count": 1
+      }
+    ],
+    "payment_allocations": [
+      {
+        "count": 17
+      }
+    ],
+    "payments": [
+      {
+        "count": 17
+      }
+    ],
+    "prepaid_purchases": [
+      {
+        "count": 3
+      }
+    ],
+    "pricing_card_feature_icons": [
+      {
+        "count": 17
+      }
+    ],
+    "pricing_card_prints": [
+      {
+        "count": 43
+      }
+    ],
+    "pricing_card_templates": [
+      {
+        "count": 5
+      }
+    ],
+    "pricing_presets": [
+      {
+        "count": 3
+      }
+    ],
+    "product_external_identifiers": [
+      {
+        "count": 12
+      }
+    ],
+    "product_images": [
+      {
+        "count": 0
+      }
+    ],
+    "product_imports": [
+      {
+        "count": 4
+      }
+    ],
+    "product_pricing_card_features": [
+      {
+        "count": 2
+      }
+    ],
+    "products": [
+      {
+        "count": 97
+      }
+    ],
+    "repair_history": [
+      {
+        "count": 0
+      }
+    ],
+    "sales_audits": [
+      {
+        "count": 34
+      }
+    ],
+    "sales_order_items": [
+      {
+        "count": 21
+      }
+    ],
+    "sales_order_stock_fulfillments": [
+      {
+        "count": 5
+      }
+    ],
+    "sales_orders": [
+      {
+        "count": 21
+      }
+    ],
+    "sales_return_items": [
+      {
+        "count": 1
+      }
+    ],
+    "sales_return_receivable_allocations": [
+      {
+        "count": 0
+      }
+    ],
+    "sales_returns": [
+      {
+        "count": 1
+      }
+    ],
+    "service_audits": [
+      {
+        "count": 146
+      }
+    ],
+    "service_jobs": [
+      {
+        "count": 2
+      }
+    ],
+    "shop_profiles": [
+      {
+        "count": 1
+      }
+    ],
+    "stock_movements": [
+      {
+        "count": 30
+      }
+    ],
+    "supplier_audits": [
+      {
+        "count": 32
+      }
+    ],
+    "supplier_purchase_lines": [
+      {
+        "count": 6
+      }
+    ],
+    "supplier_receiving_audits": [
+      {
+        "count": 0
+      }
+    ],
+    "supplier_receiving_items": [
+      {
+        "count": 9
+      }
+    ],
+    "supplier_receivings": [
+      {
+        "count": 9
+      }
+    ],
+    "supplier_transactions": [
+      {
+        "count": 21
+      }
+    ],
+    "suppliers": [
+      {
+        "count": 3
+      }
+    ],
+    "tax_profiles": [
+      {
+        "count": 2
+      }
+    ],
+    "tax_rates": [
+      {
+        "count": 2
+      }
+    ],
+    "users": [
+      {
+        "count": 1
+      }
+    ]
+  },
+  "money": {
+    "debts.originalAmount": [
+      {
+        "total": "16025.13"
+      }
+    ],
+    "payments.totalAmount": [
+      {
+        "total": "3603.13"
+      }
+    ],
+    "sales_orders.totalAmount": [
+      {
+        "total": "5360.13"
+      }
+    ],
+    "supplier_transactions.amount": [
+      {
+        "total": "1297221.00"
+      }
+    ]
+  },
+  "originalPaymentHash": [
+    {
+      "hash": "2153bc621922a1a914b70874811172e7"
+    }
+  ]
+}

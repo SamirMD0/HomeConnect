@@ -85,7 +85,7 @@ const RULES: Rule[] = [
     fix: 'Press Copy Diagnostics and send the result. Open Logs Folder for the full error.',
   },
   {
-    match: /Development Express backend.*did not become ready/i,
+    match: /Development Express backend.*(?:did not become ready|is not running)/i,
     step: 'step-backend',
     summary: 'The development server is not running.',
     fix: 'Close this window and start the desktop app with "npm run dev:electron" from the project folder.',

@@ -113,6 +113,11 @@ export interface LoadMonthlyFinancialActivityParams {
   startDate: Date;
   endDate: Date;
   nextDayAfterEnd: Date;
+  // Wall-clock UTC instants of the business-day window, for filtering
+  // timestamp columns (createdAt). Falls back to UTC-midnight boundaries
+  // when omitted, to keep older callers behaviour-compatible.
+  startInstantUtc?: Date;
+  endInstantExclusiveUtc?: Date;
 }
 
 export class MonthlyDebtsRepository {
@@ -163,13 +168,15 @@ export class MonthlyDebtsRepository {
     params: LoadMonthlyFinancialActivityParams
   ): Promise<MonthlyFinancialActivityRecordSet> {
     const customerIdWhere = params.customerId ? { customerId: params.customerId } : {};
+    const createdAtStart = params.startInstantUtc ?? params.startDate;
+    const createdAtEndExclusive = params.endInstantExclusiveUtc ?? params.nextDayAfterEnd;
 
     const [debts, plans, payments, returns] = await Promise.all([
       prisma.debt.findMany({
         where: {
           ...customerIdWhere,
           customer: { deletedAt: null },
-          createdAt: { gte: params.startDate, lt: params.nextDayAfterEnd },
+          createdAt: { gte: createdAtStart, lt: createdAtEndExclusive },
         },
         select: activityDebtSelect,
         orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
@@ -178,7 +185,7 @@ export class MonthlyDebtsRepository {
         where: {
           ...customerIdWhere,
           customer: { deletedAt: null },
-          createdAt: { gte: params.startDate, lt: params.nextDayAfterEnd },
+          createdAt: { gte: createdAtStart, lt: createdAtEndExclusive },
         },
         select: activityPlanSelect,
         orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],

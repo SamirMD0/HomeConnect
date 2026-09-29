@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   addMonthsToBusinessDate,
+  businessDateStartInstant,
   businessDateToPrisma,
   compareBusinessDates,
   isBusinessDatePast,
@@ -57,5 +58,36 @@ describe('business date helpers', () => {
   it('converts a regular midday instant to the expected Beirut business date', () => {
     const middayInBeirut = new Date('2026-08-13T09:00:00.000Z');
     expect(timestampToBusinessDate('Asia/Beirut', middayInBeirut)).toBe('2026-08-13');
+  });
+
+  it('returns the UTC instant of Beirut midnight for a business date in +03:00 (DST)', () => {
+    // August is in Beirut Summer Time (+03:00), so local 00:00 = 21:00 UTC of the previous day.
+    expect(businessDateStartInstant('2026-08-13', 'Asia/Beirut').toISOString()).toBe('2026-08-12T21:00:00.000Z');
+  });
+
+  it('returns the UTC instant of Beirut midnight for a business date in +02:00 (standard time)', () => {
+    // January is standard time (+02:00), so local 00:00 = 22:00 UTC of the previous day.
+    expect(businessDateStartInstant('2026-01-15', 'Asia/Beirut').toISOString()).toBe('2026-01-14T22:00:00.000Z');
+  });
+
+  it('handles the Beirut spring-forward day boundary (DST start)', () => {
+    // 2026-03-27 → 2026-03-28: at 00:00 local on the 27th offset is still +02:00.
+    // The instant that starts the business day is 2026-03-26T22:00Z (before clocks jump forward).
+    expect(businessDateStartInstant('2026-03-27', 'Asia/Beirut').toISOString()).toBe('2026-03-26T22:00:00.000Z');
+    // 2026-03-29: DST has already started, so 00:00 local = 21:00 UTC of 2026-03-28.
+    expect(businessDateStartInstant('2026-03-29', 'Asia/Beirut').toISOString()).toBe('2026-03-28T21:00:00.000Z');
+  });
+
+  it('handles the Beirut fall-back day boundary (DST end)', () => {
+    // Beirut ends DST at 24:00 local on 2026-10-24 (so 2026-10-25 begins at 21:00 UTC and
+    // the clock immediately falls back to 23:00 local; from the caller's perspective the
+    // start of the 25th's wall-clock day is 22:00 UTC on the 24th under +02:00).
+    expect(businessDateStartInstant('2026-10-18', 'Asia/Beirut').toISOString()).toBe('2026-10-17T21:00:00.000Z');
+    expect(businessDateStartInstant('2026-10-25', 'Asia/Beirut').toISOString()).toBe('2026-10-24T22:00:00.000Z');
+    expect(businessDateStartInstant('2026-10-26', 'Asia/Beirut').toISOString()).toBe('2026-10-25T22:00:00.000Z');
+  });
+
+  it('rejects an invalid business date', () => {
+    expect(() => businessDateStartInstant('2026-13-01')).toThrow(InvalidBusinessDateError);
   });
 });

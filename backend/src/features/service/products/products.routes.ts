@@ -21,11 +21,17 @@ import { requireAccountPassword } from '../../../middleware/admin-password.middl
 import { printSnapshotListQuerySchema, recordPrintSnapshotSchema } from '../../pricing-card/print-snapshot/print-snapshot.validator';
 import { InventoryController } from '../../inventory/inventory.controller';
 import { inventoryProductParamsSchema, stockMovementSchema, verifyOpeningCountSchema } from '../../inventory/inventory.validator';
+import { ProductImportController } from './product-import.controller';
+import { commitProductImportSchema, createProductImportSchema, productImportParamsSchema, updateProductImportSchema } from './product-import.validator';
 
 export const productsRoutes = Router();
 
 productsRoutes.get('/', validate(productListQuerySchema, 'query'), ProductsController.list);
 productsRoutes.post('/', validate(createProductSchema), ProductsController.create);
+productsRoutes.post('/imports', requireServiceAdmin, validate(createProductImportSchema), ProductImportController.create);
+productsRoutes.get('/imports/:importId', requireServiceAdmin, validate(productImportParamsSchema, 'params'), ProductImportController.get);
+productsRoutes.patch('/imports/:importId', requireServiceAdmin, validate(productImportParamsSchema, 'params'), validate(updateProductImportSchema), ProductImportController.update);
+productsRoutes.post('/imports/:importId/commit', requireServiceAdmin, validate(productImportParamsSchema, 'params'), validate(commitProductImportSchema), ProductImportController.commit);
 productsRoutes.get('/check-duplicate', validate(productDuplicateQuerySchema, 'query'), ProductsController.checkDuplicate);
 productsRoutes.post('/brands/normalize', requireServiceAdmin, validate(normalizeProductBrandsSchema), ProductsController.normalizeBrands);
 // Must stay above `GET /:productId`, or "brands" is parsed as a product id.

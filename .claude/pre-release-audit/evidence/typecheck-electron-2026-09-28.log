@@ -1,0 +1,4 @@
+
+> home-connect@2.0.1 typecheck:electron
+> tsc -p tsconfig.electron.json --noEmit
+

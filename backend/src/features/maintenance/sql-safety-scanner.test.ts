@@ -151,6 +151,28 @@ describe('sql safety scanner — allows legitimate repair SQL', () => {
     expect(scanSqlForUnsafeStatements(sql.replace('"targetWidthMm":50', '"targetWidthMm":70')).safe).toBe(false);
   });
 
+  it('allows only the exact reviewed thermal forward reconciliation DO block', () => {
+    const file = path.join(MIGRATIONS_DIR, '20260928010000_reconcile_thermal_template_variants', 'migration.sql');
+    const sql = fs.readFileSync(file, 'utf8');
+    expect(scanSqlForUnsafeStatements(sql).safe).toBe(true);
+
+    // Its procedural guard is part of the review: modifying even one clause
+    // must expose the UPDATE to the ordinary destructive-write rule again.
+    const mutations = [
+      sql.replace("target_id UUID := '20000000-0000-4000-8000-000000000005'", "target_id UUID := '20000000-0000-4000-8000-000000000009'"),
+      sql.replace('IF matches_a OR matches_b THEN', 'IF TRUE THEN'),
+      sql.replace('AND row_snapshot.config = variant_a_config;', 'AND TRUE;'),
+      sql.replace('"cardHeightMm" = 80,', '"cardHeightMm" = 100,'),
+      sql.replace('UPDATE pricing_card_templates SET', 'UPDATE products SET'),
+      sql.replace('WHERE id = target_id FOR UPDATE;', 'WHERE id = target_id;'),
+    ];
+    for (const changed of mutations) {
+      expect(changed).not.toBe(sql);
+      expect(scanSqlForUnsafeStatements(changed).violations.map(({ code }) => code)).toContain('UPDATE_STATEMENT');
+    }
+    expect(scanSqlForUnsafeStatements(`${sql}\nDELETE FROM products;`).violations.map(({ code }) => code)).toContain('DELETE_STATEMENT');
+  });
+
   it('still rejects an UPDATE that could overwrite existing values', () => {
     expect(scanSqlForUnsafeStatements(`UPDATE "debts" SET "amount" = 0;`).safe).toBe(false);
     expect(scanSqlForUnsafeStatements(`UPDATE "debts" SET "amount" = 0 WHERE "id" = 'x';`).safe).toBe(false);

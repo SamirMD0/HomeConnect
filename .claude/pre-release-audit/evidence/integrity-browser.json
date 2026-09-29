@@ -1,0 +1,32 @@
+{
+  "database": "hc_audit_test_browser_20260926124725",
+  "customers": {
+    "count": 1,
+    "ok": 1,
+    "mismatches": 0,
+    "reportedTotal": "200.00",
+    "independentTotal": "200.00",
+    "difference": "0.00"
+  },
+  "suppliers": {
+    "count": 4,
+    "ok": 4,
+    "mismatches": 0,
+    "reportedTotal": "3420.00",
+    "independentTotal": "3420.00",
+    "difference": "0.00"
+  },
+  "inventory": {
+    "available": true,
+    "checkedAt": "2026-09-26T21:48:40.568Z",
+    "totalProducts": 6,
+    "ok": 6,
+    "notInInventory": 0,
+    "pendingOnboarding": 0,
+    "mismatch": 0
+  },
+  "maintenance": {
+    "available": true
+  },
+  "inventoryIssues": []
+}

@@ -1,0 +1,301 @@
+{
+  "config": {
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "D:\\User\\Documents\\Home Connect\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "--config",
+      "playwright.electron.config.ts"
+    ],
+    "configFile": "D:\\User\\Documents\\Home Connect\\playwright.electron.config.ts",
+    "rootDir": "D:/User/Documents/Home Connect/e2e",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "D:/User/Documents/Home Connect/test-results-electron",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "D:/User/Documents/Home Connect/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "electron.spec.ts"
+        ],
+        "timeout": 90000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": ".claude/pre-release-audit/evidence/electron.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.63.0",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "electron.spec.ts",
+      "file": "electron.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "compiled Electron cold and warm start: login, database health, clean shutdown",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "timedOut",
+                  "duration": 90016,
+                  "error": {
+                    "message": "\u001b[31mTest timeout of 90000ms exceeded.\u001b[39m",
+                    "stack": "\u001b[31mTest timeout of 90000ms exceeded.\u001b[39m"
+                  },
+                  "errors": [
+                    {
+                      "message": "\u001b[31mTest timeout of 90000ms exceeded.\u001b[39m"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-27T14:26:08.909Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "D:\\User\\Documents\\Home Connect\\test-results-electron\\electron-compiled-Electron-d6399-abase-health-clean-shutdown\\error-context.md"
+                    }
+                  ]
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "eaf80a21888215122ce0-6dec26eda1e7a05981b7",
+          "file": "electron.spec.ts",
+          "line": 30,
+          "column": 5
+        },
+        {
+          "title": "direct development launch reports missing external backend without 45 second wait",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 6465,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-27T14:27:41.386Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "eaf80a21888215122ce0-216517f3c2e740a03acb",
+          "file": "electron.spec.ts",
+          "line": 50,
+          "column": 5
+        },
+        {
+          "title": "database unavailable: failure is useful; retry succeeds without orphaned backend",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 34541,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText('PostgreSQL is not accepting connections.', { exact: true })\nExpected: visible\nTimeout: 30000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByText('PostgreSQL is not accepting connections.', { exact: true }) with timeout 30000ms\u001b[22m\n\u001b[2m  - waiting for getByText('PostgreSQL is not accepting connections.', { exact: true })\u001b[22m\n",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText('PostgreSQL is not accepting connections.', { exact: true })\nExpected: visible\nTimeout: 30000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByText('PostgreSQL is not accepting connections.', { exact: true }) with timeout 30000ms\u001b[22m\n\u001b[2m  - waiting for getByText('PostgreSQL is not accepting connections.', { exact: true })\u001b[22m\n\n    at D:\\User\\Documents\\Home Connect\\e2e\\electron.spec.ts:59:91",
+                    "location": {
+                      "file": "D:\\User\\Documents\\Home Connect\\e2e\\electron.spec.ts",
+                      "column": 91,
+                      "line": 59
+                    },
+                    "snippet": "  57 |   try{\n  58 |     const page=await app.firstWindow();\n> 59 |     await expect(page.getByText('PostgreSQL is not accepting connections.',{exact:true})).toBeVisible({timeout:30000});\n     |                                                                                           ^\n  60 |     await expect.poll(()=>listening(backendPort)).toBe(false);\n  61 |     await app.evaluate((_,url)=>{process.env.DATABASE_URL=url;},state.urls.browser);\n  62 |     await page.getByRole('button',{name:'Retry Startup'}).click();"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "D:\\User\\Documents\\Home Connect\\e2e\\electron.spec.ts",
+                        "column": 91,
+                        "line": 59
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText('PostgreSQL is not accepting connections.', { exact: true })\nExpected: visible\nTimeout: 30000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByText('PostgreSQL is not accepting connections.', { exact: true }) with timeout 30000ms\u001b[22m\n\u001b[2m  - waiting for getByText('PostgreSQL is not accepting connections.', { exact: true })\u001b[22m\n\n\n  57 |   try{\n  58 |     const page=await app.firstWindow();\n> 59 |     await expect(page.getByText('PostgreSQL is not accepting connections.',{exact:true})).toBeVisible({timeout:30000});\n     |                                                                                           ^\n  60 |     await expect.poll(()=>listening(backendPort)).toBe(false);\n  61 |     await app.evaluate((_,url)=>{process.env.DATABASE_URL=url;},state.urls.browser);\n  62 |     await page.getByRole('button',{name:'Retry Startup'}).click();\n    at D:\\User\\Documents\\Home Connect\\e2e\\electron.spec.ts:59:91"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-27T14:27:47.887Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "D:\\User\\Documents\\Home Connect\\test-results-electron\\electron-database-unavaila-3e89a-ds-without-orphaned-backend\\error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "D:\\User\\Documents\\Home Connect\\e2e\\electron.spec.ts",
+                    "column": 91,
+                    "line": 59
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "eaf80a21888215122ce0-0d8c6c7dde02baae03d0",
+          "file": "electron.spec.ts",
+          "line": 54,
+          "column": 5
+        },
+        {
+          "title": "backend exits early for missing JWT; user can retry",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2415,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-27T14:28:23.174Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "eaf80a21888215122ce0-d191a39cf15f7efc01e5",
+          "file": "electron.spec.ts",
+          "line": 68,
+          "column": 5
+        },
+        {
+          "title": "occupied backend port reports conflict and never kills the foreign listener",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2159,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-27T14:28:25.644Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "eaf80a21888215122ce0-d4e32de9609c6162f806",
+          "file": "electron.spec.ts",
+          "line": 72,
+          "column": 5
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-09-27T14:26:06.853Z",
+    "duration": 140992.355,
+    "expected": 3,
+    "skipped": 0,
+    "unexpected": 2,
+    "flaky": 0
+  }
+}

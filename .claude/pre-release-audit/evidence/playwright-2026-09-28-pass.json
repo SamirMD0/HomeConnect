@@ -1,0 +1,589 @@
+{
+  "config": {
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "D:\\User\\Documents\\Home Connect\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "--project=browser"
+    ],
+    "configFile": "D:\\User\\Documents\\Home Connect\\playwright.config.ts",
+    "rootDir": "D:/User/Documents/Home Connect/e2e",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "D:/User/Documents/Home Connect/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "browser",
+        "name": "browser",
+        "testDir": "D:/User/Documents/Home Connect/e2e",
+        "testIgnore": [
+          "**/electron.spec.ts"
+        ],
+        "testMatch": [
+          "**/*.spec.ts"
+        ],
+        "timeout": 60000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "html",
+        {
+          "open": "never"
+        }
+      ],
+      [
+        "json",
+        {
+          "outputFile": ".claude/pre-release-audit/evidence/playwright.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.63.0",
+    "workers": 1,
+    "webServer": {
+      "command": "npx tsx e2e/server.ts",
+      "url": "http://127.0.0.1:4311/api/v1/health",
+      "reuseExistingServer": false,
+      "timeout": 90000
+    }
+  },
+  "suites": [
+    {
+      "title": "critical.spec.ts",
+      "file": "critical.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "authentication: UI login/logout and rejected disabled/invalid sessions",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "browser",
+              "projectName": "browser",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 5303,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-28T08:42:35.975Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "browser-diagnostics",
+                      "contentType": "application/json",
+                      "body": "W10="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "fb826a1077208bd6107d-3fceaa8f7a2f4d8b7e81",
+          "file": "critical.spec.ts",
+          "line": 8,
+          "column": 5
+        },
+        {
+          "title": "products: search, edit notes, preserve price and barcode",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "browser",
+              "projectName": "browser",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4511,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-28T08:42:41.905Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "browser-diagnostics",
+                      "contentType": "application/json",
+                      "body": "W10="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "fb826a1077208bd6107d-610f64b74ee209d9ce46",
+          "file": "critical.spec.ts",
+          "line": 25,
+          "column": 5
+        },
+        {
+          "title": "customer USD sale: UI mixed cash/debt, stock deduction and partial refund",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "browser",
+              "projectName": "browser",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 7357,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-28T08:42:46.433Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "financial-scenario",
+                      "contentType": "application/json",
+                      "body": "ewogICJjdXJyZW5jeSI6ICJVU0QiLAogICJvcmRlcklkIjogIjViZTAzOWY1LWQ5ZjYtNGUzZi04ZWQzLTNmN2E5OGEzYWY0ZiIsCiAgInRvdGFsIjogIjgwMC4wMCIsCiAgInJldHVybiI6IHsKICAgICJpZCI6ICJmMTkzNzgzNy1iZjA2LTQwYjAtOThiNC04ZDU1YmVlYWExMjUiLAogICAgInJldHVybk51bWJlciI6ICJTTy0yMDI2LTAwMjItUjEiLAogICAgInNhbGVzT3JkZXJJZCI6ICI1YmUwMzlmNS1kOWY2LTRlM2YtOGVkMy0zZjdhOThhM2FmNGYiLAogICAgInNlcXVlbmNlIjogMSwKICAgICJjdXN0b21lcklkIjogImI4YmU0YmM4LWZkM2QtNDE3YS04OTRlLWFkYTYxZmYwZjhlNSIsCiAgICAicmV0dXJuRGF0ZSI6ICIyMDI2LTA5LTI4VDAwOjAwOjAwLjAwMFoiLAogICAgInByb2Nlc3NlZEF0IjogIjIwMjYtMDktMjhUMDg6NDI6NTIuNjQ2WiIsCiAgICAicmVhc29uIjogIlJlbGVhc2UgYXVkaXQgcGFydGlhbCByZXR1cm4iLAogICAgIndpbmRvd0RheXNTbmFwc2hvdCI6IDE0LAogICAgInJldHVybkRlYWRsaW5lU25hcHNob3QiOiAiMjAyNi0xMC0xMlQwMDowMDowMC4wMDBaIiwKICAgICJ3aW5kb3dPdmVycmlkZSI6IGZhbHNlLAogICAgIndpbmRvd092ZXJyaWRlUmVhc29uIjogbnVsbCwKICAgICJjdXJyZW5jeSI6ICJVU0QiLAogICAgImV4Y2hhbmdlUmF0ZSI6ICIxIiwKICAgICJzdWJ0b3RhbEV4VmF0IjogIjM2MC4zNiIsCiAgICAidmF0QW1vdW50IjogIjM5LjY0IiwKICAgICJ0b3RhbEluY1ZhdCI6ICI0MDAiLAogICAgImJhc2VTdWJ0b3RhbEV4VmF0IjogIjM2MC4zNiIsCiAgICAiYmFzZVZhdEFtb3VudCI6ICIzOS42NCIsCiAgICAiYmFzZVRvdGFsSW5jVmF0IjogIjQwMCIsCiAgICAiZGVsaXZlcnlSZXR1cm5lZCI6IGZhbHNlLAogICAgImRlbGl2ZXJ5VGF4VHJlYXRtZW50IjogbnVsbCwKICAgICJkZWxpdmVyeVRheFJhdGVTbmFwc2hvdCI6IG51bGwsCiAgICAiZGVsaXZlcnlUYXhDb2RlU25hcHNob3QiOiBudWxsLAogICAgImRlbGl2ZXJ5RmVlRXhWYXQiOiBudWxsLAogICAgImRlbGl2ZXJ5VmF0QW1vdW50IjogbnVsbCwKICAgICJkZWxpdmVyeUZlZUluY1ZhdCI6IG51bGwsCiAgICAiYmFzZURlbGl2ZXJ5RmVlRXhWYXQiOiBudWxsLAogICAgImJhc2VEZWxpdmVyeVZhdEFtb3VudCI6IG51bGwsCiAgICAiYmFzZURlbGl2ZXJ5RmVlSW5jVmF0IjogbnVsbCwKICAgICJyZWNlaXZhYmxlUmVsaWVmQW1vdW50IjogIjIwMCIsCiAgICAiYmFzZVJlY2VpdmFibGVSZWxpZWZBbW91bnQiOiAiMjAwIiwKICAgICJyZWZ1bmRhYmxlQW1vdW50IjogIjIwMCIsCiAgICAiYmFzZVJlZnVuZGFibGVBbW91bnQiOiAiMjAwIiwKICAgICJyZWZ1bmRNZXRob2QiOiAiQ0FTSF9PVVQiLAogICAgImlkZW1wb3RlbmN5S2V5IjogInNhbGVzLXJldHVybi03NmExN2Y1MC01ZDc0LTRiNTAtOTM5Ni1iOWIxZjBiOGZiZDciLAogICAgInJlcXVlc3RGaW5nZXJwcmludCI6ICIwNDI5MGRmNzRlYzNlZmZhYmY4NTNmZWRmOWMxMjZiN2ZjZGU0ZTQwZmY2YzZhZmFmNDc1OThlNGIwYzI1Y2EzIiwKICAgICJwcm9jZXNzZWRCeUlkIjogIjdiZWZlNjA0LWZmOWUtNDFmMS04ZDUwLTJjZDg4YTRlMjAxMSIsCiAgICAicHJvY2Vzc2VkQnlOYW1lIjogIkF1ZGl0IEFkbWluaXN0cmF0b3IiLAogICAgInByb2Nlc3NlZEJ5VXNlcm5hbWUiOiAiYXVkaXRfYWRtaW4iLAogICAgImNyZWF0ZWRBdCI6ICIyMDI2LTA5LTI4VDA4OjQyOjUyLjY0NloiCiAgfSwKICAic3RvY2tCZWZvcmUiOiAzLAogICJzdG9ja0FmdGVyIjogMgp9"
+                    },
+                    {
+                      "name": "browser-diagnostics",
+                      "contentType": "application/json",
+                      "body": "W10="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "fb826a1077208bd6107d-7a3a8f80302179a4bb37",
+          "file": "critical.spec.ts",
+          "line": 56,
+          "column": 7
+        },
+        {
+          "title": "customer LBP sale: UI mixed cash/debt, stock deduction and partial refund",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "browser",
+              "projectName": "browser",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 6206,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-28T08:42:53.808Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "financial-scenario",
+                      "contentType": "application/json",
+                      "body": "ewogICJjdXJyZW5jeSI6ICJMQlAiLAogICJvcmRlcklkIjogIjI3ZjIwZDA2LTA0ZjMtNDlhZC04MTMwLTMxMDA0ZWRjN2IzZSIsCiAgInRvdGFsIjogIjcxNjAwMDAwIiwKICAicmV0dXJuIjogewogICAgImlkIjogImJlMGE5ZjMyLTU2M2UtNDVmZS05OWMyLWM2NWFkYmQ2ZDE1MCIsCiAgICAicmV0dXJuTnVtYmVyIjogIlNPLTIwMjYtMDAyMy1SMSIsCiAgICAic2FsZXNPcmRlcklkIjogIjI3ZjIwZDA2LTA0ZjMtNDlhZC04MTMwLTMxMDA0ZWRjN2IzZSIsCiAgICAic2VxdWVuY2UiOiAxLAogICAgImN1c3RvbWVySWQiOiAiYjhiZTRiYzgtZmQzZC00MTdhLTg5NGUtYWRhNjFmZjBmOGU1IiwKICAgICJyZXR1cm5EYXRlIjogIjIwMjYtMDktMjhUMDA6MDA6MDAuMDAwWiIsCiAgICAicHJvY2Vzc2VkQXQiOiAiMjAyNi0wOS0yOFQwODo0Mjo1OS4zMTVaIiwKICAgICJyZWFzb24iOiAiUmVsZWFzZSBhdWRpdCBwYXJ0aWFsIHJldHVybiIsCiAgICAid2luZG93RGF5c1NuYXBzaG90IjogMTQsCiAgICAicmV0dXJuRGVhZGxpbmVTbmFwc2hvdCI6ICIyMDI2LTEwLTEyVDAwOjAwOjAwLjAwMFoiLAogICAgIndpbmRvd092ZXJyaWRlIjogZmFsc2UsCiAgICAid2luZG93T3ZlcnJpZGVSZWFzb24iOiBudWxsLAogICAgImN1cnJlbmN5IjogIkxCUCIsCiAgICAiZXhjaGFuZ2VSYXRlIjogIjg5NTAwIiwKICAgICJzdWJ0b3RhbEV4VmF0IjogIjMyMjUyMjUyIiwKICAgICJ2YXRBbW91bnQiOiAiMzU0Nzc0OCIsCiAgICAidG90YWxJbmNWYXQiOiAiMzU4MDAwMDAiLAogICAgImJhc2VTdWJ0b3RhbEV4VmF0IjogIjM2MC4zNiIsCiAgICAiYmFzZVZhdEFtb3VudCI6ICIzOS42NCIsCiAgICAiYmFzZVRvdGFsSW5jVmF0IjogIjQwMCIsCiAgICAiZGVsaXZlcnlSZXR1cm5lZCI6IGZhbHNlLAogICAgImRlbGl2ZXJ5VGF4VHJlYXRtZW50IjogbnVsbCwKICAgICJkZWxpdmVyeVRheFJhdGVTbmFwc2hvdCI6IG51bGwsCiAgICAiZGVsaXZlcnlUYXhDb2RlU25hcHNob3QiOiBudWxsLAogICAgImRlbGl2ZXJ5RmVlRXhWYXQiOiBudWxsLAogICAgImRlbGl2ZXJ5VmF0QW1vdW50IjogbnVsbCwKICAgICJkZWxpdmVyeUZlZUluY1ZhdCI6IG51bGwsCiAgICAiYmFzZURlbGl2ZXJ5RmVlRXhWYXQiOiBudWxsLAogICAgImJhc2VEZWxpdmVyeVZhdEFtb3VudCI6IG51bGwsCiAgICAiYmFzZURlbGl2ZXJ5RmVlSW5jVmF0IjogbnVsbCwKICAgICJyZWNlaXZhYmxlUmVsaWVmQW1vdW50IjogIjE3OTAwMDAwIiwKICAgICJiYXNlUmVjZWl2YWJsZVJlbGllZkFtb3VudCI6ICIyMDAiLAogICAgInJlZnVuZGFibGVBbW91bnQiOiAiMTc5MDAwMDAiLAogICAgImJhc2VSZWZ1bmRhYmxlQW1vdW50IjogIjIwMCIsCiAgICAicmVmdW5kTWV0aG9kIjogIkNBU0hfT1VUIiwKICAgICJpZGVtcG90ZW5jeUtleSI6ICJzYWxlcy1yZXR1cm4tMzhjZjI5OWMtYjdlMi00MTcyLTk2YTAtZmMxMzhhYjY5YjVhIiwKICAgICJyZXF1ZXN0RmluZ2VycHJpbnQiOiAiYjM0YTI1ZTQ4YmE5YjgyZjdkMGY5NTNjZWI4Y2YwMTE3ZThjMjU2NzUxNGU5OTJmMTJkNjhjZWY5Y2UyYzc0ZiIsCiAgICAicHJvY2Vzc2VkQnlJZCI6ICI3YmVmZTYwNC1mZjllLTQxZjEtOGQ1MC0yY2Q4OGE0ZTIwMTEiLAogICAgInByb2Nlc3NlZEJ5TmFtZSI6ICJBdWRpdCBBZG1pbmlzdHJhdG9yIiwKICAgICJwcm9jZXNzZWRCeVVzZXJuYW1lIjogImF1ZGl0X2FkbWluIiwKICAgICJjcmVhdGVkQXQiOiAiMjAyNi0wOS0yOFQwODo0Mjo1OS4zMTVaIgogIH0sCiAgInN0b2NrQmVmb3JlIjogNCwKICAic3RvY2tBZnRlciI6IDMKfQ=="
+                    },
+                    {
+                      "name": "browser-diagnostics",
+                      "contentType": "application/json",
+                      "body": "W10="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "fb826a1077208bd6107d-29777182c747e6fc7232",
+          "file": "critical.spec.ts",
+          "line": 56,
+          "column": 7
+        },
+        {
+          "title": "walk-in cash: UI sale creates exactly one customerless receipt",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "browser",
+              "projectName": "browser",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3136,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-28T08:43:00.031Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "browser-diagnostics",
+                      "contentType": "application/json",
+                      "body": "W10="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "fb826a1077208bd6107d-b6145b450d9c41fdd197",
+          "file": "critical.spec.ts",
+          "line": 158,
+          "column": 5
+        },
+        {
+          "title": "purchasing and receiving: retry preserves stock, cost, manual price and supplier ledger",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "browser",
+              "projectName": "browser",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3172,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-28T08:43:03.184Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "browser-diagnostics",
+                      "contentType": "application/json",
+                      "body": "W10="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "fb826a1077208bd6107d-0bbaeaed3ae1a449e892",
+          "file": "critical.spec.ts",
+          "line": 178,
+          "column": 5
+        },
+        {
+          "title": "pricing card TV-AUDIT: resolved preview and print preserve barcode and price",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "browser",
+              "projectName": "browser",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4312,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-28T08:43:06.374Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "browser-diagnostics",
+                      "contentType": "application/json",
+                      "body": "W10="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "fb826a1077208bd6107d-af7492adba05b9bc20dd",
+          "file": "critical.spec.ts",
+          "line": 220,
+          "column": 7
+        },
+        {
+          "title": "pricing card WASH-AUDIT: resolved preview and print preserve barcode and price",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "browser",
+              "projectName": "browser",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2650,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-28T08:43:10.701Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "browser-diagnostics",
+                      "contentType": "application/json",
+                      "body": "W10="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "fb826a1077208bd6107d-1a85b3e17e3eb3540200",
+          "file": "critical.spec.ts",
+          "line": 220,
+          "column": 7
+        },
+        {
+          "title": "pricing card FRIDGE-AUDIT: resolved preview and print preserve barcode and price",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "browser",
+              "projectName": "browser",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2603,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-28T08:43:13.366Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "browser-diagnostics",
+                      "contentType": "application/json",
+                      "body": "W10="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "fb826a1077208bd6107d-cb53686a1c71323ef7ba",
+          "file": "critical.spec.ts",
+          "line": 220,
+          "column": 7
+        },
+        {
+          "title": "pricing card KETTLE-AUDIT: resolved preview and print preserve barcode and price",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "browser",
+              "projectName": "browser",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2690,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-28T08:43:15.988Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "browser-diagnostics",
+                      "contentType": "application/json",
+                      "body": "W10="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "fb826a1077208bd6107d-42b3d078e3865e3e4a49",
+          "file": "critical.spec.ts",
+          "line": 220,
+          "column": 7
+        },
+        {
+          "title": "pricing card VGR-AUDIT: resolved preview and print preserve barcode and price",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "browser",
+              "projectName": "browser",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2764,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-28T08:43:18.695Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "browser-diagnostics",
+                      "contentType": "application/json",
+                      "body": "W10="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "fb826a1077208bd6107d-824d8bed1f07ec7d15b6",
+          "file": "critical.spec.ts",
+          "line": 220,
+          "column": 7
+        },
+        {
+          "title": "reports reconcile with real workflow data and dashboard loads",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "browser",
+              "projectName": "browser",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3585,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-28T08:43:21.474Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "browser-diagnostics",
+                      "contentType": "application/json",
+                      "body": "W10="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "fb826a1077208bd6107d-9d265748e7ff70aa5d84",
+          "file": "critical.spec.ts",
+          "line": 253,
+          "column": 5
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-09-28T08:42:22.541Z",
+    "duration": 63726.733,
+    "expected": 12,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

@@ -1,0 +1,407 @@
+{
+  "database": "hc_audit_test_restored_20260926124725",
+  "durationMs": 291,
+  "results": [],
+  "status": {
+    "entries": [
+      {
+        "name": "20260723075336_init",
+        "state": "APPLIED",
+        "checksum": "452c1e7e3ce094557e72e87a435509c8a4fb57784ac97fc81fa3033d1280b73a",
+        "appliedAt": "2026-07-24T09:22:52.605Z"
+      },
+      {
+        "name": "20260723091230_init_customers",
+        "state": "APPLIED",
+        "checksum": "e38b5dea31c1b14eef70900164358a4ca13803d0b0a0b4ce93367dc9de73eb39",
+        "appliedAt": "2026-07-24T09:22:54.643Z"
+      },
+      {
+        "name": "20260723094305_init_ledger",
+        "state": "APPLIED",
+        "checksum": "eb699fc6778bcd1c4b1dd2291ed01bb497ac2e40f089e35b233c123c48313d78",
+        "appliedAt": "2026-07-24T09:22:56.718Z"
+      },
+      {
+        "name": "20260723133024_add_due_date_and_soft_delete_to_transactions",
+        "state": "APPLIED",
+        "checksum": "1a5bbcaf2ad37a310056f8b38af4865ccbc22a1b14c234f31b397da04caee9df",
+        "appliedAt": "2026-07-24T09:22:59.032Z"
+      },
+      {
+        "name": "20260724090000_add_financial_domain_models",
+        "state": "APPLIED",
+        "checksum": "ae664cc5b358da2bb4d7b0b3bdfc8189d118bea4c5963c14fe7765339a21860e",
+        "appliedAt": "2026-07-24T09:23:05.722Z"
+      },
+      {
+        "name": "20260727130000_add_financial_correction_audit",
+        "state": "APPLIED",
+        "checksum": "6c14f45b12a5cf6f86425b431a78e5a5700c6cf6462480113d18fa01ab8e11e3",
+        "appliedAt": "2026-07-28T10:56:51.685Z"
+      },
+      {
+        "name": "20260729090000_add_service_and_product",
+        "state": "APPLIED",
+        "checksum": "3f39c440ccfd20f21aa7db012466b32e42ac532ded6c5fb60444d8d19d96c6a7",
+        "appliedAt": "2026-07-29T09:44:15.025Z"
+      },
+      {
+        "name": "20260729180000_add_prepaid_purchase_kind",
+        "state": "APPLIED",
+        "checksum": "ee59da096da9ebd0172233edf18c877e02e68fe3c4e6f83dfc2acfbd25799847",
+        "appliedAt": "2026-07-29T15:16:48.488Z"
+      },
+      {
+        "name": "20260730120000_add_suppliers_and_supplier_ledger",
+        "state": "APPLIED",
+        "checksum": "7d1133f8ab2e5db79f64cf8c9d41d9e96a3e421bf788f9c7c5f5ca72067c4613",
+        "appliedAt": "2026-07-30T09:31:46.325Z"
+      },
+      {
+        "name": "20260731090000_add_prepaid_purchase_delivery",
+        "state": "APPLIED",
+        "checksum": "4c72811472d6d689ba33da8e4c553cd3bd429c4b603bd29ba9d30c8842529374",
+        "appliedAt": "2026-07-30T13:53:55.224Z"
+      },
+      {
+        "name": "20260801090000_enable_pgtrgm",
+        "state": "APPLIED",
+        "checksum": "f500774c76d6a64e3d870f92a5b754d1fe28501c585c384bdef13253dffa3fcc",
+        "appliedAt": "2026-07-31T07:21:05.937Z"
+      },
+      {
+        "name": "20260801091000_add_search_normalization",
+        "state": "APPLIED",
+        "checksum": "97c1b34720b76c181b342442e0ec58c907ec1a81ca6a890a792873b11523b15e",
+        "appliedAt": "2026-07-31T07:21:06.013Z"
+      },
+      {
+        "name": "20260801092000_add_search_indexes",
+        "state": "APPLIED",
+        "checksum": "6c57bba8f9ad1a02e536c49a55ff581f0276ce0440a5a4c0c28b422928d3199e",
+        "appliedAt": "2026-07-31T07:21:06.637Z"
+      },
+      {
+        "name": "20260802090000_add_pricing_presets_and_product_pricing",
+        "state": "APPLIED",
+        "checksum": "856bb6fcbbf26d197853fceac8d03a9f46b79f9b1cdf51e6a571229c35d5166b",
+        "appliedAt": "2026-07-31T09:37:51.187Z"
+      },
+      {
+        "name": "20260803090000_add_product_image",
+        "state": "APPLIED",
+        "checksum": "67cb92e0ae2ee9a543ccfd6dd15dbb6d52ff486f3ccc3dc5dd6d18a04f555936",
+        "appliedAt": "2026-07-31T10:58:03.924Z"
+      },
+      {
+        "name": "20260804090000_add_product_sku_stock_specifications",
+        "state": "APPLIED",
+        "checksum": "e0c98f0e744ae5ad16868555b9d30f47bfc35133d6c4e84ec540bf0d4d3f41f9",
+        "appliedAt": "2026-08-01T09:32:58.291Z"
+      },
+      {
+        "name": "20260804100000_add_product_installment_option",
+        "state": "APPLIED",
+        "checksum": "3d8c66410d891700a18a40cfca4eccf4ee4a8939761306a1967c14284f49d05a",
+        "appliedAt": "2026-08-01T10:26:30.673Z"
+      },
+      {
+        "name": "20260804110000_add_service_exchange_and_company_home_status",
+        "state": "APPLIED",
+        "checksum": "cfbc6a34a0f915d2b4d8f0c13e209fc9f5161bff9556cbf39b612bd9c882f35a",
+        "appliedAt": "2026-08-01T13:00:11.640Z"
+      },
+      {
+        "name": "20260804120000_add_sales_orders",
+        "state": "APPLIED",
+        "checksum": "ce81c636caef439fab7bfc9b0ec79c3ac58f0a4ee70ca0fea2c0b930e66c289f",
+        "appliedAt": "2026-08-03T09:17:22.174Z"
+      },
+      {
+        "name": "20260804130000_add_repair_history",
+        "state": "APPLIED",
+        "checksum": "db5a447e8773e1bbe7e9fb7372a7927dfee8dec880b91aa2d69ad6b3d66424a9",
+        "appliedAt": "2026-08-04T14:52:00.109Z"
+      },
+      {
+        "name": "20260805090000_add_label_barcode_auto",
+        "state": "APPLIED",
+        "checksum": "b3508f33e17820d4d9e2ca8426ec4a103c9187a3f8b6f6fc23fdfe6be875cdc4",
+        "appliedAt": "2026-08-05T11:08:52.883Z"
+      },
+      {
+        "name": "20260805091000_use_label_barcode_auto",
+        "state": "APPLIED",
+        "checksum": "1de34d810cc4b1db85b1af6eaa07fd51599200acbf63b9374dd82d28fcca5d37",
+        "appliedAt": "2026-08-05T11:08:52.905Z"
+      },
+      {
+        "name": "20260805092000_add_product_search_indexes",
+        "state": "APPLIED",
+        "checksum": "5f558a1b4358214c0dceeba1d468090b6ef0974df23cc0970df507ecbc1a49cc",
+        "appliedAt": "2026-08-05T11:08:53.078Z"
+      },
+      {
+        "name": "20260806093135_add_customer_notes_search_index",
+        "state": "APPLIED",
+        "checksum": "9276884fa0222a29ccc9444c276c4bb214e0ff42e7d0f8a4fb9de5fd6d67b6fa",
+        "appliedAt": "2026-08-06T09:56:54.046Z"
+      },
+      {
+        "name": "20260806101225_add_weekly_installment_frequency",
+        "state": "APPLIED",
+        "checksum": "43cbcc43ebb7e5e1fe0a616a89ca547b3cbb6c8de8a8ccaae2332daaf3609085",
+        "appliedAt": "2026-08-06T10:18:20.228Z"
+      },
+      {
+        "name": "20260812090000_add_stock_movements",
+        "state": "APPLIED",
+        "checksum": "4fd3b00ec486d82d9f226aa986f0625780be6c63aaa875366f29ccc41efd1338",
+        "appliedAt": "2026-08-12T09:48:15.519Z"
+      },
+      {
+        "name": "20260813160000_add_sales_order_stock_fulfillments",
+        "state": "APPLIED",
+        "checksum": "b739d44ecd5bb1e9979c1f13631d3605f6adc8623f5f0fd7acd746266678a9b5",
+        "appliedAt": "2026-08-13T14:46:23.978Z"
+      },
+      {
+        "name": "20260814110000_add_supplier_receivings",
+        "state": "APPLIED",
+        "checksum": "a1cb475cb407a2ec91480d9bc69175993d927ae6b362f0b6b34db646aba8f2d7",
+        "appliedAt": "2026-08-14T08:21:26.890Z"
+      },
+      {
+        "name": "20260814170000_link_supplier_transactions_to_receivings",
+        "state": "APPLIED",
+        "checksum": "d8c22be66da9a7b36698d1bd755378917c28a2bbc2f8b7a1cf7350d5f82f3859",
+        "appliedAt": "2026-08-14T14:26:54.473Z"
+      },
+      {
+        "name": "20260815120000_add_supplier_purchase_lines",
+        "state": "APPLIED",
+        "checksum": "fb01835d593a1c8c28db31e667cb90c15f993e120f03e0ee9fa13f165b94dc82",
+        "appliedAt": "2026-08-15T07:52:48.663Z"
+      },
+      {
+        "name": "20260817120000_add_supplier_receiving_corrections",
+        "state": "APPLIED",
+        "checksum": "24d20f09fd2baedf2dd9737e82c6025e992f7c4afc735391637fc39a7f476820",
+        "appliedAt": "2026-08-17T07:56:24.274Z"
+      },
+      {
+        "name": "20260827090000_add_supplier_idempotency",
+        "state": "APPLIED",
+        "checksum": "63a5cbe5cadea8b681f1f0e69fd04fc8f2ac7e12acdb38f61a95dfa30e276da8",
+        "appliedAt": "2026-09-04T12:40:51.915Z"
+      },
+      {
+        "name": "20260830183000_remove_legacy_transactions",
+        "state": "APPLIED",
+        "checksum": "b0bd8e5ea1af6f913ff277408724edabc671d45978b665d8c51f0e2f881302ce",
+        "appliedAt": "2026-09-04T12:40:52.049Z"
+      },
+      {
+        "name": "20260901090000_add_dual_currency_foundation",
+        "state": "APPLIED",
+        "checksum": "49c71a488f0985907a0e96e61b495a42b617bc10bbf56a165a38649b13ef4514",
+        "appliedAt": "2026-09-04T12:40:52.176Z"
+      },
+      {
+        "name": "20260903120000_add_vat_foundation",
+        "state": "APPLIED",
+        "checksum": "fc4b34caa68ea2c1f46c8f5d00f761f0426c4de65ed8f99b4534d060ae2d3086",
+        "appliedAt": "2026-09-04T12:40:52.940Z"
+      },
+      {
+        "name": "20260906150000_seed_default_tax_configuration",
+        "state": "APPLIED",
+        "checksum": "f27c4d9bc18fed820b7667c9eaf5dd370a417be62210a36a0e82c16146d5db01",
+        "appliedAt": "2026-09-17T08:40:46.637Z"
+      },
+      {
+        "name": "20260908120000_default_retail_prices_vat_inclusive",
+        "state": "APPLIED",
+        "checksum": "254e1fb3b9bda73a2940b6fc920037f19e4f5440ece54fde5f501bcbe3f3e85b",
+        "appliedAt": "2026-09-17T08:40:46.997Z"
+      },
+      {
+        "name": "20260909100000_add_delivery_vat_and_business_settings",
+        "state": "APPLIED",
+        "checksum": "cae3f14450e59cd292f3c1595b816c5483d67e5767c7241c4bddc03988fee5ae",
+        "appliedAt": "2026-09-17T08:40:47.850Z"
+      },
+      {
+        "name": "20260911120000_add_atomic_sales_returns",
+        "state": "APPLIED",
+        "checksum": "be61f5bc738d37eb4cd3afc43ccd184057366ee4acadb642b77dcf22d48dcd7a",
+        "appliedAt": "2026-09-17T08:40:48.442Z"
+      },
+      {
+        "name": "20260914123000_add_supplier_due_dates",
+        "state": "APPLIED",
+        "checksum": "c73ccf4ac98475dfc56774168d9d2cd9db48dd149768dafd724ecd636f6b5cd6",
+        "appliedAt": "2026-09-17T08:40:48.875Z"
+      },
+      {
+        "name": "20260914140000_add_counter_payment_sources",
+        "state": "APPLIED",
+        "checksum": "2443b44fac1bbca2771b79f3758cfbd6642a2b5152dd9f291cf7aa334338dce3",
+        "appliedAt": "2026-09-17T08:40:48.891Z"
+      },
+      {
+        "name": "20260914160000_add_customer_credit_limits",
+        "state": "APPLIED",
+        "checksum": "92ca35d56f26e62e271753b71aec26a5f54f4227da197079dee0049426867914",
+        "appliedAt": "2026-09-17T08:40:48.992Z"
+      },
+      {
+        "name": "20260914180000_add_product_categories",
+        "state": "CHECKSUM_MISMATCH",
+        "checksum": "b774e3bcf474c2bb8db6c52ce18fd925113dcdf02cd52140c6bd58c84405ff5e",
+        "appliedAt": "2026-09-17T08:40:49.006Z"
+      },
+      {
+        "name": "20260918120000_add_pricing_preset_label_secret",
+        "state": "APPLIED",
+        "checksum": "143f12b83746e75e8f9b79432623a085a0b44ceaafd8fa0a2c66e718eb84c53f",
+        "appliedAt": "2026-09-18T07:54:31.742Z"
+      },
+      {
+        "name": "20260918121000_add_internal_product_barcodes",
+        "state": "APPLIED",
+        "checksum": "c7f96d7ab5b118e2c079254b711fa93f849ef686c5159bc1588d04c105f2c0c0",
+        "appliedAt": "2026-09-18T08:28:44.480Z"
+      },
+      {
+        "name": "20260918122000_redesign_label_secret_pricing",
+        "state": "APPLIED",
+        "checksum": "42c46eb27833f0dc1311cf07e90d0a0b4b2aca734bbe89d197ecd792b416d9a4",
+        "appliedAt": "2026-09-18T13:14:06.600Z"
+      },
+      {
+        "name": "20260918123000_add_staged_discount_encoding",
+        "state": "APPLIED",
+        "checksum": "a3254ae0cd387bc6f0cbacaf62b755ce235e95f1eef4fd3fb24492a194e30263",
+        "appliedAt": "2026-09-18T14:23:38.788Z"
+      },
+      {
+        "name": "20260918123100_seed_staged_discount_encoding",
+        "state": "APPLIED",
+        "checksum": "3bd7615b6cb6fe1bd8854318d394243e78d3ab6f1b39d3bcbc618fc457ef6548",
+        "appliedAt": "2026-09-18T14:23:38.797Z"
+      },
+      {
+        "name": "20260920100000_add_shop_profile",
+        "state": "APPLIED",
+        "checksum": "3f00eac0d54b87d838f5a2f129ed67ffad1bbd2279c539c1730b857a3fa87a14",
+        "appliedAt": "2026-09-19T12:24:25.372Z"
+      },
+      {
+        "name": "20260920100200_seed_shop_profile_logo",
+        "state": "APPLIED",
+        "checksum": "fcbc5c2932609b926c03c207409edda17cef5755d8ed66e0df9dac1806f7844f",
+        "appliedAt": "2026-09-19T12:24:25.479Z"
+      },
+      {
+        "name": "20260920101000_add_brand_logos",
+        "state": "APPLIED",
+        "checksum": "2b280bbc0b2a870f2579c1b37765172880a8686aa525d1e763dbc218246dafc2",
+        "appliedAt": "2026-09-19T12:24:25.496Z"
+      },
+      {
+        "name": "20260920102000_add_pricing_card_feature_icons",
+        "state": "APPLIED",
+        "checksum": "8244d85500d6bfc21212ba1c3953013b31392009b8943f7e35dfcb0562dc08b5",
+        "appliedAt": "2026-09-19T12:24:25.567Z"
+      },
+      {
+        "name": "20260920103000_add_pricing_card_templates",
+        "state": "APPLIED",
+        "checksum": "a31e1d5d6808e3d298dfe9b5f50806e50e669c118af8912a3ce618b966e72e59",
+        "appliedAt": "2026-09-19T12:24:25.596Z"
+      },
+      {
+        "name": "20260920104000_add_product_pricing_card_features",
+        "state": "APPLIED",
+        "checksum": "452b8e59d54118cdfac477d750f8c26f504ecf91cfb3e85572a25759e273c143",
+        "appliedAt": "2026-09-19T12:24:25.744Z"
+      },
+      {
+        "name": "20260920105000_add_pricing_card_prints",
+        "state": "APPLIED",
+        "checksum": "d7c4d7a1f06edc993d4cd4931aee297da73ea46b76d666d7a5661fee06017a02",
+        "appliedAt": "2026-09-19T12:24:25.776Z"
+      },
+      {
+        "name": "20260920200000_update_legacy_template_visuals",
+        "state": "APPLIED",
+        "checksum": "03a0f3cefc28c1f80703dc0c7adcf5b3e288cf911866f81e765fde8df02764ee",
+        "appliedAt": "2026-09-20T08:09:43.368Z"
+      },
+      {
+        "name": "20260920210000_add_product_pricing_card_template",
+        "state": "APPLIED",
+        "checksum": "49d44ca11110e53292e88843e35d028aaa0914151e2dafbc48fb48ba7bbf4837",
+        "appliedAt": "2026-09-20T20:36:06.821Z"
+      },
+      {
+        "name": "20260920211000_add_shop_category_default_templates",
+        "state": "APPLIED",
+        "checksum": "e68d31dcfb37d7c5965401069b4b1c64c35a9903784dde55d81ab5a3a5b43c6c",
+        "appliedAt": "2026-09-20T20:36:07.305Z"
+      },
+      {
+        "name": "20260920220000_refresh_pricing_card_feature_icons",
+        "state": "APPLIED",
+        "checksum": "5037b60355b278591d8e2f505c13b851beb82bc74ef8a2e545378b481561afb5",
+        "appliedAt": "2026-09-20T20:36:07.442Z"
+      },
+      {
+        "name": "20260920230000_set_pricing_card_price_prominence",
+        "state": "APPLIED",
+        "checksum": "0d0da51d4a68be2a0b2a21f24461c0139bec03924dbdec2b38f55333361e5cfe",
+        "appliedAt": "2026-09-20T20:36:07.601Z"
+      },
+      {
+        "name": "20260921100000_switch_tv_large_to_centered_layout",
+        "state": "APPLIED",
+        "checksum": "1ee95e89a0c404c57db5984c5e1c8af82cff3f83ba054d7e719af50576eb1d15",
+        "appliedAt": "2026-09-22T10:09:04.589Z"
+      },
+      {
+        "name": "20260921110000_switch_appliance_shelf_to_centered_layout",
+        "state": "APPLIED",
+        "checksum": "b9ced82ffbdfa3b6f5b93eac8b9a87f1756bdb50149d38909ebea74ae6cdab28",
+        "appliedAt": "2026-09-22T10:09:04.673Z"
+      },
+      {
+        "name": "20260924100000_add_appliance_shelf_thermal_template",
+        "state": "CHECKSUM_MISMATCH",
+        "checksum": "c0aadf8748468470579ed69df9a9ad28114c2f4044c070de039649e22a283330",
+        "appliedAt": "2026-09-24T09:44:11.033Z"
+      },
+      {
+        "name": "20260924110000_refine_appliance_shelf_thermal_template",
+        "state": "APPLIED",
+        "checksum": "5f5e8aaf7790ad3d5bf9819e85dc13f3e1ca139a3cf413ad495ae5a5ae13b9a2",
+        "appliedAt": "2026-09-24T14:14:14.530Z"
+      },
+      {
+        "name": "20260926130000_add_product_csv_imports",
+        "state": "APPLIED",
+        "checksum": "e1a9534bcb3ec9deee9f8c84a7a1f01cf15d644c6cb5acc661a92f6bfdf5d9f1",
+        "appliedAt": "2026-09-26T11:41:44.642Z"
+      }
+    ],
+    "pending": [],
+    "failed": [],
+    "mismatched": [
+      "20260914180000_add_product_categories",
+      "20260924100000_add_appliance_shelf_thermal_template"
+    ],
+    "unknownInDatabase": [],
+    "databaseIsNewer": false
+  }
+}

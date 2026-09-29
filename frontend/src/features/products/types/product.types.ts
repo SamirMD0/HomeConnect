@@ -254,6 +254,70 @@ export interface CreateProductInput extends ProductPricingConfigurationInput {
   accountPassword?: string;
 }
 
+export type ProductImportRowStatus = 'READY' | 'CONFLICT' | 'INVALID';
+export type ProductImportDecisionAction = 'CREATE' | 'MERGE' | 'COMBINE' | 'EXCLUDE';
+export type ProductImportInventoryAction = 'KEEP' | 'OPENING' | 'RECONCILE';
+
+export interface ProductImportMatch {
+  id: string;
+  sku: string;
+  name: string;
+  model: string;
+  brand: string | null;
+  isActive: boolean;
+  trackStock: boolean;
+  stockQuantity: number;
+  hasOpeningBalance: boolean;
+}
+
+export interface ProductImportPreviewRow {
+  rowNumber: number;
+  family: string;
+  externalCode: string;
+  description: string;
+  quantity: number;
+  costUsd: string | null;
+  categoryId?: string | null;
+  issues: string[];
+  status: ProductImportRowStatus;
+  conflicts: Array<{ kind: 'FILE_CODE' | 'EXTERNAL_CODE' | 'MODEL' | 'NAME_MODEL' | 'CATEGORY'; message: string; productId?: string }>;
+  matches: ProductImportMatch[];
+}
+
+export interface ProductImportPreview {
+  id: string;
+  fileName: string;
+  fileHash: string;
+  sourceSystem: string;
+  brand: string;
+  status: 'DRAFT' | 'COMMITTED';
+  createdAt: string;
+  committedAt: string | null;
+  categoryMappings: Record<string, string | null>;
+  families: string[];
+  previousCommittedImport: { id: string; committedAt: string | null } | null;
+  counts: { total: number; ready: number; conflicts: number; invalid: number; quantity: number };
+  rows: ProductImportPreviewRow[];
+  result?: ProductImportCommitResult | null;
+}
+
+export interface ProductImportDecision {
+  rowNumber: number;
+  action: ProductImportDecisionAction;
+  targetProductId?: string;
+  targetRowNumber?: number;
+  externalCode?: string;
+  name?: string;
+  mergeFields?: Array<'name' | 'model' | 'brand' | 'category'>;
+  inventoryAction?: ProductImportInventoryAction;
+}
+
+export interface ProductImportCommitResult {
+  importId: string;
+  summary: { created: number; merged: number; combined: number; excluded: number; openingCounts: number; reconciled: number };
+  items: Array<{ rowNumber: number; action: string; productId?: string }>;
+}
+
 /**
  * The relaxed product-edit endpoint. Pricing fields are deliberately absent —
  * they belong to the strict pricing endpoint, and the backend schema is `.strict()`

@@ -662,7 +662,8 @@ export class ProductsService {
       if (!product) return [];
       const resolution = resolvePricingCardTemplate({
         productTemplateId: product.pricingCardTemplateId,
-        productCategory: product.pricingPreset?.productType,
+        productCategory: product.category?.name,
+        legacyProductType: product.pricingPreset?.productType,
         categoryDefaultTemplates: profile.categoryDefaultTemplates,
         shopDefaultTemplateId: profile.defaultPricingCardTemplateId,
       });
@@ -988,6 +989,7 @@ export interface ProductLabelPayload {
 }
 
 type TemplateLabelProduct = ProductPricingRecord & {
+  category?: { name: string } | null;
   specifications?: Prisma.JsonValue | null;
   pricingCardFeatures?: Array<{ iconCode: string; label: string | null; value: string | null; position: number }>;
   taxProfile?: TaxProfileRecord | null;
@@ -1125,7 +1127,8 @@ async function resolveTemplateLabelContext(
   if (!profile) throw new NotFoundError('Shop profile not found');
   const resolution = resolvePricingCardTemplate({
     productTemplateId: product.pricingCardTemplateId,
-    productCategory: product.pricingPreset?.productType,
+    productCategory: product.category?.name,
+    legacyProductType: product.pricingPreset?.productType,
     categoryDefaultTemplates: profile.categoryDefaultTemplates,
     shopDefaultTemplateId: profile.defaultPricingCardTemplateId,
   });
@@ -1149,7 +1152,8 @@ async function resolveTemplateLabelContexts(
   for (const product of products) {
     const resolution = resolvePricingCardTemplate({
       productTemplateId: product.pricingCardTemplateId,
-      productCategory: product.pricingPreset?.productType,
+      productCategory: product.category?.name,
+      legacyProductType: product.pricingPreset?.productType,
       categoryDefaultTemplates: profile.categoryDefaultTemplates,
       shopDefaultTemplateId: profile.defaultPricingCardTemplateId,
     });

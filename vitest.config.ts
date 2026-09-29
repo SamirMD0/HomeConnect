@@ -2,6 +2,7 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
+    include: ['backend/**/*.test.{ts,tsx}', 'frontend/src/**/*.test.{ts,tsx}', 'desktop/**/*.test.{ts,tsx}', 'scripts/**/*.test.{ts,tsx}'],
     // `logs/` holds captured browser-check artifacts, including bundled Chrome
     // extension sources that ship their own *.test.js / *.spec.js files. Those
     // are third-party and fail collection under vitest, so never pick them up.

@@ -1,11 +1,26 @@
 import http from 'http';
 
-export async function waitForUrl(url: string, timeoutMs: number, label: string) {
+export interface ReadinessOptions {
+  signal?: AbortSignal;
+  onProbe?: (elapsedMs: number, response: HttpProbeResult) => void;
+  requireDatabase?: boolean;
+}
+
+export async function waitForUrl(url: string, timeoutMs: number, label: string, options: ReadinessOptions = {}) {
   const startedAt = Date.now();
   let lastResponse: HttpProbeResult | null = null;
   while (Date.now() - startedAt < timeoutMs) {
-    const response = await probeUrl(url);
-    if (response.reachable && response.statusCode && response.statusCode >= 200 && response.statusCode < 500) return;
+    options.signal?.throwIfAborted();
+    const response = await probeUrl(url, Math.min(1000, timeoutMs - (Date.now() - startedAt)), options.signal);
+    options.signal?.throwIfAborted();
+    options.onProbe?.(Date.now() - startedAt, response);
+    if (response.reachable && response.statusCode && response.statusCode >= 200 && response.statusCode < 300) {
+      if (!options.requireDatabase) return;
+      try {
+        const data = JSON.parse(response.body || '{}');
+        if (data.success === true && data.data?.status === 'healthy' && data.data?.database === 'connected') return;
+      } catch { /* An unrelated HTTP service is not the application backend. */ }
+    }
 
     // Fast-fail for known fatal conditions
     if (response.reachable && response.statusCode === 503 && response.body?.includes('"DATABASE_UNAVAILABLE"')) {
@@ -14,7 +29,7 @@ export async function waitForUrl(url: string, timeoutMs: number, label: string) 
     }
 
     if (response.reachable) lastResponse = response;
-    await delay(500);
+    await delay(Math.min(500, Math.max(0, timeoutMs - (Date.now() - startedAt))), options.signal);
   }
 
   const statusDetails = lastResponse
@@ -23,15 +38,15 @@ export async function waitForUrl(url: string, timeoutMs: number, label: string) 
   throw new Error(`${label} did not become ready within ${timeoutMs / 1000}s: ${url}.${statusDetails}`);
 }
 
-interface HttpProbeResult {
+export interface HttpProbeResult {
   reachable: boolean;
   statusCode?: number;
   body?: string;
 }
 
-export function probeUrl(url: string) {
+export function probeUrl(url: string, timeoutMs = 1000, signal?: AbortSignal) {
   return new Promise<HttpProbeResult>((resolve) => {
-    const request = http.get(url, (response) => {
+    const request = http.get(url, { signal }, (response) => {
       let body = '';
       response.setEncoding('utf8');
       response.on('data', (chunk) => {
@@ -46,7 +61,7 @@ export function probeUrl(url: string) {
       });
     });
 
-    request.setTimeout(1000, () => {
+    request.setTimeout(Math.max(1, timeoutMs), () => {
       request.destroy();
       resolve({ reachable: false });
     });
@@ -54,8 +69,13 @@ export function probeUrl(url: string) {
   });
 }
 
-function delay(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+function delay(ms: number, signal?: AbortSignal) {
+  return new Promise<void>((resolve, reject) => {
+    const abort = () => { clearTimeout(timer); reject(signal?.reason); };
+    const timer = setTimeout(() => { signal?.removeEventListener('abort', abort); resolve(); }, ms);
+    signal?.addEventListener('abort', abort, { once: true });
+    if (signal?.aborted) abort();
+  });
 }
 
 function summarizeBody(body: string) {

@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto';
 import { describe, expect, it, vi } from 'vitest';
 import { SupplierReceivingsService } from './receiving/supplier-receivings.service';
 import { SupplierReceivingsRepository } from './receiving/supplier-receivings.repository';
+import { todayInBusinessTimezone } from '../financial/domain/business-date';
 
 const runDatabaseTests =
   process.env.RUN_SUPPLIER_RECEIVING_DB_TESTS === '1' && Boolean(process.env.DATABASE_URL);
@@ -204,7 +205,8 @@ describeDatabase('supplier receiving database contract', () => {
     const supplierId = randomUUID();
     const firstProductId = randomUUID();
     const secondProductId = randomUUID();
-    const businessDate = new Date().toISOString().slice(0, 10);
+    process.env.BUSINESS_TIMEZONE = 'Asia/Beirut';
+    const businessDate = todayInBusinessTimezone();
     const idempotencyKey = `receiving-${randomUUID()}`;
     const concurrentKey = `receiving-${randomUUID()}`;
     const user = { userId, role: 'EMPLOYEE' as const };
