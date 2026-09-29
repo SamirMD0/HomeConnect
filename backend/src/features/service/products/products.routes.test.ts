@@ -3,11 +3,11 @@ import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { app } from '../../../app';
 
-const { service } = vi.hoisted(() => ({ service: { create: vi.fn(), list: vi.fn(), brands: vi.fn(), normalizeBrands: vi.fn(), get: vi.fn(), update: vi.fn(), archive: vi.fn(), restore: vi.fn(), label: vi.fn(), labels: vi.fn(), audit: vi.fn(), checkDuplicate: vi.fn(), serviceJobs: vi.fn(), updateSku: vi.fn(), regenerateSku: vi.fn(), updateStock: vi.fn() } }));
+const { service } = vi.hoisted(() => ({ service: { create: vi.fn(), list: vi.fn(), brands: vi.fn(), normalizeBrands: vi.fn(), get: vi.fn(), update: vi.fn(), updateFeatures: vi.fn(), archive: vi.fn(), restore: vi.fn(), label: vi.fn(), labels: vi.fn(), pricingCardIndex: vi.fn(), labelSecretPreview: vi.fn(), pricingCardSecretPreview: vi.fn(), labelsSecretPreview: vi.fn(), audit: vi.fn(), checkDuplicate: vi.fn(), serviceJobs: vi.fn(), updateSku: vi.fn(), regenerateSku: vi.fn(), updateStock: vi.fn() } }));
 vi.mock('./products.service', () => ({ ProductsService: service }));
 vi.mock('../../../lib/prisma', () => ({ prisma: { $queryRaw: vi.fn().mockResolvedValue([{ result: 1 }]) }, transactionModel: {}, activityLogModel: {} }));
 
-const secret = process.env.JWT_SECRET || 'fallback_secret_key_change_in_production';
+const secret = process.env.JWT_SECRET!;
 const admin = jwt.sign({ userId: '11111111-1111-4111-8111-111111111111', role: 'ADMIN' }, secret);
 const employee = jwt.sign({ userId: '22222222-2222-4222-8222-222222222222', role: 'EMPLOYEE' }, secret);
 const productId = '33333333-3333-4333-8333-333333333333';
@@ -26,9 +26,14 @@ describe('product routes', () => {
     service.serviceJobs.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 10 });
     service.label.mockResolvedValue({ payload: { id: productId, sku: 'HC-000001', barcodeValue: 'HC-000001', barcodeSource: 'SKU', internalPriceCode: null }, warnings: [] });
     service.labels.mockResolvedValue({ labels: [], warnings: [] });
+    service.pricingCardIndex.mockResolvedValue([{ productId, resolvedTemplateId: null, missingTemplate: true }]);
+    service.labelSecretPreview.mockResolvedValue({ payload: { id: productId, sku: 'HC-000001', barcodeValue: 'HC-000001', staffLabelCode: 'HC-000001-K380Z', secretPrice: '380.00' }, warnings: [] });
+    service.pricingCardSecretPreview.mockResolvedValue({ payload: { id: productId, templateId: '44444444-4444-4444-8444-444444444444', sku: 'HC-000001', barcodeValue: 'HC-000001', staffLabelCode: 'HC-000001-K380Z', secretPrice: '380.00' }, warnings: [] });
+    service.labelsSecretPreview.mockResolvedValue({ labels: [], warnings: [] });
     service.updateSku.mockResolvedValue(product);
     service.regenerateSku.mockResolvedValue(product);
     service.updateStock.mockResolvedValue(product);
+    service.updateFeatures.mockResolvedValue({ ...product, featureHighlights: [] });
   });
   it('keeps protected SKU and stock routes above the bare product route', async () => {
     expect((await request(app).patch(`/api/v1/products/${productId}/sku`).set('Authorization', `Bearer ${admin}`).send({ sku: 'HC-009999' })).status).toBe(200);
@@ -77,6 +82,91 @@ describe('product routes', () => {
     const response = await request(app).get(`/api/v1/products/${productId}/label`).set('Authorization', `Bearer ${employee}`);
     expect(response.status).toBe(200);
     expect(response.body.data.warnings).toContainEqual({ productId, code: 'FALLBACK_TO_SKU', name: 'Fan' });
+  });
+  it('requires a password alongside a per-product pricing-card assignment', async () => {
+    const templateId = '44444444-4444-4444-8444-444444444444';
+    const path = `/api/v1/products/${productId}`;
+    expect((await request(app).patch(path).set('Authorization', `Bearer ${admin}`).send({ pricingCardTemplateId: templateId })).status).toBe(400);
+    expect((await request(app).patch(path).set('Authorization', `Bearer ${admin}`).send({ pricingCardTemplateId: templateId, accountPassword: 'secret' })).status).toBe(200);
+    expect(service.update).toHaveBeenLastCalledWith(productId, { pricingCardTemplateId: templateId, accountPassword: 'secret' }, expect.anything(), expect.anything());
+  });
+  it('threads template options and exposes single and bulk pricing-card reads', async () => {
+    const templateId = '44444444-4444-4444-8444-444444444444';
+    const options = `templateId=${templateId}&validUntil=2026-10-31&featureCodes=wifi,qled`;
+    expect((await request(app).get(`/api/v1/products/${productId}/label?${options}`).set('Authorization', `Bearer ${employee}`)).status).toBe(200);
+    expect(service.label).toHaveBeenLastCalledWith(productId, expect.objectContaining({
+      templateId, validUntil: '2026-10-31', featureCodes: ['wifi', 'qled'],
+    }));
+
+    expect((await request(app).get(`/api/v1/products/${productId}/pricing-card?${options}`).set('Authorization', `Bearer ${employee}`)).status).toBe(200);
+    expect(service.label).toHaveBeenLastCalledWith(productId, expect.objectContaining({ templateId, includePrice: true, templateMode: true }));
+
+    expect((await request(app).get(`/api/v1/products/pricing-cards?ids=${productId}&${options}`).set('Authorization', `Bearer ${employee}`)).status).toBe(200);
+    expect(service.labels).toHaveBeenLastCalledWith(expect.objectContaining({ ids: [productId], templateId, includePrice: true, templateMode: true }));
+  });
+
+  it('resolves pricing-card reads without a request template and validates explicit templates and dates', async () => {
+    expect((await request(app).get(`/api/v1/products/${productId}/pricing-card`).set('Authorization', `Bearer ${employee}`)).status).toBe(200);
+    expect((await request(app).get(`/api/v1/products/${productId}/pricing-card?templateId=bad&validUntil=31-10-2026`).set('Authorization', `Bearer ${employee}`)).status).toBe(400);
+  });
+
+  it('returns the additive pricing-card resolution index in requested order', async () => {
+    const templateId = '44444444-4444-4444-8444-444444444444';
+    service.pricingCardIndex.mockResolvedValueOnce([
+      { productId, resolvedTemplateId: templateId, missingTemplate: false },
+    ]);
+    const response = await request(app)
+      .get(`/api/v1/products/pricing-cards/index?ids=${productId}`)
+      .set('Authorization', `Bearer ${employee}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.data).toEqual([{ productId, resolvedTemplateId: templateId, missingTemplate: false }]);
+    expect(service.pricingCardIndex).toHaveBeenCalledWith({ ids: [productId] });
+  });
+
+  it('keeps pricing-card feature replacement admin-only and password-protected', async () => {
+    const featureHighlights = [
+      { iconCode: 'capacity', label: 'Capacity', value: '9 kg', position: 2 },
+      { iconCode: 'spin-speed', label: null, value: '1200 rpm', position: 1 },
+    ];
+    const path = `/api/v1/products/${productId}/features`;
+    expect((await request(app).patch(path).send({ featureHighlights, accountPassword: 'secret' })).status).toBe(401);
+    expect((await request(app).patch(path).set('Authorization', `Bearer ${employee}`).send({ featureHighlights, accountPassword: 'secret' })).status).toBe(403);
+    expect((await request(app).patch(path).set('Authorization', `Bearer ${admin}`).send({ featureHighlights })).status).toBe(401);
+    expect((await request(app).patch(path).set('Authorization', `Bearer ${admin}`).send({ featureHighlights, accountPassword: 'secret' })).status).toBe(200);
+    expect(service.updateFeatures).toHaveBeenCalledWith(productId, expect.objectContaining({
+      accountPassword: 'secret',
+      featureHighlights: [featureHighlights[1], featureHighlights[0]],
+    }), expect.objectContaining({ role: 'ADMIN' }), expect.anything());
+  });
+
+  it('supports delete-all highlights and rejects more than eight', async () => {
+    const path = `/api/v1/products/${productId}/features`;
+    expect((await request(app).patch(path).set('Authorization', `Bearer ${admin}`).send({ featureHighlights: [], accountPassword: 'secret' })).status).toBe(200);
+    const tooMany = Array.from({ length: 9 }, (_, index) => ({ iconCode: `feature-${index}`, position: index + 1 }));
+    expect((await request(app).patch(path).set('Authorization', `Bearer ${admin}`).send({ featureHighlights: tooMany, accountPassword: 'secret' })).status).toBe(400);
+  });
+  it('keeps per-print hidden-preset selection admin-only and password-protected', async () => {
+    const input = { includePriceCode: true, includePrice: true, hiddenPricingPresetId: productId, encodingPresetId: '44444444-4444-4444-8444-444444444444', manualDiscountStages: [7, 2, 1], accountPassword: 'secret' };
+    expect((await request(app).post(`/api/v1/products/${productId}/label/secret-preview`).set('Authorization', `Bearer ${employee}`).send(input)).status).toBe(403);
+    expect((await request(app).post(`/api/v1/products/${productId}/label/secret-preview`).set('Authorization', `Bearer ${admin}`).send({ ...input, accountPassword: '' })).status).toBe(400);
+    expect((await request(app).post(`/api/v1/products/${productId}/label/secret-preview`).set('Authorization', `Bearer ${admin}`).send(input)).status).toBe(200);
+    expect(service.labelSecretPreview).toHaveBeenCalledWith(productId, input, expect.objectContaining({ role: 'ADMIN' }), expect.anything());
+    expect((await request(app).post(`/api/v1/products/${productId}/label/secret-preview`).set('Authorization', `Bearer ${admin}`).send({ ...input, manualDiscountStages: [0, 5] })).status).toBe(400);
+  });
+  it('previews secret pricing through the selected pricing-card template', async () => {
+    const input = {
+      includePriceCode: true, includePrice: true,
+      hiddenPricingPresetId: productId,
+      encodingPresetId: '44444444-4444-4444-8444-444444444444',
+      templateId: '55555555-5555-4555-8555-555555555555',
+      validUntil: '2026-10-31', featureCodes: ['wifi', 'qled'], accountPassword: 'secret',
+    };
+    const path = `/api/v1/products/${productId}/pricing-card/secret-preview`;
+    expect((await request(app).post(path).set('Authorization', `Bearer ${employee}`).send(input)).status).toBe(403);
+    expect((await request(app).post(path).set('Authorization', `Bearer ${admin}`).send({ ...input, accountPassword: '' })).status).toBe(400);
+    expect((await request(app).post(path).set('Authorization', `Bearer ${admin}`).send(input)).status).toBe(200);
+    expect(service.pricingCardSecretPreview).toHaveBeenCalledWith(productId, input, expect.objectContaining({ role: 'ADMIN' }), expect.anything());
   });
   it('requires auth and lets employees create/list products', async () => {
     expect((await request(app).get('/api/v1/products')).status).toBe(401);

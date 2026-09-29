@@ -29,6 +29,7 @@ export interface ApplyOutcome {
   applied: boolean;
   recovered: boolean;
   statementCount: number;
+  durationMs: number;
   error?: string;
 }
 
@@ -59,18 +60,26 @@ export class MigrationExecutor {
     const previous = summary.entries.find((entry) => entry.name === migration.name) ?? null;
     const recovered = previous?.state === 'FAILED';
     const statements = planApply(migration, previous);
+    const startedAt = Date.now();
 
     try {
       await client.$transaction(async (tx) => {
         for (const statement of statements) await tx.$executeRawUnsafe(statement);
       });
-      return { name: migration.name, applied: true, recovered, statementCount: statements.length };
+      return {
+        name: migration.name,
+        applied: true,
+        recovered,
+        statementCount: statements.length,
+        durationMs: Date.now() - startedAt,
+      };
     } catch (error) {
       return {
         name: migration.name,
         applied: false,
         recovered,
         statementCount: statements.length,
+        durationMs: Date.now() - startedAt,
         error: error instanceof Error ? error.message : 'Migration failed.',
       };
     }
@@ -83,17 +92,25 @@ export class MigrationExecutor {
    */
   static async markResolved(client: MigrationClient, migration: BundledMigration): Promise<ApplyOutcome> {
     const statements = planResolve(migration);
+    const startedAt = Date.now();
     try {
       await client.$transaction(async (tx) => {
         for (const statement of statements) await tx.$executeRawUnsafe(statement);
       });
-      return { name: migration.name, applied: true, recovered: true, statementCount: statements.length };
+      return {
+        name: migration.name,
+        applied: true,
+        recovered: true,
+        statementCount: statements.length,
+        durationMs: Date.now() - startedAt,
+      };
     } catch (error) {
       return {
         name: migration.name,
         applied: false,
         recovered: true,
         statementCount: statements.length,
+        durationMs: Date.now() - startedAt,
         error: error instanceof Error ? error.message : 'Could not record the migration as resolved.',
       };
     }

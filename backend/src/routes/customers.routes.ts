@@ -22,12 +22,6 @@ router.post('/', validate(createCustomerSchema), CustomersController.createCusto
 // Get customer by ID
 router.get('/:id', CustomersController.getCustomer);
 
-// Get customer transactions
-router.get('/:id/transactions', CustomersController.getCustomerTransactions);
-
-// Get customer balance
-router.get('/:id/balance', CustomersController.getCustomerBalance);
-
 // Update customer
 router.put('/:id', validate(updateCustomerSchema), CustomersController.updateCustomer);
 

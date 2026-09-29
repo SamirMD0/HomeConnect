@@ -6,6 +6,10 @@ import { parsePricingPercent } from '../domain/pricing-percent';
 import { presetConfig } from './pricing-resolution';
 import { PricingCalculateInput } from './pricing-calculator.validator';
 import { Decimal } from '@prisma/client/runtime/library';
+import { TaxRepository } from '../../tax/tax.repository';
+import { businessDateToPrisma, todayInBusinessTimezone } from '../../financial/domain/business-date';
+import { moneyToApiString } from '../../financial/domain/money';
+import { presentVatPrice } from '../../tax/domain/vat';
 
 export class PricingCalculatorController {
   static async calculate(req: Request<unknown, unknown, PricingCalculateInput>, res: Response, next: NextFunction) {
@@ -28,7 +32,22 @@ export class PricingCalculatorController {
         calculationMode: overrides.calculationMode ?? base.calculationMode,
         roundingMode: overrides.roundingMode ?? base.roundingMode,
       };
-      res.json({ success: true, data: calculatePricing(new Decimal(input.costPrice), config) });
+      const result = calculatePricing(new Decimal(input.costPrice), config, input.currency);
+      const taxProfile = await TaxRepository.findEffectiveProfile(null, businessDateToPrisma(todayInBusinessTimezone()));
+      const presentation = taxProfile ? presentVatPrice(result.cashPrice, taxProfile.taxRate.ratePercent, input.currency, input.priceIncludesVat) : null;
+      res.json({
+        success: true,
+        data: {
+          ...result,
+          ...(presentation ? {
+            cashPriceExVat: moneyToApiString(presentation.priceExVat, input.currency),
+            vatAmount: moneyToApiString(presentation.vatAmount, input.currency),
+            cashPriceIncVat: moneyToApiString(presentation.priceIncVat, input.currency),
+            taxRatePercent: taxProfile!.taxRate.ratePercent.toFixed(3),
+            taxCode: taxProfile!.code,
+          } : {}),
+        },
+      });
     } catch (error) { next(error); }
   }
 }

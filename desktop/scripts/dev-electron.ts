@@ -13,28 +13,42 @@ const children: ChildProcess[] = [];
 let shuttingDown = false;
 
 async function main() {
-  const backend = startProcess('backend', process.execPath, [
-    'node_modules/tsx/dist/cli.mjs',
-    'backend/src/index.ts',
-  ], {
-    HOST,
-    PORT: BACKEND_PORT,
-    NODE_ENV: 'development',
-    FRONTEND_URL,
-    CORS_ORIGINS: FRONTEND_URL,
-  });
-  const frontend = startProcess('frontend', process.execPath, [
-    'node_modules/vite/bin/vite.js',
-    'frontend',
-    '--host',
-    HOST,
-    '--port',
-    FRONTEND_PORT,
+  // `npm run dev` is still useful for browser-only work, and developers often
+  // leave it running before opening Electron. Reuse healthy services instead
+  // of starting duplicates that immediately die with EADDRINUSE.
+  const backend = await canReach(BACKEND_URL)
+    ? null
+    : startProcess('backend', process.execPath, [
+        'node_modules/tsx/dist/cli.mjs',
+        'backend/src/index.ts',
+      ], {
+        HOST,
+        PORT: BACKEND_PORT,
+        NODE_ENV: 'development',
+        FRONTEND_URL,
+        CORS_ORIGINS: FRONTEND_URL,
+      });
+  const frontend = await canReach(FRONTEND_URL)
+    ? null
+    : startProcess('frontend', process.execPath, [
+        'node_modules/vite/bin/vite.js',
+        'frontend',
+        '--config',
+        'frontend/vite.config.ts',
+        '--host',
+        HOST,
+        '--port',
+        FRONTEND_PORT,
+      ]);
+
+  await Promise.all([
+    waitForUrl(BACKEND_URL, READY_TIMEOUT_MS, 'Development Express backend'),
+    waitForUrl(FRONTEND_URL, READY_TIMEOUT_MS, 'Vite frontend'),
   ]);
 
   if (CHECK_ONLY) {
     console.log('Electron dev dependencies are ready.');
-    shutdown(backend, frontend);
+    shutdownOwned(backend, frontend);
     return;
   }
 
@@ -49,7 +63,7 @@ async function main() {
     ELECTRON_RUN_AS_NODE: undefined,
     VITE_DEV_SERVER_URL: FRONTEND_URL,
   }).once('exit', () => {
-    shutdown(backend, frontend);
+    shutdownOwned(backend, frontend);
   });
 }
 
@@ -128,6 +142,10 @@ function shutdown(...specificChildren: ChildProcess[]) {
   for (const child of targets) {
     if (!child.killed && child.exitCode === null) child.kill();
   }
+}
+
+function shutdownOwned(...specificChildren: Array<ChildProcess | null>) {
+  shutdown(...specificChildren.filter((child): child is ChildProcess => child !== null));
 }
 
 process.on('SIGINT', () => {

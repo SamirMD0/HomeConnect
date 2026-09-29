@@ -1,4 +1,4 @@
-import { LabelBarcodeSource, PricingCalculationMode } from '@prisma/client';
+import { Currency, LabelBarcodeSource, PricingCalculationMode } from '@prisma/client';
 import { z } from 'zod';
 import { compareMoney } from '../../financial/domain/money';
 import { isDecimalAtMost } from '../../../validators/decimal-bounds';
@@ -7,6 +7,7 @@ import { databaseUuidSchema } from '../../../validators/database-uuid';
 import { MAX_PRODUCT_SPECIFICATIONS, MAX_PRODUCT_SPECIFICATIONS_BYTES, normalizeProductSpecifications, serializedSpecificationsSize } from './product-specifications';
 import { PRODUCT_SKU_PATTERN } from './product-sku';
 import { PRODUCT_STOCK_FILTERS } from './product-stock';
+import { MAX_PRODUCT_FEATURES, normalizeProductPricingCardFeatures } from './product-pricing-card-features';
 
 const uuidSchema = databaseUuidSchema('Invalid product ID');
 const moneyPattern = /^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/;
@@ -54,6 +55,7 @@ const positiveCost = z.preprocess(
 );
 const productPricingValues = {
   costPrice: positiveCost,
+  priceCurrency: z.nativeEnum(Currency).optional(),
   pricingPresetId: z.preprocess(emptyToNull, z.string().uuid().optional().nullable()),
   useCustomPricing: z.boolean().optional(),
   installmentEnabled: z.boolean().optional(),
@@ -64,6 +66,10 @@ const productPricingValues = {
   customDownPaymentPercent: pricingPercent('100'),
   customInstallmentMonths: z.preprocess(emptyToNull, z.coerce.number().int().min(1).max(120).optional().nullable()),
   customCalculationMode: z.preprocess(emptyToNull, z.nativeEnum(PricingCalculationMode).optional().nullable()),
+};
+const productTaxValues = {
+  taxProfileId: z.preprocess(emptyToNull, z.string().uuid().optional().nullable()),
+  priceIncludesVat: z.boolean().optional(),
 };
 
 const PRICING_VALUE_FIELDS = [
@@ -77,18 +83,38 @@ const productValues = {
   model: userTextSchema({ field: 'Model', min: 1, max: 120 }),
   barcode: barcodeSchema,
   brand: optionalUserText('Brand', 120),
+  categoryId: databaseUuidSchema('Invalid category ID').transform((id) => id.toLowerCase()).nullable().optional(),
   price: optionalMoneySchema,
   discount: optionalMoneySchema,
   imageUrl: imageUrlSchema,
   notes: optionalUserText('Notes', 2000),
   labelBarcodeSource: z.nativeEnum(LabelBarcodeSource).optional(),
+  pricingCardTemplateId: z.preprocess(emptyToNull, z.string().uuid().optional().nullable()),
   specifications: z.array(z.object({
     label: userTextSchema({ field: 'Specification label', max: 64 }),
     value: userTextSchema({ field: 'Specification value', max: 256 }),
   })).max(MAX_PRODUCT_SPECIFICATIONS).transform(normalizeProductSpecifications)
     .refine((entries) => serializedSpecificationsSize(entries) <= MAX_PRODUCT_SPECIFICATIONS_BYTES, 'Specifications cannot exceed 8 KB').optional(),
   specificationNotes: optionalUserText('Specification notes', 4000),
+  featureHighlights: z.array(z.object({
+    iconCode: z.string().trim().toLowerCase().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Feature icon code must be kebab-case').max(80),
+    label: optionalUserText('Feature label', 100),
+    value: optionalUserText('Feature value', 120),
+    position: z.number().int().min(1).max(MAX_PRODUCT_FEATURES),
+  }).strict()).max(MAX_PRODUCT_FEATURES).transform(normalizeProductPricingCardFeatures).optional(),
 };
+
+const accountPassword = z.string().min(1, 'Account password is required').optional();
+
+function validatePricingCardPassword(values: { featureHighlights?: unknown; pricingCardTemplateId?: unknown; accountPassword?: string }, context: z.RefinementCtx) {
+  const changesPricingCardConfiguration = values.featureHighlights !== undefined || values.pricingCardTemplateId !== undefined;
+  if (changesPricingCardConfiguration && !values.accountPassword) {
+    context.addIssue({ code: 'custom', path: ['accountPassword'], message: 'Account password is required' });
+  }
+  if (!changesPricingCardConfiguration && values.accountPassword !== undefined) {
+    context.addIssue({ code: 'custom', path: ['accountPassword'], message: 'Account password is only accepted with pricing-card assignments or feature highlights' });
+  }
+}
 
 export const productSkuSchema = z.string().trim().toUpperCase().min(4).max(32)
   .regex(PRODUCT_SKU_PATTERN, 'SKU may contain only uppercase letters, numbers, and hyphens');
@@ -109,12 +135,16 @@ function validateDiscount(
 export const createProductSchema = z.object({
   ...productValues,
   ...productPricingValues,
+  ...productTaxValues,
   trackStock: z.boolean().optional(),
   lowStockThreshold: z.number().int('Low stock threshold must be an integer').min(0).nullable().optional(),
+  accountPassword,
 }).strict().superRefine((values, context) => {
   validateDiscount(values, context);
   validateCustomPricing(values, context);
   validateLabelBarcodeSource(values, context);
+  validateCurrencyMoney(values, context);
+  validatePricingCardPassword(values, context);
 });
 
 export const updateProductSchema = z
@@ -123,20 +153,32 @@ export const updateProductSchema = z
     model: productValues.model.optional(),
     barcode: productValues.barcode,
     brand: productValues.brand,
+    categoryId: productValues.categoryId,
     price: productValues.price,
     discount: productValues.discount,
     imageUrl: productValues.imageUrl,
     notes: productValues.notes,
     labelBarcodeSource: productValues.labelBarcodeSource,
+    pricingCardTemplateId: productValues.pricingCardTemplateId,
     specifications: productValues.specifications,
     specificationNotes: productValues.specificationNotes,
+    featureHighlights: productValues.featureHighlights,
+    accountPassword,
   })
   // Strict so that a pricing field posted here is a 400 rather than a silent
   // strip. Cost and the pricing percentages belong to updateProductPricingSchema,
   // which keeps the admin-password guard; this endpoint must never look like a
   // way around it.
   .strict()
-  .superRefine(validateDiscount);
+  .superRefine((values, context) => {
+    validateDiscount(values, context);
+    validatePricingCardPassword(values, context);
+  });
+
+export const updateProductFeaturesSchema = z.object({
+  featureHighlights: productValues.featureHighlights.unwrap(),
+  accountPassword: z.string().min(1, 'Account password is required'),
+}).strict();
 
 /**
  * Archive and restore stay in the strict tier: they are destructive-adjacent and
@@ -172,6 +214,7 @@ export const productListQuerySchema = z.object({
   search: z.string().trim().max(200).optional(),
   isActive: z.enum(['true', 'false']).optional().transform((value) => value === undefined ? undefined : value === 'true'),
   brand: z.string().trim().max(120).optional(),
+  categoryId: z.union([databaseUuidSchema('Invalid category ID'), z.literal('uncategorized')]).transform((id) => id.toLowerCase()).optional(),
   hasBarcode: z.enum(['true', 'false']).optional().transform((value) => value === undefined ? undefined : value === 'true'),
   trackStock: z.enum(['true', 'false']).optional().transform((value) => value === undefined ? undefined : value === 'true'),
   stockStatus: z.enum(PRODUCT_STOCK_FILTERS).optional(),
@@ -219,13 +262,25 @@ export const productAuditQuerySchema = z.object({
 
 export const updateProductPricingSchema = z.object({
   ...productPricingValues,
+  ...productTaxValues,
   reason: userTextSchema({ field: 'Reason', min: 5, max: 1000 }),
   accountPassword: z.string().min(1, 'Account password is required'),
 }).strict().superRefine((values, context) => {
   const fields = Object.keys(values).filter((field) => !['reason', 'accountPassword'].includes(field));
   if (fields.length === 0) context.addIssue({ code: 'custom', message: 'At least one pricing field is required' });
   validateCustomPricing(values, context);
+  validateCurrencyMoney(values, context);
 });
+
+function validateCurrencyMoney(values: Record<string, unknown>, context: z.RefinementCtx) {
+  if (values.priceCurrency !== Currency.LBP) return;
+  for (const field of ['price', 'discount', 'costPrice'] as const) {
+    const value = values[field];
+    if (typeof value === 'string' && !/^\d+(?:\.0{1,2})?$/.test(value)) {
+      context.addIssue({ code: 'custom', path: [field], message: 'LBP money amounts must be whole numbers' });
+    }
+  }
+}
 
 function validateCustomPricing(values: Record<string, unknown>, context: z.RefinementCtx) {
   const hasPricingConfiguration = PRICING_VALUE_FIELDS.some((field) => values[field] != null)
@@ -256,9 +311,17 @@ function validateLabelBarcodeSource(
 }
 
 export const productPricingPreviewQuerySchema = z.object({ installmentMonths: z.coerce.number().int().min(1).max(120).optional() });
+const pricingCardQueryFields = {
+  templateId: z.string().uuid().optional(),
+  validUntil: z.string().date().optional(),
+  featureCodes: z.string().optional().transform((value) => value === undefined ? undefined : [
+    ...new Set(value.split(',').map((code) => code.trim().toLowerCase()).filter(Boolean)),
+  ]).pipe(z.array(z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)).max(MAX_PRODUCT_FEATURES).optional()),
+};
 export const productLabelQuerySchema = z.object({
   includePriceCode: z.enum(['true', 'false']).optional().transform((value) => value === 'true'),
   includePrice: z.enum(['true', 'false']).optional().transform((value) => value === 'true'),
+  ...pricingCardQueryFields,
 });
 
 /**
@@ -279,10 +342,38 @@ export const productLabelsQuerySchema = z.object({
   includePriceCode: z.enum(['true', 'false']).optional().transform((value) => value === 'true'),
   includePrice: z.enum(['true', 'false']).optional().transform((value) => value === 'true'),
   includeArchived: z.enum(['true', 'false']).optional().transform((value) => value === 'true'),
+  ...pricingCardQueryFields,
 });
+export const productPricingCardQuerySchema = productLabelQuerySchema;
+export const productPricingCardsQuerySchema = productLabelsQuerySchema;
+export const productPricingCardIndexQuerySchema = z.object({
+  ids: productLabelsQuerySchema.shape.ids,
+});
+
+const labelSecretOverrideFields = {
+  includePriceCode: z.boolean(),
+  includePrice: z.boolean(),
+  hiddenPricingPresetId: z.string().uuid(),
+  encodingPresetId: z.string().uuid(),
+  manualDiscountStages: z.array(z.number().int().min(1).max(99)).min(1).max(12).optional(),
+  accountPassword: z.string().min(1, 'Account password is required'),
+};
+
+export const productLabelOverrideSchema = z.object(labelSecretOverrideFields).strict();
+export const productPricingCardOverrideSchema = productLabelOverrideSchema.extend({
+  templateId: z.string().uuid(),
+  validUntil: z.string().date().optional(),
+  featureCodes: z.array(z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)).max(MAX_PRODUCT_FEATURES).optional(),
+}).strict();
+export const productLabelsOverrideSchema = z.object({
+  ids: z.array(uuidSchema).min(1).max(MAX_LABEL_SELECTION),
+  includeArchived: z.boolean().default(false),
+  ...labelSecretOverrideFields,
+}).strict();
 
 export type CreateProductInput = z.infer<typeof createProductSchema>;
 export type UpdateProductInput = z.infer<typeof updateProductSchema>;
+export type UpdateProductFeaturesInput = z.infer<typeof updateProductFeaturesSchema>;
 export type ProductActionInput = z.infer<typeof productActionSchema>;
 export type NormalizeProductBrandsInput = z.infer<typeof normalizeProductBrandsSchema>;
 export type ProductParamsInput = z.infer<typeof productParamsSchema>;
@@ -293,7 +384,13 @@ export type ProductScanQueryInput = z.infer<typeof productScanQuerySchema>;
 export type ProductServiceJobsQueryInput = z.infer<typeof productServiceJobsQuerySchema>;
 export type UpdateProductPricingInput = z.infer<typeof updateProductPricingSchema>;
 export type ProductPricingPreviewQueryInput = z.infer<typeof productPricingPreviewQuerySchema>;
+export type ProductLabelOverrideInput = z.infer<typeof productLabelOverrideSchema>;
+export type ProductPricingCardOverrideInput = z.infer<typeof productPricingCardOverrideSchema>;
+export type ProductLabelsOverrideInput = z.infer<typeof productLabelsOverrideSchema>;
 export type UpdateProductSkuInput = z.infer<typeof updateProductSkuSchema>;
 export type UpdateProductStockInput = z.infer<typeof updateProductStockSchema>;
 export type ProductLabelQueryInput = z.infer<typeof productLabelQuerySchema>;
 export type ProductLabelsQueryInput = z.infer<typeof productLabelsQuerySchema>;
+export type ProductPricingCardQueryInput = z.infer<typeof productPricingCardQuerySchema>;
+export type ProductPricingCardsQueryInput = z.infer<typeof productPricingCardsQuerySchema>;
+export type ProductPricingCardIndexQueryInput = z.infer<typeof productPricingCardIndexQuerySchema>;

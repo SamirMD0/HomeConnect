@@ -5,6 +5,7 @@ const { prismaMock } = vi.hoisted(() => ({
     debt: { findMany: vi.fn() },
     installmentPlan: { findMany: vi.fn() },
     payment: { findMany: vi.fn() },
+    salesReturn: { findMany: vi.fn() },
   },
 }));
 
@@ -22,6 +23,7 @@ describe('MonthlyDebtsRepository range cutoff', () => {
     prismaMock.debt.findMany.mockResolvedValue([]);
     prismaMock.installmentPlan.findMany.mockResolvedValue([]);
     prismaMock.payment.findMany.mockResolvedValue([]);
+    prismaMock.salesReturn.findMany.mockResolvedValue([]);
   });
 
   it('excludes user-dated payments after the explicit to date', async () => {

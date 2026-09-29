@@ -9,6 +9,7 @@ import { differenceInDays } from '../shared/dashboard-range';
 import { ServiceAnalyticsRepository } from '../service/service-analytics.repository';
 import { ServiceAnalyticsService } from '../service/service-analytics.service';
 import { SupplierAnalyticsService } from '../supplier/supplier-analytics.service';
+import { SupplierPayablesService } from '../../suppliers/payables/supplier-payables.service';
 import type { DashboardAlert, DashboardAlertsData } from './dashboard-alerts.types';
 
 export class DashboardAlertsService {
@@ -17,12 +18,13 @@ export class DashboardAlertsService {
     options: { includeArchived: boolean; includeAdminData: boolean; businessDate?: string }
   ): Promise<DashboardAlertsData> {
     const businessDate = options.businessDate ?? todayInBusinessTimezone();
-    const [customer, supplier, service, productRecords, serviceJobs] = await Promise.all([
+    const [customer, supplier, service, productRecords, serviceJobs, payables] = await Promise.all([
       CustomerAnalyticsService.get(range, { ...options, businessDate }),
       SupplierAnalyticsService.get(range, options.includeArchived, businessDate),
       ServiceAnalyticsService.get(range, businessDate),
       ProductAnalyticsRepository.load(),
       ServiceAnalyticsRepository.load(),
+      options.includeAdminData ? SupplierPayablesService.get(businessDate) : Promise.resolve(null),
     ]);
     const alerts: DashboardAlert[] = [];
     const overdueAmount = sumMoney(
@@ -47,6 +49,23 @@ export class DashboardAlertsService {
       count: supplier.totals.suppliersWithBalance, amount: supplier.totals.owed, route: '/supplier-ledger',
       offenders: supplier.topBalances.slice(0, 3).map((row) => ({ id: row.supplierId, label: row.supplierName, amount: row.balance, route: `/suppliers/${row.supplierId}` })),
     });
+    if (payables) {
+      const overdue = payables.rows.filter((r) => r.status === 'OVERDUE');
+      push(alerts, {
+        key: 'overdue-supplier-payables', severity: 'critical',
+        label: { en: 'Overdue supplier payables', ar: 'مستحقات الموردين المتأخرة' },
+        count: payables.summary.overdueCount, amount: payables.summary.totalOverdue,
+        route: '/reports/supplier-aging',
+        offenders: overdue.slice(0, 3).map((r, index) => ({ id: r.id, label: `${index === 0 ? 'Oldest overdue / أقدم مستحق · ' : ''}${r.supplier.name} · ${r.dueDate} · ${r.daysOverdue} days overdue`, amount: r.remainingAmount, route: `/suppliers/${r.supplier.id}` })),
+      });
+      push(alerts, {
+        key: 'supplier-payables-due-soon', severity: 'warning',
+        label: { en: `Supplier payables due within ${payables.summary.dueSoonDays} days`, ar: `مستحقات الموردين خلال ${payables.summary.dueSoonDays} أيام` },
+        count: payables.summary.dueSoonCount, amount: payables.summary.dueSoonAmount,
+        route: '/reports/supplier-aging',
+        offenders: payables.rows.filter((r) => r.status === 'DUE_SOON').slice(0, 3).map((r) => ({ id: r.id, label: `${r.supplier.name} · ${r.dueDate}`, amount: r.remainingAmount, route: `/suppliers/${r.supplier.id}` })),
+      });
+    }
     push(alerts, {
       key: 'aging-service-jobs', severity: 'serious', label: { en: 'Aging service jobs', ar: 'طلبات صيانة متأخرة' },
       count: service.totals.aging, route: '/service?aging=true',

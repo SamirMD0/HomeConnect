@@ -57,10 +57,11 @@ export class SuppliersService {
   static async summary(id: string) {
     if (!(await SuppliersRepository.findById(id))) throw new NotFoundError('Supplier not found');
     const rows = await SuppliersRepository.summaryRows(id);
-    const increase = rows.filter((r) => r.direction === 'INCREASE_OWED').map((r) => r._sum.amount ?? ZERO_MONEY);
-    const decrease = rows.filter((r) => r.direction === 'DECREASE_OWED').map((r) => r._sum.amount ?? ZERO_MONEY);
-    const paid = rows.filter((r) => r.type === 'SUPPLIER_PAYMENT').map((r) => r._sum.amount ?? ZERO_MONEY);
-    const credit = rows.filter((r) => r.type === 'SUPPLIER_CREDIT').map((r) => r._sum.amount ?? ZERO_MONEY);
+    const base = (row: typeof rows[number]) => row._sum.baseAmount ?? ZERO_MONEY;
+    const increase = rows.filter((r) => r.direction === 'INCREASE_OWED').map(base);
+    const decrease = rows.filter((r) => r.direction === 'DECREASE_OWED').map(base);
+    const paid = rows.filter((r) => r.type === 'SUPPLIER_PAYMENT').map(base);
+    const credit = rows.filter((r) => r.type === 'SUPPLIER_CREDIT').map(base);
     return {
       totalOwed: moneyToApiString(sumMoney(increase)), totalPaid: moneyToApiString(sumMoney(paid)),
       totalCredit: moneyToApiString(sumMoney(credit)),

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Modal } from '../../../components/ui/Modal';
 import { useAuth } from '../../../hooks/useAuth';
 import { useCustomerFinancialSummary } from '../hooks/useCustomerFinancialSummary';
@@ -37,11 +38,10 @@ import { CustomerActivityTimeline } from '../../../pages/customers/components/Cu
 import { CustomerAttentionPanel } from '../../../pages/customers/components/CustomerAttentionPanel';
 import { CustomerMonthStatusCard } from '../../../pages/customers/components/CustomerMonthStatusCard';
 
-export type FinancialProfileTab = 'overview' | 'debts' | 'prepaid' | 'plans' | 'payments' | 'overdue' | 'legacy' | 'activity';
+export type FinancialProfileTab = 'overview' | 'debts' | 'prepaid' | 'plans' | 'payments' | 'overdue' | 'activity';
 
 interface CustomerFinancialProfileProps {
   customerId: string;
-  legacyLedger: React.ReactNode;
   activeTab?: FinancialProfileTab;
   onTabChange?: (tab: FinancialProfileTab) => void;
 }
@@ -53,13 +53,11 @@ const tabs: Array<{ id: FinancialProfileTab; label: string }> = [
   { id: 'plans', label: 'Installment Plans' },
   { id: 'payments', label: 'Payments' },
   { id: 'overdue', label: 'Overdue' },
-  { id: 'legacy', label: 'Legacy Ledger' },
   { id: 'activity', label: 'Activity / النشاط' },
 ];
 
 export const CustomerFinancialProfile: React.FC<CustomerFinancialProfileProps> = ({
   customerId,
-  legacyLedger,
   activeTab: controlledTab,
   onTabChange,
 }) => {
@@ -129,6 +127,14 @@ export const CustomerFinancialProfile: React.FC<CustomerFinancialProfileProps> =
           <p className="mt-1 text-sm text-slate-500">Current balances, obligations, and payments.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
+          {data.businessDate && (
+            <Link
+              to={`/customers/${customerId}/statement?from=${data.businessDate.slice(0, 4)}-01-01&to=${data.businessDate}`}
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              Print statement / طباعة كشف الحساب
+            </Link>
+          )}
           {canMutateFinancialRecords && (
             <button
               type="button"
@@ -189,7 +195,6 @@ export const CustomerFinancialProfile: React.FC<CustomerFinancialProfileProps> =
             data={data}
             onOpenDebt={setSelectedDebtId}
             onOpenPlan={setSelectedPlanId}
-            legacyLedger={legacyLedger}
             canMutate={canMutateFinancialRecords}
             onRecordDebtPayment={setDebtForPayment}
             onCancelDebt={setDebtForCancellation}
@@ -368,7 +373,6 @@ interface FinancialTabPanelProps {
   data: CustomerFinancialSummary;
   onOpenDebt: (debtId: string) => void;
   onOpenPlan: (planId: string) => void;
-  legacyLedger: React.ReactNode;
   canMutate: boolean;
   onRecordDebtPayment: (debt: DebtSummaryItem) => void;
   onCancelDebt: (debt: DebtSummaryItem) => void;
@@ -383,7 +387,6 @@ const FinancialTabPanel: React.FC<FinancialTabPanelProps> = ({
   data,
   onOpenDebt,
   onOpenPlan,
-  legacyLedger,
   canMutate,
   onRecordDebtPayment,
   onCancelDebt,
@@ -438,22 +441,6 @@ const FinancialTabPanel: React.FC<FinancialTabPanelProps> = ({
         onOpenDebt={onOpenDebt}
         onOpenPlan={onOpenPlan}
       />
-    );
-  }
-
-  if (activeTab === 'legacy') {
-    return (
-      <section aria-labelledby="legacy-ledger-heading">
-        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          <h2 id="legacy-ledger-heading" className="font-semibold">
-            Legacy transaction ledger
-          </h2>
-          <p className="mt-1">
-            This section is kept for existing transaction history. It is not included in the financial-summary totals.
-          </p>
-        </div>
-        {legacyLedger}
-      </section>
     );
   }
 

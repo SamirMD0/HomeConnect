@@ -1,13 +1,19 @@
 import {
+  Currency,
+  DeliveryTaxTreatment,
   InstallmentPlanFrequency,
   SalesChannel,
   SalesOrderFulfillmentStatus,
   SalesOrderPaymentStatus,
   SalesOrderSettlement,
+  SalesReturnRefundMethod,
+  SalesReturnStockDisposition,
 } from '@prisma/client';
 import { z } from 'zod';
 import { userTextSchema } from '../../../validators/user-text';
 import { databaseUuidSchema } from '../../../validators/database-uuid';
+
+import { creditLimitOverrideFields } from '../../financial/credit-limits/credit-limit.validator';
 
 const uuidSchema = databaseUuidSchema();
 const dateSchema = z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must use YYYY-MM-DD format');
@@ -28,6 +34,8 @@ const itemSchema = z.object({
   quantity: z.coerce.number().int().min(1).max(999),
   unitPrice: positiveMoneySchema,
   discountAmount: moneySchema.optional().nullable(),
+  taxProfileId: uuidSchema.optional().nullable(),
+  priceIncludesVat: z.boolean().optional(),
   notes: optionalText('Item notes', 1000),
 }).superRefine(validateItemIdentity);
 
@@ -38,6 +46,10 @@ function validateItemIdentity(value: { productId?: string | null; manualProductN
 }
 
 const createOrderObject = z.object({
+  ...creditLimitOverrideFields,
+  idempotencyKey: z.string().trim().min(8).max(128).regex(/^[A-Za-z0-9._:-]+$/).optional(),
+  currency: z.nativeEnum(Currency).optional(),
+  exchangeRate: z.string().trim().regex(/^[0-9]+(?:\.[0-9]{1,6})?$/).optional(),
   customerId: uuidSchema.optional().nullable(),
   salesChannel: z.nativeEnum(SalesChannel),
   orderDate: dateSchema,
@@ -48,6 +60,8 @@ const createOrderObject = z.object({
     SalesOrderFulfillmentStatus.DELIVERED,
   ]).default(SalesOrderFulfillmentStatus.CONFIRMED),
   deliveryFee: moneySchema.optional().nullable(),
+  deliveryTaxTreatment: z.nativeEnum(DeliveryTaxTreatment).default(DeliveryTaxTreatment.STANDARD),
+  deliveryTaxProfileId: uuidSchema.optional().nullable(),
   paidAmount: moneySchema.default('0.00'),
   debtDueDate: dateSchema.optional().nullable(),
   deliveryAddressSnapshot: optionalText('Delivery address', 1000),
@@ -57,41 +71,61 @@ const createOrderObject = z.object({
 });
 
 export const createSalesOrderSchema = createOrderObject.superRefine((value, context) => {
+  if (Number(value.paidAmount) > 0 && !value.idempotencyKey) {
+    context.addIssue({ code: 'custom', path: ['idempotencyKey'], message: 'An idempotency key is required for a cash receipt' });
+  }
+  if (value.currency === Currency.LBP && [value.paidAmount, value.deliveryFee, ...value.items.flatMap((i) => [i.unitPrice, i.discountAmount])].some((v) => v && !Number.isInteger(Number(v)))) {
+    context.addIssue({ code: 'custom', path: ['currency'], message: 'LBP amounts must be whole numbers' });
+  }
   if (value.salesChannel === SalesChannel.SHOP_DIRECT && (value.deliveryDate || value.deliveryFee)) {
     context.addIssue({ code: 'custom', path: ['deliveryDate'], message: 'Shop-direct orders cannot contain delivery date or fee' });
   }
   if (value.fulfillmentStatus === SalesOrderFulfillmentStatus.DELIVERED && value.salesChannel !== SalesChannel.SHOP_DIRECT) {
     context.addIssue({ code: 'custom', path: ['fulfillmentStatus'], message: 'Only shop-direct orders may be created as delivered' });
   }
+  if (value.deliveryTaxTreatment === DeliveryTaxTreatment.EXEMPT && value.deliveryTaxProfileId) {
+    context.addIssue({ code: 'custom', path: ['deliveryTaxProfileId'], message: 'Exempt delivery cannot use a tax profile' });
+  }
 });
 
 export const updateSalesOrderSchema = z.object({
+  ...creditLimitOverrideFields,
   customerId: uuidSchema.optional().nullable(),
   salesChannel: z.nativeEnum(SalesChannel).optional(),
   orderDate: dateSchema.optional(),
   deliveryDate: dateSchema.optional().nullable(),
   deliveryFee: moneySchema.optional().nullable(),
+  deliveryTaxTreatment: z.nativeEnum(DeliveryTaxTreatment).optional(),
+  deliveryTaxProfileId: uuidSchema.optional().nullable(),
   debtDueDate: dateSchema.optional().nullable(),
   deliveryAddressSnapshot: optionalText('Delivery address', 1000),
   deliveryNotes: optionalText('Delivery notes', 1000),
   notes: optionalText('Notes', 1000),
   reason: reasonSchema.optional(),
   accountPassword: z.string().min(1).optional(),
+}).superRefine((value, context) => {
+  if (value.deliveryTaxTreatment === DeliveryTaxTreatment.EXEMPT && value.deliveryTaxProfileId) {
+    context.addIssue({ code: 'custom', path: ['deliveryTaxProfileId'], message: 'Exempt delivery cannot use a tax profile' });
+  }
 });
 
 export const addSalesOrderItemSchema = itemSchema.and(z.object({
+  ...creditLimitOverrideFields,
   debtDueDate: dateSchema.optional().nullable(),
   reason: reasonSchema.optional(),
   accountPassword: z.string().min(1).optional(),
 }));
 
 export const updateSalesOrderItemSchema = z.object({
+  ...creditLimitOverrideFields,
   productId: uuidSchema.optional().nullable(),
   manualProductName: userTextSchema({ field: 'Manual product name', min: 2, max: 200 }).optional().nullable(),
   manualProductModel: optionalText('Manual product model', 120),
   quantity: z.coerce.number().int().min(1).max(999).optional(),
   unitPrice: positiveMoneySchema.optional(),
   discountAmount: moneySchema.optional().nullable(),
+  taxProfileId: uuidSchema.optional().nullable(),
+  priceIncludesVat: z.boolean().optional(),
   debtDueDate: dateSchema.optional().nullable(),
   notes: optionalText('Item notes', 1000),
   reason: reasonSchema.optional(),
@@ -103,7 +137,35 @@ export const salesOrderActionSchema = z.object({
   accountPassword: z.string().min(1, 'Account password is required'),
 });
 
+export const returnSalesOrderSchema = z.object({
+  idempotencyKey: z.string().trim().min(8).max(128).regex(/^[A-Za-z0-9._:-]+$/),
+  items: z.array(z.object({
+    salesOrderItemId: uuidSchema,
+    quantity: z.coerce.number().int().min(1).max(999),
+    stockDisposition: z.nativeEnum(SalesReturnStockDisposition),
+    conditionNote: optionalText('Condition note', 1000),
+  }).strict()).min(1).max(50),
+  returnDeliveryFee: z.boolean().default(false),
+  refundMethod: z.nativeEnum(SalesReturnRefundMethod),
+  reason: reasonSchema,
+  overrideReturnWindow: z.boolean().default(false),
+  windowOverrideReason: userTextSchema({ field: 'Return-window override reason', min: 5, max: 1000 }).optional().nullable(),
+  accountPassword: z.string().min(1, 'Account password is required'),
+}).strict().superRefine((value, context) => {
+  const ids = value.items.map((item) => item.salesOrderItemId);
+  if (new Set(ids).size !== ids.length) {
+    context.addIssue({ code: 'custom', path: ['items'], message: 'Return items must not contain duplicates' });
+  }
+  if (value.overrideReturnWindow && !value.windowOverrideReason) {
+    context.addIssue({ code: 'custom', path: ['windowOverrideReason'], message: 'Override reason is required' });
+  }
+  if (!value.overrideReturnWindow && value.windowOverrideReason) {
+    context.addIssue({ code: 'custom', path: ['windowOverrideReason'], message: 'Override reason is only allowed with an override' });
+  }
+});
+
 export const salesOrderItemActionSchema = z.object({
+  ...creditLimitOverrideFields,
   debtDueDate: dateSchema.optional().nullable(),
   reason: reasonSchema.optional(),
   accountPassword: z.string().min(1).optional(),
@@ -137,6 +199,8 @@ export const restoreSalesOrderSchema = salesOrderActionSchema.extend({
 });
 
 export const changeSalesOrderPaymentSchema = z.object({
+  ...creditLimitOverrideFields,
+  idempotencyKey: z.string().trim().min(8).max(128).regex(/^[A-Za-z0-9._:-]+$/).optional(),
   paidAmount: moneySchema,
   debtDueDate: dateSchema.optional().nullable(),
   reason: reasonSchema,
@@ -144,6 +208,7 @@ export const changeSalesOrderPaymentSchema = z.object({
 });
 
 export const createSalesOrderDebtSchema = z.object({
+  ...creditLimitOverrideFields,
   dueDate: dateSchema,
   description: userTextSchema({ field: 'Description', min: 1, max: 200 }).optional(),
   notes: optionalText('Notes', 1000),
@@ -202,6 +267,7 @@ export type UpdateSalesOrderInput = z.infer<typeof updateSalesOrderSchema>;
 export type AddSalesOrderItemInput = z.infer<typeof addSalesOrderItemSchema>;
 export type UpdateSalesOrderItemInput = z.infer<typeof updateSalesOrderItemSchema>;
 export type SalesOrderActionInput = z.infer<typeof salesOrderActionSchema>;
+export type ReturnSalesOrderInput = z.infer<typeof returnSalesOrderSchema>;
 export type SalesOrderItemActionInput = z.infer<typeof salesOrderItemActionSchema>;
 export type DeductSalesOrderStockInput = z.infer<typeof deductSalesOrderStockSchema>;
 export type RestoreSalesOrderStockInput = z.infer<typeof restoreSalesOrderStockSchema>;

@@ -2,7 +2,10 @@ import bcrypt from 'bcrypt';
 import { Role } from '@prisma/client';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { prisma } from '../lib/prisma';
+import { clearUserSessionStatusCache } from '../lib/user-session-status';
 import { AuthService } from './auth.service';
+
+vi.unmock('../lib/user-session-status');
 
 vi.mock('bcrypt', () => ({
   default: {
@@ -37,6 +40,7 @@ const activeAdmin = {
 describe('AuthService setup account', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    clearUserSessionStatusCache();
     vi.mocked(bcrypt.hash).mockResolvedValue('hashed-new-password' as never);
   });
 
@@ -142,5 +146,25 @@ describe('AuthService setup account', () => {
         role: Role.EMPLOYEE,
       },
     });
+  });
+});
+
+describe('AuthService refreshToken', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    clearUserSessionStatusCache();
+  });
+
+  it('rejects refresh for a deactivated user', async () => {
+    const { refreshToken } = AuthService.generateTokens('employee-1', Role.EMPLOYEE);
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({
+      role: Role.EMPLOYEE,
+      isActive: false,
+      deletedAt: null,
+    } as never);
+
+    await expect(AuthService.refreshToken(refreshToken)).rejects.toThrow(
+      'Invalid or expired refresh token',
+    );
   });
 });

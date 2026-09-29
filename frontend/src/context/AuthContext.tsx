@@ -96,7 +96,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
         setToken(token);
 
-        const response = await api.get('/auth/me');
+        const response = await api.get('/auth/me', { timeout: 10_000 });
         if (response.data.success) {
           setUser(response.data.data);
         }

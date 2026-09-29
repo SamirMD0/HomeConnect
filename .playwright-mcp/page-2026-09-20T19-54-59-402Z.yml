@@ -1,0 +1,165 @@
+- generic [active] [ref=f1e1]:
+  - generic [ref=f1e2]:
+    - heading "TV Large × TCL 50-inch QLED TV" [level=3] [ref=f1e3]
+    - article [ref=f1e4]:
+      - generic [ref=f1e5]:
+        - img "Home Connect logo" [ref=f1e6]
+        - generic [ref=f1e7]: TCL
+      - generic [ref=f1e9]:
+        - generic [ref=f1e10]:
+          - heading "TCL 50” QLED 4K Smart TV" [level=2] [ref=f1e11]
+          - paragraph [ref=f1e12]:
+            - text: "Model:"
+            - strong [ref=f1e13]: 50C655
+          - paragraph [ref=f1e14]: W 1112 mm × H 646 mm × D 72 mm
+          - generic [ref=f1e15]:
+            - generic [ref=f1e16]:
+              - term [ref=f1e17]: Screen size
+              - definition [ref=f1e18]: 50 inch
+            - generic [ref=f1e19]:
+              - term [ref=f1e20]: Resolution
+              - definition [ref=f1e21]: 3840 × 2160
+            - generic [ref=f1e22]:
+              - term [ref=f1e23]: Refresh rate
+              - definition [ref=f1e24]: 60 Hz
+        - img "TCL 50” QLED 4K Smart TV" [ref=f1e25]
+      - generic "Features" [ref=f1e26]:
+        - strong [ref=f1e32]: QLED
+        - strong [ref=f1e38]: 4K UHD
+        - strong [ref=f1e44]: Google TV
+        - strong [ref=f1e50]: Dolby Vision
+      - generic [ref=f1e51]:
+        - generic [ref=f1e52]:
+          - paragraph [ref=f1e53]: $1,299.00
+          - paragraph [ref=f1e54]:
+            - text: "Valid until:"
+            - time [ref=f1e55]: 31 Oct 2026
+        - generic [ref=f1e56]:
+          - img "Barcode 5901292512346" [ref=f1e57]
+          - paragraph [ref=f1e58]:
+            - text: "SKU:"
+            - strong [ref=f1e59]: HC-000501-K890Z
+      - generic [ref=f1e60]: Your home, connected.
+  - generic [ref=f1e61]:
+    - heading "Appliance Shelf × LG 9 kg washer" [level=3] [ref=f1e62]
+    - article [ref=f1e63]:
+      - generic [ref=f1e64]:
+        - img "Home Connect logo" [ref=f1e65]
+        - generic [ref=f1e66]: LG
+      - generic [ref=f1e69]:
+        - heading "LG 9 kg Front-Load Washing Machine" [level=2] [ref=f1e70]
+        - paragraph [ref=f1e71]:
+          - text: "Model:"
+          - strong [ref=f1e72]: F4V5VYP2T
+        - paragraph [ref=f1e73]: W 600 mm × H 850 mm × D 565 mm
+        - generic [ref=f1e74]:
+          - generic [ref=f1e75]:
+            - term [ref=f1e76]: Capacity
+            - definition [ref=f1e77]: 9 kg
+          - generic [ref=f1e78]:
+            - term [ref=f1e79]: Spin speed
+            - definition [ref=f1e80]: 1400 rpm
+          - generic [ref=f1e81]:
+            - term [ref=f1e82]: Energy class
+            - definition [ref=f1e83]: A
+      - generic "Features" [ref=f1e84]:
+        - strong [ref=f1e90]: AI Direct Drive
+        - strong [ref=f1e96]: Steam+
+        - strong [ref=f1e102]: ThinQ Wi-Fi
+        - generic [ref=f1e107]:
+          - strong [ref=f1e108]: Low noise
+          - generic [ref=f1e109]: 53 dB
+      - generic [ref=f1e110]:
+        - generic [ref=f1e111]:
+          - paragraph [ref=f1e112]: $849.50 USD
+          - paragraph [ref=f1e113]:
+            - text: "Valid until:"
+            - time [ref=f1e114]: 15/11/2026
+        - generic [ref=f1e115]:
+          - img "Barcode HC-000902" [ref=f1e116]
+          - paragraph [ref=f1e117]:
+            - text: "SKU:"
+            - strong [ref=f1e118]: HC-000902
+      - generic [ref=f1e119]: Your home, connected.
+  - generic [ref=f1e120]:
+    - heading "price prominence > renders TV Large at the normal tier" [level=3] [ref=f1e121]
+    - article [ref=f1e122]:
+      - generic [ref=f1e123]:
+        - img "Home Connect logo" [ref=f1e124]
+        - generic [ref=f1e125]: TCL
+      - generic [ref=f1e127]:
+        - generic [ref=f1e128]:
+          - heading "TCL 50” QLED 4K Smart TV" [level=2] [ref=f1e129]
+          - paragraph [ref=f1e130]:
+            - text: "Model:"
+            - strong [ref=f1e131]: 50C655
+          - paragraph [ref=f1e132]: W 1112 mm × H 646 mm × D 72 mm
+          - generic [ref=f1e133]:
+            - generic [ref=f1e134]:
+              - term [ref=f1e135]: Screen size
+              - definition [ref=f1e136]: 50 inch
+            - generic [ref=f1e137]:
+              - term [ref=f1e138]: Resolution
+              - definition [ref=f1e139]: 3840 × 2160
+            - generic [ref=f1e140]:
+              - term [ref=f1e141]: Refresh rate
+              - definition [ref=f1e142]: 60 Hz
+        - img "TCL 50” QLED 4K Smart TV" [ref=f1e143]
+      - generic "Features" [ref=f1e144]:
+        - strong [ref=f1e150]: QLED
+        - strong [ref=f1e156]: 4K UHD
+        - strong [ref=f1e162]: Google TV
+        - strong [ref=f1e168]: Dolby Vision
+      - generic [ref=f1e169]:
+        - generic [ref=f1e170]:
+          - paragraph [ref=f1e171]: $1,299.00
+          - paragraph [ref=f1e172]:
+            - text: "Valid until:"
+            - time [ref=f1e173]: 31 Oct 2026
+        - generic [ref=f1e174]:
+          - img "Barcode 5901292512346" [ref=f1e175]
+          - paragraph [ref=f1e176]:
+            - text: "SKU:"
+            - strong [ref=f1e177]: HC-000501-K890Z
+      - generic [ref=f1e178]: Your home, connected.
+  - generic [ref=f1e179]:
+    - heading "price prominence > renders TV Large at the large tier" [level=3] [ref=f1e180]
+    - article [ref=f1e181]:
+      - generic [ref=f1e182]:
+        - img "Home Connect logo" [ref=f1e183]
+        - generic [ref=f1e184]: TCL
+      - generic [ref=f1e186]:
+        - generic [ref=f1e187]:
+          - heading "TCL 50” QLED 4K Smart TV" [level=2] [ref=f1e188]
+          - paragraph [ref=f1e189]:
+            - text: "Model:"
+            - strong [ref=f1e190]: 50C655
+          - paragraph [ref=f1e191]: W 1112 mm × H 646 mm × D 72 mm
+          - generic [ref=f1e192]:
+            - generic [ref=f1e193]:
+              - term [ref=f1e194]: Screen size
+              - definition [ref=f1e195]: 50 inch
+            - generic [ref=f1e196]:
+              - term [ref=f1e197]: Resolution
+              - definition [ref=f1e198]: 3840 × 2160
+            - generic [ref=f1e199]:
+              - term [ref=f1e200]: Refresh rate
+              - definition [ref=f1e201]: 60 Hz
+        - img "TCL 50” QLED 4K Smart TV" [ref=f1e202]
+      - generic "Features" [ref=f1e203]:
+        - strong [ref=f1e209]: QLED
+        - strong [ref=f1e215]: 4K UHD
+        - strong [ref=f1e221]: Google TV
+        - strong [ref=f1e227]: Dolby Vision
+      - generic [ref=f1e228]:
+        - generic [ref=f1e229]:
+          - paragraph [ref=f1e230]: $1,299.00
+          - paragraph [ref=f1e231]:
+            - text: "Valid until:"
+            - time [ref=f1e232]: 31 Oct 2026
+        - generic [ref=f1e233]:
+          - img "Barcode 5901292512346" [ref=f1e234]
+          - paragraph [ref=f1e235]:
+            - text: "SKU:"
+            - strong [ref=f1e236]: HC-000501-K890Z
+      - generic [ref=f1e237]: Your home, connected.

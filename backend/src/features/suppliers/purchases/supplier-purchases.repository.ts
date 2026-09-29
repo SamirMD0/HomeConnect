@@ -1,8 +1,8 @@
-import { Prisma, SupplierTransactionStatus, SupplierTransactionType } from '@prisma/client';
+import { Prisma, SupplierAuditAction, SupplierTransactionStatus, SupplierTransactionType } from '@prisma/client';
 import { prisma } from '../../../lib/prisma';
 
 export const purchaseLineInclude = {
-  product: { select: { id: true, sku: true, name: true, model: true, trackStock: true, stockQuantity: true } },
+  product: { select: { id: true, sku: true, name: true, model: true, barcode: true, brand: true, price: true, trackStock: true, stockQuantity: true } },
   receivingItem: { select: { id: true, receivingId: true, quantity: true, stockMovementId: true } },
 } satisfies Prisma.SupplierPurchaseLineInclude;
 
@@ -18,13 +18,40 @@ export const supplierPurchaseInclude = {
   purchaseLines: { include: purchaseLineInclude, orderBy: [{ position: 'asc' as const }] },
 } satisfies Prisma.SupplierTransactionInclude;
 
+const supplierPurchaseIdempotencyInclude = {
+  ...supplierPurchaseInclude,
+  audits: {
+    where: { action: SupplierAuditAction.CREATE },
+    select: { afterValues: true },
+    orderBy: [{ changedAt: 'asc' as const }, { id: 'asc' as const }],
+    take: 1,
+  },
+} satisfies Prisma.SupplierTransactionInclude;
+
 export class SupplierPurchasesRepository {
-  static createLine(data: Prisma.SupplierPurchaseLineUncheckedCreateInput, tx: Prisma.TransactionClient) {
-    return tx.supplierPurchaseLine.create({ data });
+  static createLine(
+    data: Omit<Prisma.SupplierPurchaseLineUncheckedCreateInput, 'baseUnitPrice' | 'baseLineTotal'> &
+      Partial<Pick<Prisma.SupplierPurchaseLineUncheckedCreateInput, 'baseUnitPrice' | 'baseLineTotal'>>,
+    tx: Prisma.TransactionClient
+  ) {
+    return tx.supplierPurchaseLine.create({
+      data: {
+        ...data,
+        baseUnitPrice: data.baseUnitPrice ?? data.unitPrice,
+        baseLineTotal: data.baseLineTotal ?? data.lineTotal,
+      },
+    });
   }
 
   static findById(id: string, tx?: Prisma.TransactionClient) {
     return (tx ?? prisma).supplierTransaction.findUnique({ where: { id }, include: supplierPurchaseInclude });
+  }
+
+  static findByIdempotencyKey(tx: Prisma.TransactionClient, idempotencyKey: string) {
+    return tx.supplierTransaction.findUnique({
+      where: { idempotencyKey },
+      include: supplierPurchaseIdempotencyInclude,
+    });
   }
 
   /**
@@ -59,7 +86,7 @@ export class SupplierPurchasesRepository {
         status: SupplierTransactionStatus.ACTIVE,
         receiptNumber: { equals: receiptNumber, mode: 'insensitive' },
       },
-      select: { id: true, receiptNumber: true, amount: true, transactionDate: true, description: true },
+      select: { id: true, receiptNumber: true, amount: true, currency: true, transactionDate: true, description: true },
       orderBy: [{ transactionDate: 'desc' }, { createdAt: 'desc' }],
       take: 5,
     });

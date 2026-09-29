@@ -53,7 +53,7 @@ export class UsersController {
         passwordString: validatedData.password,
         role: validatedData.role,
         isActive: validatedData.isActive,
-      });
+      }, req.user!.userId);
 
       res.status(200).json({ success: true, data: result });
     } catch (error: any) {
@@ -67,7 +67,7 @@ export class UsersController {
 
   static async deactivate(req: Request, res: Response, next: NextFunction) {
     try {
-      const result = await UsersService.deactivateUser(req.params.id as string);
+      const result = await UsersService.deactivateUser(req.params.id as string, req.user!.userId);
       res.status(200).json({ success: true, data: result });
     } catch (error) {
       next(error);

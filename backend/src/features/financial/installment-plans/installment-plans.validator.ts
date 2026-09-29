@@ -1,4 +1,5 @@
 import {
+  Currency,
   FinancialCorrectionSourceScreen,
   InstallmentPlanFrequency,
   InstallmentPlanStatus,
@@ -29,6 +30,7 @@ export const installmentPlanParamsSchema = z.object({
 export const createInstallmentPlanSchema = z
   .object({
     totalAmount: moneyStringSchema,
+    currency: z.nativeEnum(Currency).default(Currency.USD),
     description: userTextSchema({ field: 'Description', min: 1, max: 200 }),
     startDate: businessDateSchema,
     installmentCount: z.coerce.number().int().positive().max(120, 'Installment count is too large'),
@@ -46,6 +48,10 @@ export const createInstallmentPlanSchema = z
   })
   .strict()
   .superRefine((value, context) => {
+    if (value.currency === Currency.LBP) {
+      rejectFractionalLbp(value.totalAmount, ['totalAmount'], context);
+      value.schedule?.forEach((row, index) => rejectFractionalLbp(row.amountDue, ['schedule', index, 'amountDue'], context));
+    }
     if (value.schedule && value.schedule.length !== value.installmentCount) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
@@ -70,13 +76,17 @@ export const listCustomerInstallmentPlansQuerySchema = z.object({
 export const createInstallmentPlanPaymentSchema = z
   .object({
     amount: moneyStringSchema,
+    currency: z.nativeEnum(Currency).default(Currency.USD),
     paymentDate: businessDateSchema,
     paymentMethod: z.nativeEnum(PaymentMethod).default(PaymentMethod.CASH),
     reference: userTextSchema({ field: 'Reference', max: 100 }).optional().nullable(),
     notes: userTextSchema({ field: 'Notes', max: 1000 }).optional().nullable(),
     idempotencyKey: z.string().trim().max(128, 'Idempotency key is too long').optional().nullable(),
   })
-  .strict();
+  .strict()
+  .superRefine((value, context) => {
+    if (value.currency === Currency.LBP) rejectFractionalLbp(value.amount, ['amount'], context);
+  });
 
 export const cancelInstallmentPlanSchema = z
   .object({
@@ -119,8 +129,18 @@ export const updateInstallmentPlanSchema = z
 
 export type CustomerInstallmentPlanParamsInput = z.infer<typeof customerInstallmentPlanParamsSchema>;
 export type InstallmentPlanParamsInput = z.infer<typeof installmentPlanParamsSchema>;
-export type CreateInstallmentPlanInput = z.infer<typeof createInstallmentPlanSchema>;
+export type CreateInstallmentPlanInput = Omit<z.infer<typeof createInstallmentPlanSchema>, 'currency'> & {
+  currency?: Currency;
+};
 export type ListCustomerInstallmentPlansQueryInput = z.infer<typeof listCustomerInstallmentPlansQuerySchema>;
-export type CreateInstallmentPlanPaymentInput = z.infer<typeof createInstallmentPlanPaymentSchema>;
+export type CreateInstallmentPlanPaymentInput = Omit<z.infer<typeof createInstallmentPlanPaymentSchema>, 'currency'> & {
+  currency?: Currency;
+};
 export type CancelInstallmentPlanInput = z.infer<typeof cancelInstallmentPlanSchema>;
 export type UpdateInstallmentPlanInput = z.infer<typeof updateInstallmentPlanSchema>;
+
+function rejectFractionalLbp(value: string, path: Array<string | number>, context: z.RefinementCtx) {
+  if (!/^\d+(?:\.0{1,2})?$/.test(value)) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path, message: 'LBP amount must be a whole number' });
+  }
+}

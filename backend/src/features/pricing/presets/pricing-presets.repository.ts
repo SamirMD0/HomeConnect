@@ -49,6 +49,7 @@ export class PricingPresetsRepository {
   static clearDefault(exceptId: string, tx: Prisma.TransactionClient) {
     return tx.pricingPreset.updateMany({ where: { isDefault: true, id: { not: exceptId } }, data: { isDefault: false } });
   }
+
 }
 
 interface PricingPresetListParams {

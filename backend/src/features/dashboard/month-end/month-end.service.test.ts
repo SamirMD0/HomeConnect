@@ -4,6 +4,15 @@ import { describe, expect, it } from 'vitest';
 import { MonthEndService, reconcileMovement } from './month-end.service';
 
 describe('month-end reconciliation', () => {
+  it('discloses counter collections separately instead of reducing receivables or inventing an adjustment', () => {
+    const result = reconcileMovement({ opening: '80', newAmount: '20', collected: '110',
+      nonReceivableCollected: '100', closing: '90' });
+    expect(result).toMatchObject({ collected: '110.00', nonReceivableCollected: '100.00',
+      adjustments: '0.00', closing: '90.00', reconciled: true });
+    expect(new Decimal(result.opening).plus(result.newAmount).minus(result.collected)
+      .plus(result.nonReceivableCollected!).plus(result.adjustments).toFixed(2)).toBe(result.closing);
+  });
+
   it.each([
     ['100', '20', '10', '110'],
     ['110', '0', '0', '110'],

@@ -187,7 +187,8 @@ describe('DebtsService', () => {
         originalAmount: expect.any(Decimal),
         status: DebtStatus.UNPAID,
         createdById: adminUser.userId,
-      })
+      }),
+      tx
     );
     expect(result.originalAmount).toBe('600.00');
     expect(result.totalPaid).toBe('0.00');

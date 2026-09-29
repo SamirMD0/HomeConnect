@@ -11,11 +11,15 @@ const allocationPaymentSelect = {
   id: true,
   paymentDate: true,
   totalAmount: true,
+  baseAmount: true,
+  currency: true,
+  exchangeRate: true,
   voidedAt: true,
 } satisfies Prisma.PaymentSelect;
 
 const debtInclude = {
   customer: { select: customerSelect },
+  returnAllocations: { include: { salesReturn: { select: { returnDate: true } } } },
   paymentAllocations: {
     include: {
       payment: { select: allocationPaymentSelect },
@@ -28,6 +32,7 @@ const planInclude = {
   customer: { select: customerSelect },
   installments: {
     include: {
+      returnAllocations: { include: { salesReturn: { select: { returnDate: true } } } },
       paymentAllocations: {
         include: {
           payment: { select: allocationPaymentSelect },
@@ -45,6 +50,7 @@ const activityDebtSelect = {
   description: true,
   kind: true,
   originalAmount: true,
+  baseOriginalAmount: true,
   createdAt: true,
 } satisfies Prisma.DebtSelect;
 
@@ -53,13 +59,16 @@ const activityPlanSelect = {
   customer: { select: customerSelect },
   description: true,
   totalAmount: true,
+  baseTotalAmount: true,
   createdAt: true,
 } satisfies Prisma.InstallmentPlanSelect;
 
 const activityPaymentSelect = {
+  salesOrderId: true,
   id: true,
   customer: { select: customerSelect },
   totalAmount: true,
+  baseAmount: true,
   paymentDate: true,
   voidedAt: true,
   reference: true,
@@ -86,7 +95,14 @@ export interface LoadMonthlyDebtSnapshotParams {
   nextDayAfterCutoff: Date;
 }
 
+const activityReturnSelect = {
+  id: true, returnNumber: true, returnDate: true,
+  baseReceivableReliefAmount: true, baseRefundableAmount: true, refundMethod: true,
+  customer: { select: { id: true, name: true, phone: true } },
+} satisfies Prisma.SalesReturnSelect;
+
 export interface MonthlyFinancialActivityRecordSet {
+  returns: Prisma.SalesReturnGetPayload<{ select: typeof activityReturnSelect }>[];
   debts: MonthlyActivityDebtRecord[];
   plans: MonthlyActivityPlanRecord[];
   payments: MonthlyActivityPaymentRecord[];
@@ -132,7 +148,7 @@ export class MonthlyDebtsRepository {
       }),
       prisma.payment.findMany({
         where: {
-          ...customerWhere,
+          ...(params.search ? customerWhere : { OR: [{ customerId: null }, customerWhere] }),
           paymentDate: { gte: params.startDate, lte: params.cutoffDate },
         },
         select: activityPaymentSelect,
@@ -148,7 +164,7 @@ export class MonthlyDebtsRepository {
   ): Promise<MonthlyFinancialActivityRecordSet> {
     const customerIdWhere = params.customerId ? { customerId: params.customerId } : {};
 
-    const [debts, plans, payments] = await Promise.all([
+    const [debts, plans, payments, returns] = await Promise.all([
       prisma.debt.findMany({
         where: {
           ...customerIdWhere,
@@ -170,15 +186,20 @@ export class MonthlyDebtsRepository {
       prisma.payment.findMany({
         where: {
           ...customerIdWhere,
-          customer: { deletedAt: null },
+          OR: [{ customerId: null }, { customer: { deletedAt: null } }],
           paymentDate: { gte: params.startDate, lte: params.endDate },
         },
         select: activityPaymentSelect,
         orderBy: [{ paymentDate: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
       }),
+      prisma.salesReturn.findMany({
+        where: { ...customerIdWhere, returnDate: { gte: params.startDate, lt: params.nextDayAfterEnd } },
+        select: activityReturnSelect,
+        orderBy: [{ returnDate: 'asc' }, { id: 'asc' }],
+      }),
     ]);
 
-    return { debts, plans, payments };
+    return { debts, plans, payments, returns };
   }
 
   private static customerWhere(search?: string) {

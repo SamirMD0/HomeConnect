@@ -14,6 +14,10 @@ export interface ReportsCustomerMetrics {
 
 export interface ReportsSalesPeriodMetrics {
   orderCount: number;
+  returnsAmount: string;
+  cashRefunds: string;
+  storeCreditIssued: string;
+  netSalesAmount: string;
   totalAmount: string;
   paidAmount: string;
   unpaidAmount: string;

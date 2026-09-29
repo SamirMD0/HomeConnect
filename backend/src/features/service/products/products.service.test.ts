@@ -1,4 +1,4 @@
-import { LabelBarcodeSource, Prisma, Role } from '@prisma/client';
+import { Currency, LabelBarcodeSource, Prisma, Role } from '@prisma/client';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { repository, pricing, writeAudit, verify, tx } = vi.hoisted(() => {
@@ -6,8 +6,10 @@ const { repository, pricing, writeAudit, verify, tx } = vi.hoisted(() => {
   return {
     repository: {
       findByBarcode: vi.fn(), findBySku: vi.fn(), findDuplicates: vi.fn(), findPricingPreset: vi.fn(), create: vi.fn(),
-      findActiveDefaultPricingPreset: vi.fn(), findById: vi.fn(), update: vi.fn(), deleteImage: vi.fn(),
+      findActiveDefaultPricingPreset: vi.fn(), findActiveDefaultTaxProfile: vi.fn(),
+      findById: vi.fn(), update: vi.fn(), deleteImage: vi.fn(),
       groupBrandSpellings: vi.fn(), list: vi.fn(),
+      findActiveFeatureIconCodes: vi.fn(), replacePricingCardFeatures: vi.fn(),
     },
     pricing: { resolveProductPricing: vi.fn() },
     writeAudit: vi.fn(), verify: vi.fn(), tx: transaction,
@@ -15,11 +17,17 @@ const { repository, pricing, writeAudit, verify, tx } = vi.hoisted(() => {
 });
 
 vi.mock('./products.repository', () => ({ ProductsRepository: repository }));
-vi.mock('../../pricing/calculator/pricing-resolution', () => ({ resolveProductPricing: pricing.resolveProductPricing }));
+vi.mock('../../pricing/calculator/pricing-resolution', () => ({
+  resolveProductPricing: pricing.resolveProductPricing,
+  resolveLabelSecretPrice: () => ({ hiddenPrice: null, candidatePrice: undefined, warning: undefined }),
+  usesAutomaticPricing: (product: { price: unknown; pricingPresetId: unknown; useCustomPricing: boolean }) =>
+    product.useCustomPricing || Boolean(product.pricingPresetId) || product.price == null,
+}));
 vi.mock('../audit/service-audit', () => ({ writeServiceAudit: writeAudit }));
 vi.mock('../../../lib/admin-verification', () => ({ verifyAdminPassword: verify }));
 vi.mock('../../financial/infrastructure/transaction', () => ({ runFinancialTransaction: (operation: (client: unknown) => unknown) => operation(tx) }));
 vi.mock('./product-sku', () => ({ generateProductSku: vi.fn().mockResolvedValue('HC-000001') }));
+vi.mock('./product-internal-barcode', () => ({ generateInternalBarcode: vi.fn().mockResolvedValue('2000000000015') }));
 vi.mock('../../../lib/prisma', () => ({ prisma: {}, transactionModel: {}, activityLogModel: {} }));
 
 import { ProductsService, summarizeProductBrands } from './products.service';
@@ -32,6 +40,8 @@ const money = (value: string) => new Prisma.Decimal(value);
 const productOf = (overrides: Record<string, unknown> = {}) => ({
   id: '22222222-2222-4222-8222-222222222222', sku: 'HC-000001', name: 'Fan', model: 'F1',
   barcode: null, brand: null, price: null, discount: null, costPrice: null, pricingPresetId: null,
+  priceCurrency: Currency.USD, taxProfileId: null, priceIncludesVat: false, taxProfile: null,
+  pricingCardTemplateId: null,
   useCustomPricing: false, installmentEnabled: false, customExpensePercent: null,
   customProfitPercent: null, customDiscountBufferPercent: null, customInstallmentMarkupPercent: null,
   customDownPaymentPercent: null, customInstallmentMonths: null, customCalculationMode: null,
@@ -39,6 +49,7 @@ const productOf = (overrides: Record<string, unknown> = {}) => ({
   trackStock: false, stockQuantity: 0, lowStockThreshold: null, specifications: [], specificationNotes: null,
   createdById: user.userId, updatedById: null, createdAt: new Date('2026-08-05T00:00:00Z'), updatedAt: new Date('2026-08-05T00:00:00Z'),
   pricingPreset: null, image: null, createdBy: { fullName: 'Admin User', username: 'admin' }, updatedBy: null,
+  pricingCardFeatures: [],
   ...overrides,
 });
 
@@ -58,9 +69,36 @@ describe('product service workflow', () => {
     repository.findPricingPreset.mockResolvedValue(null);
     repository.findActiveDefaultPricingPreset.mockResolvedValue(null);
     repository.list.mockResolvedValue({ items: [], total: 0 });
+    repository.findActiveFeatureIconCodes.mockResolvedValue([]);
     pricing.resolveProductPricing.mockReturnValue(unavailable);
     repository.create.mockImplementation((data) => Promise.resolve(productOf({ ...data })));
     repository.update.mockImplementation((_id, data) => Promise.resolve(productOf({ ...data })));
+  });
+
+  it('keeps preset output ex-VAT and makes the label price VAT-inclusive', async () => {
+    const product = productOf({ costPrice: money('100.00') });
+    repository.findById.mockResolvedValue(product);
+    repository.findActiveDefaultTaxProfile.mockResolvedValue({
+      code: 'LB_STANDARD', isActive: true,
+      taxRate: { isActive: true, ratePercent: money('11.000') },
+    });
+    pricing.resolveProductPricing.mockReturnValue({ ...available, cashPrice: '150.00' });
+
+    const result = await ProductsService.label(product.id, { includePrice: true, includePriceCode: false });
+    expect(result.payload).toMatchObject({
+      cashPriceExVat: '150.00', vatAmount: '16.50', cashPriceIncVat: '166.50', cashPrice: '166.50',
+      taxRatePercent: '11.000', taxCode: 'LB_STANDARD',
+    });
+  });
+
+  it('gives a new product without a barcode a shop-internal EAN-13', async () => {
+    await ProductsService.create({ name: 'Fan', model: 'F1' }, employee, context);
+    expect(repository.create).toHaveBeenCalledWith(expect.objectContaining({ barcode: '2000000000015' }), expect.anything());
+  });
+
+  it('keeps a manufacturer barcode entered on create', async () => {
+    await ProductsService.create({ name: 'TV', model: '55QNED70A6A', barcode: '6222048413923' }, employee, context);
+    expect(repository.create).toHaveBeenCalledWith(expect.objectContaining({ barcode: '6222048413923' }), expect.anything());
   });
 
   it('persists an image URL on create, returns it after a fresh get, and audits it', async () => {
@@ -101,6 +139,63 @@ describe('product service workflow', () => {
     await expect(ProductsService.create({ name: 'Threshold fan', model: 'TH-1', lowStockThreshold: 2 }, employee, context))
       .rejects.toMatchObject({ statusCode: 403 });
     expect(repository.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('creates ordered highlights only for a password-verified admin and includes them in the audit', async () => {
+    const featureHighlights = [
+      { iconCode: 'spin-1400', label: null, value: '1400 RPM', position: 1 },
+      { iconCode: 'capacity', label: 'Capacity', value: '9 kg', position: 2 },
+    ];
+    repository.findActiveFeatureIconCodes.mockResolvedValue(featureHighlights.map(({ iconCode }) => ({ code: iconCode })));
+    repository.findById.mockResolvedValue(productOf({ pricingCardFeatures: featureHighlights.map((entry) => ({
+      productId: '22222222-2222-4222-8222-222222222222', ...entry,
+      createdAt: new Date(), updatedAt: new Date(),
+    })) }));
+
+    await expect(ProductsService.create({
+      name: 'Washer', model: 'W1', featureHighlights, accountPassword: 'secret',
+    }, employee, context)).rejects.toMatchObject({ statusCode: 403 });
+
+    const created = await ProductsService.create({
+      name: 'Washer', model: 'W1', featureHighlights, accountPassword: 'secret',
+    }, user, context);
+    expect(verify).toHaveBeenCalledWith(user.userId, 'secret', expect.objectContaining({ action: 'UPDATE_PRODUCT_PRICING_CARD_CONFIGURATION' }), tx);
+    expect(repository.replacePricingCardFeatures).toHaveBeenCalledWith(created.id, featureHighlights, tx);
+    expect(created.featureHighlights).toHaveLength(2);
+    expect(writeAudit.mock.calls.at(-1)?.[0].afterValues.featureHighlights).toHaveLength(2);
+  });
+
+  it('rejects unknown feature icons before replacing persisted highlights', async () => {
+    const existing = productOf();
+    repository.findById.mockResolvedValue(existing);
+    await expect(ProductsService.updateFeatures(existing.id, {
+      featureHighlights: [{ iconCode: 'missing-icon', label: null, value: null, position: 1 }],
+      accountPassword: 'secret',
+    }, user, context)).rejects.toMatchObject({ statusCode: 400 });
+    expect(repository.replacePricingCardFeatures).not.toHaveBeenCalled();
+    expect(writeAudit).not.toHaveBeenCalled();
+  });
+
+  it('password-verifies and audits a per-product template override', async () => {
+    const existing = productOf();
+    const templateId = '44444444-4444-4444-8444-444444444444';
+    repository.findById.mockResolvedValue(existing);
+    repository.update.mockResolvedValue(productOf({ pricingCardTemplateId: templateId }));
+
+    const updated = await ProductsService.update(existing.id, {
+      pricingCardTemplateId: templateId,
+      accountPassword: 'secret',
+    }, user, context);
+
+    expect(verify).toHaveBeenCalledWith(user.userId, 'secret', expect.objectContaining({
+      action: 'UPDATE_PRODUCT_PRICING_CARD_CONFIGURATION', recordId: existing.id,
+    }), tx);
+    expect(repository.update).toHaveBeenCalledWith(existing.id, expect.objectContaining({ pricingCardTemplateId: templateId }), tx);
+    expect(writeAudit).toHaveBeenCalledWith(expect.objectContaining({
+      beforeValues: { pricingCardTemplateId: null },
+      afterValues: { pricingCardTemplateId: templateId },
+    }), tx);
+    expect(updated).toMatchObject({ pricingCardTemplateId: templateId });
   });
 
   it('updates imageUrl only when supplied and returns resolved pricing from PATCH', async () => {

@@ -1,15 +1,17 @@
 import { PricingCalculationMode, PricingPreset, PricingRoundingMode, Product } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { calculatePricing } from '../domain/pricing-calculator';
+import { moneyToApiString } from '../../financial/domain/money';
 import { percentToApiString } from '../domain/pricing-percent';
 import { PricingConfig } from '../domain/pricing-types';
 
-export type PricingUnavailableReason = 'MISSING_COST_PRICE' | 'MISSING_PRESET' | 'NO_DEFAULT_PRESET' | 'INCOMPLETE_CUSTOM_PRICING';
+export type PricingUnavailableReason = 'MISSING_COST_PRICE' | 'MISSING_PRESET' | 'NO_DEFAULT_PRESET' | 'INCOMPLETE_CUSTOM_PRICING' | 'MANUAL_PRICE_CONFIGURED';
 export type PricingSource = 'PRESET' | 'CUSTOM' | 'DEFAULT_PRESET';
 
 export type ProductPricingRecord = Product & { pricingPreset?: PricingPreset | null };
 
 export function resolveProductPricing(product: ProductPricingRecord, defaultPreset: PricingPreset | null, installmentMonths?: number) {
+  if (!usesAutomaticPricing(product)) return unavailable('MANUAL_PRICE_CONFIGURED');
   if (!product.costPrice) return unavailable('MISSING_COST_PRICE');
 
   const resolved = product.useCustomPricing
@@ -17,7 +19,7 @@ export function resolveProductPricing(product: ProductPricingRecord, defaultPres
     : resolvePreset(product, defaultPreset, installmentMonths);
   if ('pricingAvailable' in resolved) return resolved;
 
-  const result = calculatePricing(new Decimal(product.costPrice.toString()), resolved.config);
+  const result = calculatePricing(new Decimal(product.costPrice.toString()), resolved.config, product.priceCurrency);
   return {
     pricingAvailable: true as const,
     source: resolved.source,
@@ -25,7 +27,7 @@ export function resolveProductPricing(product: ProductPricingRecord, defaultPres
     calculationMode: resolved.config.calculationMode,
     roundingMode: resolved.config.roundingMode,
     inputs: {
-      costPrice: new Decimal(product.costPrice.toString()).toFixed(2),
+      costPrice: moneyToApiString(new Decimal(product.costPrice.toString()), product.priceCurrency),
       expensePercent: percentToApiString(resolved.config.expensePercent),
       profitPercent: percentToApiString(resolved.config.profitPercent),
       discountBufferPercent: percentToApiString(resolved.config.discountBufferPercent),
@@ -51,6 +53,11 @@ export function resolveProductPricing(product: ProductPricingRecord, defaultPres
     },
     warnings: resolved.preset?.archivedAt ? ['PRESET_ARCHIVED' as const] : [],
   };
+}
+
+/** A stored manual price wins unless a preset/custom mode is explicitly selected. */
+export function usesAutomaticPricing(product: Pick<Product, 'price' | 'pricingPresetId' | 'useCustomPricing'>): boolean {
+  return product.useCustomPricing || Boolean(product.pricingPresetId) || product.price == null;
 }
 
 function resolveCustom(product: ProductPricingRecord, defaultPreset: PricingPreset | null, months?: number) {
@@ -98,3 +105,48 @@ export function presetConfig(preset: PricingPreset, installmentMonths?: number):
 
 const decimal = (value: { toString(): string }) => new Decimal(value.toString());
 const unavailable = (reason: PricingUnavailableReason) => ({ pricingAvailable: false as const, reason });
+
+export type LabelSecretWarning = 'SECRET_PRESET_NOT_SET' | 'SECRET_ABOVE_PUBLIC' | 'SECRET_EQUALS_PUBLIC' | 'SECRET_BELOW_COST' | 'SECRET_NO_COST' | 'SECRET_PRICE_FAILED';
+export interface LabelSecretPrice {
+  /** Safe to encode and print. Null when a guard rejects the candidate. */
+  hiddenPrice: string | null;
+  /** Admin-only preview value, retained even when a guard rejects it. */
+  candidatePrice?: string;
+  warning?: LabelSecretWarning;
+}
+
+/**
+ * The salesperson's hidden reference price on a printed label.
+ *
+ * It is the price before discount buffer that the admin-chosen "secret label"
+ * preset gives for this product's cost, reusing the ordinary pricing engine.
+ * The buffer remains in the public cash price and becomes the salesperson's
+ * negotiation room. This value only feeds the staff code — the public price is
+ * `publicPricing.cashPrice` and is untouched.
+ *
+ * Fails safe: when the hidden value would be useless or misleading (missing,
+ * equal to/above public, below cost, or not computable), no code is printed.
+ */
+export function resolveLabelSecretPrice(
+  product: ProductPricingRecord,
+  secretPreset: PricingPreset | null,
+  publicPricing: ReturnType<typeof resolveProductPricing> | null,
+): LabelSecretPrice {
+  if (!product.costPrice) return { hiddenPrice: null, warning: 'SECRET_NO_COST' };
+  if (!publicPricing?.pricingAvailable) return { hiddenPrice: null, warning: 'SECRET_PRICE_FAILED' };
+  if (!secretPreset) return { hiddenPrice: null, warning: 'SECRET_PRESET_NOT_SET' };
+
+  const cost = new Decimal(product.costPrice.toString());
+  let secret: Decimal;
+  try {
+    secret = new Decimal(calculatePricing(cost, presetConfig(secretPreset)).priceWithoutDiscountBuffer);
+  } catch {
+    return { hiddenPrice: null, warning: 'SECRET_PRICE_FAILED' };
+  }
+  const publicPrice = new Decimal(publicPricing.cashPrice);
+  const candidatePrice = secret.toFixed(2);
+  if (secret.greaterThan(publicPrice)) return { hiddenPrice: null, candidatePrice, warning: 'SECRET_ABOVE_PUBLIC' };
+  if (secret.equals(publicPrice)) return { hiddenPrice: null, candidatePrice, warning: 'SECRET_EQUALS_PUBLIC' };
+  if (secret.lessThan(cost)) return { hiddenPrice: null, candidatePrice, warning: 'SECRET_BELOW_COST' };
+  return { hiddenPrice: secret.toFixed(2) };
+}

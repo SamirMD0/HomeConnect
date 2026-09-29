@@ -11,6 +11,18 @@ export type ProductImage =
   | { source: 'URL'; url: string }
   | { source: 'UPLOAD'; mimeType: string; byteSize: number; updatedAt: string };
 
+export interface ProductFeatureHighlight {
+  iconCode: string;
+  label?: string | null;
+  value?: string | null;
+  position: number;
+}
+
+export interface UpdateProductFeaturesInput {
+  featureHighlights: ProductFeatureHighlight[];
+  accountPassword: string;
+}
+
 export interface Product {
   id: string;
   sku: string;
@@ -18,20 +30,27 @@ export interface Product {
   model: string;
   barcode: string | null;
   brand: string | null;
+  categoryId?: string | null;
+  categoryPath?: string | null;
   price: string | null;
   discount: string | null;
   netPrice: string | null;
+  priceCurrency?: 'USD' | 'LBP';
+  taxProfileId?: string | null;
+  priceIncludesVat?: boolean;
   isActive: boolean;
   imageUrl: string | null;
   image: ProductImage | null;
   notes: string | null;
   labelBarcodeSource: LabelBarcodeSource;
+  pricingCardTemplateId?: string | null;
   trackStock: boolean;
   stockQuantity: number;
   lowStockThreshold: number | null;
   stockStatus: ProductStockStatus;
   specifications: ProductSpecification[];
   specificationNotes: string | null;
+  featureHighlights?: ProductFeatureHighlight[];
   exactMatch?: boolean;
   /**
    * List-only. True when the product has never had a stock movement and was
@@ -46,7 +65,7 @@ export interface Product {
   updatedById?: string | null;
   createdBy?: ProductActor;
   updatedBy?: ProductActor | null;
-  pricing?: ({pricingAvailable:true;mode:ProductPricingMode;source:PricingSource;pricingPresetId:string|null;presetName:string|null;useCustomPricing:boolean;installmentEnabled:boolean;cashPrice:string;installmentPrice?:string;downPayment?:string;remaining?:string;monthlyPayment?:string;lastInstallmentPayment?:string;installmentMonths?:number;costPrice?:string;configuration?:ProductPricingFields;warnings:string[]} | ({pricingAvailable:false;mode:ProductPricingMode;reason:string;pricingPresetId:string|null;presetName:string|null;useCustomPricing:boolean;installmentEnabled:boolean;costPrice?:string|null;configuration?:ProductPricingFields}));
+  pricing?: ({pricingAvailable:true;mode:ProductPricingMode;source:PricingSource;pricingPresetId:string|null;presetName:string|null;useCustomPricing:boolean;installmentEnabled:boolean;cashPrice:string;cashPriceExVat?:string;vatAmount?:string;cashPriceIncVat?:string;taxRatePercent?:string;taxCode?:string;installmentPrice?:string;downPayment?:string;remaining?:string;monthlyPayment?:string;lastInstallmentPayment?:string;installmentMonths?:number;costPrice?:string;configuration?:ProductPricingFields;warnings:string[]} | ({pricingAvailable:false;mode:ProductPricingMode;reason:string;pricingPresetId:string|null;presetName:string|null;useCustomPricing:boolean;installmentEnabled:boolean;costPrice?:string|null;configuration?:ProductPricingFields}));
 }
 
 export interface ProductLabelData {
@@ -59,7 +78,13 @@ export interface ProductLabelData {
   barcodeSource: Exclude<LabelBarcodeSource, 'AUTO'>;
   internalPriceCode?: string | null;
   staffLabelCode?: string | null;
+  secretPrice?: string | null;
   cashPrice?: string | null;
+  cashPriceExVat?: string | null;
+  cashPriceIncVat?: string | null;
+  vatAmount?: string | null;
+  taxRatePercent?: string | null;
+  taxCode?: string | null;
 }
 
 export type ProductLabelWarningCode =
@@ -67,12 +92,35 @@ export type ProductLabelWarningCode =
   | 'ARCHIVED_EXCLUDED'
   | 'NO_PRICING'
   | 'MANUFACTURER_BARCODE_MISSING'
-  | 'FALLBACK_TO_SKU';
+  | 'FALLBACK_TO_SKU'
+  | 'SECRET_PRESET_NOT_SET'
+  | 'SECRET_ABOVE_PUBLIC'
+  | 'SECRET_EQUALS_PUBLIC'
+  | 'SECRET_BELOW_COST'
+  | 'SECRET_NO_COST'
+  | 'SECRET_ENCODING_NOT_SET'
+  | 'SECRET_ENCODING_FAILED'
+  | 'SECRET_DISCOUNT_STAGES_UNSAFE'
+  | 'SECRET_PRICE_FAILED';
 
 export interface ProductLabelWarning {
   productId: string;
   code: ProductLabelWarningCode;
   name?: string;
+}
+
+export interface ProductLabelSecretOverrideInput {
+  includePriceCode:boolean;
+  includePrice:boolean;
+  hiddenPricingPresetId:string;
+  encodingPresetId:string;
+  manualDiscountStages?:number[];
+  accountPassword:string;
+}
+
+export interface ProductLabelsSecretOverrideInput extends ProductLabelSecretOverrideInput {
+  ids:string[];
+  includeArchived:boolean;
 }
 
 export interface ProductLabelsResult {
@@ -157,6 +205,7 @@ export interface ProductFilters {
   search?: string;
   isActive?: boolean;
   brand?: string;
+  categoryId?: string;
   hasBarcode?: boolean;
   trackStock?: boolean;
   stockStatus?: ProductStockFilter;
@@ -191,6 +240,7 @@ export interface CreateProductInput extends ProductPricingConfigurationInput {
   model: string;
   barcode?: string | null;
   brand?: string | null;
+  categoryId?: string | null;
   price?: string | null;
   discount?: string | null;
   imageUrl?: string | null;
@@ -200,6 +250,8 @@ export interface CreateProductInput extends ProductPricingConfigurationInput {
   specificationNotes?: string | null;
   trackStock?: boolean;
   lowStockThreshold?: number | null;
+  pricingCardTemplateId?: string | null;
+  accountPassword?: string;
 }
 
 /**
@@ -245,6 +297,6 @@ export interface ProductServiceJobsResult {
   pagination: ProductPaginationMeta;
 }
 
-export interface ProductPricingFields { costPrice?:string|null;pricingPresetId?:string|null;useCustomPricing:boolean;installmentEnabled:boolean;customExpensePercent?:string|null;customProfitPercent?:string|null;customDiscountBufferPercent?:string|null;customInstallmentMarkupPercent?:string|null;customDownPaymentPercent?:string|null;customInstallmentMonths?:number|null;customCalculationMode?:PricingCalculationMode|null }
+export interface ProductPricingFields { costPrice?:string|null;priceCurrency?:'USD'|'LBP';pricingPresetId?:string|null;useCustomPricing:boolean;installmentEnabled:boolean;customExpensePercent?:string|null;customProfitPercent?:string|null;customDiscountBufferPercent?:string|null;customInstallmentMarkupPercent?:string|null;customDownPaymentPercent?:string|null;customInstallmentMonths?:number|null;customCalculationMode?:PricingCalculationMode|null;taxProfileId?:string|null;priceIncludesVat?:boolean }
 export type UpdateProductPricingInput=ProductPricingInput;
 export type ProductPricingPreview=PricingPreview;

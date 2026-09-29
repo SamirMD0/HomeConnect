@@ -3,6 +3,17 @@ import { describe, expect, it } from 'vitest';
 import { createSupplierTransactionSchema, supplierLedgerQuerySchema } from './supplier-transactions.validator';
 
 const valid = { type: SupplierTransactionType.SUPPLIER_DEBT, amount: '500.00', transactionDate: '2026-07-30', description: 'Air conditioners received' };
+
+describe('supplier payable due dates', () => {
+  it('accepts future due dates and preserves omitted/null dates', () => {
+    expect(createSupplierTransactionSchema.parse({ ...valid, dueDate: '2030-01-01' }).dueDate).toBe('2030-01-01');
+    expect(createSupplierTransactionSchema.parse(valid).dueDate).toBeUndefined();
+    expect(createSupplierTransactionSchema.parse({ ...valid, dueDate: null }).dueDate).toBeNull();
+  });
+  it('rejects impossible calendar dates', () => {
+    expect(() => createSupplierTransactionSchema.parse({ ...valid, dueDate: '2030-02-30' })).toThrow();
+  });
+});
 describe('supplier transaction validation', () => {
   it('accepts decimal strings and bilingual descriptions', () => {
     expect(createSupplierTransactionSchema.parse({ ...valid, description: 'مكيفات مستلمة' }).amount).toBe('500.00');

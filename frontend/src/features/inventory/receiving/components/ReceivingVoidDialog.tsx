@@ -52,6 +52,14 @@ export const ReceivingVoidDialog: React.FC<{
         </div>
       </div>
 
+      {Boolean(receiving.costPriceReviewCount) && <div role="alert" className="flex gap-3 rounded-xl border border-orange-300 bg-orange-50 p-4 text-sm text-orange-950">
+        <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
+        <div>
+          <p className="font-semibold">This purchase updated {receiving.costPriceReviewCount} product cost{receiving.costPriceReviewCount === 1 ? '' : 's'}. Voiding will not revert {receiving.costPriceReviewCount === 1 ? 'it' : 'them'}.</p>
+          <p className="mt-1">If this void corrects a pricing error, review those product costs separately. / إذا كان الإلغاء بسبب خطأ في السعر، راجع كلفة هذه المنتجات بشكل منفصل.</p>
+        </div>
+      </div>}
+
       <section>
         <h3 className="mb-2 text-sm font-bold">Stock to be reversed / المخزون الذي سيُعكس</h3>
         <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200">

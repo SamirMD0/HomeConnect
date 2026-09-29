@@ -36,6 +36,8 @@ const debtInclude = {
         select: {
           id: true,
           voidedAt: true,
+          currency: true,
+          exchangeRate: true,
         },
       },
     },
@@ -43,6 +45,7 @@ const debtInclude = {
       createdAt: 'asc',
     },
   },
+  returnAllocations: { orderBy: { createdAt: 'asc' } },
 } satisfies Prisma.DebtInclude;
 
 const installmentPlanInclude = {
@@ -60,6 +63,8 @@ const installmentPlanInclude = {
             select: {
               id: true,
               voidedAt: true,
+              currency: true,
+              exchangeRate: true,
             },
           },
         },
@@ -67,6 +72,7 @@ const installmentPlanInclude = {
           createdAt: 'asc',
         },
       },
+      returnAllocations: { orderBy: { createdAt: 'asc' } },
     },
     orderBy: {
       installmentNumber: 'asc',
@@ -132,8 +138,10 @@ export interface CustomerFinancialSummaryRecordSet {
 
 export class CustomerFinancialSummaryRepository {
   static async loadCustomerFinancialSummary(
-    params: LoadCustomerFinancialSummaryParams
+    params: LoadCustomerFinancialSummaryParams,
+    tx?: Prisma.TransactionClient
   ): Promise<CustomerFinancialSummaryRecordSet> {
+    const client = tx ?? prisma;
     const debtWhere: Prisma.DebtWhereInput = {
       customerId: params.customerId,
       ...(!params.includeCancelled ? { status: { not: DebtStatus.CANCELLED } } : {}),
@@ -144,25 +152,25 @@ export class CustomerFinancialSummaryRepository {
     };
 
     const [customer, debts, plans, recentPayments] = await Promise.all([
-      prisma.customer.findFirst({
+      client.customer.findFirst({
         where: {
           id: params.customerId,
           deletedAt: null,
         },
         select: customerSelect,
       }),
-      prisma.debt.findMany({
+      client.debt.findMany({
         where: debtWhere,
         orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
         include: debtInclude,
       }),
-      prisma.installmentPlan.findMany({
+      client.installmentPlan.findMany({
         where: planWhere,
         orderBy: [{ startDate: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
         include: installmentPlanInclude,
       }),
       params.includePayments
-        ? prisma.payment.findMany({
+        ? client.payment.findMany({
             where: {
               customerId: params.customerId,
             },

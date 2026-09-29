@@ -5,18 +5,19 @@ import { addDays } from '../shared/dashboard-range';
 import type { ResolvedDashboardRange } from '../dashboard.types';
 
 const allocationInclude = {
-  include: { payment: { select: { voidedAt: true, paymentDate: true } } },
+  include: { payment: { select: { voidedAt: true, paymentDate: true, currency: true, exchangeRate: true } } },
 } satisfies Prisma.PaymentAllocationFindManyArgs;
 
 const debtInclude = {
   customer: { select: { id: true, name: true, phone: true } },
+  returnAllocations: { select: { amount: true, baseAmount: true } },
   paymentAllocations: allocationInclude,
 } satisfies Prisma.DebtInclude;
 
 const planInclude = {
   customer: { select: { id: true, name: true, phone: true } },
   installments: {
-    include: { paymentAllocations: allocationInclude },
+    include: { paymentAllocations: allocationInclude, returnAllocations: { select: { amount: true, baseAmount: true } } },
     orderBy: { installmentNumber: 'asc' as const },
   },
 } satisfies Prisma.InstallmentPlanInclude;
@@ -28,6 +29,7 @@ export type CustomerAnalyticsPayment = Prisma.PaymentGetPayload<{
 }>;
 
 export interface CustomerAnalyticsRecords {
+  returns?: Array<{ returnDate: Date; baseReceivableReliefAmount: Prisma.Decimal; baseRefundableAmount: Prisma.Decimal; refundMethod: string }>;
   totalCustomers: number;
   debts: CustomerAnalyticsDebt[];
   plans: CustomerAnalyticsPlan[];
@@ -44,7 +46,7 @@ export class CustomerAnalyticsRepository {
     const historyDate = businessDateToPrisma(historyFrom);
     const historyEnd = businessDateToPrisma(addDays(range.to, 1));
 
-    const [totalCustomers, openDebts, rangeDebts, openPlans, rangePlans, payments] =
+    const [totalCustomers, openDebts, rangeDebts, openPlans, rangePlans, payments, returns] =
       await Promise.all([
         prisma.customer.count({ where: customerWhere }),
         prisma.debt.findMany({
@@ -81,15 +83,20 @@ export class CustomerAnalyticsRepository {
         }),
         prisma.payment.findMany({
           where: {
-            customer: customerWhere,
+            OR: [{ customerId: null }, { customer: customerWhere }],
             voidedAt: null,
             paymentDate: { gte: historyDate, lt: historyEnd },
           },
           include: { customer: { select: { id: true, name: true, phone: true } } },
         }),
+        prisma.salesReturn.findMany({
+          where: { returnDate: { gte: historyDate, lt: historyEnd }, OR: [{ customerId: null }, { customer: customerWhere }] },
+          select: { returnDate: true, baseReceivableReliefAmount: true, baseRefundableAmount: true, refundMethod: true },
+        }),
       ]);
 
     return {
+      returns,
       totalCustomers,
       debts: dedupeById([...openDebts, ...rangeDebts]),
       plans: dedupeById([...openPlans, ...rangePlans]),
@@ -101,4 +108,3 @@ export class CustomerAnalyticsRepository {
 function dedupeById<T extends { id: string }>(records: T[]): T[] {
   return [...new Map(records.map((record) => [record.id, record])).values()];
 }
-

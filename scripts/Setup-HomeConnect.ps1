@@ -143,6 +143,11 @@ function New-Secret {
   return [Convert]::ToBase64String($bytes)
 }
 
+function Test-StrongSecret {
+  param([string]$Value)
+  return $Value -and $Value.Trim().Length -ge 32
+}
+
 # Existing secrets are reused so a re-run does not sign every user out.
 function Get-ExistingValue {
   param([string]$Name)
@@ -153,10 +158,18 @@ function Get-ExistingValue {
 }
 
 $jwtSecret = Get-ExistingValue "JWT_SECRET"
-if (-not $jwtSecret) { $jwtSecret = New-Secret; Write-Ok "Generated JWT_SECRET" } else { Write-Ok "Kept existing JWT_SECRET" }
+if (-not (Test-StrongSecret $jwtSecret)) {
+  if ($jwtSecret) { Write-Warn "Existing JWT_SECRET was too short and has been replaced; existing sessions will sign in again" }
+  $jwtSecret = New-Secret
+  Write-Ok "Generated strong JWT_SECRET"
+} else { Write-Ok "Kept existing strong JWT_SECRET" }
 
 $jwtRefresh = Get-ExistingValue "JWT_REFRESH_SECRET"
-if (-not $jwtRefresh) { $jwtRefresh = New-Secret; Write-Ok "Generated JWT_REFRESH_SECRET" } else { Write-Ok "Kept existing JWT_REFRESH_SECRET" }
+if (-not (Test-StrongSecret $jwtRefresh) -or $jwtRefresh -eq $jwtSecret) {
+  if ($jwtRefresh) { Write-Warn "Existing JWT_REFRESH_SECRET was weak or reused and has been replaced; existing sessions will sign in again" }
+  $jwtRefresh = New-Secret
+  Write-Ok "Generated strong JWT_REFRESH_SECRET"
+} else { Write-Ok "Kept existing strong JWT_REFRESH_SECRET" }
 
 # The documented pitfall: an unencoded '@' splits the URL early and the app then
 # reads a nonsense host. EscapeDataString covers '@', '/', '#', '?' and the rest.

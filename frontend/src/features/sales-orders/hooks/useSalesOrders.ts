@@ -20,7 +20,13 @@ export const useCustomerSalesOrders = (id: string, filters: SalesOrderFilters = 
 export const useSalesOrder = (id: string) => useQuery({ queryKey: salesOrderKeys.detail(id), queryFn: () => salesOrdersApi.get(id), enabled: Boolean(id) });
 export const useSalesOrderSummary = (range: { dateFrom?: string; dateTo?: string } = {}) => useQuery({ queryKey: salesOrderKeys.summary(range), queryFn: () => salesOrdersApi.summary(range), refetchInterval: 30_000 });
 export const useSalesOrderAudit = (id: string, enabled: boolean) => useQuery({ queryKey: [...salesOrderKeys.detail(id), 'audit'], queryFn: () => salesOrdersApi.audit(id), enabled: Boolean(id) && enabled });
-function useRefresh() { const client = useQueryClient(); return () => client.invalidateQueries({ queryKey: salesOrderKeys.all }); }
+function useRefresh() {
+  const client = useQueryClient();
+  return () => Promise.all([
+    salesOrderKeys.all, ['financial-ledger'], ['customers'],
+    ['receivables'], ['reports'], ['dashboard'], ['debts'], ['installment-plans'], ['customer-activity'],
+  ].map((queryKey) => client.invalidateQueries({ queryKey })));
+}
 export function useCreateSalesOrder() { const refresh = useRefresh(); return useMutation({ mutationFn: (input: CreateSalesOrderInput) => salesOrdersApi.create(input), onSuccess: refresh }); }
 export function useUpdateSalesOrder(id: string) { const refresh = useRefresh(); return useMutation({ mutationFn: (input: UpdateSalesOrderInput) => salesOrdersApi.update(id, input), onSuccess: refresh }); }
 export function useSalesOrderAction<T>(action: (id: string, input: T) => Promise<unknown>, id: string) { const refresh = useRefresh(); return useMutation({ mutationFn: (input: T) => action(id, input), onSuccess: refresh }); }

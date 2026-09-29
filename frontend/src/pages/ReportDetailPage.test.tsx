@@ -197,6 +197,38 @@ describe('Report detail page — ERP reports', () => {
       expect(html).toContain('Export CSV / تصدير CSV');
     }
   });
+
+  it('renders both financial integrity reports with independent comparisons and mismatch details', () => {
+    rows.value = withRows(
+      { count: 1, ok: 0, mismatches: 1, reportedTotal: '109.00', independentTotal: '110.00', difference: '-1.00' },
+      [{ customer: { id: 'c1', name: 'Ali', phone: '70' }, obligationTotal: '150.00', allocationTotal: '40.00', reportedOutstanding: '109.00', independentOutstanding: '110.00', difference: '-1.00', status: 'MISMATCH', issues: ['Reported outstanding does not match obligations minus allocations'] }]
+    );
+    const customerHtml = render('customer-financial-integrity');
+    expect(customerHtml).toContain('Customer Financial Integrity / سلامة حسابات الزبائن');
+    expect(customerHtml).toContain('Mismatches / غير مطابق');
+    expect(customerHtml).toContain('Reported outstanding does not match obligations minus allocations');
+
+    rows.value = withRows(
+      { count: 1, ok: 1, mismatches: 0, reportedTotal: '380.00', independentTotal: '380.00', difference: '0.00' },
+      [{ supplier: { id: 's1', name: 'Supplier', phone: '71' }, increaseTotal: '500.00', decreaseTotal: '120.00', reportedBalance: '380.00', independentBalance: '380.00', difference: '0.00', status: 'OK', issues: [] }]
+    );
+    const supplierHtml = render('supplier-financial-integrity');
+    expect(supplierHtml).toContain('Supplier Financial Integrity / سلامة حسابات الموردين');
+    expect(supplierHtml).toContain('Independent / المستقل');
+    expect(supplierHtml).toContain('Supplier');
+  });
+
+  it('renders the product cost changes report with old, new, and percentage values', () => {
+    rows.value = withRows(
+      { count: 1, increases: 1, decreases: 0, fromPurchases: 1 },
+      [{ id: 'a1', changedAt: '2026-08-15T10:00:00.000Z', product: { id: 'p1', name: 'AC', sku: 'HC-1' }, oldCost: '100.00', newCost: '120.00', percentageChange: '20.00', source: 'SUPPLIER_PURCHASE', receiptNumber: 'INV-1', changedBy: { fullName: 'Owner', username: 'owner' }, reason: 'Supplier purchase' }]
+    );
+
+    const html = render('product-cost-changes');
+    expect(html).toContain('Product Cost Changes / تغييرات كلفة المنتجات');
+    expect(html).toContain('+20.00%');
+    expect(html).toContain('INV-1');
+  });
 });
 
 function withRows(summary: Record<string, unknown>, tableRows: unknown[]) {

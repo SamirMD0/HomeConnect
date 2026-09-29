@@ -1,7 +1,7 @@
 import {
   Activity, Banknote, Boxes, CircleDollarSign, ClipboardList, FileText, Hourglass,
   PackageSearch, ReceiptText, ScrollText, ShoppingCart, Truck, UserCheck, UserPlus,
-  UserX, Users, type LucideIcon,
+  UserX, Users, ShieldCheck, TrendingUp, type LucideIcon,
 } from 'lucide-react';
 import type { MonthlyReviewData } from './types/monthly-review.types';
 import type { ReportSlice } from './types/report-rows.types';
@@ -107,6 +107,15 @@ export const reportDefinitions: ReportDefinition[] = [
     slice: 'products-bought',
   },
   {
+    id: 'product-cost-changes',
+    title: 'Product Cost Changes / تغييرات كلفة المنتجات',
+    description: 'Audited cost changes with old/new selling price, pricing mode, actor, and source purchase.',
+    icon: TrendingUp,
+    category: 'inventory',
+    kind: 'rows',
+    slice: 'products-cost-changes',
+  },
+  {
     id: 'new-customers',
     title: 'New Customers / زبائن جدد',
     description: 'Every customer added during the period, with phone and account status.',
@@ -125,6 +134,16 @@ export const reportDefinitions: ReportDefinition[] = [
     kind: 'rows',
     slice: 'customers-debts',
     headline: (data) => ({ label: 'Closing balance / الرصيد الختامي', value: data.customers.movement.closing, money: true }),
+  },
+  {
+    id: 'customer-financial-integrity',
+    title: 'Customer Financial Integrity / سلامة حسابات الزبائن',
+    description: 'Compares the customer balance shown by Home Connect with an independent sum of obligations minus live payment allocations.',
+    icon: ShieldCheck,
+    category: 'customers',
+    kind: 'rows',
+    slice: 'customers-financial-integrity',
+    operational: true,
   },
   {
     id: 'customer-payments',
@@ -161,6 +180,26 @@ export const reportDefinitions: ReportDefinition[] = [
     kind: 'rows',
     slice: 'suppliers-debts',
     headline: (data) => ({ label: 'Closing owed / المستحق الختامي', value: data.suppliers.movement.closing, money: true }),
+  },
+  {
+    id: 'supplier-aging',
+    title: 'Supplier Payables Aging / أعمار مستحقات الموردين',
+    description: 'Current payables after report-only FIFO settlement, by due date; unscheduled balances and excess credit remain visible. Stored base USD values; no ledger changes.',
+    icon: Truck,
+    category: 'suppliers',
+    kind: 'rows',
+    slice: 'suppliers-aging',
+    operational: true,
+  },
+  {
+    id: 'supplier-financial-integrity',
+    title: 'Supplier Financial Integrity / سلامة حسابات الموردين',
+    description: 'Compares each displayed supplier balance with an independent sum of active increases minus active decreases.',
+    icon: ShieldCheck,
+    category: 'suppliers',
+    kind: 'rows',
+    slice: 'suppliers-financial-integrity',
+    operational: true,
   },
   {
     id: 'supplier-receiving',

@@ -5,12 +5,12 @@ import { SalesAnalyticsService } from './sales-analytics.service';
 describe('SalesAnalyticsService', () => {
   it('serializes sales money and never exposes receivables figures', () => {
     const result = SalesAnalyticsService.aggregate({
-      todayAggregate: { _sum: { totalAmount: { toString: () => '450' } }, _count: { _all: 2 } },
+      todayAggregate: { _sum: { baseTotalAmount: { toString: () => '450' } }, _count: { _all: 2 } },
       pendingDelivery: 1,
       unpaidOrders: 1,
       partialPayments: 1,
       installmentOrders: 0,
-      salesByDay: [{ orderDate: new Date('2026-08-03T00:00:00Z'), _sum: { totalAmount: { toString: () => '450' } }, _count: { _all: 2 } }],
+      salesByDay: [{ orderDate: new Date('2026-08-03T00:00:00Z'), _sum: { baseTotalAmount: { toString: () => '450' } }, _count: { _all: 2 } }],
       paymentStatusDistribution: [{ paymentStatus: SalesOrderPaymentStatus.PARTIALLY_PAID, _count: { _all: 1 } }],
       fulfillmentStatusDistribution: [{ fulfillmentStatus: SalesOrderFulfillmentStatus.CONFIRMED, _count: { _all: 1 } }],
       topProductGroups: [{ productId: 'p1', _sum: { quantity: 3 } }],
@@ -26,7 +26,7 @@ describe('SalesAnalyticsService', () => {
 
   it('fills missing delivery pipeline stages with zero', () => {
     const result = SalesAnalyticsService.aggregate({
-      todayAggregate: { _sum: { totalAmount: null }, _count: { _all: 0 } },
+      todayAggregate: { _sum: { baseTotalAmount: null }, _count: { _all: 0 } },
       pendingDelivery: 0, unpaidOrders: 0, partialPayments: 0, installmentOrders: 0,
       salesByDay: [], paymentStatusDistribution: [], fulfillmentStatusDistribution: [], topProductGroups: [], products: [],
     } as never);

@@ -1,0 +1,41 @@
+{
+  "current": {
+    "path": "release/2.0.1/HomeConnect-Setup-2.0.1.exe",
+    "bytes": 113453768,
+    "sha256": "58345ea4a46e4f34d3cdbd91c5878e13e7575f675fdbd1f32e30d4c0ed1cc5bd",
+    "builtAt": "2026-09-28T15:00:00Z",
+    "signature": "NotSigned",
+    "sourceToPackageDrift": "none (electron/frontend/backend/migrations/repair all match source)",
+    "clientHasAuditUrl": false,
+    "forbiddenResources": 0,
+    "runtimePackages": {
+      "dompurify": "3.4.16",
+      "qs": "6.16.0",
+      "undici": "7.30.0"
+    },
+    "acceptedLimitation": "unsigned Windows installer (owner-accepted)",
+    "verification": ".claude/pre-release-audit/evidence/current-installer-verification.json",
+    "packageLog": ".claude/pre-release-audit/evidence/dist-win-2026-09-28-final.log"
+  },
+  "historical": [
+    {
+      "path": "release/2.0.1/HomeConnect-Setup-2.0.1.pre-final-gates.exe",
+      "bytes": 113453551,
+      "sha256": "3b6563387b5e3738ee406e9f46b4b6695839cde54f1a5d4232365b5f252d6c8f",
+      "status": "pre-final-gates rebuild (2026-09-28 16:35 GMT+3); superseded by the current artifact after Gate 5 rebuilt frontend/dist and dist/server. Retained for provenance only."
+    },
+    {
+      "path": "release/2.0.1/HomeConnect-Setup-2.0.1.pre-overrides.stale.exe",
+      "bytes": 113339173,
+      "sha256": "aee2d7a49ea94b44456986b8727f39765eb9b71b9d849c228b8769f98441ba33",
+      "status": "pre-overrides; renamed to prevent accidental selection"
+    },
+    {
+      "path": "release/audit-production-20260927/HomeConnect-Setup-2.0.1.exe",
+      "bytes": 142618346,
+      "sha256": "c1194bd06976caa83350e451bc46df0e5eda29e28a2a3f88862f78de217d0811",
+      "status": "historical-pre-overrides; not a release candidate",
+      "invalidatedBy": "package.json overrides for dompurify, qs, jsdom/undici, @electron/get/undici and node-gyp/undici, plus xlsx removal"
+    }
+  ]
+}

@@ -16,6 +16,17 @@ import {
 } from './statuses';
 
 describe('financial balance helpers', () => {
+  it('reduces installment plan outstanding by return credits without counting them as payments', () => {
+    const summary = calculateInstallmentPlanSummary({
+      totalAmount: new Decimal('100.00'),
+      installments: [{ dueDate: '2026-07-01', amountDue: new Decimal('100.00'), credits: [{ amount: new Decimal('100.00') }] }],
+    }, '2026-07-24');
+    expect(summary.totalPaid.toFixed(2)).toBe('0.00');
+    expect(summary.remainingBalance.toFixed(2)).toBe('0.00');
+    expect(summary.completedInstallmentCount).toBe(1);
+    expect(summary.overdueInstallmentCount).toBe(0);
+    expect(summary.nextDueDate).toBeNull();
+  });
   it('calculates unpaid, partial, and full debt balances while excluding voided allocations', () => {
     const unpaid = calculateDebtBalance({ originalAmount: new Decimal('100.00') });
     expect(moneyToApiString(unpaid.remainingBalance)).toBe('100.00');

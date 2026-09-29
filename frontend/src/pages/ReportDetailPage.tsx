@@ -19,6 +19,7 @@ import { ReportDataTable, ReportTotals } from '../features/reports/components/Re
 import { summariesFor, movementSummaryRows } from '../features/reports/components/report-columns';
 import { StockMovementsByTypeChart } from '../features/reports/components/ReportCharts';
 import { AnalysisPortal } from '../features/reports/components/AnalysisPortal';
+import { SupplierAgingSummary } from '../features/reports/components/SupplierAgingSummary';
 import { reportRowsApi } from '../features/reports/api/report-rows.api';
 import { analysisApi } from '../features/reports/api/analysis.api';
 import { monthlyReportsApi } from '../features/reports/api/monthly-reports.api';
@@ -170,6 +171,7 @@ function RowsReport({ definition, slice }: { definition: ReportDefinition; slice
       ) : (
         <>
           <ReportTotals items={summariesFor(slice, report.data.data.summary)} />
+          {slice === 'suppliers-aging' && <SupplierAgingSummary summary={report.data.data.summary} />}
           {slice === 'inventory-movements' && (
             <StockMovementsByTypeChart data={movementSummaryRows(report.data.data.summary.movementsByType)} />
           )}

@@ -20,6 +20,11 @@ vi.mock('../../inventory/receiving/hooks/useSupplierReceivings', () => ({
 const supplier = { id: 'supplier-1', name: 'Supplier One', phone: '70123456' } as Supplier;
 
 describe('supplier transaction receiving selector', () => {
+  it('offers an optional due date for supplier debt', () => {
+    const html = renderToStaticMarkup(<MemoryRouter><SupplierTransactionFormDialog open supplier={supplier} onClose={() => undefined} /></MemoryRouter>);
+    expect(html).toContain('Due date / تاريخ الاستحقاق');
+    expect(html).toContain('No Due Date');
+  });
   it('lists supplier receivings and marks an already-linked document unavailable', () => {
     const html = renderToStaticMarkup(<MemoryRouter><SupplierTransactionFormDialog open supplier={supplier} onClose={() => undefined} /></MemoryRouter>);
     expect(html).toContain('Receiving document (optional)');

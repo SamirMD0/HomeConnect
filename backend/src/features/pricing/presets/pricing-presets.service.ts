@@ -8,7 +8,7 @@ import { RequestContext, ServiceMutationUser } from '../../service/domain/servic
 import { assertPricingAdmin, containsSensitivePricingPresetFields } from '../authorization/pricing-policy';
 import { percentToApiString, parsePricingPercent } from '../domain/pricing-percent';
 import {
-  CreatePricingPresetInput, PricingPresetActionInput, PricingPresetAuditQueryInput,
+  CreatePricingPresetInput, PricingPresetActionInput, PricingPresetAuditQueryInput, PricingPresetPasswordActionInput,
   PricingPresetListQueryInput, UpdatePricingPresetInput, mutationFields,
 } from './pricing-presets.validator';
 import { PricingPresetsRepository } from './pricing-presets.repository';
@@ -76,6 +76,50 @@ export class PricingPresetsService {
     });
   }
 
+  /**
+   * Allows a preset to supply the salesperson's hidden code on printed labels.
+   * Several active presets may be allowed; the settings record owns the default.
+   */
+  static async setLabelSecret(id: string, input: PricingPresetPasswordActionInput, user: ServiceMutationUser, context: RequestContext) {
+    assertPricingAdmin(user);
+    return runFinancialTransaction(async (tx) => {
+      const existing = await requiredPreset(id, tx);
+      if (!existing.isActive || existing.archivedAt) throw new AppError('Only an active preset can set the hidden label price', 409, 'PRICING_PRESET_INACTIVE');
+      if (existing.isLabelSecretAllowed) throw new AppError('This preset is already allowed for hidden label pricing', 409, 'PRICING_PRESET_STATE_CONFLICT');
+      await verify(user.userId, input.accountPassword, 'SET_LABEL_SECRET_PRICING_PRESET', id, context, tx);
+      const updated = await PricingPresetsRepository.update(id, { isLabelSecretAllowed: true, updatedById: user.userId }, tx);
+      await audit(id, ServiceAuditAction.UPDATE_DETAILS, user.userId, 'Allowed preset for hidden label pricing', { isLabelSecretAllowed: false }, { isLabelSecretAllowed: true }, context, tx);
+      return serializePreset(updated);
+    });
+  }
+
+  static async clearLabelSecret(id: string, input: PricingPresetPasswordActionInput, user: ServiceMutationUser, context: RequestContext) {
+    assertPricingAdmin(user);
+    return runFinancialTransaction(async (tx) => {
+      const existing = await requiredPreset(id, tx);
+      if (!existing.isLabelSecretAllowed) throw new AppError('This preset is not allowed for hidden label pricing', 409, 'PRICING_PRESET_STATE_CONFLICT');
+      await verify(user.userId, input.accountPassword, 'CLEAR_LABEL_SECRET_PRICING_PRESET', id, context, tx);
+      const settings = await tx.labelSecretSettings.findFirst({ where: { defaultPricingPresetId: id } });
+      // The default is optional. Removing an allowed preset must update both
+      // references atomically so the row action behaves like the settings form.
+      if (settings) {
+        await tx.labelSecretSettings.update({
+          where: { id: settings.id },
+          data: { defaultPricingPresetId: null, updatedById: user.userId },
+        });
+      }
+      const updated = await PricingPresetsRepository.update(id, { isLabelSecretAllowed: false, updatedById: user.userId }, tx);
+      await audit(id, ServiceAuditAction.UPDATE_DETAILS, user.userId, 'Removed preset from hidden label pricing', {
+        isLabelSecretAllowed: true,
+        defaultHiddenPricingPresetId: settings?.defaultPricingPresetId ?? null,
+      }, {
+        isLabelSecretAllowed: false,
+        defaultHiddenPricingPresetId: null,
+      }, context, tx);
+      return serializePreset(updated);
+    });
+  }
+
   static async audit(id: string, query: PricingPresetAuditQueryInput) {
     await requiredPreset(id);
     const items = await ServiceAuditRepository.list(ServiceAuditRecordType.PRICING_PRESET, id, (query.page - 1) * query.pageSize, query.pageSize);
@@ -88,6 +132,7 @@ export class PricingPresetsService {
       const existing = await requiredPreset(id, tx);
       if (existing.isActive === active) throw new AppError(`Pricing preset is already ${active ? 'active' : 'archived'}`, 409, 'PRICING_PRESET_STATE_CONFLICT');
       if (!active && existing.isDefault) throw new AppError('Set another default before archiving this preset', 409, 'DEFAULT_PRICING_PRESET');
+      if (!active && existing.isLabelSecretAllowed) throw new AppError('Remove this preset from hidden label pricing before archiving it', 409, 'LABEL_SECRET_PRICING_PRESET');
       await verify(user.userId, input.accountPassword, active ? 'RESTORE_PRICING_PRESET' : 'ARCHIVE_PRICING_PRESET', id, context, tx);
       const updated = await PricingPresetsRepository.update(id, {
         isActive: active, archivedAt: active ? null : new Date(), archivedReason: active ? null : input.reason, updatedById: user.userId,
@@ -126,7 +171,7 @@ function presetSnapshot(preset: PricingPreset): Prisma.InputJsonObject { return 
   name: preset.name, productType: preset.productType, expensePercent: percentToApiString(preset.expensePercent), profitPercent: percentToApiString(preset.profitPercent),
   discountBufferPercent: percentToApiString(preset.discountBufferPercent), installmentMarkupPercent: percentToApiString(preset.installmentMarkupPercent),
   downPaymentPercent: percentToApiString(preset.downPaymentPercent), defaultInstallmentMonths: preset.defaultInstallmentMonths,
-  calculationMode: preset.calculationMode, roundingMode: preset.roundingMode, isDefault: preset.isDefault, isActive: preset.isActive, notes: preset.notes,
+  calculationMode: preset.calculationMode, roundingMode: preset.roundingMode, isDefault: preset.isDefault, isLabelSecretAllowed: preset.isLabelSecretAllowed, isActive: preset.isActive, notes: preset.notes,
 }; }
 function changedSnapshot(preset: PricingPreset, fields: string[]): Prisma.InputJsonObject { const snap = presetSnapshot(preset); return Object.fromEntries(fields.map((field) => [field, snap[field] ?? null])); }
 async function audit(id: string, action: ServiceAuditAction, userId: string, reason: string, beforeValues: Prisma.InputJsonObject, afterValues: Prisma.InputJsonObject, context: RequestContext, tx: Prisma.TransactionClient) {

@@ -24,6 +24,7 @@ interface Props {
 export interface SupplierTransactionPrefill {
   type?: SupplierTransactionType;
   transactionDate?: string;
+  dueDate?: string;
   description?: string;
   reference?: string;
   notes?: string;
@@ -35,6 +36,7 @@ const emptyForm = () => ({
   direction: '' as SupplierTransactionDirection|'',
   amount: '',
   transactionDate: todayAsBusinessDate(),
+  dueDate: '',
   description: '',
   reference: '',
   notes: '',
@@ -59,14 +61,14 @@ export const SupplierTransactionFormDialog: React.FC<Props> = ({ open, supplier,
 
   useEffect(() => {
     if (!transaction) { setForm(supplierTransactionFormFromPrefill(prefill)); return; }
-    setForm({ type: transaction.type, direction: transaction.direction, amount: transaction.amount, transactionDate: transaction.transactionDate, description: transaction.description, reference: transaction.reference ?? '', notes: transaction.notes ?? '', reason: '', accountPassword: '', supplierReceivingId: transaction.supplierReceivingId ?? '' });
+    setForm({ type: transaction.type, direction: transaction.direction, amount: transaction.amount, transactionDate: transaction.transactionDate, dueDate: transaction.dueDate ?? '', description: transaction.description, reference: transaction.reference ?? '', notes: transaction.notes ?? '', reason: '', accountPassword: '', supplierReceivingId: transaction.supplierReceivingId ?? '' });
   }, [transaction, prefill, open]);
 
   const set = (key: keyof ReturnType<typeof emptyForm>) => (event: React.ChangeEvent<HTMLInputElement|HTMLTextAreaElement|HTMLSelectElement>) => setForm((current) => ({ ...current, [key]: event.target.value }));
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     try {
-      const input = { type: form.type, direction: form.type === 'SUPPLIER_ADJUSTMENT' ? (form.direction || undefined) as SupplierTransactionDirection|undefined : undefined, amount: canonicalMoneyInput(form.amount), transactionDate: form.transactionDate, description: form.description, reference: form.reference || null, notes: form.notes || null };
+      const input = { type: form.type, direction: form.type === 'SUPPLIER_ADJUSTMENT' ? (form.direction || undefined) as SupplierTransactionDirection|undefined : undefined, amount: canonicalMoneyInput(form.amount), transactionDate: form.transactionDate, dueDate: form.type === 'SUPPLIER_DEBT' || (form.type === 'SUPPLIER_ADJUSTMENT' && form.direction === 'INCREASE_OWED') ? form.dueDate || null : null, description: form.description, reference: form.reference || null, notes: form.notes || null };
       if (transaction) await mutations.update.mutateAsync({ id: transaction.id, input: { ...input, reason: form.reason, accountPassword: form.accountPassword } });
       else await mutations.create.mutateAsync({ supplierId: supplier.id, input: { ...input, supplierReceivingId: form.supplierReceivingId || null } });
       onClose();
@@ -81,6 +83,7 @@ export const SupplierTransactionFormDialog: React.FC<Props> = ({ open, supplier,
         {form.type === 'SUPPLIER_ADJUSTMENT' && <label className="text-sm font-semibold">Direction / الاتجاه<select required value={form.direction} onChange={set('direction')} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 font-normal"><option value="">Select / اختر</option>{Object.entries(supplierDirectionLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>}
         <Field label={businessLabels.supplier.amount} required inputMode="decimal" value={form.amount} onChange={(event) => setForm((current) => ({ ...current, amount: sanitizeMoneyInput(event.target.value) }))} />
         <Field label={businessLabels.supplier.date} required type="date" value={form.transactionDate} onChange={set('transactionDate')} />
+        {(form.type === 'SUPPLIER_DEBT' || (form.type === 'SUPPLIER_ADJUSTMENT' && form.direction === 'INCREASE_OWED')) && <div><Field label="Due date / تاريخ الاستحقاق" type="date" value={form.dueDate} onChange={set('dueDate')} /><p className="mt-1 text-xs text-slate-500">Optional; blank means Unscheduled / No Due Date / بدون تاريخ استحقاق</p></div>}
       </div>
       {form.type === 'SUPPLIER_DEBT' && <section className="space-y-3 rounded-lg border border-blue-200 bg-blue-50 p-3">
         <label className="block text-sm font-semibold text-slate-700">Receiving document (optional) / مستند الإدخال (اختياري)

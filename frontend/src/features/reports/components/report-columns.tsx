@@ -18,6 +18,10 @@ export interface ReportColumn {
   numeric?: boolean;
 }
 
+function categoryColumn(): ReportColumn {
+  return { label: 'Category (current catalogue)', render: (row) => String(record(row).categoryPath ?? 'Uncategorized') };
+}
+
 export function columnsFor(slice: ReportSlice): ReportColumn[] {
   if (slice === 'customers-new') return [
     text('Date / التاريخ', 'createdOn'), text('Customer / الزبون', 'name'),
@@ -30,7 +34,7 @@ export function columnsFor(slice: ReportSlice): ReportColumn[] {
   ];
   if (slice === 'customers-payments') return [
     text('Date / التاريخ', 'paymentDate'), partyLink('Customer / الزبون', 'customer', '/customers/'),
-    money('Amount / المبلغ', 'amount'), text('Method / الطريقة', 'paymentMethod'),
+    { label: 'Amount / المبلغ', numeric: true, render: (row) => formatMoney(String(record(row).amount), record(row).currency === 'LBP' ? 'LBP' : 'USD') }, text('Currency / العملة', 'currency'), text('Method / الطريقة', 'paymentMethod'),
     text('Reference / المرجع', 'reference'),
   ];
   if (slice === 'customers-aging') return [
@@ -44,12 +48,14 @@ export function columnsFor(slice: ReportSlice): ReportColumn[] {
   if (slice === 'customers-not-paid' || slice === 'customers-paid') return [
     partyLink('Customer / الزبون', 'customer', '/customers/'), nestedText('Phone / الهاتف', 'customer', 'phone'),
     money('Opening / الافتتاحي', 'openingBalance'), money('New debt / دين جديد', 'newDebt'),
+    money('Return credits / حسم المرتجعات', 'returnCredits'),
     money('Paid / المدفوع', 'paidInPeriod'), money('Closing / الختامي', 'closingBalance'),
     count('Payments / الدفعات', 'paymentCount'), count('Unpaid items / بنود غير مدفوعة', 'unpaidDebtCount'),
     text('Last payment / آخر دفعة', 'lastPaymentDate'), count('Days since / منذ', 'daysSinceLastPayment'),
     riskLabelsColumn(),
   ];
   if (slice === 'products-bought') return [
+    categoryColumn(),
     text('Date / التاريخ', 'receivedOn'), nestedText('Product / المنتج', 'product', 'name'),
     text('SKU', 'sku'), partyLink('Supplier / المورد', 'supplier', '/suppliers/'),
     linked('Reference / المرجع', 'referenceNumber', '/inventory/receiving/', 'receivingId'),
@@ -58,11 +64,45 @@ export function columnsFor(slice: ReportSlice): ReportColumn[] {
     statusBadge('Line / البند', 'status', (value) => value === 'ACTIVE'),
     nestedMoney('Linked bill / الفاتورة', 'linkedDebt', 'amount'),
   ];
+  if (slice === 'products-cost-changes') return [
+    categoryColumn(),
+    text('Changed / التغيير', 'changedAt'),
+    partyText('Product / المنتج', 'product'),
+    nestedText('SKU', 'product', 'sku'),
+    nullableMoney('Old cost / الكلفة القديمة', 'oldCost'),
+    nullableMoney('New cost / الكلفة الجديدة', 'newCost'),
+    nullableMoney('Old selling / البيع القديم', 'oldSellingPrice'),
+    nullableMoney('New selling / البيع الجديد', 'newSellingPrice'),
+    text('Pricing mode / نمط التسعير', 'sellingPriceSource'),
+    booleanStatusBadge('Selling changed / تغيّر البيع', 'sellingPriceChanged'),
+    percentage('Change / النسبة', 'percentageChange'),
+    text('Source / المصدر', 'source'),
+    text('Receipt / الفاتورة', 'receiptNumber'),
+    nestedText('Changed by / عدّلها', 'changedBy', 'fullName'),
+    text('Reason / السبب', 'reason'),
+  ];
   if (slice === 'suppliers-debts') return [
     text('Date / التاريخ', 'transactionDate'), partyLink('Supplier / المورد', 'supplier', '/suppliers/'),
     text('Type / النوع', 'type'), text('Direction / الاتجاه', 'direction'),
     money('Amount / المبلغ', 'amount'), text('Description / الوصف', 'description'),
     text('Receipt / الفاتورة', 'receiptNumber'),
+  ];
+  if (slice === 'suppliers-aging') return [
+    partyLink('Supplier / المورد', 'supplier', '/suppliers/'), text('Receipt / الفاتورة', 'receiptNumber'),
+    text('Due date / الاستحقاق', 'dueDate'), text('Currency / العملة', 'currency'),
+    text('Original transaction / الحركة الأصلية', 'transactionAmount'), money('Original USD / الأصلي', 'originalAmount'),
+    money('FIFO settled USD / المسوّى', 'fifoSettledAmount'), money('Remaining USD / الباقي', 'remainingAmount'),
+    count('Days overdue / أيام التأخير', 'daysOverdue'),
+    { label: 'Age band / الفئة', render: (r) => {
+      const labels: Record<string, string> = { CURRENT: 'Current / Not Due / غير مستحق', DAYS_1_30: '1–30 / ١–٣٠', DAYS_31_60: '31–60 / ٣١–٦٠', DAYS_61_90: '61–90 / ٦١–٩٠', DAYS_90_PLUS: '90+ / أكثر من ٩٠', NO_DUE_DATE: 'Unscheduled / No Due Date / بدون تاريخ استحقاق' };
+      const key = String((r as unknown as Record<string, unknown>).bucket);
+      return labels[key] ?? key;
+    } },
+    { label: 'Status / الحالة', render: (r) => {
+      const labels: Record<string, string> = { OVERDUE: 'Overdue / متأخر', DUE_SOON: 'Due soon / مستحق قريباً', FUTURE: 'Future / مستقبلي', UNSCHEDULED: 'Unscheduled / غير مجدول' };
+      const key = String((r as unknown as Record<string, unknown>).status);
+      return labels[key] ?? key;
+    } },
   ];
   if (slice === 'suppliers-receiving') return [
     text('Date / التاريخ', 'receivedOn'), partyLink('Supplier / المورد', 'supplier', '/suppliers/'),
@@ -79,13 +119,37 @@ export function columnsFor(slice: ReportSlice): ReportColumn[] {
     money('Paid / المدفوع', 'paidAmount'), money('Remaining / الباقي', 'remainingAmount'),
   ];
   if (slice === 'inventory-movements') return [
+    categoryColumn(),
     text('Timestamp / الوقت', 'createdAt'), partyText('Product / المنتج', 'product'),
     nestedText('SKU', 'product', 'sku'), text('Type / النوع', 'movementType'),
     signed('Change / التغيير', 'quantityChange'), count('Before / قبل', 'quantityBefore'),
     count('After / بعد', 'quantityAfter'), text('Reason / السبب', 'reason'),
   ];
+  if (slice === 'customers-financial-integrity') return [
+    partyLink('Customer / الزبون', 'customer', '/customers/'),
+    nestedText('Phone / الهاتف', 'customer', 'phone'),
+    money('Obligations / الالتزامات', 'obligationTotal'),
+    money('Allocations / التخصيصات', 'allocationTotal'),
+    money('Reported / المعروض', 'reportedOutstanding'),
+    money('Independent / المستقل', 'independentOutstanding'),
+    money('Difference / الفرق', 'difference'),
+    statusBadge('Result / النتيجة', 'status', (value) => value === 'OK'),
+    issuesColumn(),
+  ];
+  if (slice === 'suppliers-financial-integrity') return [
+    partyLink('Supplier / المورد', 'supplier', '/suppliers/'),
+    nestedText('Phone / الهاتف', 'supplier', 'phone'),
+    money('Increases / الزيادات', 'increaseTotal'),
+    money('Decreases / التخفيضات', 'decreaseTotal'),
+    money('Reported / المعروض', 'reportedBalance'),
+    money('Independent / المستقل', 'independentBalance'),
+    money('Difference / الفرق', 'difference'),
+    statusBadge('Result / النتيجة', 'status', (value) => value === 'OK'),
+    issuesColumn(),
+  ];
   return [
     linked('Receiving / الاستلام', 'referenceNumber', '/inventory/receiving/', 'receivingId'),
+    categoryColumn(),
     text('Date / التاريخ', 'receivedOn'), partyText('Supplier / المورد', 'supplier'),
     text('SKU', 'sku'), text('Product / المنتج', 'productName'), count('Quantity / الكمية', 'quantity'),
     statusBadge('Result / النتيجة', 'status', (value) => value === 'OK'), issuesColumn(),
@@ -110,12 +174,16 @@ export function summariesFor(
     'customers-not-paid': [['Customers / الزبائن', 'count'], ['Opening / الافتتاحي', 'openingBalance', true], ['New debt / دين جديد', 'newDebt', true], ['Closing / الختامي', 'closingBalance', true], ['Old balances / أرصدة قديمة', 'withOldBalance']],
     'customers-paid': [['Customers / الزبائن', 'count'], ['Payments / الدفعات', 'paymentCount'], ['Collected / المحصل', 'paidInPeriod', true], ['Closing / الختامي', 'closingBalance', true]],
     'products-bought': [['Received lines / بنود مستلمة', 'activeLines'], ['Total units / إجمالي الوحدات', 'totalUnits'], ['Distinct products / منتجات', 'distinctProducts'], ['Received not sold / لم تُبع', 'receivedNotSold'], ['Reversed lines / بنود معكوسة', 'reversedLines']],
+    'products-cost-changes': [['Cost changes / تغييرات الكلفة', 'count'], ['Increases / زيادات', 'increases'], ['Decreases / تخفيضات', 'decreases'], ['From purchases / من المشتريات', 'fromPurchases']],
     'suppliers-debts': [['Transactions / الحركات', 'count'], ['New owed / دين جديد', 'increased', true], ['Paid or credited / مدفوع أو دائن', 'decreased', true], ['Net change / صافي التغيير', 'netChange', true]],
     'suppliers-receiving': [['Documents / المستندات', 'count'], ['Posted / مثبت', 'posted'], ['Voided / ملغى', 'voided']],
+    'suppliers-aging': [['Total payables USD / إجمالي المستحقات', 'totalPayables', true], ['Overdue USD / المتأخر', 'totalOverdue', true], ['Due soon / مستحق قريباً', 'dueSoonCount'], ['Due soon USD / المستحق قريباً', 'dueSoonAmount', true], ['Future USD / مستقبلي', 'futureAmount', true], ['Unscheduled / No Due Date / غير مجدول', 'noDueDate', true], ['Unapplied payments/credits USD / رصيد غير مستخدم', 'unappliedCredit', true], ['Net ledger USD / صافي السجل', 'ledgerBalance', true]],
     'sales-orders': [['Orders / الطلبات', 'orderCount'], ['Sales / المبيعات', 'totalAmount', true], ['Paid / المدفوع', 'paidAmount', true], ['Unpaid / غير المدفوع', 'unpaidAmount', true]],
     'sales-unpaid': [['Unpaid orders / طلبات غير مدفوعة', 'count'], ['Remaining / الباقي', 'remainingAmount', true]],
     'inventory-movements': [['Movements / الحركات', 'count']],
     'inventory-reconciliation': [['Lines checked / بنود مفحوصة', 'count'], ['OK / سليم', 'ok'], ['Mismatches / غير مطابق', 'mismatches']],
+    'customers-financial-integrity': [['Customers checked / زبائن مفحوصون', 'count'], ['OK / سليم', 'ok'], ['Mismatches / غير مطابق', 'mismatches'], ['Reported / المعروض', 'reportedTotal', true], ['Independent / المستقل', 'independentTotal', true], ['Difference / الفرق', 'difference', true]],
+    'suppliers-financial-integrity': [['Suppliers checked / موردون مفحوصون', 'count'], ['OK / سليم', 'ok'], ['Mismatches / غير مطابق', 'mismatches'], ['Reported / المعروض', 'reportedTotal', true], ['Independent / المستقل', 'independentTotal', true], ['Difference / الفرق', 'difference', true]],
   };
   return (definitions[slice] ?? []).map(([label, key, moneyValue]) => ({
     label, value: String(summary[key] ?? '0'), money: Boolean(moneyValue),
@@ -131,7 +199,8 @@ export function movementSummaryRows(value: unknown) {
 
 export function rowKey(row: ReportRow, index: number) {
   const value = record(row);
-  return String(value.id ?? value.receivingId ?? `${index}`);
+  const party = (value.customer ?? value.supplier) as Record<string, unknown> | undefined;
+  return String(value.id ?? value.receivingId ?? party?.id ?? `${index}`);
 }
 
 export const AGING_BUCKET_LABELS: Record<string, string> = {
@@ -191,6 +260,30 @@ function money(label: string, key: string): ReportColumn {
   return { label, numeric: true, render: (row) => <strong className="tabular-nums">{formatMoney(String(record(row)[key] ?? '0.00'))}</strong> };
 }
 
+function nullableMoney(label: string, key: string): ReportColumn {
+  return {
+    label,
+    numeric: true,
+    render: (row) => {
+      const value = record(row)[key];
+      return value == null ? '—' : <strong className="tabular-nums">{formatMoney(String(value))}</strong>;
+    },
+  };
+}
+
+function percentage(label: string, key: string): ReportColumn {
+  return {
+    label,
+    numeric: true,
+    render: (row) => {
+      const value = record(row)[key];
+      if (value == null) return '—';
+      const numeric = Number(value);
+      return <strong className={`tabular-nums ${numeric < 0 ? 'text-red-700' : 'text-emerald-700'}`}>{numeric > 0 ? '+' : ''}{String(value)}%</strong>;
+    },
+  };
+}
+
 function count(label: string, key: string): ReportColumn {
   return { label, numeric: true, render: (row) => <span className="tabular-nums">{display(record(row)[key])}</span> };
 }
@@ -238,7 +331,7 @@ function partyLink(label: string, key: string, base: string): ReportColumn {
       const party = record(row)[key] as Record<string, unknown> | null;
       return party?.id
         ? <Link to={`${base}${party.id}`} className="user-text font-semibold text-emerald-700 hover:underline" dir="auto">{display(party.name)}</Link>
-        : '—';
+        : key === 'customer' ? 'Walk-in / زبون عابر' : '—';
     },
   };
 }
@@ -257,6 +350,18 @@ function statusBadge(label: string, key: string, isGood: (value: string) => bool
     render: (row) => {
       const value = String(record(row)[key] ?? '');
       return <span className={`inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${isGood(value) ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-800'}`}>{display(value)}</span>;
+    },
+  };
+}
+
+function booleanStatusBadge(label: string, key: string): ReportColumn {
+  return {
+    label,
+    render: (row) => {
+      const changed = record(row)[key] === true;
+      return <span className={`inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${changed ? 'bg-amber-50 text-amber-800' : 'bg-emerald-50 text-emerald-700'}`}>
+        {changed ? 'Changed / تغيّر' : 'Unchanged / لم يتغيّر'}
+      </span>;
     },
   };
 }

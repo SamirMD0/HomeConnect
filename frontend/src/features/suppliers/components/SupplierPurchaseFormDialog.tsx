@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Plus } from 'lucide-react';
 import { Button } from '../../../components/ui';
@@ -6,6 +6,7 @@ import { Modal } from '../../../components/ui/Modal';
 import { canonicalMoneyInput, centsToMoney, moneyToCents, sanitizeMoneyInput } from '../../customer-financial/utils/money-input';
 import { normalizeFinancialError } from '../../customer-financial/utils/financial-form-errors';
 import { todayAsBusinessDate } from '../../customer-financial/utils/business-date';
+import { createClientIdempotencyKey } from '../../customer-financial/utils/idempotency-key';
 import { useCreateSupplierPurchase } from '../hooks/useSupplierPurchases';
 import type { Supplier } from '../types/supplier.types';
 import type { PurchasePaymentStatus } from '../types/supplier-purchase.types';
@@ -24,6 +25,7 @@ interface Props {
 const emptyForm = () => ({
   receiptNumber: '',
   transactionDate: todayAsBusinessDate(),
+  dueDate: '',
   description: '',
   reference: '',
   notes: '',
@@ -43,6 +45,7 @@ const emptyForm = () => ({
  * in a single transaction — this dialog never posts the two halves separately.
  */
 export const SupplierPurchaseFormDialog: React.FC<Props> = ({ open, supplier, onClose }) => {
+  const idempotencyKeyRef = useRef(createClientIdempotencyKey('supplier-purchase'));
   const [form, setForm] = useState(emptyForm);
   const [lines, setLines] = useState<PurchaseLineDraft[]>(() => [emptyLine()]);
   /** Once the user writes their own description, stop overwriting it. */
@@ -86,7 +89,12 @@ export const SupplierPurchaseFormDialog: React.FC<Props> = ({ open, supplier, on
     return null;
   })();
 
-  const reset = () => { setForm(emptyForm()); setLines([emptyLine()]); setDescriptionEdited(false); };
+  const reset = () => {
+    setForm(emptyForm());
+    setLines([emptyLine()]);
+    setDescriptionEdited(false);
+    idempotencyKeyRef.current = createClientIdempotencyKey('supplier-purchase');
+  };
   const close = () => { reset(); onClose(); };
 
   const submit = async (event: React.FormEvent) => {
@@ -96,8 +104,10 @@ export const SupplierPurchaseFormDialog: React.FC<Props> = ({ open, supplier, on
       await create.mutateAsync({
         supplierId: supplier.id,
         input: {
+          idempotencyKey: idempotencyKeyRef.current,
           receiptNumber: form.receiptNumber.trim() || null,
           transactionDate: form.transactionDate,
+          dueDate: form.dueDate || null,
           description: description.trim(),
           reference: form.reference.trim() || null,
           notes: form.notes.trim() || null,
@@ -131,6 +141,10 @@ export const SupplierPurchaseFormDialog: React.FC<Props> = ({ open, supplier, on
         </label>
         <label className="block text-sm font-semibold text-slate-700">Purchase date / تاريخ الشراء
           <input type="date" required value={form.transactionDate} onChange={set('transactionDate')} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 font-normal" />
+        </label>
+        <label className="block text-sm font-semibold text-slate-700">Due date / تاريخ الاستحقاق
+          <input type="date" value={form.dueDate} onChange={set('dueDate')} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 font-normal" />
+          <span className="mt-1 block text-xs font-normal text-slate-500">Optional; blank means Unscheduled / No Due Date / بدون تاريخ استحقاق</span>
         </label>
       </div>
 

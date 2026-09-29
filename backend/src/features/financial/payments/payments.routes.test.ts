@@ -5,6 +5,7 @@ import { app } from '../../../app';
 
 const { paymentsServiceMock } = vi.hoisted(() => ({
   paymentsServiceMock: {
+    getReceipt: vi.fn(),
     voidPayment: vi.fn(),
     correctPayment: vi.fn(),
     reallocatePayment: vi.fn(),
@@ -24,13 +25,14 @@ vi.mock('../../../lib/prisma', () => ({
 }));
 
 const paymentId = '55555555-5555-4555-8555-555555555555';
-const jwtSecret = process.env.JWT_SECRET || 'fallback_secret_key_change_in_production';
+const jwtSecret = process.env.JWT_SECRET!;
 const adminToken = jwt.sign({ userId: '11111111-1111-4111-8111-111111111111', role: 'ADMIN' }, jwtSecret);
 const employeeToken = jwt.sign({ userId: '44444444-4444-4444-8444-444444444444', role: 'EMPLOYEE' }, jwtSecret);
 
 describe('payment correction routes', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    paymentsServiceMock.getReceipt.mockResolvedValue({ id: paymentId, voidedAt: null });
     paymentsServiceMock.voidPayment.mockResolvedValue({
       paymentId,
       customerId: '22222222-2222-4222-8222-222222222222',
@@ -52,6 +54,15 @@ describe('payment correction routes', () => {
       replacementPaymentId: null,
       voidedAt: null,
     });
+  });
+
+  it('serves normal and voided receipts through the same authenticated route without an admin gate', async () => {
+    const response = await request(app)
+      .get(`/api/v1/payments/${paymentId}/receipt`)
+      .set('Authorization', `Bearer ${employeeToken}`);
+
+    expect(response.status).toBe(200);
+    expect(paymentsServiceMock.getReceipt).toHaveBeenCalledWith(paymentId);
   });
 
   it('requires admin access to void payments', async () => {

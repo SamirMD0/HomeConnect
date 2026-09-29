@@ -85,6 +85,12 @@ const RULES: Rule[] = [
     fix: 'Press Copy Diagnostics and send the result. Open Logs Folder for the full error.',
   },
   {
+    match: /Development Express backend.*did not become ready/i,
+    step: 'step-backend',
+    summary: 'The development server is not running.',
+    fix: 'Close this window and start the desktop app with "npm run dev:electron" from the project folder.',
+  },
+  {
     match: /did not become ready|timed out|timeout/i,
     step: 'step-backend',
     summary: 'The HomeConnect server did not finish starting in time.',

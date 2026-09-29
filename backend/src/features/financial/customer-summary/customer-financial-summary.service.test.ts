@@ -200,6 +200,22 @@ function mockRecordSet(overrides: Record<string, unknown> = {}) {
 }
 
 describe('CustomerFinancialSummaryService', () => {
+  it('subtracts immutable return credits from installment transaction and base outstanding, not cash paid', async () => {
+    mockRecordSet({ plans: [makePlan({
+      totalAmount: new Decimal('100.00'), baseTotalAmount: new Decimal('100.00'),
+      installments: [makeInstallment(1, '2026-07-01', '100.00', {
+        baseAmountDue: new Decimal('100.00'),
+        returnAllocations: [{ amount: new Decimal('40.00'), baseAmount: new Decimal('40.00') }],
+      })],
+    })] });
+    const result = await CustomerFinancialSummaryService.getCustomerFinancialSummary(customerId, {
+      includeCancelled: false, includePayments: true, paymentLimit: 20, debtLimit: 50, planLimit: 50,
+    });
+    expect(result.summary.totalOutstanding).toBe('60.00');
+    expect(result.summary.installmentPlanOutstanding).toBe('60.00');
+    expect(result.summary.totalPaid).toBe('0.00');
+    expect(result.installmentPlans[0].remainingBalance).toBe('60.00');
+  });
   beforeEach(() => {
     vi.clearAllMocks();
   });

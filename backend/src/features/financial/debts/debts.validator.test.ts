@@ -1,4 +1,4 @@
-import { DebtStatus, PaymentMethod } from '@prisma/client';
+import { Currency, DebtStatus, PaymentMethod } from '@prisma/client';
 import { describe, expect, it } from 'vitest';
 import {
   cancelDebtSchema,
@@ -13,6 +13,7 @@ describe('debt validators', () => {
   it('accepts valid debt creation input and trims text', () => {
     const result = createDebtSchema.parse({
       amount: '600.00',
+      currency: Currency.USD,
       description: ' Refrigerator ',
       dueDate: '2026-08-10',
       notes: ' Optional ',
@@ -20,6 +21,7 @@ describe('debt validators', () => {
 
     expect(result).toEqual({
       amount: '600.00',
+      currency: Currency.USD,
       description: 'Refrigerator',
       dueDate: '2026-08-10',
       notes: 'Optional',

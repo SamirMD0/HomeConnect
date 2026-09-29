@@ -44,7 +44,7 @@ export interface DashboardOverdueCustomer {
 
 export interface DashboardRecentPayment {
   id: string;
-  customer: DashboardCustomer;
+  customer: DashboardCustomer | null;
   amount: string;
   paymentDate: string;
   paymentMethod: string;
@@ -156,7 +156,7 @@ export interface DashboardAlert {
 }
 export interface DashboardAlertsData { alerts: DashboardAlert[]; total: number }
 
-export interface MonthEndMovement { opening: string; newAmount: string; collected: string; adjustments: string; closing: string; reconciled: boolean }
+export interface MonthEndMovement { opening: string; newAmount: string; collected: string; nonReceivableCollected?: string; adjustments: string; closing: string; reconciled: boolean }
 export interface MonthEndData {
   month: string;
   disclosure: { en: string; ar: string };

@@ -23,6 +23,8 @@ export interface MonthlyReviewMovement {
   opening: string;
   newAmount: string;
   collected: string;
+  nonReceivableCollected?: string;
+  returnCredits?: string;
   adjustments: string;
   closing: string;
   reconciled: boolean;
@@ -31,6 +33,10 @@ export interface MonthlyReviewMovement {
 export interface MonthlyReviewData {
   sales: {
     orderCount: number;
+    returnsAmount?: string;
+    netSalesAmount?: string;
+    cashRefunds?: string;
+    storeCreditIssued?: string;
     totalAmount: string;
     paidAmount: string;
     unpaidAmount: string;

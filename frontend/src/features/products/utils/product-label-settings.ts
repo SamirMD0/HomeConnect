@@ -5,6 +5,27 @@ export interface ProductLabelDimensions { widthMm: number; heightMm: number; aut
 export const DEFAULT_PRODUCT_LABEL_DIMENSIONS: ProductLabelDimensions = { widthMm: 50, heightMm: 30, autoFit: true };
 const STORAGE_KEY = 'homeconnect.product-label-dimensions';
 
+/**
+ * One-click label types for the 80mm thermal roll (72mm printable).
+ * Choosing one writes the ordinary size and price fields, so nothing new is
+ * stored and a hand-tuned custom size keeps working.
+ */
+export const LABEL_PRESETS = {
+  LARGE: { widthMm: 72, heightMm: 50, showPrice: true },
+  SMALL: { widthMm: 58, heightMm: 40, showPrice: false },
+} as const;
+
+export type LabelPresetName = keyof typeof LABEL_PRESETS;
+export type LabelPresetKey = LabelPresetName | 'CUSTOM';
+
+export function matchLabelPreset(widthMm: number, heightMm: number, showPrice: boolean): LabelPresetKey {
+  const match = (Object.keys(LABEL_PRESETS) as LabelPresetName[]).find((key) => {
+    const preset = LABEL_PRESETS[key];
+    return preset.widthMm === widthMm && preset.heightMm === heightMm && preset.showPrice === showPrice;
+  });
+  return match ?? 'CUSTOM';
+}
+
 export function loadProductLabelDimensions(): ProductLabelDimensions {
   try {
     const value = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}') as Partial<ProductLabelDimensions>;

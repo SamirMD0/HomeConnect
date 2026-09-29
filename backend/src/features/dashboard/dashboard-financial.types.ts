@@ -38,7 +38,7 @@ export interface DashboardOverdueCustomer {
 
 export interface DashboardRecentPayment {
   id: string;
-  customer: DashboardFinancialCustomerView;
+  customer: DashboardFinancialCustomerView | null;
   amount: string;
   paymentDate: string;
   paymentMethod: string;

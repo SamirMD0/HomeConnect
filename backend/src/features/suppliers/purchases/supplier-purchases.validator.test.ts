@@ -20,6 +20,11 @@ const messagesFor = (input: unknown) => {
 };
 
 describe('createSupplierPurchaseSchema', () => {
+  it('accepts an optional future due date without permitting future purchase dates', () => {
+    expect(createSupplierPurchaseSchema.parse(base({ dueDate: '2030-01-01' })).dueDate).toBe('2030-01-01');
+    expect(createSupplierPurchaseSchema.parse(base({ dueDate: null })).dueDate).toBeNull();
+    expect(createSupplierPurchaseSchema.safeParse(base({ dueDate: '2030-02-30' })).success).toBe(false);
+  });
   beforeEach(() => { process.env.BUSINESS_TIMEZONE = 'Asia/Beirut'; });
 
   it('accepts a purchase of an existing product', () => {

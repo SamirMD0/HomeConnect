@@ -181,6 +181,11 @@ export class SalesOrderInventoryService {
         if (fulfillment.status !== SalesOrderStockFulfillmentStatus.ACTIVE) {
           throw new SalesConflictError(ALREADY_RESTORED);
         }
+        if ((fulfillment.returnItems ?? []).length > 0) {
+          throw new SalesConflictError(
+            'This fulfillment is managed by posted sales returns and cannot use legacy stock restoration / هذا السجل مرتبط بمرتجع مبيعات ولا يمكن إعادته بالطريقة القديمة'
+          );
+        }
         return fulfillment;
       }).sort((left, right) => left.productId.localeCompare(right.productId) || left.id.localeCompare(right.id));
 

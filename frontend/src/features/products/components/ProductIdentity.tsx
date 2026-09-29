@@ -31,6 +31,7 @@ export const ProductIdentity: React.FC<{ product: Product; onView: () => void }>
       {product.name}
     </button>
     <span className="user-text mt-0.5 block truncate text-xs text-slate-600" dir="auto">{product.model}</span>
+    {product.categoryPath && <span className="mt-0.5 block truncate text-xs text-slate-500" title={product.categoryPath}>{product.categoryPath}</span>}
     <span className="mt-0.5 block truncate font-mono text-[11px] text-slate-500">
       <span className="font-semibold text-slate-600">{product.sku}</span>
       {product.barcode && <span className="text-slate-400"> · {product.barcode}</span>}

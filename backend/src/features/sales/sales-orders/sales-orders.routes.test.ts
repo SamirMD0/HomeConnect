@@ -16,7 +16,7 @@ vi.mock('./sales-orders.service', () => ({ SalesOrdersService: service }));
 vi.mock('./sales-order-inventory.service', () => ({ SalesOrderInventoryService: inventoryService }));
 vi.mock('../../../lib/prisma', () => ({ prisma: { $queryRaw: vi.fn().mockResolvedValue([{ result: 1 }]) }, transactionModel: {}, activityLogModel: {} }));
 
-const secret = process.env.JWT_SECRET || 'fallback_secret_key_change_in_production';
+const secret = process.env.JWT_SECRET!;
 const admin = jwt.sign({ userId: '11111111-1111-4111-8111-111111111111', role: 'ADMIN' }, secret);
 const employee = jwt.sign({ userId: '22222222-2222-4222-8222-222222222222', role: 'EMPLOYEE' }, secret);
 const unknownRole = jwt.sign({ userId: '77777777-7777-4777-8777-777777777777', role: 'VIEWER' }, secret);
@@ -25,6 +25,7 @@ const itemId = '55555555-5555-4555-8555-555555555555';
 const fulfillmentId = '66666666-6666-4666-8666-666666666666';
 const order = { id: orderId, orderNumber: 'SO-2026-0001', totalAmount: '10.00', paymentStatus: 'PAID' };
 const body = {
+  idempotencyKey: 'counter-route-create',
   customerId: '44444444-4444-4444-8444-444444444444',
   salesChannel: 'SHOP_DIRECT',
   orderDate: '2026-08-03',

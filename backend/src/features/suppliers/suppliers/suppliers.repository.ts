@@ -43,12 +43,12 @@ export class SuppliersRepository {
     const rows = await (tx ?? prisma).supplierTransaction.groupBy({
       by: ['supplierId', 'direction'],
       where: { supplierId: { in: supplierIds }, status: SupplierTransactionStatus.ACTIVE },
-      _sum: { amount: true },
+      _sum: { baseAmount: true },
     });
     const result = new Map<string, { increase: string; decrease: string }>();
     for (const row of rows) {
       const current = result.get(row.supplierId) ?? { increase: '0.00', decrease: '0.00' };
-      const amount = row._sum.amount?.toString() ?? '0.00';
+      const amount = row._sum.baseAmount?.toString() ?? '0.00';
       if (row.direction === SupplierTransactionDirection.INCREASE_OWED) current.increase = amount;
       else current.decrease = amount;
       result.set(row.supplierId, current);
@@ -59,7 +59,7 @@ export class SuppliersRepository {
     return (tx ?? prisma).supplierTransaction.groupBy({
       by: ['type', 'direction'],
       where: { supplierId, status: SupplierTransactionStatus.ACTIVE },
-      _sum: { amount: true }, _count: { _all: true },
+      _sum: { baseAmount: true }, _count: { _all: true },
     });
   }
 }

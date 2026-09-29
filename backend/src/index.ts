@@ -1,17 +1,8 @@
-import dotenv from 'dotenv';
-import path from 'path';
-
-for (const envPath of [
-  process.env.BACKEND_ENV_FILE,
-  process.env.HOME_CONNECT_CONFIG_DIR
-    ? path.join(process.env.HOME_CONNECT_CONFIG_DIR, 'production.env')
-    : undefined,
-  path.resolve(process.cwd(), 'backend/.env'),
-  path.resolve(__dirname, '../../backend/.env'),
-  path.resolve(__dirname, '../../../../backend/.env'),
-]) {
-  if (envPath) dotenv.config({ path: envPath, quiet: true });
-}
+// Must stay first: it populates process.env for the modules imported below,
+// several of which read their configuration at module scope — lib/prisma builds
+// its PrismaClient there. Imports are evaluated before any statement in this
+// file, so loading the environment here as a statement would be too late.
+import './load-env';
 
 import { app } from './app';
 import { logger } from './lib/logger';
@@ -24,12 +15,16 @@ const HOST = process.env.HOST || '127.0.0.1';
 
 const startServer = () => {
   try {
-    const server = app.listen(Number(PORT), HOST, () => {
+    const server = app.listen(Number(PORT), HOST);
+    server.once('listening', () => {
       logger.info(`Server running on http://${HOST}:${PORT}`);
       BackupScheduler.start();
     });
     server.on('close', () => console.log('Server closed'));
-    server.on('error', (err) => console.log('Server error', err));
+    server.on('error', (err) => {
+      logger.error('Failed to listen:', err);
+      process.exit(1);
+    });
 
     const shutdown = async (signal: string) => {
       logger.info(`Server shutting down from ${signal}`);

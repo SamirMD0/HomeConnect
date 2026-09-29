@@ -52,6 +52,16 @@ describe('migration checksum compatibility with the Prisma CLI', () => {
   it('ignores folders that are not migrations', () => {
     expect(MigrationRunner.readBundled(MIGRATIONS_DIR).some((m) => m.name === 'migration_lock.toml')).toBe(false);
   });
+
+  it('commits a new enum value before a later migration uses it', () => {
+    const bundled = MigrationRunner.readBundled(MIGRATIONS_DIR);
+    const enumMigration = bundled.find((entry) => entry.name === '20260918123000_add_staged_discount_encoding');
+    const seedMigration = bundled.find((entry) => entry.name === '20260918123100_seed_staged_discount_encoding');
+    expect(enumMigration?.sql).toContain("ADD VALUE IF NOT EXISTS 'STAGED_DISCOUNT'");
+    expect(enumMigration?.sql).not.toContain('INSERT INTO');
+    expect(seedMigration?.sql).toContain("'STAGED_DISCOUNT'");
+    expect(bundled.indexOf(enumMigration!)).toBeLessThan(bundled.indexOf(seedMigration!));
+  });
 });
 
 describe('migration classification', () => {

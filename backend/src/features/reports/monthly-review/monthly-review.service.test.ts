@@ -65,6 +65,7 @@ describe('MonthlyReviewService', () => {
 
   it('exports the composed review through the shared BOM CSV builder', async () => {
     arrangeServices();
+    services.monthEnd.mockResolvedValueOnce({ customers: { ...movement('70.00'), collected: '100.00', nonReceivableCollected: '100.00' }, suppliers: { ...movement('40.00'), withBalance: 1 }, disclosure: { en: 'Disclosure', ar: 'إفصاح' }, service: {} });
     const result = await MonthlyReviewService.exportCsv(
       { period: 'lastMonth' },
       { businessDate: '2026-08-17', generatedAt: new Date('2026-08-17T08:00:00.000Z') }
@@ -73,6 +74,7 @@ describe('MonthlyReviewService', () => {
     expect(result.csv.startsWith('\uFEFF')).toBe(true);
     expect(result.csv).toContain('Sales,Total sales,300.00');
     expect(result.csv).toContain('Customers,Closing receivable,70.00');
+    expect(result.csv).toContain('Customers,Counter cash (not receivable),100.00');
   });
 });
 

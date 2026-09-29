@@ -17,6 +17,7 @@ import { PricingPreviewCard } from '../../pricing/components/PricingPreviewCard'
 import { ProductSpecificationsView } from './ProductSpecificationsView';
 import { ProductSkuEditDialog } from './ProductSkuEditDialog';
 import { ProductLabelPanel } from './ProductLabelPanel';
+import { useRolloutMode } from '../../pricing-card/hooks/useRolloutMode';
 import { ProductInventoryPanel } from '../../inventory/components/ProductInventoryPanel';
 
 interface ProductDetailsDrawerProps {
@@ -40,6 +41,7 @@ export const ProductDetailsDrawer: React.FC<ProductDetailsDrawerProps> = ({ prod
   const overlayRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLElement>(null);
   const item = product.data;
+  const rollout = useRolloutMode();
 
   // Focus stays inside the sheet and returns to the row that opened it; the
   // SKU dialog runs its own trap, so this one stands down while it is open.
@@ -82,7 +84,8 @@ export const ProductDetailsDrawer: React.FC<ProductDetailsDrawerProps> = ({ prod
             <button type="button" onClick={() => onEdit(item)} className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium"><Edit3 className="h-4 w-4" /> {businessLabels.common.edit}</button>
             {/* The catalogue rows offer this; the drawer is the deeper surface and must not offer less. */}
             <Link to={salesOrderCreateUrl(item.id)} className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium"><ShoppingCart className="h-4 w-4" /> Make Order / إنشاء طلب</Link>
-            <Link to={`/products/${item.id}/label`} className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium"><Printer className="h-4 w-4" /> {businessLabels.product.printLabel}</Link>
+            {rollout.legacyEnabled && <Link to={`/products/${item.id}/label`} className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium"><Printer className="h-4 w-4" /> {businessLabels.product.printLabel}</Link>}
+            {rollout.pricingCardEnabled && <Link to={`/products/${item.id}/pricing-card`} className="inline-flex items-center gap-2 rounded-lg border border-brand-300 bg-brand-50 px-3 py-2 text-sm font-medium text-brand-800"><Printer className="h-4 w-4" /> Print pricing card</Link>}
             {user?.role === 'ADMIN' && (item.isActive
               ? <button type="button" onClick={() => onArchive(item)} className="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-700"><Archive className="h-4 w-4" /> Archive / أرشفة</button>
               : <button type="button" onClick={() => onRestore(item)} className="inline-flex items-center gap-2 rounded-lg border border-brand-200 px-3 py-2 text-sm font-medium text-brand-700"><RotateCcw className="h-4 w-4" /> Restore / استعادة</button>)}
@@ -102,6 +105,7 @@ export const ProductDetailsDrawer: React.FC<ProductDetailsDrawerProps> = ({ prod
             <div><dt className="text-xs font-medium text-slate-500">SKU</dt><dd className="mt-1 flex items-center gap-2 font-mono text-sm font-bold"><span>{item.sku}</span><button type="button" title="Copy SKU" onClick={() => navigator.clipboard.writeText(item.sku)} className="text-slate-500"><Copy className="h-4 w-4" /></button>{user?.role === 'ADMIN' && <button type="button" onClick={() => setSkuProduct(item)} className="font-sans text-xs font-semibold text-brand-700">Edit</button>}</dd></div>
             <Value label={businessLabels.product.model} value={item.model || 'No model / لا يوجد موديل'} auto empty={!item.model} />
             <Value label={businessLabels.product.brand} value={item.brand || 'No brand / لا توجد ماركة'} auto empty={!item.brand} />
+            <Value label="Category" value={item.categoryPath || 'Uncategorized'} empty={!item.categoryId} />
             <Value label={businessLabels.product.barcode} value={item.barcode || 'No barcode / لا يوجد باركود'} empty={!item.barcode} />
             {/* Both stock settings, read-only. Quantity is an inventory movement, never a form field. */}
             <Value label="Stock tracking / تتبع المخزون" value={item.trackStock ? 'Tracked / متتبع' : 'Not tracked / غير متتبع'} />

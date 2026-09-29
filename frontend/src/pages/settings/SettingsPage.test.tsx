@@ -1,4 +1,5 @@
 import { renderToStaticMarkup } from 'react-dom/server';
+import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SettingsPage } from './SettingsPage';
 
@@ -24,26 +25,38 @@ vi.mock('../../features/maintenance/components/MaintenancePanel', () => ({
   MaintenancePanel: () => <section>Maintenance panel rendered</section>,
 }));
 
+vi.mock('../../features/exchange-rates/components/ExchangeRatePanel', () => ({
+  ExchangeRatePanel: () => <section>Exchange rate panel rendered</section>,
+}));
+
+vi.mock('../../features/documents/components/BusinessSettingsPanel', () => ({
+  BusinessSettingsPanel: () => <section>Business settings panel rendered</section>,
+}));
+
 describe('SettingsPage', () => {
   beforeEach(() => {
     authMock.user = { id: 'admin', username: 'admin', fullName: 'Admin', role: 'ADMIN' };
   });
 
   it('renders backup controls for admins', () => {
-    const html = renderToStaticMarkup(<SettingsPage />);
+    const html = renderToStaticMarkup(<MemoryRouter><SettingsPage /></MemoryRouter>);
 
     expect(html).toContain('Settings');
     expect(html).toContain('Backup panel rendered');
     expect(html).toContain('Maintenance panel rendered');
+    expect(html).toContain('Exchange rate panel rendered');
+    expect(html).toContain('Business settings panel rendered');
   });
 
   it('hides backup and maintenance controls from non-admin users', () => {
     authMock.user = { id: 'employee', username: 'employee', fullName: 'Employee', role: 'EMPLOYEE' };
 
-    const html = renderToStaticMarkup(<SettingsPage />);
+    const html = renderToStaticMarkup(<MemoryRouter><SettingsPage /></MemoryRouter>);
 
     expect(html).toContain('Settings are admin-only');
     expect(html).not.toContain('Backup panel rendered');
     expect(html).not.toContain('Maintenance panel rendered');
+    expect(html).not.toContain('Exchange rate panel rendered');
+    expect(html).not.toContain('Business settings panel rendered');
   });
 });

@@ -50,6 +50,10 @@ describeDatabase('sales-order stock fulfillment database contract', () => {
           itemsSubtotal: '2.00',
           totalAmount: '2.00',
           remainingAmount: '2.00',
+          baseSubtotal: '2.00',
+          baseTotalAmount: '2.00',
+          basePaidAmount: '0.00',
+          baseRemainingAmount: '2.00',
           createdById: userId,
         },
       });
@@ -64,6 +68,13 @@ describeDatabase('sales-order stock fulfillment database contract', () => {
           quantity: 1,
           unitPrice: '1.00',
           lineTotal: '1.00',
+          baseUnitPrice: '1.00',
+          baseLineTotal: '1.00',
+          taxRateSnapshot: '0.000',
+          taxCodeSnapshot: null,
+          unitPriceExVat: '1.00',
+          vatAmount: '0.00',
+          lineTotalIncVat: '1.00',
         })),
       });
       await prisma.stockMovement.createMany({

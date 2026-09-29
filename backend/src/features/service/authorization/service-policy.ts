@@ -9,6 +9,7 @@ export const PRODUCT_FIELD_POLICY = {
   model: true,
   barcode: true,
   brand: true,
+  categoryId: true,
   price: true,
   discount: true,
   costPrice: true,
@@ -22,6 +23,8 @@ export const PRODUCT_FIELD_POLICY = {
   customDownPaymentPercent: true,
   customInstallmentMonths: true,
   customCalculationMode: true,
+  taxProfileId: true,
+  priceIncludesVat: true,
   isActive: true,
   // Cosmetic catalogue fields any authenticated user may maintain.
   imageUrl: false,
@@ -33,6 +36,8 @@ export const PRODUCT_FIELD_POLICY = {
   lowStockThreshold: true,
   specifications: false,
   specificationNotes: false,
+  featureHighlights: true,
+  pricingCardTemplateId: true,
 } as const;
 
 export const SERVICE_JOB_FIELD_POLICY = {

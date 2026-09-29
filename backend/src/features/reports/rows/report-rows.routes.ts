@@ -15,12 +15,16 @@ const routes: Array<[path: string, slice: ReportSlice]> = [
   ['/customers/not-paid', 'customers-not-paid'],
   ['/customers/paid', 'customers-paid'],
   ['/products/bought', 'products-bought'],
+  ['/products/cost-changes', 'products-cost-changes'],
   ['/suppliers/debts', 'suppliers-debts'],
+  ['/suppliers/payables-aging', 'suppliers-aging'],
   ['/suppliers/receiving', 'suppliers-receiving'],
   ['/sales/orders', 'sales-orders'],
   ['/sales/unpaid', 'sales-unpaid'],
   ['/inventory/movements', 'inventory-movements'],
   ['/inventory/reconciliation', 'inventory-reconciliation'],
+  ['/customers/financial-integrity', 'customers-financial-integrity'],
+  ['/suppliers/financial-integrity', 'suppliers-financial-integrity'],
 ];
 
 for (const [path, slice] of routes) {

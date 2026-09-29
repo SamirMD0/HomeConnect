@@ -1,3 +1,4 @@
+import { Currency } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { describe, expect, it } from 'vitest';
 import { calculatePricing } from './pricing-calculator';
@@ -61,5 +62,17 @@ describe('pricing calculator', () => {
       downPaymentPercent: new Decimal(0),
     });
     expect(result.cashPrice).toBe('0.09');
+  });
+
+  it('uses whole-unit LBP rounding throughout the calculation', () => {
+    const result = calculatePricing(new Decimal('100001'), {
+      ...compound, expensePercent: new Decimal(0), profitPercent: new Decimal(0),
+      discountBufferPercent: new Decimal(0), installmentMarkupPercent: new Decimal(0),
+      downPaymentPercent: new Decimal(40), installmentMonths: 3,
+    }, Currency.LBP);
+    expect(result).toMatchObject({
+      cashPrice: '100001', installmentPrice: '100001', downPayment: '40000',
+      remaining: '60001', monthlyPayment: '20000', lastInstallmentPayment: '20001',
+    });
   });
 });

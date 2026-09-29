@@ -1,4 +1,5 @@
 import {
+  Currency,
   DebtStatus,
   InstallmentPlanFrequency,
   InstallmentPlanStatus,
@@ -17,10 +18,13 @@ export interface PaymentAllocationAmount {
 export interface DebtBalanceInput {
   originalAmount: Decimal;
   allocations?: PaymentAllocationAmount[];
+  credits?: PaymentAllocationAmount[];
 }
 
 export interface ObligationBalance {
   totalPaid: Decimal;
+  totalCredits?: Decimal;
+  totalSettled?: Decimal;
   remainingBalance: Decimal;
   isFullyPaid: boolean;
   isPartiallyPaid: boolean;
@@ -29,6 +33,7 @@ export interface ObligationBalance {
 export interface InstallmentBalanceInput {
   amountDue: Decimal;
   allocations?: PaymentAllocationAmount[];
+  credits?: PaymentAllocationAmount[];
 }
 
 export interface InstallmentSummaryInput {
@@ -37,6 +42,7 @@ export interface InstallmentSummaryInput {
   amountDue: Decimal;
   status?: InstallmentStatus;
   allocations?: PaymentAllocationAmount[];
+  credits?: PaymentAllocationAmount[];
 }
 
 export interface InstallmentPlanSummaryInput {
@@ -63,6 +69,7 @@ export interface GenerateMonthlyInstallmentScheduleInput {
   startDate: BusinessDate;
   installmentCount: number;
   frequency: InstallmentPlanFrequency;
+  currency?: Currency;
 }
 
 export interface DebtStatusInput {

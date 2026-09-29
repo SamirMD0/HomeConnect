@@ -1,4 +1,4 @@
-import { InstallmentPlanFrequency, InstallmentPlanStatus, PaymentMethod } from '@prisma/client';
+import { Currency, InstallmentPlanFrequency, InstallmentPlanStatus, PaymentMethod } from '@prisma/client';
 import { describe, expect, it } from 'vitest';
 import {
   cancelInstallmentPlanSchema,
@@ -21,6 +21,7 @@ describe('installment plan validators', () => {
       })
     ).toEqual({
       totalAmount: '600.00',
+      currency: Currency.USD,
       description: 'Refrigerator',
       startDate: '2026-08-01',
       installmentCount: 6,

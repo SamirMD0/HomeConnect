@@ -10,6 +10,7 @@ export const SALES_ORDER_FIELD_POLICY = {
   salesChannel: true,
   deliveryDate: true,
   deliveryFee: true,
+  deliveryTaxTreatment: true,
   paidAmount: true,
   fulfillmentStatus: true,
   unitPrice: true,

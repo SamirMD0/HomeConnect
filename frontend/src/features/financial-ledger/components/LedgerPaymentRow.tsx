@@ -28,7 +28,7 @@ export const LedgerPaymentRow: React.FC<LedgerPaymentRowProps> = ({
     </td>
     <td className="bg-white px-4 py-2 transition-all duration-200 group-hover:bg-gray-600 group-hover:text-yellow-300">
       <LedgerCustomerLink customer={item.customer} className="font-medium" />
-      <p className="text-[11px] text-slate-500 transition-colors group-hover:text-yellow-200">{item.customer.phone}</p>
+      <p className="text-[11px] text-slate-500 transition-colors group-hover:text-yellow-200">{item.customer?.phone ?? '—'}</p>
     </td>
     <td className="hidden bg-white px-4 py-2 transition-all duration-200 group-hover:bg-gray-600 lg:table-cell">
       <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700 transition-colors group-hover:bg-yellow-300 group-hover:text-slate-950">
@@ -47,7 +47,7 @@ export const LedgerPaymentRow: React.FC<LedgerPaymentRowProps> = ({
         )}
       </div>
     </td>
-    <MoneyCell value={formatMoney(item.amount)} weight="medium" />
+    <MoneyCell value={formatMoney(item.amount, item.currency)} weight="medium" />
     <MoneyCell value="—" className="hidden xl:table-cell" />
     <MoneyCell value="—" />
     <td className="bg-white px-4 py-2 transition-all duration-200 group-hover:bg-gray-600">
@@ -66,7 +66,7 @@ export const LedgerPaymentRow: React.FC<LedgerPaymentRowProps> = ({
         menuKey={`desktop-${item.type}-${item.id}`}
         openMenuKey={openMenuKey}
         actions={
-          canMutate && item.status !== 'VOIDED'
+          canMutate && item.customer && !item.sourceSalesOrderId && item.status !== 'VOIDED'
             ? [{ label: 'Void payment', onClick: () => onVoidPayment(item), tone: 'cancel' }]
             : []
         }

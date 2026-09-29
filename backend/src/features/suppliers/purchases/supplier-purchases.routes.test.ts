@@ -10,7 +10,7 @@ vi.mock('../../../lib/prisma', () => ({ prisma: { $queryRaw: vi.fn().mockResolve
 
 import { app } from '../../../app';
 
-const secret = process.env.JWT_SECRET || 'fallback_secret_key_change_in_production';
+const secret = process.env.JWT_SECRET!;
 const admin = jwt.sign({ userId: '11111111-1111-4111-8111-111111111111', role: 'ADMIN' }, secret);
 const employee = jwt.sign({ userId: '22222222-2222-4222-8222-222222222222', role: 'EMPLOYEE' }, secret);
 const supplierId = '55555555-5555-4555-8555-555555555555';

@@ -6,6 +6,7 @@ import { CreateSalesOrderDialog, salesOrderLineFromPrefill } from './CreateSales
 import { PaymentStatusChip } from './PaymentStatusChip';
 import { ProductLinePicker, salesLineForProduct } from './ProductLinePicker';
 import type { Product } from '../../products/types/product.types';
+import { formatMoney } from '../../customer-financial/utils/financial-format';
 import { SalesChannelChip } from './SalesChannelChip';
 import { SalesOrderStatusChip } from './SalesOrderStatusChip';
 import { SalesOrderSummaryCards } from './SalesOrderSummaryCards';
@@ -38,6 +39,11 @@ vi.mock('../../products/hooks/useProducts', () => ({
 vi.mock('../../../hooks/useAuth', () => ({ useAuth: () => ({ user: { role: 'ADMIN' } }) }));
 
 describe('sales order presentation components', () => {
+  it('formats transaction amounts as original USD or whole-unit LBP without deriving money', () => {
+    expect(formatMoney('8950000', 'LBP')).toBe('8,950,000 LBP');
+    expect(formatMoney('100.00', 'USD')).toBe('$100.00');
+  });
+
   it('renders bilingual order, payment, and channel labels', () => {
     const html = renderToStaticMarkup(<div><SalesOrderStatusChip status="OUT_FOR_DELIVERY" /><PaymentStatusChip status="PARTIALLY_PAID" /><SalesChannelChip channel="PHONE_ORDER" /></div>);
     expect(html).toContain('Out for Delivery / في الطريق');

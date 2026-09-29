@@ -129,6 +129,7 @@ export class FinancialLedgerService {
         ? sumMoney([
             ...summaryStandardDebts.map((debt) => debt.totalPaid),
             ...summaryPlans.map((plan) => plan.totalPaid),
+            ...summaryPayments.filter((payment) => payment.sourceSalesOrderId).map((payment) => this.paymentAllocationTotal(payment)),
           ])
         : sumMoney(filteredPayments.map((payment) => this.paymentAllocationTotal(payment)));
 
@@ -187,6 +188,7 @@ export class FinancialLedgerService {
   ): DebtComputation {
     const balance = calculateDebtBalance({
       originalAmount: debt.originalAmount,
+      credits: (debt.returnAllocations ?? []).map((allocation) => ({ amount: allocation.amount })),
       allocations: debt.paymentAllocations.map((allocation) => ({
         amount: allocation.amount,
         isVoided: isPaymentAllocationVoided(allocation),
@@ -254,6 +256,7 @@ export class FinancialLedgerService {
     const installments = plan.installments.map((installment) => {
       const balance = calculateInstallmentBalance({
         amountDue: installment.amountDue,
+        credits: (installment.returnAllocations ?? []).map((allocation) => ({ amount: allocation.amount })),
         allocations: installment.paymentAllocations.map((allocation) => ({
           amount: allocation.amount,
           isVoided: isPaymentAllocationVoided(allocation),
@@ -369,7 +372,11 @@ export class FinancialLedgerService {
       type: 'PAYMENT',
       id: payment.id,
       customer: payment.customer,
-      amount: moneyToApiString(payment.totalAmount),
+      amount: moneyToApiString(payment.totalAmount, payment.currency),
+      currency: payment.currency,
+      exchangeRate: payment.exchangeRate?.toFixed(6) ?? '1.000000',
+      baseAmount: moneyToApiString(payment.baseAmount ?? payment.totalAmount),
+      sourceSalesOrderId: payment.salesOrderId ?? null,
       paymentDate: prismaDateToBusinessDate(payment.paymentDate),
       paymentMethod: payment.paymentMethod,
       status: payment.voidedAt ? 'VOIDED' : 'COMPLETED',
@@ -476,7 +483,7 @@ export class FinancialLedgerService {
     if (stateComparison !== 0) return stateComparison;
 
     if (sortBy === 'customer') {
-      comparison = left.customer.name.localeCompare(right.customer.name);
+      comparison = (left.customer?.name ?? 'Walk-in').localeCompare(right.customer?.name ?? 'Walk-in');
     } else if (sortBy === 'amount') {
       comparison = this.itemAmount(left).comparedTo(this.itemAmount(right));
     } else if (sortBy === 'createdAt') {
@@ -498,7 +505,7 @@ export class FinancialLedgerService {
   private static itemAmount(item: FinancialLedgerItem): Decimal {
     if (item.type === 'DEBT') return new Decimal(item.originalAmount);
     if (item.type === 'INSTALLMENT_PLAN') return new Decimal(item.totalAmount);
-    return new Decimal(item.amount);
+    return new Decimal(item.baseAmount ?? item.amount);
   }
 
   private static itemStateRank(item: FinancialLedgerItem): number {
@@ -522,6 +529,7 @@ export class FinancialLedgerService {
 
   private static paymentAllocationTotal(payment: FinancialLedgerPaymentItem): Decimal {
     if (payment.status === 'VOIDED') return ZERO_MONEY;
+    if (payment.sourceSalesOrderId) return new Decimal(payment.baseAmount ?? payment.amount);
     return sumMoney(payment.allocations.map((allocation) => new Decimal(allocation.amount)));
   }
 

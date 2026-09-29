@@ -1,4 +1,4 @@
-import { SalesChannel, SalesOrderFulfillmentStatus } from '@prisma/client';
+import { DeliveryTaxTreatment, SalesChannel, SalesOrderFulfillmentStatus } from '@prisma/client';
 import { describe, expect, it } from 'vitest';
 import {
   addSalesOrderItemSchema,
@@ -12,6 +12,7 @@ import {
 } from './sales-orders.validator';
 
 const base = {
+  idempotencyKey: 'counter-validation-key',
   customerId: '11111111-1111-4111-8111-111111111111',
   salesChannel: SalesChannel.SHOP_DIRECT,
   orderDate: '2026-08-03',
@@ -21,6 +22,15 @@ const base = {
 };
 
 describe('sales order validation', () => {
+  it('requires a durable key for positive cash but not an unpaid draft', () => {
+    expect(createSalesOrderSchema.safeParse({ ...base, idempotencyKey: undefined }).success).toBe(false);
+    expect(createSalesOrderSchema.safeParse({ ...base, idempotencyKey: undefined, paidAmount: '0.00', fulfillmentStatus: 'DRAFT' }).success).toBe(true);
+  });
+  it('rejects fractional LBP snapshots without changing USD precision', () => {
+    expect(createSalesOrderSchema.safeParse({ ...base, currency: 'LBP', paidAmount: '10.01' }).success).toBe(false);
+    expect(createSalesOrderSchema.safeParse({ ...base, currency: 'LBP', exchangeRate: '89500', paidAmount: '10', items: [{ manualProductName: 'Fan', quantity: 1, unitPrice: '10' }] }).success).toBe(true);
+  });
+
   it('strips client-calculated money and accepts exactly one product mode', () => {
     const parsed = createSalesOrderSchema.parse({
       ...base,
@@ -40,6 +50,23 @@ describe('sales order validation', () => {
   it('rejects delivery fields for shop-direct orders', () => {
     expect(() => createSalesOrderSchema.parse({ ...base, deliveryFee: '5.00' })).toThrow('Shop-direct');
     expect(() => createSalesOrderSchema.parse({ ...base, deliveryDate: '2026-08-04' })).toThrow('Shop-direct');
+  });
+
+  it('defaults delivery to standard VAT and distinguishes zero-rated from exempt treatment', () => {
+    expect(createSalesOrderSchema.parse(base).deliveryTaxTreatment).toBe(DeliveryTaxTreatment.STANDARD);
+    expect(createSalesOrderSchema.parse({
+      ...base,
+      salesChannel: SalesChannel.SHOP_DELIVERY,
+      deliveryFee: '10.00',
+      deliveryTaxTreatment: DeliveryTaxTreatment.ZERO_RATED,
+    }).deliveryTaxTreatment).toBe(DeliveryTaxTreatment.ZERO_RATED);
+    expect(() => createSalesOrderSchema.parse({
+      ...base,
+      salesChannel: SalesChannel.SHOP_DELIVERY,
+      deliveryFee: '10.00',
+      deliveryTaxTreatment: DeliveryTaxTreatment.EXEMPT,
+      deliveryTaxProfileId: '22222222-2222-4222-8222-222222222222',
+    })).toThrow('Exempt delivery cannot use a tax profile');
   });
 
   it('rejects zero items and over-precision money', () => {

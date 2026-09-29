@@ -1,4 +1,4 @@
-import { DebtKind, DebtStatus, PaymentMethod, Prisma } from '@prisma/client';
+import { Currency, DebtKind, DebtStatus, PaymentMethod, Prisma } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { prisma } from '../../../lib/prisma';
 import { FinancialTransactionClient } from '../infrastructure/transaction';
@@ -59,6 +59,7 @@ const debtInclude = {
       createdAt: 'asc',
     },
   },
+  returnAllocations: { orderBy: { createdAt: 'asc' } },
 } satisfies Prisma.DebtInclude;
 
 export type DebtWithDetails = Prisma.DebtGetPayload<{ include: typeof debtInclude }>;
@@ -78,6 +79,9 @@ export interface CreateDebtData {
   description: string;
   kind?: DebtKind;
   originalAmount: Decimal;
+  currency?: Currency;
+  exchangeRate?: Decimal;
+  baseOriginalAmount?: Decimal;
   dueDate: Date;
   status: DebtStatus;
   notes?: string | null;
@@ -87,6 +91,9 @@ export interface CreateDebtData {
 export interface CreateDebtPaymentData {
   customerId: string;
   totalAmount: Decimal;
+  currency?: Currency;
+  exchangeRate?: Decimal;
+  baseAmount?: Decimal;
   paymentDate: Date;
   paymentMethod: PaymentMethod;
   reference?: string | null;
@@ -121,7 +128,10 @@ export class DebtsRepository {
   static async createDebt(data: CreateDebtData, tx?: FinancialTransactionClient): Promise<DebtWithDetails> {
     const client = tx ?? prisma;
     return client.debt.create({
-      data,
+      data: {
+        ...data,
+        baseOriginalAmount: data.baseOriginalAmount ?? data.originalAmount,
+      },
       include: debtInclude,
     });
   }
@@ -163,7 +173,10 @@ export class DebtsRepository {
 
   static async createPayment(tx: FinancialTransactionClient, data: CreateDebtPaymentData) {
     return tx.payment.create({
-      data,
+      data: {
+        ...data,
+        baseAmount: data.baseAmount ?? data.totalAmount,
+      },
       include: {
         allocations: true,
         createdBy: {
@@ -190,6 +203,8 @@ export class DebtsRepository {
       paymentId: string;
       debtId: string;
       amount: Decimal;
+      paymentAmount?: Decimal;
+      exchangeRate?: Decimal;
     }
   ) {
     return tx.paymentAllocation.create({
@@ -198,6 +213,8 @@ export class DebtsRepository {
         debtId: data.debtId,
         installmentId: null,
         amount: data.amount,
+        paymentAmount: data.paymentAmount ?? data.amount,
+        exchangeRate: data.exchangeRate,
       },
     });
   }
@@ -219,6 +236,7 @@ export class DebtsRepository {
     debtId: string,
     data: {
       originalAmount?: Decimal;
+      baseOriginalAmount?: Decimal;
       description: string;
       dueDate: Date;
       notes?: string | null;
@@ -228,7 +246,12 @@ export class DebtsRepository {
   ) {
     return tx.debt.update({
       where: { id: debtId },
-      data,
+      data: {
+        ...data,
+        ...(data.originalAmount === undefined ? {} : {
+          baseOriginalAmount: data.baseOriginalAmount ?? data.originalAmount,
+        }),
+      },
       include: debtInclude,
     });
   }

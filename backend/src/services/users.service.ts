@@ -2,6 +2,7 @@ import { UsersRepository } from '../repositories/users.repository';
 import { AppError, NotFoundError, ValidationError } from '../lib/errors';
 import bcrypt from 'bcrypt';
 import { Prisma } from '@prisma/client';
+import { invalidateUserSessionStatus } from '../lib/user-session-status';
 
 export class UsersService {
   static async createUser(data: { username: string; passwordString: string; fullName: string; role?: 'ADMIN' | 'EMPLOYEE' }) {
@@ -32,10 +33,18 @@ export class UsersService {
     return user;
   }
 
-  static async updateUser(id: string, data: { fullName?: string; passwordString?: string; role?: 'ADMIN' | 'EMPLOYEE'; isActive?: boolean }) {
+  static async updateUser(
+    id: string,
+    data: { fullName?: string; passwordString?: string; role?: 'ADMIN' | 'EMPLOYEE'; isActive?: boolean },
+    actorUserId: string,
+  ) {
     const user = await UsersRepository.findById(id);
     if (!user) {
       throw new NotFoundError('User not found');
+    }
+
+    if (id === actorUserId && data.isActive === false) {
+      throw new ValidationError('You cannot deactivate your own account');
     }
 
     const updateData: Prisma.UserUpdateInput = {};
@@ -47,13 +56,19 @@ export class UsersService {
       updateData.password = await bcrypt.hash(data.passwordString, 12);
     }
 
-    return UsersRepository.update(id, updateData);
+    const updatedUser = await UsersRepository.update(id, updateData);
+    invalidateUserSessionStatus(id);
+    return updatedUser;
   }
 
-  static async deactivateUser(id: string) {
+  static async deactivateUser(id: string, actorUserId: string) {
     const user = await UsersRepository.findById(id);
     if (!user) {
       throw new NotFoundError('User not found');
+    }
+
+    if (id === actorUserId) {
+      throw new ValidationError('You cannot deactivate your own account');
     }
     
     if (user.role === 'ADMIN') {
@@ -65,6 +80,8 @@ export class UsersService {
       }
     }
 
-    return UsersRepository.softDelete(id);
+    const deletedUser = await UsersRepository.softDelete(id);
+    invalidateUserSessionStatus(id);
+    return deletedUser;
   }
 }

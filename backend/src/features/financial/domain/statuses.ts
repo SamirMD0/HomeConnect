@@ -17,7 +17,7 @@ export function determineDebtStatus(input: DebtStatusInput): DebtStatus {
   ) {
     return DebtStatus.OVERDUE;
   }
-  if (input.balance.totalPaid.greaterThan(ZERO_MONEY)) return DebtStatus.PARTIALLY_PAID;
+  if (input.balance.totalPaid.plus(input.balance.totalCredits ?? ZERO_MONEY).greaterThan(ZERO_MONEY)) return DebtStatus.PARTIALLY_PAID;
   return DebtStatus.UNPAID;
 }
 
@@ -30,7 +30,7 @@ export function determineInstallmentStatus(input: InstallmentStatusInput): Insta
   ) {
     return InstallmentStatus.OVERDUE;
   }
-  if (input.balance.totalPaid.greaterThan(ZERO_MONEY)) return InstallmentStatus.PARTIALLY_PAID;
+  if (input.balance.totalPaid.plus(input.balance.totalCredits ?? ZERO_MONEY).greaterThan(ZERO_MONEY)) return InstallmentStatus.PARTIALLY_PAID;
   return InstallmentStatus.PENDING;
 }
 

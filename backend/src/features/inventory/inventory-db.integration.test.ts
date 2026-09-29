@@ -145,7 +145,7 @@ describeDatabase('inventory database contract', () => {
       }, { userId: employeeId, role: 'EMPLOYEE' })).rejects.toThrow(/verified opening count/);
       expect(await prisma.stockMovement.count({ where: { productId: pendingProductId } })).toBe(0);
 
-      const secret = process.env.JWT_SECRET || 'fallback_secret_key_change_in_production';
+      const secret = process.env.JWT_SECRET!;
       const employeeToken = jwt.sign({ userId: employeeId, role: 'EMPLOYEE' }, secret);
       const adminToken = jwt.sign({ userId: adminId, role: 'ADMIN' }, secret);
       const movementUrl = `/api/v1/products/${productId}/stock-movements`;
@@ -215,12 +215,15 @@ describeDatabase('inventory database contract', () => {
       expect(legacyWrite.status).toBe(400);
       expect((await prisma.product.findUniqueOrThrow({ where: { id: productId } })).stockQuantity).toBe(0);
 
+      // Settings-only updates take trackStock and lowStockThreshold and nothing
+      // else. v1.8.1 made them ordinary admin work — role-gated by the route and
+      // audited with a server-generated reason — so `reason` and
+      // `accountPassword` were dropped from the payload. The schema is strict,
+      // so sending either now returns 400.
       const settingsOnly = await request(app).patch(`/api/v1/products/${productId}/stock`)
         .set('Authorization', `Bearer ${adminToken}`).send({
           trackStock: true,
           lowStockThreshold: 0,
-          reason: 'Confirm inventory settings',
-          accountPassword: password,
         });
       expect(settingsOnly.status).toBe(200);
       expect(settingsOnly.body.data.stockQuantity).toBe(0);
@@ -293,5 +296,8 @@ describeDatabase('inventory database contract', () => {
       await prisma.user.deleteMany({ where: { id: { in: [adminId, employeeId] } } });
       await prisma.$disconnect();
     }
-  }, 30_000);
+  // This end-to-end database contract dynamically loads the complete app and
+  // exercises bcrypt, HTTP, constraints, reports, and cleanup. A cold Windows
+  // worker can legitimately exceed 30 seconds without a database deadlock.
+  }, 60_000);
 });

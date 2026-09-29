@@ -9,23 +9,26 @@ export const customerSchema = z.object({
   phone: z.string().min(1, businessValidationMessages.phoneRequired).min(5, 'Phone number is too short / رقم الهاتف قصير جداً').max(20, 'Phone is too long / رقم الهاتف طويل جداً'),
   address: z.string().max(255, 'Address is too long').optional(),
   notes: z.string().optional(),
+  creditLimit: z.string().optional().refine((v) => !v || /^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/.test(v) && Number(v) <= 9999999999.99, 'Enter a non-negative USD limit / أدخل حدًا غير سالب بالدولار'),
 });
 
 type CustomerFormData = z.infer<typeof customerSchema>;
 
 interface CustomerFormProps {
+  canManageCreditLimit?: boolean;
   initialData?: {
     name: string;
     phone: string;
     address?: string | null;
     notes?: string | null;
+    creditLimit?: string | null;
   };
-  onSubmit: (data: CustomerFormData) => void;
+  onSubmit: (data: Omit<CustomerFormData, 'creditLimit'> & { creditLimit?: string | null }) => void;
   isSubmitting?: boolean;
   onCancel: () => void;
 }
 
-export const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSubmit, isSubmitting, onCancel }) => {
+export const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSubmit, isSubmitting, onCancel, canManageCreditLimit = false }) => {
   const {
     register,
     handleSubmit,
@@ -38,6 +41,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSubmi
       phone: initialData?.phone || '',
       address: initialData?.address || '',
       notes: initialData?.notes || '',
+      creditLimit: initialData?.creditLimit || '',
     },
   });
 
@@ -48,12 +52,13 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSubmi
         phone: initialData.phone || '',
         address: initialData.address || '',
         notes: initialData.notes || '',
+        creditLimit: initialData.creditLimit || '',
       });
     }
   }, [initialData, reset]);
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form onSubmit={handleSubmit(({ creditLimit, ...data }) => onSubmit({ ...data, ...(canManageCreditLimit ? { creditLimit: creditLimit?.trim() || null } : {}) }))} className="space-y-4">
       <div>
         <label className="block text-sm font-medium text-slate-700 mb-1">
           {businessLabels.customer.name} *
@@ -116,6 +121,12 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSubmi
         />
         {errors.notes && <p className="mt-1 text-sm text-red-500">{errors.notes.message}</p>}
       </div>
+
+      {canManageCreditLimit && <label className="block text-sm font-medium text-slate-700">Credit limit (USD) / حد الائتمان بالدولار
+        <input {...register('creditLimit')} inputMode="decimal" placeholder="No limit / بلا حد" className="mt-1 block w-full rounded-lg border border-slate-300 px-4 py-2" />
+        <span className="block text-xs text-slate-500">Blank means no limit. Zero means no new credit. / فارغ يعني بلا حد، وصفر يمنع الائتمان الجديد.</span>
+        {errors.creditLimit && <span className="text-red-500">{errors.creditLimit.message}</span>}
+      </label>}
 
       <div className="flex items-center justify-end pt-4 space-x-3">
         <button

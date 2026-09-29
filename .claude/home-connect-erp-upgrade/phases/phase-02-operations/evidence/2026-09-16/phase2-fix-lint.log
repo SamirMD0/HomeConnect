@@ -1,0 +1,138 @@
+
+> home-connect@2.0.0 lint
+> eslint frontend/src backend/src desktop/src --ext ts,tsx
+
+
+D:\User\Documents\Home Connect\backend\src\controllers\auth.controller.ts
+   45:21  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   73:21  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  159:21  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\User\Documents\Home Connect\backend\src\controllers\customers.controller.ts
+  24:75  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\User\Documents\Home Connect\backend\src\controllers\users.controller.ts
+  18:21  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  59:21  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\User\Documents\Home Connect\backend\src\features\diagnostics\diagnostics.routes.test.ts
+  1:48  warning  'afterEach' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\User\Documents\Home Connect\backend\src\features\diagnostics\error-logger.test.ts
+   4:8   warning  'path' is defined but never used                     @typescript-eslint/no-unused-vars
+  62:13  warning  'existsSyncMock' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\User\Documents\Home Connect\backend\src\features\diagnostics\error-logger.ts
+   8:26  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  28:37  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  28:43  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  50:39  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\User\Documents\Home Connect\backend\src\features\financial\authorization\account-password.test.ts
+  47:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  49:75  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  90:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\User\Documents\Home Connect\backend\src\features\financial\corrections\correction-audit.test.ts
+  59:29  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\User\Documents\Home Connect\backend\src\features\reports\rows\report-rows.service.ts
+  373:23  warning  '_debt' is assigned a value but never used     @typescript-eslint/no-unused-vars
+  373:47  warning  '_plan' is assigned a value but never used     @typescript-eslint/no-unused-vars
+  373:63  warning  '_returns' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\User\Documents\Home Connect\backend\src\features\sales\returns\sales-returns-db.integration.test.ts
+  95:43  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\User\Documents\Home Connect\backend\src\lib\errors.ts
+   4:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   6:85  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  16:42  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\User\Documents\Home Connect\backend\src\lib\prisma.ts
+  11:21  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  12:32  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\User\Documents\Home Connect\backend\src\services\auth.service.ts
+   26:85  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   27:95  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  108:14  warning  'error' is defined but never used         @typescript-eslint/no-unused-vars
+
+D:\User\Documents\Home Connect\backend\src\services\dashboard.service.ts
+  12:22  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  39:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\User\Documents\Home Connect\backend\src\services\users.service.ts
+  2:10  warning  'AppError' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\User\Documents\Home Connect\desktop\src\backend-process.test.ts
+  67:41  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\User\Documents\Home Connect\desktop\src\lifecycle.test.ts
+  70:43  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\User\Documents\Home Connect\desktop\src\preload.test.ts
+  54:42  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  61:41  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  67:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  70:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  73:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  77:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  81:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  85:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  89:39  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  97:41  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\User\Documents\Home Connect\desktop\src\preload.ts
+  22:36  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  26:38  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  26:50  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\User\Documents\Home Connect\desktop\src\startup-diagnostics.test.ts
+   1:48  warning  'afterEach' is defined but never used                @typescript-eslint/no-unused-vars
+   4:8   warning  'path' is defined but never used                     @typescript-eslint/no-unused-vars
+  11:35  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+  62:13  warning  'existsSyncMock' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\User\Documents\Home Connect\desktop\src\startup-diagnostics.ts
+  34:32  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\User\Documents\Home Connect\frontend\src\context\AuthContext.tsx
+   55:14  warning  'e' is defined but never used      @typescript-eslint/no-unused-vars
+  103:16  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\User\Documents\Home Connect\frontend\src\features\customers\components\CustomerSearchInput.tsx
+  14:62  warning  React Hook useMemo has unnecessary dependencies: 'focused' and 'historyVersion'. Either exclude them or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\User\Documents\Home Connect\frontend\src\features\customers\hooks\useCustomers.ts
+  42:22  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  60:22  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  76:22  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\User\Documents\Home Connect\frontend\src\features\diagnostics\api\diagnostics.api.ts
+  14:26  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\User\Documents\Home Connect\frontend\src\features\diagnostics\components\DiagnosticsPanel.tsx
+  28:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\User\Documents\Home Connect\frontend\src\pages\Login.tsx
+  48:19  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\User\Documents\Home Connect\frontend\src\pages\Setup.tsx
+  68:19  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\User\Documents\Home Connect\frontend\src\pages\customers\CustomersListPage.tsx
+  40:43  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\User\Documents\Home Connect\frontend\src\services\api.test.ts
+   6:28  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  13:22  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  25:52  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  37:14  warning  'e' is defined but never used             @typescript-eslint/no-unused-vars
+  76:14  warning  'e' is defined but never used             @typescript-eslint/no-unused-vars
+  84:45  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\User\Documents\Home Connect\frontend\src\services\api.ts
+  132:14  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+
+✖ 70 problems (0 errors, 70 warnings)

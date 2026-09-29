@@ -35,6 +35,7 @@ export class SalesOrderInventoryRepository {
         status: true,
         stockMovementId: true,
         reversalStockMovementId: true,
+        returnItems: { select: { id: true }, take: 1 },
       },
     });
   }

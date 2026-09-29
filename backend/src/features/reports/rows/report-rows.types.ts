@@ -6,15 +6,20 @@ export type ReportSlice =
   | 'customers-not-paid'
   | 'customers-paid'
   | 'suppliers-debts'
+  | 'suppliers-aging'
   | 'suppliers-receiving'
   | 'sales-orders'
   | 'sales-unpaid'
   | 'inventory-movements'
   | 'inventory-reconciliation'
+  | 'customers-financial-integrity'
+  | 'suppliers-financial-integrity'
+  | 'products-cost-changes'
   | 'products-bought';
 
 export interface ReportRowsData<Row = unknown, Summary = Record<string, unknown>> {
   summary: Summary;
   rows: Row[];
   operationalSnapshot?: boolean;
+  categorySource?: 'CURRENT_CATALOGUE';
 }

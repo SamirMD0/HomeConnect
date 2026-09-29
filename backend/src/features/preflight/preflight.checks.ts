@@ -3,6 +3,7 @@ import net from 'net';
 import { parsePostgresConnectionString } from '../backup/postgres-url';
 import { PostgresToolDiscovery } from '../backup/postgres-tools';
 import { fail, pass, PreflightCheckResult, warn } from './preflight.types';
+import { MIN_SECRET_LENGTH } from '../../lib/env';
 
 /**
  * The individual preflight checks.
@@ -42,6 +43,13 @@ export function checkRequiredVars(env: NodeJS.ProcessEnv): PreflightCheckResult 
   if (missing.length) {
     return fail('REQUIRED_VARS', title, `Missing from production.env: ${missing.join(', ')}.`,
       'Re-run the setup script — it regenerates the missing entries.');
+  }
+  const weak = (['JWT_SECRET', 'JWT_REFRESH_SECRET'] as const).filter(
+    (name) => env[name]!.trim().length < MIN_SECRET_LENGTH,
+  );
+  if (weak.length) {
+    return fail('REQUIRED_VARS', title, `Weak security settings: ${weak.join(', ')}.`,
+      'Re-run the setup script — it replaces weak legacy values with strong random secrets.');
   }
   // Values are never echoed; presence is all the operator needs to see.
   return pass('REQUIRED_VARS', title, `All ${REQUIRED_VARS.length} required settings are present.`);

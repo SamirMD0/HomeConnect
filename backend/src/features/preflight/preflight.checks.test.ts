@@ -38,7 +38,7 @@ describe('preflight: configuration file', () => {
 });
 
 describe('preflight: required settings', () => {
-  const complete = { DATABASE_URL: 'postgresql://u:p@localhost:5433/homeconnect', JWT_SECRET: 's', JWT_REFRESH_SECRET: 'r' };
+  const complete = { DATABASE_URL: 'postgresql://u:p@localhost:5433/homeconnect', JWT_SECRET: 'a'.repeat(64), JWT_REFRESH_SECRET: 'b'.repeat(64) };
 
   it('passes when all are present', () => {
     expect(checkRequiredVars(complete).status).toBe('PASS');
@@ -54,6 +54,13 @@ describe('preflight: required settings', () => {
 
   it('treats a blank value as missing', () => {
     expect(checkRequiredVars({ ...complete, JWT_SECRET: '   ' }).status).toBe('FAIL');
+  });
+
+  it('rejects short legacy signing secrets without echoing them', () => {
+    const result = checkRequiredVars({ ...complete, JWT_SECRET: 'short-secret' });
+    expect(result.status).toBe('FAIL');
+    expect(result.detail).toContain('JWT_SECRET');
+    expect(JSON.stringify(result)).not.toContain('short-secret');
   });
 
   it('never echoes a secret value', () => {

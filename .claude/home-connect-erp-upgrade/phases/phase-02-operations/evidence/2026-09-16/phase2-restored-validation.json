@@ -1,0 +1,53 @@
+{
+  "sourceBefore": [
+    {
+      "customers": 107,
+      "orders": 18,
+      "sales": "4124.13",
+      "payments": 15,
+      "collected": "2803.13",
+      "payment_checksum": "b5e176e7961580de04d315c994b9c904",
+      "stock_movements": 17
+    }
+  ],
+  "restoredAfter": [
+    {
+      "customers": 107,
+      "orders": 18,
+      "sales": "4124.13",
+      "payments": 15,
+      "collected": "2803.13",
+      "payment_checksum": "b5e176e7961580de04d315c994b9c904",
+      "stock_movements": 17
+    }
+  ],
+  "reports": {
+    "inventory-reconciliation": {
+      "count": 0,
+      "ok": 0,
+      "mismatches": 0
+    },
+    "customers-financial-integrity": {
+      "count": 105,
+      "ok": 105,
+      "mismatches": 0,
+      "reportedTotal": "22114.00",
+      "independentTotal": "22114.00",
+      "difference": "0.00"
+    },
+    "suppliers-financial-integrity": {
+      "count": 3,
+      "ok": 3,
+      "mismatches": 0,
+      "reportedTotal": "1205821.00",
+      "independentTotal": "1205821.00",
+      "difference": "0.00"
+    }
+  },
+  "migrations": {
+    "pending": 0,
+    "failed": 0,
+    "mismatched": 0,
+    "replayPending": 0
+  }
+}

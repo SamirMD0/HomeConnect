@@ -2,21 +2,27 @@ import { StockMovementType } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { repository, metrics, debts } = vi.hoisted(() => ({
+const { repository, metrics, debts, receivables, suppliers } = vi.hoisted(() => ({
   repository: {
     newCustomers: vi.fn(), customerPayments: vi.fn(), supplierTransactions: vi.fn(),
     supplierReceivings: vi.fn(), salesOrders: vi.fn(), unpaidSalesOrders: vi.fn(),
     stockMovements: vi.fn(), receivingReconciliation: vi.fn(), openDebtsAsOf: vi.fn(),
     paymentsThrough: vi.fn(), receivedProducts: vi.fn(), soldQuantityByProduct: vi.fn(),
-    receivedQuantityTotal: vi.fn(),
+    receivedQuantityTotal: vi.fn(), customerFinancialIntegrity: vi.fn(),
+    supplierFinancialIntegrity: vi.fn(), productCostChanges: vi.fn(),
+    productCategories: vi.fn(),
   },
   metrics: { get: vi.fn() },
   debts: { getDebtReportForRange: vi.fn(), getFinancialActivityForRange: vi.fn() },
+  receivables: { computeReceivableProjections: vi.fn() },
+  suppliers: { balances: vi.fn() },
 }));
 
 vi.mock('./report-rows.repository', () => ({ ReportRowsRepository: repository }));
 vi.mock('../metrics/reports-metrics.service', () => ({ ReportsMetricsService: metrics }));
 vi.mock('../monthly-debts/monthly-debts.service', () => ({ MonthlyDebtsService: debts }));
+vi.mock('../../financial/receivables/receivables.service', () => ({ ReceivablesService: receivables }));
+vi.mock('../../suppliers/suppliers/suppliers.repository', () => ({ SuppliersRepository: suppliers }));
 
 import { ReportRowsService } from './report-rows.service';
 
@@ -27,6 +33,23 @@ describe('ReportRowsService', () => {
     vi.clearAllMocks();
     Object.values(repository).forEach((mock) => mock.mockResolvedValue([]));
     metrics.get.mockResolvedValue({ sales: { orderCount: 0, totalAmount: '0.00', paidAmount: '0.00', unpaidAmount: '0.00', averageOrderValue: '0.00' } });
+    receivables.computeReceivableProjections.mockResolvedValue(new Map());
+    suppliers.balances.mockResolvedValue(new Map());
+  });
+
+  it('adds current English category paths without dropping uncategorized inventory or changing totals', async () => {
+    repository.stockMovements.mockResolvedValue([
+      { id: 'm1', productId: 'p1', product: { id: 'p1', name: 'Cooker', sku: 'SKU1' }, createdAt: new Date('2026-08-03'), movementType: 'SALE_FULFILLMENT', quantityChange: -1 },
+      { id: 'm2', productId: 'p2', product: { id: 'p2', name: 'Fan', sku: 'SKU2' }, createdAt: new Date('2026-08-04'), movementType: 'SALE_FULFILLMENT', quantityChange: -2 },
+    ]);
+    repository.productCategories.mockResolvedValue([{ id: 'p1', categoryId: 'leaf', category: { name: 'Cookers', parent: { name: 'Kitchen', parent: { name: 'Home Appliances' } } } }, { id: 'p2', categoryId: null, category: null }]);
+    const report = await ReportRowsService.get('inventory-movements', { period: 'thisMonth' }, options);
+    expect(report.data.rows).toHaveLength(2);
+    expect(report.data.rows[0]).toMatchObject({ categoryId: 'leaf', categoryPath: 'Home Appliances → Kitchen → Cookers' });
+    expect(report.data.rows[1]).toMatchObject({ categoryId: null, categoryPath: null });
+    expect(report.data.summary).toMatchObject({ count: 2, movementsByType: { SALE_FULFILLMENT: { count: 2, quantityChange: -3 } } });
+    const csv = await ReportRowsService.exportCsv('inventory-movements', { period: 'thisMonth' }, options);
+    expect(csv.csv).toContain('Category (current catalogue)'); expect(csv.csv).toContain('Home Appliances → Kitchen → Cookers'); expect(csv.csv).toContain('Uncategorized');
   });
 
   it('serializes customer payments and keeps the backend authoritative for totals', async () => {
@@ -105,6 +128,94 @@ describe('ReportRowsService', () => {
     const report = await ReportRowsService.get('inventory-reconciliation', { period: 'thisMonth' }, options);
 
     expect(report.data.summary).toEqual({ count: 1, ok: 1, mismatches: 0 });
+  });
+
+  it('reports a clean customer financial fixture when the screen agrees with the independent calculation', async () => {
+    repository.customerFinancialIntegrity.mockResolvedValue([{
+      customerId: 'c1', customerName: 'Ali', customerPhone: '70',
+      obligationTotal: '150.00', allocationTotal: '40.00', obligationCount: 2, allocationCount: 1,
+    }]);
+    receivables.computeReceivableProjections.mockResolvedValue(new Map([['c1', { outstanding: '110.00' }]]));
+
+    const report = await ReportRowsService.get('customers-financial-integrity', { period: 'thisMonth' }, options);
+
+    expect(report.data.summary).toEqual({ count: 1, ok: 1, mismatches: 0, reportedTotal: '110.00', independentTotal: '110.00', difference: '0.00' });
+    expect(report.data.rows[0]).toMatchObject({ status: 'OK', independentOutstanding: '110.00', issues: [] });
+  });
+
+  it('detects a deliberately corrupted customer balance fixture', async () => {
+    repository.customerFinancialIntegrity.mockResolvedValue([{
+      customerId: 'c1', customerName: 'Ali', customerPhone: '70',
+      obligationTotal: '150.00', allocationTotal: '40.00', obligationCount: 2, allocationCount: 1,
+    }]);
+    receivables.computeReceivableProjections.mockResolvedValue(new Map([['c1', { outstanding: '109.00' }]]));
+
+    const report = await ReportRowsService.get('customers-financial-integrity', { period: 'thisMonth' }, options);
+
+    expect(report.data.summary).toMatchObject({ ok: 0, mismatches: 1, difference: '-1.00' });
+    expect(report.data.rows[0]).toMatchObject({ status: 'MISMATCH', reportedOutstanding: '109.00', independentOutstanding: '110.00' });
+    expect((report.data.rows[0] as { issues: string[] }).issues).toContain('Reported outstanding does not match obligations minus allocations');
+  });
+
+  it('reports a clean supplier financial fixture when both direction sums agree', async () => {
+    repository.supplierFinancialIntegrity.mockResolvedValue([{
+      supplierId: 's1', supplierName: 'Supplier', supplierPhone: '71',
+      increaseTotal: '500.00', decreaseTotal: '120.00', transactionCount: 2,
+    }]);
+    suppliers.balances.mockResolvedValue(new Map([['s1', { increase: '500.00', decrease: '120.00' }]]));
+
+    const report = await ReportRowsService.get('suppliers-financial-integrity', { period: 'thisMonth' }, options);
+
+    expect(report.data.summary).toEqual({ count: 1, ok: 1, mismatches: 0, reportedTotal: '380.00', independentTotal: '380.00', difference: '0.00' });
+    expect(report.data.rows[0]).toMatchObject({ status: 'OK', independentBalance: '380.00', issues: [] });
+  });
+
+  it('reports audited product cost changes with percentage and purchase source', async () => {
+    repository.productCostChanges.mockResolvedValue([{
+      auditId: 'a1', changedAt: new Date('2026-08-15T10:00:00.000Z'),
+      productId: 'p1', productName: 'AC', productSku: 'HC-1',
+      oldCost: '100.00', newCost: '120.00', costSource: 'SUPPLIER_PURCHASE',
+      oldSellingPrice: '130.00', newSellingPrice: '156.00', sellingPriceSource: 'PRESET',
+      sellingPriceChanged: true, priceCurrency: 'USD',
+      supplierTransactionId: 't1', supplierReceivingId: 'r1', receiptNumber: 'INV-1',
+      changedByName: 'Owner', changedByUsername: 'owner', reason: 'Supplier purchase',
+    }]);
+
+    const report = await ReportRowsService.get('products-cost-changes', { period: 'thisMonth' }, options);
+
+    expect(report.data.summary).toEqual({ count: 1, increases: 1, decreases: 0, fromPurchases: 1 });
+    expect(report.data.rows[0]).toMatchObject({
+      oldCost: '100.00', newCost: '120.00', percentageChange: '20.00',
+      oldSellingPrice: '130.00', newSellingPrice: '156.00', sellingPriceSource: 'PRESET',
+      sellingPriceChanged: true, priceCurrency: 'USD', source: 'SUPPLIER_PURCHASE', receiptNumber: 'INV-1',
+    });
+  });
+
+  it('treats a supplier with no transactions as a clean zero balance', async () => {
+    repository.supplierFinancialIntegrity.mockResolvedValue([{
+      supplierId: 's1', supplierName: 'Supplier', supplierPhone: null,
+      increaseTotal: '0.00', decreaseTotal: '0.00', transactionCount: 0,
+    }]);
+    suppliers.balances.mockResolvedValue(new Map());
+
+    const report = await ReportRowsService.get('suppliers-financial-integrity', { period: 'thisMonth' });
+
+    expect(report.data.summary).toMatchObject({ count: 1, ok: 1, mismatches: 0 });
+    expect(report.data.rows[0]).toMatchObject({ status: 'OK', reportedBalance: '0.00', independentBalance: '0.00', issues: [] });
+  });
+
+  it('detects a deliberately corrupted supplier balance fixture', async () => {
+    repository.supplierFinancialIntegrity.mockResolvedValue([{
+      supplierId: 's1', supplierName: 'Supplier', supplierPhone: '71',
+      increaseTotal: '500.00', decreaseTotal: '120.00', transactionCount: 2,
+    }]);
+    suppliers.balances.mockResolvedValue(new Map([['s1', { increase: '500.00', decrease: '121.00' }]]));
+
+    const report = await ReportRowsService.get('suppliers-financial-integrity', { period: 'thisMonth' }, options);
+
+    expect(report.data.summary).toMatchObject({ ok: 0, mismatches: 1, difference: '-1.00' });
+    expect(report.data.rows[0]).toMatchObject({ status: 'MISMATCH', reportedBalance: '379.00', independentBalance: '380.00' });
+    expect((report.data.rows[0] as { issues: string[] }).issues).toContain('Reported balance does not match active increases minus active decreases');
   });
 
   it('exports Arabic and quoted values through the shared BOM CSV builder', async () => {

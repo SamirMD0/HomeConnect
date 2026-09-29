@@ -22,7 +22,7 @@ export class SupplierTransactionsService {
       if (!supplier) throw new NotFoundError('Supplier not found');
       if (!supplier.isActive) throw new AppError('Archived suppliers cannot receive new transactions', 409, 'SUPPLIER_ARCHIVED');
       await validateReceivingLink(supplierId, input, tx);
-      const transaction = await SupplierTransactionsRepository.create({ supplierId, supplierReceivingId: input.supplierReceivingId ?? null, type: input.type, direction, amount, transactionDate: businessDateToPrisma(input.transactionDate), description: input.description, reference: input.reference ?? null, notes: input.notes ?? null, createdById: user.userId }, tx);
+      const transaction = await SupplierTransactionsRepository.create({ supplierId, supplierReceivingId: input.supplierReceivingId ?? null, type: input.type, direction, amount, transactionDate: businessDateToPrisma(input.transactionDate), dueDate: input.dueDate ? businessDateToPrisma(input.dueDate) : null, description: input.description, reference: input.reference ?? null, notes: input.notes ?? null, createdById: user.userId }, tx);
       const actor = await loadActor(user.userId, tx);
       await writeSupplierAudit({ recordType: SupplierAuditRecordType.SUPPLIER_TRANSACTION, recordId: transaction.id, supplierId, supplierTransactionId: transaction.id, action: SupplierAuditAction.CREATE, changedById: user.userId, changedByName: actor.fullName, changedByUsername: actor.username, reason: 'Supplier transaction created', beforeValues: {}, afterValues: supplierTransactionSnapshot(transaction), requestId: context.requestId, ipAddress: context.ipAddress }, tx);
       return serializeTransaction(transaction);
@@ -62,6 +62,7 @@ export class SupplierTransactionsService {
       const data: Prisma.SupplierTransactionUncheckedUpdateInput = { updatedById: user.userId, type, direction: resolveSupplierDirection(type, requestedDirection) };
       if (input.amount !== undefined) data.amount = assertPositiveMoney(input.amount);
       if (input.transactionDate !== undefined) data.transactionDate = businessDateToPrisma(input.transactionDate);
+      if (input.dueDate !== undefined) data.dueDate = input.dueDate === null ? null : businessDateToPrisma(input.dueDate);
       if (input.description !== undefined) data.description = input.description;
       if (input.reference !== undefined) data.reference = input.reference;
       if (input.notes !== undefined) data.notes = input.notes;
@@ -93,10 +94,11 @@ export class SupplierTransactionsService {
 
 export async function summaryForWhere(where: Prisma.SupplierTransactionWhereInput, tx?: Prisma.TransactionClient) {
   const rows = await SupplierTransactionsRepository.summaryRows(where, tx);
-  const increases = rows.filter((r) => r.direction === 'INCREASE_OWED').map((r) => r._sum.amount ?? ZERO_MONEY);
-  const decreases = rows.filter((r) => r.direction === 'DECREASE_OWED').map((r) => r._sum.amount ?? ZERO_MONEY);
-  const paid = rows.filter((r) => r.type === 'SUPPLIER_PAYMENT').map((r) => r._sum.amount ?? ZERO_MONEY);
-  const credit = rows.filter((r) => r.type === 'SUPPLIER_CREDIT').map((r) => r._sum.amount ?? ZERO_MONEY);
+  const base = (row: typeof rows[number]) => row._sum.baseAmount ?? ZERO_MONEY;
+  const increases = rows.filter((r) => r.direction === 'INCREASE_OWED').map(base);
+  const decreases = rows.filter((r) => r.direction === 'DECREASE_OWED').map(base);
+  const paid = rows.filter((r) => r.type === 'SUPPLIER_PAYMENT').map(base);
+  const credit = rows.filter((r) => r.type === 'SUPPLIER_CREDIT').map(base);
   return { totalOwed: moneyToApiString(sumMoney(increases)), totalPaid: moneyToApiString(sumMoney(paid)), totalCredit: moneyToApiString(sumMoney(credit)), balance: moneyToApiString(subtractMoney(sumMoney(increases), sumMoney(decreases))), transactionCount: rows.reduce((n, r) => n + r._count._all, 0) };
 }
 
@@ -120,6 +122,7 @@ function serializeTransaction(t: NonNullable<Awaited<ReturnType<typeof SupplierT
     ...t,
     amount: moneyToApiString(t.amount),
     transactionDate: prismaDateToBusinessDate(t.transactionDate),
+    dueDate: t.dueDate ? prismaDateToBusinessDate(t.dueDate) : null,
     supplierReceiving: t.supplierReceiving ? { ...t.supplierReceiving, receivedOn: prismaDateToBusinessDate(t.supplierReceiving.receivedOn) } : null,
   };
 }

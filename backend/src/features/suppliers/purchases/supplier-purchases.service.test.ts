@@ -1,20 +1,23 @@
-import { Role, StockMovementType, SupplierPurchaseLineKind, SupplierTransactionDirection, SupplierTransactionType } from '@prisma/client';
+import { Currency, Prisma, PricingCalculationMode, PricingRoundingMode, Role, StockMovementType, SupplierPurchaseLineKind, SupplierTransactionDirection, SupplierTransactionType } from '@prisma/client';
+import { Decimal } from '@prisma/client/runtime/library';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const tx = { id: 'tx', user: { findUnique: vi.fn() } };
 const {
   suppliersRepository, transactionsRepository, purchasesRepository, inventoryRepository,
-  productsRepository, receiving, audits, adminVerification, sku,
+  productsRepository, receiving, audits, adminVerification, sku, taxRepository, exchangeRates,
 } = vi.hoisted(() => ({
   suppliersRepository: { findById: vi.fn() },
   transactionsRepository: { create: vi.fn() },
-  purchasesRepository: { createLine: vi.fn(), findById: vi.fn(), listForSupplier: vi.fn(), findReceiptMatches: vi.fn() },
+  purchasesRepository: { createLine: vi.fn(), findById: vi.fn(), findByIdempotencyKey: vi.fn(), listForSupplier: vi.fn(), findReceiptMatches: vi.fn() },
   inventoryRepository: { findProduct: vi.fn(), createMovement: vi.fn() },
-  productsRepository: { create: vi.fn(), findByBarcode: vi.fn() },
+  productsRepository: { create: vi.fn(), update: vi.fn(), findById: vi.fn(), findByBarcode: vi.fn(), findActiveDefaultPricingPreset: vi.fn() },
   receiving: { postSupplierReceiving: vi.fn(), assertReceivingDateNotFuture: vi.fn() },
   audits: { writeSupplierAudit: vi.fn(), writeServiceAudit: vi.fn() },
   adminVerification: { verifyAdminPassword: vi.fn() },
   sku: { generateProductSku: vi.fn() },
+  taxRepository: { requireEffectiveProfile: vi.fn() },
+  exchangeRates: { snapshotFor: vi.fn() },
 }));
 
 vi.mock('../suppliers/suppliers.repository', () => ({ SuppliersRepository: suppliersRepository }));
@@ -27,6 +30,8 @@ vi.mock('../audit/supplier-audit', () => ({ writeSupplierAudit: audits.writeSupp
 vi.mock('../../service/audit/service-audit', () => ({ writeServiceAudit: audits.writeServiceAudit }));
 vi.mock('../../../lib/admin-verification', () => adminVerification);
 vi.mock('../../service/products/product-sku', () => sku);
+vi.mock('../../tax/tax.repository', () => ({ TaxRepository: taxRepository }));
+vi.mock('../../financial/exchange-rates/exchange-rates.service', () => ({ ExchangeRatesService: exchangeRates }));
 vi.mock('../../financial/infrastructure/transaction', () => ({
   runFinancialTransaction: vi.fn((operation: (client: unknown) => unknown) => operation(tx)),
 }));
@@ -40,6 +45,26 @@ const productId = '33333333-3333-4333-8333-333333333333';
 const transactionId = '44444444-4444-4444-8444-444444444444';
 const receivingId = '55555555-5555-4555-8555-555555555555';
 const itemId = '66666666-6666-4666-8666-666666666666';
+const preset = {
+  id: '77777777-7777-4777-8777-777777777777', name: 'Automatic retail', productType: null,
+  expensePercent: new Decimal(0), profitPercent: new Decimal(10), discountBufferPercent: new Decimal(0),
+  installmentMarkupPercent: new Decimal(0), downPaymentPercent: new Decimal(100), defaultInstallmentMonths: 1,
+  calculationMode: PricingCalculationMode.SIMPLE, roundingMode: PricingRoundingMode.NONE,
+  isDefault: false, isActive: true, notes: null, archivedAt: null, archivedReason: null,
+  createdById: admin.userId, updatedById: null, createdAt: new Date(), updatedAt: new Date(),
+};
+
+const pricingProduct = (overrides: Record<string, unknown> = {}) => ({
+  id: productId, sku: 'HC-000042', name: 'TCL AC 1.5HP', model: 'A1', barcode: null, brand: null,
+  price: null, discount: null, costPrice: new Decimal('200.00'), priceCurrency: Currency.USD,
+  taxProfileId: null, priceIncludesVat: true, pricingPresetId: null, pricingPreset: null,
+  useCustomPricing: false, installmentEnabled: false, customExpensePercent: null, customProfitPercent: null,
+  customDiscountBufferPercent: null, customInstallmentMarkupPercent: null, customDownPaymentPercent: null,
+  customInstallmentMonths: null, customCalculationMode: null, labelBarcodeSource: 'AUTO', isActive: true,
+  notes: null, imageUrl: null, trackStock: true, stockQuantity: 4, lowStockThreshold: null,
+  specifications: null, specificationNotes: null, createdById: admin.userId, updatedById: null,
+  createdAt: new Date(), updatedAt: new Date(), ...overrides,
+});
 
 const today = () => new Date().toISOString().slice(0, 10);
 const productLine = (overrides = {}) => ({ kind: 'EXISTING_PRODUCT' as const, productId, quantity: 3, unitPrice: '210.00', ...overrides });
@@ -62,14 +87,20 @@ describe('SupplierPurchasesService.create', () => {
     process.env.BUSINESS_TIMEZONE = 'Asia/Beirut';
     tx.user.findUnique.mockResolvedValue({ fullName: 'Owner', username: 'owner' });
     suppliersRepository.findById.mockResolvedValue({ id: supplierId, name: 'TCL Distributor', isActive: true });
-    inventoryRepository.findProduct.mockResolvedValue({ id: productId, sku: 'HC-000042', name: 'TCL AC 1.5HP', isActive: true, trackStock: true, stockQuantity: 4, lowStockThreshold: null });
+    inventoryRepository.findProduct.mockResolvedValue({ id: productId, sku: 'HC-000042', name: 'TCL AC 1.5HP', isActive: true, trackStock: true, stockQuantity: 4, lowStockThreshold: null, costPrice: '200.00', taxProfileId: null, priceCurrency: Currency.USD });
+    productsRepository.update.mockResolvedValue({});
+    productsRepository.findById.mockResolvedValue(pricingProduct());
+    productsRepository.findActiveDefaultPricingPreset.mockResolvedValue(null);
+    exchangeRates.snapshotFor.mockResolvedValue(new Decimal(1));
     receiving.postSupplierReceiving.mockResolvedValue({ receivingId, itemIdByProductId: new Map([[productId, itemId]]) });
     transactionsRepository.create.mockResolvedValue({ id: transactionId });
     purchasesRepository.createLine.mockResolvedValue({});
+    purchasesRepository.findByIdempotencyKey.mockResolvedValue(null);
     purchasesRepository.findById.mockResolvedValue({
       id: transactionId, amount: '630.00', transactionDate: new Date('2026-08-15T00:00:00.000Z'),
       supplierReceiving: null, purchaseLines: [],
     });
+    taxRepository.requireEffectiveProfile.mockResolvedValue({ code: 'LB_ZERO', taxRate: { ratePercent: '0.000' } });
   });
 
   it('posts one receiving and one debt for the line total, linking each stock line to the item that moved it', async () => {
@@ -98,6 +129,87 @@ describe('SupplierPurchasesService.create', () => {
     }), tx);
   });
 
+  it('snapshots mixed standard, zero-rated, and exempt classifications and uses DEFAULT for an unassigned product', async () => {
+    const zeroProfileId = '77777777-7777-4777-8777-777777777777';
+    const exemptProfileId = '88888888-8888-4888-8888-888888888888';
+    taxRepository.requireEffectiveProfile
+      .mockResolvedValueOnce({ code: 'LB_STANDARD', taxRate: { ratePercent: '11.000' } })
+      .mockResolvedValueOnce({ code: 'LB_ZERO', taxRate: { ratePercent: '0.000' } })
+      .mockResolvedValueOnce({ code: 'EXEMPT', taxRate: { ratePercent: '0.000' } });
+    await SupplierPurchasesService.create(supplierId, purchase({
+      receiveStock: false,
+      lines: [
+        productLine({ quantity: 1, unitPrice: '100.00' }),
+        { kind: 'MANUAL', description: 'Zero-rated line', amount: '25.00', taxProfileId: zeroProfileId },
+        { kind: 'MANUAL', description: 'Exempt classification fixture', amount: '30.00', taxProfileId: exemptProfileId },
+      ],
+    }), admin, context);
+
+    expect(taxRepository.requireEffectiveProfile.mock.calls[0][0]).toBeNull();
+    expect(taxRepository.requireEffectiveProfile.mock.calls[1][0]).toBe(zeroProfileId);
+    expect(taxRepository.requireEffectiveProfile.mock.calls[2][0]).toBe(exemptProfileId);
+    expect(transactionsRepository.create.mock.calls[0][0].amount.toFixed(2)).toBe('166.00');
+    expect(purchasesRepository.createLine.mock.calls[0][0]).toMatchObject({ taxCodeSnapshot: 'LB_STANDARD' });
+    expect(purchasesRepository.createLine.mock.calls[0][0].vatAmount.toFixed(2)).toBe('11.00');
+    expect(purchasesRepository.createLine.mock.calls[1][0]).toMatchObject({ taxCodeSnapshot: 'LB_ZERO' });
+    expect(purchasesRepository.createLine.mock.calls[1][0].vatAmount.toFixed(2)).toBe('0.00');
+    expect(purchasesRepository.createLine.mock.calls[2][0]).toMatchObject({ taxCodeSnapshot: 'EXEMPT' });
+    expect(purchasesRepository.createLine.mock.calls[2][0].vatAmount.toFixed(2)).toBe('0.00');
+  });
+
+  it('returns the original purchase for an exact replay and rejects a changed replay', async () => {
+    const idempotencyKey = 'supplier-purchase-replay-key';
+    purchasesRepository.findByIdempotencyKey.mockResolvedValue({
+      id: transactionId,
+      idempotencyKey,
+      supplierId,
+      receiptNumber: 'INV-2291',
+      transactionDate: new Date(`${today()}T00:00:00.000Z`),
+      description: 'TCL AC purchase',
+      reference: null,
+      notes: null,
+      amount: '630.00',
+      amountOverride: false,
+      amountOverrideReason: null,
+      supplierReceivingId: receivingId,
+      createdById: admin.userId,
+      supplierReceiving: null,
+      purchaseLines: [{
+        kind: SupplierPurchaseLineKind.PRODUCT,
+        productId,
+        description: 'TCL AC 1.5HP · HC-000042',
+        quantity: 3,
+        unitPrice: '210.00',
+        lineTotal: '630.00',
+        taxRateSnapshot: new Prisma.Decimal('0.000'),
+        taxCodeSnapshot: 'LB_ZERO',
+        unitPriceExVat: '210.00',
+        vatAmount: '0.00',
+        lineTotalIncVat: '630.00',
+        receivingItemId: itemId,
+        product: { id: productId },
+      }],
+      audits: [{ afterValues: { paidAmount: '0.00', paymentReference: null } }],
+    });
+
+    const replay = await SupplierPurchasesService.create(
+      supplierId,
+      purchase({ idempotencyKey }),
+      admin,
+      context
+    );
+    expect(replay.id).toBe(transactionId);
+    expect(transactionsRepository.create).not.toHaveBeenCalled();
+    expect(receiving.postSupplierReceiving).not.toHaveBeenCalled();
+
+    await expect(SupplierPurchasesService.create(
+      supplierId,
+      purchase({ idempotencyKey, lines: [productLine({ quantity: 4 })] }),
+      admin,
+      context
+    )).rejects.toMatchObject({ statusCode: 409, code: 'PAYMENT_IDEMPOTENCY_CONFLICT' });
+  });
+
   it('keeps stock writing inside the shared receiving function and never touches quantities itself', async () => {
     await SupplierPurchasesService.create(supplierId, purchase(), admin, context);
     // The only movement this service may write itself is a quick-add opening
@@ -114,6 +226,89 @@ describe('SupplierPurchasesService.create', () => {
     expect(transactionsRepository.create).toHaveBeenCalledWith(expect.objectContaining({ supplierReceivingId: null }), tx);
     expect(purchasesRepository.createLine).toHaveBeenCalledWith(expect.objectContaining({
       kind: SupplierPurchaseLineKind.MANUAL, productId: null, quantity: null, unitPrice: null, receivingItemId: null,
+    }), tx);
+    expect(productsRepository.update).not.toHaveBeenCalled();
+  });
+
+  it('updates cost from an unreceived PRODUCT line and writes one product audit', async () => {
+    await SupplierPurchasesService.create(supplierId, purchase({ receiveStock: false }), admin, context);
+
+    expect(productsRepository.update).toHaveBeenCalledWith(productId, {
+      costPrice: expect.objectContaining({}), updatedById: admin.userId,
+    }, tx);
+    expect(productsRepository.update.mock.calls[0][1].costPrice.toFixed(2)).toBe('210.00');
+    expect(audits.writeServiceAudit).toHaveBeenCalledWith(expect.objectContaining({
+      recordId: productId,
+      action: 'CHANGE_PRICE',
+      beforeValues: expect.objectContaining({ costPrice: '200.00' }),
+      afterValues: expect.objectContaining({
+        costPrice: '210.00', costSource: 'SUPPLIER_PURCHASE',
+        supplierTransactionId: transactionId, supplierReceivingId: null,
+        weightedQuantity: 3, weightedLineCount: 1,
+      }),
+    }), tx);
+  });
+
+  it('uses one 2dp half-up weighted average and one audit for duplicate product lines', async () => {
+    await SupplierPurchasesService.create(supplierId, purchase({
+      receiveStock: false,
+      lines: [productLine({ quantity: 1, unitPrice: '10.00' }), productLine({ quantity: 1, unitPrice: '10.01' })],
+    }), admin, context);
+
+    expect(productsRepository.update).toHaveBeenCalledTimes(1);
+    expect(productsRepository.update.mock.calls[0][1].costPrice.toFixed(2)).toBe('10.01');
+    const costAudits = audits.writeServiceAudit.mock.calls.filter((call) => call[0].afterValues.costSource === 'SUPPLIER_PURCHASE');
+    expect(costAudits).toHaveLength(1);
+    expect(costAudits[0][0].afterValues).toMatchObject({ weightedQuantity: 2, weightedLineCount: 2 });
+  });
+
+  it('does not write cost or a cost audit when the weighted price is unchanged', async () => {
+    productsRepository.findById.mockResolvedValue(pricingProduct({ costPrice: new Decimal('210.00') }));
+
+    await SupplierPurchasesService.create(supplierId, purchase({ receiveStock: false }), admin, context);
+
+    expect(productsRepository.update).not.toHaveBeenCalled();
+    expect(audits.writeServiceAudit).not.toHaveBeenCalled();
+  });
+
+  it('updates cost but preserves a stored manual selling price and records that decision', async () => {
+    productsRepository.findById.mockResolvedValue(pricingProduct({ price: new Decimal('450.00') }));
+
+    await SupplierPurchasesService.create(supplierId, purchase({ receiveStock: false }), admin, context);
+
+    expect(productsRepository.update.mock.calls[0][1].costPrice.toFixed(2)).toBe('210.00');
+    expect(productsRepository.update.mock.calls[0][1]).not.toHaveProperty('price');
+    expect(audits.writeServiceAudit).toHaveBeenCalledWith(expect.objectContaining({
+      beforeValues: expect.objectContaining({ sellingPrice: '450.00', sellingPriceSource: 'MANUAL' }),
+      afterValues: expect.objectContaining({ sellingPrice: '450.00', sellingPriceSource: 'MANUAL', sellingPriceChanged: false }),
+    }), tx);
+  });
+
+  it('audits old and new selling prices for an explicitly preset-derived product', async () => {
+    productsRepository.findById.mockResolvedValue(pricingProduct({ pricingPresetId: preset.id, pricingPreset: preset }));
+
+    await SupplierPurchasesService.create(supplierId, purchase({ receiveStock: false }), admin, context);
+
+    expect(audits.writeServiceAudit).toHaveBeenCalledWith(expect.objectContaining({
+      beforeValues: expect.objectContaining({ sellingPrice: '220.00', sellingPriceSource: 'PRESET', pricingPreset: { id: preset.id, name: preset.name } }),
+      afterValues: expect.objectContaining({ sellingPrice: '231.00', sellingPriceSource: 'PRESET', sellingPriceChanged: true, priceIncludesVat: true }),
+    }), tx);
+  });
+
+  it('uses LBP whole-unit VAT and cost rounding for an LBP purchase', async () => {
+    exchangeRates.snapshotFor.mockResolvedValue(new Decimal('90000'));
+    inventoryRepository.findProduct.mockResolvedValue({ ...await inventoryRepository.findProduct(), priceCurrency: Currency.LBP });
+    productsRepository.findById.mockResolvedValue(pricingProduct({ priceCurrency: Currency.LBP, costPrice: new Decimal('80000') }));
+    taxRepository.requireEffectiveProfile.mockResolvedValue({ code: 'LB_STANDARD', taxRate: { ratePercent: '11.000' } });
+
+    await SupplierPurchasesService.create(supplierId, purchase({
+      currency: Currency.LBP, receiveStock: false,
+      lines: [productLine({ quantity: 1, unitPrice: '100000', priceIncludesVat: true })],
+    }), admin, context);
+
+    expect(productsRepository.update.mock.calls[0][1].costPrice.toFixed(0)).toBe('90090');
+    expect(transactionsRepository.create).toHaveBeenCalledWith(expect.objectContaining({
+      currency: Currency.LBP, amount: expect.objectContaining({}), baseAmount: expect.objectContaining({}),
     }), tx);
   });
 

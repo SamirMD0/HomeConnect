@@ -11,7 +11,24 @@ const schema = (overrides: Partial<SchemaObjects> = {}): SchemaObjects => ({
   indexes: new Set(),
   enumValues: new Set(),
   extensions: new Set(),
+  sequences: new Set(),
   ...overrides,
+});
+
+describe('sequence-backed data migrations', () => {
+  const backfill = migration(`
+    CREATE SEQUENCE IF NOT EXISTS "product_internal_barcode_seq" START WITH 1;
+    DO $$ BEGIN UPDATE "products" SET "barcode" = 'x' WHERE "barcode" IS NULL; END $$;
+  `);
+
+  it('detects the sequence a migration creates', () => {
+    expect(expectedObjects(backfill.sql)).toEqual(['sequence:product_internal_barcode_seq']);
+  });
+
+  it('reports the migration MISSING while its sequence is absent, so it cannot be resolved unrun', () => {
+    expect(classifyPresence(backfill, schema()).verdict).toBe('MISSING');
+    expect(classifyPresence(backfill, schema({ sequences: new Set(['product_internal_barcode_seq']) })).verdict).toBe('PRESENT');
+  });
 });
 
 describe('expectedObjects', () => {

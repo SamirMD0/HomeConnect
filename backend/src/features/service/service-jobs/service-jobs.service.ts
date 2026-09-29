@@ -244,7 +244,9 @@ function createData(input: CreateServiceJobInput, createdById: string, jobNumber
     receivedFromCompanyDate: dateOrDb(input.receivedFromCompanyDate), warrantyStatus: input.warrantyStatus,
     warrantyNotes: input.warrantyNotes ?? null, warrantyProvider: input.warrantyProvider ?? null,
     warrantyExpiresAt: dateOrDb(input.warrantyExpiresAt), estimatedPrice: moneyOrNull(input.estimatedPrice),
-    finalPrice: moneyOrNull(input.finalPrice), priceNotes: input.priceNotes ?? null,
+    finalPrice: moneyOrNull(input.finalPrice),
+    baseEstimatedPrice: moneyOrNull(input.estimatedPrice), baseFinalPrice: moneyOrNull(input.finalPrice),
+    priceNotes: input.priceNotes ?? null,
     serviceCreatedDate: businessDateToPrisma(input.serviceCreatedDate),
     homeVisitScheduledDate: dateOrDb(input.homeVisitScheduledDate),
     returnedToCustomerDate: dateOrDb(input.returnedToCustomerDate), status: input.status,
@@ -258,7 +260,12 @@ function updateData(input: UpdateServiceJobInput, updatedById: string): Prisma.S
   for (const field of plain) if (input[field] !== undefined) (data as Record<string, unknown>)[field] = input[field];
   const dates = ['sentToCompanyDate','receivedFromCompanyDate','warrantyExpiresAt','serviceCreatedDate','homeVisitScheduledDate','returnedToCustomerDate'] as const;
   for (const field of dates) if (input[field] !== undefined) (data as Record<string, unknown>)[field] = dateOrDb(input[field]);
-  for (const field of ['estimatedPrice','finalPrice'] as const) if (input[field] !== undefined) (data as Record<string, unknown>)[field] = moneyOrNull(input[field]);
+  for (const field of ['estimatedPrice','finalPrice'] as const) {
+    if (input[field] === undefined) continue;
+    const amount = moneyOrNull(input[field]);
+    (data as Record<string, unknown>)[field] = amount;
+    (data as Record<string, unknown>)[field === 'estimatedPrice' ? 'baseEstimatedPrice' : 'baseFinalPrice'] = amount;
+  }
   return data;
 }
 

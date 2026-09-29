@@ -31,4 +31,16 @@ export default defineConfig({
     strictPort: true,
   },
   base: './',
+  optimizeDeps: {
+    // Avoid waiting for a crawl of every lazy business screen before React's
+    // first request can complete. Prebundle the known browser dependencies.
+    noDiscovery: true,
+    include: [
+      'react', 'react-dom', 'react-dom/client', 'react/jsx-runtime',
+      'react/jsx-dev-runtime', 'react-router-dom', '@tanstack/react-query',
+      'react-hook-form', '@hookform/resolvers/zod', 'zod', 'axios',
+      'react-hot-toast', 'lucide-react', 'framer-motion', 'clsx',
+      'tailwind-merge', 'recharts', 'jsbarcode', 'jspdf', 'xlsx', 'date-fns',
+    ],
+  },
 });

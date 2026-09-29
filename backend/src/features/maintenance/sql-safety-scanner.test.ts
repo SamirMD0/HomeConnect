@@ -93,6 +93,64 @@ describe('sql safety scanner — allows legitimate repair SQL', () => {
     expect(scanSqlForUnsafeStatements(`UPDATE products SET "labelBarcodeSource" = 'AUTO' WHERE "labelBarcodeSource" = 'SKU';`).safe).toBe(false);
   });
 
+  it('allows only the reviewed product VAT presentation preference flip', () => {
+    const safe = `UPDATE "products" SET "priceIncludesVat" = true WHERE "priceIncludesVat" = false;`;
+    expect(scanSqlForUnsafeStatements(safe).safe).toBe(true);
+    expect(scanSqlForUnsafeStatements(`UPDATE "products" SET "priceIncludesVat" = true;`).safe).toBe(false);
+    expect(scanSqlForUnsafeStatements(`UPDATE "sales_order_lines" SET "priceIncludesVat" = true WHERE "priceIncludesVat" = false;`).safe).toBe(false);
+  });
+
+  it('allows only the reviewed legacy template appearance parity update', () => {
+    const safe = `UPDATE "pricing_card_templates" SET "config" = jsonb_set(jsonb_set("config", '{appearance,borderPx}', '1'::jsonb, false), '{appearance,sectionDividers}', 'true'::jsonb, false) WHERE "id" IN ('20000000-0000-4000-8000-000000000003', '20000000-0000-4000-8000-000000000004');`;
+    expect(scanSqlForUnsafeStatements(safe).safe).toBe(true);
+    // Unscoped, it would rewrite every operator-authored template.
+    expect(scanSqlForUnsafeStatements(safe.replace(/ WHERE[\s\S]+?(?=;)/, '')).safe).toBe(false);
+    // A different id set is a different review.
+    expect(scanSqlForUnsafeStatements(safe.replace('000000000004', '000000000009')).safe).toBe(false);
+    // Only the two appearance keys are reviewed; anything else is a fresh write.
+    expect(scanSqlForUnsafeStatements(safe.replace('{appearance,sectionDividers}', '{appearance,fontScale}')).safe).toBe(false);
+    // The same shape against another table is not covered.
+    expect(scanSqlForUnsafeStatements(safe.replace('"pricing_card_templates"', '"products"')).safe).toBe(false);
+  });
+
+  it('allows the reviewed feature icon and layout refresh migration only at its pinned scope', () => {
+    const file = path.join(MIGRATIONS_DIR, '20260920220000_refresh_pricing_card_feature_icons', 'migration.sql');
+    const sql = fs.readFileSync(file, 'utf8');
+    expect(scanSqlForUnsafeStatements(sql).safe).toBe(true);
+    expect(scanSqlForUnsafeStatements(sql.replace("('qled', '<svg", "('other', '<svg")).safe).toBe(false);
+    expect(scanSqlForUnsafeStatements(sql.replace('000000000002', '000000000009')).safe).toBe(false);
+    expect(scanSqlForUnsafeStatements(sql.replace('SET "svg"', 'SET "label"')).safe).toBe(false);
+  });
+
+  it('allows the reviewed price prominence migration only at its pinned scope', () => {
+    const file = path.join(MIGRATIONS_DIR, '20260920230000_set_pricing_card_price_prominence', 'migration.sql');
+    const sql = fs.readFileSync(file, 'utf8');
+    expect(scanSqlForUnsafeStatements(sql).safe).toBe(true);
+    // A different id set is a different review.
+    expect(scanSqlForUnsafeStatements(sql.replace('000000000002', '000000000009')).safe).toBe(false);
+    // Only the two reviewed price keys are covered.
+    expect(scanSqlForUnsafeStatements(sql.replace('{price,fontScale}', '{price,weight}')).safe).toBe(false);
+    expect(scanSqlForUnsafeStatements(sql.replace("'\"hero\"'::jsonb", "'\"large\"'::jsonb")).safe).toBe(false);
+    // Without a guard either statement could overwrite a template already tuned.
+    expect(scanSqlForUnsafeStatements(sql.replace(/\s*AND "config" #>>[\s\S]+?(?=;)/, '')).safe).toBe(false);
+    expect(scanSqlForUnsafeStatements(sql.replace(/\s*AND \("config" #>>[\s\S]+?(?=;)/, '')).safe).toBe(false);
+    // Header marks may only move to the two sizes §5 and §6 name.
+    expect(scanSqlForUnsafeStatements(sql.replace('{header,brand,sizeMm}', '{header,brand,display}')).safe).toBe(false);
+    expect(scanSqlForUnsafeStatements(sql.replace("'8'::jsonb", "'20'::jsonb")).safe).toBe(false);
+    // The same shape against another table is not covered.
+    expect(scanSqlForUnsafeStatements(sql.replace(/"pricing_card_templates"/g, '"products"')).safe).toBe(false);
+  });
+
+  it('allows the thermal template refinement only at its pinned scope', () => {
+    const file = path.join(MIGRATIONS_DIR, '20260924110000_refine_appliance_shelf_thermal_template', 'migration.sql');
+    const sql = fs.readFileSync(file, 'utf8');
+    expect(scanSqlForUnsafeStatements(sql).safe).toBe(true);
+    expect(scanSqlForUnsafeStatements(sql.replace('000000000005', '000000000009')).safe).toBe(false);
+    expect(scanSqlForUnsafeStatements(sql.replace('"cardWidthMm" = 76', '"cardWidthMm" = 80')).safe).toBe(false);
+    expect(scanSqlForUnsafeStatements(sql.replace("'{appearance,layout}' = 'centered'", "'{appearance,layout}' = 'stack'")).safe).toBe(false);
+    expect(scanSqlForUnsafeStatements(sql.replace('"targetWidthMm":50', '"targetWidthMm":70')).safe).toBe(false);
+  });
+
   it('still rejects an UPDATE that could overwrite existing values', () => {
     expect(scanSqlForUnsafeStatements(`UPDATE "debts" SET "amount" = 0;`).safe).toBe(false);
     expect(scanSqlForUnsafeStatements(`UPDATE "debts" SET "amount" = 0 WHERE "id" = 'x';`).safe).toBe(false);
@@ -120,11 +178,31 @@ describe('sql safety scanner — real bundled files', () => {
     expect(result.statementCount).toBeGreaterThan(0);
   });
 
-  const migrationDirs = fs.readdirSync(MIGRATIONS_DIR).filter((name) => /^\d{14}_/.test(name));
+  const reviewedDestructiveMigration = '20260830183000_remove_legacy_transactions';
+  const migrationDirs = fs
+    .readdirSync(MIGRATIONS_DIR)
+    .filter((name) => /^\d{14}_/.test(name) && name !== reviewedDestructiveMigration);
 
   it.each(migrationDirs)('accepts migration %s', (name) => {
     const file = path.join(MIGRATIONS_DIR, name, 'migration.sql');
     if (!fs.existsSync(file)) return;
     expect(scanSqlForUnsafeStatements(fs.readFileSync(file, 'utf8')).violations).toEqual([]);
+  });
+
+  it('recognizes the reviewed legacy transaction removal as destructive', () => {
+    const sql = fs.readFileSync(
+      path.join(MIGRATIONS_DIR, reviewedDestructiveMigration, 'migration.sql'),
+      'utf8'
+    );
+    const result = scanSqlForUnsafeStatements(sql);
+
+    expect(result.violations.map((violation) => violation.code)).toEqual([
+      'DROP_STATEMENT',
+      'DROP_STATEMENT',
+      'DROP_STATEMENT',
+    ]);
+    expect(sql).toContain('DROP TABLE "transactions"');
+    expect(sql).toContain('DROP TYPE IF EXISTS "TransactionStatus"');
+    expect(sql).toContain('DROP TYPE "TransactionType"');
   });
 });

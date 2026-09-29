@@ -3,9 +3,11 @@ import jwt from 'jsonwebtoken';
 import { prisma } from '../lib/prisma';
 import { AuthenticationError, AuthorizationError, AppError } from '../lib/errors';
 import { Role } from '@prisma/client';
+import { requireSecretEnv } from '../lib/env';
+import { requireActiveUserSession } from '../lib/user-session-status';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key_change_in_production';
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || JWT_SECRET;
+const JWT_SECRET = requireSecretEnv('JWT_SECRET');
+const JWT_REFRESH_SECRET = requireSecretEnv('JWT_REFRESH_SECRET');
 // One hour. This default is what the packaged app runs on: backend/.env is
 // excluded from the installer, so a shorter value here silently became the
 // shop's session length no matter what a developer machine had configured.
@@ -98,14 +100,10 @@ export class AuthService {
   static async refreshToken(refreshToken: string) {
     try {
       const decoded = jwt.verify(refreshToken, JWT_REFRESH_SECRET) as { userId: string, role: string };
-      
-      const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
-      
-      if (!user || user.deletedAt || !user.isActive) {
-        throw new AuthenticationError('Invalid token or account deactivated');
-      }
 
-      const tokens = this.generateTokens(user.id, user.role);
+      const user = await requireActiveUserSession(decoded.userId);
+
+      const tokens = this.generateTokens(decoded.userId, user.role);
       return tokens;
     } catch (error) {
       throw new AuthenticationError('Invalid or expired refresh token');

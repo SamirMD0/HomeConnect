@@ -1,11 +1,12 @@
 import axios from 'axios';
 import { Plus, Trash2 } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ProductPicker } from '../../../products/components/ProductPicker';
 import { useSuppliers } from '../../../suppliers/hooks/useSuppliers';
 import { useCreateSupplierReceiving, useSupplierReceivingDuplicate } from '../hooks/useSupplierReceivings';
 import type { CreateSupplierReceivingInput } from '../types/supplier-receiving.types';
+import { createClientIdempotencyKey } from '../../../customer-financial/utils/idempotency-key';
 
 interface FormLine { key: number; productId: string; quantity: string }
 export interface ReceivingFormValues { supplierId: string; referenceNumber: string; receivedOn: string; note: string; items: FormLine[] }
@@ -36,8 +37,12 @@ export function validateReceivingForm(values: ReceivingFormValues): Record<strin
   return errors;
 }
 
-export function toCreateReceivingInput(values: ReceivingFormValues): CreateSupplierReceivingInput {
+export function toCreateReceivingInput(
+  values: ReceivingFormValues,
+  idempotencyKey?: string
+): CreateSupplierReceivingInput {
   return {
+    ...(idempotencyKey ? { idempotencyKey } : {}),
     supplierId: values.supplierId || null,
     referenceNumber: values.referenceNumber.trim() || null,
     receivedOn: values.receivedOn,
@@ -78,6 +83,7 @@ export function receivingPrefillFromRouteState(state: unknown): ReceivingPrefill
 }
 
 export const SupplierReceivingForm: React.FC<{ prefill?: ReceivingPrefill | null }> = ({ prefill = null }) => {
+  const idempotencyKeyRef = useRef(createClientIdempotencyKey('supplier-receiving'));
   const navigate = useNavigate();
   const [values, setValues] = useState<ReceivingFormValues>({
     supplierId: '', referenceNumber: '', receivedOn: localToday(), note: '',
@@ -99,7 +105,8 @@ export const SupplierReceivingForm: React.FC<{ prefill?: ReceivingPrefill | null
     setServerError('');
     if (Object.keys(nextErrors).length) return;
     try {
-      await createReceivingAndNavigate(values, create.mutateAsync, navigate);
+      const receiving = await create.mutateAsync(toCreateReceivingInput(values, idempotencyKeyRef.current));
+      navigate(receivingDetailPath(receiving.id));
     } catch (error) {
       setServerError(receivingErrorMessage(error));
     }

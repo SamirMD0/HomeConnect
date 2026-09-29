@@ -427,6 +427,8 @@ describe('product drawer, form, brands, and focus', () => {
       adminAuth
     );
     expect(adminHtml).toContain('Pricing / التسعير');
+    expect(adminHtml).toContain('Pricing card template / قالب بطاقة السعر');
+    expect(adminHtml).toContain('Inherit category or shop default');
     expect(adminHtml.indexOf('Specifications / المواصفات')).toBeLessThan(adminHtml.indexOf('Pricing / التسعير'));
   });
 
@@ -434,6 +436,7 @@ describe('product drawer, form, brands, and focus', () => {
     expect(renderedProductFields(false, emptyProductFormPricing)).toContain('notes');
     expect(renderedProductFields(false, emptyProductFormPricing)).not.toContain('price');
     expect(renderedProductFields(true, emptyProductFormPricing)).not.toContain('reason');
+    expect(renderedProductFields(true, emptyProductFormPricing)).toContain('pricingCardTemplateId');
     const correctionFields = renderedProductFields(true, emptyProductFormPricing, true);
     expect(correctionFields).toContain('reason');
     expect(correctionFields).toContain('accountPassword');

@@ -6,6 +6,7 @@ describe('sales authorization policy', () => {
   it('classifies sensitive fields', () => {
     expect(containsSensitiveSalesOrderFields(['notes'])).toBe(false);
     expect(containsSensitiveSalesOrderFields(['notes', 'unitPrice'])).toBe(true);
+    expect(containsSensitiveSalesOrderFields(['deliveryTaxTreatment'])).toBe(true);
   });
 
   it('requires an administrator for admin-only actions', () => {

@@ -13,6 +13,7 @@ import { nextSalesOrderNumber } from '../domain/order-number';
 import type { SalesOrderListQueryInput } from './sales-orders.validator';
 
 export const salesOrderInclude = {
+  counterPayments: { select: { id: true, voidedAt: true } },
   customer: { select: { id: true, name: true, phone: true, address: true, isActive: true } },
   items: {
     include: {
@@ -50,6 +51,7 @@ export const salesOrderInclude = {
         },
         orderBy: { createdAt: 'desc' },
       },
+      returnItems: { select: { quantity: true } },
     },
     orderBy: { createdAt: 'asc' },
   },
@@ -58,11 +60,18 @@ export const salesOrderInclude = {
   createdBy: { select: { id: true, fullName: true, username: true } },
   updatedBy: { select: { id: true, fullName: true, username: true } },
   cancelledBy: { select: { id: true, fullName: true, username: true } },
+  returns: {
+    select: { id: true, returnNumber: true, returnDate: true, totalIncVat: true, refundMethod: true, deliveryReturned: true },
+    orderBy: { sequence: 'asc' },
+  },
 } satisfies Prisma.SalesOrderInclude;
 
 export type SalesOrderRecord = Prisma.SalesOrderGetPayload<{ include: typeof salesOrderInclude }>;
 
 export class SalesOrdersRepository {
+  static findByIdempotencyKey(idempotencyKey: string, tx?: Prisma.TransactionClient) {
+    return (tx ?? prisma).salesOrder.findUnique({ where: { idempotencyKey }, include: salesOrderInclude });
+  }
   static findById(id: string, tx?: Prisma.TransactionClient) {
     return (tx ?? prisma).salesOrder.findUnique({ where: { id }, include: salesOrderInclude });
   }
@@ -83,6 +92,10 @@ export class SalesOrdersRepository {
       where: { salesOrderId: id, status: SalesOrderStockFulfillmentStatus.ACTIVE },
       select: { id: true },
     });
+  }
+
+  static hasPostedReturn(id: string, tx: Prisma.TransactionClient) {
+    return tx.salesReturn.findFirst({ where: { salesOrderId: id }, select: { id: true } });
   }
 
   static findActiveCustomer(id: string, tx: Prisma.TransactionClient) {
@@ -149,14 +162,17 @@ export class SalesOrdersRepository {
       notIn: [
         SalesOrderFulfillmentStatus.DRAFT,
         SalesOrderFulfillmentStatus.CANCELLED,
-        SalesOrderFulfillmentStatus.RETURNED,
       ],
     };
-    const [todayAggregate, pendingDelivery, unpaidOrders, partialPayments] = await Promise.all([
+    const [todayAggregate, returnsAggregate, pendingDelivery, unpaidOrders, partialPayments] = await Promise.all([
       prisma.salesOrder.aggregate({
         where: { orderDate: { gte: today, lt: tomorrow }, fulfillmentStatus: counted },
-        _sum: { totalAmount: true },
+        _sum: { baseTotalAmount: true },
         _count: { _all: true },
+      }),
+      prisma.salesReturn.aggregate({
+        where: { returnDate: { gte: today, lt: tomorrow } },
+        _sum: { baseTotalIncVat: true },
       }),
       prisma.salesOrder.count({
         where: {
@@ -178,7 +194,7 @@ export class SalesOrdersRepository {
         where: { paymentStatus: SalesOrderPaymentStatus.PARTIALLY_PAID, fulfillmentStatus: counted },
       }),
     ]);
-    return { todayAggregate, pendingDelivery, unpaidOrders, partialPayments };
+    return { todayAggregate, returnsAggregate, pendingDelivery, unpaidOrders, partialPayments };
   }
 }
 

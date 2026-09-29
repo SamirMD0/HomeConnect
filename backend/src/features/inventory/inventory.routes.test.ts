@@ -30,7 +30,7 @@ vi.mock('../../lib/prisma', () => ({
 
 import { app } from '../../app';
 
-const secret = process.env.JWT_SECRET || 'fallback_secret_key_change_in_production';
+const secret = process.env.JWT_SECRET!;
 const productId = '11111111-1111-4111-8111-111111111111';
 const admin = jwt.sign({ userId: '22222222-2222-4222-8222-222222222222', role: 'ADMIN' }, secret);
 const employee = jwt.sign({ userId: '33333333-3333-4333-8333-333333333333', role: 'EMPLOYEE' }, secret);

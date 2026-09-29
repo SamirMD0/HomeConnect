@@ -246,7 +246,7 @@ describe('supplier receiving frontend', () => {
   });
 
   it('warns that a void reverses stock, requires a reason and password, and lists what is reversed', () => {
-    const html = renderToStaticMarkup(<MemoryRouter><ReceivingVoidDialog receiving={receiving} isOpen onClose={() => {}} /></MemoryRouter>);
+    const html = renderToStaticMarkup(<MemoryRouter><ReceivingVoidDialog receiving={{ ...receiving, costPriceReviewCount: 2 }} isOpen onClose={() => {}} /></MemoryRouter>);
     expect(html).toContain('This reverses the stock this document received. It does not delete any history.');
     expect(html).toContain('Stock to be reversed / المخزون الذي سيُعكس');
     expect(html).toContain('Tracked fan');
@@ -254,6 +254,8 @@ describe('supplier receiving frontend', () => {
     expect(html).toContain('Reason for voiding / سبب الإلغاء');
     expect(html).toContain('type="password"');
     expect(html).toContain('void this document and then create a new corrected receiving');
+    expect(html).toContain('This purchase updated 2 product costs');
+    expect(html).toContain('Voiding will not revert them');
     // The only place "delete" appears is the promise that nothing is deleted;
     // no control on this dialog offers one.
     expect(html).not.toMatch(/>[^<]*(?:Delete|Remove permanently|حذف نهائي)[^<]*</);

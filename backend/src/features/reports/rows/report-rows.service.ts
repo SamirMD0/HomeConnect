@@ -1,6 +1,7 @@
-import { StockMovementType, SupplierReceivingItemStatus, SupplierReceivingStatus } from '@prisma/client';
+import { Currency, StockMovementType, SupplierReceivingItemStatus, SupplierReceivingStatus } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import {
+  calculateDebtBalance, calculateInstallmentBalance, isPaymentAllocationVoided, toBaseAmount,
   moneyToApiString,
   parseBusinessDate,
   prismaDateToBusinessDate,
@@ -11,12 +12,16 @@ import {
   ZERO_MONEY,
 } from '../../financial';
 import { addDays, differenceInDays } from '../../dashboard/shared/dashboard-range';
+import { ReceivablesService } from '../../financial/receivables/receivables.service';
+import { SuppliersRepository } from '../../suppliers/suppliers/suppliers.repository';
+import { SupplierPayablesService } from '../../suppliers/payables/supplier-payables.service';
 import { ReportsMetricsService } from '../metrics/reports-metrics.service';
 import { MonthlyDebtsService } from '../monthly-debts/monthly-debts.service';
 import { buildCsv, type CsvValue } from '../shared/csv';
 import { buildAgingRows, summariseAging } from '../shared/receivables-aging';
 import { resolveReportsPeriod } from '../shared/reports-period';
 import { ReportRowsRepository } from './report-rows.repository';
+import { categoryPath } from '../../categories/category-hierarchy';
 import type { ReportSlice } from './report-rows.types';
 import type { ReportRowsQueryInput } from './report-rows.validator';
 
@@ -26,11 +31,13 @@ interface ReportRowsOptions { businessDate?: string; generatedAt?: Date }
 const STALE_PAYMENT_DAYS = 60;
 /** Balance at or above which a customer is called out regardless of payment behaviour. */
 const HIGH_BALANCE = new Decimal('500.00');
+const CATEGORY_REPORTS = new Set<ReportSlice>(['products-bought', 'products-cost-changes', 'inventory-movements', 'inventory-reconciliation']);
 
 export interface CustomerMovementRow {
   customer: { id: string; name: string; phone: string };
   openingBalance: string;
   newDebt: string;
+  returnCredits?: string;
   paidInPeriod: string;
   closingBalance: string;
   paymentCount: number;
@@ -45,7 +52,17 @@ export class ReportRowsService {
     const businessDate = options.businessDate ?? todayInBusinessTimezone();
     const period = resolveReportsPeriod(query, businessDate);
     const generatedAt = (options.generatedAt ?? new Date()).toISOString();
-    const data = await this.load(slice, period);
+    const payload = slice === 'suppliers-aging'
+      ? { ...await SupplierPayablesService.get(businessDate), operationalSnapshot: true }
+      : await this.load(slice, period);
+    const classifications = CATEGORY_REPORTS.has(slice) && payload.rows.length
+      ? await ReportRowsRepository.productCategories([...new Set(payload.rows.map((row) => reportProductId(row)).filter((id): id is string => Boolean(id)))])
+      : [];
+    const byId = new Map(classifications.map((row) => [row.id, row]));
+    const data = CATEGORY_REPORTS.has(slice) ? { ...payload, categorySource: 'CURRENT_CATALOGUE' as const, rows: payload.rows.map((row) => {
+      const product = byId.get(reportProductId(row) ?? '');
+      return { ...row, categoryId: product?.categoryId ?? null, categoryPath: product?.category ? categoryPath(product.category) : null };
+    }) } : payload;
     return {
       meta: { ...period, generatedAt, currency: 'USD' as const },
       data,
@@ -87,12 +104,15 @@ export class ReportRowsService {
 
     const openingByCustomer = new Map(opening.rows.map((row) => [row.customer.id, row]));
     const closingByCustomer = new Map(closing.rows.map((row) => [row.customer.id, row]));
-    const activityByCustomer = new Map<string, { newDebt: Decimal; paid: Decimal; paymentCount: number }>();
+    const activityByCustomer = new Map<string, { newDebt: Decimal; paid: Decimal; paymentCount: number; returnCredits: Decimal }>();
     for (const item of activity.items) {
-      const entry = activityByCustomer.get(item.customer.id) ?? { newDebt: ZERO_MONEY, paid: ZERO_MONEY, paymentCount: 0 };
+      if (!item.customer) continue;
+      const entry = activityByCustomer.get(item.customer.id) ?? { newDebt: ZERO_MONEY, paid: ZERO_MONEY, paymentCount: 0, returnCredits: ZERO_MONEY };
       if (item.type === 'PAYMENT_RECEIVED') {
         entry.paid = sumMoney([entry.paid, new Decimal(item.amount)]);
         entry.paymentCount += 1;
+      } else if (item.type === 'SALES_RETURN') {
+        entry.returnCredits = subtractMoney(entry.returnCredits, item.amount);
       } else {
         entry.newDebt = sumMoney([entry.newDebt, new Decimal(item.amount)]);
       }
@@ -106,22 +126,23 @@ export class ReportRowsService {
       const closingRow = closingByCustomer.get(customerId);
       const openingRow = openingByCustomer.get(customerId);
       const customer = closingRow?.customer ?? openingRow?.customer
-        ?? activity.items.find((item) => item.customer.id === customerId)?.customer;
+        ?? activity.items.find((item) => item.customer?.id === customerId)?.customer;
       if (!customer) continue;
 
-      const entry = activityByCustomer.get(customerId) ?? { newDebt: ZERO_MONEY, paid: ZERO_MONEY, paymentCount: 0 };
+      const entry = activityByCustomer.get(customerId) ?? { newDebt: ZERO_MONEY, paid: ZERO_MONEY, paymentCount: 0, returnCredits: ZERO_MONEY };
       const openingBalance = new Decimal(openingRow?.totalOutstanding ?? '0.00');
       const closingBalance = new Decimal(closingRow?.totalOutstanding ?? '0.00');
       const lastPaymentDate = closingRow?.lastPaymentDate ?? openingRow?.lastPaymentDate ?? null;
       const daysSinceLastPayment = lastPaymentDate ? differenceInDays(lastPaymentDate, period.to) : null;
 
       // A customer with nothing owed and no activity is not part of this story.
-      if (closingBalance.equals(ZERO_MONEY) && openingBalance.equals(ZERO_MONEY) && entry.paymentCount === 0) continue;
+      if (closingBalance.equals(ZERO_MONEY) && openingBalance.equals(ZERO_MONEY) && entry.paymentCount === 0 && entry.returnCredits.equals(ZERO_MONEY)) continue;
 
       rows.push({
         customer,
         openingBalance: moneyToApiString(openingBalance),
         newDebt: moneyToApiString(entry.newDebt),
+        ...(entry.returnCredits.greaterThan(ZERO_MONEY) ? { returnCredits: moneyToApiString(entry.returnCredits) } : {}),
         paidInPeriod: moneyToApiString(entry.paid),
         closingBalance: moneyToApiString(closingBalance),
         paymentCount: entry.paymentCount,
@@ -144,6 +165,7 @@ export class ReportRowsService {
       count: rows.length,
       openingBalance: total('openingBalance'),
       newDebt: total('newDebt'),
+      returnCredits: moneyToApiString(sumMoney(rows.map((row) => row.returnCredits ?? ZERO_MONEY))),
       paidInPeriod: total('paidInPeriod'),
       closingBalance: total('closingBalance'),
       ...(slice === 'customers-paid'
@@ -174,11 +196,13 @@ export class ReportRowsService {
     if (slice === 'customers-payments') {
       const records = await ReportRowsRepository.customerPayments(period);
       const rows = records.map((record) => ({
-        id: record.id, customer: record.customer, amount: moneyToApiString(record.totalAmount),
+        id: record.id, customer: record.customer, amount: moneyToApiString(record.totalAmount, record.currency),
+        currency: record.currency, exchangeRate: record.exchangeRate?.toFixed(6) ?? '1.000000',
+        baseAmount: moneyToApiString(record.baseAmount ?? record.totalAmount), sourceSalesOrder: record.salesOrder ?? null,
         paymentDate: prismaDateToBusinessDate(record.paymentDate), paymentMethod: record.paymentMethod,
         reference: record.reference, notes: record.notes, receivedBy: record.createdBy,
       }));
-      return { summary: { count: rows.length, totalAmount: moneyToApiString(sumMoney(records.map((record) => record.totalAmount))) }, rows };
+      return { summary: { count: rows.length, totalAmount: moneyToApiString(sumMoney(records.map((record) => record.baseAmount ?? record.totalAmount))) }, rows };
     }
 
     if (slice === 'customers-aging') {
@@ -253,6 +277,46 @@ export class ReportRowsService {
       };
     }
 
+    if (slice === 'products-cost-changes') {
+      const records = await ReportRowsRepository.productCostChanges(period);
+      const rows = records.map((record) => {
+        const currency = record.priceCurrency === Currency.LBP ? Currency.LBP : Currency.USD;
+        const oldCost = record.oldCost == null ? null : moneyToApiString(record.oldCost, currency);
+        const newCost = record.newCost == null ? null : moneyToApiString(record.newCost, currency);
+        const percentageChange = oldCost && newCost && !new Decimal(oldCost).equals(ZERO_MONEY)
+          ? new Decimal(newCost).minus(oldCost).div(oldCost).mul(100).toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toFixed(2)
+          : null;
+        return {
+          id: record.auditId,
+          changedAt: record.changedAt.toISOString(),
+          product: { id: record.productId, name: record.productName, sku: record.productSku },
+          oldCost,
+          newCost,
+          oldSellingPrice: record.oldSellingPrice == null ? null : moneyToApiString(record.oldSellingPrice, currency),
+          newSellingPrice: record.newSellingPrice == null ? null : moneyToApiString(record.newSellingPrice, currency),
+          sellingPriceSource: record.sellingPriceSource,
+          sellingPriceChanged: record.sellingPriceChanged ?? false,
+          priceCurrency: currency,
+          percentageChange,
+          source: record.costSource === 'SUPPLIER_PURCHASE' ? 'SUPPLIER_PURCHASE' as const : 'MANUAL' as const,
+          supplierTransactionId: record.supplierTransactionId,
+          supplierReceivingId: record.supplierReceivingId,
+          receiptNumber: record.receiptNumber,
+          changedBy: { fullName: record.changedByName, username: record.changedByUsername },
+          reason: record.reason,
+        };
+      });
+      return {
+        summary: {
+          count: rows.length,
+          increases: rows.filter((row) => row.oldCost != null && row.newCost != null && new Decimal(row.newCost).greaterThan(row.oldCost)).length,
+          decreases: rows.filter((row) => row.oldCost != null && row.newCost != null && new Decimal(row.newCost).lessThan(row.oldCost)).length,
+          fromPurchases: rows.filter((row) => row.source === 'SUPPLIER_PURCHASE').length,
+        },
+        rows,
+      };
+    }
+
     if (slice === 'suppliers-debts') {
       const records = await ReportRowsRepository.supplierTransactions(period);
       const increases = records.filter((record) => record.direction === 'INCREASE_OWED').map((record) => record.amount);
@@ -298,12 +362,27 @@ export class ReportRowsService {
 
     if (slice === 'sales-unpaid') {
       const records = await ReportRowsRepository.unpaidSalesOrders();
-      const rows = records.map(serializeSalesOrder);
+      const rows = records.map((record) => {
+        const balanceInput = (obligation: NonNullable<typeof record.debt> | NonNullable<typeof record.installmentPlan>['installments'][number]) => ({
+          allocations: obligation.paymentAllocations.map((allocation) => ({
+            amount: toBaseAmount(allocation.paymentAmount ?? allocation.amount, allocation.payment.currency, allocation.payment.exchangeRate, Decimal.ROUND_HALF_UP),
+            isVoided: isPaymentAllocationVoided(allocation),
+          })),
+          credits: obligation.returnAllocations.map((allocation) => ({ amount: allocation.baseAmount })),
+        });
+        const remaining = record.debt
+          ? calculateDebtBalance({ originalAmount: record.debt.baseOriginalAmount, ...balanceInput(record.debt) }).remainingBalance
+          : record.installmentPlan
+            ? sumMoney(record.installmentPlan.installments.map((installment) => calculateInstallmentBalance({ amountDue: installment.baseAmountDue, ...balanceInput(installment) }).remainingBalance))
+            : Decimal.max(ZERO_MONEY, subtractMoney(record.baseRemainingAmount ?? record.remainingAmount, sumMoney((record.returns ?? []).map((returned) => returned.baseReceivableReliefAmount))));
+        const { debt: _debt, installmentPlan: _plan, returns: _returns, ...sale } = record;
+        return { ...serializeSalesOrder(sale), remainingAmount: moneyToApiString(remaining) };
+      }).filter((row) => new Decimal(row.remainingAmount).greaterThan(ZERO_MONEY));
       return {
         operationalSnapshot: true,
         summary: {
           count: rows.length,
-          remainingAmount: moneyToApiString(sumMoney(records.map((record) => record.remainingAmount))),
+          remainingAmount: moneyToApiString(sumMoney(rows.map((row) => row.remainingAmount))),
         },
         rows,
       };
@@ -320,6 +399,65 @@ export class ReportRowsService {
           .reduce((total, record) => total + record.quantityChange, 0),
       }]));
       return { summary: { count: rows.length, movementsByType }, rows };
+    }
+
+    if (slice === 'customers-financial-integrity') {
+      const evidence = await ReportRowsRepository.customerFinancialIntegrity();
+      const reported = await ReceivablesService.computeReceivableProjections({
+        customerIds: evidence.map((row) => row.customerId),
+      });
+      const rows = evidence.map((record) => {
+        const obligationTotal = new Decimal(record.obligationTotal);
+        const allocationTotal = new Decimal(record.allocationTotal);
+        const independentOutstanding = subtractMoney(obligationTotal, allocationTotal);
+        const projection = reported.get(record.customerId);
+        const reportedOutstanding = new Decimal(projection?.outstanding ?? '0.00');
+        const difference = subtractMoney(reportedOutstanding, independentOutstanding);
+        const issues: string[] = [];
+        if (!projection) issues.push('Customer is missing from the reported receivables projection');
+        if (allocationTotal.greaterThan(obligationTotal)) issues.push('Non-voided allocations exceed non-cancelled obligations');
+        if (!difference.equals(ZERO_MONEY)) issues.push('Reported outstanding does not match obligations minus allocations');
+        return {
+          customer: { id: record.customerId, name: record.customerName, phone: record.customerPhone },
+          obligationTotal: moneyToApiString(obligationTotal),
+          allocationTotal: moneyToApiString(allocationTotal),
+          reportedOutstanding: moneyToApiString(reportedOutstanding),
+          independentOutstanding: moneyToApiString(independentOutstanding),
+          difference: moneyToApiString(difference),
+          obligationCount: record.obligationCount,
+          allocationCount: record.allocationCount,
+          status: issues.length === 0 ? 'OK' as const : 'MISMATCH' as const,
+          issues,
+        };
+      });
+      return { operationalSnapshot: true, summary: financialIntegritySummary(rows, 'reportedOutstanding', 'independentOutstanding'), rows };
+    }
+
+    if (slice === 'suppliers-financial-integrity') {
+      const evidence = await ReportRowsRepository.supplierFinancialIntegrity();
+      const reported = await SuppliersRepository.balances(evidence.map((row) => row.supplierId));
+      const rows = evidence.map((record) => {
+        const increaseTotal = new Decimal(record.increaseTotal);
+        const decreaseTotal = new Decimal(record.decreaseTotal);
+        const independentBalance = subtractMoney(increaseTotal, decreaseTotal);
+        const balance = reported.get(record.supplierId);
+        const reportedBalance = subtractMoney(balance?.increase ?? '0.00', balance?.decrease ?? '0.00');
+        const difference = subtractMoney(reportedBalance, independentBalance);
+        const issues: string[] = [];
+        if (!difference.equals(ZERO_MONEY)) issues.push('Reported balance does not match active increases minus active decreases');
+        return {
+          supplier: { id: record.supplierId, name: record.supplierName, phone: record.supplierPhone },
+          increaseTotal: moneyToApiString(increaseTotal),
+          decreaseTotal: moneyToApiString(decreaseTotal),
+          reportedBalance: moneyToApiString(reportedBalance),
+          independentBalance: moneyToApiString(independentBalance),
+          difference: moneyToApiString(difference),
+          transactionCount: record.transactionCount,
+          status: issues.length === 0 ? 'OK' as const : 'MISMATCH' as const,
+          issues,
+        };
+      });
+      return { operationalSnapshot: true, summary: financialIntegritySummary(rows, 'reportedBalance', 'independentBalance'), rows };
     }
 
     const records = await ReportRowsRepository.receivingReconciliation(period);
@@ -339,16 +477,22 @@ export class ReportRowsService {
   }
 }
 
+// Reports classify products from the current catalogue, never from monetary snapshots.
 type SalesOrderRowRecord =
   | Awaited<ReturnType<typeof ReportRowsRepository.salesOrders>>[number]
-  | Awaited<ReturnType<typeof ReportRowsRepository.unpaidSalesOrders>>[number];
+  | Omit<Awaited<ReturnType<typeof ReportRowsRepository.unpaidSalesOrders>>[number], 'debt' | 'installmentPlan' | 'returns'>;
 
 function serializeSalesOrder(record: SalesOrderRowRecord) {
   return {
     ...record, orderDate: prismaDateToBusinessDate(record.orderDate),
-    totalAmount: moneyToApiString(record.totalAmount), paidAmount: moneyToApiString(record.paidAmount),
-    remainingAmount: moneyToApiString(record.remainingAmount),
+    totalAmount: moneyToApiString(record.baseTotalAmount ?? record.totalAmount), paidAmount: moneyToApiString(record.basePaidAmount ?? record.paidAmount),
+    remainingAmount: moneyToApiString(record.baseRemainingAmount ?? record.remainingAmount),
   };
+}
+
+function reportProductId(row: unknown): string | undefined {
+  const record = row as { productId?: string; product?: { id?: string } };
+  return record.productId ?? record.product?.id;
 }
 
 function reconciliationIssues(
@@ -375,33 +519,57 @@ function reconciliationIssues(
   return issues;
 }
 
+function financialIntegritySummary<Row extends { status: 'OK' | 'MISMATCH' }>(
+  rows: Row[],
+  reportedKey: keyof Row,
+  independentKey: keyof Row
+) {
+  const money = (key: keyof Row) => moneyToApiString(sumMoney(rows.map((row) => new Decimal(String(row[key])))));
+  const reportedTotal = money(reportedKey);
+  const independentTotal = money(independentKey);
+  return {
+    count: rows.length,
+    ok: rows.filter((row) => row.status === 'OK').length,
+    mismatches: rows.filter((row) => row.status === 'MISMATCH').length,
+    reportedTotal,
+    independentTotal,
+    difference: moneyToApiString(subtractMoney(reportedTotal, independentTotal)),
+  };
+}
+
 function csvDefinition(slice: ReportSlice, rows: Array<Record<string, unknown>>): { headers: CsvValue[]; rows: CsvValue[][] } {
   const definitions: Record<ReportSlice, { headers: string[]; values: (row: Record<string, unknown>) => CsvValue[] }> = {
     'customers-new': { headers: ['Date', 'Customer', 'Phone', 'Active'], values: (r) => [r.createdOn as string, r.name as string, r.phone as string, r.isActive as boolean] },
     'customers-debts': { headers: ['Customer', 'Phone', 'Outstanding', 'Due by cutoff', 'Overdue', 'Last payment'], values: (r) => { const c = r.customer as Record<string, unknown>; return [c.name as string, c.phone as string, r.totalOutstanding as string, r.amountDueByCutoff as string, r.overdueAmountAtCutoff as string, r.lastPaymentDate as string | null]; } },
-    'customers-payments': { headers: ['Date', 'Customer', 'Phone', 'Amount', 'Method', 'Reference'], values: (r) => { const c = r.customer as Record<string, unknown>; return [r.paymentDate as string, c.name as string, c.phone as string, r.amount as string, r.paymentMethod as string, r.reference as string | null]; } },
+    'customers-payments': { headers: ['Date', 'Customer', 'Phone', 'Amount', 'Currency', 'Exchange rate', 'Base USD', 'Method', 'Reference'], values: (r) => { const c = r.customer as Record<string, unknown> | null; return [r.paymentDate as string, c?.name as string ?? 'Walk-in / زبون عابر', c?.phone as string ?? '', r.amount as string, r.currency as string, r.exchangeRate as string, r.baseAmount as string, r.paymentMethod as string, r.reference as string | null]; } },
     'customers-aging': { headers: ['Customer', 'Phone', 'Reference', 'Created', 'Due', 'Original', 'Paid', 'Remaining', 'Days unpaid', 'Bucket', 'Last payment', 'Status'], values: (r) => { const c = r.customer as Record<string, unknown>; return [c.name as string, c.phone as string, r.reference as string | null, r.createdOn as string, r.dueDate as string, r.originalAmount as string, r.paidAmount as string, r.remainingAmount as string, r.daysUnpaid as number, r.bucket as string, r.lastPaymentDate as string | null, r.status as string]; } },
     'customers-not-paid': { headers: movementCsvHeaders, values: movementCsvRow },
     'customers-paid': { headers: movementCsvHeaders, values: movementCsvRow },
     'products-bought': { headers: ['Date', 'SKU', 'Product', 'Supplier', 'Reference', 'Quantity', 'Current stock', 'Sold in period', 'Line status', 'Received by', 'Linked debt'], values: (r) => { const p = r.product as Record<string, unknown>; const s = r.supplier as Record<string, unknown> | null; const b = r.receivedBy as Record<string, unknown> | null; const d = r.linkedDebt as Record<string, unknown> | null; return [r.receivedOn as string, p.sku as string, p.name as string, s?.name as string | undefined, r.referenceNumber as string | null, r.quantity as number, r.currentStock as number, r.soldInPeriod as number, r.status as string, b?.fullName as string | undefined, d?.amount as string | undefined]; } },
+    'products-cost-changes': { headers: ['Changed at', 'SKU', 'Product', 'Currency', 'Old cost', 'New cost', 'Old selling price', 'New selling price', 'Selling price source', 'Selling price changed', 'Change %', 'Source', 'Receipt', 'Changed by', 'Reason'], values: (r) => { const p = r.product as Record<string, unknown>; const a = r.changedBy as Record<string, unknown>; return [r.changedAt as string, p.sku as string, p.name as string, r.priceCurrency as string, r.oldCost as string | null, r.newCost as string | null, r.oldSellingPrice as string | null, r.newSellingPrice as string | null, r.sellingPriceSource as string | null, r.sellingPriceChanged as boolean, r.percentageChange as string | null, r.source as string, r.receiptNumber as string | null, a.fullName as string, r.reason as string]; } },
     'suppliers-debts': { headers: ['Date', 'Supplier', 'Type', 'Direction', 'Amount', 'Description', 'Reference', 'Receipt'], values: (r) => { const s = r.supplier as Record<string, unknown>; return [r.transactionDate as string, s.name as string, r.type as string, r.direction as string, r.amount as string, r.description as string, r.reference as string | null, r.receiptNumber as string | null]; } },
+    'suppliers-aging': { headers: ['Supplier', 'Receipt', 'Transaction date', 'Due date', 'Currency', 'Original transaction amount', 'Original base USD', 'FIFO settled base USD', 'Remaining base USD', 'Days overdue', 'Bucket', 'Status'], values: (r) => { const s = r.supplier as Record<string, unknown>; return [s.name as string, r.receiptNumber as string | null, r.transactionDate as string, r.dueDate as string | null, r.currency as string, r.transactionAmount as string, r.originalAmount as string, r.fifoSettledAmount as string, r.remainingAmount as string, r.daysOverdue as number, r.bucket as string, r.status as string]; } },
     'suppliers-receiving': { headers: ['Date', 'Supplier', 'Reference', 'Status', 'Lines', 'Quantity', 'Linked debt'], values: (r) => { const s = r.supplier as Record<string, unknown> | null; const d = r.linkedDebt as Record<string, unknown> | null; return [r.receivedOn as string, s?.name as string | undefined, r.referenceNumber as string | null, r.status as string, r.lineCount as number, r.totalQuantity as number, d?.amount as string | undefined]; } },
     'sales-orders': { headers: ['Date', 'Order', 'Customer', 'Payment status', 'Fulfillment', 'Total', 'Paid', 'Remaining'], values: salesCsvRow },
     'sales-unpaid': { headers: ['Date', 'Order', 'Customer', 'Payment status', 'Fulfillment', 'Total', 'Paid', 'Remaining'], values: salesCsvRow },
     'inventory-movements': { headers: ['Timestamp', 'SKU', 'Product', 'Type', 'Change', 'Before', 'After', 'Reason', 'Reference'], values: (r) => { const p = r.product as Record<string, unknown>; return [r.createdAt as string, p.sku as string, p.name as string, r.movementType as string, r.quantityChange as number, r.quantityBefore as number, r.quantityAfter as number, r.reason as string, r.referenceId as string | null]; } },
     'inventory-reconciliation': { headers: ['Date', 'Receiving', 'Supplier', 'SKU', 'Product', 'Quantity', 'Status', 'Issues'], values: (r) => { const s = r.supplier as Record<string, unknown> | null; return [r.receivedOn as string, r.referenceNumber as string | null, s?.name as string | undefined, r.sku as string, r.productName as string, r.quantity as number, r.status as string, (r.issues as string[]).join('; ')]; } },
+    'customers-financial-integrity': { headers: ['Customer', 'Phone', 'Obligations', 'Non-voided allocations', 'Reported outstanding', 'Independent outstanding', 'Difference', 'Status', 'Issues'], values: (r) => { const c = r.customer as Record<string, unknown>; return [c.name as string, c.phone as string, r.obligationTotal as string, r.allocationTotal as string, r.reportedOutstanding as string, r.independentOutstanding as string, r.difference as string, r.status as string, (r.issues as string[]).join('; ')]; } },
+    'suppliers-financial-integrity': { headers: ['Supplier', 'Phone', 'Active increases', 'Active decreases', 'Reported balance', 'Independent balance', 'Difference', 'Status', 'Issues'], values: (r) => { const s = r.supplier as Record<string, unknown>; return [s.name as string, s.phone as string, r.increaseTotal as string, r.decreaseTotal as string, r.reportedBalance as string, r.independentBalance as string, r.difference as string, r.status as string, (r.issues as string[]).join('; ')]; } },
   };
   const definition = definitions[slice];
-  return { headers: definition.headers, rows: rows.map(definition.values) };
+  return CATEGORY_REPORTS.has(slice)
+    ? { headers: [...definition.headers, 'Category (current catalogue)'], rows: rows.map((row) => [...definition.values(row), (row.categoryPath as string | null) ?? 'Uncategorized']) }
+    : { headers: definition.headers, rows: rows.map(definition.values) };
 }
 
-const movementCsvHeaders = ['Customer', 'Phone', 'Opening', 'New debt', 'Paid', 'Closing', 'Payments', 'Unpaid items', 'Last payment', 'Days since payment', 'Risk'];
+const movementCsvHeaders = ['Customer', 'Phone', 'Opening', 'New debt', 'Return credits', 'Paid', 'Closing', 'Payments', 'Unpaid items', 'Last payment', 'Days since payment', 'Risk'];
 
 function movementCsvRow(row: Record<string, unknown>): CsvValue[] {
   const customer = row.customer as Record<string, unknown>;
   return [
     customer.name as string, customer.phone as string, row.openingBalance as string,
-    row.newDebt as string, row.paidInPeriod as string, row.closingBalance as string,
+    row.newDebt as string, (row.returnCredits as string | undefined) ?? '0.00', row.paidInPeriod as string, row.closingBalance as string,
     row.paymentCount as number, row.unpaidDebtCount as number,
     row.lastPaymentDate as string | null, row.daysSinceLastPayment as number | null,
     (row.riskLabels as string[]).join('; '),
@@ -422,7 +590,7 @@ function rank<T>(entries: Map<string, T>, project: (entry: T) => { units: number
 
 /** Deterministic, explainable labels — no scoring, no AI. */
 function riskLabelsFor(input: {
-  entry: { newDebt: Decimal; paid: Decimal; paymentCount: number };
+  entry: { newDebt: Decimal; paid: Decimal; paymentCount: number; returnCredits: Decimal };
   openingBalance: Decimal;
   closingBalance: Decimal;
   daysSinceLastPayment: number | null;

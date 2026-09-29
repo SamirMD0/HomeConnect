@@ -1,0 +1,58 @@
+{
+  "invoice": [
+    {
+      "page": 1,
+      "width_mm": 209.89,
+      "height_mm": 297.01,
+      "textChars": 1006
+    }
+  ],
+  "receipt": [
+    {
+      "page": 1,
+      "width_mm": 209.89,
+      "height_mm": 297.01,
+      "textChars": 862
+    }
+  ],
+  "statement": [
+    {
+      "page": 1,
+      "width_mm": 209.89,
+      "height_mm": 297.01,
+      "textChars": 1401
+    },
+    {
+      "page": 2,
+      "width_mm": 209.89,
+      "height_mm": 297.01,
+      "textChars": 1521
+    },
+    {
+      "page": 3,
+      "width_mm": 209.89,
+      "height_mm": 297.01,
+      "textChars": 1525
+    },
+    {
+      "page": 4,
+      "width_mm": 209.89,
+      "height_mm": 297.01,
+      "textChars": 1507
+    },
+    {
+      "page": 5,
+      "width_mm": 209.89,
+      "height_mm": 297.01,
+      "textChars": 676
+    }
+  ],
+  "return": [
+    {
+      "page": 1,
+      "width_mm": 209.89,
+      "height_mm": 297.01,
+      "textChars": 1120
+    }
+  ]
+}

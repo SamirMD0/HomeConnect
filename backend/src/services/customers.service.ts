@@ -1,11 +1,12 @@
 import { CustomersRepository } from '../repositories/customers.repository';
-import { NotFoundError, ValidationError } from '../lib/errors';
+import { AuthorizationError, NotFoundError, ValidationError } from '../lib/errors';
 import { Prisma } from '@prisma/client';
 import { ReceivablesService } from '../features/financial/receivables/receivables.service';
 import { findSearchMatchIds } from '../lib/search-query';
 
 export class CustomersService {
-  static async createCustomer(data: { name: string; phone: string; address?: string | null; notes?: string | null; createdBy: string }) {
+  static async createCustomer(data: { name: string; phone: string; address?: string | null; notes?: string | null; creditLimit?: string | null; createdBy: string }, actor?: { role: string }) {
+    assertCreditLimitPermission(data, actor);
     const existingPhone = await CustomersRepository.findByPhone(data.phone);
     if (existingPhone) {
       throw new ValidationError('A customer with this phone number already exists.');
@@ -17,6 +18,7 @@ export class CustomersService {
       address: data.address,
       notes: data.notes,
       createdBy: data.createdBy,
+      ...(data.creditLimit !== undefined ? { creditLimit: data.creditLimit } : {}),
     });
   }
 
@@ -112,7 +114,8 @@ export class CustomersService {
     return customer;
   }
 
-  static async updateCustomer(id: string, data: { name?: string; phone?: string; address?: string | null; notes?: string | null; isActive?: boolean }) {
+  static async updateCustomer(id: string, data: { name?: string; phone?: string; address?: string | null; notes?: string | null; creditLimit?: string | null; isActive?: boolean }, actor?: { role: string }) {
+    assertCreditLimitPermission(data, actor);
     const customer = await CustomersRepository.findById(id);
     if (!customer) {
       throw new NotFoundError('Customer not found');
@@ -130,6 +133,7 @@ export class CustomersService {
     if (data.phone !== undefined) updateData.phone = data.phone;
     if (data.address !== undefined) updateData.address = data.address;
     if (data.notes !== undefined) updateData.notes = data.notes;
+    if (data.creditLimit !== undefined) updateData.creditLimit = data.creditLimit;
     if (data.isActive !== undefined) updateData.isActive = data.isActive;
 
     return CustomersRepository.update(id, updateData);
@@ -141,5 +145,11 @@ export class CustomersService {
       throw new NotFoundError('Customer not found');
     }
     return CustomersRepository.softDelete(id);
+  }
+}
+
+function assertCreditLimitPermission(data: { creditLimit?: string | null }, actor?: { role: string }) {
+  if (data.creditLimit !== undefined && actor?.role !== 'ADMIN') {
+    throw new AuthorizationError('Only an ADMIN can configure customer credit limits / تعديل حد الائتمان متاح للمسؤول فقط');
   }
 }

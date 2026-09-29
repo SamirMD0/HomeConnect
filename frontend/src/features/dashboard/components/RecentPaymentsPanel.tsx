@@ -32,13 +32,13 @@ export const RecentPaymentsPanel: React.FC<RecentPaymentsPanelProps> = ({
         {payments.map((payment) => (
           <Link
             key={payment.id}
-            to={`/customers/${payment.customer.id}`}
+            to={payment.customer ? `/customers/${payment.customer.id}` : '/ledger'}
             className="block rounded-lg border border-gray-100 p-3 hover:bg-gray-50"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="user-text truncate text-sm font-semibold text-gray-900" dir="auto">
-                  {payment.customer.name}
+                  {payment.customer?.name ?? 'Walk-in / زبون عابر'}
                 </p>
                 <p className="text-xs text-gray-500">
                   {formatBusinessDate(payment.paymentDate)} · {payment.paymentMethod}

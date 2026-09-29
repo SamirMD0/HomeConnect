@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth';
 import { Eye, Plus, Users } from 'lucide-react';
 import { useCreateCustomer } from '../../features/customers/hooks/useCustomers';
 import { Customer, CustomerListFilter } from '../../features/customers/api/customers.api';
@@ -17,6 +18,7 @@ import { businessLabels } from '../../shared/labels/business-labels';
 const emptyCell = <span className="text-slate-400 group-hover:text-yellow-300">—</span>;
 
 export const CustomersListPage: React.FC = () => {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
@@ -218,6 +220,7 @@ export const CustomersListPage: React.FC = () => {
         title="Add New Customer / إضافة زبون جديد"
       >
         <CustomerForm
+          canManageCreditLimit={user?.role === 'ADMIN'}
           onSubmit={handleCreateCustomer}
           onCancel={() => setIsAddModalOpen(false)}
           isSubmitting={createCustomer.isPending}

@@ -27,6 +27,7 @@ const debtInclude = {
       paidAmount: true,
     },
   },
+  returnAllocations: { select: { amount: true, baseAmount: true } },
   paymentAllocations: {
     include: {
       payment: {
@@ -41,6 +42,7 @@ const planInclude = {
   customer: { select: customerSelect },
   installments: {
     include: {
+      returnAllocations: { select: { amount: true, baseAmount: true } },
       paymentAllocations: {
         include: {
           payment: {
@@ -171,7 +173,7 @@ export class FinancialLedgerRepository {
         : {}),
     };
     const paymentWhere: Prisma.PaymentWhereInput = {
-      ...customerWhere,
+      OR: [{ customerId: null }, customerWhere],
       ...customerSearchWhere,
       ...(params.customerId ? { customerId: params.customerId } : {}),
       ...(!params.includeCancelled ? { voidedAt: null } : {}),

@@ -1,4 +1,4 @@
-import { PaymentMethod, Prisma } from '@prisma/client';
+import { Currency, PaymentMethod, Prisma } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { prisma } from '../../../lib/prisma';
 import { FinancialTransactionClient } from '../infrastructure/transaction';
@@ -27,10 +27,12 @@ const paymentInclude = {
   },
   allocations: {
     include: {
+      debt: { select: { returnAllocations: { select: { id: true } } } },
       installment: {
         select: {
           id: true,
           installmentPlanId: true,
+          installmentPlan: { select: { installments: { select: { returnAllocations: { select: { id: true } } } } } },
         },
       },
     },
@@ -40,11 +42,70 @@ const paymentInclude = {
   },
 } satisfies Prisma.PaymentInclude;
 
+const receiptAllocationHistory = {
+  select: {
+    id: true,
+    amount: true,
+    createdAt: true,
+    voidedAt: true,
+  },
+  orderBy: { createdAt: 'asc' as const },
+};
+
+const paymentReceiptInclude = {
+  salesOrder: { select: { id: true, orderNumber: true } },
+  customer: {
+    select: { id: true, name: true, phone: true, address: true },
+  },
+  createdBy: {
+    select: { id: true, fullName: true, username: true },
+  },
+  voidedBy: {
+    select: { id: true, fullName: true, username: true },
+  },
+  allocations: {
+    include: {
+      debt: {
+        select: {
+          id: true,
+          description: true,
+          originalAmount: true,
+          currency: true,
+          returnAllocations: { select: { amount: true, createdAt: true } },
+          paymentAllocations: receiptAllocationHistory,
+        },
+      },
+      installment: {
+        select: {
+          id: true,
+          installmentNumber: true,
+          installmentPlan: {
+            select: {
+              id: true,
+              description: true,
+              totalAmount: true,
+              currency: true,
+              installments: {
+                select: { paymentAllocations: receiptAllocationHistory, returnAllocations: { select: { amount: true, createdAt: true } } },
+              },
+            },
+          },
+        },
+      },
+    },
+    orderBy: { createdAt: 'asc' as const },
+  },
+} satisfies Prisma.PaymentInclude;
+
 export type PaymentWithDetails = Prisma.PaymentGetPayload<{ include: typeof paymentInclude }>;
+export type PaymentReceiptRecord = Prisma.PaymentGetPayload<{ include: typeof paymentReceiptInclude }>;
 
 export interface CreateReplacementPaymentData {
   customerId: string;
   totalAmount: Decimal;
+  currency?: Currency;
+  exchangeRate?: Decimal;
+  baseAmount?: Decimal;
   paymentDate: Date;
   paymentMethod: PaymentMethod;
   reference?: string | null;
@@ -53,6 +114,16 @@ export interface CreateReplacementPaymentData {
 }
 
 export class PaymentsRepository {
+  static findByIdempotencyKey(idempotencyKey: string, tx: FinancialTransactionClient) {
+    return tx.payment.findUnique({ where: { idempotencyKey } });
+  }
+  static createCounterReceipt(tx: FinancialTransactionClient, data: Prisma.PaymentUncheckedCreateInput) {
+    return tx.payment.create({ data });
+  }
+  static async findPaymentReceipt(paymentId: string): Promise<PaymentReceiptRecord | null> {
+    return prisma.payment.findUnique({ where: { id: paymentId }, include: paymentReceiptInclude });
+  }
+
   static async findUserIdentity(userId: string) {
     return prisma.user.findUnique({
       where: { id: userId },
@@ -144,6 +215,7 @@ export class PaymentsRepository {
       data: {
         ...data,
         idempotencyKey: null,
+        baseAmount: data.baseAmount ?? data.totalAmount,
       },
       include: paymentInclude,
     });
@@ -155,6 +227,8 @@ export class PaymentsRepository {
       paymentId: string;
       debtId: string;
       amount: Decimal;
+      paymentAmount?: Decimal;
+      exchangeRate?: Decimal;
     }
   ) {
     return tx.paymentAllocation.create({
@@ -163,6 +237,8 @@ export class PaymentsRepository {
         debtId: data.debtId,
         installmentId: null,
         amount: data.amount,
+        paymentAmount: data.paymentAmount ?? data.amount,
+        exchangeRate: data.exchangeRate,
       },
     });
   }
@@ -173,6 +249,8 @@ export class PaymentsRepository {
       paymentId: string;
       installmentId: string;
       amount: Decimal;
+      paymentAmount?: Decimal;
+      exchangeRate?: Decimal;
     }>
   ) {
     return tx.paymentAllocation.createMany({
@@ -181,6 +259,8 @@ export class PaymentsRepository {
         debtId: null,
         installmentId: allocation.installmentId,
         amount: allocation.amount,
+        paymentAmount: allocation.paymentAmount ?? allocation.amount,
+        exchangeRate: allocation.exchangeRate,
       })),
     });
   }
@@ -199,6 +279,7 @@ export class PaymentsRepository {
             cancelledAt: true,
           },
         },
+        returnAllocations: { select: { amount: true } },
         paymentAllocations: {
           include: {
             payment: {

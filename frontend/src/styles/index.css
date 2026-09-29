@@ -1,4 +1,5 @@
-@import "tailwindcss";
+@import "../features/pricing-card/components/PricingCard.css";
+@import "tailwindcss" source("..");
 
 /*
  * Design tokens. Tailwind v4 reads theme values from this block — it does NOT
@@ -102,12 +103,15 @@
 .product-label h2 { display: -webkit-box; margin: 0; overflow: hidden; font-size: 12pt; line-height: 1.1; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .product-label p { margin: 1mm 0 0; font-size: 8pt; }
 .product-label-brand { text-transform: uppercase; font-weight: 700; color: #475569; }
-.product-label-barcode { display: block; width: 100%; max-height: 12mm; margin-top: 1mm; }
+/* Sized in mm by ProductLabel (see barcode-geometry.ts). Never fit it to the box:
+   scaling makes modules fractional printer dots and the bars merge on thermal paper. */
+.product-label-barcode { display: block; margin: 1mm auto 0; }
 .product-label-barcode-text { font-family: monospace; text-align: center; overflow-wrap: anywhere; }
 .product-label-sku { font-family: 'Courier New', monospace; font-weight: 700; }
 .product-label-price { margin-top: 1mm !important; border-top: 1px solid #000; padding-top: 0.6mm; text-align: right; font-size: 10pt !important; font-weight: 800; }
 
 @layer components {
+  .control { @apply mt-1 block h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm; }
   .dashboard-shell { @apply mx-auto max-w-[1600px] space-y-5 pb-8; }
   .dashboard-section { @apply border-t border-slate-200 pt-5; }
   .dashboard-filter-bar { @apply sticky top-0 z-20 flex flex-col justify-between gap-3 rounded-lg border border-slate-200 bg-white/95 p-3 shadow-sm backdrop-blur lg:flex-row lg:items-center; }
@@ -189,6 +193,24 @@
 
 .product-label-guides { border: 1px dashed #cbd5e1; }
 
+.pricing-card-page-viewport { width: 100%; overflow: auto; }
+.pricing-card-page-preview { width: max-content; transform: scale(var(--preview-scale, 1)); transform-origin: top left; }
+.pricing-card-page {
+  box-sizing: border-box;
+  display: grid;
+  width: var(--pricing-card-paper-width);
+  height: var(--pricing-card-paper-height);
+  padding: var(--pricing-card-page-margin);
+  grid-template-columns: repeat(var(--pricing-card-columns), var(--pricing-card-cell-width));
+  grid-auto-rows: var(--pricing-card-cell-height);
+  gap: var(--pricing-card-page-gap);
+  align-content: start;
+  justify-content: start;
+  background: #fff;
+}
+.pricing-card-page-preview .pricing-card-page { margin: 0 0 6mm; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgb(15 23 42 / 0.12); }
+.pricing-card-cut-guides { outline: 1px dashed #94a3b8; outline-offset: -1px; }
+
 @media print {
   .product-label-grid { display: grid; grid-template-columns: var(--label-width, 50mm); gap: 0; }
   .product-label { border: 0; font-family: Tahoma, Arial, 'Segoe UI', sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -201,4 +223,137 @@
   .label-page { break-after: page; page-break-after: always; }
   .label-page:last-child { break-after: auto; page-break-after: auto; }
   .product-label { break-inside: avoid; page-break-inside: avoid; }
+  .pricing-card-page-viewport { overflow: visible; }
+  .pricing-card-page-preview { transform: none; }
+  .pricing-card-page-preview .pricing-card-page { margin: 0; border: 0; box-shadow: none; }
+  .pricing-card-page { break-after: page; page-break-after: always; }
+  .pricing-card-page:last-child { break-after: auto; page-break-after: auto; }
+  .pricing-card { break-inside: avoid; page-break-inside: avoid; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  /* Sticker / roll printing: one label per page. A label exactly as tall as the
+     page can spill a fraction of a millimetre and feed a blank label, so it sits
+     just inside the page and always ends its own page. */
+  .product-label-grid > .product-label:not(.product-label-auto) { height: calc(var(--label-height, 30mm) - 0.5mm); break-after: page; page-break-after: always; }
+  .product-label-grid > .product-label:last-child { break-after: auto; page-break-after: auto; }
+}
+
+/* Shared A4 document surface. Screen and print use the same DOM; only the
+   paper shadow and surrounding application chrome change. */
+.document-page {
+  position: relative;
+  box-sizing: border-box;
+  width: min(100%, 210mm);
+  min-height: 297mm;
+  margin: 0 auto;
+  padding: 12mm;
+  overflow: visible;
+  background: #fff;
+  color: #0f172a;
+  box-shadow: 0 1px 5px rgb(15 23 42 / 0.16);
+}
+
+.document-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8mm;
+  border-bottom: 2px solid #0f766e;
+  padding-bottom: 6mm;
+}
+
+.document-logo {
+  width: 22mm;
+  height: 22mm;
+  flex: none;
+  object-fit: contain;
+}
+
+.document-logo-placeholder {
+  display: flex;
+  width: 22mm;
+  height: 22mm;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed #94a3b8;
+  color: #64748b;
+  text-align: center;
+  font-size: 8pt;
+}
+
+.document-info-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(55mm, 0.65fr);
+  gap: 8mm;
+  margin-top: 7mm;
+  border: 1px solid #cbd5e1;
+  border-radius: 2mm;
+  padding: 4mm;
+}
+
+.document-section-label { font-weight: 700; color: #0f766e; }
+.document-facts { display: grid; gap: 3mm; }
+
+.document-table {
+  width: 100%;
+  margin-top: 7mm;
+  border-collapse: collapse;
+  font-size: 9pt;
+}
+
+.document-table thead { display: table-header-group; }
+.document-table tr { break-inside: avoid; page-break-inside: avoid; }
+.document-table th { border-bottom: 1.5px solid #475569; background: #f1f5f9; padding: 2.5mm 2mm; text-align: left; vertical-align: bottom; }
+.document-table td { border-bottom: 1px solid #e2e8f0; padding: 3mm 2mm; vertical-align: top; }
+
+.document-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(78mm, 0.8fr);
+  gap: 8mm;
+  margin-top: 7mm;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.document-totals { border-top: 1.5px solid #475569; }
+.document-totals > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4mm; border-bottom: 1px solid #e2e8f0; padding: 2mm 0; font-size: 9pt; }
+.document-totals dd { text-align: right; font-weight: 600; }
+.document-total-strong { border-bottom-color: #0f766e !important; color: #0f172a; font-size: 11pt !important; font-weight: 800; }
+
+.document-notes { margin-top: 4mm; border-top: 1px solid #cbd5e1; padding-top: 3mm; font-size: 9pt; }
+.document-footer { margin-top: 2mm; border-top: 1px solid #cbd5e1; padding-top: 1mm; text-align: center; font-size: 9pt; font-weight: 700; color: #475569; }
+.document-watermark { position: absolute; inset: 42% auto auto 22%; transform: rotate(-22deg); color: rgb(185 28 28 / 0.14); font-size: 32pt; font-weight: 900; letter-spacing: 0.08em; pointer-events: none; }
+.receipt-void-watermark { inset: 39% 8% auto; z-index: 1; text-align: center; font-size: 46pt; color: rgb(185 28 28 / 0.16); }
+.receipt-void-metadata { position: relative; z-index: 2; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4mm; margin-top: 7mm; border: 2px solid #b91c1c; border-radius: 2mm; background: #fef2f2; padding: 4mm; break-inside: avoid; page-break-inside: avoid; }
+.statement-table { font-size: 8pt; }
+.statement-entry-inactive { color: #64748b; }
+.statement-status { display: inline-block; margin-left: 1mm; border-radius: 999px; padding: 0.4mm 1.5mm; background: #e2e8f0; font-size: 7pt; white-space: nowrap; }
+.statement-status-voided, .statement-status-cancelled { background: #fee2e2; color: #991b1b; font-weight: 800; }
+.statement-aging { margin-top: 7mm; break-inside: avoid; page-break-inside: avoid; }
+.statement-aging-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 6mm; margin-top: 3mm; border-top: 1.5px solid #475569; }
+.statement-aging-grid > div { display: flex; justify-content: space-between; gap: 3mm; border-bottom: 1px solid #e2e8f0; padding: 2mm 0; font-size: 8pt; }
+
+@media screen and (max-width: 720px) {
+  .document-page { min-height: auto; padding: 6mm; }
+  .document-header, .document-info-grid, .document-summary { grid-template-columns: 1fr; }
+  .document-header > :last-child { text-align: left; }
+  .document-table { font-size: 8pt; }
+  .receipt-void-metadata { grid-template-columns: 1fr; }
+}
+
+@media print {
+  body { background: #fff !important; }
+  .document-route { margin: 0 !important; }
+  .document-page {
+    width: auto;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+    box-shadow: none;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .receipt-void-watermark, .receipt-void-metadata {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
 }

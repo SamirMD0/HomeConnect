@@ -36,7 +36,7 @@ export class SalesAnalyticsRepository {
     ] = await Promise.all([
       prisma.salesOrder.aggregate({
         where: { ...counted, orderDate: { gte: today, lt: tomorrow } },
-        _sum: { totalAmount: true },
+        _sum: { baseTotalAmount: true },
         _count: { _all: true },
       }),
       prisma.salesOrder.count({
@@ -54,7 +54,7 @@ export class SalesAnalyticsRepository {
       prisma.salesOrder.count({ where: { ...counted, paymentStatus: SalesOrderPaymentStatus.PARTIALLY_PAID } }),
       prisma.salesOrder.count({ where: { ...counted, settlement: SalesOrderSettlement.INSTALLMENT } }),
       prisma.salesOrder.groupBy({
-        by: ['orderDate'], where: ranged, _sum: { totalAmount: true }, _count: { _all: true }, orderBy: { orderDate: 'asc' },
+        by: ['orderDate'], where: ranged, _sum: { baseTotalAmount: true }, _count: { _all: true }, orderBy: { orderDate: 'asc' },
       }),
       prisma.salesOrder.groupBy({
         by: ['paymentStatus'], where: ranged, _count: { _all: true }, orderBy: { paymentStatus: 'asc' },

@@ -208,6 +208,19 @@ function baseQuery(overrides: Record<string, unknown> = {}) {
 }
 
 describe('FinancialLedgerService', () => {
+  it('recognizes customerless counter cash once in collection summaries without changing outstanding', async () => {
+    const counter = makePayment({ customerId: null, customer: null, salesOrderId: 'counter-sale',
+      currency: 'LBP', exchangeRate: new Decimal('89500'), totalAmount: new Decimal('8950000'),
+      baseAmount: new Decimal('100'), allocations: [] });
+    mockRecordSet({ debts: [makeDebt()], payments: [counter] });
+    const result = await FinancialLedgerService.getFinancialLedger(baseQuery({ includeCompleted: true }));
+    expect(result.summary.totalPaid).toBe('100.00');
+    expect(result.summary.totalOutstanding).toBe('600.00');
+    expect(result.items.find((item) => item.type === 'PAYMENT')).toMatchObject({ customer: null, currency: 'LBP', amount: '8950000', baseAmount: '100.00' });
+    const cashOnly = await FinancialLedgerService.getFinancialLedger(baseQuery({ type: 'PAYMENT' }));
+    expect(cashOnly.summary.totalPaid).toBe('100.00');
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
   });

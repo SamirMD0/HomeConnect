@@ -131,9 +131,13 @@ export interface FinancialLedgerPlanItem {
 }
 
 export interface FinancialLedgerPaymentItem {
+  currency?: 'USD' | 'LBP';
+  exchangeRate?: string;
+  baseAmount?: string;
+  sourceSalesOrderId?: string | null;
   type: 'PAYMENT';
   id: string;
-  customer: FinancialLedgerCustomer;
+  customer: FinancialLedgerCustomer | null;
   amount: string;
   paymentDate: string;
   paymentMethod: PaymentMethod;

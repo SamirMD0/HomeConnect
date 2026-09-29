@@ -1,5 +1,5 @@
 import { Decimal } from '@prisma/client/runtime/library';
-import { DebtKind } from '@prisma/client';
+import { Currency, DebtKind } from '@prisma/client';
 import {
   businessDateToPrisma,
   compareBusinessDates,
@@ -9,6 +9,7 @@ import {
   splitBusinessDate,
   subtractMoney,
   sumMoney,
+  toBaseAmount,
   ZERO_MONEY,
 } from '../../financial';
 import {
@@ -101,7 +102,7 @@ export class MonthlyDebtsService {
       filename: `monthly-financial-activity-${query.month}.csv`,
       csv: buildCsv(
         ['Date', 'Customer', 'Phone', 'Type', 'Description', 'Amount'],
-        report.items.map((item) => [item.date, item.customer.name, item.customer.phone, item.type, item.description, item.amount])
+        report.items.map((item) => [item.date, item.customer?.name ?? 'Walk-in / زبون عابر', item.customer?.phone ?? '', item.type, item.description, item.amount])
       ),
     };
   }
@@ -129,7 +130,18 @@ export class MonthlyDebtsService {
     const validPayments = records.payments.filter((payment) =>
       this.paymentValidAtCutoff(payment, boundaries.nextDayAfterEnd)
     );
+    const returns = records.returns ?? [];
+    const returnCredits = sumMoney(returns.map((record) => record.baseReceivableReliefAmount));
+    const cashRefunds = sumMoney(returns.filter((record) => record.refundMethod === 'CASH_OUT').map((record) => record.baseRefundableAmount));
+    const storeCreditIssued = sumMoney(returns.filter((record) => record.refundMethod === 'STORE_CREDIT').map((record) => record.baseRefundableAmount));
     const items = [
+      ...returns.map((record): MonthlyFinancialActivityItem => ({
+        id: record.id, customer: record.customer, type: 'SALES_RETURN',
+        date: prismaDateToBusinessDate(record.returnDate), description: record.returnNumber,
+        amount: moneyToApiString(subtractMoney(ZERO_MONEY, record.baseReceivableReliefAmount)),
+        cashRefundAmount: moneyToApiString(record.refundMethod === 'CASH_OUT' ? record.baseRefundableAmount : ZERO_MONEY),
+        storeCreditAmount: moneyToApiString(record.refundMethod === 'STORE_CREDIT' ? record.baseRefundableAmount : ZERO_MONEY),
+      })),
       ...standardDebts.map((debt) => this.activityDebtItem(debt)),
       ...records.plans.map((plan) => this.activityPlanItem(plan)),
       ...validPayments.map((payment) => this.activityPaymentItem(payment)),
@@ -139,17 +151,19 @@ export class MonthlyDebtsService {
       return left.id.localeCompare(right.id);
     });
 
-    const newSingleDebtAmount = sumMoney(standardDebts.map((debt) => debt.originalAmount));
-    const newInstallmentPlanAmount = sumMoney(records.plans.map((plan) => plan.totalAmount));
-    const paymentsReceived = sumMoney(validPayments.map((payment) => payment.totalAmount));
+    const newSingleDebtAmount = sumMoney(standardDebts.map((debt) => debt.baseOriginalAmount ?? debt.originalAmount));
+    const newInstallmentPlanAmount = sumMoney(records.plans.map((plan) => plan.baseTotalAmount ?? plan.totalAmount));
+    const paymentsReceived = sumMoney(validPayments.map((payment) => payment.baseAmount ?? payment.totalAmount));
+    const counterReceipts = sumMoney(validPayments.filter((payment) => payment.salesOrderId).map((payment) => payment.baseAmount ?? payment.totalAmount));
     const netFinancialChange = subtractMoney(
       sumMoney([newSingleDebtAmount, newInstallmentPlanAmount]),
-      paymentsReceived
+      sumMoney([subtractMoney(paymentsReceived, counterReceipts), returnCredits])
     );
     const affectedCustomerIds = new Set<string>([
+      ...returns.flatMap((record) => record.customer ? [record.customer.id] : []),
       ...standardDebts.map((debt) => debt.customer.id),
       ...records.plans.map((plan) => plan.customer.id),
-      ...validPayments.map((payment) => payment.customer.id),
+      ...validPayments.flatMap((payment) => payment.customer ? [payment.customer.id] : []),
     ]);
 
     const page = query.page;
@@ -166,6 +180,11 @@ export class MonthlyDebtsService {
         newSingleDebtAmount: moneyToApiString(newSingleDebtAmount),
         newInstallmentPlanAmount: moneyToApiString(newInstallmentPlanAmount),
         paymentsReceived: moneyToApiString(paymentsReceived),
+        counterReceipts: moneyToApiString(counterReceipts),
+        returnCredits: moneyToApiString(returnCredits),
+        cashRefunds: moneyToApiString(cashRefunds),
+        storeCreditIssued: moneyToApiString(storeCreditIssued),
+        netCashCollected: moneyToApiString(subtractMoney(paymentsReceived, cashRefunds)),
         netFinancialChange: moneyToApiString(netFinancialChange),
         debtsCreated: standardDebts.length,
         plansCreated: records.plans.length,
@@ -191,6 +210,7 @@ export class MonthlyDebtsService {
     const buckets = new Map<string, CustomerBucket>();
 
     for (const payment of records.paymentsThroughCutoff) {
+      if (!payment.customer) continue;
       if (!this.paymentValidAtCutoff(payment, boundaries.nextDayAfterEnd)) continue;
       const bucket = this.getBucket(buckets, payment.customer);
       const paymentDate = prismaDateToBusinessDate(payment.paymentDate);
@@ -282,7 +302,10 @@ export class MonthlyDebtsService {
       boundaries.endDate,
       boundaries.nextDayAfterEnd
     );
-    const remaining = this.nonNegative(subtractMoney(debt.originalAmount, totalPaidAtCutoff));
+    const returnCredits = sumMoney((debt.returnAllocations ?? [])
+      .filter((allocation) => allocation.salesReturn.returnDate < boundaries.nextDayAfterEnd)
+      .map((allocation) => allocation.baseAmount));
+    const remaining = this.nonNegative(subtractMoney(debt.baseOriginalAmount ?? debt.originalAmount, sumMoney([totalPaidAtCutoff, returnCredits])));
     if (!remaining.greaterThan(ZERO_MONEY)) return;
 
     const dueDate = prismaDateToBusinessDate(debt.dueDate);
@@ -322,7 +345,13 @@ export class MonthlyDebtsService {
         )
       )
     );
-    const remainingPlanBalance = this.nonNegative(subtractMoney(plan.totalAmount, totalPaidAtCutoff));
+    const returnedAtCutoff = (installment: MonthlyInstallmentPlanRecord['installments'][number]) => sumMoney(
+      (installment.returnAllocations ?? [])
+        .filter((allocation) => allocation.salesReturn.returnDate < boundaries.nextDayAfterEnd)
+        .map((allocation) => allocation.baseAmount)
+    );
+    const returnCredits = sumMoney(plan.installments.map(returnedAtCutoff));
+    const remainingPlanBalance = this.nonNegative(subtractMoney(plan.baseTotalAmount ?? plan.totalAmount, sumMoney([totalPaidAtCutoff, returnCredits])));
     if (!remainingPlanBalance.greaterThan(ZERO_MONEY)) return;
 
     bucket.installmentPlanOutstanding = sumMoney([
@@ -337,7 +366,7 @@ export class MonthlyDebtsService {
         boundaries.endDate,
         boundaries.nextDayAfterEnd
       );
-      const remainingInstallment = this.nonNegative(subtractMoney(installment.amountDue, installmentPaid));
+      const remainingInstallment = this.nonNegative(subtractMoney(installment.baseAmountDue ?? installment.amountDue, sumMoney([installmentPaid, returnedAtCutoff(installment)])));
       if (!remainingInstallment.greaterThan(ZERO_MONEY)) continue;
 
       const dueDate = prismaDateToBusinessDate(installment.dueDate);
@@ -355,7 +384,11 @@ export class MonthlyDebtsService {
   }
 
   private static sumValidAllocationsAtCutoff(
-    allocations: Array<{ amount: Decimal; payment: { paymentDate: Date; voidedAt: Date | null } }>,
+    allocations: Array<{
+      amount: Decimal;
+      paymentAmount: Decimal;
+      payment: { paymentDate: Date; voidedAt: Date | null; currency: Currency; exchangeRate: Decimal };
+    }>,
     cutoffDate: string,
     nextDayAfterCutoff: Date
   ) {
@@ -368,7 +401,12 @@ export class MonthlyDebtsService {
             this.paymentValidAtCutoff(allocation.payment, nextDayAfterCutoff)
           );
         })
-        .map((allocation) => allocation.amount)
+        .map((allocation) => toBaseAmount(
+          allocation.paymentAmount ?? allocation.amount,
+          allocation.payment.currency ?? Currency.USD,
+          allocation.payment.exchangeRate ?? new Decimal(1),
+          Decimal.ROUND_HALF_UP
+        ))
     );
   }
 
@@ -380,7 +418,7 @@ export class MonthlyDebtsService {
       return this.paymentValidAtCutoff(payment, nextDayAfterCutoff);
     });
 
-    return sumMoney(validPayments.map((payment) => payment.totalAmount));
+    return sumMoney(validPayments.map((payment) => payment.baseAmount ?? payment.totalAmount));
   }
 
   private static paymentValidAtCutoff(
@@ -471,7 +509,7 @@ export class MonthlyDebtsService {
       type: 'DEBT_CREATED',
       date: prismaDateToBusinessDate(debt.createdAt),
       description: debt.description,
-      amount: moneyToApiString(debt.originalAmount),
+      amount: moneyToApiString(debt.baseOriginalAmount ?? debt.originalAmount),
     };
   }
 
@@ -482,7 +520,7 @@ export class MonthlyDebtsService {
       type: 'INSTALLMENT_PLAN_CREATED',
       date: prismaDateToBusinessDate(plan.createdAt),
       description: plan.description,
-      amount: moneyToApiString(plan.totalAmount),
+      amount: moneyToApiString(plan.baseTotalAmount ?? plan.totalAmount),
     };
   }
 
@@ -493,7 +531,7 @@ export class MonthlyDebtsService {
       type: 'PAYMENT_RECEIVED',
       date: prismaDateToBusinessDate(payment.paymentDate),
       description: payment.reference || 'Payment received',
-      amount: moneyToApiString(payment.totalAmount),
+      amount: moneyToApiString(payment.baseAmount ?? payment.totalAmount),
     };
   }
 

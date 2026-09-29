@@ -1,0 +1,62 @@
+frontend/dist/assets/ServiceJobsPage-BY8rkA-8.js                      11.70 kB │ gzip:   3.55 kB
+frontend/dist/assets/business-labels-bySUtTzF.js                      14.08 kB │ gzip:   4.84 kB
+frontend/dist/assets/ProductInventoryPanel-DdkWU04a.js                14.25 kB │ gzip:   4.34 kB
+frontend/dist/assets/ServiceJobDetailsPage-D04VXmxQ.js                14.33 kB │ gzip:   4.30 kB
+frontend/dist/assets/SupplierTransactionTable-BttBknQV.js             15.08 kB │ gzip:   4.37 kB
+frontend/dist/assets/InventoryOnboardingPage-CKBxLeV8.js              16.13 kB │ gzip:   5.21 kB
+frontend/dist/assets/SupplierReceivingDetailPage-Dc4uxpc8.js          16.21 kB │ gzip:   5.08 kB
+frontend/dist/assets/RecordDebtPaymentDialog-Dm_DkkC1.js              17.07 kB │ gzip:   4.90 kB
+frontend/dist/assets/SalesOrdersPage-S46haPpF.js                      21.43 kB │ gzip:   7.39 kB
+frontend/dist/assets/useQuery-DeNJ_Lta.js                             23.81 kB │ gzip:   7.88 kB
+frontend/dist/assets/PrepaidPurchasesPage-8V7n02Rh.js                 25.20 kB │ gzip:   6.31 kB
+frontend/dist/assets/PricingPresetsPage-DSVs57q1.js                   25.52 kB │ gzip:   6.96 kB
+frontend/dist/assets/AccountsReceivablePage-63lywbwd.js               26.17 kB │ gzip:   6.45 kB
+frontend/dist/assets/ScannerHubPage-DcPitP-E.js                       28.42 kB │ gzip:   8.31 kB
+frontend/dist/assets/SalesOrderDetailsPage-Ccu0GMzc.js                28.62 kB │ gzip:   8.79 kB
+frontend/dist/assets/Modal-Ddu_2_NX.js                                30.18 kB │ gzip:   9.91 kB
+frontend/dist/assets/PricingCardTemplateEditorPage-CrQhSEBB.js        32.34 kB │ gzip:   9.15 kB
+frontend/dist/assets/SupplierProfilePage-Dmt4rHKD.js                  33.37 kB │ gzip:   9.31 kB
+frontend/dist/assets/ProductPricingCardPage-CqxQ7g0X.js               33.86 kB │ gzip:  10.75 kB
+frontend/dist/assets/FeatureIconsPage-Bg0kJlXn.js                     37.80 kB │ gzip:  13.96 kB
+frontend/dist/assets/AddFinancialObligationDialog-DoUHvo_Q.js         40.34 kB │ gzip:   8.58 kB
+frontend/dist/assets/LedgerPage-DWY_wURn.js                           41.38 kB │ gzip:   9.73 kB
+frontend/dist/assets/SettingsPage-C2KjOcfW.js                         47.99 kB │ gzip:  11.68 kB
+frontend/dist/assets/DashboardPage-BaOKDTKv.js                        50.62 kB │ gzip:  15.19 kB
+frontend/dist/assets/createLucideIcon-Dqwrge7d.js                     56.37 kB │ gzip:  21.20 kB
+frontend/dist/assets/barcode-geometry-BAQ4Ofpb.js                     65.14 kB │ gzip:  11.70 kB
+frontend/dist/assets/ReportDetailPage-CCGiYXVr.js                     67.53 kB │ gzip:  16.74 kB
+frontend/dist/assets/CustomerProfilePage-Cn0kvp8F.js                  84.78 kB │ gzip:  21.10 kB
+frontend/dist/assets/ProductsPage-D4Q5P77F.js                        138.65 kB │ gzip:  36.19 kB
+frontend/dist/assets/TopProductsSoldChart-DPWcgpkI.js                417.92 kB │ gzip: 118.66 kB
+frontend/dist/assets/index-Ab3oOPcl.js                               498.16 kB │ gzip: 156.41 kB
+
+[33m[33m[PLUGIN_TIMINGS] [0mYour build spent significant time in plugins. Here is a breakdown:
+  - vite:css-post (32%)
+  - vite:asset (14%)
+  - vite:worker (13%)
+  - vite:build-import-analysis (12%)
+  - vite:css (11%)
+See https://rolldown.rs/reference/InputOptions.checks#plugintimings for more details.
+[39m
+[32m✓ built in 4.55s[39m
+
+> home-connect@2.0.1 build:electron-main
+> tsc -p tsconfig.electron.json && node -e "const fs=require('fs');fs.mkdirSync('dist/electron/desktop/src',{recursive:true});fs.mkdirSync('dist/electron/desktop/assets',{recursive:true});fs.copyFileSync('desktop/src/startup-monitor.html','dist/electron/desktop/src/startup-monitor.html');for(const file of ['homeconnects-logo.png','homeconnects-logo.ico'])fs.copyFileSync('desktop/assets/'+file,'dist/electron/desktop/assets/'+file);"
+
+  • electron-builder  version=26.15.3 os=10.0.26200
+  • loaded configuration  file=package.json ("build" field)
+  • skipped dependencies rebuild  reason=npmRebuild is set to false
+  • packaging       platform=win32 arch=x64 electron=43.2.0 appOutDir=release\2.0.1\win-unpacked
+  • using custom unpacked Electron distribution  electronDist=node_modules\electron\dist
+  • copying unpacked Electron  source=D:\User\Documents\Home Connect\node_modules\electron\dist destination=D:\User\Documents\Home Connect\release\2.0.1\win-unpacked
+  • searching for node modules  pm=npm searchDir=D:\User\Documents\Home Connect
+  • duplicate dependency references  dependencies=["@emnapi/wasi-threads@1.2.2","@emnapi/core@1.11.1","@emnapi/runtime@1.11.1","@tybys/wasm-util@0.10.3","@prisma/get-platform@5.22.0","debug@4.4.3","http-errors@2.0.1","on-finished@2.4.1","qs@6.16.0","http-errors@2.0.1","iconv-lite@0.7.3","type-is@2.1.0","debug@4.4.3","on-finished@2.4.1","get-intrinsic@1.3.0","call-bind-apply-helpers@1.0.2","call-bind-apply-helpers@1.0.2","es-object-atoms@1.1.2","call-bound@1.0.4","get-intrinsic@1.3.0","side-channel-map@1.0.1","debug@4.4.3","debug@4.4.3","http-errors@2.0.1","on-finished@2.4.1","send@1.2.1","css-tree@3.2.1","css-tree@3.2.1","css-tree@3.2.1","whatwg-url@16.0.1","logform@2.7.0","string_decoder@1.1.1"]
+  • updating asar integrity executable resource  executablePath=release\2.0.1\win-unpacked\HomeConnect.exe
+  • signing with signtool.exe  path=release\2.0.1\win-unpacked\HomeConnect.exe
+  • building        target=nsis file=release\2.0.1\HomeConnect-Setup-2.0.1.exe archs=x64 oneClick=false perMachine=false
+  • signing with signtool.exe  path=release\2.0.1\win-unpacked\resources\elevate.exe
+  • signing with signtool.exe  path=release\2.0.1\HomeConnect-Setup-2.0.1.__uninstaller.exe
+  • signing with signtool.exe  path=release\2.0.1\HomeConnect-Setup-2.0.1.exe
+  • building block map  blockMapFile=release\2.0.1\HomeConnect-Setup-2.0.1.exe.blockmap
+
+[exited with code 0]

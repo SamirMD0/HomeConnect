@@ -9,11 +9,11 @@ import { prisma } from './lib/prisma';
 import { authRoutes } from './routes/auth.routes';
 import { usersRoutes } from './routes/users.routes';
 import customersRoutes from './routes/customers.routes';
-import transactionsRoutes from './routes/transactions.routes';
 import { dashboardRoutes } from './routes/dashboard.routes';
 import { requireAuth } from './middleware/auth.middleware';
 import { customerDebtsRoutes, debtsRoutes } from './features/financial/debts/debts.routes';
 import { customerFinancialSummaryRoutes } from './features/financial/customer-summary/customer-financial-summary.routes';
+import { customerStatementRoutes } from './features/financial/customer-statement/customer-statement.routes';
 import {
   customerInstallmentPlansRoutes,
   installmentPlansRoutes,
@@ -23,6 +23,7 @@ import { receivablesRoutes } from './features/financial/receivables/receivables.
 import { prepaidRoutes } from './features/financial/prepaid/prepaid.routes';
 import { correctionsRoutes, customerCorrectionsRoutes } from './features/financial/corrections/corrections.routes';
 import { paymentsRoutes } from './features/financial/payments/payments.routes';
+import { exchangeRatesRoutes } from './features/financial/exchange-rates/exchange-rates.routes';
 import { monthlyDebtsRoutes } from './features/reports/monthly-debts/monthly-debts.routes';
 import { monthlyReviewRoutes } from './features/reports/monthly-review/monthly-review.routes';
 import { reportRowsRoutes } from './features/reports/rows/report-rows.routes';
@@ -33,13 +34,20 @@ import { diagnosticsRoutes } from './features/diagnostics/diagnostics.routes';
 import { preflightRoutes } from './features/preflight/preflight.routes';
 import { maintenanceRoutes } from './features/maintenance/maintenance.routes';
 import { productsRoutes } from './features/service/products/products.routes';
+import { categoriesRoutes } from './features/categories/categories.routes';
 import { customerServiceJobsRoutes, serviceJobsRoutes } from './features/service/service-jobs/service-jobs.routes';
-import { customerSalesOrdersRoutes, salesOrdersRoutes } from './features/sales';
+import { customerSalesOrdersRoutes, salesOrdersRoutes, salesReturnsRoutes } from './features/sales';
 import { supplierLedgerRoutes, supplierPurchasesGlobalRoutes, supplierPurchasesRoutes, suppliersRoutes, supplierTransactionsGlobalRoutes, supplierTransactionsRoutes } from './features/suppliers';
 import { pricingCalculatorRoutes, pricingPresetsRoutes } from './features/pricing';
 import { systemRoutes } from './features/system/system.routes';
 import { scannerRoutes } from './features/scanner/scanner.routes';
 import { inventoryRoutes } from './features/inventory/inventory.routes';
+import { businessSettingsRoutes } from './features/documents/business-settings.routes';
+import { shopProfileRoutes } from './features/shop/shop-profile.routes';
+import { brandLogoRoutes } from './features/brand-logo/brand-logo.routes';
+import { featureIconRoutes } from './features/pricing-card/feature-icon/feature-icon.routes';
+import { pricingCardTemplateRoutes } from './features/pricing-card/template/template.routes';
+import { printSnapshotRoutes } from './features/pricing-card/print-snapshot/print-snapshot.routes';
 
 export const app = express();
 
@@ -59,7 +67,7 @@ app.use(cors({
   credentials: true,
 }));
 app.use(compression());
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
 app.use(requestLogger);
 app.use(blockWritesDuringRestore);
@@ -92,6 +100,7 @@ app.use('/api/v1/users', requireAuth, usersRoutes);
 app.use('/api/v1/customers', requireAuth, customerDebtsRoutes);
 app.use('/api/v1/customers', requireAuth, customerInstallmentPlansRoutes);
 app.use('/api/v1/customers', requireAuth, customerFinancialSummaryRoutes);
+app.use('/api/v1/customers', requireAuth, customerStatementRoutes);
 app.use('/api/v1/customers', requireAuth, customerCorrectionsRoutes);
 app.use('/api/v1/customers', requireAuth, customerServiceJobsRoutes);
 app.use('/api/v1/customers', requireAuth, customerSalesOrdersRoutes);
@@ -99,13 +108,16 @@ app.use('/api/v1/customers', requireAuth, customersRoutes);
 app.use('/api/v1/debts', requireAuth, debtsRoutes);
 app.use('/api/v1/installment-plans', requireAuth, installmentPlansRoutes);
 app.use('/api/v1/payments', requireAuth, paymentsRoutes);
+app.use('/api/v1/admin/exchange-rates', requireAuth, exchangeRatesRoutes);
 app.use('/api/v1/financial-ledger', requireAuth, financialLedgerRoutes);
 app.use('/api/v1/receivables', requireAuth, receivablesRoutes);
 app.use('/api/v1/prepaid-purchases', requireAuth, prepaidRoutes);
 app.use('/api/v1/products', requireAuth, productsRoutes);
+app.use('/api/v1/categories', requireAuth, categoriesRoutes);
 app.use('/api/v1/inventory', requireAuth, inventoryRoutes);
 app.use('/api/v1/service-jobs', requireAuth, serviceJobsRoutes);
 app.use('/api/v1/sales-orders', requireAuth, salesOrdersRoutes);
+app.use('/api/v1/sales-returns', requireAuth, salesReturnsRoutes);
 app.use('/api/v1/suppliers', requireAuth, supplierTransactionsRoutes);
 app.use('/api/v1/suppliers', requireAuth, supplierPurchasesRoutes);
 app.use('/api/v1/suppliers', requireAuth, suppliersRoutes);
@@ -114,6 +126,11 @@ app.use('/api/v1/supplier-purchases', requireAuth, supplierPurchasesGlobalRoutes
 app.use('/api/v1/supplier-ledger', requireAuth, supplierLedgerRoutes);
 app.use('/api/v1/pricing-presets', requireAuth, pricingPresetsRoutes);
 app.use('/api/v1/pricing', requireAuth, pricingCalculatorRoutes);
+app.use('/api/v1/shop-profile', requireAuth, shopProfileRoutes);
+app.use('/api/v1/brand-logos', requireAuth, brandLogoRoutes);
+app.use('/api/v1/pricing-card-feature-icons', requireAuth, featureIconRoutes);
+app.use('/api/v1/pricing-card-templates', requireAuth, pricingCardTemplateRoutes);
+app.use('/api/v1/pricing-card-prints', requireAuth, printSnapshotRoutes);
 app.use('/api/v1/corrections', requireAuth, correctionsRoutes);
 app.use('/api/v1/reports', requireAuth, monthlyDebtsRoutes);
 app.use('/api/v1/reports', requireAuth, monthlyReviewRoutes);
@@ -125,7 +142,7 @@ app.use('/api/v1/admin/preflight', requireAuth, preflightRoutes);
 app.use('/api/v1/admin/maintenance', requireAuth, maintenanceRoutes);
 app.use('/api/v1/system', requireAuth, systemRoutes);
 app.use('/api/v1/scanner', requireAuth, scannerRoutes);
-app.use('/api/v1/transactions', requireAuth, transactionsRoutes);
+app.use('/api/v1/business-settings', requireAuth, businessSettingsRoutes);
 app.use('/api/v1/dashboard', requireAuth, dashboardRoutes);
 
 // Global Error Handler

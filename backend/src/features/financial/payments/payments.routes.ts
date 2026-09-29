@@ -11,6 +11,12 @@ import {
 
 export const paymentsRoutes = Router();
 
+paymentsRoutes.get(
+  '/:paymentId/receipt',
+  validate(paymentParamsSchema, 'params'),
+  PaymentsController.getReceipt
+);
+
 paymentsRoutes.post(
   '/:paymentId/void',
   validate(paymentParamsSchema, 'params'),

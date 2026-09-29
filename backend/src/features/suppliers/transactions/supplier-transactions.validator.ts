@@ -25,9 +25,10 @@ const filterDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must use YYYY-M
   try { parseBusinessDate(value); }
   catch { ctx.addIssue({ code: 'custom', message: 'Invalid date' }); }
 });
+export const supplierDueDateSchema = z.preprocess(emptyToNull, filterDate.nullable().optional());
 const values = {
   type: z.nativeEnum(SupplierTransactionType), direction: z.nativeEnum(SupplierTransactionDirection).optional(),
-  amount, transactionDate: date, description: userTextSchema({ field: 'Description', min: 3, max: 500 }),
+  amount, transactionDate: date, dueDate: supplierDueDateSchema, description: userTextSchema({ field: 'Description', min: 3, max: 500 }),
   reference: optionalText('Reference', 200), notes: optionalText('Notes', 2000),
   supplierReceivingId: databaseUuidSchema().nullable().optional(),
 };
@@ -38,7 +39,7 @@ const directionCheck = (v: { type?: SupplierTransactionType; direction?: Supplie
 export const createSupplierTransactionSchema = z.object(values).strict().superRefine(directionCheck);
 export const updateSupplierTransactionSchema = z.object({
   type: values.type.optional(), direction: values.direction, amount: values.amount.optional(), transactionDate: values.transactionDate.optional(),
-  description: values.description.optional(), reference: values.reference, notes: values.notes,
+  description: values.description.optional(), reference: values.reference, notes: values.notes, dueDate: values.dueDate,
   reason: userTextSchema({ field: 'Reason', min: 5, max: 1000 }), accountPassword: z.string().min(1),
 }).strict();
 export const supplierTransactionActionSchema = z.object({ reason: userTextSchema({ field: 'Reason', min: 5, max: 1000 }), accountPassword: z.string().min(1) }).strict();

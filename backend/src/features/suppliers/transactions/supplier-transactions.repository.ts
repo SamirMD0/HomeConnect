@@ -53,7 +53,17 @@ export function supplierTransactionWhere(
 
 export class SupplierTransactionsRepository {
   static findById(id: string, tx?: Prisma.TransactionClient) { return (tx ?? prisma).supplierTransaction.findUnique({ where: { id }, include: supplierTransactionInclude }); }
-  static create(data: Prisma.SupplierTransactionUncheckedCreateInput, tx: Prisma.TransactionClient) { return tx.supplierTransaction.create({ data, include: supplierTransactionInclude }); }
+  static create(
+    data: Omit<Prisma.SupplierTransactionUncheckedCreateInput, 'baseAmount'> & {
+      baseAmount?: Prisma.SupplierTransactionUncheckedCreateInput['baseAmount'];
+    },
+    tx: Prisma.TransactionClient
+  ) {
+    return tx.supplierTransaction.create({
+      data: { ...data, baseAmount: data.baseAmount ?? data.amount },
+      include: supplierTransactionInclude,
+    });
+  }
   static findReceiving(id: string, tx: Prisma.TransactionClient) {
     return tx.supplierReceiving.findUnique({ where: { id }, select: { id: true, supplierId: true } });
   }
@@ -73,6 +83,6 @@ export class SupplierTransactionsRepository {
     ]);
     return { items, total, where };
   }
-  static summaryRows(where: Prisma.SupplierTransactionWhereInput, tx?: Prisma.TransactionClient) { return (tx ?? prisma).supplierTransaction.groupBy({ by: ['type','direction'], where, _sum: { amount: true }, _count: { _all: true } }); }
+  static summaryRows(where: Prisma.SupplierTransactionWhereInput, tx?: Prisma.TransactionClient) { return (tx ?? prisma).supplierTransaction.groupBy({ by: ['type','direction'], where, _sum: { baseAmount: true }, _count: { _all: true } }); }
   static supplierCount(where: Prisma.SupplierTransactionWhereInput) { return prisma.supplierTransaction.findMany({ where, distinct: ['supplierId'], select: { supplierId: true } }).then((r) => r.length); }
 }

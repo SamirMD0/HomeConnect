@@ -81,7 +81,7 @@ export function determineReceivableTier(input: ReceivableTierInput): ReceivableT
   );
 }
 
-function baseTierForOverdueDays(maxOverdueDays: number): ReceivableTier {
+export function baseTierForOverdueDays(maxOverdueDays: number): ReceivableTier {
   if (maxOverdueDays > 90) return 'CRITICAL';
   if (maxOverdueDays > 60) return 'SEVERE';
   if (maxOverdueDays > 30) return 'LATE';

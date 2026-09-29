@@ -1,4 +1,5 @@
-import { SalesOrderPaymentStatus } from '@prisma/client';
+import { Currency, SalesOrderPaymentStatus } from '@prisma/client';
+import { Decimal } from '@prisma/client/runtime/library';
 import {
   compareMoney,
   moneyToApiString,
@@ -25,7 +26,7 @@ export function calculateSalesOrderLineTotal(input: SalesOrderLineMoneyInput): s
     throw new ValidationError('Unit price must be greater than zero');
   }
 
-  const gross = multiplyMoney(unitPrice, String(input.quantity));
+  const gross = multiplyMoney(unitPrice, String(input.quantity), Currency.USD, Decimal.ROUND_HALF_UP);
   const discount = parseMoney(input.discountAmount ?? '0.00');
   if (compareMoney(discount, ZERO_MONEY) < 0) {
     throw new ValidationError('Discount amount cannot be negative');

@@ -16,9 +16,22 @@ db-test.js
 prisma/*.db
 prisma/*.db-journal
 .vscode/
-.claude/
+.claude/*
+!.claude/home-connect-erp-upgrade/
+!.claude/home-connect-erp-upgrade/**
+!.claude/pre-release-audit/
+!.claude/pre-release-audit/**
+test-results/
+playwright-report/
+test-results-electron/
+e2e/.runtime/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 .DS_Store
+
+# TypeScript build outputs from `tsc -b`
+*.tsbuildinfo
+frontend/vite.config.js
+frontend/vite.config.d.ts

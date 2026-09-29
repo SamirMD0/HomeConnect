@@ -12,6 +12,16 @@ describe('product validation', () => {
     expect(createProductSchema.parse({ name: 'مروحة', model: 'F-100' }).name).toBe('مروحة');
   });
 
+  it('accepts a nullable pricing-card template assignment on create and update', () => {
+    const templateId = '44444444-4444-4444-8444-444444444444';
+    expect(createProductSchema.parse({ name: 'TV', model: 'T1', pricingCardTemplateId: templateId, accountPassword: 'secret' }))
+      .toMatchObject({ pricingCardTemplateId: templateId });
+    expect(updateProductSchema.parse({ pricingCardTemplateId: '', accountPassword: 'secret' }))
+      .toEqual({ pricingCardTemplateId: null, accountPassword: 'secret' });
+    expect(() => updateProductSchema.parse({ pricingCardTemplateId: templateId })).toThrow('Account password');
+    expect(() => updateProductSchema.parse({ pricingCardTemplateId: 'not-a-uuid' })).toThrow();
+  });
+
   it('accepts complete product pricing during creation and validates custom pricing', () => {
     const presetId = '33333333-3333-4333-8333-333333333333';
     expect(createProductSchema.parse({ name: 'AC', model: 'A1', costPrice: '300.00', pricingPresetId: presetId }))
