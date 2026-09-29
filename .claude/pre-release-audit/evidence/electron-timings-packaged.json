@@ -1,0 +1,12 @@
+[
+  {
+    "label": "cold-process",
+    "loginVisibleMs": 9532,
+    "packaged": true
+  },
+  {
+    "label": "warm-process",
+    "loginVisibleMs": 4349,
+    "packaged": true
+  }
+]

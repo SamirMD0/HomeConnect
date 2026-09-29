@@ -485,20 +485,12 @@ function labelPrintPreview(source: LabelBarcodeSource, barcode: string, sku?: st
 }
 
 function isProductPricingChanged(product: Product, next: ProductPricingConfigurationInput): boolean {
-  const current = product.pricing?.configuration;
-  const comparableCurrent: ProductPricingConfigurationInput = {
-    costPrice: current?.costPrice ?? product.pricing?.costPrice ?? null,
-    pricingPresetId: current?.pricingPresetId ?? product.pricing?.pricingPresetId ?? null,
-    useCustomPricing: current?.useCustomPricing ?? product.pricing?.useCustomPricing ?? false,
-    installmentEnabled: current?.installmentEnabled ?? product.pricing?.installmentEnabled ?? false,
-    customExpensePercent: current?.customExpensePercent ?? null,
-    customProfitPercent: current?.customProfitPercent ?? null,
-    customDiscountBufferPercent: current?.customDiscountBufferPercent ?? null,
-    customInstallmentMarkupPercent: current?.customInstallmentMarkupPercent ?? null,
-    customDownPaymentPercent: current?.customDownPaymentPercent ?? null,
-    customInstallmentMonths: current?.customInstallmentMonths ?? null,
-    customCalculationMode: current?.customCalculationMode ?? null,
-  };
+  // Compare against the same payload the form would send if the user reopened
+  // the dialog and pressed Save without touching anything. A MANUAL/NONE-priced
+  // product — whose costPrice lives on the product row rather than inside a
+  // pricing configuration — must not read as changed just because the notes
+  // were edited, and the drawer must not fire the pricing-reason workflow.
+  const comparableCurrent = buildProductPricingConfigurationInput(productPricingForm(product));
   return (Object.keys(comparableCurrent) as Array<keyof ProductPricingConfigurationInput>)
     .some((field) => normalized(comparableCurrent[field]) !== normalized(next[field]));
 }

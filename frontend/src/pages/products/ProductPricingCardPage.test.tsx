@@ -16,10 +16,12 @@ const state = vi.hoisted(() => ({
   card: {} as Record<string, unknown>,
   recordPrint: vi.fn(),
   secretPreview: vi.fn(),
+  resolvedTemplateId: 'template-tv',
 }));
 
 vi.mock('../../hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'user-1', role: state.role } }) }));
 vi.mock('../../features/pricing-card/hooks/useShopProfile', () => ({ useShopProfile: () => ({ data: profile, isLoading: false }) }));
+vi.mock('../../features/pricing-card/hooks/usePricingCardIndex', () => ({ usePricingCardIndex: () => ({ data: [{ productId: 'product-1', resolvedTemplateId: state.resolvedTemplateId }], isLoading: false }) }));
 vi.mock('../../features/pricing-card/hooks/usePricingCardTemplates', () => ({
   usePricingCardTemplates: () => ({ data: [template], isLoading: false }),
   usePricingCardSpecCatalog: () => ({ data: [

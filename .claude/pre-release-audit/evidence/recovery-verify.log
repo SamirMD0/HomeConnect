@@ -1,0 +1,574 @@
+;
+; Archive created at 2026-09-28 12:00:29
+;     dbname: homeconnect
+;     TOC Entries: 562
+;     Compression: gzip
+;     Dump Version: 1.16-0
+;     Format: CUSTOM
+;     Integer: 4 bytes
+;     Offset: 8 bytes
+;     Dumped from database version: 18.0
+;     Dumped by pg_dump version: 18.0
+;
+;
+; Selected TOC Entries:
+;
+7; 2615 17946 SCHEMA - public postgres
+6183; 0 0 COMMENT - SCHEMA public postgres
+3; 3079 21084 EXTENSION - pg_trgm 
+6184; 0 0 COMMENT - EXTENSION pg_trgm 
+2; 3079 21046 EXTENSION - pgcrypto 
+6185; 0 0 COMMENT - EXTENSION pgcrypto 
+981; 1247 20178 TYPE public AdminVerificationOutcome postgres
+1190; 1247 66282 TYPE public Currency postgres
+1244; 1247 85999 TYPE public CurrencyDisplayMode postgres
+1068; 1247 20827 TYPE public DebtKind postgres
+984; 1247 20186 TYPE public DebtStatus postgres
+1202; 1247 82648 TYPE public DeliveryTaxTreatment postgres
+987; 1247 20198 TYPE public FinancialCorrectionAction postgres
+990; 1247 20214 TYPE public FinancialCorrectionRecordType postgres
+993; 1247 20228 TYPE public FinancialCorrectionSourceScreen postgres
+996; 1247 20240 TYPE public InstallmentPlanFrequency postgres
+999; 1247 20244 TYPE public InstallmentPlanStatus postgres
+1002; 1247 20254 TYPE public InstallmentStatus postgres
+1115; 1247 23332 TYPE public LabelBarcodeSource postgres
+1235; 1247 83050 TYPE public LabelSecretEncodingMode postgres
+1005; 1247 20266 TYPE public PaymentMethod postgres
+1095; 1247 20992 TYPE public PrepaidPurchaseStatus postgres
+1103; 1247 21186 TYPE public PricingCalculationMode postgres
+1259; 1247 86112 TYPE public PricingCardPaperMode postgres
+1262; 1247 86118 TYPE public PricingCardPaperSize postgres
+1247; 1247 86006 TYPE public PricingCardRolloutMode postgres
+1106; 1247 21192 TYPE public PricingRoundingMode postgres
+1145; 1247 30169 TYPE public RepairKind postgres
+1148; 1247 30174 TYPE public RepairStatus postgres
+1008; 1247 20276 TYPE public Role postgres
+1133; 1247 23412 TYPE public SalesAuditAction postgres
+1130; 1247 23406 TYPE public SalesAuditRecordType postgres
+1118; 1247 23364 TYPE public SalesChannel postgres
+1121; 1247 23372 TYPE public SalesOrderFulfillmentStatus postgres
+1124; 1247 23390 TYPE public SalesOrderPaymentStatus postgres
+1127; 1247 23398 TYPE public SalesOrderSettlement postgres
+1160; 1247 40325 TYPE public SalesOrderStockFulfillmentStatus postgres
+1211; 1247 82694 TYPE public SalesReturnRefundMethod postgres
+1208; 1247 82687 TYPE public SalesReturnStockDisposition postgres
+1056; 1247 20686 TYPE public ServiceAuditAction postgres
+1053; 1247 20680 TYPE public ServiceAuditRecordType postgres
+1044; 1247 20640 TYPE public ServiceJobStatus postgres
+1041; 1247 20633 TYPE public ServiceRequestType postgres
+1047; 1247 20662 TYPE public ServiceRoutingDecision postgres
+1154; 1247 34248 TYPE public StockMovementType postgres
+1083; 1247 20864 TYPE public SupplierAuditAction postgres
+1080; 1247 20858 TYPE public SupplierAuditRecordType postgres
+1172; 1247 45201 TYPE public SupplierPurchaseLineKind postgres
+1184; 1247 45264 TYPE public SupplierReceivingAuditAction postgres
+1181; 1247 45258 TYPE public SupplierReceivingItemStatus postgres
+1178; 1247 45252 TYPE public SupplierReceivingStatus postgres
+1074; 1247 20846 TYPE public SupplierTransactionDirection postgres
+1077; 1247 20852 TYPE public SupplierTransactionStatus postgres
+1071; 1247 20836 TYPE public SupplierTransactionType postgres
+1050; 1247 20672 TYPE public WarrantyStatus postgres
+302; 1255 21166 FUNCTION public hc_phone_normalize(text) postgres
+6186; 0 0 COMMENT public FUNCTION hc_phone_normalize(input text) postgres
+301; 1255 21165 FUNCTION public hc_search_normalize(text) postgres
+6187; 0 0 COMMENT public FUNCTION hc_search_normalize(input text) postgres
+337; 1255 83004 FUNCTION public protect_counter_sale_customer() postgres
+289; 1255 83002 FUNCTION public validate_counter_payment_customer() postgres
+221; 1259 18419 TABLE public _prisma_migrations postgres
+222; 1259 20299 TABLE public activity_logs postgres
+223; 1259 20312 TABLE public admin_verification_logs postgres
+267; 1259 86049 TABLE public brand_logos postgres
+255; 1259 82665 TABLE public business_settings postgres
+259; 1259 82805 TABLE public cash_refunds postgres
+262; 1259 83007 TABLE public categories postgres
+261; 1259 82850 TABLE public customer_credit_applications postgres
+260; 1259 82827 TABLE public customer_credits postgres
+224; 1259 20323 TABLE public customers postgres
+225; 1259 20337 TABLE public debts postgres
+252; 1259 66287 TABLE public exchange_rates postgres
+226; 1259 20353 TABLE public financial_correction_audits postgres
+227; 1259 20371 TABLE public installment_plans postgres
+228; 1259 20390 TABLE public installments postgres
+264; 1259 83059 TABLE public label_secret_encoding_presets postgres
+265; 1259 83083 TABLE public label_secret_settings postgres
+229; 1259 20403 TABLE public payment_allocations postgres
+230; 1259 20411 TABLE public payments postgres
+238; 1259 21007 TABLE public prepaid_purchases postgres
+268; 1259 86075 TABLE public pricing_card_feature_icons postgres
+271; 1259 86193 TABLE public pricing_card_prints postgres
+269; 1259 86123 TABLE public pricing_card_templates postgres
+239; 1259 21205 TABLE public pricing_presets postgres
+273; 1259 86271 TABLE public product_external_identifiers postgres
+240; 1259 23310 TABLE public product_images postgres
+272; 1259 86250 TABLE public product_imports postgres
+263; 1259 83044 SEQUENCE public product_internal_barcode_seq postgres
+270; 1259 86168 TABLE public product_pricing_card_features postgres
+241; 1259 23330 SEQUENCE public product_sku_seq postgres
+232; 1259 20709 TABLE public products postgres
+245; 1259 30185 TABLE public repair_history postgres
+244; 1259 23483 TABLE public sales_audits postgres
+243; 1259 23466 TABLE public sales_order_items postgres
+247; 1259 40333 TABLE public sales_order_stock_fulfillments postgres
+242; 1259 23439 TABLE public sales_orders postgres
+257; 1259 82757 TABLE public sales_return_items postgres
+258; 1259 82788 TABLE public sales_return_receivable_allocations postgres
+256; 1259 82704 TABLE public sales_returns postgres
+234; 1259 20746 TABLE public service_audits postgres
+233; 1259 20725 TABLE public service_jobs postgres
+266; 1259 86015 TABLE public shop_profiles postgres
+246; 1259 34269 TABLE public stock_movements postgres
+237; 1259 20915 TABLE public supplier_audits postgres
+250; 1259 45209 TABLE public supplier_purchase_lines postgres
+251; 1259 45277 TABLE public supplier_receiving_audits postgres
+249; 1259 41945 TABLE public supplier_receiving_items postgres
+248; 1259 41932 TABLE public supplier_receivings postgres
+236; 1259 20895 TABLE public supplier_transactions postgres
+235; 1259 20879 TABLE public suppliers postgres
+254; 1259 66400 TABLE public tax_profiles postgres
+253; 1259 66373 TABLE public tax_rates postgres
+231; 1259 20444 TABLE public users postgres
+6124; 0 18419 TABLE DATA public _prisma_migrations postgres
+6125; 0 20299 TABLE DATA public activity_logs postgres
+6126; 0 20312 TABLE DATA public admin_verification_logs postgres
+6170; 0 86049 TABLE DATA public brand_logos postgres
+6158; 0 82665 TABLE DATA public business_settings postgres
+6162; 0 82805 TABLE DATA public cash_refunds postgres
+6165; 0 83007 TABLE DATA public categories postgres
+6164; 0 82850 TABLE DATA public customer_credit_applications postgres
+6163; 0 82827 TABLE DATA public customer_credits postgres
+6127; 0 20323 TABLE DATA public customers postgres
+6128; 0 20337 TABLE DATA public debts postgres
+6155; 0 66287 TABLE DATA public exchange_rates postgres
+6129; 0 20353 TABLE DATA public financial_correction_audits postgres
+6130; 0 20371 TABLE DATA public installment_plans postgres
+6131; 0 20390 TABLE DATA public installments postgres
+6167; 0 83059 TABLE DATA public label_secret_encoding_presets postgres
+6168; 0 83083 TABLE DATA public label_secret_settings postgres
+6132; 0 20403 TABLE DATA public payment_allocations postgres
+6133; 0 20411 TABLE DATA public payments postgres
+6141; 0 21007 TABLE DATA public prepaid_purchases postgres
+6171; 0 86075 TABLE DATA public pricing_card_feature_icons postgres
+6174; 0 86193 TABLE DATA public pricing_card_prints postgres
+6172; 0 86123 TABLE DATA public pricing_card_templates postgres
+6142; 0 21205 TABLE DATA public pricing_presets postgres
+6176; 0 86271 TABLE DATA public product_external_identifiers postgres
+6143; 0 23310 TABLE DATA public product_images postgres
+6175; 0 86250 TABLE DATA public product_imports postgres
+6173; 0 86168 TABLE DATA public product_pricing_card_features postgres
+6135; 0 20709 TABLE DATA public products postgres
+6148; 0 30185 TABLE DATA public repair_history postgres
+6147; 0 23483 TABLE DATA public sales_audits postgres
+6146; 0 23466 TABLE DATA public sales_order_items postgres
+6150; 0 40333 TABLE DATA public sales_order_stock_fulfillments postgres
+6145; 0 23439 TABLE DATA public sales_orders postgres
+6160; 0 82757 TABLE DATA public sales_return_items postgres
+6161; 0 82788 TABLE DATA public sales_return_receivable_allocations postgres
+6159; 0 82704 TABLE DATA public sales_returns postgres
+6137; 0 20746 TABLE DATA public service_audits postgres
+6136; 0 20725 TABLE DATA public service_jobs postgres
+6169; 0 86015 TABLE DATA public shop_profiles postgres
+6149; 0 34269 TABLE DATA public stock_movements postgres
+6140; 0 20915 TABLE DATA public supplier_audits postgres
+6153; 0 45209 TABLE DATA public supplier_purchase_lines postgres
+6154; 0 45277 TABLE DATA public supplier_receiving_audits postgres
+6152; 0 41945 TABLE DATA public supplier_receiving_items postgres
+6151; 0 41932 TABLE DATA public supplier_receivings postgres
+6139; 0 20895 TABLE DATA public supplier_transactions postgres
+6138; 0 20879 TABLE DATA public suppliers postgres
+6157; 0 66400 TABLE DATA public tax_profiles postgres
+6156; 0 66373 TABLE DATA public tax_rates postgres
+6134; 0 20444 TABLE DATA public users postgres
+6188; 0 0 SEQUENCE SET public product_internal_barcode_seq postgres
+6189; 0 0 SEQUENCE SET public product_sku_seq postgres
+5536; 2606 18432 CONSTRAINT public _prisma_migrations _prisma_migrations_pkey postgres
+5540; 2606 20463 CONSTRAINT public activity_logs activity_logs_pkey postgres
+5543; 2606 20465 CONSTRAINT public admin_verification_logs admin_verification_logs_pkey postgres
+5817; 2606 86065 CONSTRAINT public brand_logos brand_logos_pkey postgres
+5767; 2606 82676 CONSTRAINT public business_settings business_settings_pkey postgres
+5789; 2606 82824 CONSTRAINT public cash_refunds cash_refunds_pkey postgres
+5803; 2606 83022 CONSTRAINT public categories categories_pkey postgres
+5799; 2606 82873 CONSTRAINT public customer_credit_applications customer_credit_applications_pkey postgres
+5793; 2606 82847 CONSTRAINT public customer_credits customer_credits_pkey postgres
+5555; 2606 20467 CONSTRAINT public customers customers_pkey postgres
+5563; 2606 20469 CONSTRAINT public debts debts_pkey postgres
+5755; 2606 66303 CONSTRAINT public exchange_rates exchange_rates_pkey postgres
+5568; 2606 20471 CONSTRAINT public financial_correction_audits financial_correction_audits_pkey postgres
+5572; 2606 20473 CONSTRAINT public installment_plans installment_plans_pkey postgres
+5580; 2606 20475 CONSTRAINT public installments installments_pkey postgres
+5809; 2606 83082 CONSTRAINT public label_secret_encoding_presets label_secret_encoding_presets_pkey postgres
+5811; 2606 83094 CONSTRAINT public label_secret_settings label_secret_settings_pkey postgres
+5587; 2606 20477 CONSTRAINT public payment_allocations payment_allocations_pkey postgres
+5594; 2606 20479 CONSTRAINT public payments payments_pkey postgres
+5672; 2606 21020 CONSTRAINT public prepaid_purchases prepaid_purchases_pkey postgres
+5822; 2606 86095 CONSTRAINT public pricing_card_feature_icons pricing_card_feature_icons_pkey postgres
+5832; 2606 86215 CONSTRAINT public pricing_card_prints pricing_card_prints_pkey postgres
+5826; 2606 86150 CONSTRAINT public pricing_card_templates pricing_card_templates_pkey postgres
+5679; 2606 21231 CONSTRAINT public pricing_presets pricing_presets_pkey postgres
+5841; 2606 86284 CONSTRAINT public product_external_identifiers product_external_identifiers_pkey postgres
+5684; 2606 23323 CONSTRAINT public product_images product_images_pkey postgres
+5837; 2606 86270 CONSTRAINT public product_imports product_imports_pkey postgres
+5828; 2606 86185 CONSTRAINT public product_pricing_card_features product_pricing_card_features_pkey postgres
+5614; 2606 20724 CONSTRAINT public products products_pkey postgres
+5711; 2606 30200 CONSTRAINT public repair_history repair_history_pkey postgres
+5706; 2606 23501 CONSTRAINT public sales_audits sales_audits_pkey postgres
+5701; 2606 23482 CONSTRAINT public sales_order_items sales_order_items_pkey postgres
+5721; 2606 40353 CONSTRAINT public sales_order_stock_fulfillments sales_order_stock_fulfillments_pkey postgres
+5697; 2606 23465 CONSTRAINT public sales_orders sales_orders_pkey postgres
+5777; 2606 82783 CONSTRAINT public sales_return_items sales_return_items_pkey postgres
+5785; 2606 82801 CONSTRAINT public sales_return_receivable_allocations sales_return_receivable_allocations_pkey postgres
+5771; 2606 82750 CONSTRAINT public sales_returns sales_returns_pkey postgres
+5635; 2606 20764 CONSTRAINT public service_audits service_audits_pkey postgres
+5627; 2606 20745 CONSTRAINT public service_jobs service_jobs_pkey postgres
+5813; 2606 86041 CONSTRAINT public shop_profiles shop_profiles_pkey postgres
+5717; 2606 34289 CONSTRAINT public stock_movements stock_movements_pkey postgres
+5666; 2606 20933 CONSTRAINT public supplier_audits supplier_audits_pkey postgres
+5743; 2606 45230 CONSTRAINT public supplier_purchase_lines supplier_purchase_lines_pkey postgres
+5749; 2606 45295 CONSTRAINT public supplier_receiving_audits supplier_receiving_audits_pkey postgres
+5736; 2606 41958 CONSTRAINT public supplier_receiving_items supplier_receiving_items_pkey postgres
+5730; 2606 41944 CONSTRAINT public supplier_receivings supplier_receivings_pkey postgres
+5651; 2606 20914 CONSTRAINT public supplier_transactions supplier_transactions_pkey postgres
+5648; 2606 20894 CONSTRAINT public suppliers suppliers_pkey postgres
+5764; 2606 66418 CONSTRAINT public tax_profiles tax_profiles_pkey postgres
+5759; 2606 66392 CONSTRAINT public tax_rates tax_rates_pkey postgres
+5597; 2606 20483 CONSTRAINT public users users_pkey postgres
+5537; 1259 20484 INDEX public activity_logs_createdAt_idx postgres
+5538; 1259 20485 INDEX public activity_logs_entityType_entityId_idx postgres
+5541; 1259 20486 INDEX public admin_verification_logs_attemptedAt_idx postgres
+5544; 1259 20487 INDEX public admin_verification_logs_userId_attemptedAt_idx postgres
+5814; 1259 86067 INDEX public brand_logos_canonicalName_idx postgres
+5815; 1259 86066 INDEX public brand_logos_canonicalName_key postgres
+5787; 1259 82826 INDEX public cash_refunds_customerId_processedAt_idx postgres
+5790; 1259 82825 INDEX public cash_refunds_salesReturnId_key postgres
+5800; 1259 83024 INDEX public categories_isActive_idx postgres
+5801; 1259 83023 INDEX public categories_parentId_idx postgres
+5804; 1259 83025 INDEX public categories_root_name_unique postgres
+5805; 1259 83026 INDEX public categories_sibling_name_unique postgres
+5795; 1259 82875 INDEX public customer_credit_applications_customerCreditId_appliedAt_idx postgres
+5796; 1259 82876 INDEX public customer_credit_applications_customerId_appliedAt_idx postgres
+5797; 1259 82874 INDEX public customer_credit_applications_idempotencyKey_key postgres
+5791; 1259 82849 INDEX public customer_credits_customerId_issuedAt_idx postgres
+5794; 1259 82848 INDEX public customer_credits_salesReturnId_key postgres
+5545; 1259 31573 INDEX public customers_address_norm_trgm_idx postgres
+5546; 1259 20488 INDEX public customers_deletedAt_idx postgres
+5547; 1259 20489 INDEX public customers_name_idx postgres
+5548; 1259 21169 INDEX public customers_name_norm_trgm_idx postgres
+5549; 1259 21167 INDEX public customers_name_trgm_idx postgres
+5550; 1259 31572 INDEX public customers_notes_norm_trgm_idx postgres
+5551; 1259 20490 INDEX public customers_phone_idx postgres
+5552; 1259 21170 INDEX public customers_phone_norm_trgm_idx postgres
+5553; 1259 21168 INDEX public customers_phone_trgm_idx postgres
+5556; 1259 20491 INDEX public debts_customerId_idx postgres
+5557; 1259 20492 INDEX public debts_customerId_status_idx postgres
+5558; 1259 21172 INDEX public debts_description_norm_trgm_idx postgres
+5559; 1259 21171 INDEX public debts_description_trgm_idx postgres
+5560; 1259 20493 INDEX public debts_dueDate_idx postgres
+5561; 1259 20833 INDEX public debts_kind_idx postgres
+5564; 1259 20494 INDEX public debts_status_idx postgres
+5751; 1259 66306 INDEX public exchange_rates_createdAt_idx postgres
+5752; 1259 66305 INDEX public exchange_rates_fromCurrency_toCurrency_effectiveFrom_idx postgres
+5753; 1259 66304 INDEX public exchange_rates_fromCurrency_toCurrency_effectiveFrom_key postgres
+5565; 1259 20495 INDEX public financial_correction_audits_correctedAt_idx postgres
+5566; 1259 20496 INDEX public financial_correction_audits_customerId_correctedAt_idx postgres
+5569; 1259 20497 INDEX public financial_correction_audits_recordType_recordId_idx postgres
+5570; 1259 20498 INDEX public installment_plans_customerId_idx postgres
+5573; 1259 20499 INDEX public installment_plans_startDate_idx postgres
+5574; 1259 20500 INDEX public installment_plans_status_idx postgres
+5575; 1259 20501 INDEX public installments_dueDate_idx postgres
+5576; 1259 20502 INDEX public installments_installmentPlanId_idx postgres
+5577; 1259 20503 INDEX public installments_installmentPlanId_installmentNumber_key postgres
+5578; 1259 20504 INDEX public installments_installmentPlanId_status_idx postgres
+5581; 1259 20505 INDEX public installments_status_idx postgres
+5806; 1259 83096 INDEX public label_secret_encoding_presets_isActive_idx postgres
+5807; 1259 83095 INDEX public label_secret_encoding_presets_name_idx postgres
+5582; 1259 20506 INDEX public payment_allocations_correctionId_idx postgres
+5583; 1259 20507 INDEX public payment_allocations_debtId_idx postgres
+5584; 1259 20508 INDEX public payment_allocations_installmentId_idx postgres
+5585; 1259 20509 INDEX public payment_allocations_paymentId_idx postgres
+5588; 1259 20510 INDEX public payment_allocations_voidedAt_idx postgres
+5589; 1259 20511 INDEX public payments_createdById_idx postgres
+5590; 1259 20512 INDEX public payments_customerId_idx postgres
+5591; 1259 20513 INDEX public payments_idempotencyKey_key postgres
+5592; 1259 20514 INDEX public payments_paymentDate_idx postgres
+5595; 1259 82994 INDEX public payments_salesOrderId_idx postgres
+5669; 1259 21021 INDEX public prepaid_purchases_debtId_key postgres
+5670; 1259 21024 INDEX public prepaid_purchases_deliveredAt_idx postgres
+5673; 1259 21025 INDEX public prepaid_purchases_productId_idx postgres
+5674; 1259 21022 INDEX public prepaid_purchases_remainderDebtId_key postgres
+5675; 1259 21023 INDEX public prepaid_purchases_status_idx postgres
+5818; 1259 86097 INDEX public pricing_card_feature_icons_category_sortOrder_idx postgres
+5819; 1259 86096 INDEX public pricing_card_feature_icons_code_key postgres
+5820; 1259 86098 INDEX public pricing_card_feature_icons_isActive_idx postgres
+5830; 1259 86218 INDEX public pricing_card_prints_generatedAt_idx postgres
+5833; 1259 86216 INDEX public pricing_card_prints_productId_generatedAt_idx postgres
+5834; 1259 86217 INDEX public pricing_card_prints_templateId_generatedAt_idx postgres
+5823; 1259 86152 INDEX public pricing_card_templates_isActive_idx postgres
+5824; 1259 86151 INDEX public pricing_card_templates_name_key postgres
+5676; 1259 21236 INDEX public pricing_presets_isActive_idx postgres
+5677; 1259 21234 INDEX public pricing_presets_name_idx postgres
+5680; 1259 21235 INDEX public pricing_presets_productType_idx postgres
+5681; 1259 21237 INDEX public pricing_presets_single_default postgres
+5682; 1259 83041 INDEX public pricing_presets_single_label_secret postgres
+5839; 1259 86289 INDEX public product_external_identifiers_importId_idx postgres
+5842; 1259 86288 INDEX public product_external_identifiers_productId_idx postgres
+5843; 1259 86287 INDEX public product_external_identifiers_sourceSystem_normalizedCode_key postgres
+5835; 1259 86285 INDEX public product_imports_fileHash_createdAt_idx postgres
+5838; 1259 86286 INDEX public product_imports_status_createdAt_idx postgres
+5829; 1259 86186 INDEX public product_pricing_card_features_productId_idx postgres
+5599; 1259 20765 INDEX public products_barcode_key postgres
+5600; 1259 30213 INDEX public products_barcode_norm_trgm_idx postgres
+5601; 1259 20768 INDEX public products_brand_idx postgres
+5602; 1259 30211 INDEX public products_brand_norm_trgm_idx postgres
+5603; 1259 21184 INDEX public products_brand_trgm_idx postgres
+5604; 1259 83032 INDEX public products_categoryId_idx postgres
+5605; 1259 20769 INDEX public products_isActive_idx postgres
+5606; 1259 20767 INDEX public products_model_idx postgres
+5607; 1259 30210 INDEX public products_model_norm_trgm_idx postgres
+5608; 1259 21183 INDEX public products_model_trgm_idx postgres
+5609; 1259 20766 INDEX public products_name_idx postgres
+5610; 1259 30209 INDEX public products_name_norm_trgm_idx postgres
+5611; 1259 21182 INDEX public products_name_trgm_idx postgres
+5612; 1259 30214 INDEX public products_notes_norm_trgm_idx postgres
+5615; 1259 86235 INDEX public products_pricingCardTemplateId_idx postgres
+5616; 1259 21238 INDEX public products_pricingPresetId_idx postgres
+5617; 1259 23353 INDEX public products_sku_idx postgres
+5618; 1259 23352 INDEX public products_sku_key postgres
+5619; 1259 30212 INDEX public products_sku_norm_trgm_idx postgres
+5620; 1259 30215 INDEX public products_specification_notes_norm_trgm_idx postgres
+5621; 1259 30216 INDEX public products_specifications_norm_trgm_idx postgres
+5622; 1259 66435 INDEX public products_taxProfileId_idx postgres
+5709; 1259 30201 INDEX public repair_history_appliedAt_idx postgres
+5712; 1259 30202 INDEX public repair_history_repairId_appliedAt_idx postgres
+5704; 1259 23518 INDEX public sales_audits_changedAt_idx postgres
+5707; 1259 23516 INDEX public sales_audits_recordType_recordId_changedAt_idx postgres
+5708; 1259 23517 INDEX public sales_audits_salesOrderId_changedAt_idx postgres
+5702; 1259 23515 INDEX public sales_order_items_productId_idx postgres
+5703; 1259 23514 INDEX public sales_order_items_salesOrderId_idx postgres
+5719; 1259 40359 INDEX public sales_order_stock_fulfillments_one_active_per_item postgres
+5722; 1259 40357 INDEX public sales_order_stock_fulfillments_productId_createdAt_idx postgres
+5723; 1259 40355 INDEX public sales_order_stock_fulfillments_reversalStockMovementId_key postgres
+5724; 1259 40356 INDEX public sales_order_stock_fulfillments_salesOrderId_idx postgres
+5725; 1259 40358 INDEX public sales_order_stock_fulfillments_status_idx postgres
+5726; 1259 40354 INDEX public sales_order_stock_fulfillments_stockMovementId_key postgres
+5685; 1259 23513 INDEX public sales_orders_customerId_fulfillmentStatus_idx postgres
+5686; 1259 23505 INDEX public sales_orders_customerId_idx postgres
+5687; 1259 23503 INDEX public sales_orders_debtId_key postgres
+5688; 1259 23507 INDEX public sales_orders_deliveryDate_idx postgres
+5689; 1259 23508 INDEX public sales_orders_fulfillmentStatus_idx postgres
+5690; 1259 23512 INDEX public sales_orders_fulfillmentStatus_orderDate_idx postgres
+5691; 1259 82993 INDEX public sales_orders_idempotencyKey_key postgres
+5692; 1259 23504 INDEX public sales_orders_installmentPlanId_key postgres
+5693; 1259 23506 INDEX public sales_orders_orderDate_idx postgres
+5694; 1259 23502 INDEX public sales_orders_orderNumber_key postgres
+5695; 1259 23509 INDEX public sales_orders_paymentStatus_idx postgres
+5698; 1259 23510 INDEX public sales_orders_salesChannel_idx postgres
+5699; 1259 23511 INDEX public sales_orders_settlement_idx postgres
+5778; 1259 82787 INDEX public sales_return_items_productId_stockDisposition_idx postgres
+5779; 1259 82786 INDEX public sales_return_items_salesOrderItemId_idx postgres
+5780; 1259 82785 INDEX public sales_return_items_salesReturnId_salesOrderItemId_key postgres
+5781; 1259 82784 INDEX public sales_return_items_stockMovementId_key postgres
+5782; 1259 82803 INDEX public sales_return_receivable_allocations_debtId_idx postgres
+5783; 1259 82804 INDEX public sales_return_receivable_allocations_installmentId_idx postgres
+5786; 1259 82802 INDEX public sales_return_receivable_allocations_salesReturnId_idx postgres
+5768; 1259 82755 INDEX public sales_returns_customerId_returnDate_idx postgres
+5769; 1259 82752 INDEX public sales_returns_idempotencyKey_key postgres
+5772; 1259 82756 INDEX public sales_returns_processedAt_idx postgres
+5773; 1259 82751 INDEX public sales_returns_returnNumber_key postgres
+5774; 1259 82754 INDEX public sales_returns_salesOrderId_returnDate_idx postgres
+5775; 1259 82753 INDEX public sales_returns_salesOrderId_sequence_key postgres
+5633; 1259 20780 INDEX public service_audits_changedAt_idx postgres
+5636; 1259 20778 INDEX public service_audits_recordType_recordId_changedAt_idx postgres
+5637; 1259 20779 INDEX public service_audits_serviceJobId_changedAt_idx postgres
+5623; 1259 20771 INDEX public service_jobs_customerId_idx postgres
+5624; 1259 20774 INDEX public service_jobs_customerId_status_idx postgres
+5625; 1259 20770 INDEX public service_jobs_jobNumber_key postgres
+5628; 1259 20772 INDEX public service_jobs_productId_idx postgres
+5629; 1259 20777 INDEX public service_jobs_requestType_idx postgres
+5630; 1259 20775 INDEX public service_jobs_serviceCreatedDate_idx postgres
+5631; 1259 20773 INDEX public service_jobs_status_idx postgres
+5632; 1259 20776 INDEX public service_jobs_status_serviceCreatedDate_idx postgres
+5713; 1259 34292 INDEX public stock_movements_createdAt_idx postgres
+5714; 1259 34291 INDEX public stock_movements_movementType_createdAt_idx postgres
+5715; 1259 34293 INDEX public stock_movements_one_opening_balance_per_product postgres
+5718; 1259 34290 INDEX public stock_movements_productId_createdAt_idx postgres
+5664; 1259 20945 INDEX public supplier_audits_changedAt_idx postgres
+5667; 1259 20943 INDEX public supplier_audits_recordType_recordId_changedAt_idx postgres
+5668; 1259 20944 INDEX public supplier_audits_supplierId_changedAt_idx postgres
+5744; 1259 45232 INDEX public supplier_purchase_lines_productId_idx postgres
+5745; 1259 45233 INDEX public supplier_purchase_lines_receivingItemId_key postgres
+5746; 1259 45231 INDEX public supplier_purchase_lines_supplierTransactionId_position_idx postgres
+5747; 1259 45300 INDEX public supplier_receiving_audits_changedAt_idx postgres
+5750; 1259 45299 INDEX public supplier_receiving_audits_receivingId_changedAt_idx postgres
+5737; 1259 41964 INDEX public supplier_receiving_items_productId_createdAt_idx postgres
+5738; 1259 41963 INDEX public supplier_receiving_items_receivingId_productId_key postgres
+5739; 1259 45296 INDEX public supplier_receiving_items_reversalStockMovementId_key postgres
+5740; 1259 45298 INDEX public supplier_receiving_items_status_idx postgres
+5741; 1259 41962 INDEX public supplier_receiving_items_stockMovementId_key postgres
+5727; 1259 43530 INDEX public supplier_receivings_id_supplierId_key postgres
+5728; 1259 66280 INDEX public supplier_receivings_idempotencyKey_key postgres
+5731; 1259 41961 INDEX public supplier_receivings_receivedById_idx postgres
+5732; 1259 41960 INDEX public supplier_receivings_receivedOn_idx postgres
+5733; 1259 45297 INDEX public supplier_receivings_status_idx postgres
+5734; 1259 41959 INDEX public supplier_receivings_supplierId_receivedOn_idx postgres
+5649; 1259 66279 INDEX public supplier_transactions_idempotencyKey_key postgres
+5652; 1259 82992 INDEX public supplier_transactions_status_dueDate_idx postgres
+5653; 1259 20942 INDEX public supplier_transactions_status_idx postgres
+5654; 1259 20938 INDEX public supplier_transactions_supplierId_idx postgres
+5655; 1259 45234 INDEX public supplier_transactions_supplierId_receiptNumber_idx postgres
+5656; 1259 20939 INDEX public supplier_transactions_supplierId_status_idx postgres
+5657; 1259 43529 INDEX public supplier_transactions_supplierReceivingId_key postgres
+5658; 1259 20940 INDEX public supplier_transactions_transactionDate_idx postgres
+5659; 1259 20941 INDEX public supplier_transactions_type_idx postgres
+5660; 1259 21180 INDEX public supplier_tx_description_norm_trgm_idx postgres
+5661; 1259 21178 INDEX public supplier_tx_description_trgm_idx postgres
+5662; 1259 21181 INDEX public supplier_tx_reference_norm_trgm_idx postgres
+5663; 1259 21179 INDEX public supplier_tx_reference_trgm_idx postgres
+5638; 1259 20936 INDEX public suppliers_companyName_idx postgres
+5639; 1259 21176 INDEX public suppliers_company_norm_trgm_idx postgres
+5640; 1259 21174 INDEX public suppliers_company_trgm_idx postgres
+5641; 1259 20937 INDEX public suppliers_isActive_idx postgres
+5642; 1259 20934 INDEX public suppliers_name_idx postgres
+5643; 1259 21175 INDEX public suppliers_name_norm_trgm_idx postgres
+5644; 1259 21173 INDEX public suppliers_name_trgm_idx postgres
+5645; 1259 20935 INDEX public suppliers_phone_idx postgres
+5646; 1259 21177 INDEX public suppliers_phone_norm_trgm_idx postgres
+5760; 1259 66419 INDEX public tax_profiles_code_key postgres
+5761; 1259 66421 INDEX public tax_profiles_isActive_isDefault_idx postgres
+5762; 1259 66422 INDEX public tax_profiles_one_active_default_key postgres
+5765; 1259 66420 INDEX public tax_profiles_taxRateId_idx postgres
+5756; 1259 66393 INDEX public tax_rates_code_key postgres
+5757; 1259 66394 INDEX public tax_rates_isActive_effectiveFrom_effectiveTo_idx postgres
+5598; 1259 20520 INDEX public users_username_key postgres
+5975; 2620 83003 TRIGGER public payments counter_payment_customer_check postgres
+5976; 2620 83005 TRIGGER public sales_orders counter_sale_customer_check postgres
+5844; 2606 20521 FK CONSTRAINT public activity_logs activity_logs_userId_fkey postgres
+5845; 2606 20526 FK CONSTRAINT public admin_verification_logs admin_verification_logs_userId_fkey postgres
+5962; 2606 86068 FK CONSTRAINT public brand_logos brand_logos_createdById_fkey postgres
+5930; 2606 82677 FK CONSTRAINT public business_settings business_settings_updatedById_fkey postgres
+5942; 2606 82937 FK CONSTRAINT public cash_refunds cash_refunds_customerId_fkey postgres
+5943; 2606 82942 FK CONSTRAINT public cash_refunds cash_refunds_processedById_fkey postgres
+5944; 2606 82932 FK CONSTRAINT public cash_refunds cash_refunds_salesReturnId_fkey postgres
+5954; 2606 83027 FK CONSTRAINT public categories categories_parentId_fkey postgres
+5948; 2606 82987 FK CONSTRAINT public customer_credit_applications customer_credit_applications_appliedById_fkey postgres
+5949; 2606 82962 FK CONSTRAINT public customer_credit_applications customer_credit_applications_customerCreditId_fkey postgres
+5950; 2606 82967 FK CONSTRAINT public customer_credit_applications customer_credit_applications_customerId_fkey postgres
+5951; 2606 82977 FK CONSTRAINT public customer_credit_applications customer_credit_applications_debtId_fkey postgres
+5952; 2606 82982 FK CONSTRAINT public customer_credit_applications customer_credit_applications_installmentId_fkey postgres
+5953; 2606 82972 FK CONSTRAINT public customer_credit_applications customer_credit_applications_salesOrderId_fkey postgres
+5945; 2606 82952 FK CONSTRAINT public customer_credits customer_credits_customerId_fkey postgres
+5946; 2606 82957 FK CONSTRAINT public customer_credits customer_credits_issuedById_fkey postgres
+5947; 2606 82947 FK CONSTRAINT public customer_credits customer_credits_salesReturnId_fkey postgres
+5846; 2606 20531 FK CONSTRAINT public debts debts_cancelledById_fkey postgres
+5847; 2606 20536 FK CONSTRAINT public debts debts_createdById_fkey postgres
+5848; 2606 20541 FK CONSTRAINT public debts debts_customerId_fkey postgres
+5927; 2606 66307 FK CONSTRAINT public exchange_rates exchange_rates_createdById_fkey postgres
+5849; 2606 20546 FK CONSTRAINT public financial_correction_audits financial_correction_audits_correctedById_fkey postgres
+5850; 2606 20551 FK CONSTRAINT public financial_correction_audits financial_correction_audits_customerId_fkey postgres
+5851; 2606 20556 FK CONSTRAINT public installment_plans installment_plans_cancelledById_fkey postgres
+5852; 2606 20561 FK CONSTRAINT public installment_plans installment_plans_createdById_fkey postgres
+5853; 2606 20566 FK CONSTRAINT public installment_plans installment_plans_customerId_fkey postgres
+5854; 2606 20571 FK CONSTRAINT public installments installments_installmentPlanId_fkey postgres
+5955; 2606 83097 FK CONSTRAINT public label_secret_encoding_presets label_secret_encoding_presets_createdById_fkey postgres
+5956; 2606 83102 FK CONSTRAINT public label_secret_encoding_presets label_secret_encoding_presets_updatedById_fkey postgres
+5957; 2606 83112 FK CONSTRAINT public label_secret_settings label_secret_settings_defaultEncodingPresetId_fkey postgres
+5958; 2606 83107 FK CONSTRAINT public label_secret_settings label_secret_settings_defaultPricingPresetId_fkey postgres
+5959; 2606 83117 FK CONSTRAINT public label_secret_settings label_secret_settings_updatedById_fkey postgres
+5855; 2606 20576 FK CONSTRAINT public payment_allocations payment_allocations_correctionId_fkey postgres
+5856; 2606 20581 FK CONSTRAINT public payment_allocations payment_allocations_debtId_fkey postgres
+5857; 2606 20586 FK CONSTRAINT public payment_allocations payment_allocations_installmentId_fkey postgres
+5858; 2606 20591 FK CONSTRAINT public payment_allocations payment_allocations_paymentId_fkey postgres
+5859; 2606 20596 FK CONSTRAINT public payment_allocations payment_allocations_voidedById_fkey postgres
+5860; 2606 20601 FK CONSTRAINT public payments payments_createdById_fkey postgres
+5861; 2606 20606 FK CONSTRAINT public payments payments_customerId_fkey postgres
+5862; 2606 82995 FK CONSTRAINT public payments payments_salesOrderId_fkey postgres
+5863; 2606 20611 FK CONSTRAINT public payments payments_voidedById_fkey postgres
+5887; 2606 21026 FK CONSTRAINT public prepaid_purchases prepaid_purchases_debtId_fkey postgres
+5888; 2606 21031 FK CONSTRAINT public prepaid_purchases prepaid_purchases_deliveredById_fkey postgres
+5889; 2606 21041 FK CONSTRAINT public prepaid_purchases prepaid_purchases_productId_fkey postgres
+5890; 2606 21036 FK CONSTRAINT public prepaid_purchases prepaid_purchases_remainderDebtId_fkey postgres
+5963; 2606 86099 FK CONSTRAINT public pricing_card_feature_icons pricing_card_feature_icons_createdById_fkey postgres
+5964; 2606 86104 FK CONSTRAINT public pricing_card_feature_icons pricing_card_feature_icons_updatedById_fkey postgres
+5968; 2606 86229 FK CONSTRAINT public pricing_card_prints pricing_card_prints_generatedById_fkey postgres
+5969; 2606 86219 FK CONSTRAINT public pricing_card_prints pricing_card_prints_productId_fkey postgres
+5970; 2606 86224 FK CONSTRAINT public pricing_card_prints pricing_card_prints_templateId_fkey postgres
+5965; 2606 86153 FK CONSTRAINT public pricing_card_templates pricing_card_templates_createdById_fkey postgres
+5966; 2606 86158 FK CONSTRAINT public pricing_card_templates pricing_card_templates_updatedById_fkey postgres
+5891; 2606 21239 FK CONSTRAINT public pricing_presets pricing_presets_createdById_fkey postgres
+5892; 2606 21244 FK CONSTRAINT public pricing_presets pricing_presets_updatedById_fkey postgres
+5973; 2606 86305 FK CONSTRAINT public product_external_identifiers product_external_identifiers_importId_fkey postgres
+5974; 2606 86300 FK CONSTRAINT public product_external_identifiers product_external_identifiers_productId_fkey postgres
+5893; 2606 23324 FK CONSTRAINT public product_images product_images_productId_fkey postgres
+5971; 2606 86295 FK CONSTRAINT public product_imports product_imports_committedById_fkey postgres
+5972; 2606 86290 FK CONSTRAINT public product_imports product_imports_createdById_fkey postgres
+5967; 2606 86187 FK CONSTRAINT public product_pricing_card_features product_pricing_card_features_productId_fkey postgres
+5864; 2606 83033 FK CONSTRAINT public products products_categoryId_fkey postgres
+5865; 2606 20781 FK CONSTRAINT public products products_createdById_fkey postgres
+5866; 2606 86236 FK CONSTRAINT public products products_pricingCardTemplateId_fkey postgres
+5867; 2606 21249 FK CONSTRAINT public products products_pricingPresetId_fkey postgres
+5868; 2606 66430 FK CONSTRAINT public products products_taxProfileId_fkey postgres
+5869; 2606 20786 FK CONSTRAINT public products products_updatedById_fkey postgres
+5904; 2606 30203 FK CONSTRAINT public repair_history repair_history_appliedById_fkey postgres
+5902; 2606 23564 FK CONSTRAINT public sales_audits sales_audits_changedById_fkey postgres
+5903; 2606 23559 FK CONSTRAINT public sales_audits sales_audits_salesOrderId_fkey postgres
+5900; 2606 23554 FK CONSTRAINT public sales_order_items sales_order_items_productId_fkey postgres
+5901; 2606 23549 FK CONSTRAINT public sales_order_items sales_order_items_salesOrderId_fkey postgres
+5907; 2606 40385 FK CONSTRAINT public sales_order_stock_fulfillments sales_order_stock_fulfillments_createdById_fkey postgres
+5908; 2606 40370 FK CONSTRAINT public sales_order_stock_fulfillments sales_order_stock_fulfillments_productId_fkey postgres
+5909; 2606 40380 FK CONSTRAINT public sales_order_stock_fulfillments sales_order_stock_fulfillments_reversalStockMovementId_fkey postgres
+5910; 2606 40390 FK CONSTRAINT public sales_order_stock_fulfillments sales_order_stock_fulfillments_reversedById_fkey postgres
+5911; 2606 40360 FK CONSTRAINT public sales_order_stock_fulfillments sales_order_stock_fulfillments_salesOrderId_fkey postgres
+5912; 2606 40365 FK CONSTRAINT public sales_order_stock_fulfillments sales_order_stock_fulfillments_salesOrderItemId_fkey postgres
+5913; 2606 40375 FK CONSTRAINT public sales_order_stock_fulfillments sales_order_stock_fulfillments_stockMovementId_fkey postgres
+5894; 2606 23544 FK CONSTRAINT public sales_orders sales_orders_cancelledById_fkey postgres
+5895; 2606 23534 FK CONSTRAINT public sales_orders sales_orders_createdById_fkey postgres
+5896; 2606 23519 FK CONSTRAINT public sales_orders sales_orders_customerId_fkey postgres
+5897; 2606 23524 FK CONSTRAINT public sales_orders sales_orders_debtId_fkey postgres
+5898; 2606 23529 FK CONSTRAINT public sales_orders sales_orders_installmentPlanId_fkey postgres
+5899; 2606 23539 FK CONSTRAINT public sales_orders sales_orders_updatedById_fkey postgres
+5934; 2606 82907 FK CONSTRAINT public sales_return_items sales_return_items_productId_fkey postgres
+5935; 2606 82897 FK CONSTRAINT public sales_return_items sales_return_items_salesOrderItemId_fkey postgres
+5936; 2606 82902 FK CONSTRAINT public sales_return_items sales_return_items_salesOrderStockFulfillmentId_fkey postgres
+5937; 2606 82892 FK CONSTRAINT public sales_return_items sales_return_items_salesReturnId_fkey postgres
+5938; 2606 82912 FK CONSTRAINT public sales_return_items sales_return_items_stockMovementId_fkey postgres
+5939; 2606 82922 FK CONSTRAINT public sales_return_receivable_allocations sales_return_receivable_allocations_debtId_fkey postgres
+5940; 2606 82927 FK CONSTRAINT public sales_return_receivable_allocations sales_return_receivable_allocations_installmentId_fkey postgres
+5941; 2606 82917 FK CONSTRAINT public sales_return_receivable_allocations sales_return_receivable_allocations_salesReturnId_fkey postgres
+5931; 2606 82882 FK CONSTRAINT public sales_returns sales_returns_customerId_fkey postgres
+5932; 2606 82887 FK CONSTRAINT public sales_returns sales_returns_processedById_fkey postgres
+5933; 2606 82877 FK CONSTRAINT public sales_returns sales_returns_salesOrderId_fkey postgres
+5875; 2606 20821 FK CONSTRAINT public service_audits service_audits_changedById_fkey postgres
+5876; 2606 20816 FK CONSTRAINT public service_audits service_audits_serviceJobId_fkey postgres
+5870; 2606 20811 FK CONSTRAINT public service_jobs service_jobs_cancelledById_fkey postgres
+5871; 2606 20801 FK CONSTRAINT public service_jobs service_jobs_createdById_fkey postgres
+5872; 2606 20791 FK CONSTRAINT public service_jobs service_jobs_customerId_fkey postgres
+5873; 2606 20796 FK CONSTRAINT public service_jobs service_jobs_productId_fkey postgres
+5874; 2606 20806 FK CONSTRAINT public service_jobs service_jobs_updatedById_fkey postgres
+5960; 2606 86163 FK CONSTRAINT public shop_profiles shop_profiles_defaultPricingCardTemplateId_fkey postgres
+5961; 2606 86042 FK CONSTRAINT public shop_profiles shop_profiles_updatedById_fkey postgres
+5905; 2606 34299 FK CONSTRAINT public stock_movements stock_movements_createdById_fkey postgres
+5906; 2606 34294 FK CONSTRAINT public stock_movements stock_movements_productId_fkey postgres
+5884; 2606 20986 FK CONSTRAINT public supplier_audits supplier_audits_changedById_fkey postgres
+5885; 2606 20976 FK CONSTRAINT public supplier_audits supplier_audits_supplierId_fkey postgres
+5886; 2606 20981 FK CONSTRAINT public supplier_audits supplier_audits_supplierTransactionId_fkey postgres
+5922; 2606 45240 FK CONSTRAINT public supplier_purchase_lines supplier_purchase_lines_productId_fkey postgres
+5923; 2606 45245 FK CONSTRAINT public supplier_purchase_lines supplier_purchase_lines_receivingItemId_fkey postgres
+5924; 2606 45235 FK CONSTRAINT public supplier_purchase_lines supplier_purchase_lines_supplierTransactionId_fkey postgres
+5925; 2606 45321 FK CONSTRAINT public supplier_receiving_audits supplier_receiving_audits_changedById_fkey postgres
+5926; 2606 45316 FK CONSTRAINT public supplier_receiving_audits supplier_receiving_audits_receivingId_fkey postgres
+5917; 2606 41980 FK CONSTRAINT public supplier_receiving_items supplier_receiving_items_productId_fkey postgres
+5918; 2606 41975 FK CONSTRAINT public supplier_receiving_items supplier_receiving_items_receivingId_fkey postgres
+5919; 2606 45306 FK CONSTRAINT public supplier_receiving_items supplier_receiving_items_reversalStockMovementId_fkey postgres
+5920; 2606 45311 FK CONSTRAINT public supplier_receiving_items supplier_receiving_items_reversedById_fkey postgres
+5921; 2606 41985 FK CONSTRAINT public supplier_receiving_items supplier_receiving_items_stockMovementId_fkey postgres
+5914; 2606 41970 FK CONSTRAINT public supplier_receivings supplier_receivings_receivedById_fkey postgres
+5915; 2606 41965 FK CONSTRAINT public supplier_receivings supplier_receivings_supplierId_fkey postgres
+5916; 2606 45301 FK CONSTRAINT public supplier_receivings supplier_receivings_voidedById_fkey postgres
+5879; 2606 20966 FK CONSTRAINT public supplier_transactions supplier_transactions_createdById_fkey postgres
+5880; 2606 20961 FK CONSTRAINT public supplier_transactions supplier_transactions_removedById_fkey postgres
+5881; 2606 20956 FK CONSTRAINT public supplier_transactions supplier_transactions_supplierId_fkey postgres
+5882; 2606 43531 FK CONSTRAINT public supplier_transactions supplier_transactions_supplierReceivingId_fkey postgres
+5883; 2606 20971 FK CONSTRAINT public supplier_transactions supplier_transactions_updatedById_fkey postgres
+5877; 2606 20946 FK CONSTRAINT public suppliers suppliers_createdById_fkey postgres
+5878; 2606 20951 FK CONSTRAINT public suppliers suppliers_updatedById_fkey postgres
+5929; 2606 66423 FK CONSTRAINT public tax_profiles tax_profiles_taxRateId_fkey postgres
+5928; 2606 66395 FK CONSTRAINT public tax_rates tax_rates_createdById_fkey postgres
+

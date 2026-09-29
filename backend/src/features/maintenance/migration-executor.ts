@@ -123,6 +123,16 @@ export class MigrationExecutor {
    */
   static async applyPending(client: MigrationClient, bundled = MigrationRunner.readBundled()): Promise<ApplyOutcome[]> {
     let summary = await this.status(client, bundled);
+
+    // Enforcement gate: unallowlisted CHECKSUM_MISMATCH must block execution,
+    // not merely reclassification. classifyMigrations already promotes
+    // allowlisted (name, recorded, on-disk) triples back to APPLIED; anything
+    // remaining in `summary.mismatched` is a genuinely unknown drift and
+    // continues to be a release-blocker.
+    if (summary.mismatched.length > 0) {
+      throw new UnresolvedMigrationChecksumDriftError(summary.mismatched);
+    }
+
     const outcomes: ApplyOutcome[] = [];
 
     for (const migration of bundled) {
@@ -137,5 +147,16 @@ export class MigrationExecutor {
     }
 
     return outcomes;
+  }
+}
+
+export class UnresolvedMigrationChecksumDriftError extends Error {
+  constructor(public readonly migrations: string[]) {
+    super(
+      'Migration execution refused: the following migrations have an on-disk checksum ' +
+      'that differs from the recorded one and are not on the historical-drift allowlist: ' +
+      migrations.join(', ')
+    );
+    this.name = 'UnresolvedMigrationChecksumDriftError';
   }
 }

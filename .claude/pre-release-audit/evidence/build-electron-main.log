@@ -1,0 +1,4 @@
+
+> home-connect@2.0.1 build:electron-main
+> tsc -p tsconfig.electron.json && node -e "const fs=require('fs');fs.mkdirSync('dist/electron/desktop/src',{recursive:true});fs.mkdirSync('dist/electron/desktop/assets',{recursive:true});fs.copyFileSync('desktop/src/startup-monitor.html','dist/electron/desktop/src/startup-monitor.html');for(const file of ['homeconnects-logo.png','homeconnects-logo.ico'])fs.copyFileSync('desktop/assets/'+file,'dist/electron/desktop/assets/'+file);"
+

@@ -1,0 +1,17 @@
+{
+  "$comment": "Historical checksum drift allowlist. Entries here re-classify a specific (migration_name, recorded_checksum, on_disk_checksum) triple from CHECKSUM_MISMATCH back to APPLIED without touching _prisma_migrations rows or historical SQL. Anything else stays CHECKSUM_MISMATCH and continues to block migration execution. Runtime (backend TS) and CI (assert-migration-drift-allowlisted.mjs) both read THIS file.",
+  "entries": [
+    {
+      "migrationName": "20260924100000_add_appliance_shelf_thermal_template",
+      "recordedChecksum": "863e3e6e201cd7c99d499a9fe0c5f83ceb8a51ab9e1ea5b185adbcc41259219a",
+      "onDiskChecksum": "c0aadf8748468470579ed69df9a9ad28114c2f4044c070de039649e22a283330",
+      "reason": "Migration file edited after being applied (git 4aa36bc -> e9bbeda) to reseed 76x50 instead of 120x80. The forward migration 20260928010000_reconcile_thermal_template_variants converges the seed row from either historical state to variant C. Recorded checksum stays as-is on every installation."
+    },
+    {
+      "migrationName": "20260914180000_add_product_categories",
+      "recordedChecksum": "3a86cdb1e4e485e19749a6c39ea3ee0d1585417ffe809b8a3bc9c92def6c5372",
+      "onDiskChecksum": "b774e3bcf474c2bb8db6c52ce18fd925113dcdf02cd52140c6bd58c84405ff5e",
+      "reason": "CRLF vs LF encoding only; the SQL bytes are semantically identical."
+    }
+  ]
+}

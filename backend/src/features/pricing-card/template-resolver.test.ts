@@ -23,6 +23,17 @@ describe('pricing-card template resolver', () => {
     })).toEqual({ resolvedTemplateId: categoryTemplateId, missingTemplate: false, source: 'CATEGORY' });
   });
 
+  it('prefers the real category, then honors a legacy preset type mapping', () => {
+    expect(resolvePricingCardTemplate({
+      productCategory: 'Appliances', legacyProductType: 'TV',
+      categoryDefaultTemplates: { appliances: categoryTemplateId, tv: shopTemplateId },
+    }).resolvedTemplateId).toBe(categoryTemplateId);
+    expect(resolvePricingCardTemplate({
+      productCategory: 'Unmapped', legacyProductType: 'TV',
+      categoryDefaultTemplates: { tv: categoryTemplateId },
+    }).resolvedTemplateId).toBe(categoryTemplateId);
+  });
+
   it('uses the shop default when product and category assignments are absent', () => {
     expect(resolvePricingCardTemplate({
       productCategory: 'appliance',

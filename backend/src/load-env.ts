@@ -28,3 +28,4 @@ for (const envPath of [
 ]) {
   if (envPath) dotenv.config({ path: envPath, quiet: true });
 }
+if (process.env.HOME_CONNECT_STARTUP_TRACE === '1') console.info(`[startup] environment loaded at ${new Date().toISOString()}`);

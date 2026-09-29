@@ -11,6 +11,7 @@ export interface TemplateResolution {
 export interface TemplateResolutionInput {
   productTemplateId?: string | null;
   productCategory?: string | null;
+  legacyProductType?: string | null;
   categoryDefaultTemplates?: Prisma.JsonValue | null;
   shopDefaultTemplateId?: string | null;
 }
@@ -22,7 +23,8 @@ export interface TemplateResolutionInput {
 export function resolvePricingCardTemplate(input: TemplateResolutionInput): TemplateResolution {
   if (input.productTemplateId) return resolved(input.productTemplateId, 'PRODUCT');
 
-  const categoryTemplateId = templateForCategory(input.categoryDefaultTemplates, input.productCategory);
+  const categoryTemplateId = templateForCategory(input.categoryDefaultTemplates, input.productCategory)
+    ?? templateForCategory(input.categoryDefaultTemplates, input.legacyProductType);
   if (categoryTemplateId) return resolved(categoryTemplateId, 'CATEGORY');
 
   if (input.shopDefaultTemplateId) return resolved(input.shopDefaultTemplateId, 'SHOP_DEFAULT');

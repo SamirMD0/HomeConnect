@@ -3,7 +3,7 @@ import { ChildProcess } from 'child_process';
 import { Server } from 'http';
 import path from 'path';
 import fs from 'fs';
-import { startCompiledBackend } from './backend-process';
+import { startCompiledBackend, redactLogChunk } from './backend-process';
 import { applyContentSecurityPolicy, resolveCspMode } from './content-security-policy';
 import { BACKEND_HEALTH_URL, FRONTEND_ORIGIN, READY_TIMEOUT_MS } from './runtime-config';
 import { startStaticFrontendServer } from './static-frontend-server';
@@ -11,7 +11,9 @@ import { waitForUrl } from './readiness';
 import { createWindow, createStartupMonitorWindow, DEFAULT_DEV_SERVER_URL } from './window';
 import { focusExistingWindow, shouldQuitAfterChildExit, cleanupRuntime as performCleanup } from './lifecycle';
 import { describeStartupFailure, startupFailureText } from './startup-failure-messages';
-import { writeStartupDiagnostics } from './startup-diagnostics';
+import { writeStartupDiagnostics, checkPortInUse } from './startup-diagnostics';
+import { configuredDatabaseUrl, preflightDatabaseConnection } from './database-preflight';
+import { createStartupTimeline } from './startup-timeline';
 import { BACKEND_PORT, FRONTEND_PORT } from './runtime-config';
 import { WHATSAPP_OPEN_CHANNEL, openWhatsAppUrl } from './whatsapp-link';
 import { LABEL_PRINT_CHANNEL, printLabels } from './label-print';
@@ -20,6 +22,11 @@ let backendProcess: ChildProcess | null = null;
 let frontendServer: Server | null = null;
 let isQuitting = false;
 let isRetrying = false;
+let isBooting = false;
+let startupComplete = false;
+let cleanupStarted = false;
+
+if (process.env.HOME_CONNECT_USER_DATA) app.setPath('userData', path.resolve(process.env.HOME_CONNECT_USER_DATA));
 
 app.commandLine.appendSwitch('disable-crash-reporter');
 
@@ -161,6 +168,7 @@ if (!gotTheLock) {
     });
 
     ipcMain.handle('diagnostics:retryStartup', async () => {
+      if (isBooting || isRetrying) return;
       isRetrying = true;
       await performCleanup(frontendServer, backendProcess);
       frontendServer = null;
@@ -171,17 +179,23 @@ if (!gotTheLock) {
     let monitorWindow: BrowserWindow | null = null;
 
     const bootApp = async () => {
+      if (isBooting) return;
+      isBooting = true;
+      startupComplete = false;
       isRetrying = false;
       if (!monitorWindow || monitorWindow.isDestroyed()) {
         monitorWindow = createStartupMonitorWindow();
       }
 
       const isDev = process.env.NODE_ENV === 'development';
-      monitorWindow.webContents.on('did-finish-load', () => {
+      monitorWindow.webContents.once('did-finish-load', () => {
          monitorWindow?.webContents.send('diagnostics:startupState', { devMode: isDev });
       });
 
-      const sendLog = (msg: string) => monitorWindow?.webContents.send('diagnostics:startupLog', msg);
+      const sendLog = createStartupTimeline(app.getPath('userData'), (msg) => {
+        if (monitorWindow && !monitorWindow.isDestroyed()) monitorWindow.webContents.send('diagnostics:startupLog', msg);
+      });
+      sendLog(`Electron boot attempt started; mode=${isDev ? 'development' : 'production'}; packaged=${app.isPackaged}`);
       const updateStep = (step: string, status: 'active' | 'success' | 'error', errorMsg?: string) => {
         monitorWindow?.webContents.send('diagnostics:startupState', { step, status, error: errorMsg });
       };
@@ -198,7 +212,10 @@ if (!gotTheLock) {
         if (isDev) {
           updateStep('step-backend', 'active');
           sendLog('Waiting for development backend...');
-          await waitForUrl(BACKEND_HEALTH_URL, READY_TIMEOUT_MS, 'Development Express backend');
+          // The supported dev launcher starts and awaits both services before
+          // opening Electron. Direct `electron .` in development owns neither.
+          if (!await checkPortInUse(BACKEND_PORT)) throw new Error('Development Express backend is not running. Start the app with npm run dev:electron.');
+          await waitForUrl(BACKEND_HEALTH_URL, READY_TIMEOUT_MS, 'Development Express backend', {requireDatabase:true,onProbe:(ms,r)=>sendLog(`Backend probe: ${Math.round(ms)}ms, ${r.statusCode || 'not listening'}`)});
           updateStep('step-backend', 'success');
 
           updateStep('step-db', 'active');
@@ -212,11 +229,12 @@ if (!gotTheLock) {
 
           sendLog('Startup complete. Opening app...');
           await new Promise(r => setTimeout(r, 500));
+          createWindow();
+          startupComplete = true;
           if (monitorWindow && !monitorWindow.isDestroyed()) {
              monitorWindow.close();
              monitorWindow = null;
           }
-          createWindow();
         } else {
           const appRoot = app.getAppPath();
           const backendRoot = app.isPackaged ? process.resourcesPath : appRoot;
@@ -224,17 +242,29 @@ if (!gotTheLock) {
           const frontendDistPath = app.isPackaged ? path.join(process.resourcesPath, 'frontend/dist') : path.join(appRoot, 'frontend/dist');
 
           updateStep('step-backend', 'active');
+          if (!fs.existsSync(backendEntryPath)) throw new Error('Compiled backend build missing. Run npm run build before launching.');
+          if (await checkPortInUse(BACKEND_PORT)) throw new Error(`Backend port ${BACKEND_PORT} already in use. Close the other application before retrying.`);
+          const envFilePath = process.env.BACKEND_ENV_FILE || path.join(app.getPath('userData'), 'config', 'production.env');
+          if (await preflightDatabaseConnection(configuredDatabaseUrl(envFilePath)) === 'refused') {
+            throw new Error('DATABASE_UNAVAILABLE: the configured PostgreSQL endpoint refused a TCP connection.');
+          }
           sendLog('Starting compiled backend process...');
           backendProcess = startCompiledBackend(backendEntryPath, app.getPath('userData'), process.resourcesPath, sendLog);
+          const startupAbort = new AbortController();
+          const ownedBackend = backendProcess;
+          backendProcess.once('error', (error) => startupAbort.abort(new Error(`Backend process failed: ${redactLogChunk(error.message)}`)));
 
           backendProcess.once('exit', (code) => {
-            if (!isRetrying && shouldQuitAfterChildExit(isQuitting)) {
+            sendLog(`Backend process exited: code=${code}`);
+            startupAbort.abort(new Error(`Backend process exited with code ${code ?? 'unknown'}; see startup log for the preceding error.`));
+            if (startupComplete && backendProcess === ownedBackend && !isRetrying && shouldQuitAfterChildExit(isQuitting)) {
               dialog.showErrorBox('HomeConnect backend stopped', `Backend exited unexpectedly with code ${code ?? 'unknown'}`);
               app.quit();
             }
           });
 
-          await waitForUrl(BACKEND_HEALTH_URL, READY_TIMEOUT_MS, 'Compiled Express backend');
+          sendLog(`Backend spawned pid=${backendProcess.pid}; waiting for database health`);
+          await waitForUrl(BACKEND_HEALTH_URL, READY_TIMEOUT_MS, 'Compiled Express backend', {signal:startupAbort.signal,requireDatabase:true,onProbe:(ms,r)=>sendLog(`Backend probe: ${Math.round(ms)}ms, ${r.statusCode || 'not listening'}`)});
           updateStep('step-backend', 'success');
 
           updateStep('step-db', 'active');
@@ -256,18 +286,19 @@ if (!gotTheLock) {
           await recordDiagnostic(true);
           sendLog('Startup complete. Opening app...');
           await new Promise(r => setTimeout(r, 500));
+          createWindow(FRONTEND_ORIGIN);
+          startupComplete = true;
           if (monitorWindow && !monitorWindow.isDestroyed()) {
              monitorWindow.close();
              monitorWindow = null;
           }
-          createWindow(FRONTEND_ORIGIN);
         }
       } catch (error) {
         // Raw text goes to the log for diagnostics; the operator sees the
         // plain-English summary and the fix (see startup-failure-messages.ts).
         const failure = describeStartupFailure(error);
         const errorMsg = startupFailureText(failure);
-        sendLog(`[ERROR] ${failure.raw}`);
+        sendLog(`[ERROR] ${redactLogChunk(failure.raw)}`);
         sendLog(`[WHAT TO DO] ${failure.fix}`);
 
         monitorWindow?.webContents.send('diagnostics:startupState', {
@@ -277,14 +308,20 @@ if (!gotTheLock) {
           fix: failure.fix,
         });
 
-        await recordDiagnostic(false, `${failure.summary} (${failure.raw})`);
+        isRetrying = true;
+        await performCleanup(frontendServer, backendProcess);
+        frontendServer = null;
+        backendProcess = null;
+        isRetrying = false;
+        sendLog('Failed attempt cleanup complete; owned services stopped.');
+        await recordDiagnostic(false, redactLogChunk(`${failure.summary} (${failure.raw})`));
 
         if (!monitorWindow || monitorWindow.isDestroyed()) {
           dialog.showErrorBox('HomeConnect failed to start', errorMsg);
           await cleanupRuntime();
           app.quit();
         }
-      }
+      } finally { isBooting = false; }
     };
 
     bootApp();
@@ -296,8 +333,13 @@ if (!gotTheLock) {
     });
   });
 
-  app.on('before-quit', () => {
+  app.on('before-quit', (event) => {
     isQuitting = true;
+    if (!cleanupStarted && (backendProcess || frontendServer)) {
+      event.preventDefault();
+      cleanupStarted = true;
+      void cleanupRuntime().finally(() => app.quit());
+    }
   });
 
   app.on('window-all-closed', () => {
@@ -306,9 +348,6 @@ if (!gotTheLock) {
     }
   });
 
-  app.on('will-quit', () => {
-    void cleanupRuntime();
-  });
 }
 
 async function recordDiagnostic(success: boolean, errorMsg?: string) {

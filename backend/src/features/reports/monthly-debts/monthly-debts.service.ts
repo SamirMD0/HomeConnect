@@ -1,6 +1,7 @@
 import { Decimal } from '@prisma/client/runtime/library';
 import { Currency, DebtKind } from '@prisma/client';
 import {
+  businessDateStartInstant,
   businessDateToPrisma,
   compareBusinessDates,
   moneyToApiString,
@@ -43,6 +44,12 @@ interface MonthBoundaries {
   startDatePrisma: Date;
   endDatePrisma: Date;
   nextDayAfterEnd: Date;
+  // Wall-clock instants of the business-day window, used to filter timestamp
+  // columns (createdAt) so records created in the early morning local hours
+  // are attributed to the correct business day. Date-only columns keep
+  // using the UTC-midnight fields above.
+  startInstantUtc: Date;
+  endInstantExclusiveUtc: Date;
 }
 
 interface CustomerBucket {
@@ -124,6 +131,8 @@ export class MonthlyDebtsService {
       startDate: boundaries.startDatePrisma,
       endDate: boundaries.endDatePrisma,
       nextDayAfterEnd: boundaries.nextDayAfterEnd,
+      startInstantUtc: boundaries.startInstantUtc,
+      endInstantExclusiveUtc: boundaries.endInstantExclusiveUtc,
     });
 
     const standardDebts = records.debts.filter((debt) => debt.kind !== DebtKind.PREPAID_PURCHASE);
@@ -545,6 +554,7 @@ export class MonthlyDebtsService {
     const endDate = parseBusinessDate(to);
     if (startDate > endDate) throw new Error('Report range from must not be after to');
 
+    const nextDayAfterEndBusinessDate = this.nextBusinessDate(endDate);
     return {
       month,
       startDate,
@@ -552,12 +562,20 @@ export class MonthlyDebtsService {
       startDatePrisma: businessDateToPrisma(startDate),
       endDatePrisma: businessDateToPrisma(endDate),
       nextDayAfterEnd: this.nextBusinessDayDate(endDate),
+      startInstantUtc: businessDateStartInstant(startDate),
+      endInstantExclusiveUtc: businessDateStartInstant(nextDayAfterEndBusinessDate),
     };
   }
 
   private static nextBusinessDayDate(input: string): Date {
     const { year, month, day } = splitBusinessDate(input);
     return new Date(Date.UTC(year, month - 1, day + 1));
+  }
+
+  private static nextBusinessDate(input: string): string {
+    const { year, month, day } = splitBusinessDate(input);
+    const next = new Date(Date.UTC(year, month - 1, day + 1));
+    return prismaDateToBusinessDate(next);
   }
 
   private static earliestBusinessDate(current: string | null, candidate: string): string {

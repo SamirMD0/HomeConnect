@@ -437,6 +437,8 @@ model User {
   pricingCardTemplatesCreated    PricingCardTemplate[]        @relation("PricingCardTemplateCreatedBy")
   pricingCardTemplatesUpdated    PricingCardTemplate[]        @relation("PricingCardTemplateUpdatedBy")
   pricingCardPrintsGenerated     PricingCardPrint[]           @relation("PricingCardPrintGeneratedBy")
+  productImportsCreated          ProductImport[]               @relation("ProductImportCreatedBy")
+  productImportsCommitted        ProductImport[]               @relation("ProductImportCommittedBy")
   repairsApplied                 RepairHistory[]              @relation("RepairHistoryAppliedBy")
   stockMovements                 StockMovement[]              @relation("StockMovementCreatedBy")
   salesStockFulfillmentsCreated  SalesOrderStockFulfillment[] @relation("FulfillmentCreatedBy")
@@ -877,6 +879,7 @@ model Product {
   image                  ProductImage?
   pricingCardFeatures    ProductPricingCardFeature[]
   pricingCardPrints      PricingCardPrint[]
+  externalIdentifiers   ProductExternalIdentifier[]
 
   @@index([name])
   @@index([sku])
@@ -888,6 +891,54 @@ model Product {
   @@index([categoryId])
   @@index([pricingCardTemplateId])
   @@map("products")
+}
+
+/// A source-system product code is deliberately separate from HomeConnect's
+/// immutable UUID and generated SKU. Imports can therefore match safely even
+/// when supplier codes contain characters (such as `/`) that are not valid SKUs.
+model ProductExternalIdentifier {
+  id             String        @id @default(uuid()) @db.Uuid
+  productId      String        @db.Uuid
+  product        Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sourceSystem   String
+  externalCode   String
+  normalizedCode String
+  importId       String?       @db.Uuid
+  import         ProductImport? @relation(fields: [importId], references: [id], onDelete: SetNull)
+  createdAt      DateTime      @default(now())
+
+  @@unique([sourceSystem, normalizedCode])
+  @@index([productId])
+  @@index([importId])
+  @@map("product_external_identifiers")
+}
+
+/// Durable import preview. Parsed rows and administrator decisions stay here so
+/// a conflict review can be closed and resumed without silently losing choices.
+model ProductImport {
+  id               String    @id @default(uuid()) @db.Uuid
+  fileName         String
+  fileHash         String
+  sourceSystem     String
+  brand            String
+  status           String    @default("DRAFT")
+  rows             Json
+  categoryMappings Json      @default("{}")
+  decisions        Json?
+  result            Json?
+  createdById      String    @db.Uuid
+  createdBy        User      @relation("ProductImportCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  committedById    String?   @db.Uuid
+  committedBy      User?     @relation("ProductImportCommittedBy", fields: [committedById], references: [id], onDelete: Restrict)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  committedAt      DateTime?
+
+  externalIdentifiers ProductExternalIdentifier[]
+
+  @@index([fileHash, createdAt])
+  @@index([status, createdAt])
+  @@map("product_imports")
 }
 
 model ProductPricingCardFeature {

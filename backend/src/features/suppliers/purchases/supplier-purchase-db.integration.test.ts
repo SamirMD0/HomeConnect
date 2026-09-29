@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto';
 import { describe, expect, it, vi } from 'vitest';
 import { SupplierPurchasesService } from './supplier-purchases.service';
 import { SupplierPurchasesRepository } from './supplier-purchases.repository';
+import { todayInBusinessTimezone } from '../../financial/domain/business-date';
 
 /**
  * Proves the v1.9.4 constraints actually bite in PostgreSQL rather than only in
@@ -103,7 +104,8 @@ describeDatabase('supplier purchase database contract', () => {
     const productId = randomUUID();
     const taxRateId = randomUUID();
     const taxProfileId = randomUUID();
-    const businessDate = new Date().toISOString().slice(0, 10);
+    process.env.BUSINESS_TIMEZONE = 'Asia/Beirut';
+    const businessDate = todayInBusinessTimezone();
     const idempotencyKey = `purchase-${randomUUID()}`;
     const concurrentKey = `purchase-${randomUUID()}`;
     const user = { userId, role: Role.ADMIN };

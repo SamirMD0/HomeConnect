@@ -169,6 +169,7 @@ const summaryFor = (state: 'PENDING' | 'FAILED', name: string): MigrationStatusS
   mismatched: [],
   unknownInDatabase: [],
   databaseIsNewer: false,
+  historicalChecksumDrift: [],
 });
 
 describe('migration executor', () => {

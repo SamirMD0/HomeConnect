@@ -21,7 +21,7 @@ const overview = {
   appVersion: '1.2.0',
   toolsAvailable: true,
   blockedReason: null,
-  migrations: { pending: [], failed: [], mismatched: [], databaseIsNewer: false },
+  migrations: { pending: [], failed: [], mismatched: [], databaseIsNewer: false, historicalChecksumDrift: [] },
   pendingMigrations: [],
   pendingRepairs: [],
   registryProblems: [],

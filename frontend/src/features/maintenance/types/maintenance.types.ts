@@ -1,5 +1,17 @@
 export type PreflightStatus = 'PASS' | 'WARN' | 'FAIL' | 'SKIPPED';
 
+export interface ThermalReconcileNotesView {
+  status: 'READY' | 'TABLE_ABSENT';
+  hint: string;
+  notes: {
+    id: number;
+    runAt: string;
+    outcome: string;
+    reason: string;
+    diffFields: string[];
+  }[];
+}
+
 export interface PreflightCheckResult {
   id: string;
   title: string;

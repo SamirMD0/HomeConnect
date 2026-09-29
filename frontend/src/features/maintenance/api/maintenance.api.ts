@@ -1,11 +1,14 @@
 import { api } from '../../../services/api';
-import { MaintenanceOverview, PreflightReport, RepairOutcome, ResolveMigrationOutcome } from '../types/maintenance.types';
+import { MaintenanceOverview, PreflightReport, RepairOutcome, ResolveMigrationOutcome, ThermalReconcileNotesView } from '../types/maintenance.types';
 
 interface ApiResponse<T> { success: boolean; data: T }
 
 export const maintenanceApi = {
   overview: async (): Promise<MaintenanceOverview> =>
     (await api.get<ApiResponse<MaintenanceOverview>>('/admin/maintenance')).data.data,
+
+  thermalReconcileNotes: async (): Promise<ThermalReconcileNotesView> =>
+    (await api.get<ApiResponse<ThermalReconcileNotesView>>('/admin/maintenance/thermal-reconcile-notes')).data.data,
 
   /** Read-only, safe to run at any time. */
   preflight: async (): Promise<PreflightReport> =>

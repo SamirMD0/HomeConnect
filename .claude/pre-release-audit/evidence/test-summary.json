@@ -1,0 +1,28 @@
+{
+  "total": 2816,
+  "passed": 2812,
+  "failed": 4,
+  "pending": 0,
+  "failures": [
+    {
+      "file": "backend\\src\\features\\inventory\\supplier-receiving-db.integration.test.ts",
+      "test": "supplier receiving database contract replays the original receiving without duplicate stock and rejects key reuse for a different payload",
+      "message": "Error: This receiving date is before the verified opening count for this product; its stock is already included in that count. / تاريخ الاستلام يسبق الجرد الافتتاحي المؤكد لهذا المنتج، ومخزونه محتسب ضمن ذلك الجرد.\n    at validateProduct (D:/User/Documents/Home Connect/backend/src/features/inventory/receiving/supplier-receivings.service.ts:408:64)\n    at postSupplierReceiving (D:/User/Documents/Home Connect/backend/src/features/inventory/receiving/supplier-receivings.service.ts:71:29)\n    at idempotencyKey.maxRetries (D:/User/Documents/Home Connect/backend/src/features/inventory/receiving/supplier-receivings.service.ts:159:31)\n    at Proxy._transactionWithCallback (D:\\User\\Documents\\Home Connect\\node_modules\\@prisma\\client\\runtime\\library.js:130:8000)\n    at retrySerializableTransaction (D:/User/Documents/Home Connect/backend/src/features/financial/infrastructure/transaction.ts:22:14)\n    at D:/User/Documents/Home Connect/backend/src/features/inventory/supplier-receiving-db.integration.test.ts:251:24\n    at file:///D:/User/Documents/Home%20Connect/node_modules/@vitest/runner/dist/chunk-artifact.js:1903:20"
+    },
+    {
+      "file": "backend\\src\\features\\sales\\returns\\sales-returns-db.integration.test.ts",
+      "test": "atomic sales return database integration fully returns stock and money exactly once, keeps payments, audits clearly, and reconciles inventory",
+      "message": "AssertionError: expected { customer: { …(3) }, …(10) } to match object { newDebt: '50.00', …(2) }\n(11 matching properties omitted from actual)\n    at Proxy.<anonymous> (file:///D:/User/Documents/Home%20Connect/node_modules/@vitest/expect/dist/index.js:1283:10)\n    at Proxy.<anonymous> (file:///D:/User/Documents/Home%20Connect/node_modules/@vitest/expect/dist/index.js:1156:15)\n    at Proxy.methodWrapper (file:///D:/User/Documents/Home%20Connect/node_modules/chai/index.js:1700:25)\n    at D:/User/Documents/Home Connect/backend/src/features/sales/returns/sales-returns-db.integration.test.ts:110:91\n    at file:///D:/User/Documents/Home%20Connect/node_modules/@vitest/runner/dist/chunk-artifact.js:1903:20"
+    },
+    {
+      "file": "backend\\src\\features\\suppliers\\purchases\\supplier-purchase-db.integration.test.ts",
+      "test": "supplier purchase database contract makes the complete purchase command idempotent and keeps no-key callers compatible",
+      "message": "Error: This receiving date is before the verified opening count for this product; its stock is already included in that count. / تاريخ الاستلام يسبق الجرد الافتتاحي المؤكد لهذا المنتج، ومخزونه محتسب ضمن ذلك الجرد.\n    at validateProduct (D:/User/Documents/Home Connect/backend/src/features/inventory/receiving/supplier-receivings.service.ts:408:64)\n    at postSupplierReceiving (D:/User/Documents/Home Connect/backend/src/features/inventory/receiving/supplier-receivings.service.ts:71:29)\n    at idempotencyKey.maxRetries (D:/User/Documents/Home Connect/backend/src/features/suppliers/purchases/supplier-purchases.service.ts:168:24)\n    at Proxy._transactionWithCallback (D:\\User\\Documents\\Home Connect\\node_modules\\@prisma\\client\\runtime\\library.js:130:8000)\n    at retrySerializableTransaction (D:/User/Documents/Home Connect/backend/src/features/financial/infrastructure/transaction.ts:22:14)\n    at D:/User/Documents/Home Connect/backend/src/features/suppliers/purchases/supplier-purchase-db.integration.test.ts:147:24\n    at file:///D:/User/Documents/Home%20Connect/node_modules/@vitest/runner/dist/chunk-artifact.js:1903:20"
+    },
+    {
+      "file": "backend\\src\\features\\suppliers\\purchases\\supplier-purchases.validator.test.ts",
+      "test": "createSupplierPurchaseSchema requires the account password when a new product is being added",
+      "message": "AssertionError: expected false to be true // Object.is equality\n    at D:/User/Documents/Home Connect/backend/src/features/suppliers/purchases/supplier-purchases.validator.test.ts:78:116\n    at file:///D:/User/Documents/Home%20Connect/node_modules/@vitest/runner/dist/chunk-artifact.js:302:11\n    at file:///D:/User/Documents/Home%20Connect/node_modules/@vitest/runner/dist/chunk-artifact.js:1903:26\n    at file:///D:/User/Documents/Home%20Connect/node_modules/@vitest/runner/dist/chunk-artifact.js:2326:20\n    at new Promise (<anonymous>)\n    at runWithCancel (file:///D:/User/Documents/Home%20Connect/node_modules/@vitest/runner/dist/chunk-artifact.js:2323:10)\n    at file:///D:/User/Documents/Home%20Connect/node_modules/@vitest/runner/dist/chunk-artifact.js:2305:20\n    at new Promise (<anonymous>)\n    at runWithTimeout (file:///D:/User/Documents/Home%20Connect/node_modules/@vitest/runner/dist/chunk-artifact.js:2272:10)\n    at file:///D:/User/Documents/Home%20Connect/node_modules/@vitest/runner/dist/chunk-artifact.js:2955:64"
+    }
+  ]
+}

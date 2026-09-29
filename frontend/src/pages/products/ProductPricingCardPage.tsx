@@ -14,6 +14,7 @@ import { PricingCardControls } from '../../features/pricing-card/components/Pric
 import { applyOverridesTo, readOverrides, type PricingCardOverrides } from '../../features/pricing-card/overrides/pricing-card-overrides';
 import { PricingCardPage } from '../../features/pricing-card/components/PricingCardPage';
 import { usePricingCard, usePricingCardSecretPreview, useRecordPricingCardPrint } from '../../features/pricing-card/hooks/usePricingCard';
+import { usePricingCardIndex } from '../../features/pricing-card/hooks/usePricingCardIndex';
 import { usePricingCardTemplates } from '../../features/pricing-card/hooks/usePricingCardTemplates';
 import { useShopProfile } from '../../features/pricing-card/hooks/useShopProfile';
 import type { PricingCardData, RecordPricingCardPrintInput } from '../../features/pricing-card/types/pricing-card.types';
@@ -28,8 +29,10 @@ export function ProductPricingCardPage() {
   const profile = useShopProfile();
   const templates = usePricingCardTemplates(true);
   const activeTemplates = templates.data ?? [];
+  const resolution = usePricingCardIndex(id ? [id] : []);
   const [templateOverride, setTemplateOverride] = useState<string | null>(null);
-  const selectedTemplateId = templateOverride ?? activeDefaultTemplateId(activeTemplates, profile.data?.defaultPricingCardTemplateId);
+  const resolvedDefaultId = resolution.data?.find((entry) => entry.productId === id)?.resolvedTemplateId;
+  const selectedTemplateId = templateOverride ?? (resolution.isLoading ? '' : activeDefaultTemplateId(activeTemplates, resolvedDefaultId ?? profile.data?.defaultPricingCardTemplateId));
   const selectedTemplate = activeTemplates.find(({ id: templateId }) => templateId === selectedTemplateId);
   const [copies, setCopies] = useState(1);
   const [validUntilOverride, setValidUntilOverride] = useState<string | null>(null);

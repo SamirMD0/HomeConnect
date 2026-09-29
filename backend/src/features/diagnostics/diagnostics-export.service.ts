@@ -108,6 +108,7 @@ async function migrationStatus() {
     failed: summary.failed,
     mismatched: summary.mismatched,
     databaseIsNewer: summary.databaseIsNewer,
+    historicalChecksumDrift: summary.historicalChecksumDrift,
     applied: summary.entries.filter((entry) => entry.state === 'APPLIED').map((entry) => entry.name),
   };
 }

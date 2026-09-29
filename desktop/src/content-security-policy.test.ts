@@ -110,7 +110,7 @@ describe('applyContentSecurityPolicy', () => {
 
     const callback = vi.fn();
     (session.handlers[0] as unknown as (d: unknown, c: unknown) => void)(
-      { responseHeaders },
+      { responseHeaders, url: 'http://127.0.0.1:3002/' },
       callback
     );
 
@@ -124,6 +124,16 @@ describe('applyContentSecurityPolicy', () => {
       buildContentSecurityPolicy('production'),
     ]);
     expect(result.responseHeaders['Content-Type']).toEqual(['text/html']);
+  });
+
+  it('does not intersect the startup monitor file policy with the HTTP renderer policy', () => {
+    const session = fakeSession();
+    applyContentSecurityPolicy(session as never, 'production');
+    const callback = vi.fn();
+    (session.handlers[0] as unknown as (d: unknown, c: unknown) => void)(
+      {url:'file:///application/startup-monitor.html',responseHeaders:{}},callback
+    );
+    expect(callback).toHaveBeenCalledWith({responseHeaders:{}});
   });
 
   it('replaces an upstream policy so only one is in force', () => {

@@ -85,13 +85,13 @@ export const writeStartupDiagnostics = async (
   }
   
   const envFileExists = fs.existsSync(options.envFilePath);
-  let dbUrl = '';
-  
-  if (envFileExists) {
+  // The backend uses explicit process.env values ahead of dotenv files. Report
+  // that effective target, not a stale installed-app file inherited by a test.
+  let dbUrl = process.env.DATABASE_URL || '';
+
+  if (!dbUrl && envFileExists) {
     const parsedEnv = dotenv.parse(fs.readFileSync(options.envFilePath, 'utf8'));
     dbUrl = parsedEnv.DATABASE_URL || '';
-  } else if (process.env.DATABASE_URL) {
-    dbUrl = process.env.DATABASE_URL;
   }
 
   const [backendPortInUse, frontendPortInUse] = await Promise.all([

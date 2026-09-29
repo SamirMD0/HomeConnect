@@ -51,6 +51,8 @@ export interface MaintenanceOverview {
     failed: string[];
     mismatched: string[];
     databaseIsNewer: boolean;
+    /** Names of allowlisted historical checksum drift, surfaced for visibility. */
+    historicalChecksumDrift: string[];
   };
   /** Same migrations as `migrations.pending`/`failed`, with presence evidence. */
   pendingMigrations: PendingMigrationView[];
@@ -338,9 +340,10 @@ async function safeMigrationStatus() {
       failed: summary.failed,
       mismatched: summary.mismatched,
       databaseIsNewer: summary.databaseIsNewer,
+      historicalChecksumDrift: summary.historicalChecksumDrift,
     };
   } catch {
-    return { pending: [], failed: [], mismatched: [], databaseIsNewer: false };
+    return { pending: [], failed: [], mismatched: [], databaseIsNewer: false, historicalChecksumDrift: [] };
   }
 }
 

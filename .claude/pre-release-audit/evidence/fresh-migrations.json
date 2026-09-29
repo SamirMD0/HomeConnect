@@ -1,0 +1,10 @@
+{
+  "ci": {
+    "database": "hc_audit_test_ci_20260926124725",
+    "durationMs": 12649
+  },
+  "browser": {
+    "database": "hc_audit_test_browser_20260926124725",
+    "durationMs": 5761
+  }
+}

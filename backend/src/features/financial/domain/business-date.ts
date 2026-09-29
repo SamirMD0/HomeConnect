@@ -58,6 +58,47 @@ export function todayInBusinessTimezone(
   return timestampToBusinessDate(timezone, now);
 }
 
+/**
+ * UTC instant of the local midnight starting the given business date in the
+ * configured timezone. Use this to filter timestamp (@db.Timestamp) columns
+ * such as createdAt, whose values are absolute instants rather than
+ * date-only markers. Do not use it to compare against @db.Date columns, which
+ * are already stored as UTC midnight of the business date.
+ */
+export function businessDateStartInstant(
+  businessDate: string,
+  timezone = getBusinessTimezone()
+): Date {
+  const { year, month, day } = splitBusinessDate(parseBusinessDate(businessDate));
+  // Start with a UTC guess for that wall-clock instant, then correct by the
+  // offset the target timezone reported for it. One pass is exact for every
+  // moment except the ambiguous hour of a DST fall-back, and the report
+  // boundary is not that hour.
+  const guess = Date.UTC(year, month - 1, day);
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    hour12: false,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }).formatToParts(new Date(guess));
+  const local = { y: 0, m: 0, d: 0, h: 0, min: 0, s: 0 };
+  for (const part of parts) {
+    if (part.type === 'year') local.y = Number(part.value);
+    else if (part.type === 'month') local.m = Number(part.value);
+    else if (part.type === 'day') local.d = Number(part.value);
+    else if (part.type === 'hour') local.h = Number(part.value) === 24 ? 0 : Number(part.value);
+    else if (part.type === 'minute') local.min = Number(part.value);
+    else if (part.type === 'second') local.s = Number(part.value);
+  }
+  const asUTC = Date.UTC(local.y, local.m - 1, local.d, local.h, local.min, local.s);
+  const offsetMs = asUTC - guess;
+  return new Date(guess - offsetMs);
+}
+
 export function timestampToBusinessDate(timezone: string, timestamp: Date): BusinessDate {
   const formatter = new Intl.DateTimeFormat('en-US', {
     timeZone: timezone,

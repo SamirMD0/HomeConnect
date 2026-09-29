@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { splitSqlStatements } from './sql-statement-splitter';
+import { isAllowlistedDrift } from './checksum-allowlist';
 
 /**
  * Applies bundled Prisma migrations without the Prisma CLI, which is not
@@ -50,6 +51,18 @@ export interface MigrationStatusEntry {
   state: MigrationState;
   checksum: string | null;
   appliedAt: Date | null;
+  /**
+   * True when the recorded checksum differs from the bundled file's checksum
+   * *and* the pair is on the historical-drift allowlist, so the state has been
+   * reclassified from CHECKSUM_MISMATCH back to APPLIED. Unknown drift keeps
+   * state=CHECKSUM_MISMATCH and this flag is undefined/false.
+   *
+   * Surfaced through the diagnostics/health payloads so operators can still
+   * see the drift even though it does not block execution.
+   */
+  historicalChecksumDrift?: boolean;
+  /** The `_prisma_migrations.checksum` value observed on the database. */
+  recordedChecksum?: string | null;
 }
 
 export interface MigrationStatusSummary {
@@ -60,6 +73,13 @@ export interface MigrationStatusSummary {
   unknownInDatabase: string[];
   /** True when the database carries migrations this build does not know about. */
   databaseIsNewer: boolean;
+  /**
+   * Names of entries whose checksum diverged from the bundled file but whose
+   * (name, recorded, on-disk) triple is on the historical-drift allowlist.
+   * These are treated as APPLIED for execution purposes but remain visible so
+   * operators can still see the drift.
+   */
+  historicalChecksumDrift: string[];
 }
 
 /** Prisma's own DDL, copied from the house repair file so the shapes cannot drift. */
@@ -128,7 +148,18 @@ export function classifyMigrations(bundled: BundledMigration[], rows: PrismaMigr
     if (row.rolled_back_at) return { name: migration.name, state: 'PENDING', checksum: migration.checksum, appliedAt: null };
     if (!row.finished_at) return { name: migration.name, state: 'FAILED', checksum: migration.checksum, appliedAt: null };
     if (row.checksum !== migration.checksum) {
-      return { name: migration.name, state: 'CHECKSUM_MISMATCH', checksum: migration.checksum, appliedAt: row.finished_at };
+      const allowed = isAllowlistedDrift({ name: migration.name, recorded: row.checksum, onDisk: migration.checksum });
+      if (allowed) {
+        return {
+          name: migration.name,
+          state: 'APPLIED',
+          checksum: migration.checksum,
+          appliedAt: row.finished_at,
+          historicalChecksumDrift: true,
+          recordedChecksum: row.checksum,
+        };
+      }
+      return { name: migration.name, state: 'CHECKSUM_MISMATCH', checksum: migration.checksum, appliedAt: row.finished_at, recordedChecksum: row.checksum };
     }
     return { name: migration.name, state: 'APPLIED', checksum: migration.checksum, appliedAt: row.finished_at };
   });
@@ -151,6 +182,7 @@ export function classifyMigrations(bundled: BundledMigration[], rows: PrismaMigr
     mismatched: named('CHECKSUM_MISMATCH'),
     unknownInDatabase,
     databaseIsNewer: unknownInDatabase.length > 0,
+    historicalChecksumDrift: entries.filter((entry) => entry.historicalChecksumDrift).map((entry) => entry.name),
   };
 }
 

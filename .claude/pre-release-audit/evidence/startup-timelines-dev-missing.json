@@ -1,0 +1,142 @@
+[
+  {
+    "file": "startup-1790458329627.jsonl",
+    "events": [
+      {
+        "timestamp": "2026-09-26T21:32:09.654Z",
+        "elapsedMs": 27,
+        "message": "Electron boot attempt started; mode=development; packaged=false"
+      },
+      {
+        "timestamp": "2026-09-26T21:32:10.170Z",
+        "elapsedMs": 542,
+        "message": "Checking configuration..."
+      },
+      {
+        "timestamp": "2026-09-26T21:32:10.282Z",
+        "elapsedMs": 654,
+        "message": "Waiting for development backend..."
+      },
+      {
+        "timestamp": "2026-09-26T21:32:10.299Z",
+        "elapsedMs": 672,
+        "message": "[ERROR] Development Express backend is not running. Start the app with npm run dev:electron."
+      },
+      {
+        "timestamp": "2026-09-26T21:32:10.300Z",
+        "elapsedMs": 673,
+        "message": "[WHAT TO DO] Close this window and start the desktop app with \"npm run dev:electron\" from the project folder."
+      },
+      {
+        "timestamp": "2026-09-26T21:32:10.300Z",
+        "elapsedMs": 673,
+        "message": "Failed attempt cleanup complete; owned services stopped."
+      }
+    ]
+  },
+  {
+    "file": "startup-1790458836765.jsonl",
+    "events": [
+      {
+        "timestamp": "2026-09-26T21:40:36.766Z",
+        "elapsedMs": 0,
+        "message": "Electron boot attempt started; mode=development; packaged=false"
+      },
+      {
+        "timestamp": "2026-09-26T21:40:37.277Z",
+        "elapsedMs": 512,
+        "message": "Checking configuration..."
+      },
+      {
+        "timestamp": "2026-09-26T21:40:37.391Z",
+        "elapsedMs": 626,
+        "message": "Waiting for development backend..."
+      },
+      {
+        "timestamp": "2026-09-26T21:40:37.407Z",
+        "elapsedMs": 642,
+        "message": "[ERROR] Development Express backend is not running. Start the app with npm run dev:electron."
+      },
+      {
+        "timestamp": "2026-09-26T21:40:37.411Z",
+        "elapsedMs": 646,
+        "message": "[WHAT TO DO] Close this window and start the desktop app with \"npm run dev:electron\" from the project folder."
+      },
+      {
+        "timestamp": "2026-09-26T21:40:37.411Z",
+        "elapsedMs": 646,
+        "message": "Failed attempt cleanup complete; owned services stopped."
+      }
+    ]
+  },
+  {
+    "file": "startup-1790519261902.jsonl",
+    "events": [
+      {
+        "timestamp": "2026-09-27T14:27:41.903Z",
+        "elapsedMs": 0,
+        "message": "Electron boot attempt started; mode=development; packaged=true"
+      },
+      {
+        "timestamp": "2026-09-27T14:27:42.405Z",
+        "elapsedMs": 503,
+        "message": "Checking configuration..."
+      },
+      {
+        "timestamp": "2026-09-27T14:27:42.515Z",
+        "elapsedMs": 613,
+        "message": "Waiting for development backend..."
+      },
+      {
+        "timestamp": "2026-09-27T14:27:42.527Z",
+        "elapsedMs": 625,
+        "message": "[ERROR] Development Express backend is not running. Start the app with npm run dev:electron."
+      },
+      {
+        "timestamp": "2026-09-27T14:27:42.528Z",
+        "elapsedMs": 626,
+        "message": "[WHAT TO DO] Close this window and start the desktop app with \"npm run dev:electron\" from the project folder."
+      },
+      {
+        "timestamp": "2026-09-27T14:27:42.528Z",
+        "elapsedMs": 626,
+        "message": "Failed attempt cleanup complete; owned services stopped."
+      }
+    ]
+  },
+  {
+    "file": "startup-1790519381502.jsonl",
+    "events": [
+      {
+        "timestamp": "2026-09-27T14:29:41.503Z",
+        "elapsedMs": 0,
+        "message": "Electron boot attempt started; mode=development; packaged=true"
+      },
+      {
+        "timestamp": "2026-09-27T14:29:42.005Z",
+        "elapsedMs": 503,
+        "message": "Checking configuration..."
+      },
+      {
+        "timestamp": "2026-09-27T14:29:42.113Z",
+        "elapsedMs": 611,
+        "message": "Waiting for development backend..."
+      },
+      {
+        "timestamp": "2026-09-27T14:29:42.133Z",
+        "elapsedMs": 631,
+        "message": "[ERROR] Development Express backend is not running. Start the app with npm run dev:electron."
+      },
+      {
+        "timestamp": "2026-09-27T14:29:42.133Z",
+        "elapsedMs": 632,
+        "message": "[WHAT TO DO] Close this window and start the desktop app with \"npm run dev:electron\" from the project folder."
+      },
+      {
+        "timestamp": "2026-09-27T14:29:42.134Z",
+        "elapsedMs": 632,
+        "message": "Failed attempt cleanup complete; owned services stopped."
+      }
+    ]
+  }
+]

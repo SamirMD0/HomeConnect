@@ -1,0 +1,24 @@
+{
+  "baselineDatabase": "hc_audit_test_recovery_baseline_20260928090026",
+  "migratedDatabase": "hc_audit_test_recovery_20260928090026",
+  "checkedTables": 50,
+  "changedBusinessTables": [],
+  "thermalBefore": {
+    "width": "76.00",
+    "height": "80.00"
+  },
+  "thermalAfter": {
+    "width": "76.00",
+    "height": "80.00"
+  },
+  "thermalUnchanged": true,
+  "outcomes": [
+    {
+      "outcome": "SKIPPED_CUSTOMISED",
+      "diffFields": [
+        "config"
+      ]
+    }
+  ],
+  "forwardMigrationRecorded": true
+}

@@ -1,0 +1,62 @@
+[
+  {
+    "file": "startup-1790519305893.jsonl",
+    "events": [
+      {
+        "timestamp": "2026-09-27T14:28:25.894Z",
+        "elapsedMs": 1,
+        "message": "Electron boot attempt started; mode=production; packaged=true"
+      },
+      {
+        "timestamp": "2026-09-27T14:28:26.402Z",
+        "elapsedMs": 509,
+        "message": "Checking configuration..."
+      },
+      {
+        "timestamp": "2026-09-27T14:28:26.522Z",
+        "elapsedMs": 629,
+        "message": "[ERROR] Backend port 4513 already in use. Close the other application before retrying."
+      },
+      {
+        "timestamp": "2026-09-27T14:28:26.522Z",
+        "elapsedMs": 629,
+        "message": "[WHAT TO DO] Close any other HomeConnect window. If that does not help, restart Windows and try again."
+      },
+      {
+        "timestamp": "2026-09-27T14:28:26.522Z",
+        "elapsedMs": 629,
+        "message": "Failed attempt cleanup complete; owned services stopped."
+      }
+    ]
+  },
+  {
+    "file": "startup-1790519412614.jsonl",
+    "events": [
+      {
+        "timestamp": "2026-09-27T14:30:12.615Z",
+        "elapsedMs": 1,
+        "message": "Electron boot attempt started; mode=production; packaged=true"
+      },
+      {
+        "timestamp": "2026-09-27T14:30:13.123Z",
+        "elapsedMs": 509,
+        "message": "Checking configuration..."
+      },
+      {
+        "timestamp": "2026-09-27T14:30:13.245Z",
+        "elapsedMs": 631,
+        "message": "[ERROR] Backend port 4513 already in use. Close the other application before retrying."
+      },
+      {
+        "timestamp": "2026-09-27T14:30:13.245Z",
+        "elapsedMs": 632,
+        "message": "[WHAT TO DO] Close any other HomeConnect window. If that does not help, restart Windows and try again."
+      },
+      {
+        "timestamp": "2026-09-27T14:30:13.246Z",
+        "elapsedMs": 632,
+        "message": "Failed attempt cleanup complete; owned services stopped."
+      }
+    ]
+  }
+]

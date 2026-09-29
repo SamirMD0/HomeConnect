@@ -1,0 +1,476 @@
+[
+  {
+    "name": "20260723075336_init",
+    "sinceMain": false,
+    "safe": true,
+    "violations": [],
+    "statementCount": 3
+  },
+  {
+    "name": "20260723091230_init_customers",
+    "sinceMain": false,
+    "safe": true,
+    "violations": [],
+    "statementCount": 4
+  },
+  {
+    "name": "20260723094305_init_ledger",
+    "sinceMain": false,
+    "safe": true,
+    "violations": [],
+    "statementCount": 12
+  },
+  {
+    "name": "20260723133024_add_due_date_and_soft_delete_to_transactions",
+    "sinceMain": false,
+    "safe": true,
+    "violations": [],
+    "statementCount": 2
+  },
+  {
+    "name": "20260724090000_add_financial_domain_models",
+    "sinceMain": false,
+    "safe": true,
+    "violations": [],
+    "statementCount": 42
+  },
+  {
+    "name": "20260727130000_add_financial_correction_audit",
+    "sinceMain": false,
+    "safe": true,
+    "violations": [],
+    "statementCount": 19
+  },
+  {
+    "name": "20260729090000_add_service_and_product",
+    "sinceMain": false,
+    "safe": true,
+    "violations": [],
+    "statementCount": 34
+  },
+  {
+    "name": "20260729180000_add_prepaid_purchase_kind",
+    "sinceMain": false,
+    "safe": true,
+    "violations": [],
+    "statementCount": 3
+  },
+  {
+    "name": "20260730120000_add_suppliers_and_supplier_ledger",
+    "sinceMain": false,
+    "safe": true,
+    "violations": [],
+    "statementCount": 29
+  },
+  {
+    "name": "20260731090000_add_prepaid_purchase_delivery",
+    "sinceMain": false,
+    "safe": true,
+    "violations": [],
+    "statementCount": 16
+  },
+  {
+    "name": "20260801090000_enable_pgtrgm",
+    "sinceMain": false,
+    "safe": true,
+    "violations": [],
+    "statementCount": 1
+  },
+  {
+    "name": "20260801091000_add_search_normalization",
+    "sinceMain": false,
+    "safe": true,
+    "violations": [],
+    "statementCount": 4
+  },
+  {
+    "name": "20260801092000_add_search_indexes",
+    "sinceMain": false,
+    "safe": true,
+    "violations": [],
+    "statementCount": 23
+  },
+  {
+    "name": "20260802090000_add_pricing_presets_and_product_pricing",
+    "sinceMain": false,
+    "safe": true,
+    "violations": [],
+    "statementCount": 14
+  },
+  {
+    "name": "20260803090000_add_product_image",
+    "sinceMain": false,
+    "safe": true,
+    "violations": [],
+    "statementCount": 3
+  },
+  {
+    "name": "20260804090000_add_product_sku_stock_specifications",
+    "sinceMain": false,
+    "safe": true,
+    "violations": [],
+    "statementCount": 13
+  },
+  {
+    "name": "20260804100000_add_product_installment_option",
+    "sinceMain": false,
+    "safe": true,
+    "violations": [],
+    "statementCount": 2
+  },
+  {
+    "name": "20260804110000_add_service_exchange_and_company_home_status",
+    "sinceMain": false,
+    "safe": true,
+    "violations": [],
+    "statementCount": 2
+  },
+  {
+    "name": "20260804120000_add_sales_orders",
+    "sinceMain": false,
+    "safe": true,
+    "violations": [],
+    "statementCount": 36
+  },
+  {
+    "name": "20260804130000_add_repair_history",
+    "sinceMain": false,
+    "safe": true,
+    "violations": [],
+    "statementCount": 6
+  },
+  {
+    "name": "20260805090000_add_label_barcode_auto",
+    "sinceMain": false,
+    "safe": true,
+    "violations": [],
+    "statementCount": 1
+  },
+  {
+    "name": "20260805091000_use_label_barcode_auto",
+    "sinceMain": false,
+    "safe": true,
+    "violations": [],
+    "statementCount": 2
+  },
+  {
+    "name": "20260805092000_add_product_search_indexes",
+    "sinceMain": false,
+    "safe": true,
+    "violations": [],
+    "statementCount": 9
+  },
+  {
+    "name": "20260806093135_add_customer_notes_search_index",
+    "sinceMain": false,
+    "safe": true,
+    "violations": [],
+    "statementCount": 3
+  },
+  {
+    "name": "20260806101225_add_weekly_installment_frequency",
+    "sinceMain": false,
+    "safe": true,
+    "violations": [],
+    "statementCount": 1
+  },
+  {
+    "name": "20260812090000_add_stock_movements",
+    "sinceMain": false,
+    "safe": true,
+    "violations": [],
+    "statementCount": 8
+  },
+  {
+    "name": "20260813160000_add_sales_order_stock_fulfillments",
+    "sinceMain": false,
+    "safe": true,
+    "violations": [],
+    "statementCount": 17
+  },
+  {
+    "name": "20260814110000_add_supplier_receivings",
+    "sinceMain": false,
+    "safe": true,
+    "violations": [],
+    "statementCount": 13
+  },
+  {
+    "name": "20260814170000_link_supplier_transactions_to_receivings",
+    "sinceMain": false,
+    "safe": true,
+    "violations": [],
+    "statementCount": 5
+  },
+  {
+    "name": "20260815120000_add_supplier_purchase_lines",
+    "sinceMain": false,
+    "safe": true,
+    "violations": [],
+    "statementCount": 11
+  },
+  {
+    "name": "20260817120000_add_supplier_receiving_corrections",
+    "sinceMain": false,
+    "safe": true,
+    "violations": [],
+    "statementCount": 19
+  },
+  {
+    "name": "20260827090000_add_supplier_idempotency",
+    "sinceMain": true,
+    "safe": true,
+    "violations": [],
+    "statementCount": 4
+  },
+  {
+    "name": "20260830183000_remove_legacy_transactions",
+    "sinceMain": true,
+    "safe": false,
+    "violations": [
+      {
+        "code": "DROP_STATEMENT",
+        "message": "DROP statements are not allowed in bundled SQL.",
+        "statementIndex": 1,
+        "excerpt": "-- Irreversible: production was verified to contain zero legacy transaction rows -- before this migration was created…"
+      },
+      {
+        "code": "DROP_STATEMENT",
+        "message": "DROP statements are not allowed in bundled SQL.",
+        "statementIndex": 2,
+        "excerpt": "-- TransactionStatus exists in the deployed production schema but is absent from -- the committed migration history, …"
+      },
+      {
+        "code": "DROP_STATEMENT",
+        "message": "DROP statements are not allowed in bundled SQL.",
+        "statementIndex": 3,
+        "excerpt": "DROP TYPE \"TransactionType\""
+      }
+    ],
+    "statementCount": 3
+  },
+  {
+    "name": "20260901090000_add_dual_currency_foundation",
+    "sinceMain": true,
+    "safe": true,
+    "violations": [],
+    "statementCount": 38
+  },
+  {
+    "name": "20260903120000_add_vat_foundation",
+    "sinceMain": true,
+    "safe": true,
+    "violations": [],
+    "statementCount": 26
+  },
+  {
+    "name": "20260906150000_seed_default_tax_configuration",
+    "sinceMain": true,
+    "safe": true,
+    "violations": [],
+    "statementCount": 4
+  },
+  {
+    "name": "20260908120000_default_retail_prices_vat_inclusive",
+    "sinceMain": true,
+    "safe": true,
+    "violations": [],
+    "statementCount": 2
+  },
+  {
+    "name": "20260909100000_add_delivery_vat_and_business_settings",
+    "sinceMain": true,
+    "safe": true,
+    "violations": [],
+    "statementCount": 6
+  },
+  {
+    "name": "20260911120000_add_atomic_sales_returns",
+    "sinceMain": true,
+    "safe": true,
+    "violations": [],
+    "statementCount": 55
+  },
+  {
+    "name": "20260914123000_add_supplier_due_dates",
+    "sinceMain": true,
+    "safe": true,
+    "violations": [],
+    "statementCount": 2
+  },
+  {
+    "name": "20260914140000_add_counter_payment_sources",
+    "sinceMain": true,
+    "safe": true,
+    "violations": [],
+    "statementCount": 12
+  },
+  {
+    "name": "20260914160000_add_customer_credit_limits",
+    "sinceMain": true,
+    "safe": true,
+    "violations": [],
+    "statementCount": 2
+  },
+  {
+    "name": "20260914180000_add_product_categories",
+    "sinceMain": true,
+    "safe": true,
+    "violations": [],
+    "statementCount": 9
+  },
+  {
+    "name": "20260918120000_add_pricing_preset_label_secret",
+    "sinceMain": true,
+    "safe": true,
+    "violations": [],
+    "statementCount": 2
+  },
+  {
+    "name": "20260918121000_add_internal_product_barcodes",
+    "sinceMain": true,
+    "safe": true,
+    "violations": [],
+    "statementCount": 2
+  },
+  {
+    "name": "20260918122000_redesign_label_secret_pricing",
+    "sinceMain": true,
+    "safe": true,
+    "violations": [],
+    "statementCount": 17
+  },
+  {
+    "name": "20260918123000_add_staged_discount_encoding",
+    "sinceMain": true,
+    "safe": true,
+    "violations": [],
+    "statementCount": 1
+  },
+  {
+    "name": "20260918123100_seed_staged_discount_encoding",
+    "sinceMain": true,
+    "safe": true,
+    "violations": [],
+    "statementCount": 1
+  },
+  {
+    "name": "20260920100000_add_shop_profile",
+    "sinceMain": true,
+    "safe": true,
+    "violations": [],
+    "statementCount": 6
+  },
+  {
+    "name": "20260920100200_seed_shop_profile_logo",
+    "sinceMain": true,
+    "safe": true,
+    "violations": [],
+    "statementCount": 1
+  },
+  {
+    "name": "20260920101000_add_brand_logos",
+    "sinceMain": true,
+    "safe": true,
+    "violations": [],
+    "statementCount": 5
+  },
+  {
+    "name": "20260920102000_add_pricing_card_feature_icons",
+    "sinceMain": true,
+    "safe": true,
+    "violations": [],
+    "statementCount": 8
+  },
+  {
+    "name": "20260920103000_add_pricing_card_templates",
+    "sinceMain": true,
+    "safe": true,
+    "violations": [],
+    "statementCount": 11
+  },
+  {
+    "name": "20260920104000_add_product_pricing_card_features",
+    "sinceMain": true,
+    "safe": true,
+    "violations": [],
+    "statementCount": 3
+  },
+  {
+    "name": "20260920105000_add_pricing_card_prints",
+    "sinceMain": true,
+    "safe": true,
+    "violations": [],
+    "statementCount": 8
+  },
+  {
+    "name": "20260920200000_update_legacy_template_visuals",
+    "sinceMain": true,
+    "safe": true,
+    "violations": [],
+    "statementCount": 1
+  },
+  {
+    "name": "20260920210000_add_product_pricing_card_template",
+    "sinceMain": true,
+    "safe": true,
+    "violations": [],
+    "statementCount": 3
+  },
+  {
+    "name": "20260920211000_add_shop_category_default_templates",
+    "sinceMain": true,
+    "safe": true,
+    "violations": [],
+    "statementCount": 1
+  },
+  {
+    "name": "20260920220000_refresh_pricing_card_feature_icons",
+    "sinceMain": true,
+    "safe": true,
+    "violations": [],
+    "statementCount": 2
+  },
+  {
+    "name": "20260920230000_set_pricing_card_price_prominence",
+    "sinceMain": true,
+    "safe": true,
+    "violations": [],
+    "statementCount": 2
+  },
+  {
+    "name": "20260921100000_switch_tv_large_to_centered_layout",
+    "sinceMain": true,
+    "safe": true,
+    "violations": [],
+    "statementCount": 1
+  },
+  {
+    "name": "20260921110000_switch_appliance_shelf_to_centered_layout",
+    "sinceMain": true,
+    "safe": true,
+    "violations": [],
+    "statementCount": 1
+  },
+  {
+    "name": "20260924100000_add_appliance_shelf_thermal_template",
+    "sinceMain": true,
+    "safe": true,
+    "violations": [],
+    "statementCount": 1
+  },
+  {
+    "name": "20260924110000_refine_appliance_shelf_thermal_template",
+    "sinceMain": true,
+    "safe": true,
+    "violations": [],
+    "statementCount": 1
+  },
+  {
+    "name": "20260926130000_add_product_csv_imports",
+    "sinceMain": true,
+    "safe": true,
+    "violations": [],
+    "statementCount": 11
+  }
+]

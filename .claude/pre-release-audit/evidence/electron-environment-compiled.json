@@ -1,0 +1,8 @@
+{
+  "execArgv": [],
+  "environmentKeys": [
+    "DEBUG",
+    "DEBUG_COLORS",
+    "PLAYWRIGHT_TEST"
+  ]
+}

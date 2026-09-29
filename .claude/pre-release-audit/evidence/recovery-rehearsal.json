@@ -1,0 +1,15 @@
+{
+  "checkedAt": "2026-09-28T09:01:29.806Z",
+  "database": "hc_audit_test_recovery_20260928090026",
+  "dumpMs": 15921,
+  "verifyMs": 254,
+  "restoreMs": 12962,
+  "migrationMs": 1597,
+  "backendReady": true,
+  "backendReadinessMs": 30940,
+  "archiveBytes": 612922,
+  "sha256": "1fffed21497b741e25b99a2eff10fb40ffa52d1a06eecddf971e46203f839371",
+  "pending": [],
+  "failed": [],
+  "mismatched": []
+}

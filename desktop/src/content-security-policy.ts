@@ -81,6 +81,13 @@ export function applyContentSecurityPolicy(session: Session, mode: CspMode): voi
   const policy = buildContentSecurityPolicy(mode);
 
   session.webRequest.onHeadersReceived((details, callback) => {
+    // Electron can report file:// responses here too. The startup monitor has
+    // its own restrictive meta policy; a second renderer policy would block
+    // its authored script and leave Retry/Exit inert in production.
+    if (details.url.startsWith('file:')) {
+      callback({ responseHeaders: details.responseHeaders });
+      return;
+    }
     const responseHeaders: Record<string, string | string[]> = { ...details.responseHeaders };
 
     // Remove any upstream policy so exactly one policy is in force. Two policies

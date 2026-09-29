@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { doBlockBody, splitSqlStatements, stripSqlNoise } from './sql-statement-splitter';
 
 /**
@@ -180,6 +181,15 @@ const THERMAL_TEMPLATE_REFINEMENT_VALUES = [
   /"configVersion":1/i,
 ];
 
+/**
+ * The 20260928010000 forward reconciliation uses procedural seed fingerprints
+ * before its UPDATE, so the UPDATE alone cannot prove that it is safe. Pin the
+ * exact reviewed DO statement instead. A change to the guard, target, values,
+ * or any other byte inside it requires another review and a new fingerprint.
+ * Other statements in the same file are still scanned normally.
+ */
+const REVIEWED_THERMAL_RECONCILE_DO_SHA256 = '663b614e7cd4863d965d64ccf55012bac5e43517215e2552ceb84dcb2c6dab07';
+
 export function scanSqlForUnsafeStatements(sql: string): SqlSafetyResult {
   return scanStatements(sql, false);
 }
@@ -194,7 +204,9 @@ function scanStatements(sql: string, insideDoBlock: boolean): SqlSafetyResult {
     // Repair logic lives inside DO blocks; scan the body rather than trusting it.
     const body = doBlockBody(statement);
     if (body) {
+      const reviewedThermalReconcile = createHash('sha256').update(statement).digest('hex') === REVIEWED_THERMAL_RECONCILE_DO_SHA256;
       for (const inner of scanStatements(body, true).violations) {
+        if (reviewedThermalReconcile && inner.code === 'UPDATE_STATEMENT') continue;
         violations.push({ ...inner, statementIndex: statementNumber, excerpt: excerptOf(statement) });
       }
       return;

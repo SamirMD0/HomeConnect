@@ -20,6 +20,9 @@ import {
   UpdateProductPricingInput, ProductPricingPreview,
   UpdateProductSkuInput, UpdateProductStockInput,
   UpdateProductFeaturesInput,
+  ProductImportCommitResult,
+  ProductImportDecision,
+  ProductImportPreview,
 } from '../types/product.types';
 
 const paramsFor = <T extends object>(values: T) => Object.fromEntries(
@@ -70,4 +73,12 @@ export const productsApi = {
   removeImage: async (id: string): Promise<Product> => (await api.delete(`/products/${id}/image`)).data.data,
   pricingPreview: async (id:string,installmentMonths?:number):Promise<ProductPricingPreview> => (await api.get(`/products/${id}/pricing-preview`,{params:{installmentMonths}})).data.data,
   updatePricing: async(id:string,input:UpdateProductPricingInput):Promise<Product> => (await api.patch(`/products/${id}/pricing`,input)).data.data,
+  createImport: async (input: { fileName: string; csvText: string; sourceSystem: string; brand: string }): Promise<ProductImportPreview> =>
+    (await api.post('/products/imports', input)).data.data,
+  getImport: async (id: string): Promise<ProductImportPreview> =>
+    (await api.get(`/products/imports/${id}`)).data.data,
+  updateImport: async (id: string, categoryMappings: Record<string, string | null>): Promise<ProductImportPreview> =>
+    (await api.patch(`/products/imports/${id}`, { categoryMappings })).data.data,
+  commitImport: async (id: string, input: { decisions: ProductImportDecision[]; accountPassword?: string }): Promise<ProductImportCommitResult> =>
+    (await api.post(`/products/imports/${id}/commit`, input)).data.data,
 };
