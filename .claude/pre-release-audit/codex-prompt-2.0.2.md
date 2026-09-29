@@ -23,10 +23,12 @@ Preconditions to verify before starting:
 3. `git rev-parse HEAD` matches `origin/main`.
 4. `node -v` prints something ≥ 22, `npm -v` prints something ≥ 10.
 5. `cat package.json | jq -r '.version'` prints `2.0.1`.
-6. The isolated audit databases still exist:
-     psql -h localhost -p 5433 -U postgres -l | grep -E 'hc_audit_test_(ci|browser|recovery)'
-   Password: read from your environment or the local .env; never echo it.
-   If any of ci/browser/restored databases are missing, create fresh ones via `npx tsx scripts/release-audit-databases.ts` first.
+6. The isolated audit databases manifest exists and names all three:
+     node -e "const d=require('./e2e/.runtime/databases.json'); const names=Object.fromEntries(Object.entries(d.urls||{}).map(([k,v])=>[k,new URL(v).pathname.slice(1)])); const missing=['ci','browser','restored'].filter(k=>!names[k] || !/^hc_audit_test_/.test(names[k])); if(missing.length){console.error('MISSING:',missing.join(','));process.exit(1)} console.log(JSON.stringify(names,null,2))"
+   Expected: JSON with `ci` matching `^hc_audit_test_ci_.*`, `browser` matching `^hc_audit_test_browser_.*`, `restored` matching `^hc_audit_test_restored_.*`. Exit code 0.
+   If the manifest is missing or any key is absent, regenerate it via `npx tsx scripts/release-audit-databases.ts` first (that script also handles Postgres via Prisma — it does not need `psql` on PATH).
+
+   The runbook does not require `psql` on PATH. Every DB command in later steps runs through Prisma / Node. If a script needs `pg_dump`/`pg_restore` (only the isolated-recovery script does), it already reads `AUDIT_PG_BIN`, which defaults to `D:/Program Files/PostgreSQL/18/bin` on this machine — set the env var only if that path is wrong.
 
 Step 1 — version bump
 - Edit `package.json`: change "version": "2.0.1" to "2.0.2". No other edits.
@@ -49,9 +51,8 @@ Step 2 — clean install (deterministic)
   This guarantees the build is not influenced by any leftover phase-03 install state.
 
 Step 3 — full zero-skip test gate
-    DATABASE_URL="postgresql://postgres:<pw>@localhost:5433/<hc_audit_test_ci_*>" \
-    BUSINESS_TIMEZONE="Asia/Beirut" \
-    npx tsx scripts/release-audit-run.ts test:ci
+- The release-audit runner (`scripts/release-audit-run.ts`) already loads the CI database URL from `e2e/.runtime/databases.json` — no manual `DATABASE_URL` substitution is needed. Just run:
+    BUSINESS_TIMEZONE="Asia/Beirut" npx tsx scripts/release-audit-run.ts test:ci
   Expected: exit 0. Vitest report says at least 365 files / 2,841+ tests / 0 skipped.
   Log written to `.claude/pre-release-audit/evidence/test-ci.log` (archive the prior copy under evidence/history/2026-<date>-pre-2.0.2-test-ci.log before it's overwritten).
 
@@ -153,6 +154,7 @@ Do not push, tag, or open a PR. If any step above fails, stop at that step, prin
 ---
 
 Notes for you (not the agent):
-- The prompt assumes you'll paste your PostgreSQL password inline or via `PGPASSWORD` env — replace `<pw>` before running, and pick the newest `hc_audit_test_ci_phase4_phase5_phase6_*` from the current `e2e/.runtime/databases.json` when you fill in the DATABASE_URL for step 3.
+- The prompt reads DB URLs from `e2e/.runtime/databases.json` — no manual password substitution needed. If that manifest is missing/stale, run `npx tsx scripts/release-audit-databases.ts` once first and Codex can proceed.
+- `psql` is not required. If Codex's environment has `pg_dump`/`pg_restore` on a different path, set `AUDIT_PG_BIN` to the folder containing them (default is `D:/Program Files/PostgreSQL/18/bin` on this machine).
 - If Codex reports a gate failure, share the exact log with me and I'll help diagnose before we retry.
 - The install-and-reboot / hardware / off-machine-backup manual acceptance still needs your hands — no agent can do those.
