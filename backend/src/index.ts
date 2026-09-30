@@ -8,6 +8,7 @@ import { app } from './app';
 import { logger } from './lib/logger';
 import { BackupScheduler } from './features/backup/backup.scheduler';
 import { stopLanListener } from './features/scanner/lan-listener';
+import { assertHostedModeEnv } from './lib/hosted-mode-preflight';
 import { prisma } from './lib/prisma';
 
 const PORT = process.env.PORT || 3001;
@@ -16,6 +17,7 @@ if (process.env.HOME_CONNECT_STARTUP_TRACE === '1') console.info(`[startup] appl
 
 const startServer = () => {
   try {
+    assertHostedModeEnv();
     const server = app.listen(Number(PORT), HOST);
     server.once('listening', () => {
       logger.info(`Server running on http://${HOST}:${PORT}`);
