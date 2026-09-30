@@ -7,6 +7,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { Login } from './pages/Login';
 import { RolloutGuard } from './features/pricing-card/components/RolloutGuard';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { UpdateBusyProvider } from './features/updates/UpdateBusyContext';
 
 // Load business screens when visited so login does not wait for every report,
 // chart, editor and print renderer to be transformed by the dev server.
@@ -177,6 +178,7 @@ const App: React.FC = () => {
       <Router>
         <AuthProvider>
           <ErrorBoundary>
+            <UpdateBusyProvider>
             <Suspense
               fallback={
                 <div
@@ -357,6 +359,7 @@ const App: React.FC = () => {
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </Suspense>
+            </UpdateBusyProvider>
           </ErrorBoundary>
         </AuthProvider>
       </Router>
