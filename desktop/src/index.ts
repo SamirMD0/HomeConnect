@@ -17,6 +17,7 @@ import { createStartupTimeline } from './startup-timeline';
 import { BACKEND_PORT, FRONTEND_PORT } from './runtime-config';
 import { WHATSAPP_OPEN_CHANNEL, openWhatsAppUrl } from './whatsapp-link';
 import { LABEL_PRINT_CHANNEL, printLabels } from './label-print';
+import { startUpdateChecker } from './updater';
 
 let backendProcess: ChildProcess | null = null;
 let frontendServer: Server | null = null;
@@ -229,7 +230,12 @@ if (!gotTheLock) {
 
           sendLog('Startup complete. Opening app...');
           await new Promise(r => setTimeout(r, 500));
-          createWindow();
+          const win = createWindow();
+          try {
+            startUpdateChecker(win, { logger: console });
+          } catch {
+            console.info('updater: init failed');
+          }
           startupComplete = true;
           if (monitorWindow && !monitorWindow.isDestroyed()) {
              monitorWindow.close();
@@ -286,7 +292,12 @@ if (!gotTheLock) {
           await recordDiagnostic(true);
           sendLog('Startup complete. Opening app...');
           await new Promise(r => setTimeout(r, 500));
-          createWindow(FRONTEND_ORIGIN);
+          const win = createWindow(FRONTEND_ORIGIN);
+          try {
+            startUpdateChecker(win, { logger: console });
+          } catch {
+            console.info('updater: init failed');
+          }
           startupComplete = true;
           if (monitorWindow && !monitorWindow.isDestroyed()) {
              monitorWindow.close();

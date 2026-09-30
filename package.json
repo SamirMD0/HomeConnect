@@ -8,6 +8,15 @@
     "directories": {
       "output": "release/${version}"
     },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "SamirMD0",
+        "repo": "HomeConnect",
+        "releaseType": "release",
+        "vPrefixedTagName": true
+      }
+    ],
     "files": [
       "package.json",
       "dist/electron/**/*",
@@ -210,6 +219,7 @@
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
+    "electron-updater": "^6.8.9",
     "express": "^5.2.1",
     "helmet": "^8.3.0",
     "isomorphic-dompurify": "^3.19.0",
