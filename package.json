@@ -82,6 +82,10 @@
         ]
       },
       {
+        "from": "backend/prisma/schema.prisma",
+        "to": "prisma/schema.prisma"
+      },
+      {
         "from": "backend/prisma/repair",
         "to": "repair",
         "filter": [
@@ -180,7 +184,6 @@
     "nodemon": "^3.1.14",
     "postcss": "^8.5.22",
     "prettier": "^3.9.6",
-    "prisma": "^5.22.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-hook-form": "^7.82.0",
@@ -214,6 +217,7 @@
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
+    "prisma": "^5.22.0",
     "bcrypt": "^6.0.0",
     "compression": "^1.8.1",
     "cookie-parser": "^1.4.7",
