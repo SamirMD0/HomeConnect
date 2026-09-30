@@ -3,6 +3,7 @@ import { ChildProcess } from 'child_process';
 import { Server } from 'http';
 import path from 'path';
 import fs from 'fs';
+import dotenv from 'dotenv';
 import { startCompiledBackend, redactLogChunk } from './backend-process';
 import { applyContentSecurityPolicy, resolveCspMode } from './content-security-policy';
 import { BACKEND_HEALTH_URL, FRONTEND_ORIGIN, READY_TIMEOUT_MS } from './runtime-config';
@@ -17,6 +18,7 @@ import { createStartupTimeline } from './startup-timeline';
 import { BACKEND_PORT, FRONTEND_PORT } from './runtime-config';
 import { WHATSAPP_OPEN_CHANNEL, openWhatsAppUrl } from './whatsapp-link';
 import { LABEL_PRINT_CHANNEL, printLabels } from './label-print';
+import { runPreMigrationGuard } from './pre-migration-guard';
 import { startUpdateChecker } from './updater';
 
 let backendProcess: ChildProcess | null = null;
@@ -251,8 +253,39 @@ if (!gotTheLock) {
           if (!fs.existsSync(backendEntryPath)) throw new Error('Compiled backend build missing. Run npm run build before launching.');
           if (await checkPortInUse(BACKEND_PORT)) throw new Error(`Backend port ${BACKEND_PORT} already in use. Close the other application before retrying.`);
           const envFilePath = process.env.BACKEND_ENV_FILE || path.join(app.getPath('userData'), 'config', 'production.env');
-          if (await preflightDatabaseConnection(configuredDatabaseUrl(envFilePath)) === 'refused') {
+          const databaseUrl = configuredDatabaseUrl(envFilePath) || '';
+          if (await preflightDatabaseConnection(databaseUrl) === 'refused') {
             throw new Error('DATABASE_UNAVAILABLE: the configured PostgreSQL endpoint refused a TCP connection.');
+          }
+          if (app.isPackaged) {
+            let configuredBackupDir = '';
+            try { configuredBackupDir = dotenv.parse(fs.readFileSync(envFilePath)).BACKUP_DIR || ''; } catch { /* Use the default backup directory. */ }
+            updateStep('step-config', 'active');
+            sendLog('Running pre-migration guard...');
+            const guardOutcome = await runPreMigrationGuard({
+              currentVersion: app.getVersion(),
+              userDataDir: app.getPath('userData'),
+              backupDir: process.env.BACKUP_DIR || configuredBackupDir || path.join(app.getPath('userData'), 'backups'),
+              migrationsDir: path.join(process.resourcesPath, 'prisma', 'migrations'),
+              databaseUrl,
+              isPackaged: app.isPackaged,
+              logger: { info: (message) => sendLog(redactLogChunk(message)), error: (message) => sendLog(`[ERROR] ${redactLogChunk(message)}`) },
+            });
+            if (guardOutcome.kind === 'failed') {
+              monitorWindow?.webContents.send('diagnostics:startupState', {
+                migrationFailed: {
+                  code: guardOutcome.code,
+                  backupPath: guardOutcome.backupPath ?? '',
+                  from: guardOutcome.from,
+                  to: guardOutcome.to,
+                },
+              });
+              try { await recordDiagnostic(false, `pre-migration-guard: ${guardOutcome.code}`); }
+              catch { sendLog('Could not write pre-migration diagnostics.'); }
+              return;
+            }
+            if (guardOutcome.kind === 'migrated') sendLog(`Applied ${guardOutcome.count} migration(s). Backup at ${guardOutcome.backupPath}`);
+            updateStep('step-config', 'success');
           }
           sendLog('Starting compiled backend process...');
           backendProcess = startCompiledBackend(backendEntryPath, app.getPath('userData'), process.resourcesPath, sendLog);
