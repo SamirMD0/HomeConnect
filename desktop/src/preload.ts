@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
+import type { UpdaterStatus } from './updater';
 
 // The renderer runs with `sandbox: true`, so this preload may only require
 // 'electron' and a handful of builtins — a relative import of the channel
@@ -21,6 +22,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   printLabels: (options: { widthMm: number; heightMm: number }) => ipcRenderer.invoke('labels:print', options),
   retryStartup: () => ipcRenderer.invoke('diagnostics:retryStartup'),
   closeApp: () => ipcRenderer.invoke('diagnostics:closeApp'),
+  updater: {
+    checkNow: () => ipcRenderer.invoke('updater:checkNow'),
+    installNow: () => ipcRenderer.invoke('updater:installNow'),
+    currentStatus: () => ipcRenderer.invoke('updater:currentStatus'),
+    subscribe: (cb: (status: UpdaterStatus) => void) => {
+      const handler = (_event: unknown, status: UpdaterStatus) => cb(status);
+      ipcRenderer.on('updater:status', handler);
+      return () => ipcRenderer.off('updater:status', handler);
+    },
+  },
   onStartupLog: (callback: (event: any, message: string) => void) => {
     ipcRenderer.on('diagnostics:startupLog', callback);
     return () => ipcRenderer.removeListener('diagnostics:startupLog', callback);
