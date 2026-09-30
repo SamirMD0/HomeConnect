@@ -1,5 +1,6 @@
 import { Download, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { BilingualLabel } from '../../components/ui/BilingualLabel';
 import { useAuth } from '../../hooks/useAuth';
 import { useUpdater } from './useUpdater';
@@ -11,9 +12,14 @@ export function UpdateChip() {
   const { status, supported, installNow } = useUpdater();
   if (user?.role !== 'ADMIN' || !supported) return null;
 
+  const handleInstall = async () => {
+    const outcome = await installNow();
+    if (!outcome.ok) toast(outcome.blocked.map((reason) => `• ${reason}`).join('\n') + '\nPlease finish, then try again. / يرجى الإنهاء ثم المحاولة مجددًا.', { icon: '⏳', duration: 4000 });
+  };
+
   if (status.state === 'ready') {
     return (
-      <button type="button" onClick={() => void installNow()} className={chipClass}>
+      <button type="button" onClick={() => void handleInstall()} className={chipClass}>
         <RefreshCw className="h-4 w-4 shrink-0" aria-hidden="true" />
         <BilingualLabel label={{ en: 'Update ready · Restart', ar: 'التحديث جاهز · إعادة التشغيل' }} />
       </button>

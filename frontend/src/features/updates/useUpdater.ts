@@ -1,16 +1,21 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { UpdaterStatus } from '../../types/updater';
+import { useBusyReasons } from './UpdateBusyContext';
+
+export type InstallOutcome = { ok: true } | { ok: false; blocked: string[] };
 
 export interface UseUpdater {
   status: UpdaterStatus;
   supported: boolean;
+  busyReasons: string[];
   checkNow: () => Promise<void>;
-  installNow: () => Promise<void>;
+  installNow: () => Promise<InstallOutcome>;
 }
 
 export function useUpdater(): UseUpdater {
   const [status, setStatus] = useState<UpdaterStatus>({ state: 'idle' });
   const supported = typeof window !== 'undefined' && Boolean(window.electronAPI?.updater);
+  const busyReasons = useBusyReasons();
 
   useEffect(() => {
     const updater = window.electronAPI?.updater;
@@ -45,13 +50,16 @@ export function useUpdater(): UseUpdater {
     }
   }, []);
 
-  const installNow = useCallback(async () => {
+  const installNow = useCallback(async (): Promise<InstallOutcome> => {
+    if (busyReasons.length > 0) return { ok: false, blocked: busyReasons };
+    if (!window.electronAPI?.updater) return { ok: false, blocked: ['Updater not available'] };
     try {
-      await window.electronAPI?.updater?.installNow();
+      await window.electronAPI.updater.installNow();
+      return { ok: true };
     } catch {
-      setStatus({ state: 'error', error: 'install-failed' });
+      return { ok: false, blocked: ['Could not start the installer'] };
     }
-  }, []);
+  }, [busyReasons]);
 
-  return { status, supported, checkNow, installNow };
+  return { status, supported, busyReasons, checkNow, installNow };
 }
