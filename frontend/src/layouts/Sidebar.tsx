@@ -4,6 +4,7 @@ import { ChevronsLeft, ChevronsRight, LogOut } from 'lucide-react';
 import { cn } from '../lib/cn';
 import { useAuth } from '../hooks/useAuth';
 import { NAVIGATION, isItemVisible, isPathActive, type NavigationItem } from './navigation';
+import { UpdateChip } from '../features/updates/UpdateChip';
 
 export interface SidebarProps {
   collapsed: boolean;
@@ -80,6 +81,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onLogout 
         })}
       </nav>
 
+      {!collapsed && <UpdateChip />}
       <SidebarAccountRow collapsed={collapsed} onLogout={onLogout} />
     </aside>
   );
