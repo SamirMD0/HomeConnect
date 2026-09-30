@@ -1,0 +1,42 @@
+{
+  "timestamp": "2026-09-30T10:51:58.021Z",
+  "results": [
+    {
+      "scenario": "same-version",
+      "actual": "same-version",
+      "expected": "same-version",
+      "passed": true,
+      "workspace": "C:\\Users\\User\\AppData\\Local\\Temp\\hc-migration-drill-wZtGwI"
+    },
+    {
+      "scenario": "no-pending-migrations",
+      "actual": "no-pending-migrations",
+      "expected": "no-pending-migrations",
+      "passed": true,
+      "workspace": "C:\\Users\\User\\AppData\\Local\\Temp\\hc-migration-drill-qGkNoK"
+    },
+    {
+      "scenario": "successful-migration",
+      "actual": "MIGRATION_FAILED",
+      "expected": "migrated",
+      "passed": false,
+      "backupPath": "C:\\Users\\User\\AppData\\Local\\Temp\\hc-migration-drill-CYJPlm\\backups\\pre-update-drill-0-to-drill-1-2026-09-30T10-51-47-673Z.backup",
+      "workspace": "C:\\Users\\User\\AppData\\Local\\Temp\\hc-migration-drill-CYJPlm"
+    },
+    {
+      "scenario": "missing-pg-dump",
+      "actual": "BACKUP_TOOL_NOT_FOUND",
+      "expected": "BACKUP_TOOL_NOT_FOUND",
+      "passed": true,
+      "workspace": "C:\\Users\\User\\AppData\\Local\\Temp\\hc-migration-drill-oms2Jt"
+    },
+    {
+      "scenario": "failed-migration",
+      "actual": "MIGRATION_FAILED",
+      "expected": "MIGRATION_FAILED",
+      "passed": true,
+      "backupPath": "C:\\Users\\User\\AppData\\Local\\Temp\\hc-migration-drill-aH0Gzv\\backups\\pre-update-drill-0-to-drill-1-2026-09-30T10-51-56-517Z.backup",
+      "workspace": "C:\\Users\\User\\AppData\\Local\\Temp\\hc-migration-drill-aH0Gzv"
+    }
+  ]
+}
