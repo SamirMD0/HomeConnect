@@ -28,6 +28,23 @@ function validateFixtureUrl(value: string | undefined): string {
 async function seedFixture(databaseUrl: string): Promise<void> {
   const client = new PrismaClient({ datasources: { db: { url: databaseUrl } } });
   try {
+    // Mimic a real shop PC: the DB has data AND a populated _prisma_migrations
+    // table. Without the baseline row Prisma refuses to run `migrate deploy`
+    // against a non-empty schema (P3005 — "database schema is not empty").
+    await client.$executeRawUnsafe(`CREATE TABLE IF NOT EXISTS "_prisma_migrations" (
+      id character varying(36) PRIMARY KEY,
+      checksum character varying(64) NOT NULL,
+      finished_at timestamptz,
+      migration_name character varying(255) NOT NULL,
+      logs text,
+      rolled_back_at timestamptz,
+      started_at timestamptz NOT NULL DEFAULT now(),
+      applied_steps_count integer NOT NULL DEFAULT 0
+    )`);
+    await client.$executeRawUnsafe(`INSERT INTO "_prisma_migrations"
+      (id, checksum, migration_name, finished_at, applied_steps_count)
+      VALUES ('drill-baseline', 'drill', '00000000000000_baseline', now(), 1)
+      ON CONFLICT (id) DO NOTHING`);
     await client.$executeRawUnsafe('CREATE TABLE IF NOT EXISTS "__hc_drill_payload" (id bigserial PRIMARY KEY, payload text NOT NULL)');
     await client.$executeRawUnsafe(`INSERT INTO "__hc_drill_payload" (payload)
       SELECT md5(random()::text || g::text) || md5(random()::text || g::text) || md5(random()::text || g::text)
