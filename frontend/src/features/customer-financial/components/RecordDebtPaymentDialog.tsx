@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react';
+import { useBusyLock } from '../../updates/UpdateBusyContext';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { useRecordDebtPayment } from '../hooks/useFinancialMutations';
@@ -60,6 +61,7 @@ export const RecordDebtPaymentDialog: React.FC<RecordDebtPaymentDialogProps> = (
     },
   });
   const amount = watch('amount');
+  useBusyLock('payment-in-progress', true, 'Payment in progress');
 
   const onSubmit = async (values: DebtPaymentFormValues) => {
     setServerError(null);

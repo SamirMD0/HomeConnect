@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useBusyLock } from '../../updates/UpdateBusyContext';
 import { CheckCircle2, Download, FolderOpen, RefreshCw, RotateCcw, ShieldAlert } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Modal } from '../../../components/ui/Modal';
@@ -22,6 +23,7 @@ export const BackupRestorePanel: React.FC = () => {
   const updateSettings = useUpdateBackupSettings();
   const [restoreTarget, setRestoreTarget] = useState<BackupRecord | null>(null);
   const [isImportingBackup, setIsImportingBackup] = useState(false);
+  useBusyLock('backup-in-progress', createBackup.isPending || isImportingBackup || Boolean(restoreTarget), 'Backup or restore in progress');
 
   if (statusQuery.isLoading || settingsQuery.isLoading || listQuery.isLoading) {
     return <div className="h-48 animate-pulse rounded-lg border border-slate-200 bg-slate-100" />;
