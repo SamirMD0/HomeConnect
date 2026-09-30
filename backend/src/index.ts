@@ -8,18 +8,24 @@ import { app } from './app';
 import { logger } from './lib/logger';
 import { BackupScheduler } from './features/backup/backup.scheduler';
 import { stopLanListener } from './features/scanner/lan-listener';
+import { assertHostedModeEnv } from './lib/hosted-mode-preflight';
 import { prisma } from './lib/prisma';
 
 const PORT = process.env.PORT || 3001;
-const HOST = process.env.HOST || '127.0.0.1';
+const HOST = process.env.HOST || (process.env.NODE_ENV === 'production' ? '0.0.0.0' : '127.0.0.1');
 if (process.env.HOME_CONNECT_STARTUP_TRACE === '1') console.info(`[startup] application imports complete at ${new Date().toISOString()}`);
 
 const startServer = () => {
   try {
+    assertHostedModeEnv();
     const server = app.listen(Number(PORT), HOST);
     server.once('listening', () => {
       logger.info(`Server running on http://${HOST}:${PORT}`);
-      BackupScheduler.start();
+      if (process.env.HOSTED_MODE !== 'true') {
+        BackupScheduler.start();
+      } else {
+        logger.info('BackupScheduler skipped: HOSTED_MODE=true');
+      }
     });
     server.on('close', () => console.log('Server closed'));
     server.on('error', (err) => {
@@ -29,7 +35,9 @@ const startServer = () => {
 
     const shutdown = async (signal: string) => {
       logger.info(`Server shutting down from ${signal}`);
-      BackupScheduler.stop();
+      if (process.env.HOSTED_MODE !== 'true') {
+        BackupScheduler.stop();
+      }
       // Closes the LAN scanner socket if an admin left it enabled, so the port
       // is not held open past the process.
       await stopLanListener();

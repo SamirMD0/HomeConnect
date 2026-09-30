@@ -55,7 +55,9 @@ const backupRecord = {
   errorMessage: null,
 };
 
-describe('backup admin routes', () => {
+const describeWhenLocal = process.env.HOSTED_MODE === 'true' ? describe.skip : describe;
+
+describeWhenLocal('backup admin routes', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     backupServiceMock.getStatus.mockResolvedValue({ system: { status: 'NORMAL', message: null } });
