@@ -19,7 +19,11 @@ const startServer = () => {
     const server = app.listen(Number(PORT), HOST);
     server.once('listening', () => {
       logger.info(`Server running on http://${HOST}:${PORT}`);
-      BackupScheduler.start();
+      if (process.env.HOSTED_MODE !== 'true') {
+        BackupScheduler.start();
+      } else {
+        logger.info('BackupScheduler skipped: HOSTED_MODE=true');
+      }
     });
     server.on('close', () => console.log('Server closed'));
     server.on('error', (err) => {
@@ -29,7 +33,9 @@ const startServer = () => {
 
     const shutdown = async (signal: string) => {
       logger.info(`Server shutting down from ${signal}`);
-      BackupScheduler.stop();
+      if (process.env.HOSTED_MODE !== 'true') {
+        BackupScheduler.stop();
+      }
       // Closes the LAN scanner socket if an admin left it enabled, so the port
       // is not held open past the process.
       await stopLanListener();
