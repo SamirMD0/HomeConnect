@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useBusyLock } from '../../updates/UpdateBusyContext';
 import { Check, ChevronLeft, ChevronRight, Phone, Save, ShoppingBag, Truck } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button, Card, FormField, Input, Modal, Select, Textarea } from '../../../components/ui';
@@ -48,6 +49,7 @@ export function CreateSalesOrderDialog({ isOpen, onClose, prefill = null }: { is
   const [deliveryTaxTreatment, setDeliveryTaxTreatment] = useState<DeliveryTaxTreatment>('STANDARD');
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [deliveryNotes, setDeliveryNotes] = useState('');
+  useBusyLock('sales-order-in-progress', isOpen, 'Sale in progress');
   const appliedPrefillId = useRef<string | null>(null);
   const total = useMemo(() => calculatePreview(items, channel === 'SHOP_DIRECT' ? '0.00' : deliveryFee), [items, channel, deliveryFee]);
   const paidAmount = paymentMode === 'FULL' ? total : paymentMode === 'UNPAID' ? '0.00' : normalizeMoney(partialAmount);
