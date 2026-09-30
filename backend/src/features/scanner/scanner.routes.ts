@@ -27,7 +27,9 @@ scannerRoutes.post(
 // Turning the LAN listener on or off is the most consequential action in the
 // feature, so it is admin-only. Reading the status is not: the status strip
 // shows it to everyone.
-scannerRoutes.post('/lan/enable', requireRole(['ADMIN']), ScannerController.enableLan);
+if (process.env.HOSTED_MODE !== 'true') {
+  scannerRoutes.post('/lan/enable', requireRole(['ADMIN']), ScannerController.enableLan);
+}
 scannerRoutes.post('/lan/disable', requireRole(['ADMIN']), ScannerController.disableLan);
 scannerRoutes.get('/lan-status', ScannerController.lanStatus);
 
