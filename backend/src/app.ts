@@ -136,7 +136,9 @@ app.use('/api/v1/reports', requireAuth, monthlyDebtsRoutes);
 app.use('/api/v1/reports', requireAuth, monthlyReviewRoutes);
 app.use('/api/v1/reports', requireAuth, reportRowsRoutes);
 app.use('/api/v1/reports', requireAuth, analysisRoutes);
-app.use('/api/v1/admin/backups', requireAuth, backupRoutes);
+if (process.env.HOSTED_MODE !== 'true') {
+  app.use('/api/v1/admin/backups', requireAuth, backupRoutes);
+}
 app.use('/api/v1/admin/diagnostics', requireAuth, diagnosticsRoutes);
 app.use('/api/v1/admin/preflight', requireAuth, preflightRoutes);
 app.use('/api/v1/admin/maintenance', requireAuth, maintenanceRoutes);
