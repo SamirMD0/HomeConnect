@@ -1,8 +1,9 @@
 import { spawn as nodeSpawn } from 'child_process';
 import type { ChildProcess, SpawnOptions } from 'child_process';
 import fsPromises from 'fs/promises';
+import Module from 'module';
 import path from 'path';
-import { PrismaClient } from '@prisma/client';
+import type { PrismaClient as PrismaClientType } from '@prisma/client';
 
 export type PreMigrationFailureCode =
   | 'BACKUP_TOOL_NOT_FOUND'
@@ -32,7 +33,33 @@ export interface PreMigrationGuardOptions {
   now?: () => Date;
 }
 
+// Packaged Electron main does not get the NODE_PATH that backend-process.ts
+// sets for the spawned backend, so Prisma's internal dynamic require of
+// '.prisma/client/default' cannot resolve the unpacked copy. Patch NODE_PATH
+// once, re-init module paths, then lazy-require @prisma/client. Dev-mode
+// (where resourcesPath points at the dev tree) is a no-op.
+let prismaClientCtor: typeof PrismaClientType | null = null;
+function loadPrismaClient(): typeof PrismaClientType {
+  if (prismaClientCtor) return prismaClientCtor;
+  const resourcesPath = process.resourcesPath;
+  if (resourcesPath && resourcesPath.includes('resources')) {
+    const extra = [
+      path.join(resourcesPath, 'app.asar', 'node_modules'),
+      path.join(resourcesPath, 'app.asar.unpacked', 'node_modules'),
+    ];
+    const current = process.env.NODE_PATH ? process.env.NODE_PATH.split(path.delimiter) : [];
+    const already = new Set(current);
+    const merged = [...current, ...extra.filter((entry) => !already.has(entry))];
+    process.env.NODE_PATH = merged.join(path.delimiter);
+    (Module as unknown as { _initPaths(): void })._initPaths();
+  }
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  prismaClientCtor = (require('@prisma/client') as { PrismaClient: typeof PrismaClientType }).PrismaClient;
+  return prismaClientCtor;
+}
+
 async function appliedMigrations(dbUrl: string): Promise<Set<string>> {
+  const PrismaClient = loadPrismaClient();
   const client = new PrismaClient({ datasources: { db: { url: dbUrl } } });
   try {
     const rows = await client.$queryRawUnsafe<Array<{ migration_name: string; finished_at: Date | null }>>(
