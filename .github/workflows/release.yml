@@ -65,6 +65,12 @@ jobs:
       - name: Apply migrations to integration-test database
         run: npx prisma migrate deploy --schema backend/prisma/schema.prisma
 
+      - name: Emit backend declarations for frontend project references
+        # tsconfig.json uses project references into tsconfig.server.json
+        # (composite: true). TS6305 fires on frontend typecheck unless the
+        # server's .d.ts output is present. Emit declarations only — no .js.
+        run: npx tsc -p tsconfig.server.json --emitDeclarationOnly
+
       - name: Typecheck
         run: npm run typecheck
 
