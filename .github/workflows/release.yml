@@ -1,0 +1,138 @@
+name: Draft Windows release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: homeconnect
+          POSTGRES_PASSWORD: ci_local_password
+          POSTGRES_DB: homeconnect_ci_phase4_phase5_phase6
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U homeconnect"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://homeconnect:ci_local_password@localhost:5432/homeconnect_ci_phase4_phase5_phase6
+      JWT_SECRET: ci_only_jwt_secret_not_used_outside_ci
+      JWT_REFRESH_SECRET: ci_only_jwt_refresh_secret_not_used_outside_ci
+    steps:
+      - name: Check out tag commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Match tag to package version
+        shell: bash
+        run: |
+          pkg_version="$(node -p "require('./package.json').version")"
+          tag_version="${GITHUB_REF_NAME#v}"
+          if [ "$pkg_version" != "$tag_version" ]; then
+            echo "::error::package.json version $pkg_version does not match tag $tag_version"
+            exit 1
+          fi
+          echo "package.json version matches tag: $pkg_version"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate --schema backend/prisma/schema.prisma
+
+      - name: Apply migrations to integration-test database
+        run: npx prisma migrate deploy --schema backend/prisma/schema.prisma
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test including database integration suites
+        run: npm run test:ci
+
+      - name: Rehearse migrations on scratch database
+        run: npm run rehearse:migrations
+        env:
+          REHEARSAL_CONFIRM_SCRATCH: '1'
+
+  build:
+    needs: verify
+    runs-on: windows-latest
+    steps:
+      - name: Check out tag commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Electron main
+        run: npm run build:electron-main
+
+      - name: Build frontend and backend
+        run: npm run build
+
+      - name: Refuse an existing release for this tag
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $response = Invoke-WebRequest -Uri "https://api.github.com/repos/$env:GITHUB_REPOSITORY/releases/tags/$env:GITHUB_REF_NAME" -Headers @{ Authorization = "Bearer $env:GH_TOKEN"; 'X-GitHub-Api-Version' = '2022-11-28' } -SkipHttpErrorCheck
+          if ($response.StatusCode -ne 404) { throw "Refusing to change an existing release or proceed after a release lookup error." }
+
+      - name: Build installer and attach assets to a new draft
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EP_DRAFT: 'true'
+        run: |
+          $version = node -p "require('./package.json').version"
+          npx electron-builder --win --config.npmRebuild=false --publish=onTagOrDraft "-c.releaseInfo.releaseName=Home Connect $version"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Verify current installer
+        run: npx tsx scripts/verify-current-installer.ts
+
+      - name: Record release folder listing
+        shell: pwsh
+        run: |
+          $version = node -p "require('./package.json').version"
+          Get-ChildItem -LiteralPath "release/$version" | Select-Object Name, Length | Format-Table -AutoSize | Out-String | Set-Content -LiteralPath "release/$version/release-listing.txt"
+
+      - name: Upload release metadata and folder listing
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-evidence-${{ github.ref_name }}
+          if-no-files-found: error
+          path: |
+            release/*/*.yml
+            release/*/*.blockmap
+            release/*/release-listing.txt
