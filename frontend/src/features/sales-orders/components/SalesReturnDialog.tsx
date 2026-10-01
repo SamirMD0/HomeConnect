@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { useMemo, useState } from 'react';
+import { useBusyLock } from '../../updates/UpdateBusyContext';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { Button, FormField, Input, Modal, Textarea } from '../../../components/ui';
@@ -29,6 +30,7 @@ export function SalesReturnDialog({ order, onClose }: { order: SalesOrder; onClo
   const [overrideReason, setOverrideReason] = useState('');
   const idempotencyKey = useMemo(() => `sales-return-${crypto.randomUUID()}`, []);
   const settings = useBusinessSettings();
+  useBusyLock('sales-return-in-progress', true, 'Sales return in progress');
   const windowExpired = isReturnWindowExpired(order.orderDate, settings.data?.returnWindowDays);
   const overrideActive = windowExpired && override;
   const selectedItems = order.items.filter((item) => lines[item.id].quantity > 0 && !returnLineBlocker(item));

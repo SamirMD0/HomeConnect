@@ -5,6 +5,7 @@ import { MaintenancePanel } from '../../features/maintenance/components/Maintena
 import { ExchangeRatePanel } from '../../features/exchange-rates/components/ExchangeRatePanel';
 import { BusinessSettingsPanel } from '../../features/documents/components/BusinessSettingsPanel';
 import { useAuth } from '../../hooks/useAuth';
+import { UpdateSettingsPanel } from '../../features/updates/UpdateSettingsPanel';
 
 export const SettingsPage: React.FC = () => {
   const { user } = useAuth();
@@ -14,6 +15,7 @@ export const SettingsPage: React.FC = () => {
       <div className="mx-auto max-w-3xl rounded-lg border border-amber-200 bg-amber-50 p-6 text-amber-900">
         <h1 className="text-xl font-semibold">Settings are admin-only</h1>
         <p className="mt-2 text-sm">Backup and restore controls are restricted to admins.</p>
+        <div className="mt-4"><UpdateSettingsPanel /></div>
       </div>
     );
   }
@@ -28,6 +30,8 @@ export const SettingsPage: React.FC = () => {
       </div>
 
       <BackupRestorePanel />
+
+      <UpdateSettingsPanel />
 
       <BusinessSettingsPanel />
 

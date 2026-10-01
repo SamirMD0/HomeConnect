@@ -1,3 +1,5 @@
+import type { UpdaterStatus } from '../../../types/updater';
+
 export type BackupType = 'MANUAL' | 'AUTO' | 'PRE_RESTORE';
 export type BackupStatus = 'IN_PROGRESS' | 'COMPLETED' | 'FAILED' | 'DELETED' | 'RESTORED';
 export type SystemStatus = 'NORMAL' | 'BACKUP_IN_PROGRESS' | 'RESTORE_IN_PROGRESS' | 'RESTART_REQUIRED' | 'FAILED';
@@ -79,6 +81,12 @@ export interface ApiResponse<T> {
 declare global {
   interface Window {
     electronAPI?: {
+      updater?: {
+        checkNow(): Promise<UpdaterStatus>;
+        installNow(): Promise<void>;
+        currentStatus(): Promise<UpdaterStatus>;
+        subscribe(cb: (status: UpdaterStatus) => void): () => void;
+      };
       ping?: () => Promise<string>;
       selectBackupDirectory?: () => Promise<string | null>;
       selectBackupFile?: () => Promise<string | null>;

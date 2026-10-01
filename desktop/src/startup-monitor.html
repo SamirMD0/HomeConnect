@@ -246,8 +246,17 @@
         <p class="guidance-fix" id="guidance-fix"></p>
       </div>
 
+      <div class="guidance" id="migration-failure">
+        <p class="guidance-summary">Home Connect could not update</p>
+        <p class="guidance-fix">We saved your data to:</p>
+        <p class="guidance-fix" id="migration-backup-path"></p>
+        <p class="guidance-fix" id="migration-reason"></p>
+        <p class="guidance-fix">Please contact support and share the diagnostics below.</p>
+      </div>
+
       <div class="actions">
         <button id="btn-retry" style="display: none;" class="primary">Retry Startup</button>
+        <button id="btn-reveal" style="display: none;">Reveal backup</button>
         <button id="btn-copy">Copy Diagnostics</button>
         <button id="btn-logs">Open Logs Folder</button>
         <button id="btn-close">Close App</button>
@@ -263,8 +272,11 @@
     const logsContainer = document.getElementById('logs');
     const statusBadge = document.getElementById('status-badge');
     const retryBtn = document.getElementById('btn-retry');
+    const revealBtn = document.getElementById('btn-reveal');
     
     let isDev = false;
+    let migrationDiagnostics = null;
+    let migrationBackupDirectory = null;
 
     // Auto-scroll logic
     function scrollToBottom() {
@@ -297,10 +309,45 @@
       box.style.display = 'block';
     }
 
+    function showMigrationFailure(failure) {
+      const reasons = {
+        BACKUP_TOOL_NOT_FOUND: 'The PostgreSQL client tools were not found on this PC.',
+        BACKUP_FAILED_COMMAND: 'The pre-update backup did not complete.',
+        BACKUP_FAILED_EMPTY: 'The pre-update backup file was too small to trust.',
+        MIGRATION_FAILED: 'The database update did not complete.',
+        MIGRATION_TIMEOUT: 'The database update took too long and was stopped.',
+      };
+      const backupPath = typeof failure.backupPath === 'string' ? failure.backupPath : '';
+      const separator = Math.max(backupPath.lastIndexOf('/'), backupPath.lastIndexOf('\\'));
+      migrationBackupDirectory = separator > 0 ? backupPath.slice(0, separator) : null;
+      migrationDiagnostics = [
+        `Version: ${failure.from || 'unknown'} → ${failure.to || 'unknown'}`,
+        `Failure code: ${failure.code || 'unknown'}`,
+        `Timestamp: ${new Date().toISOString()}`,
+        `Backup path: ${backupPath || 'none'}`,
+      ].join('\n');
+      document.querySelector('.title').textContent = 'Home Connect could not update';
+      document.getElementById('checklist').style.display = 'none';
+      document.getElementById('guidance').style.display = 'none';
+      document.getElementById('migration-failure').style.display = 'block';
+      document.getElementById('migration-backup-path').textContent = backupPath || 'No verified backup was created.';
+      document.getElementById('migration-reason').textContent = reasons[failure.code] || reasons.MIGRATION_FAILED;
+      statusBadge.textContent = 'Update Failed';
+      statusBadge.className = 'status-badge error';
+      retryBtn.style.display = 'none';
+      document.getElementById('btn-logs').style.display = 'none';
+      revealBtn.style.display = 'block';
+      revealBtn.disabled = !migrationBackupDirectory;
+    }
+
     // Set up button handlers
     document.getElementById('btn-copy').addEventListener('click', () => {
       const allText = Array.from(logsContainer.children).map(c => c.textContent).join('\n');
-      window.electronAPI?.copyDiagnostics(allText);
+      window.electronAPI?.copyDiagnostics(migrationDiagnostics || allText);
+    });
+
+    revealBtn.addEventListener('click', () => {
+      if (migrationBackupDirectory) window.electronAPI?.openBackupDirectory(migrationBackupDirectory);
     });
 
     document.getElementById('btn-logs').addEventListener('click', () => {
@@ -330,6 +377,10 @@
       });
 
       window.electronAPI.onStartupState((event, state) => {
+        if (state.migrationFailed) {
+          showMigrationFailure(state.migrationFailed);
+          return;
+        }
         if (state.devMode) {
           isDev = true;
           statusBadge.textContent = 'Development Mode';

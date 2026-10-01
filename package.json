@@ -8,6 +8,15 @@
     "directories": {
       "output": "release/${version}"
     },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "SamirMD0",
+        "repo": "HomeConnect",
+        "releaseType": "release",
+        "vPrefixedTagName": true
+      }
+    ],
     "files": [
       "package.json",
       "dist/electron/**/*",
@@ -71,6 +80,10 @@
           "**/*.sql",
           "**/migration_lock.toml"
         ]
+      },
+      {
+        "from": "backend/prisma/schema.prisma",
+        "to": "prisma/schema.prisma"
       },
       {
         "from": "backend/prisma/repair",
@@ -171,7 +184,6 @@
     "nodemon": "^3.1.14",
     "postcss": "^8.5.22",
     "prettier": "^3.9.6",
-    "prisma": "^5.22.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-hook-form": "^7.82.0",
@@ -205,11 +217,13 @@
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
+    "prisma": "^5.22.0",
     "bcrypt": "^6.0.0",
     "compression": "^1.8.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
+    "electron-updater": "^6.8.9",
     "express": "^5.2.1",
     "helmet": "^8.3.0",
     "isomorphic-dompurify": "^3.19.0",
