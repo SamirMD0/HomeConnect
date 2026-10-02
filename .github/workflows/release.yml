@@ -123,18 +123,59 @@ jobs:
           $response = Invoke-WebRequest -Uri "https://api.github.com/repos/$env:GITHUB_REPOSITORY/releases/tags/$env:GITHUB_REF_NAME" -Headers @{ Authorization = "Bearer $env:GH_TOKEN"; 'X-GitHub-Api-Version' = '2022-11-28' } -SkipHttpErrorCheck
           if ($response.StatusCode -ne 404) { throw "Refusing to change an existing release or proceed after a release lookup error." }
 
-      - name: Build installer and attach assets to a new draft
+      - name: Build installer (no publish)
+        # electron-builder's --publish=onTagOrDraft returns 0 as soon as its
+        # main process exits — the 133 MB installer upload happens in a
+        # detached task that the runner can cut off when the step ends. We
+        # saw this on v2.0.4: only the 129 KB blockmap finished before the
+        # step ended; the installer and latest.yml were lost. Decoupling
+        # build from publish is the only way to make uploads deterministic.
         shell: pwsh
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          EP_DRAFT: 'true'
         run: |
           $version = node -p "require('./package.json').version"
-          npx electron-builder --win --config.npmRebuild=false --publish=onTagOrDraft "-c.releaseInfo.releaseName=Home Connect $version"
+          npx electron-builder --win --config.npmRebuild=false --publish=never "-c.releaseInfo.releaseName=Home Connect $version"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Verify current installer
         run: npx tsx scripts/verify-current-installer.ts
+
+      - name: Draft GitHub release with all assets (synchronous)
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $version = node -p "require('./package.json').version"
+          $tag = "v$version"
+          $notes = "Draft release $tag. Fill in release notes from docs/releases/$version.md before publishing."
+          gh release create $tag `
+            --draft `
+            --title "Home Connect $version" `
+            --notes $notes `
+            "release/$version/HomeConnect-Setup-$version.exe" `
+            "release/$version/HomeConnect-Setup-$version.exe.blockmap" `
+            "release/$version/latest.yml"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Verify draft has all expected assets
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $version = node -p "require('./package.json').version"
+          $tag = "v$version"
+          $view = gh release view $tag --json assets | ConvertFrom-Json
+          $assetNames = $view.assets.name
+          $expected = @(
+            "HomeConnect-Setup-$version.exe",
+            "HomeConnect-Setup-$version.exe.blockmap",
+            "latest.yml"
+          )
+          $missing = $expected | Where-Object { $assetNames -notcontains $_ }
+          if ($missing.Count -gt 0) {
+            Write-Error "Draft $tag is missing expected assets: $($missing -join ', ')"
+            exit 1
+          }
+          Write-Host "Draft $tag has all 3 expected assets: $($expected -join ', ')"
 
       - name: Record release folder listing
         shell: pwsh
