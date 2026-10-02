@@ -2,17 +2,22 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useReducer, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { scannerApi, ScannerApiError } from './src/api/scanner-api';
+import { fetchMe } from './src/api/auth-api';
+import { HcApiError } from './src/api/hc-client';
 import { StatusBanner } from './src/components/StatusBanner';
 import { ConnectionSetupScreen } from './src/screens/ConnectionSetupScreen';
-import { PairingScreen } from './src/screens/PairingScreen';
+import { LoginScreen } from './src/screens/LoginScreen';
 import { ScannerScreen } from './src/screens/ScannerScreen';
 import { sessionFlowReducer } from './src/state/session-flow';
 import {
-  clearSessionToken,
+  clearAllAuth,
+  loadAuthToken,
+  loadAuthUser,
   loadConnection,
-  loadSessionToken,
   requireSecureStorage,
+  saveAuthToken,
+  saveAuthUser,
+  StoredAuthUser,
 } from './src/storage/secure-storage';
 import { ConnectionSettings } from './src/types/scanner.types';
 
@@ -20,6 +25,7 @@ export default function App() {
   const [phase, dispatch] = useReducer(sessionFlowReducer, 'RESTORING');
   const [connection, setConnection] = useState<ConnectionSettings | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [authUser, setAuthUser] = useState<StoredAuthUser | null>(null);
   const [fatalError, setFatalError] = useState<string | null>(null);
   const [startupMessage, setStartupMessage] = useState<string | null>(null);
 
@@ -28,13 +34,18 @@ export default function App() {
     const restore = async () => {
       try {
         await requireSecureStorage();
-        const [storedConnection, storedToken] = await Promise.all([loadConnection(), loadSessionToken()]);
+        const [storedConnection, storedToken, storedUser] = await Promise.all([
+          loadConnection(),
+          loadAuthToken(),
+          loadAuthUser(),
+        ]);
         if (!active) return;
         setConnection(storedConnection);
         setToken(storedToken);
+        setAuthUser(storedUser);
 
         if (!storedConnection) {
-          if (storedToken) await clearSessionToken();
+          if (storedToken || storedUser) await clearAllAuth();
           dispatch({ type: 'RESTORED_WITHOUT_CONNECTION' });
           return;
         }
@@ -44,17 +55,23 @@ export default function App() {
         }
 
         try {
-          await scannerApi.session(storedConnection, storedToken);
-          if (active) dispatch({ type: 'SESSION_VALID' });
+          const me = await fetchMe(storedConnection, storedToken);
+          if (!active) return;
+          const freshUser = { id: me.id, email: me.email, fullName: me.fullName, role: me.role };
+          setAuthUser(freshUser);
+          await saveAuthUser(freshUser);
+          dispatch({ type: 'SESSION_VALID' });
         } catch (error) {
           if (!active) return;
-          if (error instanceof ScannerApiError && error.kind === 'UNAUTHORIZED') {
-            await clearSessionToken();
+          if (error instanceof HcApiError && error.kind === 'UNAUTHORIZED') {
+            await clearAllAuth();
             setToken(null);
+            setAuthUser(null);
             dispatch({ type: 'SESSION_INVALID' });
           } else {
-            setStartupMessage('Could not confirm the PC connection. You can retry by scanning when the PC is available.');
-            dispatch({ type: 'SESSION_VALID' });
+            setStartupMessage('Could not confirm the server connection. Scans will retry when the server is reachable.');
+            if (storedUser) dispatch({ type: 'SESSION_VALID' });
+            else dispatch({ type: 'RESTORED_WITHOUT_TOKEN' });
           }
         }
       } catch (error) {
@@ -66,17 +83,27 @@ export default function App() {
   }, []);
 
   const invalidateSession = async () => {
-    await clearSessionToken();
+    await clearAllAuth();
     setToken(null);
+    setAuthUser(null);
     setStartupMessage(null);
     dispatch({ type: 'SESSION_INVALID' });
   };
 
   const changeConnection = async () => {
-    await clearSessionToken();
+    await clearAllAuth();
     setToken(null);
+    setAuthUser(null);
     setStartupMessage(null);
     dispatch({ type: 'CHANGE_CONNECTION' });
+  };
+
+  const handleLoggedIn = async (accessToken: string, user: StoredAuthUser) => {
+    await Promise.all([saveAuthToken(accessToken), saveAuthUser(user)]);
+    setToken(accessToken);
+    setAuthUser(user);
+    setStartupMessage(null);
+    dispatch({ type: 'LOGGED_IN' });
   };
 
   const body = (() => {
@@ -90,18 +117,55 @@ export default function App() {
       );
     }
     if (phase === 'RESTORING') {
-      return <View style={styles.center}><ActivityIndicator size="large" color="#047857" /><Text style={styles.loading}>Restoring scanner session…</Text></View>;
+      return (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color="#047857" />
+          <Text style={styles.loading}>Restoring session…</Text>
+        </View>
+      );
     }
     if (phase === 'SETUP') {
-      return <ConnectionSetupScreen initialSettings={connection} onConnected={(settings) => { setConnection(settings); setToken(null); dispatch({ type: 'CONNECTION_SAVED' }); }} />;
+      return (
+        <ConnectionSetupScreen
+          initialSettings={connection}
+          onConnected={(settings) => {
+            setConnection(settings);
+            setToken(null);
+            setAuthUser(null);
+            dispatch({ type: 'CONNECTION_SAVED' });
+          }}
+        />
+      );
     }
-    if (phase === 'PAIRING' && connection) {
-      return <PairingScreen connection={connection} onPaired={(nextToken) => { setToken(nextToken); dispatch({ type: 'PAIRED' }); }} onChangeConnection={() => void changeConnection()} />;
+    if (phase === 'LOGIN' && connection) {
+      return (
+        <LoginScreen
+          connection={connection}
+          startupMessage={startupMessage}
+          onLoggedIn={(accessToken, user) => handleLoggedIn(accessToken, user)}
+          onChangeConnection={changeConnection}
+        />
+      );
     }
-    if (phase === 'SCANNING' && connection && token) {
-      return <ScannerScreen connection={connection} token={token} startupMessage={startupMessage} onSessionInvalid={invalidateSession} onPairAgain={invalidateSession} onChangeConnection={changeConnection} />;
+    if (phase === 'SCANNING' && connection && token && authUser) {
+      return (
+        <ScannerScreen
+          connection={connection}
+          token={token}
+          userDisplayName={authUser.fullName || authUser.email}
+          startupMessage={startupMessage}
+          onSessionInvalid={invalidateSession}
+          onChangeConnection={changeConnection}
+          onLogout={invalidateSession}
+        />
+      );
     }
-    return <ConnectionSetupScreen initialSettings={connection} onConnected={(settings) => { setConnection(settings); dispatch({ type: 'CONNECTION_SAVED' }); }} />;
+    return (
+      <ConnectionSetupScreen
+        initialSettings={connection}
+        onConnected={(settings) => { setConnection(settings); dispatch({ type: 'CONNECTION_SAVED' }); }}
+      />
+    );
   })();
 
   return (
