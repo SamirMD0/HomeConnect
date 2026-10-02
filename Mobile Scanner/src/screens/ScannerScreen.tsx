@@ -1,7 +1,8 @@
 import { BarcodeType, CameraType, CameraView, useCameraPermissions } from 'expo-camera';
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Modal, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { scannerApi, ScannerApiError } from '../api/scanner-api';
+import { backendBaseUrl, HcApiError } from '../api/hc-client';
+import { clientFrom, scanLookup } from '../api/products-api';
 import { AppButton } from '../components/AppButton';
 import { AppInput } from '../components/AppInput';
 import { ProductResult } from '../components/ProductResult';
@@ -9,15 +10,15 @@ import { StatusBanner } from '../components/StatusBanner';
 import { ConnectionSettings, ScanResult } from '../types/scanner.types';
 import { recentSubmission, RecentSubmission, shouldSuppressDuplicate } from '../utils/duplicate-scan';
 import { prepareScanCode } from '../utils/scan-code';
-import { scannerBaseUrl } from '../utils/scanner-url';
 
 interface ScannerScreenProps {
   connection: ConnectionSettings;
   token: string;
+  userDisplayName: string;
   startupMessage: string | null;
   onSessionInvalid: () => Promise<void>;
   onChangeConnection: () => Promise<void>;
-  onPairAgain: () => Promise<void>;
+  onLogout: () => Promise<void>;
 }
 
 type Banner = { tone: 'info' | 'warning' | 'danger'; message: string };
@@ -27,11 +28,13 @@ const PRODUCT_BARCODE_TYPES: BarcodeType[] = ['ean13', 'ean8', 'upc_a', 'upc_e',
 export function ScannerScreen({
   connection,
   token,
+  userDisplayName,
   startupMessage,
   onSessionInvalid,
   onChangeConnection,
-  onPairAgain,
+  onLogout,
 }: ScannerScreenProps) {
+  const client = useMemo(() => clientFrom(connection, token), [connection, token]);
   const [permission, requestPermission] = useCameraPermissions();
   const [cameraVisible, setCameraVisible] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
@@ -62,20 +65,20 @@ export function ScannerScreen({
     setBanner(null);
     setResult(null);
     try {
-      const next = await scannerApi.scan(connection, token, prepared.code);
+      const next = await scanLookup(client, prepared.code);
       setResult(next);
       setManualCode('');
     } catch (error) {
-      if (error instanceof ScannerApiError && error.kind === 'UNAUTHORIZED') {
+      if (error instanceof HcApiError && error.kind === 'UNAUTHORIZED') {
         await onSessionInvalid();
         return;
       }
-      if (error instanceof ScannerApiError && error.kind === 'RATE_LIMITED') {
+      if (error instanceof HcApiError && error.kind === 'RATE_LIMITED') {
         setBanner({ tone: 'warning', message: 'Scans are arriving too quickly. Wait a moment and try again / تمهل قليلاً' });
-      } else if (error instanceof ScannerApiError && error.kind === 'NETWORK') {
+      } else if (error instanceof HcApiError && error.kind === 'NETWORK') {
         setBanner({ tone: 'danger', message: error.message });
       } else {
-        setBanner({ tone: 'danger', message: 'The PC could not process this scan. Try again.' });
+        setBanner({ tone: 'danger', message: 'The server could not process this scan. Try again.' });
       }
     } finally {
       setBusy(false);
@@ -134,7 +137,9 @@ export function ScannerScreen({
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <View style={styles.header}>
         <View style={styles.headerText}>
-          <Text style={styles.eyebrow}>CONNECTED TO {scannerBaseUrl(connection)}</Text>
+          <Text style={styles.eyebrow}>
+            SIGNED IN AS {userDisplayName.toUpperCase()} · {backendBaseUrl(connection)}
+          </Text>
           <Text style={styles.title}>Scan a product</Text>
           <Text style={styles.arabic}>مسح منتج</Text>
         </View>
@@ -228,8 +233,8 @@ export function ScannerScreen({
       )}
 
       <View style={styles.settings}>
-        <AppButton label="Pair again / إعادة الربط" onPress={() => void onPairAgain()} variant="secondary" />
-        <AppButton label="Change PC / تغيير الكمبيوتر" onPress={() => void onChangeConnection()} variant="secondary" />
+        <AppButton label="Sign out / تسجيل الخروج" onPress={() => void onLogout()} variant="secondary" />
+        <AppButton label="Change backend URL / تغيير الخادم" onPress={() => void onChangeConnection()} variant="secondary" />
       </View>
 
       <StatusBanner message="Read-only scanner: no prices, costs, stock, customers, or payments are stored or displayed." />
