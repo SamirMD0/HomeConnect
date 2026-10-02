@@ -53,7 +53,7 @@ function loadPrismaClient(): typeof PrismaClientType {
     process.env.NODE_PATH = merged.join(path.delimiter);
     (Module as unknown as { _initPaths(): void })._initPaths();
   }
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   prismaClientCtor = (require('@prisma/client') as { PrismaClient: typeof PrismaClientType }).PrismaClient;
   return prismaClientCtor;
 }
@@ -83,6 +83,7 @@ function safeFilePart(value: string): string {
 function discoverPackagedPgDump(): string | null {
   try {
     const compiledTools = path.join(process.resourcesPath, 'dist/server/backend/src/features/backup/postgres-tools.js');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { PostgresToolDiscovery } = require(compiledTools) as {
       PostgresToolDiscovery: { findTool(name: 'pg_dump'): string | null };
     };

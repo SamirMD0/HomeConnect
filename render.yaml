@@ -34,3 +34,39 @@ services:
         sync: false
       - key: JWT_REFRESH_SECRET
         sync: false
+  - type: web
+    name: home-connect-api-production
+    env: node
+    plan: starter
+    region: frankfurt
+    branch: main
+    autoDeploy: false
+    buildCommand: npm ci && npx prisma generate && npx prisma migrate deploy && npx tsc -p tsconfig.server.json
+    startCommand: node dist/server/backend/src/index.js
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: HOSTED_MODE
+        value: "true"
+      - key: HOST
+        value: 0.0.0.0
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: LOG_DIR
+        value: ""
+      - key: BACKUP_SCHEDULE_CRON
+        value: ""
+      - key: FRONTEND_URL
+        value: http://127.0.0.1:3002
+      - key: CORS_ORIGINS
+        value: http://localhost:3002,http://127.0.0.1:3002
+      - key: BUSINESS_TIMEZONE
+        value: Asia/Beirut
+      # Set this service's secret to the homeconnect_prod Neon pooled URL, never staging.
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false

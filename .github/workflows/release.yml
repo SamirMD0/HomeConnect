@@ -65,6 +65,12 @@ jobs:
       - name: Apply migrations to integration-test database
         run: npx prisma migrate deploy --schema backend/prisma/schema.prisma
 
+      - name: Emit backend declarations for frontend project references
+        # tsconfig.json uses project references into tsconfig.server.json
+        # (composite: true). TS6305 fires on frontend typecheck unless the
+        # server's .d.ts output is present. Emit declarations only — no .js.
+        run: npx tsc -p tsconfig.server.json --emitDeclarationOnly
+
       - name: Typecheck
         run: npm run typecheck
 
@@ -93,6 +99,15 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Ensure Electron runtime is present
+        # npm ci sometimes skips electron's postinstall download of the
+        # ~90 MB runtime zip, leaving node_modules/electron/dist empty.
+        # electron-builder then fails with 'The specified electronDist
+        # does not exist'. Running install.js explicitly is idempotent:
+        # it extracts from the npm cache if the zip is already there,
+        # otherwise downloads from the Electron release server.
+        run: node node_modules/electron/install.js
 
       - name: Build Electron main
         run: npm run build:electron-main

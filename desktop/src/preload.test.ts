@@ -19,15 +19,19 @@ describe('preload', () => {
     vi.clearAllMocks();
   });
 
-  it('imports nothing but electron, because the renderer is sandboxed', () => {
+  it('imports nothing but electron at runtime, because the renderer is sandboxed', () => {
     // With `sandbox: true` the preload gets a restricted `require` that resolves
-    // 'electron' and a few builtins only. A relative import compiles fine and
-    // then fails at runtime with "module not found", taking the whole
-    // electronAPI bridge down with it.
+    // 'electron' and a few builtins only. A relative VALUE import compiles fine
+    // and then fails at runtime with "module not found", taking the whole
+    // electronAPI bridge down with it. Type-only imports (`import type …`) are
+    // stripped by TypeScript before the preload ever runs, so they are safe.
     const source = fs.readFileSync(path.join(__dirname, 'preload.ts'), 'utf8');
-    const imports = Array.from(source.matchAll(/^import .* from '([^']+)';$/gm), (m) => m[1]);
+    const runtimeImports = Array.from(
+      source.matchAll(/^import (?!type )[^'"]*? from '([^']+)';$/gm),
+      (match) => match[1],
+    );
 
-    expect(imports).toEqual(['electron']);
+    expect(runtimeImports).toEqual(['electron']);
   });
 
   it('exposes only allowed APIs to the renderer', async () => {
@@ -44,7 +48,8 @@ describe('preload', () => {
     // Check surface area
     const allowedMethods = [
       'ping', 'openWhatsApp', 'selectBackupDirectory', 'openBackupDirectory', 'selectBackupFile', 'openLogsFolder', 'copyDiagnostics',
-      'exportLabelsPdf', 'exportDocumentPdf', 'printLabels', 'retryStartup', 'closeApp', 'onStartupLog', 'onStartupState'
+      'exportLabelsPdf', 'exportDocumentPdf', 'printLabels', 'retryStartup', 'closeApp', 'onStartupLog', 'onStartupState',
+      'updater',
     ];
     const actualMethods = Object.keys(apiObj as object);
     
