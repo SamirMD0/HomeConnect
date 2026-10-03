@@ -12,6 +12,7 @@ import { recentSubmission, RecentSubmission, shouldSuppressDuplicate } from '../
 import { prepareScanCode } from '../utils/scan-code';
 import { ReceiptCaptureScreen } from './ReceiptCaptureScreen';
 import { SupplierPaymentScreen } from './SupplierPaymentScreen';
+import { SupplierStatementScreen } from './SupplierStatementScreen';
 
 interface ScannerScreenProps {
   connection: ConnectionSettings;
@@ -48,6 +49,7 @@ export function ScannerScreen({
   const [banner, setBanner] = useState<Banner | null>(startupMessage ? { tone: 'warning', message: startupMessage } : null);
   const [receiptModalVisible, setReceiptModalVisible] = useState(false);
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
+  const [statementModalVisible, setStatementModalVisible] = useState(false);
   const recentRef = useRef<RecentSubmission | null>(null);
 
   const submitCode = async (rawCode: string) => {
@@ -238,20 +240,25 @@ export function ScannerScreen({
 
       <View style={styles.settings}>
         <AppButton
+          label="Attach supplier receipt / إرفاق إيصال مورّد"
+          onPress={() => setReceiptModalVisible(true)}
+          variant="secondary"
+        />
+        <AppButton
           label="Record supplier payment / تسجيل دفعة لمورّد"
           onPress={() => setPaymentModalVisible(true)}
           variant="secondary"
         />
         <AppButton
-          label="Attach supplier receipt / إرفاق إيصال مورّد"
-          onPress={() => setReceiptModalVisible(true)}
+          label="Supplier statement / كشف حساب المورّد"
+          onPress={() => setStatementModalVisible(true)}
           variant="secondary"
         />
         <AppButton label="Sign out / تسجيل الخروج" onPress={() => void onLogout()} variant="secondary" />
         <AppButton label="Change backend URL / تغيير الخادم" onPress={() => void onChangeConnection()} variant="secondary" />
       </View>
 
-      <StatusBanner message="Read-only scanner: no prices, costs, stock, customers, or payments are stored or displayed." />
+      <StatusBanner message="Product scanning is read-only. Supplier payments and statements use the Home Connect backend." />
 
       <Modal
         animationType="slide"
@@ -277,6 +284,20 @@ export function ScannerScreen({
           connection={connection}
           token={token}
           onDone={() => setPaymentModalVisible(false)}
+          onSessionInvalid={onSessionInvalid}
+        />
+      </Modal>
+
+      <Modal
+        animationType="slide"
+        onRequestClose={() => setStatementModalVisible(false)}
+        statusBarTranslucent
+        visible={statementModalVisible}
+      >
+        <SupplierStatementScreen
+          connection={connection}
+          token={token}
+          onDone={() => setStatementModalVisible(false)}
           onSessionInvalid={onSessionInvalid}
         />
       </Modal>
