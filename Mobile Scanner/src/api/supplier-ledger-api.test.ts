@@ -30,7 +30,7 @@ describe('fetchSupplierLedger', () => {
       { type: 'PU', rawType: 'SUPPLIER_DEBT', debit: 100, credit: 0, balance: 120, currency: 'USD' },
       { type: 'PV', rawType: 'SUPPLIER_PAYMENT', debit: 0, credit: 40, balance: 80, currency: 'USD' },
     ]);
-    expect(fetchMock.mock.calls[0][0]).toContain('supplierId=supplier-1');
+    expect(fetchMock.mock.calls[0]?.[0]).toContain('supplierId=supplier-1');
   });
 
   it('maps an unknown server type to OTHER while preserving the raw type', async () => {

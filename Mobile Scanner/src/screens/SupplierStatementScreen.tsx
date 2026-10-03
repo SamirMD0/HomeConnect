@@ -91,6 +91,7 @@ export function SupplierStatementScreen({
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const requestId = useRef(0);
+  const loadingMoreRef = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -116,6 +117,7 @@ export function SupplierStatementScreen({
   const loadFirst = useCallback(async (refresh = false) => {
     if (!supplier) return;
     const currentRequest = ++requestId.current;
+    loadingMoreRef.current = false;
     setLoadingMore(false);
     if (refresh) setRefreshing(true);
     else { setLoading(true); setResult(null); }
@@ -142,8 +144,9 @@ export function SupplierStatementScreen({
   }, [loadFirst, supplier]);
 
   const loadMore = async () => {
-    if (!supplier || !result || loading || refreshing || loadingMore || result.page >= result.totalPages) return;
+    if (!supplier || !result || loading || refreshing || loadingMoreRef.current || result.page >= result.totalPages) return;
     const currentRequest = requestId.current;
+    loadingMoreRef.current = true;
     setLoadingMore(true);
     try {
       const next = await fetchSupplierLedger(client, {
@@ -162,7 +165,7 @@ export function SupplierStatementScreen({
         retry: error instanceof HcApiError && error.kind === 'NETWORK',
       });
     } finally {
-      if (currentRequest === requestId.current) setLoadingMore(false);
+      if (currentRequest === requestId.current) { loadingMoreRef.current = false; setLoadingMore(false); }
     }
   };
 
@@ -184,6 +187,7 @@ export function SupplierStatementScreen({
 
   const changeSupplier = () => {
     requestId.current += 1;
+    loadingMoreRef.current = false;
     setSupplier(null);
     setResult(null);
     setBanner(null);
