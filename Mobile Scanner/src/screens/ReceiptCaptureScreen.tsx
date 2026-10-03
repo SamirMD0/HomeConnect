@@ -1,5 +1,5 @@
 import { CameraType, CameraView, useCameraPermissions } from 'expo-camera';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -13,11 +13,11 @@ import {
 } from 'react-native';
 import { HcApiError } from '../api/hc-client';
 import { clientFrom } from '../api/products-api';
-import { uploadReceipt } from '../api/receipts-api';
 import { listSupplierPurchases, listSuppliers, SupplierPurchaseSummary, SupplierSummary } from '../api/suppliers-api';
 import { AppButton } from '../components/AppButton';
 import { AppInput } from '../components/AppInput';
 import { StatusBanner } from '../components/StatusBanner';
+import { createReceiptQueue, QueuedReceipt, ReceiptQueue } from '../services/receipt-queue';
 import { ConnectionSettings } from '../types/scanner.types';
 
 interface ReceiptCaptureScreenProps {
@@ -38,8 +38,48 @@ type Step = 'PICK_SUPPLIER' | 'PICK_PURCHASE' | 'CAPTURE' | 'UPLOADING' | 'DONE'
  */
 export function ReceiptCaptureScreen({ connection, token, onDone, onSessionInvalid }: ReceiptCaptureScreenProps) {
   const client = useMemo(() => clientFrom(connection, token), [connection, token]);
+  const queueRef = useRef<ReceiptQueue | null>(null);
+  if (!queueRef.current) queueRef.current = createReceiptQueue();
+  const queue = queueRef.current;
+  const [pendingCount, setPendingCount] = useState(0);
+  const [syncing, setSyncing] = useState(false);
   const [step, setStep] = useState<Step>('PICK_SUPPLIER');
   const [banner, setBanner] = useState<Banner | null>(null);
+
+  const refreshPendingCount = useCallback(async () => {
+    try {
+      const items = await queue.listPending();
+      setPendingCount(items.length);
+    } catch {
+      // A corrupt or missing queue is treated as empty; the queue module
+      // tolerates it on its own.
+      setPendingCount(0);
+    }
+  }, [queue]);
+
+  useEffect(() => {
+    void refreshPendingCount();
+  }, [refreshPendingCount]);
+
+  const syncQueue = useCallback(async () => {
+    setSyncing(true);
+    try {
+      const result = await queue.flush(client);
+      await refreshPendingCount();
+      if (result.attempted === 0) {
+        setBanner({ tone: 'info', message: 'Nothing pending.' });
+      } else if (result.failed === 0) {
+        setBanner({ tone: 'info', message: `Uploaded ${result.synced} receipt(s).` });
+      } else {
+        setBanner({
+          tone: 'warning',
+          message: `Uploaded ${result.synced}. ${result.failed} failed and stayed in the queue.`,
+        });
+      }
+    } finally {
+      setSyncing(false);
+    }
+  }, [client, queue, refreshPendingCount]);
 
   const [suppliers, setSuppliers] = useState<SupplierSummary[] | null>(null);
   const [supplierFilter, setSupplierFilter] = useState('');
@@ -119,21 +159,50 @@ export function ReceiptCaptureScreen({ connection, token, onDone, onSessionInval
     if (!selectedPurchase || !photoUri) return;
     setStep('UPLOADING');
     setBanner(null);
+
+    // Always enqueue first: this gives us a durable local copy that survives
+    // app restart and Expo cache eviction. Then flush immediately so the
+    // common case (online) still feels like one tap. Any failure leaves the
+    // entry in the queue; the operator can retry via Sync.
+    let enqueued: QueuedReceipt | null = null;
     try {
-      await uploadReceipt(client, {
+      enqueued = await queue.enqueue({
         supplierPurchaseId: selectedPurchase.id,
-        localUri: photoUri,
+        supplierPurchaseLabel: `${selectedSupplier?.name ?? ''} · Ref # ${selectedPurchase.referenceNumber ?? selectedPurchase.id.slice(0, 8)}`,
+        sourceUri: photoUri,
         mime: 'image/jpeg',
       });
-      setStep('DONE');
     } catch (error) {
+      setBanner({ tone: 'danger', message: error instanceof Error ? error.message : 'Could not save photo locally.' });
+      setStep('CAPTURE');
+      return;
+    }
+
+    try {
+      const result = await queue.flush(client);
+      await refreshPendingCount();
+      if (result.synced > 0 && result.failed === 0) {
+        setStep('DONE');
+      } else {
+        setBanner({
+          tone: 'warning',
+          message: 'Saved locally. Will retry upload when the server is reachable.',
+        });
+        setStep('DONE');
+      }
+    } catch (error) {
+      await refreshPendingCount();
       if (error instanceof HcApiError && error.kind === 'UNAUTHORIZED') {
         await onSessionInvalid();
         return;
       }
-      setBanner({ tone: 'danger', message: error instanceof Error ? error.message : 'Upload failed. Try again.' });
-      setStep('CAPTURE');
+      setBanner({
+        tone: 'warning',
+        message: 'Saved locally. Will retry upload when the server is reachable.',
+      });
+      setStep('DONE');
     }
+    void enqueued; // referenced for the possible future UI badge
   };
 
   const resetAfterUpload = () => {
@@ -149,6 +218,20 @@ export function ReceiptCaptureScreen({ connection, token, onDone, onSessionInval
   // --- Render -----------------------------------------------------------------
   return (
     <View style={styles.container}>
+      {pendingCount > 0 && (
+        <View style={styles.pendingBar}>
+          <Text style={styles.pendingText}>
+            {pendingCount} receipt{pendingCount === 1 ? '' : 's'} waiting to upload / {pendingCount} إيصال بانتظار الرفع
+          </Text>
+          <AppButton
+            label={syncing ? 'Syncing…' : 'Sync now / مزامنة'}
+            onPress={() => void syncQueue()}
+            disabled={syncing}
+            loading={syncing}
+          />
+        </View>
+      )}
+
       {banner && <StatusBanner tone={banner.tone} message={banner.message} />}
 
       {step === 'PICK_SUPPLIER' && (
@@ -281,4 +364,13 @@ const styles = StyleSheet.create({
   cameraPreviewBox: { flex: 1, backgroundColor: '#000', borderRadius: 12, overflow: 'hidden' },
   cameraPreview: { flex: 1 },
   cameraActions: { gap: 10, paddingBottom: 24 },
+  pendingBar: {
+    gap: 8,
+    padding: 12,
+    borderRadius: 10,
+    backgroundColor: '#fef3c7',
+    borderWidth: 1,
+    borderColor: '#f59e0b',
+  },
+  pendingText: { color: '#78350f', fontWeight: '700' },
 });
