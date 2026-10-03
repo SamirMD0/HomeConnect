@@ -337,6 +337,13 @@ enum SupplierTransactionType {
   SUPPLIER_ADJUSTMENT
 }
 
+enum SupplierPaymentMethod {
+  CASH_USD
+  CASH_LBP
+  CHEQUE
+  BANK_TRANSFER
+}
+
 enum SupplierTransactionDirection {
   INCREASE_OWED
   DECREASE_OWED
@@ -1839,6 +1846,7 @@ model SupplierTransaction {
   supplierReceiving    SupplierReceiving?           @relation(fields: [supplierReceivingId, supplierId], references: [id, supplierId], onDelete: Restrict)
   type                 SupplierTransactionType
   direction            SupplierTransactionDirection
+  paymentMethod        SupplierPaymentMethod?
   amount               Decimal                      @db.Decimal(12, 2)
   currency             Currency                     @default(USD)
   exchangeRate         Decimal                      @default(1) @db.Decimal(18, 6)

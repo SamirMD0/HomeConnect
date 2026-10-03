@@ -1,8 +1,9 @@
-import { Prisma, SupplierAuditAction, SupplierAuditRecordType, SupplierTransactionStatus } from '@prisma/client';
+import { Currency, Prisma, SupplierAuditAction, SupplierAuditRecordType, SupplierTransactionStatus } from '@prisma/client';
 import { verifyAdminPassword } from '../../../lib/admin-verification';
 import { AppError, NotFoundError, ValidationError } from '../../../lib/errors';
-import { assertPositiveMoney, moneyToApiString, subtractMoney, sumMoney, ZERO_MONEY } from '../../financial/domain/money';
+import { assertPositiveMoney, moneyToApiString, subtractMoney, sumMoney, toBaseAmount, ZERO_MONEY } from '../../financial/domain/money';
 import { businessDateToPrisma, prismaDateToBusinessDate } from '../../financial/domain/business-date';
+import { ExchangeRatesService } from '../../financial/exchange-rates/exchange-rates.service';
 import { runFinancialTransaction } from '../../financial/infrastructure/transaction';
 import { writeSupplierAudit } from '../audit/supplier-audit';
 import { assertSupplierAdmin } from '../authorization/supplier-policy';
@@ -15,14 +16,17 @@ import { CreateSupplierTransactionInput, SupplierLedgerQueryInput, SupplierTrans
 export class SupplierTransactionsService {
   static async create(supplierId: string, input: CreateSupplierTransactionInput, user: SupplierMutationUser, context: SupplierRequestContext) {
     assertSupplierAdmin(user);
-    const amount = assertPositiveMoney(input.amount);
+    const currency = input.currency ?? Currency.USD;
+    const amount = assertPositiveMoney(input.amount, currency);
     const direction = resolveSupplierDirection(input.type, input.direction);
+    const transactionDate = businessDateToPrisma(input.transactionDate);
     return runFinancialTransaction(async (tx) => {
       const supplier = await SuppliersRepository.findById(supplierId, tx);
       if (!supplier) throw new NotFoundError('Supplier not found');
       if (!supplier.isActive) throw new AppError('Archived suppliers cannot receive new transactions', 409, 'SUPPLIER_ARCHIVED');
       await validateReceivingLink(supplierId, input, tx);
-      const transaction = await SupplierTransactionsRepository.create({ supplierId, supplierReceivingId: input.supplierReceivingId ?? null, type: input.type, direction, amount, transactionDate: businessDateToPrisma(input.transactionDate), dueDate: input.dueDate ? businessDateToPrisma(input.dueDate) : null, description: input.description, reference: input.reference ?? null, notes: input.notes ?? null, createdById: user.userId }, tx);
+      const exchangeRate = await ExchangeRatesService.snapshotFor(currency, transactionDate, tx);
+      const transaction = await SupplierTransactionsRepository.create({ supplierId, supplierReceivingId: input.supplierReceivingId ?? null, type: input.type, direction, paymentMethod: input.paymentMethod ?? null, amount, currency, exchangeRate, baseAmount: toBaseAmount(amount, currency, exchangeRate, Prisma.Decimal.ROUND_HALF_UP), transactionDate, dueDate: input.dueDate ? businessDateToPrisma(input.dueDate) : null, description: input.description, reference: input.reference ?? null, notes: input.notes ?? null, createdById: user.userId }, tx);
       const actor = await loadActor(user.userId, tx);
       await writeSupplierAudit({ recordType: SupplierAuditRecordType.SUPPLIER_TRANSACTION, recordId: transaction.id, supplierId, supplierTransactionId: transaction.id, action: SupplierAuditAction.CREATE, changedById: user.userId, changedByName: actor.fullName, changedByUsername: actor.username, reason: 'Supplier transaction created', beforeValues: {}, afterValues: supplierTransactionSnapshot(transaction), requestId: context.requestId, ipAddress: context.ipAddress }, tx);
       return serializeTransaction(transaction);
@@ -120,7 +124,7 @@ async function validateReceivingLink(supplierId: string, input: CreateSupplierTr
 function serializeTransaction(t: NonNullable<Awaited<ReturnType<typeof SupplierTransactionsRepository.findById>>>) {
   return {
     ...t,
-    amount: moneyToApiString(t.amount),
+    amount: moneyToApiString(t.amount, t.currency),
     transactionDate: prismaDateToBusinessDate(t.transactionDate),
     dueDate: t.dueDate ? prismaDateToBusinessDate(t.dueDate) : null,
     supplierReceiving: t.supplierReceiving ? { ...t.supplierReceiving, receivedOn: prismaDateToBusinessDate(t.supplierReceiving.receivedOn) } : null,

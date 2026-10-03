@@ -29,7 +29,7 @@ export class HcApiError extends Error {
 function errorKind(status: number): HcApiErrorKind {
   if (status === 401) return 'UNAUTHORIZED';
   if (status === 429) return 'RATE_LIMITED';
-  if (status === 400 || status === 413) return 'VALIDATION';
+  if (status === 400 || status === 413 || status === 422) return 'VALIDATION';
   return 'SERVER';
 }
 

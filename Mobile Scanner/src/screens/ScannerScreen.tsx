@@ -11,6 +11,7 @@ import { ConnectionSettings, ScanResult } from '../types/scanner.types';
 import { recentSubmission, RecentSubmission, shouldSuppressDuplicate } from '../utils/duplicate-scan';
 import { prepareScanCode } from '../utils/scan-code';
 import { ReceiptCaptureScreen } from './ReceiptCaptureScreen';
+import { SupplierPaymentScreen } from './SupplierPaymentScreen';
 
 interface ScannerScreenProps {
   connection: ConnectionSettings;
@@ -46,6 +47,7 @@ export function ScannerScreen({
   const [result, setResult] = useState<ScanResult | null>(null);
   const [banner, setBanner] = useState<Banner | null>(startupMessage ? { tone: 'warning', message: startupMessage } : null);
   const [receiptModalVisible, setReceiptModalVisible] = useState(false);
+  const [paymentModalVisible, setPaymentModalVisible] = useState(false);
   const recentRef = useRef<RecentSubmission | null>(null);
 
   const submitCode = async (rawCode: string) => {
@@ -236,6 +238,11 @@ export function ScannerScreen({
 
       <View style={styles.settings}>
         <AppButton
+          label="Record supplier payment / تسجيل دفعة لمورّد"
+          onPress={() => setPaymentModalVisible(true)}
+          variant="secondary"
+        />
+        <AppButton
           label="Attach supplier receipt / إرفاق إيصال مورّد"
           onPress={() => setReceiptModalVisible(true)}
           variant="secondary"
@@ -256,6 +263,20 @@ export function ScannerScreen({
           connection={connection}
           token={token}
           onDone={() => setReceiptModalVisible(false)}
+          onSessionInvalid={onSessionInvalid}
+        />
+      </Modal>
+
+      <Modal
+        animationType="slide"
+        onRequestClose={() => setPaymentModalVisible(false)}
+        statusBarTranslucent
+        visible={paymentModalVisible}
+      >
+        <SupplierPaymentScreen
+          connection={connection}
+          token={token}
+          onDone={() => setPaymentModalVisible(false)}
           onSessionInvalid={onSessionInvalid}
         />
       </Modal>
