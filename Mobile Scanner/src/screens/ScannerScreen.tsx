@@ -12,6 +12,7 @@ import { recentSubmission, RecentSubmission, shouldSuppressDuplicate } from '../
 import { prepareScanCode } from '../utils/scan-code';
 import { ReceiptCaptureScreen } from './ReceiptCaptureScreen';
 import { SupplierPaymentScreen } from './SupplierPaymentScreen';
+import { SupplierPurchaseScreen } from './SupplierPurchaseScreen';
 import { SupplierStatementScreen } from './SupplierStatementScreen';
 
 interface ScannerScreenProps {
@@ -49,6 +50,7 @@ export function ScannerScreen({
   const [banner, setBanner] = useState<Banner | null>(startupMessage ? { tone: 'warning', message: startupMessage } : null);
   const [receiptModalVisible, setReceiptModalVisible] = useState(false);
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
+  const [purchaseModalVisible, setPurchaseModalVisible] = useState(false);
   const [statementModalVisible, setStatementModalVisible] = useState(false);
   const recentRef = useRef<RecentSubmission | null>(null);
 
@@ -245,6 +247,11 @@ export function ScannerScreen({
           variant="secondary"
         />
         <AppButton
+          label="Record supplier invoice / تسجيل فاتورة مورّد"
+          onPress={() => setPurchaseModalVisible(true)}
+          variant="secondary"
+        />
+        <AppButton
           label="Record supplier payment / تسجيل دفعة لمورّد"
           onPress={() => setPaymentModalVisible(true)}
           variant="secondary"
@@ -258,7 +265,7 @@ export function ScannerScreen({
         <AppButton label="Change backend URL / تغيير الخادم" onPress={() => void onChangeConnection()} variant="secondary" />
       </View>
 
-      <StatusBanner message="Product scanning is read-only. Supplier payments and statements use the Home Connect backend." />
+      <StatusBanner message="Product scanning is read-only. Supplier invoices, payments and statements use the Home Connect backend." />
 
       <Modal
         animationType="slide"
@@ -284,6 +291,20 @@ export function ScannerScreen({
           connection={connection}
           token={token}
           onDone={() => setPaymentModalVisible(false)}
+          onSessionInvalid={onSessionInvalid}
+        />
+      </Modal>
+
+      <Modal
+        animationType="slide"
+        onRequestClose={() => setPurchaseModalVisible(false)}
+        statusBarTranslucent
+        visible={purchaseModalVisible}
+      >
+        <SupplierPurchaseScreen
+          connection={connection}
+          token={token}
+          onDone={() => setPurchaseModalVisible(false)}
           onSessionInvalid={onSessionInvalid}
         />
       </Modal>
