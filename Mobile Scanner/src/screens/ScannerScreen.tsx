@@ -10,6 +10,7 @@ import { StatusBanner } from '../components/StatusBanner';
 import { ConnectionSettings, ScanResult } from '../types/scanner.types';
 import { recentSubmission, RecentSubmission, shouldSuppressDuplicate } from '../utils/duplicate-scan';
 import { prepareScanCode } from '../utils/scan-code';
+import { ReceiptCaptureScreen } from './ReceiptCaptureScreen';
 
 interface ScannerScreenProps {
   connection: ConnectionSettings;
@@ -44,6 +45,7 @@ export function ScannerScreen({
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<ScanResult | null>(null);
   const [banner, setBanner] = useState<Banner | null>(startupMessage ? { tone: 'warning', message: startupMessage } : null);
+  const [receiptModalVisible, setReceiptModalVisible] = useState(false);
   const recentRef = useRef<RecentSubmission | null>(null);
 
   const submitCode = async (rawCode: string) => {
@@ -233,11 +235,30 @@ export function ScannerScreen({
       )}
 
       <View style={styles.settings}>
+        <AppButton
+          label="Attach supplier receipt / إرفاق إيصال مورّد"
+          onPress={() => setReceiptModalVisible(true)}
+          variant="secondary"
+        />
         <AppButton label="Sign out / تسجيل الخروج" onPress={() => void onLogout()} variant="secondary" />
         <AppButton label="Change backend URL / تغيير الخادم" onPress={() => void onChangeConnection()} variant="secondary" />
       </View>
 
       <StatusBanner message="Read-only scanner: no prices, costs, stock, customers, or payments are stored or displayed." />
+
+      <Modal
+        animationType="slide"
+        onRequestClose={() => setReceiptModalVisible(false)}
+        statusBarTranslucent
+        visible={receiptModalVisible}
+      >
+        <ReceiptCaptureScreen
+          connection={connection}
+          token={token}
+          onDone={() => setReceiptModalVisible(false)}
+          onSessionInvalid={onSessionInvalid}
+        />
+      </Modal>
     </ScrollView>
   );
 }
