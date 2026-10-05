@@ -3,6 +3,7 @@ import { AlertTriangle, Check, Copy, Loader2, Smartphone } from 'lucide-react';
 import { businessLabels } from '../../../shared/labels/business-labels';
 import { LanStatus, PairingCode } from '../types/scanner.types';
 import { defaultUrl, describeLanMode, formatCountdown, PAIRING_CODE_EXPIRED, secondsRemaining } from '../utils/scanner-admin';
+import { PairingQrCode } from './PairingQrCode';
 
 const labels = businessLabels.scanner;
 
@@ -88,12 +89,21 @@ export const MobileScannerPanel: React.FC<MobileScannerPanelProps> = ({
         {mode.reachable && url && (
           <div>
             <p className="text-xs font-semibold text-slate-600">{labels.phoneUrl}</p>
-            <div className="mt-1 flex flex-wrap items-center gap-2">
-              <code className="min-w-0 flex-1 truncate rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-800">{url}</code>
-              <button type="button" onClick={copy} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700">
-                {copied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
-                {copied ? labels.copied : labels.copyUrl}
-              </button>
+            <div className="mt-1 flex flex-wrap items-start gap-3">
+              <div className="min-w-0 flex-1 space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <code className="min-w-0 flex-1 truncate rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-800">{url}</code>
+                  <button type="button" onClick={copy} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700">
+                    {copied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+                    {copied ? labels.copied : labels.copyUrl}
+                  </button>
+                </div>
+                <p className="text-xs text-slate-500">
+                  Open the mobile app and tap <span className="font-semibold">Scan Scanner Hub QR</span>, or paste this address. /
+                  افتح تطبيق الهاتف واضغط على مسح رمز الربط
+                </p>
+              </div>
+              <PairingQrCode url={url} />
             </div>
             <p className="mt-1 text-xs text-slate-500">{labels.addressHint}</p>
 
