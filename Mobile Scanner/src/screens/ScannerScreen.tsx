@@ -3,6 +3,7 @@ import { useMemo, useRef, useState } from 'react';
 import { Modal, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { backendBaseUrl, HcApiError } from '../api/hc-client';
 import { clientFrom, scanLookup } from '../api/products-api';
+import { ActionGrid } from '../components/ActionGrid';
 import { AppButton } from '../components/AppButton';
 import { AppInput } from '../components/AppInput';
 import { ProductResult } from '../components/ProductResult';
@@ -64,7 +65,7 @@ export function ScannerScreen({
 
     const now = Date.now();
     if (shouldSuppressDuplicate(recentRef.current, prepared.code, now)) {
-      setBanner({ tone: 'info', message: 'Duplicate scan ignored. Ready again shortly / تم تجاهل المسح المكرر' });
+      setBanner({ tone: 'info', message: 'Duplicate scan ignored. Ready again shortly' });
       return;
     }
 
@@ -82,7 +83,7 @@ export function ScannerScreen({
         return;
       }
       if (error instanceof HcApiError && error.kind === 'RATE_LIMITED') {
-        setBanner({ tone: 'warning', message: 'Scans are arriving too quickly. Wait a moment and try again / تمهل قليلاً' });
+        setBanner({ tone: 'warning', message: 'Scans are arriving too quickly. Wait a moment and try again' });
       } else if (error instanceof HcApiError && error.kind === 'NETWORK') {
         setBanner({ tone: 'danger', message: error.message });
       } else {
@@ -146,26 +147,24 @@ export function ScannerScreen({
       <View style={styles.header}>
         <View style={styles.headerText}>
           <Text style={styles.eyebrow}>
-            SIGNED IN AS {userDisplayName.toUpperCase()} · {backendBaseUrl(connection)}
+            Signed in as {userDisplayName}
           </Text>
-          <Text style={styles.title}>Scan a product</Text>
-          <Text style={styles.arabic}>مسح منتج</Text>
+          <Text style={styles.backendUrl}>{backendBaseUrl(connection)}</Text>
         </View>
         <View style={styles.connectedDot} />
       </View>
 
       {banner && <StatusBanner tone={banner.tone} message={banner.message} />}
 
-      <View style={styles.cameraSection}>
-        <View style={styles.cameraPlaceholder}>
-          <Text style={styles.cameraTitle}>Use the phone camera / استخدم الكاميرا</Text>
-          <Text style={styles.cameraCopy}>Point the camera at a product barcode. The code is matched by the PC.</Text>
-          <AppButton label="Open camera / فتح الكاميرا" onPress={() => void openCamera()} />
-          {Platform.OS === 'android' && CameraView.isModernBarcodeScannerAvailable && (
-            <AppButton label="Use system scanner / استخدام ماسح النظام" onPress={() => void launchNativeScanner()} variant="secondary" />
-          )}
-        </View>
-      </View>
+      <ActionGrid
+        onScan={() => void openCamera()}
+        onAttachReceipt={() => setReceiptModalVisible(true)}
+        onSupplierInvoice={() => setPurchaseModalVisible(true)}
+        onSupplierPayment={() => setPaymentModalVisible(true)}
+        onSupplierStatement={() => setStatementModalVisible(true)}
+        onSignOut={() => void onLogout()}
+        onChangeConnection={() => void onChangeConnection()}
+      />
 
       <Modal
         animationType="slide"
@@ -174,7 +173,7 @@ export function ScannerScreen({
         visible={cameraVisible && Boolean(permission?.granted)}
       >
         <View style={styles.cameraModal}>
-          <Text style={styles.cameraModalTitle}>Scan a product barcode / مسح باركود المنتج</Text>
+          <Text style={styles.cameraModalTitle}>Scan a product barcode</Text>
           <View collapsable={false} style={styles.cameraModalPreview}>
             <CameraView
               key={`${cameraSession}-${facing}`}
@@ -196,12 +195,15 @@ export function ScannerScreen({
             />
           </View>
           <Text style={styles.cameraModalStatus}>
-            {cameraReady ? 'Camera ready — point it at a barcode / الكاميرا جاهزة' : 'Starting camera… / جارٍ تشغيل الكاميرا'}
+            {cameraReady ? 'Camera ready — point it at a barcode' : 'Starting camera…'}
           </Text>
-          <AppButton label="Restart camera / إعادة تشغيل الكاميرا" onPress={restartCamera} variant="secondary" />
-          <AppButton label="Switch camera / تبديل الكاميرا" onPress={switchCamera} variant="secondary" />
+          {Platform.OS === 'android' && CameraView.isModernBarcodeScannerAvailable && (
+            <AppButton label="Use system scanner" onPress={() => void launchNativeScanner()} variant="secondary" />
+          )}
+          <AppButton label="Restart camera" onPress={restartCamera} variant="secondary" />
+          <AppButton label="Switch camera" onPress={switchCamera} variant="secondary" />
           <AppButton
-            label="Close camera / إغلاق الكاميرا"
+            label="Close camera"
             onPress={() => { setCameraVisible(false); setCameraReady(false); }}
             variant="secondary"
           />
@@ -210,13 +212,13 @@ export function ScannerScreen({
 
       <View style={styles.dividerRow}>
         <View style={styles.divider} />
-        <Text style={styles.or}>OR ENTER MANUALLY / أو أدخل يدوياً</Text>
+        <Text style={styles.or}>OR ENTER MANUALLY</Text>
         <View style={styles.divider} />
       </View>
 
       <View style={styles.manual}>
         <AppInput
-          label="Barcode or SKU / الباركود أو رمز المنتج"
+          label="Barcode or SKU"
           value={manualCode}
           onChangeText={setManualCode}
           autoCapitalize="characters"
@@ -226,46 +228,19 @@ export function ScannerScreen({
           onSubmitEditing={() => void submitCode(manualCode)}
           placeholder="Scan or type a code"
         />
-        <AppButton label="Look up product / البحث عن المنتج" onPress={() => void submitCode(manualCode)} loading={busy} />
+        <AppButton label="Look up product" onPress={() => void submitCode(manualCode)} loading={busy} />
       </View>
 
       {result && (
         <View style={styles.resultSection}>
           <ProductResult result={result} />
           <AppButton
-            label="Scan another / مسح منتج آخر"
+            label="Scan another"
             onPress={() => { setResult(null); setBanner(null); }}
             variant="secondary"
           />
         </View>
       )}
-
-      <View style={styles.settings}>
-        <AppButton
-          label="Attach supplier receipt / إرفاق إيصال مورّد"
-          onPress={() => setReceiptModalVisible(true)}
-          variant="secondary"
-        />
-        <AppButton
-          label="Record supplier invoice / تسجيل فاتورة مورّد"
-          onPress={() => setPurchaseModalVisible(true)}
-          variant="secondary"
-        />
-        <AppButton
-          label="Record supplier payment / تسجيل دفعة لمورّد"
-          onPress={() => setPaymentModalVisible(true)}
-          variant="secondary"
-        />
-        <AppButton
-          label="Supplier statement / كشف حساب المورّد"
-          onPress={() => setStatementModalVisible(true)}
-          variant="secondary"
-        />
-        <AppButton label="Sign out / تسجيل الخروج" onPress={() => void onLogout()} variant="secondary" />
-        <AppButton label="Change backend URL / تغيير الخادم" onPress={() => void onChangeConnection()} variant="secondary" />
-      </View>
-
-      <StatusBanner message="Product scanning is read-only. Supplier invoices, payments and statements use the Home Connect backend." />
 
       <Modal
         animationType="slide"
@@ -330,23 +305,17 @@ const styles = StyleSheet.create({
   content: { padding: 18, gap: 18, backgroundColor: '#f8fafc', flexGrow: 1 },
   header: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   headerText: { flex: 1, gap: 2 },
-  eyebrow: { color: '#047857', fontSize: 10, fontWeight: '800' },
-  title: { color: '#0f172a', fontSize: 29, fontWeight: '900' },
-  arabic: { color: '#475569', fontSize: 20, fontWeight: '700' },
+  eyebrow: { color: '#047857', fontSize: 14, fontWeight: '700' },
+  backendUrl: { color: '#64748b', fontSize: 13 },
   connectedDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: '#10b981', marginTop: 8 },
-  cameraSection: { gap: 10 },
   camera: { flex: 1 },
   cameraModal: { flex: 1, backgroundColor: '#0f172a', padding: 18, paddingTop: 48, gap: 12 },
   cameraModalTitle: { color: '#ffffff', fontSize: 20, fontWeight: '900', textAlign: 'center' },
   cameraModalPreview: { flex: 1, minHeight: 320, overflow: 'hidden', backgroundColor: '#020617' },
   cameraModalStatus: { color: '#d1fae5', fontSize: 13, fontWeight: '700', textAlign: 'center' },
-  cameraPlaceholder: { borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 18, backgroundColor: '#ffffff', padding: 20, gap: 12 },
-  cameraTitle: { color: '#0f172a', fontSize: 19, fontWeight: '800' },
-  cameraCopy: { color: '#64748b', fontSize: 14, lineHeight: 20 },
   dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
   divider: { height: 1, backgroundColor: '#cbd5e1', flex: 1 },
   or: { color: '#64748b', fontSize: 10, fontWeight: '800' },
   manual: { gap: 12 },
   resultSection: { gap: 10 },
-  settings: { gap: 9, marginTop: 4 },
 });
