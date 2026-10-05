@@ -1,5 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import QRCode from 'qrcode';
+// The qrcode package ships its browser build as named-exports CJS without
+// `module.exports = ...`, so Vite's ESM interop does not synthesize a default
+// export. Named-import the one function we actually use.
+import { toCanvas } from 'qrcode';
 
 export interface PairingQrCodeProps {
   /**
@@ -25,7 +28,7 @@ export const PairingQrCode: React.FC<PairingQrCodeProps> = ({ url, size = 192 })
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || !url) return;
-    QRCode.toCanvas(canvas, url, {
+    toCanvas(canvas, url, {
       width: size,
       margin: 1,
       errorCorrectionLevel: 'M',
