@@ -27,14 +27,22 @@ interface Paginated<T> {
 }
 
 export async function listSuppliers(client: AuthedClient): Promise<SupplierSummary[]> {
-  const query = new URLSearchParams({ page: '1', pageSize: '200' });
-  const data = await requestJson<Paginated<SupplierSummary> | SupplierSummary[]>(
-    `${client.baseUrl}/api/v1/suppliers?${query.toString()}`,
-    { headers: authedHeaders(client) },
-  );
-  // Backends return either a plain array or a paginated envelope — tolerate both.
-  if (Array.isArray(data)) return data;
-  return data.rows ?? [];
+  // The supplier route caps pageSize at 100. Fetch subsequent pages so the
+  // local name/phone picker still includes suppliers beyond the first page.
+  const pageSize = 100;
+  const suppliers: SupplierSummary[] = [];
+  for (let page = 1; ; page += 1) {
+    const query = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+    const data = await requestJson<Paginated<SupplierSummary> | SupplierSummary[]>(
+      `${client.baseUrl}/api/v1/suppliers?${query.toString()}`,
+      { headers: authedHeaders(client) },
+    );
+    const rows = Array.isArray(data) ? data : data.rows ?? [];
+    suppliers.push(...rows);
+    if (rows.length < pageSize || (!Array.isArray(data) && suppliers.length >= data.total)) {
+      return suppliers;
+    }
+  }
 }
 
 export async function listSupplierPurchases(
