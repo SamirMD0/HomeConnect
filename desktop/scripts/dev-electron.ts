@@ -6,7 +6,10 @@ const BACKEND_PORT = '3001';
 const FRONTEND_PORT = '3002';
 const BACKEND_URL = `http://${HOST}:${BACKEND_PORT}/api/v1/health`;
 const FRONTEND_URL = `http://${HOST}:${FRONTEND_PORT}`;
-const READY_TIMEOUT_MS = 45_000;
+// 45s was tight for a cold start when Vite's dep optimizer is also running —
+// e.g. after a lockfile change, where backend imports and Vite's bundler both
+// contend for CPU and backend's ~16s module graph does not fit in the window.
+const READY_TIMEOUT_MS = 120_000;
 const CHECK_ONLY = process.env.ELECTRON_DEV_CHECK_ONLY === '1';
 
 const children: ChildProcess[] = [];
