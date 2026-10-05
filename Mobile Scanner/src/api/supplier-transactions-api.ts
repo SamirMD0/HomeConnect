@@ -59,7 +59,7 @@ export async function recordSupplierPayment(
         currency: input.currency,
         paymentMethod: input.paymentMethod,
         transactionDate: businessDate(input.occurredAt),
-        description: 'Supplier payment / دفعة مورّد',
+        description: 'Supplier payment',
         ...(input.note?.trim() ? { notes: input.note.trim() } : {}),
       }),
     },

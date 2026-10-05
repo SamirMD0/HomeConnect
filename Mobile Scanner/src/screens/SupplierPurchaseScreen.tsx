@@ -57,7 +57,7 @@ export function SupplierPurchaseScreen({ connection, token, onDone, onSessionInv
     }).catch(async (error: unknown) => {
       if (!active) return;
       if (error instanceof HcApiError && error.kind === 'UNAUTHORIZED') await onSessionInvalid();
-      else setBanner({ tone: 'danger', message: 'Could not load suppliers / تعذّر تحميل المورّدين' });
+      else setBanner({ tone: 'danger', message: 'Could not load suppliers' });
     });
     return () => { active = false; };
   }, [client, onSessionInvalid, supplierRetry]);
@@ -80,13 +80,13 @@ export function SupplierPurchaseScreen({ connection, token, onDone, onSessionInv
       ...line, unitPrice: '', amount: '',
       product: line.product && (line.product.priceCurrency ?? 'USD') === next ? line.product : null,
     })));
-    setBanner({ tone: 'warning', message: 'Re-enter prices and invoice total in the new currency / أعد إدخال الأسعار والإجمالي بالعملة الجديدة' });
+    setBanner({ tone: 'warning', message: 'Re-enter prices and invoice total in the new currency' });
   };
 
   const review = async () => {
     const issue = issueForInvoice(lines, currency, receiveStock, transactionDate, dueDate, billedTotal);
     if (issue) { setBanner({ tone: 'warning', message: issue }); return; }
-    if (effectiveDescription.length < 3) { setBanner({ tone: 'warning', message: 'Enter a purchase description / أدخل وصف الفاتورة' }); return; }
+    if (effectiveDescription.length < 3) { setBanner({ tone: 'warning', message: 'Enter a purchase description' }); return; }
     if (!supplier) return;
     setReviewing(true);
     setBanner(null);
@@ -103,9 +103,9 @@ export function SupplierPurchaseScreen({ connection, token, onDone, onSessionInv
         // Hard-stop before Review: an older shop PC cannot tell us whether
         // this invoice number is already recorded, and we must not post a
         // duplicate on their behalf.
-        setBanner({ tone: 'danger', message: 'Shop PC is older than this app. Ask the admin to update HomeConnect on the PC, then try again / كمبيوتر المتجر قديم؛ حدِّث هوم كونيكت على الكمبيوتر' });
+        setBanner({ tone: 'danger', message: 'Shop PC is older than this app. Ask the admin to update HomeConnect on the PC, then try again' });
       }
-      else setBanner({ tone: 'danger', message: error instanceof HcApiError ? error.message : 'Could not check invoice number / تعذّر التحقق من رقم الفاتورة' });
+      else setBanner({ tone: 'danger', message: error instanceof HcApiError ? error.message : 'Could not check invoice number' });
     } finally { setReviewing(false); }
   };
 
@@ -123,7 +123,7 @@ export function SupplierPurchaseScreen({ connection, token, onDone, onSessionInv
       notes: notes.trim() || undefined,
       receiveStock,
       amountOverride: moneyText(moneyMinorUnits(billedTotal, currency)!, currency),
-      amountOverrideReason: 'Supplier invoice total confirmed on mobile / إجمالي فاتورة المورد مؤكد من الهاتف',
+      amountOverrideReason: 'Supplier invoice total confirmed on mobile',
       lines: lines.map((line) => toApiLine(line, currency)),
     };
     setSubmitting(true);
@@ -134,7 +134,7 @@ export function SupplierPurchaseScreen({ connection, token, onDone, onSessionInv
       setStep('DONE');
     } catch (error) {
       if (error instanceof HcApiError && error.kind === 'UNAUTHORIZED') await onSessionInvalid();
-      else setBanner({ tone: 'danger', message: error instanceof HcApiError ? error.message : 'Could not record invoice / تعذّر تسجيل الفاتورة' });
+      else setBanner({ tone: 'danger', message: error instanceof HcApiError ? error.message : 'Could not record invoice' });
     } finally { setSubmitting(false); }
   };
 
@@ -148,34 +148,34 @@ export function SupplierPurchaseScreen({ connection, token, onDone, onSessionInv
 
   return (
     <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-      <Text style={styles.title}>Supplier purchase invoice / فاتورة شراء من مورّد</Text>
+      <Text style={styles.title}>Supplier purchase invoice</Text>
       {banner ? <StatusBanner tone={banner.tone} message={banner.message} /> : null}
 
       {step === 'SUPPLIER' && (
         <View style={styles.section}>
-          <Text style={styles.step}>1 of 3 · Choose supplier / اختر المورّد</Text>
-          <AppInput label="Search suppliers / بحث عن مورّد" value={supplierFilter} onChangeText={setSupplierFilter} placeholder="Name or phone" />
+          <Text style={styles.step}>1 of 3 · Choose supplier</Text>
+          <AppInput label="Search suppliers" value={supplierFilter} onChangeText={setSupplierFilter} placeholder="Name or phone" />
           {!suppliers && !banner ? <ActivityIndicator color="#047857" /> : null}
-          {!suppliers && banner ? <AppButton label="Retry / إعادة المحاولة" onPress={() => { setBanner(null); setSupplierRetry((value) => value + 1); }} /> : null}
-          {suppliers?.length === 0 ? <Text style={styles.muted}>No suppliers found / لا يوجد مورّدون</Text> : null}
+          {!suppliers && banner ? <AppButton label="Retry" onPress={() => { setBanner(null); setSupplierRetry((value) => value + 1); }} /> : null}
+          {suppliers?.length === 0 ? <Text style={styles.muted}>No suppliers found</Text> : null}
           {filteredSuppliers.map((item) => (
             <Pressable key={item.id} style={styles.supplierRow} onPress={() => { setSupplier(item); setBanner(null); setStep('DETAILS'); }}>
               <Text style={styles.supplierName}>{item.name}</Text>
               {item.phone ? <Text style={styles.muted}>{item.phone}</Text> : null}
             </Pressable>
           ))}
-          <AppButton label="Close / إغلاق" variant="secondary" onPress={onDone} />
+          <AppButton label="Close" variant="secondary" onPress={onDone} />
         </View>
       )}
 
       {step === 'DETAILS' && supplier && (
         <View style={styles.section}>
-          <Text style={styles.step}>2 of 3 · Invoice details / تفاصيل الفاتورة</Text>
+          <Text style={styles.step}>2 of 3 · Invoice details</Text>
           <Text style={styles.supplierName}>{supplier.name}</Text>
-          <AppInput label="Receipt / invoice no. / رقم الفاتورة" value={receiptNumber} onChangeText={setReceiptNumber} maxLength={200} />
-          <AppInput label="Purchase date (YYYY-MM-DD) / تاريخ الشراء" value={transactionDate} onChangeText={setTransactionDate} keyboardType="numbers-and-punctuation" maxLength={10} />
-          <AppInput label="Due date (optional) / تاريخ الاستحقاق" value={dueDate} onChangeText={setDueDate} keyboardType="numbers-and-punctuation" maxLength={10} hint="Leave blank for no due date / اتركه فارغاً بلا استحقاق" />
-          <Text style={styles.label}>Currency / العملة</Text>
+          <AppInput label="Receipt / invoice no." value={receiptNumber} onChangeText={setReceiptNumber} maxLength={200} />
+          <AppInput label="Purchase date (YYYY-MM-DD)" value={transactionDate} onChangeText={setTransactionDate} keyboardType="numbers-and-punctuation" maxLength={10} />
+          <AppInput label="Due date (optional)" value={dueDate} onChangeText={setDueDate} keyboardType="numbers-and-punctuation" maxLength={10} hint="Leave blank for no due date" />
+          <Text style={styles.label}>Currency</Text>
           <View style={styles.choiceRow}>
             {(['USD', 'LBP'] as PurchaseCurrency[]).map((value) => (
               <Pressable key={value} style={[styles.choice, currency === value && styles.selected]} onPress={() => chooseCurrency(value)}>
@@ -185,59 +185,59 @@ export function SupplierPurchaseScreen({ connection, token, onDone, onSessionInv
           </View>
           <Pressable style={styles.toggle} onPress={() => setReceiveStock((value) => !value)} accessibilityRole="checkbox" accessibilityState={{ checked: receiveStock }}>
             <Text style={styles.mark}>{receiveStock ? '☑' : '□'}</Text>
-            <View style={styles.flex}><Text style={styles.label}>Receive stock now / استلام المخزون الآن</Text>
-              <Text style={styles.muted}>Applies to product lines only / ينطبق على بنود المنتجات فقط</Text></View>
+            <View style={styles.flex}><Text style={styles.label}>Receive stock now</Text>
+              <Text style={styles.muted}>Applies to product lines only</Text></View>
           </Pressable>
-          <Text style={styles.label}>Lines / البنود</Text>
+          <Text style={styles.label}>Lines</Text>
           {lines.map((line, index) => (
             <PurchaseLineEditor key={line.key} line={line} index={index} currency={currency} receiveStock={receiveStock}
               usedProductIds={new Set(lines.filter((other) => other.key !== line.key).map((other) => other.product?.id).filter((id): id is string => Boolean(id)))}
               client={client} onSessionInvalid={onSessionInvalid} onChange={updateLine}
               onRemove={() => removeLine(line.key)} canRemove={lines.length > 1} />
           ))}
-          <AppButton label="Add line / إضافة بند" variant="secondary" disabled={lines.length >= 100} onPress={() => setLines((current) => [...current, newPurchaseLine(newKey())])} />
-          <Text style={styles.muted}>Entered line amounts (VAT may change the line sum) / مبالغ البنود المدخلة وقد تغيّرها الضريبة: {currency} {moneyText(quotedSubtotal, currency)}</Text>
-          <AppInput label="Total on supplier invoice / إجمالي فاتورة المورّد" value={billedTotal} onChangeText={setBilledTotal} keyboardType="decimal-pad" hint="This is the amount posted to the supplier account / هذا المبلغ الذي يُسجّل على حساب المورّد" />
-          <AppInput label="Description (optional) / الوصف" value={description} onChangeText={setDescription} multiline maxLength={500} hint={`Suggested / مقترح: ${generatedDescription || '—'}`} />
-          <AppInput label="Reference (optional) / المرجع" value={reference} onChangeText={setReference} maxLength={200} />
-          <AppInput label="Notes (optional) / ملاحظات" value={notes} onChangeText={setNotes} multiline maxLength={2000} />
-          <AppButton label="Review invoice / مراجعة الفاتورة" onPress={() => void review()} loading={reviewing} />
-          <AppButton label="Change supplier / تغيير المورّد" variant="secondary" onPress={() => { setSupplier(null); setStep('SUPPLIER'); }} />
+          <AppButton label="Add line" variant="secondary" disabled={lines.length >= 100} onPress={() => setLines((current) => [...current, newPurchaseLine(newKey())])} />
+          <Text style={styles.muted}>Entered line amounts (VAT may change the line sum): {currency} {moneyText(quotedSubtotal, currency)}</Text>
+          <AppInput label="Total on supplier invoice" value={billedTotal} onChangeText={setBilledTotal} keyboardType="decimal-pad" hint="This is the amount posted to the supplier account" />
+          <AppInput label="Description (optional)" value={description} onChangeText={setDescription} multiline maxLength={500} hint={`Suggested: ${generatedDescription || '—'}`} />
+          <AppInput label="Reference (optional)" value={reference} onChangeText={setReference} maxLength={200} />
+          <AppInput label="Notes (optional)" value={notes} onChangeText={setNotes} multiline maxLength={2000} />
+          <AppButton label="Review invoice" onPress={() => void review()} loading={reviewing} />
+          <AppButton label="Change supplier" variant="secondary" onPress={() => { setSupplier(null); setStep('SUPPLIER'); }} />
         </View>
       )}
 
       {step === 'REVIEW' && supplier && (
         <View style={styles.section}>
-          <Text style={styles.step}>3 of 3 · Review / مراجعة</Text>
+          <Text style={styles.step}>3 of 3 · Review</Text>
           <View style={styles.summary}>
             <Text style={styles.supplierName}>{supplier.name}</Text>
-            <Text style={styles.muted}>Invoice / الفاتورة: {receiptNumber.trim() || '—'} · {transactionDate}</Text>
-            <Text style={styles.muted}>Due / الاستحقاق: {dueDate || 'No due date / بلا تاريخ'}</Text>
-            <Text style={styles.muted}>Stock / المخزون: {receiveStock ? 'Receive now / استلام الآن' : 'Do not receive / دون استلام'}</Text>
+            <Text style={styles.muted}>Invoice: {receiptNumber.trim() || '—'} · {transactionDate}</Text>
+            <Text style={styles.muted}>Due: {dueDate || 'No due date'}</Text>
+            <Text style={styles.muted}>Stock: {receiveStock ? 'Receive now' : 'Do not receive'}</Text>
             {lines.map((line, index) => <View key={line.key} style={styles.reviewLine}>
               <Text style={styles.label}>{index + 1}. {line.kind === 'MANUAL' ? line.description : `${line.product?.name} × ${line.quantity}`}</Text>
-              <Text style={styles.muted}>{currency} {moneyText(lineSubtotal(line, currency) ?? 0, currency)} · {line.priceIncludesVat ? 'VAT included / شامل الضريبة' : 'VAT added / تضاف الضريبة'}</Text>
+              <Text style={styles.muted}>{currency} {moneyText(lineSubtotal(line, currency) ?? 0, currency)} · {line.priceIncludesVat ? 'VAT included' : 'VAT added'}</Text>
             </View>)}
-            <Text style={styles.total}>Posted total / الإجمالي المسجّل: {currency} {billedTotal}</Text>
-            <Text style={styles.muted}>No payment is recorded here / لا تُسجَّل دفعة هنا</Text>
+            <Text style={styles.total}>Posted total: {currency} {billedTotal}</Text>
+            <Text style={styles.muted}>No payment is recorded here</Text>
           </View>
-          {duplicateReceipt ? <StatusBanner tone="warning" message="This invoice number already exists for this supplier. Check before recording / رقم الفاتورة موجود لهذا المورّد" /> : null}
+          {duplicateReceipt ? <StatusBanner tone="warning" message="This invoice number already exists for this supplier. Check before recording" /> : null}
           {duplicateReceipt ? <Pressable style={styles.toggle} onPress={() => setDuplicateConfirmed((value) => !value)} accessibilityRole="checkbox" accessibilityState={{ checked: duplicateConfirmed }}>
-            <Text style={styles.mark}>{duplicateConfirmed ? '☑' : '□'}</Text><Text style={styles.label}>I checked the existing invoice / تحققت من الفاتورة الموجودة</Text>
+            <Text style={styles.mark}>{duplicateConfirmed ? '☑' : '□'}</Text><Text style={styles.label}>I checked the existing invoice</Text>
           </Pressable> : null}
-          <AppButton label="Record invoice / تسجيل الفاتورة" onPress={() => void submit()} loading={submitting} disabled={duplicateReceipt && !duplicateConfirmed} />
-          <AppButton label="Edit details / تعديل التفاصيل" variant="secondary" onPress={() => { setBanner(null); setStep('DETAILS'); }} />
+          <AppButton label="Record invoice" onPress={() => void submit()} loading={submitting} disabled={duplicateReceipt && !duplicateConfirmed} />
+          <AppButton label="Edit details" variant="secondary" onPress={() => { setBanner(null); setStep('DETAILS'); }} />
         </View>
       )}
 
       {step === 'DONE' && created && (
         <View style={styles.done}>
-          <Text style={styles.title}>Invoice recorded ✓ / تم تسجيل الفاتورة</Text>
+          <Text style={styles.title}>Invoice recorded ✓</Text>
           <Text style={styles.total}>{created.currency} {created.amount}</Text>
-          <Text style={styles.muted}>Use Supplier payment to record money paid / استخدم دفعة المورّد لتسجيل المبلغ المدفوع</Text>
-          {created.supplierReceivingId ? <Text style={styles.muted}>A receipt photo can be attached from Scanner / يمكن إرفاق صورة الإيصال من شاشة المسح</Text> : null}
-          <AppButton label="Record another / تسجيل فاتورة أخرى" onPress={recordAnother} />
-          <AppButton label="Done / تم" variant="secondary" onPress={onDone} />
+          <Text style={styles.muted}>Use Supplier payment to record money paid</Text>
+          {created.supplierReceivingId ? <Text style={styles.muted}>A receipt photo can be attached from Scanner</Text> : null}
+          <AppButton label="Record another" onPress={recordAnother} />
+          <AppButton label="Done" variant="secondary" onPress={onDone} />
         </View>
       )}
     </ScrollView>

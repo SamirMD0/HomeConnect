@@ -43,7 +43,7 @@ export function PurchaseLineEditor({
       }).catch(async (error: unknown) => {
         if (!active) return;
         if (error instanceof HcApiError && error.kind === 'UNAUTHORIZED') await onSessionInvalid();
-        else setSearchError(error instanceof HcApiError ? error.message : 'Could not search products / تعذّر البحث عن المنتجات');
+        else setSearchError(error instanceof HcApiError ? error.message : 'Could not search products');
       });
     }, 250);
     return () => { active = false; clearTimeout(timer); };
@@ -57,59 +57,59 @@ export function PurchaseLineEditor({
 
   return (
     <View style={styles.card}>
-      <Text style={styles.title}>Line {index + 1} / بند {index + 1}</Text>
+      <Text style={styles.title}>Line {index + 1}</Text>
       <View style={styles.choiceRow}>
         <Pressable style={[styles.choice, line.kind === 'EXISTING_PRODUCT' && styles.selected]} onPress={() => update({ kind: 'EXISTING_PRODUCT', description: '', amount: '' })}>
-          <Text style={styles.choiceText}>Existing product / منتج موجود</Text>
+          <Text style={styles.choiceText}>Existing product</Text>
         </Pressable>
         <Pressable style={[styles.choice, line.kind === 'MANUAL' && styles.selected]} onPress={() => update({ kind: 'MANUAL', product: null, unitPrice: '' })}>
-          <Text style={styles.choiceText}>Description only / وصف فقط</Text>
+          <Text style={styles.choiceText}>Description only</Text>
         </Pressable>
       </View>
 
       {line.kind === 'EXISTING_PRODUCT' ? (
         <>
-          <AppButton label={line.product ? `${line.product.name} · ${line.product.sku}` : 'Choose product / اختر منتجاً'} variant="secondary" onPress={() => setPickerOpen(true)} />
-          {line.product ? <Text style={styles.hint}>Stock / المخزون: {line.product.stockQuantity}</Text> : null}
-          <AppInput label="Quantity / الكمية" value={line.quantity} onChangeText={(quantity) => update({ quantity })} keyboardType="number-pad" />
-          <AppInput label={`Unit cost (${currency}) / كلفة الوحدة`} value={line.unitPrice} onChangeText={(unitPrice) => update({ unitPrice })} keyboardType="decimal-pad" />
+          <AppButton label={line.product ? `${line.product.name} · ${line.product.sku}` : 'Choose product'} variant="secondary" onPress={() => setPickerOpen(true)} />
+          {line.product ? <Text style={styles.hint}>Stock: {line.product.stockQuantity}</Text> : null}
+          <AppInput label="Quantity" value={line.quantity} onChangeText={(quantity) => update({ quantity })} keyboardType="number-pad" />
+          <AppInput label={`Unit cost (${currency})`} value={line.unitPrice} onChangeText={(unitPrice) => update({ unitPrice })} keyboardType="decimal-pad" />
         </>
       ) : (
         <>
-          <AppInput label="Description / الوصف" value={line.description} onChangeText={(description) => update({ description })} maxLength={500} />
-          <AppInput label={`Amount (${currency}) / المبلغ`} value={line.amount} onChangeText={(amount) => update({ amount })} keyboardType="decimal-pad" />
+          <AppInput label="Description" value={line.description} onChangeText={(description) => update({ description })} maxLength={500} />
+          <AppInput label={`Amount (${currency})`} value={line.amount} onChangeText={(amount) => update({ amount })} keyboardType="decimal-pad" />
         </>
       )}
 
       <Pressable style={styles.vatToggle} onPress={() => update({ priceIncludesVat: !line.priceIncludesVat })} accessibilityRole="checkbox" accessibilityState={{ checked: line.priceIncludesVat }}>
         <Text style={styles.toggleMark}>{line.priceIncludesVat ? '☑' : '□'}</Text>
-        <Text style={styles.vatLabel}>Price includes VAT / السعر يشمل الضريبة</Text>
+        <Text style={styles.vatLabel}>Price includes VAT</Text>
       </Pressable>
-      <Text style={styles.subtotal}>Quoted subtotal / المجموع المقتبس: {subtotal === null ? '—' : `${currency} ${moneyText(subtotal, currency)}`}</Text>
+      <Text style={styles.subtotal}>Quoted subtotal: {subtotal === null ? '—' : `${currency} ${moneyText(subtotal, currency)}`}</Text>
       {issue ? <StatusBanner tone="warning" message={issue} /> : null}
-      {canRemove ? <AppButton label="Remove line / حذف البند" variant="secondary" onPress={onRemove} /> : null}
+      {canRemove ? <AppButton label="Remove line" variant="secondary" onPress={onRemove} /> : null}
 
       <Modal visible={pickerOpen} animationType="slide" onRequestClose={() => setPickerOpen(false)}>
         <View style={styles.picker}>
-          <Text style={styles.title}>Choose product / اختر منتجاً</Text>
-          <AppInput label="Search name, SKU or barcode / بحث" value={search} onChangeText={setSearch} autoCorrect={false} />
+          <Text style={styles.title}>Choose product</Text>
+          <AppInput label="Search name, SKU or barcode" value={search} onChangeText={setSearch} autoCorrect={false} />
           {searchError ? <StatusBanner tone="danger" message={searchError} /> : null}
-          {searchError ? <AppButton label="Retry / إعادة المحاولة" variant="secondary" onPress={() => setSearchRetry((value) => value + 1)} /> : null}
+          {searchError ? <AppButton label="Retry" variant="secondary" onPress={() => setSearchRetry((value) => value + 1)} /> : null}
           <ScrollView contentContainerStyle={styles.results} keyboardShouldPersistTaps="handled">
             {!products && !searchError ? <ActivityIndicator color="#047857" /> : null}
-            {products?.length === 0 ? <Text style={styles.hint}>No products found / لا توجد منتجات</Text> : null}
+            {products?.length === 0 ? <Text style={styles.hint}>No products found</Text> : null}
             {products?.map((product) => {
               const unavailable = usedProductIds.has(product.id) || (product.priceCurrency ?? 'USD') !== currency
                 || (receiveStock && (!product.trackStock || product.notInInventory));
               return (
                 <Pressable key={product.id} disabled={unavailable} style={[styles.productRow, unavailable && styles.disabled]} onPress={() => select(product)}>
                   <Text style={styles.productName}>{product.name} · {product.model}</Text>
-                  <Text style={styles.hint}>{product.sku}{unavailable ? ' · Unavailable / غير متاح' : ''}</Text>
+                  <Text style={styles.hint}>{product.sku}{unavailable ? ' · Unavailable' : ''}</Text>
                 </Pressable>
               );
             })}
           </ScrollView>
-          <AppButton label="Close / إغلاق" variant="secondary" onPress={() => setPickerOpen(false)} />
+          <AppButton label="Close" variant="secondary" onPress={() => setPickerOpen(false)} />
         </View>
       </Modal>
     </View>

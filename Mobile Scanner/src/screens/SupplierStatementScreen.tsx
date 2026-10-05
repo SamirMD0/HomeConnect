@@ -35,11 +35,11 @@ const validDate = (value: string) => {
 
 const money = (value: number) => `${value < 0 ? '−' : ''}USD ${Math.abs(value).toFixed(2)}`;
 const typeLabels: Record<SupplierLedgerEntry['type'], string> = {
-  PU: 'Purchase / شراء',
-  PV: 'Payment / دفعة',
-  ADJ: 'Adjustment / تسوية',
-  OPENING: 'Opening / افتتاحي',
-  OTHER: 'Other / أخرى',
+  PU: 'Purchase',
+  PV: 'Payment',
+  ADJ: 'Adjustment',
+  OPENING: 'Opening',
+  OTHER: 'Other',
 };
 
 function TransactionCard({ entry }: { entry: SupplierLedgerEntry }) {
@@ -62,7 +62,7 @@ function TransactionCard({ entry }: { entry: SupplierLedgerEntry }) {
         <Text style={[styles.movement, isDebit ? styles.owedMore : styles.owedLess]}>
           {isDebit ? '+' : '−'}{money(value)}
         </Text>
-        <Text style={styles.running}>Balance / الرصيد: {money(entry.balance)}</Text>
+        <Text style={styles.running}>Balance: {money(entry.balance)}</Text>
       </View>
     </View>
   );
@@ -102,7 +102,7 @@ export function SupplierStatementScreen({
       } catch (error) {
         if (!active) return;
         if (error instanceof HcApiError && error.kind === 'UNAUTHORIZED') await onSessionInvalid();
-        else setBanner({ tone: 'danger', message: 'Could not load suppliers / تعذّر تحميل المورّدين', retry: true });
+        else setBanner({ tone: 'danger', message: 'Could not load suppliers', retry: true });
       }
     })();
     return () => { active = false; };
@@ -130,7 +130,7 @@ export function SupplierStatementScreen({
       if (error instanceof HcApiError && error.kind === 'UNAUTHORIZED') await onSessionInvalid();
       else setBanner({
         tone: 'danger',
-        message: error instanceof HcApiError ? error.message : 'Could not load statement / تعذّر تحميل كشف الحساب',
+        message: error instanceof HcApiError ? error.message : 'Could not load statement',
         retry: error instanceof HcApiError && error.kind === 'NETWORK',
       });
     } finally {
@@ -161,7 +161,7 @@ export function SupplierStatementScreen({
       if (error instanceof HcApiError && error.kind === 'UNAUTHORIZED') await onSessionInvalid();
       else setBanner({
         tone: 'danger',
-        message: error instanceof HcApiError ? error.message : 'Could not load more transactions / تعذّر تحميل المزيد',
+        message: error instanceof HcApiError ? error.message : 'Could not load more transactions',
         retry: error instanceof HcApiError && error.kind === 'NETWORK',
       });
     } finally {
@@ -177,7 +177,7 @@ export function SupplierStatementScreen({
 
   const saveDate = () => {
     if (!validDate(dateDraft) || (dateField === 'from' && dateDraft > to) || (dateField === 'to' && dateDraft < from)) {
-      setDateError('Enter a valid YYYY-MM-DD date within the range / أدخل تاريخاً صحيحاً ضمن المدة');
+      setDateError('Enter a valid YYYY-MM-DD date within the range');
       return;
     }
     if (dateField === 'from') setFrom(dateDraft);
@@ -201,21 +201,21 @@ export function SupplierStatementScreen({
     <View style={styles.headerCard}>
       <Text style={styles.supplierName}>{supplier?.name}</Text>
       {supplier?.phone ? <Text style={styles.supplierPhone}>{supplier.phone}</Text> : null}
-      <Text style={styles.caption}>Statement of Account / كشف حساب المورّد</Text>
+      <Text style={styles.caption}>Statement of Account</Text>
       <View style={styles.dateRow}>
         <Pressable style={styles.dateChip} onPress={() => openDate('from')} accessibilityRole="button">
-          <Text style={styles.dateLabel}>From / من</Text><Text style={styles.dateValue}>{from}</Text>
+          <Text style={styles.dateLabel}>From</Text><Text style={styles.dateValue}>{from}</Text>
         </Pressable>
         <Pressable style={styles.dateChip} onPress={() => openDate('to')} accessibilityRole="button">
-          <Text style={styles.dateLabel}>To / إلى</Text><Text style={styles.dateValue}>{to}</Text>
+          <Text style={styles.dateLabel}>To</Text><Text style={styles.dateValue}>{to}</Text>
         </Pressable>
       </View>
       <View style={styles.stats}>
-        <View style={styles.stat}><Text style={styles.statLabel}>Opening / افتتاحي</Text><Text style={styles.statValue}>{result ? money(result.openingBalance) : '—'}</Text></View>
-        <View style={styles.stat}><Text style={styles.statLabel}>Change / التغيّر</Text><Text style={[styles.statValue, change > 0 ? styles.owedMore : styles.owedLess]}>{result ? `${change >= 0 ? '+' : '−'}${money(change)}` : '—'}</Text></View>
-        <View style={styles.stat}><Text style={styles.statLabel}>Closing / نهائي</Text><Text style={styles.statValue}>{result ? money(result.closingBalance) : '—'}</Text></View>
+        <View style={styles.stat}><Text style={styles.statLabel}>Opening</Text><Text style={styles.statValue}>{result ? money(result.openingBalance) : '—'}</Text></View>
+        <View style={styles.stat}><Text style={styles.statLabel}>Change</Text><Text style={[styles.statValue, change > 0 ? styles.owedMore : styles.owedLess]}>{result ? `${change >= 0 ? '+' : '−'}${money(change)}` : '—'}</Text></View>
+        <View style={styles.stat}><Text style={styles.statLabel}>Closing</Text><Text style={styles.statValue}>{result ? money(result.closingBalance) : '—'}</Text></View>
       </View>
-      <Text style={styles.usdNote}>Balances shown in USD / الأرصدة معروضة بالدولار</Text>
+      <Text style={styles.usdNote}>Balances shown in USD</Text>
     </View>
   );
 
@@ -223,25 +223,25 @@ export function SupplierStatementScreen({
     <View style={styles.container}>
       {!supplier ? (
         <ScrollView contentContainerStyle={styles.picker} keyboardShouldPersistTaps="handled">
-          <Text style={styles.title}>Supplier statement / كشف حساب المورّد</Text>
-          <Text style={styles.caption}>Choose supplier / اختر المورّد</Text>
+          <Text style={styles.title}>Supplier statement</Text>
+          <Text style={styles.caption}>Choose supplier</Text>
           {banner && <StatusBanner tone={banner.tone} message={banner.message} />}
-          {banner?.retry ? <AppButton label="Retry / إعادة المحاولة" onPress={() => setSupplierRetry((value) => value + 1)} /> : null}
-          <AppInput label="Search suppliers / بحث عن مورّد" value={filter} onChangeText={setFilter} placeholder="Name or phone" />
+          {banner?.retry ? <AppButton label="Retry" onPress={() => setSupplierRetry((value) => value + 1)} /> : null}
+          <AppInput label="Search suppliers" value={filter} onChangeText={setFilter} placeholder="Name or phone" />
           {!suppliers ? <ActivityIndicator color="#047857" /> : filteredSuppliers.length === 0 ? (
-            <Text style={styles.empty}>No suppliers found / لم يتم العثور على مورّدين</Text>
+            <Text style={styles.empty}>No suppliers found</Text>
           ) : filteredSuppliers.map((row) => (
             <Pressable key={row.id} onPress={() => { setSupplier(row); setBanner(null); }} style={styles.supplierRow}>
               <Text style={styles.rowName}>{row.name}</Text>
               {row.phone ? <Text style={styles.supplierPhone}>{row.phone}</Text> : null}
             </Pressable>
           ))}
-          <AppButton label="Close / إغلاق" variant="secondary" onPress={onDone} />
+          <AppButton label="Close" variant="secondary" onPress={onDone} />
         </ScrollView>
       ) : (
         <>
           {banner ? <View style={styles.banner}><StatusBanner tone={banner.tone} message={banner.message} />
-            {banner.retry ? <AppButton label="Retry / إعادة المحاولة" onPress={() => void loadFirst(true)} /> : null}
+            {banner.retry ? <AppButton label="Retry" onPress={() => void loadFirst(true)} /> : null}
           </View> : null}
           <FlatList
             data={result?.entries ?? []}
@@ -249,7 +249,7 @@ export function SupplierStatementScreen({
             renderItem={({ item }) => <TransactionCard entry={item} />}
             ListHeaderComponent={header}
             ListEmptyComponent={loading ? <ActivityIndicator style={styles.loader} color="#047857" /> :
-              result ? <Text style={styles.empty}>No transactions in this range / لا توجد حركات</Text> : null}
+              result ? <Text style={styles.empty}>No transactions in this range</Text> : null}
             ListFooterComponent={loadingMore ? <ActivityIndicator style={styles.loader} color="#047857" /> : null}
             onRefresh={() => void loadFirst(true)}
             refreshing={refreshing}
@@ -258,19 +258,19 @@ export function SupplierStatementScreen({
             contentContainerStyle={styles.list}
           />
           <View style={styles.footer}>
-            <AppButton label="Change supplier / تغيير المورّد" variant="secondary" onPress={changeSupplier} />
-            <AppButton label="Close / إغلاق" variant="secondary" onPress={onDone} />
+            <AppButton label="Change supplier" variant="secondary" onPress={changeSupplier} />
+            <AppButton label="Close" variant="secondary" onPress={onDone} />
           </View>
         </>
       )}
       <Modal visible={dateField !== null} transparent animationType="fade" onRequestClose={() => setDateField(null)}>
         <View style={styles.dateBackdrop}>
           <View style={styles.dateDialog}>
-            <Text style={styles.dialogTitle}>{dateField === 'from' ? 'From / من' : 'To / إلى'}</Text>
-            <AppInput label="Date / التاريخ" value={dateDraft} onChangeText={setDateDraft} placeholder="YYYY-MM-DD" keyboardType="numbers-and-punctuation" maxLength={10} />
+            <Text style={styles.dialogTitle}>{dateField === 'from' ? 'From' : 'To'}</Text>
+            <AppInput label="Date" value={dateDraft} onChangeText={setDateDraft} placeholder="YYYY-MM-DD" keyboardType="numbers-and-punctuation" maxLength={10} />
             {dateError ? <StatusBanner tone="danger" message={dateError} /> : null}
-            <AppButton label="Save / حفظ" onPress={saveDate} />
-            <AppButton label="Cancel / إلغاء" variant="secondary" onPress={() => setDateField(null)} />
+            <AppButton label="Save" onPress={saveDate} />
+            <AppButton label="Cancel" variant="secondary" onPress={() => setDateField(null)} />
           </View>
         </View>
       </Modal>

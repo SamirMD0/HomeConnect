@@ -28,8 +28,8 @@ describe('supplier invoice form values', () => {
 
   it('preserves product and manual line meaning in the POST body', () => {
     const existing = { ...newPurchaseLine('one'), product, unitPrice: '12.50', quantity: '2', priceIncludesVat: true };
-    const manual = { ...newPurchaseLine('two'), kind: 'MANUAL' as const, description: 'Delivery / توصيل', amount: '5.00' };
+    const manual = { ...newPurchaseLine('two'), kind: 'MANUAL' as const, description: 'Delivery', amount: '5.00' };
     expect(toApiLine(existing, 'USD')).toEqual({ kind: 'EXISTING_PRODUCT', productId: 'product-1', quantity: 2, unitPrice: '12.50', priceIncludesVat: true });
-    expect(toApiLine(manual, 'USD')).toEqual({ kind: 'MANUAL', description: 'Delivery / توصيل', amount: '5.00', priceIncludesVat: false });
+    expect(toApiLine(manual, 'USD')).toEqual({ kind: 'MANUAL', description: 'Delivery', amount: '5.00', priceIncludesVat: false });
   });
 });

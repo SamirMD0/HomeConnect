@@ -23,11 +23,11 @@ type Step = 'PICK_SUPPLIER' | 'DETAILS' | 'REVIEW' | 'DONE';
 type Currency = 'USD' | 'LBP';
 type Banner = { tone: 'warning' | 'danger'; message: string };
 
-const methods: { value: PaymentMethod; label: string; arabic: string }[] = [
-  { value: 'CASH_USD', label: 'Cash USD', arabic: 'نقداً بالدولار' },
-  { value: 'CASH_LBP', label: 'Cash LBP', arabic: 'نقداً بالليرة' },
-  { value: 'CHEQUE', label: 'Cheque', arabic: 'شيك' },
-  { value: 'BANK_TRANSFER', label: 'Bank transfer', arabic: 'تحويل مصرفي' },
+const methods: { value: PaymentMethod; label: string }[] = [
+  { value: 'CASH_USD', label: 'Cash USD' },
+  { value: 'CASH_LBP', label: 'Cash LBP' },
+  { value: 'CHEQUE', label: 'Cheque' },
+  { value: 'BANK_TRANSFER', label: 'Bank transfer' },
 ];
 
 export function SupplierPaymentScreen({
@@ -57,7 +57,7 @@ export function SupplierPaymentScreen({
       } catch (error) {
         if (!active) return;
         if (error instanceof HcApiError && error.kind === 'UNAUTHORIZED') await onSessionInvalid();
-        else setBanner({ tone: 'danger', message: 'Could not load suppliers / تعذّر تحميل المورّدين' });
+        else setBanner({ tone: 'danger', message: 'Could not load suppliers' });
       }
     })();
     return () => { active = false; };
@@ -94,8 +94,8 @@ export function SupplierPaymentScreen({
       setBanner({
         tone: 'warning',
         message: currency === 'LBP'
-          ? 'Enter a positive whole LBP amount / أدخل مبلغاً صحيحاً بالليرة'
-          : 'Enter a positive amount / أدخل مبلغاً صحيحاً',
+          ? 'Enter a positive whole LBP amount'
+          : 'Enter a positive amount',
       });
       return;
     }
@@ -124,7 +124,7 @@ export function SupplierPaymentScreen({
           tone: 'danger',
           message: error instanceof HcApiError
             ? error.message
-            : 'Could not record payment. Try again / تعذّر تسجيل الدفعة',
+            : 'Could not record payment. Try again',
         });
       }
     } finally {
@@ -146,22 +146,21 @@ export function SupplierPaymentScreen({
     <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
       <View style={styles.header}>
         <Text style={styles.title}>Record supplier payment</Text>
-        <Text style={styles.subtitle}>تسجيل دفعة لمورّد</Text>
       </View>
 
       {banner && <StatusBanner tone={banner.tone} message={banner.message} />}
 
       {step === 'PICK_SUPPLIER' && (
         <View style={styles.section}>
-          <Text style={styles.step}>1 of 3 · Choose supplier / اختر المورّد</Text>
+          <Text style={styles.step}>1 of 3 · Choose supplier</Text>
           <AppInput
-            label="Search suppliers / بحث عن مورّد"
+            label="Search suppliers"
             value={filter}
             onChangeText={setFilter}
             placeholder="Name or phone"
           />
           {!suppliers ? <ActivityIndicator color="#047857" /> : filteredSuppliers.length === 0 ? (
-            <Text style={styles.empty}>No suppliers found / لم يتم العثور على مورّدين</Text>
+            <Text style={styles.empty}>No suppliers found</Text>
           ) : filteredSuppliers.map((row) => (
             <Pressable
               key={row.id}
@@ -172,22 +171,22 @@ export function SupplierPaymentScreen({
               {row.phone ? <Text style={styles.rowMeta}>{row.phone}</Text> : null}
             </Pressable>
           ))}
-          <AppButton label="Cancel / إلغاء" variant="secondary" onPress={onDone} />
+          <AppButton label="Cancel" variant="secondary" onPress={onDone} />
         </View>
       )}
 
       {step === 'DETAILS' && supplier && (
         <View style={styles.section}>
-          <Text style={styles.step}>2 of 3 · Payment details / تفاصيل الدفعة</Text>
+          <Text style={styles.step}>2 of 3 · Payment details</Text>
           <Text style={styles.supplierName}>{supplier.name}</Text>
           <AppInput
-            label="Amount / المبلغ"
+            label="Amount"
             value={amount}
             onChangeText={setAmount}
             keyboardType="decimal-pad"
             placeholder={currency === 'USD' ? '0.00' : '0'}
           />
-          <Text style={styles.fieldLabel}>Currency / العملة</Text>
+          <Text style={styles.fieldLabel}>Currency</Text>
           <View style={styles.segmentRow}>
             {(['USD', 'LBP'] as Currency[]).map((value) => (
               <Pressable
@@ -199,7 +198,7 @@ export function SupplierPaymentScreen({
               </Pressable>
             ))}
           </View>
-          <Text style={styles.fieldLabel}>Payment method / طريقة الدفع</Text>
+          <Text style={styles.fieldLabel}>Payment method</Text>
           <View style={styles.methodGrid}>
             {methods.map((method) => (
               <Pressable
@@ -208,12 +207,11 @@ export function SupplierPaymentScreen({
                 style={[styles.method, paymentMethod === method.value && styles.selected]}
               >
                 <Text style={[styles.choiceText, paymentMethod === method.value && styles.selectedText]}>{method.label}</Text>
-                <Text style={[styles.methodArabic, paymentMethod === method.value && styles.selectedText]}>{method.arabic}</Text>
               </Pressable>
             ))}
           </View>
           <AppInput
-            label="Note (optional) / ملاحظة (اختياري)"
+            label="Note (optional)"
             value={note}
             onChangeText={setNote}
             multiline
@@ -222,36 +220,35 @@ export function SupplierPaymentScreen({
           />
           <StatusBanner
             tone="info"
-            message="Receipt attachment to payments is coming soon / إرفاق إيصال بالدفعة سيتوفر قريباً"
+            message="Receipt attachment to payments is coming soon"
           />
-          <AppButton label="Review payment / مراجعة الدفعة" onPress={review} />
-          <AppButton label="Back / رجوع" variant="secondary" onPress={() => setStep('PICK_SUPPLIER')} />
+          <AppButton label="Review payment" onPress={review} />
+          <AppButton label="Back" variant="secondary" onPress={() => setStep('PICK_SUPPLIER')} />
         </View>
       )}
 
       {step === 'REVIEW' && supplier && (
         <View style={styles.section}>
-          <Text style={styles.step}>3 of 3 · Review / مراجعة</Text>
+          <Text style={styles.step}>3 of 3 · Review</Text>
           <View style={styles.summary}>
-            <Text style={styles.summaryLabel}>Supplier / المورّد</Text>
+            <Text style={styles.summaryLabel}>Supplier</Text>
             <Text style={styles.summaryValue}>{supplier.name}</Text>
-            <Text style={styles.summaryLabel}>Amount / المبلغ</Text>
+            <Text style={styles.summaryLabel}>Amount</Text>
             <Text style={styles.amount}>{currency} {amount}</Text>
-            <Text style={styles.summaryLabel}>Method / الطريقة</Text>
-            <Text style={styles.summaryValue}>{selectedMethod.label} · {selectedMethod.arabic}</Text>
-            {note.trim() ? <><Text style={styles.summaryLabel}>Note / ملاحظة</Text><Text style={styles.summaryValue}>{note.trim()}</Text></> : null}
+            <Text style={styles.summaryLabel}>Method</Text>
+            <Text style={styles.summaryValue}>{selectedMethod.label}</Text>
+            {note.trim() ? <><Text style={styles.summaryLabel}>Note</Text><Text style={styles.summaryValue}>{note.trim()}</Text></> : null}
           </View>
-          <AppButton label="Record payment / تسجيل الدفعة" onPress={() => void submit()} loading={submitting} />
-          <AppButton label="Edit details / تعديل التفاصيل" variant="secondary" onPress={() => setStep('DETAILS')} />
+          <AppButton label="Record payment" onPress={() => void submit()} loading={submitting} />
+          <AppButton label="Edit details" variant="secondary" onPress={() => setStep('DETAILS')} />
         </View>
       )}
 
       {step === 'DONE' && (
         <View style={styles.done}>
           <Text style={styles.title}>Payment recorded ✓</Text>
-          <Text style={styles.subtitle}>تم تسجيل الدفعة</Text>
-          <AppButton label="Record another / تسجيل دفعة أخرى" onPress={recordAnother} />
-          <AppButton label="Done / تم" variant="secondary" onPress={onDone} />
+          <AppButton label="Record another" onPress={recordAnother} />
+          <AppButton label="Done" variant="secondary" onPress={onDone} />
         </View>
       )}
     </ScrollView>
@@ -262,7 +259,6 @@ const styles = StyleSheet.create({
   container: { padding: 18, gap: 16, backgroundColor: '#f8fafc', flexGrow: 1 },
   header: { gap: 3 },
   title: { color: '#0f172a', fontSize: 24, fontWeight: '900' },
-  subtitle: { color: '#475569', fontSize: 18, fontWeight: '700' },
   section: { gap: 12 },
   step: { color: '#047857', fontSize: 13, fontWeight: '800' },
   empty: { color: '#64748b', textAlign: 'center', paddingVertical: 24 },
@@ -279,7 +275,6 @@ const styles = StyleSheet.create({
   selectedText: { color: '#fff' },
   methodGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   method: { width: '48%', minHeight: 70, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: '#cbd5e1', backgroundColor: '#fff', justifyContent: 'center' },
-  methodArabic: { color: '#64748b', fontSize: 12, marginTop: 4, textAlign: 'center' },
   note: { minHeight: 90, paddingTop: 12, textAlignVertical: 'top' },
   summary: { padding: 16, gap: 5, borderRadius: 14, borderWidth: 1, borderColor: '#d1fae5', backgroundColor: '#fff' },
   summaryLabel: { color: '#64748b', fontSize: 12, fontWeight: '700', marginTop: 6 },

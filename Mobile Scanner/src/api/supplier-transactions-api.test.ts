@@ -55,7 +55,7 @@ describe('recordSupplierPayment', () => {
       currency: 'USD',
       paymentMethod: 'BANK_TRANSFER',
       transactionDate: '2026-10-03',
-      description: 'Supplier payment / دفعة مورّد',
+      description: 'Supplier payment',
       notes: 'Invoice 42',
     });
   });

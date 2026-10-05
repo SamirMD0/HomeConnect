@@ -221,10 +221,10 @@ export function ReceiptCaptureScreen({ connection, token, onDone, onSessionInval
       {pendingCount > 0 && (
         <View style={styles.pendingBar}>
           <Text style={styles.pendingText}>
-            {pendingCount} receipt{pendingCount === 1 ? '' : 's'} waiting to upload / {pendingCount} إيصال بانتظار الرفع
+            {pendingCount} receipt{pendingCount === 1 ? '' : 's'} waiting to upload
           </Text>
           <AppButton
-            label={syncing ? 'Syncing…' : 'Sync now / مزامنة'}
+            label={syncing ? 'Syncing…' : 'Sync now'}
             onPress={() => void syncQueue()}
             disabled={syncing}
             loading={syncing}
@@ -238,7 +238,6 @@ export function ReceiptCaptureScreen({ connection, token, onDone, onSessionInval
         <>
           <View style={styles.header}>
             <Text style={styles.title}>Step 1 — Choose supplier</Text>
-            <Text style={styles.subtitle}>الخطوة ١ — اختر المورد</Text>
           </View>
           <AppInput label="Search supplier" value={supplierFilter} onChangeText={setSupplierFilter} placeholder="Supplier name or phone" />
           {!suppliers ? (
@@ -267,7 +266,7 @@ export function ReceiptCaptureScreen({ connection, token, onDone, onSessionInval
         <>
           <View style={styles.header}>
             <Text style={styles.title}>Step 2 — Choose purchase</Text>
-            <Text style={styles.subtitle}>{selectedSupplier.name} · الخطوة ٢</Text>
+            <Text style={styles.subtitle}>{selectedSupplier.name} · Step 2</Text>
           </View>
           {!purchases ? (
             <ActivityIndicator size="large" color="#047857" style={styles.loader} />
@@ -314,13 +313,13 @@ export function ReceiptCaptureScreen({ connection, token, onDone, onSessionInval
           <ScrollView contentContainerStyle={styles.cameraActions}>
             {!photoUri ? (
               <>
-                <AppButton label="Take photo / التقط صورة" onPress={() => void takePhoto()} disabled={!cameraReady} />
+                <AppButton label="Take photo" onPress={() => void takePhoto()} disabled={!cameraReady} />
                 <AppButton label="Switch camera" variant="secondary" onPress={() => setFacing((c) => c === 'back' ? 'front' : 'back')} />
               </>
             ) : (
               <>
-                <AppButton label="Upload / رفع" onPress={() => void uploadPhoto()} />
-                <AppButton label="Retake / إعادة" variant="secondary" onPress={() => setPhotoUri(null)} />
+                <AppButton label="Upload" onPress={() => void uploadPhoto()} />
+                <AppButton label="Retake" variant="secondary" onPress={() => setPhotoUri(null)} />
               </>
             )}
             <AppButton label="Cancel" variant="secondary" onPress={() => { setPhotoUri(null); setStep('PICK_PURCHASE'); }} />
@@ -338,7 +337,6 @@ export function ReceiptCaptureScreen({ connection, token, onDone, onSessionInval
       {step === 'DONE' && (
         <View style={styles.center}>
           <Text style={styles.title}>Receipt uploaded ✓</Text>
-          <Text style={styles.subtitle}>تم رفع الإيصال</Text>
           <AppButton label="Attach another" onPress={() => { setPhotoUri(null); setSelectedPurchase(null); setPurchases(null); setStep('PICK_PURCHASE'); }} />
           <AppButton label="Done" variant="secondary" onPress={resetAfterUpload} />
         </View>

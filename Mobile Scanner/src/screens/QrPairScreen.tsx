@@ -34,7 +34,7 @@ export function QrPairScreen({ visible, onCancel, onPaired }: QrPairScreenProps)
     return (
       <Modal visible transparent={false} onRequestClose={onCancel}>
         <View style={styles.container}>
-          <Text style={styles.copy}>Checking camera permission… / جارٍ التحقق من إذن الكاميرا</Text>
+          <Text style={styles.copy}>Checking camera permission…</Text>
         </View>
       </Modal>
     );
@@ -44,13 +44,13 @@ export function QrPairScreen({ visible, onCancel, onPaired }: QrPairScreenProps)
     return (
       <Modal visible transparent={false} onRequestClose={onCancel}>
         <View style={styles.container}>
-          <Text style={styles.title}>Camera access needed / يلزم إذن الكاميرا</Text>
+          <Text style={styles.title}>Camera access needed</Text>
           <Text style={styles.copy}>
             To pair without typing the PC address, allow the camera so this app can read the
             QR shown on the shop PC under Scanner Hub.
           </Text>
-          <AppButton label="Grant camera access / السماح للكاميرا" onPress={() => { void requestPermission(); }} />
-          <AppButton label="Enter address manually / إدخال يدوي" variant="secondary" onPress={onCancel} />
+          <AppButton label="Grant camera access" onPress={() => { void requestPermission(); }} />
+          <AppButton label="Enter address manually" variant="secondary" onPress={onCancel} />
         </View>
       </Modal>
     );
@@ -61,7 +61,7 @@ export function QrPairScreen({ visible, onCancel, onPaired }: QrPairScreenProps)
     const parsed = parsePairingPayload(data);
     if (!parsed) {
       // Keep the camera running; the operator may have aimed at the wrong code.
-      setError('That QR is not a Scanner Hub pairing code. On the PC, open Scanner Hub to find it. / هذا الرمز ليس رمز ربط');
+      setError('That QR is not a Scanner Hub pairing code. On the PC, open Scanner Hub to find it.');
       return;
     }
     setConsumed(true);
@@ -85,7 +85,7 @@ export function QrPairScreen({ visible, onCancel, onPaired }: QrPairScreenProps)
   return (
     <Modal visible animationType="slide" statusBarTranslucent onRequestClose={close}>
       <View style={styles.container}>
-        <Text style={styles.title}>Scan Scanner Hub QR / امسح رمز الربط</Text>
+        <Text style={styles.title}>Scan Scanner Hub QR</Text>
         <Text style={styles.copy}>
           On the shop PC, open Scanner Hub and turn on Mobile Scanner. Point this phone at the QR code shown there.
         </Text>
@@ -106,10 +106,10 @@ export function QrPairScreen({ visible, onCancel, onPaired }: QrPairScreenProps)
           />
         </View>
         <Text style={styles.status}>
-          {ready ? 'Camera ready — aim at the QR / الكاميرا جاهزة' : 'Starting camera… / جارٍ تشغيل الكاميرا'}
+          {ready ? 'Camera ready — aim at the QR' : 'Starting camera…'}
         </Text>
-        <AppButton label="Restart camera / إعادة تشغيل الكاميرا" variant="secondary" onPress={restart} />
-        <AppButton label="Enter address manually / إدخال يدوي" variant="secondary" onPress={close} />
+        <AppButton label="Restart camera" variant="secondary" onPress={restart} />
+        <AppButton label="Enter address manually" variant="secondary" onPress={close} />
       </View>
     </Modal>
   );

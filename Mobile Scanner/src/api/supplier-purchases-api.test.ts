@@ -16,7 +16,7 @@ describe('supplier purchase API', () => {
     vi.stubGlobal('fetch', fetchMock);
     await recordSupplierPurchase(client, {
       supplierId: 'supplier-1', idempotencyKey: 'invoice-device-1', receiptNumber: 'INV-7',
-      transactionDate: '2026-10-03', currency: 'USD', description: 'Purchase / شراء: filters',
+      transactionDate: '2026-10-03', currency: 'USD', description: 'Purchase: filters',
       receiveStock: false, amountOverride: '125.00', amountOverrideReason: 'Invoice total confirmed',
       lines: [{ kind: 'MANUAL', description: 'filters', amount: '125.00', priceIncludesVat: true }],
     });
@@ -25,7 +25,7 @@ describe('supplier purchase API', () => {
     expect(init.headers).toMatchObject({ Authorization: 'Bearer jwt-token' });
     expect(JSON.parse(String(init.body))).toEqual({
       idempotencyKey: 'invoice-device-1', receiptNumber: 'INV-7', transactionDate: '2026-10-03',
-      currency: 'USD', description: 'Purchase / شراء: filters', receiveStock: false,
+      currency: 'USD', description: 'Purchase: filters', receiveStock: false,
       amountOverride: '125.00', amountOverrideReason: 'Invoice total confirmed',
       lines: [{ kind: 'MANUAL', description: 'filters', amount: '125.00', priceIncludesVat: true }],
     });

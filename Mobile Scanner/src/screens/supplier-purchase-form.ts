@@ -42,19 +42,19 @@ export function lineSubtotal(line: PurchaseLineDraft, currency: PurchaseCurrency
 
 export function lineIssue(line: PurchaseLineDraft, currency: PurchaseCurrency, receiveStock: boolean): string | null {
   if (line.kind === 'MANUAL') {
-    if (line.description.trim().length < 2) return 'Enter a description / أدخل الوصف';
-    if ((lineSubtotal(line, currency) ?? 0) <= 0) return 'Enter a positive amount / أدخل مبلغاً موجباً';
+    if (line.description.trim().length < 2) return 'Enter a description';
+    if ((lineSubtotal(line, currency) ?? 0) <= 0) return 'Enter a positive amount';
     return null;
   }
-  if (!line.product) return 'Choose a product / اختر منتجاً';
-  if ((line.product.priceCurrency ?? 'USD') !== currency) return 'Product currency does not match the invoice / عملة المنتج لا تطابق الفاتورة';
+  if (!line.product) return 'Choose a product';
+  if ((line.product.priceCurrency ?? 'USD') !== currency) return 'Product currency does not match the invoice';
   if (receiveStock && (!line.product.trackStock || line.product.notInInventory)) {
-    return 'This product cannot receive stock yet / لا يمكن استلام هذا المنتج في المخزون بعد';
+    return 'This product cannot receive stock yet';
   }
   if (!Number.isSafeInteger(Number(line.quantity)) || Number(line.quantity) < 1 || Number(line.quantity) > 100_000) {
-    return 'Enter a whole quantity above zero / أدخل كمية صحيحة أكبر من صفر';
+    return 'Enter a whole quantity above zero';
   }
-  if (lineSubtotal(line, currency) === null) return 'Enter a valid unit price / أدخل سعر وحدة صحيحاً';
+  if (lineSubtotal(line, currency) === null) return 'Enter a valid unit price';
   return null;
 }
 
@@ -79,27 +79,27 @@ export function buildDescription(lines: PurchaseLineDraft[], receiptNumber: stri
   const items = labels.slice(0, 3).join(', ');
   const rest = labels.length > 3 ? ` +${labels.length - 3}` : '';
   const receipt = receiptNumber.trim() ? ` · #${receiptNumber.trim()}` : '';
-  return `Purchase / شراء: ${items}${rest}${receipt}`.slice(0, 500);
+  return `Purchase: ${items}${rest}${receipt}`.slice(0, 500);
 }
 
 export function issueForInvoice(
   lines: PurchaseLineDraft[], currency: PurchaseCurrency, receiveStock: boolean,
   transactionDate: string, dueDate: string, billedTotal: string,
 ): string | null {
-  if (!validDate(transactionDate) || transactionDate > today()) return 'Enter a valid purchase date, no later than today / أدخل تاريخ شراء صحيحاً';
-  if (dueDate && !validDate(dueDate)) return 'Enter a valid due date / أدخل تاريخ استحقاق صحيحاً';
-  if (!lines.length) return 'Add at least one line / أضف بنداً واحداً على الأقل';
-  if (lines.length > 100) return 'An invoice can have at most 100 lines / الحد الأقصى ١٠٠ بند';
+  if (!validDate(transactionDate) || transactionDate > today()) return 'Enter a valid purchase date, no later than today';
+  if (dueDate && !validDate(dueDate)) return 'Enter a valid due date';
+  if (!lines.length) return 'Add at least one line';
+  if (lines.length > 100) return 'An invoice can have at most 100 lines';
   const used = new Set<string>();
   for (const line of lines) {
     const issue = lineIssue(line, currency, receiveStock);
     if (issue) return issue;
     if (line.kind === 'EXISTING_PRODUCT' && line.product) {
-      if (used.has(line.product.id)) return 'Combine duplicate product lines / ادمج البنود المكررة للمنتج';
+      if (used.has(line.product.id)) return 'Combine duplicate product lines';
       used.add(line.product.id);
     }
   }
-  if ((moneyMinorUnits(billedTotal, currency) ?? 0) <= 0) return 'Enter the positive total shown on the supplier invoice / أدخل إجمالي الفاتورة';
+  if ((moneyMinorUnits(billedTotal, currency) ?? 0) <= 0) return 'Enter the positive total shown on the supplier invoice';
   return null;
 }
 

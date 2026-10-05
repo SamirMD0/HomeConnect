@@ -17,11 +17,11 @@ function ResultRow({ label, value }: { label: string; value: string }) {
 
 export function ProductResult({ result }: ProductResultProps) {
   if (result.status === 'INVALID_CODE') {
-    return <StatusBanner tone="warning" message="This barcode or SKU is not valid / الرمز غير صالح" />;
+    return <StatusBanner tone="warning" message="This barcode or SKU is not valid" />;
   }
 
   if (result.status === 'NOT_FOUND' || !result.product) {
-    return <StatusBanner tone="warning" message={`No product found for ${result.normalizedCode ?? 'this code'} / لم يتم العثور على المنتج`} />;
+    return <StatusBanner tone="warning" message={`No product found for ${result.normalizedCode ?? 'this code'}`} />;
   }
 
   const product = result.product;
@@ -30,19 +30,19 @@ export function ProductResult({ result }: ProductResultProps) {
       <View style={styles.headingRow}>
         <View style={styles.headingText}>
           <Text style={styles.name}>{product.name}</Text>
-          <Text style={styles.match}>Matched by {result.matchedBy === 'BARCODE' ? 'barcode' : 'SKU'} / تمت المطابقة</Text>
+          <Text style={styles.match}>Matched by {result.matchedBy === 'BARCODE' ? 'barcode' : 'SKU'}</Text>
         </View>
         <View style={[styles.badge, !product.isActive && styles.archivedBadge]}>
           <Text style={[styles.badgeText, !product.isActive && styles.archivedText]}>
-            {product.isActive ? 'Active / نشط' : 'Archived / مؤرشف'}
+            {product.isActive ? 'Active' : 'Archived'}
           </Text>
         </View>
       </View>
-      <ResultRow label="Model / الموديل" value={product.model} />
-      <ResultRow label="SKU / رمز المنتج" value={product.sku} />
-      <ResultRow label="Barcode / الباركود" value={product.barcode ?? 'Not set / غير محدد'} />
-      <ResultRow label="Brand / العلامة" value={product.brand ?? 'Not set / غير محدد'} />
-      <ResultRow label="Product ID / معرّف المنتج" value={product.id} />
+      <ResultRow label="Model" value={product.model} />
+      <ResultRow label="SKU" value={product.sku} />
+      <ResultRow label="Barcode" value={product.barcode ?? 'Not set'} />
+      <ResultRow label="Brand" value={product.brand ?? 'Not set'} />
+      <ResultRow label="Product ID" value={product.id} />
     </View>
   );
 }

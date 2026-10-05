@@ -70,7 +70,6 @@ export function ConnectionSetupScreen({ initialSettings, onConnected }: Connecti
         <View style={styles.hero}>
           <Text style={styles.eyebrow}>HOME CONNECT</Text>
           <Text style={styles.title}>Connect to the shop PC</Text>
-          <Text style={styles.arabic}>الاتصال بكمبيوتر المتجر</Text>
           <Text style={styles.subtitle}>
             On the PC, open Scanner Hub and turn on Mobile Scanner. Scan the QR shown there — no typing needed.
           </Text>
@@ -80,15 +79,15 @@ export function ConnectionSetupScreen({ initialSettings, onConnected }: Connecti
 
         <View style={styles.primary}>
           <AppButton
-            label="Scan Scanner Hub QR / امسح رمز الربط"
+            label="Scan Scanner Hub QR"
             onPress={() => { setMessage(null); setQrOpen(true); }}
             loading={busy && !manualOpen}
           />
           <Pressable onPress={() => setManualOpen((value) => !value)} accessibilityRole="button">
             <Text style={styles.toggleLink}>
               {manualOpen
-                ? 'Hide manual address entry / إخفاء الإدخال اليدوي'
-                : 'Enter address manually / إدخال يدوي'}
+                ? 'Hide manual address entry'
+                : 'Enter address manually'}
             </Text>
           </Pressable>
         </View>
@@ -96,7 +95,7 @@ export function ConnectionSetupScreen({ initialSettings, onConnected }: Connecti
         {manualOpen && (
           <View style={styles.form}>
             <AppInput
-              label="PC IP address / عنوان الكمبيوتر"
+              label="PC IP address"
               value={host}
               onChangeText={setHost}
               autoCapitalize="none"
@@ -106,19 +105,19 @@ export function ConnectionSetupScreen({ initialSettings, onConnected }: Connecti
               hint="Use the address displayed in Scanner Hub. The phone and PC must be on the same Wi-Fi."
             />
             <AppInput
-              label="Scanner port / منفذ الماسح"
+              label="Scanner port"
               value={port}
               onChangeText={setPort}
               keyboardType="number-pad"
               maxLength={5}
               placeholder={String(DEFAULT_SCANNER_PORT)}
             />
-            <AppButton label="Test connection and continue / اختبار ومتابعة" onPress={() => void testAndContinue()} loading={busy} />
+            <AppButton label="Test connection and continue" onPress={() => void testAndContinue()} loading={busy} />
           </View>
         )}
 
         <StatusBanner
-          message="Nothing is sent to the internet. This app talks only to the PC address you enter / لا يتم إرسال أي شيء إلى الإنترنت"
+          message="Nothing is sent to the internet. This app talks only to the PC address you enter"
         />
       </ScrollView>
 
@@ -133,7 +132,6 @@ const styles = StyleSheet.create({
   hero: { gap: 7 },
   eyebrow: { color: '#047857', fontSize: 12, fontWeight: '900', letterSpacing: 2 },
   title: { color: '#0f172a', fontSize: 30, fontWeight: '900' },
-  arabic: { color: '#334155', fontSize: 21, fontWeight: '700', textAlign: 'left' },
   subtitle: { color: '#64748b', fontSize: 15, lineHeight: 22, marginTop: 6 },
   primary: { gap: 10, alignItems: 'stretch' },
   toggleLink: { color: '#047857', fontWeight: '700', textAlign: 'center', paddingVertical: 6 },
