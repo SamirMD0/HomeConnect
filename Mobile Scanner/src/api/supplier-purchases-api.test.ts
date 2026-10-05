@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { HcApiError } from './hc-client';
-import { checkSupplierReceipt, recordSupplierPurchase, searchPurchaseProducts } from './supplier-purchases-api';
+import { BackendTooOldError, checkSupplierReceipt, recordSupplierPurchase, searchPurchaseProducts } from './supplier-purchases-api';
 
 const client = { baseUrl: 'http://server:3000', token: 'jwt-token' };
 const reply = (status: number, data: unknown): Response => ({
@@ -40,6 +40,11 @@ describe('supplier purchase API', () => {
     await expect(checkSupplierReceipt(client, 'supplier-1', 'INV-7')).resolves.toMatchObject({ duplicate: true });
     expect(fetchMock.mock.calls[0]?.[0]).toContain('/api/v1/products?search=filter&isActive=true');
     expect(fetchMock.mock.calls[1]?.[0]).toContain('receipt-check?supplierId=supplier-1&receiptNumber=INV-7');
+  });
+
+  it('maps a 404 on receipt-check to BackendTooOldError so the operator cannot post a silent duplicate', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(reply(404, null)));
+    await expect(checkSupplierReceipt(client, 'supplier-1', 'INV-7')).rejects.toBeInstanceOf(BackendTooOldError);
   });
 
   it('propagates unauthorized purchase writes', async () => {

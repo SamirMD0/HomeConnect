@@ -1,4 +1,17 @@
-import { AuthedClient, authedHeaders, requestJson } from './hc-client';
+import { AuthedClient, authedHeaders, HcApiError, requestJson } from './hc-client';
+
+/**
+ * Thrown when the shop PC's backend is too old to answer a receipt-duplicate
+ * check (the endpoint returns 404). Treating 404 as "no duplicate" would let an
+ * operator record a duplicate silently on an un-updated shop PC, so we refuse
+ * to submit until the PC is updated.
+ */
+export class BackendTooOldError extends Error {
+  constructor(message = 'Shop PC is older than this mobile build. Update HomeConnect on the PC first.') {
+    super(message);
+    this.name = 'BackendTooOldError';
+  }
+}
 
 export type PurchaseCurrency = 'USD' | 'LBP';
 
@@ -65,10 +78,22 @@ export async function checkSupplierReceipt(
   receiptNumber: string,
 ): Promise<ReceiptCheckResult> {
   const query = new URLSearchParams({ supplierId, receiptNumber });
-  return requestJson<ReceiptCheckResult>(
-    `${client.baseUrl}/api/v1/supplier-purchases/receipt-check?${query.toString()}`,
-    { headers: authedHeaders(client) },
-  );
+  try {
+    return await requestJson<ReceiptCheckResult>(
+      `${client.baseUrl}/api/v1/supplier-purchases/receipt-check?${query.toString()}`,
+      { headers: authedHeaders(client) },
+    );
+  } catch (error) {
+    // A 404 means the route is missing from this shop PC's backend, which only
+    // happens when the PC is on a build older than this mobile client. The
+    // mobile-api gateway returns the same status for a route that is not in
+    // its allowlist, so an un-updated PC also lands here. Either way, refuse
+    // to submit — silently returning "no duplicate" would hide a real risk.
+    if (error instanceof HcApiError && error.status === 404) {
+      throw new BackendTooOldError();
+    }
+    throw error;
+  }
 }
 
 export async function recordSupplierPurchase(

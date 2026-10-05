@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { HcApiError } from '../api/hc-client';
 import { clientFrom } from '../api/products-api';
 import {
+  BackendTooOldError,
   checkSupplierReceipt, CreateSupplierPurchaseInput, PurchaseCurrency,
   RecordedSupplierPurchase, recordSupplierPurchase,
 } from '../api/supplier-purchases-api';
@@ -98,6 +99,12 @@ export function SupplierPurchaseScreen({ connection, token, onDone, onSessionInv
       setStep('REVIEW');
     } catch (error) {
       if (error instanceof HcApiError && error.kind === 'UNAUTHORIZED') await onSessionInvalid();
+      else if (error instanceof BackendTooOldError) {
+        // Hard-stop before Review: an older shop PC cannot tell us whether
+        // this invoice number is already recorded, and we must not post a
+        // duplicate on their behalf.
+        setBanner({ tone: 'danger', message: 'Shop PC is older than this app. Ask the admin to update HomeConnect on the PC, then try again / كمبيوتر المتجر قديم؛ حدِّث هوم كونيكت على الكمبيوتر' });
+      }
       else setBanner({ tone: 'danger', message: error instanceof HcApiError ? error.message : 'Could not check invoice number / تعذّر التحقق من رقم الفاتورة' });
     } finally { setReviewing(false); }
   };
