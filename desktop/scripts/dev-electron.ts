@@ -19,6 +19,11 @@ async function main() {
   // `npm run dev` is still useful for browser-only work, and developers often
   // leave it running before opening Electron. Reuse healthy services instead
   // of starting duplicates that immediately die with EADDRINUSE.
+  // Serial, not parallel: Vite's dep optimizer and tsx's module loader each
+  // peg a CPU core on cold start, and running them together on Windows blows
+  // past any reasonable readiness window (observed: 64s backend-import time
+  // when Vite was contending, vs ~16s alone). Bring the backend up first —
+  // it's smaller and quicker to warm — then launch Vite with the CPU free.
   const backend = await canReach(BACKEND_URL)
     ? null
     : startProcess('backend', process.execPath, [
@@ -31,6 +36,8 @@ async function main() {
         FRONTEND_URL,
         CORS_ORIGINS: FRONTEND_URL,
       });
+  await waitForUrl(BACKEND_URL, READY_TIMEOUT_MS, 'Development Express backend');
+
   const frontend = await canReach(FRONTEND_URL)
     ? null
     : startProcess('frontend', process.execPath, [
@@ -43,11 +50,7 @@ async function main() {
         '--port',
         FRONTEND_PORT,
       ]);
-
-  await Promise.all([
-    waitForUrl(BACKEND_URL, READY_TIMEOUT_MS, 'Development Express backend'),
-    waitForUrl(FRONTEND_URL, READY_TIMEOUT_MS, 'Vite frontend'),
-  ]);
+  await waitForUrl(FRONTEND_URL, READY_TIMEOUT_MS, 'Vite frontend');
 
   if (CHECK_ONLY) {
     console.log('Electron dev dependencies are ready.');
