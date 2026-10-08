@@ -5,6 +5,7 @@ export const MAX_FEATURE_ICON_SVG_BYTES = 8 * 1024;
 // jsdom's module graph is expensive to load on Windows. Keep it out of the
 // server startup path; Node caches the sanitizer after the first SVG upload.
 function getDOMPurify(): typeof import('isomorphic-dompurify').default {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- Keep jsdom loading synchronous and deferred until an SVG upload.
   return require('isomorphic-dompurify');
 }
 
