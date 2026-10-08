@@ -27,6 +27,6 @@
       "@desktop/*": ["./desktop/src/*"]
     }
   },
-  "include": ["frontend/src"],
+  "include": ["frontend/src", "shared"],
   "references": [{ "path": "./tsconfig.server.json" }, { "path": "./tsconfig.node.json" }]
 }

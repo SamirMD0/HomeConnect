@@ -66,6 +66,7 @@ import { canonicalKeyForLabel, customSpecKey, normalizeSpecLabel, parseDimension
 import { PrintSnapshotService } from '../../pricing-card/print-snapshot/print-snapshot.service';
 import { RecordPrintSnapshotInput } from '../../pricing-card/print-snapshot/print-snapshot.validator';
 import { resolvePricingCardTemplate } from '../../pricing-card/template-resolver';
+import { DEFAULT_PRODUCT_BRANDS } from './product-catalog-defaults';
 
 export interface ProductScanPayload {
   id: string;
@@ -183,7 +184,14 @@ export const MAX_BRAND_NORMALIZE_PRODUCTS = 500;
 
 export class ProductsService {
   static async brands() {
-    return { brands: summarizeProductBrands(await ProductsRepository.groupBrandSpellings()) };
+    const brands = summarizeProductBrands(await ProductsRepository.groupBrandSpellings());
+    const existing = new Set(brands.map((brand) => normalizeBrandKey(brand.canonical)));
+    for (const canonical of DEFAULT_PRODUCT_BRANDS) {
+      if (!existing.has(normalizeBrandKey(canonical))) {
+        brands.push({ canonical, productCount: 0, spellings: [canonical], spellingCounts: [] });
+      }
+    }
+    return { brands: brands.sort((left, right) => right.productCount - left.productCount || compareBrandNames(left.canonical, right.canonical)) };
   }
 
   static async normalizeBrands(

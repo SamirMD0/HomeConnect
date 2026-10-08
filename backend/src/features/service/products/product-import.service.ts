@@ -20,6 +20,8 @@ import type {
   CreateProductImportInput,
   UpdateProductImportInput,
 } from './product-import.validator';
+import { ALL_PRODUCT_IMPORT_BRANDS, detectProductBrand, productImportRowBrand } from './product-catalog-defaults';
+import { detectProductCategory, productCategoryGroup } from './product-category-detection';
 
 type DbClient = Prisma.TransactionClient;
 type ImportDraft = Prisma.ProductImportGetPayload<Record<string, never>>;
@@ -52,13 +54,17 @@ export interface ProductImportPreviewRow extends ParsedProductImportRow {
 export class ProductImportService {
   static async createDraft(input: CreateProductImportInput, user: ServiceMutationUser) {
     assertServiceAdmin(user);
-    const rows = parseProductInventoryCsv(input.csvText);
+    const selectedBrand = input.brand.trim();
+    const rows = parseProductInventoryCsv(input.csvText).map((row) => ({
+      ...row, brand: selectedBrand === ALL_PRODUCT_IMPORT_BRANDS ? detectProductBrand(row.description) : selectedBrand,
+      productType: detectProductCategory(row.description),
+    }));
     const draft = await prisma.productImport.create({
       data: {
         fileName: input.fileName,
         fileHash: importFileHash(input.csvText),
         sourceSystem: normalizeSourceSystem(input.sourceSystem),
-        brand: input.brand.trim(),
+        brand: selectedBrand,
         rows: rows as unknown as Prisma.InputJsonValue,
         categoryMappings: {},
         createdById: user.userId,
@@ -119,6 +125,7 @@ export class ProductImportService {
         const target = preview.rows.find((row) => row.rowNumber === decision.targetRowNumber);
         if (!source || !target || source.rowNumber === target.rowNumber) throw unresolved(source ?? { rowNumber: decision.rowNumber }, 'Choose a different CSV row to combine into');
         if (normalizeExternalCode(source.externalCode) !== normalizeExternalCode(target.externalCode)) throw unresolved(source, 'Only rows with the same external code can be combined');
+        if (normalizeText(source.brand) !== normalizeText(target.brand)) throw unresolved(source, 'Only rows with the same brand can be combined');
         if (decisions.get(target.rowNumber)?.action === 'COMBINE') throw unresolved(source, 'The target CSV row must create, merge, or exclude the combined product');
         combinedQuantities.set(target.rowNumber, (combinedQuantities.get(target.rowNumber) ?? target.quantity) + source.quantity);
       }
@@ -158,17 +165,18 @@ export class ProductImportService {
           }
         }
         const categoryId = row.categoryId ?? null;
+        const brand = productImportRowBrand(row, draft.brand);
         if (categoryId) await CategoriesService.assertAssignable(categoryId, tx);
 
         if (action === 'CREATE') {
-          await assertCreateAvailable(draft.sourceSystem, normalizedCode, draft.brand, externalCode, tx);
+          await assertCreateAvailable(draft.sourceSystem, normalizedCode, brand, externalCode, tx);
           const product = await tx.product.create({
             data: {
               sku: await generateProductSku(tx),
               name,
               model: externalCode,
               barcode: await generateInternalBarcode(tx),
-              brand: draft.brand,
+              brand,
               categoryId,
               costPrice: row.costUsd == null ? null : new Prisma.Decimal(row.costUsd),
               priceCurrency: 'USD',
@@ -210,7 +218,7 @@ export class ProductImportService {
           data: {
             ...(mergeFields.has('name') ? { name } : {}),
             ...(mergeFields.has('model') ? { model: externalCode } : {}),
-            ...(mergeFields.has('brand') ? { brand: draft.brand } : {}),
+            ...(mergeFields.has('brand') ? { brand } : {}),
             ...(mergeFields.has('category') ? { categoryId } : {}),
             updatedById: user.userId,
           },
@@ -281,7 +289,9 @@ function assertDraft(draft: ImportDraft) {
 }
 
 async function buildPreview(draft: ImportDraft, client: DbClient = prisma as unknown as DbClient) {
-  const rows = draft.rows as unknown as ParsedProductImportRow[];
+  const rows = (draft.rows as unknown as ParsedProductImportRow[]).map((row) => ({
+    ...row, productType: row.productType === undefined ? detectProductCategory(row.description) : row.productType,
+  }));
   const mappings = draft.categoryMappings as Record<string, string | null>;
   const codes = [...new Set(rows.map((row) => normalizeExternalCode(row.externalCode)))];
   const names = [...new Set(rows.map((row) => row.description.trim()))];
@@ -297,7 +307,7 @@ async function buildPreview(draft: ImportDraft, client: DbClient = prisma as unk
         { name: { in: names, mode: 'insensitive' } },
       ] },
     }),
-    categoryIds.length ? client.category.findMany({ where: { id: { in: categoryIds } }, select: { id: true, isActive: true, parent: { select: { isActive: true, parent: { select: { isActive: true } } } } } }) : [],
+    categoryIds.length ? client.category.findMany({ where: { id: { in: categoryIds } }, select: { id: true, name: true, parentId: true, isActive: true, _count: { select: { children: true } }, parent: { select: { name: true, isActive: true, parent: { select: { isActive: true } } } } } }) : [],
     client.productImport.findFirst({ where: { fileHash: draft.fileHash, status: 'COMMITTED', id: { not: draft.id } }, orderBy: { committedAt: 'desc' }, select: { id: true, committedAt: true } }),
   ]);
   const productIds = [...new Set([...identifiers.map((item) => item.productId), ...products.map((item) => item.id)])];
@@ -311,6 +321,7 @@ async function buildPreview(draft: ImportDraft, client: DbClient = prisma as unk
   rows.forEach((row) => codeCounts.set(normalizeExternalCode(row.externalCode), (codeCounts.get(normalizeExternalCode(row.externalCode)) ?? 0) + 1));
 
   const previewRows: ProductImportPreviewRow[] = rows.map((row) => {
+    const brand = productImportRowBrand(row, draft.brand);
     const conflicts: ProductImportConflict[] = [];
     const matched = new Map<string, (typeof products)[number]>();
     const normalizedCode = normalizeExternalCode(row.externalCode);
@@ -321,7 +332,7 @@ async function buildPreview(draft: ImportDraft, client: DbClient = prisma as unk
       conflicts.push({ kind: 'EXTERNAL_CODE', productId: identifier.product.id, message: 'This external code is already attached to a product' });
     }
     for (const product of products) {
-      const sameBrand = normalizeText(product.brand) === normalizeText(draft.brand);
+      const sameBrand = normalizeText(product.brand) === normalizeText(brand);
       const sameModel = normalizeText(product.model) === normalizeText(row.externalCode);
       const sameName = normalizeText(product.name) === normalizeText(row.description);
       if (sameBrand && sameModel) {
@@ -333,14 +344,18 @@ async function buildPreview(draft: ImportDraft, client: DbClient = prisma as unk
       }
     }
 
-    const hasMapping = Object.prototype.hasOwnProperty.call(mappings, row.family);
-    const categoryId = hasMapping ? mappings[row.family] : undefined;
+    const group = productCategoryGroup(row);
+    const mappingKey = Object.prototype.hasOwnProperty.call(mappings, `row:${row.rowNumber}`) ? `row:${row.rowNumber}` : group.key;
+    const hasMapping = Object.prototype.hasOwnProperty.call(mappings, mappingKey);
+    const categoryId = hasMapping ? mappings[mappingKey] : undefined;
     const issues = [...row.issues];
-    if (!hasMapping) conflicts.push({ kind: 'CATEGORY', message: `Choose a category mapping for ${row.family}` });
+    if (!hasMapping) conflicts.push({ kind: 'CATEGORY', message: `Choose a category mapping for ${group.label}` });
     if (categoryId) {
       const category = categoryById.get(categoryId);
       if (!category) issues.push('Mapped category no longer exists');
       else if (!category.isActive || category.parent?.isActive === false || category.parent?.parent?.isActive === false) issues.push('Mapped category is inactive');
+      else if (!category.parentId || category._count.children > 0) issues.push('Choose a category inside a family, not the family itself');
+      else if (group.family && normalizeText(category.parent?.name) !== normalizeText(group.family)) issues.push(`This category must belong to ${group.family}`);
     }
     const matches = [...matched.values()].map((product) => ({
       id: product.id,
@@ -355,6 +370,8 @@ async function buildPreview(draft: ImportDraft, client: DbClient = prisma as unk
     }));
     return {
       ...row,
+      brand,
+      productType: row.productType,
       issues,
       categoryId,
       conflicts: uniqueConflicts(conflicts),
@@ -374,6 +391,7 @@ async function buildPreview(draft: ImportDraft, client: DbClient = prisma as unk
     committedAt: draft.committedAt?.toISOString() ?? null,
     categoryMappings: mappings,
     families: [...new Set(rows.map((row) => row.family))],
+    categoryGroups: [...new Map(rows.map((row) => { const group = productCategoryGroup(row); return [group.key, group] as const; })).values()],
     previousCommittedImport: previous ? { id: previous.id, committedAt: previous.committedAt?.toISOString() ?? null } : null,
     counts: {
       total: previewRows.length,
@@ -387,10 +405,10 @@ async function buildPreview(draft: ImportDraft, client: DbClient = prisma as unk
   };
 }
 
-async function assertCreateAvailable(sourceSystem: string, normalizedCode: string, brand: string, model: string, tx: DbClient) {
+async function assertCreateAvailable(sourceSystem: string, normalizedCode: string, brand: string | null, model: string, tx: DbClient) {
   const [identifier, product] = await Promise.all([
     tx.productExternalIdentifier.findUnique({ where: { sourceSystem_normalizedCode: { sourceSystem, normalizedCode } } }),
-    tx.product.findFirst({ where: { brand: { equals: brand, mode: 'insensitive' }, model: { equals: model, mode: 'insensitive' } }, select: { id: true } }),
+    tx.product.findFirst({ where: { brand: brand === null ? null : { equals: brand, mode: 'insensitive' }, model: { equals: model, mode: 'insensitive' } }, select: { id: true } }),
   ]);
   if (identifier || product) throw new AppError('The product code now conflicts with an existing product; review the import again', 409, 'PRODUCT_IMPORT_STALE');
 }

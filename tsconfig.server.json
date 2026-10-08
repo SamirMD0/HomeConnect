@@ -16,5 +16,5 @@
       "@desktop/*": ["./desktop/src/*"]
     }
   },
-  "include": ["backend/src", "desktop/src", "backend/src/features/maintenance/checksum-allowlist.json"]
+  "include": ["backend/src", "desktop/src", "shared", "backend/src/features/maintenance/checksum-allowlist.json"]
 }

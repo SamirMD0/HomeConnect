@@ -8,7 +8,11 @@ const BACKEND_PORT = '3001';
 const FRONTEND_PORT = '3002';
 const BACKEND_URL = `http://${HOST}:${BACKEND_PORT}/api/v1/health`;
 const FRONTEND_URL = `http://${HOST}:${FRONTEND_PORT}`;
-const READY_TIMEOUT_MS = 60_000;
+const BACKEND_READY_TIMEOUT_MS = 60_000;
+// Vite 8 completes explicit dependency optimization before it starts listening.
+// A cold cache (including after config/lockfile changes) can take over a minute
+// on Windows. Let that build finish so the next launch can reuse its output.
+const FRONTEND_READY_TIMEOUT_MS = 180_000;
 const CHECK_ONLY = process.env.ELECTRON_DEV_CHECK_ONLY === '1';
 // The backend has ~400 TypeScript source files; tsx transpiles each on first
 // import, which on Windows pushes the full module graph to a minute or more.
@@ -16,6 +20,7 @@ const CHECK_ONLY = process.env.ELECTRON_DEV_CHECK_ONLY === '1';
 // and keeps node_modules external, so Node starts the whole backend in ~3s.
 const BACKEND_BUNDLE = path.resolve('dist/dev/backend.cjs');
 const BACKEND_SRC_DIR = path.resolve('backend/src');
+const SHARED_SRC_DIR = path.resolve('shared');
 
 const children: ChildProcess[] = [];
 let shuttingDown = false;
@@ -37,7 +42,7 @@ async function main() {
         FRONTEND_URL,
         CORS_ORIGINS: FRONTEND_URL,
       });
-  await waitForUrl(BACKEND_URL, READY_TIMEOUT_MS, 'Development Express backend');
+  await waitForUrl(BACKEND_URL, BACKEND_READY_TIMEOUT_MS, 'Development Express backend');
 
   const frontend = await canReach(FRONTEND_URL)
     ? null
@@ -51,7 +56,10 @@ async function main() {
         '--port',
         FRONTEND_PORT,
       ]);
-  await waitForUrl(FRONTEND_URL, READY_TIMEOUT_MS, 'Vite frontend');
+  if (frontend) {
+    console.log('[frontend] starting Vite; rebuilding its dependency cache can take up to 3 minutes…');
+  }
+  await waitForUrl(FRONTEND_URL, FRONTEND_READY_TIMEOUT_MS, 'Vite frontend');
 
   if (CHECK_ONLY) {
     console.log('Electron dev dependencies are ready.');
@@ -106,8 +114,8 @@ function startProcess(
  */
 async function ensureBackendBundle(): Promise<void> {
   const outMtime = tryMtime(BACKEND_BUNDLE);
-  const newestSrcMtime = newestMtimeIn(BACKEND_SRC_DIR);
-  if (outMtime !== null && newestSrcMtime !== null && outMtime >= newestSrcMtime) return;
+  const newestSrcMtime = Math.max(newestMtimeIn(BACKEND_SRC_DIR) ?? 0, newestMtimeIn(SHARED_SRC_DIR) ?? 0);
+  if (outMtime !== null && newestSrcMtime > 0 && outMtime >= newestSrcMtime) return;
 
   console.log('[backend] bundling with esbuild…');
   const started = Date.now();
@@ -169,8 +177,13 @@ function runOnce(label: string, command: string, args: string[]) {
 
 async function waitForUrl(url: string, timeoutMs: number, label: string) {
   const startedAt = Date.now();
+  let nextProgressAt = startedAt + 15_000;
   while (Date.now() - startedAt < timeoutMs) {
     if (await canReach(url)) return;
+    if (Date.now() >= nextProgressAt) {
+      console.log(`[startup] waiting for ${label} (${Math.round((Date.now() - startedAt) / 1000)}s / ${timeoutMs / 1000}s)…`);
+      nextProgressAt = Date.now() + 15_000;
+    }
     await delay(500);
   }
 

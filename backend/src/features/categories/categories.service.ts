@@ -24,7 +24,7 @@ export class CategoriesService {
       path: categoryPath(row),
       level: row.parent ? (row.parent.parent ? 3 : 2) : 1,
       assignable:
-        row.isActive && (row.parent?.isActive ?? true) && (row.parent?.parent?.isActive ?? true),
+        row.isActive && (row.parent?.isActive ?? true) && (row.parent?.parent?.isActive ?? true) && row._count.children === 0,
       productCount: row._count.products,
       childCount: row._count.children,
     }));
@@ -85,6 +85,8 @@ export class CategoriesService {
     if (!row) throw new ValidationError('Category not found');
     if (!row.isActive || row.parent?.isActive === false || row.parent?.parent?.isActive === false)
       throw new ValidationError('Category or parent is inactive');
+    if (row._count.children > 0)
+      throw new ValidationError('Choose a product category inside this family');
   }
   static async filterIds(id: string) {
     return descendantIds(await CategoriesRepository.list(), id.toLowerCase());

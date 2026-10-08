@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { ValidationError } from '../../../lib/errors';
 
-export const MAX_PRODUCT_IMPORT_ROWS = 500;
+export const MAX_PRODUCT_IMPORT_ROWS = 2_000;
 export const MAX_PRODUCT_IMPORT_BYTES = 750_000;
 
 export interface ParsedProductImportRow {
@@ -9,6 +9,8 @@ export interface ParsedProductImportRow {
   family: string;
   externalCode: string;
   description: string;
+  brand?: string | null;
+  productType?: string | null;
   quantity: number;
   costUsd: string | null;
   issues: string[];
@@ -43,12 +45,20 @@ function parseReportRecord(record: string[], rowNumber: number): ParsedProductIm
   const codeLabel = findCell(record, 'Code');
   const descriptionLabel = findCell(record, 'Description');
   const quantityLabel = findCell(record, 'Qty', codeLabel + 1);
-  const costLabel = findCell(record, 'Cost USD');
-  const totalLabel = findCell(record, 'Total', costLabel + 1);
+  // Some inventory exports hide the cost headings while preserving their two
+  // empty cells. Anchor those cells to the product headings, so the footer's
+  // TOTAL is never mistaken for the start of the product values.
+  const hiddenCostHeaders = codeLabel >= 0
+    && descriptionLabel === codeLabel + 1
+    && quantityLabel === descriptionLabel + 1
+    && record[quantityLabel + 1]?.trim() === ''
+    && record[quantityLabel + 2]?.trim() === '';
+  const costLabel = hiddenCostHeaders ? quantityLabel + 1 : findCell(record, 'Cost USD');
+  const totalLabel = hiddenCostHeaders ? quantityLabel + 2 : findCell(record, 'Total', costLabel + 1);
   if ([familyLabel, codeLabel, descriptionLabel, quantityLabel, costLabel, totalLabel].some((index) => index < 0)) return null;
 
   // This accounting report repeats its column labels on every physical row;
-  // the five product values immediately follow the final `Total` label.
+  // the five product values immediately follow the two cost header cells.
   const valueStart = totalLabel + 1;
   const family = record[familyLabel + 1]?.trim() ?? '';
   const externalCode = record[valueStart]?.trim() ?? '';

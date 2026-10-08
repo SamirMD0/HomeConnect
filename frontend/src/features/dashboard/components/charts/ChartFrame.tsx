@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { BarChart3, Table2 } from 'lucide-react';
 import type { BilingualText } from '../../config/dashboard-labels';
 import { BilingualLabel } from '../layout/BilingualLabel';
+import { ChartViewport } from './ChartViewport';
 
 export interface ChartTableColumn<T> {
   key: keyof T;
@@ -53,7 +54,7 @@ export function ChartFrame<T extends object>({
       </div>
       {view === 'chart' ? (
         <div style={{ height }} className="min-w-0 rounded-md bg-white p-2">
-          {children}
+          <ChartViewport>{children}</ChartViewport>
         </div>
       ) : (
         <div className="max-h-[280px] overflow-auto rounded-md border border-slate-200 bg-white">

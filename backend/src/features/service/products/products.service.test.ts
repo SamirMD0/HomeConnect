@@ -334,11 +334,13 @@ describe('product brand summaries', () => {
     expect(summaries).toHaveLength(6);
   });
 
-  it('returns only grouped brand fields from the repository aggregate', async () => {
+  it('includes defaults before products exist without duplicating used brands', async () => {
     repository.groupBrandSpellings.mockResolvedValue([{ brand: 'DSP', _count: { _all: 30 } }]);
-    await expect(ProductsService.brands()).resolves.toEqual({
-      brands: [{ canonical: 'DSP', productCount: 30, spellings: ['DSP'], spellingCounts: [{ spelling: 'DSP', productCount: 30 }] }],
-    });
+    const { brands } = await ProductsService.brands();
+    expect(brands.filter((brand) => brand.canonical === 'DSP')).toEqual([
+      { canonical: 'DSP', productCount: 30, spellings: ['DSP'], spellingCounts: [{ spelling: 'DSP', productCount: 30 }] },
+    ]);
+    expect(brands).toContainEqual({ canonical: 'TCL', productCount: 0, spellings: ['TCL'], spellingCounts: [] });
   });
 });
 
