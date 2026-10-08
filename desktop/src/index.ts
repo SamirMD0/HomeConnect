@@ -18,8 +18,10 @@ import { createStartupTimeline } from './startup-timeline';
 import { BACKEND_PORT, FRONTEND_PORT } from './runtime-config';
 import { WHATSAPP_OPEN_CHANNEL, openWhatsAppUrl } from './whatsapp-link';
 import { LABEL_PRINT_CHANNEL, printLabels } from './label-print';
-import { runPreMigrationGuard } from './pre-migration-guard';
+import { runPreMigrationGuard, discoverPackagedPostgresTool } from './pre-migration-guard';
 import { startUpdateChecker } from './updater';
+import { prepareRollback, readRollback, updateRollback } from './update-rollback';
+import { waitForRendererReady } from './renderer-readiness';
 
 let backendProcess: ChildProcess | null = null;
 let frontendServer: Server | null = null;
@@ -43,6 +45,9 @@ if (!gotTheLock) {
   });
 
   app.whenReady().then(async () => {
+    if (app.isPackaged) await updateRollback(app.getPath('userData'), app.getVersion(), {
+      status: 'starting', startupPid: process.pid, deadline: Date.now() + 600_000,
+    });
     // Registered before any window loads so the first response already carries it.
     applyContentSecurityPolicy(session.defaultSession, resolveCspMode());
 
@@ -203,6 +208,19 @@ if (!gotTheLock) {
         monitorWindow?.webContents.send('diagnostics:startupState', { step, status, error: errorMsg });
       };
 
+      const recoverFailedUpdate = async (reason: string) => {
+        if (!app.isPackaged) return false;
+        const requested = await updateRollback(app.getPath('userData'), app.getVersion(), {
+          status: 'rollback-requested', failure: redactLogChunk(reason),
+        });
+        if (!requested) return false;
+        sendLog('Restoring the previous version. HomeConnect will reopen automatically.');
+        isQuitting = true;
+        await cleanupRuntime();
+        app.quit();
+        return true;
+      };
+
       try {
         // Wait for preload script to be ready
         await new Promise(r => setTimeout(r, 500));
@@ -233,6 +251,7 @@ if (!gotTheLock) {
           sendLog('Startup complete. Opening app...');
           await new Promise(r => setTimeout(r, 500));
           const win = createWindow();
+          await recordDiagnostic(true);
           try {
             startUpdateChecker(win, { logger: console });
           } catch {
@@ -269,18 +288,23 @@ if (!gotTheLock) {
               migrationsDir: path.join(process.resourcesPath, 'prisma', 'migrations'),
               databaseUrl,
               isPackaged: app.isPackaged,
+              onMigrationStarting: async () => {
+                await updateRollback(app.getPath('userData'), app.getVersion(), { databaseMayHaveChanged: true });
+              },
               logger: { info: (message) => sendLog(redactLogChunk(message)), error: (message) => sendLog(`[ERROR] ${redactLogChunk(message)}`) },
             });
             if (guardOutcome.kind === 'failed') {
+              if (await recoverFailedUpdate(`${guardOutcome.code}: ${guardOutcome.error}`)) return;
               monitorWindow?.webContents.send('diagnostics:startupState', {
                 migrationFailed: {
                   code: guardOutcome.code,
                   backupPath: guardOutcome.backupPath ?? '',
                   from: guardOutcome.from,
                   to: guardOutcome.to,
+                  error: guardOutcome.error,
                 },
               });
-              try { await recordDiagnostic(false, `pre-migration-guard: ${guardOutcome.code}`); }
+              try { await recordDiagnostic(false, `pre-migration-guard: ${guardOutcome.code}: ${guardOutcome.error}`); }
               catch { sendLog('Could not write pre-migration diagnostics.'); }
               return;
             }
@@ -288,6 +312,7 @@ if (!gotTheLock) {
             updateStep('step-config', 'success');
           }
           sendLog('Starting compiled backend process...');
+          await updateRollback(app.getPath('userData'), app.getVersion(), { databaseMayHaveChanged: true });
           backendProcess = startCompiledBackend(backendEntryPath, app.getPath('userData'), process.resourcesPath, sendLog);
           const startupAbort = new AbortController();
           const ownedBackend = backendProcess;
@@ -322,12 +347,61 @@ if (!gotTheLock) {
             return;
           }
 
-          await recordDiagnostic(true);
           sendLog('Startup complete. Opening app...');
           await new Promise(r => setTimeout(r, 500));
-          const win = createWindow(FRONTEND_ORIGIN);
+          const win = createWindow(FRONTEND_ORIGIN, true);
+          await new Promise<void>((resolve, reject) => {
+            const timer = setTimeout(() => reject(new Error('Application window did not load')), READY_TIMEOUT_MS);
+            win.webContents.once('did-finish-load', () => { clearTimeout(timer); resolve(); });
+            win.webContents.once('did-fail-load', () => { clearTimeout(timer); reject(new Error('Application window could not load')); });
+          });
+          await waitForRendererReady(win.webContents, READY_TIMEOUT_MS);
+          await updateRollback(app.getPath('userData'), app.getVersion(), { status: 'committed' });
+          await recordDiagnostic(true);
+          win.show();
           try {
-            startUpdateChecker(win, { logger: console });
+            const rollback = await readRollback(app.getPath('userData'));
+            startUpdateChecker(win, {
+              logger: console,
+              rejectedVersion: rollback?.status === 'rolled-back' ? rollback.to : undefined,
+              onInstallFailure: async (version) => {
+                await updateRollback(app.getPath('userData'), version, { status: 'cancelled' });
+                if (!backendProcess) {
+                  backendProcess = startCompiledBackend(backendEntryPath, app.getPath('userData'), process.resourcesPath, sendLog);
+                  await waitForUrl(BACKEND_HEALTH_URL, READY_TIMEOUT_MS, 'Previous version backend', { requireDatabase: true });
+                }
+                isRetrying = false;
+              },
+              beforeInstall: async (version) => {
+                const tools = {
+                  pgDumpPath: discoverPackagedPostgresTool('pg_dump'),
+                  pgRestorePath: discoverPackagedPostgresTool('pg_restore'),
+                  psqlPath: discoverPackagedPostgresTool('psql'),
+                };
+                if (!tools.pgDumpPath || !tools.pgRestorePath || !tools.psqlPath || !databaseUrl) {
+                  throw new Error('Update recovery tools are missing');
+                }
+                // Quiesce owned services before the backup. The current app stays installed
+                // and its backend is restarted if preparation cannot finish.
+                isRetrying = true;
+                await performCleanup(null, backendProcess);
+                backendProcess = null;
+                try {
+                  await prepareRollback({
+                    from: app.getVersion(), to: version, installDir: path.dirname(process.execPath),
+                    userDataDir: app.getPath('userData'), envFilePath, databaseUrl,
+                    pgDump: tools.pgDumpPath, pgRestore: tools.pgRestorePath, psql: tools.psqlPath,
+                    receiptsDir: process.env.RECEIPTS_DIR || dotenv.parse(fs.readFileSync(envFilePath)).RECEIPTS_DIR
+                      || path.join(app.getPath('userData'), 'receipts'),
+                  });
+                } catch (error) {
+                  backendProcess = startCompiledBackend(backendEntryPath, app.getPath('userData'), process.resourcesPath, sendLog);
+                  await waitForUrl(BACKEND_HEALTH_URL, READY_TIMEOUT_MS, 'Previous version backend', { requireDatabase: true });
+                  isRetrying = false;
+                  throw error;
+                }
+              },
+            });
           } catch {
             console.info('updater: init failed');
           }
@@ -338,6 +412,7 @@ if (!gotTheLock) {
           }
         }
       } catch (error) {
+        if (await recoverFailedUpdate(error instanceof Error ? error.message : 'Update startup failed')) return;
         // Raw text goes to the log for diagnostics; the operator sees the
         // plain-English summary and the fix (see startup-failure-messages.ts).
         const failure = describeStartupFailure(error);

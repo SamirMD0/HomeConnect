@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import * as asar from '@electron/asar';
+import { spawnSync } from 'node:child_process';
 
 const root = process.cwd();
 const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
@@ -37,7 +38,7 @@ function main() {
   const asarFiles = new Set(asar.listPackage(archive).map((name) => name.replaceAll('\\', '/').replace(/^\//, '')));
   const electronSource = path.join(root, 'dist/electron');
   const electronFiles = files(electronSource).filter((name) =>
-    !name.endsWith('.d.ts') && !name.endsWith('.map') && !/(?:\.test\.|\.spec\.)/.test(name));
+    !name.endsWith('.d.ts') && !name.endsWith('.map') && !name.endsWith('.tsbuildinfo') && !/(?:\.test\.|\.spec\.)/.test(name));
   const electronMissing = electronFiles.filter((name) => !asarFiles.has(`dist/electron/${name}`));
   const electronChanged = electronFiles.filter((name) => !electronMissing.includes(name)
     && hash(fs.readFileSync(path.join(electronSource, name)))
@@ -56,6 +57,13 @@ function main() {
   const clientHasAuditUrl = files(path.join(root, 'frontend/dist')).some((name) => name.endsWith('.js')
     && fs.readFileSync(path.join(root, 'frontend/dist', name), 'utf8').includes('127.0.0.1:4311'));
   const forbiddenResources = files(resources).filter((name) => /(?:^|\/)(?:\.env(?:\..*)?|.*\.backup|databases\.json)$/.test(name));
+  const schemaEngine = path.join(resources, 'app.asar.unpacked/node_modules/@prisma/engines/schema-engine-windows.exe');
+  const engineProbe = spawnSync(path.join(release, 'win-unpacked/HomeConnect.exe'),
+    [path.join(archive, 'node_modules/prisma/build/index.js'), '--version'], {
+      env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', PRISMA_SCHEMA_ENGINE_BINARY: schemaEngine, PRISMA_HIDE_UPDATE_MESSAGE: '1' },
+      windowsHide: true, encoding: 'utf8', timeout: 30_000,
+    });
+  const packagedMigrationEngineWorks = engineProbe.status === 0 && !engineProbe.stdout.includes('E_CANNOT_RESOLVE_VERSION');
   const result = {
     version: pkg.version,
     installer: path.relative(root, installer).replaceAll('\\', '/'),
@@ -74,6 +82,7 @@ function main() {
     runtimePackages,
     clientHasAuditUrl,
     forbiddenResources,
+    packagedMigrationEngineWorks,
   };
   fs.writeFileSync('.claude/pre-release-audit/evidence/current-installer-verification.json', JSON.stringify(result, null, 2));
   console.log(JSON.stringify({
@@ -90,12 +99,13 @@ function main() {
     runtimePackages: result.runtimePackages,
     clientHasAuditUrl,
     forbiddenResources: forbiddenResources.length,
+    packagedMigrationEngineWorks,
   }));
   const clean = [frontend, backend, migrations, repair].every((group) =>
     group.missing.length === 0 && group.extra.length === 0 && group.changed.length === 0);
   if (!clean || electronMissing.length || electronChanged.length || clientHasAuditUrl || forbiddenResources.length
     || !result.latestVersionMatches || !result.latestFileHashMatches || !result.latestFileSizeMatches
-    || !result.asarVersionMatches || !result.asarMainMatches)
+    || !result.asarVersionMatches || !result.asarMainMatches || !packagedMigrationEngineWorks)
     process.exitCode = 1;
 }
 

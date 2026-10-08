@@ -1,4 +1,4 @@
-export type UpdaterState = 'idle' | 'checking' | 'available' | 'downloading' | 'ready' | 'error';
+export type UpdaterState = 'idle' | 'checking' | 'available' | 'downloading' | 'ready' | 'preparing' | 'error';
 
 export interface UpdaterStatus {
   state: UpdaterState;

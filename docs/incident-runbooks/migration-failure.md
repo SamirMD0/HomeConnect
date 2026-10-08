@@ -1,5 +1,15 @@
 # Incident: Home Connect could not update
 
+## Updates started from 2.0.6 or later
+
+HomeConnect saves the working application and verifies its database backup before launching an update. If backup preparation fails, installation does not start and the current backend resumes. If the new version fails during migration or first startup, a separate recovery process restores the previous application and pre-update database and reopens HomeConnect. Do not start a second copy while recovery runs. The rejected version is skipped until a newer patch is available.
+
+This recovery runs before the new version is opened for business use. It does not automatically restore old data after a successfully completed update has been used for sales. Recovery snapshots and private failure details are retained under `%APPDATA%\home-connect\update-rollback\` and `config\update-rollback.json`.
+
+If recovery itself cannot complete (for example, a backup is damaged or the disk cannot be written), keep the snapshot and contact support; never run an older app against data that failed to restore. The attended procedure below remains available for older installations and recovery tool failures.
+
+## Older updates, including 2.0.4 to 2.0.5
+
 Use this runbook if startup shows **Home Connect could not update**. Stop using Home Connect for sales until recovery is verified. Keep the failure screen open until you have copied its backup path and diagnostics.
 
 ## Do not

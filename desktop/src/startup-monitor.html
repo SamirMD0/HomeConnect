@@ -325,6 +325,7 @@
         `Failure code: ${failure.code || 'unknown'}`,
         `Timestamp: ${new Date().toISOString()}`,
         `Backup path: ${backupPath || 'none'}`,
+        `Error: ${failure.error || 'unavailable'}`,
       ].join('\n');
       document.querySelector('.title').textContent = 'Home Connect could not update';
       document.getElementById('checklist').style.display = 'none';

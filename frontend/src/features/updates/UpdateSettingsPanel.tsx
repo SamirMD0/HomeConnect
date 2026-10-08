@@ -13,7 +13,10 @@ function statusLabel(status: UpdaterStatus, supported: boolean) {
     case 'available': return { en: `Update available (${status.version ?? 'unknown'})`, ar: `تحديث متاح (${status.version ?? 'غير معروف'})` };
     case 'downloading': return { en: `Downloading ${status.version ?? 'update'} — ${Math.round(status.progressPct ?? 0)}%`, ar: `جارٍ تنزيل التحديث — ${Math.round(status.progressPct ?? 0)}٪` };
     case 'ready': return { en: `Update ready (${status.version ?? 'unknown'})`, ar: `التحديث جاهز (${status.version ?? 'غير معروف'})` };
-    case 'error': return { en: 'Could not check for updates', ar: 'تعذّر التحقق من التحديثات' };
+    case 'preparing': return { en: 'Saving the current version before updating…', ar: 'جارٍ حفظ الإصدار الحالي قبل التحديث…' };
+    case 'error': return status.error === 'install-failed'
+      ? { en: 'Update not installed. Your current version is still available.', ar: 'لم يتم تثبيت التحديث. الإصدار الحالي لا يزال متاحًا.' }
+      : { en: 'Could not check for updates', ar: 'تعذّر التحقق من التحديثات' };
     default: return status.lastCheckedAt
       ? { en: 'Up to date', ar: 'التطبيق محدّث' }
       : { en: 'Not checked yet', ar: 'لم يتم الفحص بعد' };

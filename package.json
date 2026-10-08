@@ -1,6 +1,6 @@
 {
   "name": "home-connect",
-  "version": "2.0.5",
+  "version": "2.0.6",
   "main": "dist/electron/desktop/src/index.js",
   "build": {
     "appId": "com.homeconnect.desktop",
@@ -34,14 +34,16 @@
       "!**/.git/**",
       "!**/.cache/**",
       "!**/HomeConnect Backups/**",
-      "!**/*.backup"
+      "!**/*.backup",
+      "!**/*.tsbuildinfo"
     ],
     "asar": true,
     "electronDist": "node_modules/electron/dist",
     "asarUnpack": [
       "node_modules/.prisma/**/*",
       "node_modules/@prisma/client/**/*",
-      "node_modules/bcrypt/**/*"
+      "node_modules/bcrypt/**/*",
+      "node_modules/@prisma/engines/**/*"
     ],
     "electronDownload": {
       "mirrorOptions": {},
@@ -129,7 +131,7 @@
     "dev:electron": "tsx desktop/scripts/dev-electron.ts",
     "electron": "npm run build && npm run build:electron-main && electron .",
     "typecheck:electron": "tsc -p tsconfig.electron.json --noEmit",
-    "build:electron-main": "tsc -p tsconfig.electron.json && node -e \"const fs=require('fs');fs.mkdirSync('dist/electron/desktop/src',{recursive:true});fs.mkdirSync('dist/electron/desktop/assets',{recursive:true});fs.copyFileSync('desktop/src/startup-monitor.html','dist/electron/desktop/src/startup-monitor.html');for(const file of ['homeconnects-logo.png','homeconnects-logo.ico'])fs.copyFileSync('desktop/assets/'+file,'dist/electron/desktop/assets/'+file);\"",
+    "build:electron-main": "tsc -p tsconfig.electron.json && node -e \"const fs=require('fs');fs.mkdirSync('dist/electron/desktop/src',{recursive:true});fs.mkdirSync('dist/electron/desktop/assets',{recursive:true});fs.copyFileSync('desktop/src/startup-monitor.html','dist/electron/desktop/src/startup-monitor.html');fs.copyFileSync('desktop/src/rollback-helper.cjs','dist/electron/desktop/src/rollback-helper.cjs');for(const file of ['homeconnects-logo.png','homeconnects-logo.ico'])fs.copyFileSync('desktop/assets/'+file,'dist/electron/desktop/assets/'+file);\"",
     "check:electron-production-runtime": "tsx desktop/scripts/check-production-runtime.ts",
     "bundle:setup": "powershell -ExecutionPolicy Bypass -File scripts/Build-SetupBundle.ps1",
     "rehearse:migrations": "tsx scripts/rehearse-migrations.ts",
