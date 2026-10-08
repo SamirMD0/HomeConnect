@@ -1,0 +1,28 @@
+# Upload only the standalone mobile app for its EAS builds.
+/*
+!/Mobile Scanner
+!/Mobile Scanner/**
+
+# Preserve the mobile project's generated-file and credential exclusions.
+node_modules/
+/Mobile Scanner/.expo/
+/Mobile Scanner/dist/
+/Mobile Scanner/web-build/
+/Mobile Scanner/android/
+/Mobile Scanner/ios/
+.kotlin/
+.env
+.env.*
+credentials.json
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.pem
+*.orig.*
+*.tsbuildinfo
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+.DS_Store

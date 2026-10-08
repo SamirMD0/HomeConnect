@@ -67,6 +67,13 @@
         ]
       },
       {
+        "from": "dist/server/shared",
+        "to": "dist/server/shared",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
         "from": "node_modules/.prisma/client",
         "to": "app.asar.unpacked/node_modules/.prisma/client",
         "filter": [
@@ -133,7 +140,7 @@
     "dev": "npm run dev:urls && concurrently --kill-others \"npm run dev:vite\" \"npm run dev:server\"",
     "build": "vite build frontend --config frontend/vite.config.ts && tsc -p tsconfig.server.json",
     "typecheck": "npm run typecheck:frontend && npm run typecheck:backend",
-    "typecheck:frontend": "tsc -p tsconfig.json --noEmit",
+    "typecheck:frontend": "tsc -b tsconfig.server.json tsconfig.node.json && tsc -p tsconfig.json --noEmit",
     "typecheck:backend": "tsc -p tsconfig.server.json --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test",
@@ -141,6 +148,7 @@
     "audit:migration-drift": "node scripts/assert-migration-drift-allowlisted.mjs",
     "test:ci": "node scripts/assert-test-database.mjs && cross-env RUN_FINANCIAL_DB_TESTS=1 RUN_INVENTORY_DB_TESTS=1 RUN_SALES_FULFILLMENT_DB_TESTS=1 RUN_SALES_RETURN_DB_TESTS=1 RUN_SUPPLIER_PURCHASE_DB_TESTS=1 RUN_SUPPLIER_RECEIVING_DB_TESTS=1 RUN_PHASE4_DEBT_DB_TESTS=1 RUN_PHASE5_INSTALLMENT_DB_TESTS=1 RUN_PHASE6_CUSTOMER_SUMMARY_DB_TESTS=1 vitest run --no-file-parallelism --reporter=default --reporter=json --outputFile.json=node_modules/.cache/home-connect/vitest-report.json && node scripts/assert-zero-skips.mjs",
     "prisma:validate": "tsx backend/prisma/validate.ts",
+    "seed:catalog-defaults": "tsx scripts/seed-catalog-defaults.ts",
     "lint": "eslint frontend/src backend/src desktop/src --ext ts,tsx",
     "format": "prettier --write \"{frontend,backend,desktop}/src/**/*.{ts,tsx,css}\"",
     "scratch:release": "tsx scripts/build-release-scratch.ts"
@@ -162,6 +170,7 @@
     "@types/jsbarcode": "^3.11.4",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^26.1.1",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@types/supertest": "^7.2.1",
@@ -184,6 +193,7 @@
     "nodemon": "^3.1.14",
     "postcss": "^8.5.22",
     "prettier": "^3.9.6",
+    "qrcode": "^1.5.4",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-hook-form": "^7.82.0",
@@ -217,7 +227,6 @@
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
-    "prisma": "^5.22.0",
     "bcrypt": "^6.0.0",
     "compression": "^1.8.1",
     "cookie-parser": "^1.4.7",
@@ -230,6 +239,7 @@
     "jsbarcode": "^3.12.3",
     "jsonwebtoken": "^9.0.3",
     "node-cron": "^4.6.0",
+    "prisma": "^5.22.0",
     "winston": "^3.19.0",
     "zod": "^4.4.3"
   }

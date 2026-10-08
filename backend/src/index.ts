@@ -10,14 +10,16 @@ import { BackupScheduler } from './features/backup/backup.scheduler';
 import { stopLanListener } from './features/scanner/lan-listener';
 import { assertHostedModeEnv } from './lib/hosted-mode-preflight';
 import { prisma } from './lib/prisma';
+import { seedDefaultCategories } from './features/categories/category-defaults';
 
 const PORT = process.env.PORT || 3001;
 const HOST = process.env.HOST || (process.env.NODE_ENV === 'production' ? '0.0.0.0' : '127.0.0.1');
 if (process.env.HOME_CONNECT_STARTUP_TRACE === '1') console.info(`[startup] application imports complete at ${new Date().toISOString()}`);
 
-const startServer = () => {
+const startServer = async () => {
   try {
     assertHostedModeEnv();
+    await seedDefaultCategories(prisma);
     const server = app.listen(Number(PORT), HOST);
     server.once('listening', () => {
       logger.info(`Server running on http://${HOST}:${PORT}`);
@@ -60,4 +62,4 @@ const startServer = () => {
   }
 };
 
-startServer();
+void startServer();

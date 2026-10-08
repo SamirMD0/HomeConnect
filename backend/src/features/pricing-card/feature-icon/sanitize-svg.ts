@@ -1,7 +1,12 @@
-import DOMPurify from 'isomorphic-dompurify';
 import { ValidationError } from '../../../lib/errors';
 
 export const MAX_FEATURE_ICON_SVG_BYTES = 8 * 1024;
+
+// jsdom's module graph is expensive to load on Windows. Keep it out of the
+// server startup path; Node caches the sanitizer after the first SVG upload.
+function getDOMPurify(): typeof import('isomorphic-dompurify').default {
+  return require('isomorphic-dompurify');
+}
 
 export function sanitizeSvg(input: string): string {
   const trimmed = input.trim();
@@ -9,7 +14,7 @@ export function sanitizeSvg(input: string): string {
   if (Buffer.byteLength(trimmed, 'utf8') > MAX_FEATURE_ICON_SVG_BYTES) throw new ValidationError('SVG must be 8 KB or smaller');
   if (/<\s*script\b/i.test(trimmed)) throw new ValidationError('SVG scripts are not allowed');
 
-  const sanitized = DOMPurify.sanitize(trimmed, {
+  const sanitized = getDOMPurify().sanitize(trimmed, {
     USE_PROFILES: { svg: true },
     FORBID_TAGS: ['script', 'foreignObject'],
     FORBID_ATTR: ['style'],

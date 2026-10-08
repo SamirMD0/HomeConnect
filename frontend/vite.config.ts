@@ -41,6 +41,7 @@ export default defineConfig({
       'react-hook-form', '@hookform/resolvers/zod', 'zod', 'axios',
       'react-hot-toast', 'lucide-react', 'framer-motion', 'clsx',
       'tailwind-merge', 'recharts', 'jsbarcode', 'jspdf', 'date-fns',
+      'qrcode',
     ],
   },
 });

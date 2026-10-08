@@ -1,4 +1,14 @@
-export type AppPhase = 'RESTORING' | 'SETUP' | 'PAIRING' | 'SCANNING';
+/**
+ * Phase 1 (direct-API) flow:
+ *   RESTORING -> SETUP (no backend URL stored)
+ *   RESTORING -> LOGIN (URL stored, no token)
+ *   RESTORING -> SCANNING (URL + token stored)
+ *   SETUP -> LOGIN after the operator saves a URL
+ *   LOGIN -> SCANNING after successful /auth/login
+ *   SCANNING -> LOGIN on 401 (session expired)
+ *   any -> SETUP when the operator chooses "Change backend URL"
+ */
+export type AppPhase = 'RESTORING' | 'SETUP' | 'LOGIN' | 'SCANNING';
 
 export type SessionFlowEvent =
   | { type: 'RESTORED_WITHOUT_CONNECTION' }
@@ -6,7 +16,7 @@ export type SessionFlowEvent =
   | { type: 'SESSION_VALID' }
   | { type: 'SESSION_INVALID' }
   | { type: 'CONNECTION_SAVED' }
-  | { type: 'PAIRED' }
+  | { type: 'LOGGED_IN' }
   | { type: 'CHANGE_CONNECTION' };
 
 export function sessionFlowReducer(_phase: AppPhase, event: SessionFlowEvent): AppPhase {
@@ -17,9 +27,9 @@ export function sessionFlowReducer(_phase: AppPhase, event: SessionFlowEvent): A
     case 'RESTORED_WITHOUT_TOKEN':
     case 'SESSION_INVALID':
     case 'CONNECTION_SAVED':
-      return 'PAIRING';
+      return 'LOGIN';
     case 'SESSION_VALID':
-    case 'PAIRED':
+    case 'LOGGED_IN':
       return 'SCANNING';
   }
 }

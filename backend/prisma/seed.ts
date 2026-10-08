@@ -1,10 +1,12 @@
 import { PrismaClient, Role } from '@prisma/client';
 import bcrypt from 'bcrypt';
+import { seedDefaultCategories } from '../src/features/categories/category-defaults';
 
 const prisma = new PrismaClient();
 
 async function main() {
   console.log('Start seeding...');
+  await seedDefaultCategories(prisma);
   
   // Clean existing data if needed, or check if admin exists
   const existingAdmin = await prisma.user.findFirst({

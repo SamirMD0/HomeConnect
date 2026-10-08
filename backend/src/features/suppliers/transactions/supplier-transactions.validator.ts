@@ -1,4 +1,4 @@
-import { SupplierTransactionDirection, SupplierTransactionType } from '@prisma/client';
+import { Currency, SupplierPaymentMethod, SupplierTransactionDirection, SupplierTransactionType } from '@prisma/client';
 import { z } from 'zod';
 import { compareBusinessDates, parseBusinessDate, todayInBusinessTimezone } from '../../financial/domain/business-date';
 import { userTextSchema } from '../../../validators/user-text';
@@ -28,7 +28,8 @@ const filterDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must use YYYY-M
 export const supplierDueDateSchema = z.preprocess(emptyToNull, filterDate.nullable().optional());
 const values = {
   type: z.nativeEnum(SupplierTransactionType), direction: z.nativeEnum(SupplierTransactionDirection).optional(),
-  amount, transactionDate: date, dueDate: supplierDueDateSchema, description: userTextSchema({ field: 'Description', min: 3, max: 500 }),
+  amount, currency: z.nativeEnum(Currency).default(Currency.USD), paymentMethod: z.nativeEnum(SupplierPaymentMethod).nullable().optional(),
+  transactionDate: date, dueDate: supplierDueDateSchema, description: userTextSchema({ field: 'Description', min: 3, max: 500 }),
   reference: optionalText('Reference', 200), notes: optionalText('Notes', 2000),
   supplierReceivingId: databaseUuidSchema().nullable().optional(),
 };
@@ -36,7 +37,24 @@ const directionCheck = (v: { type?: SupplierTransactionType; direction?: Supplie
   if (!v.type) return;
   try { resolveSupplierDirection(v.type, v.direction); } catch (error) { ctx.addIssue({ code: 'custom', path: ['direction'], message: error instanceof Error ? error.message : 'Invalid direction' }); }
 };
-export const createSupplierTransactionSchema = z.object(values).strict().superRefine(directionCheck);
+const paymentCheck = (v: { type?: SupplierTransactionType; currency?: Currency; paymentMethod?: SupplierPaymentMethod | null; amount?: string }, ctx: z.RefinementCtx) => {
+  if (v.paymentMethod && v.type !== SupplierTransactionType.SUPPLIER_PAYMENT) {
+    ctx.addIssue({ code: 'custom', path: ['paymentMethod'], message: 'Payment method is only valid for supplier payments' });
+  }
+  if (v.paymentMethod === SupplierPaymentMethod.CASH_USD && v.currency !== Currency.USD) {
+    ctx.addIssue({ code: 'custom', path: ['currency'], message: 'Cash USD payments must use USD' });
+  }
+  if (v.paymentMethod === SupplierPaymentMethod.CASH_LBP && v.currency !== Currency.LBP) {
+    ctx.addIssue({ code: 'custom', path: ['currency'], message: 'Cash LBP payments must use LBP' });
+  }
+  if (v.currency === Currency.LBP && v.amount && !/^\d+$/.test(v.amount)) {
+    ctx.addIssue({ code: 'custom', path: ['amount'], message: 'LBP payment amounts must be whole numbers' });
+  }
+};
+export const createSupplierTransactionSchema = z.object(values).strict().superRefine((value, ctx) => {
+  directionCheck(value, ctx);
+  paymentCheck(value, ctx);
+});
 export const updateSupplierTransactionSchema = z.object({
   type: values.type.optional(), direction: values.direction, amount: values.amount.optional(), transactionDate: values.transactionDate.optional(),
   description: values.description.optional(), reference: values.reference, notes: values.notes, dueDate: values.dueDate,
@@ -57,7 +75,8 @@ export const supplierLedgerQuerySchema = z.object({
   sortBy: z.enum(['transactionDate','amount','supplier']).default('transactionDate'), sortOrder: z.enum(['asc','desc']).default('desc'),
 });
 
-export type CreateSupplierTransactionInput = z.infer<typeof createSupplierTransactionSchema>;
+type ParsedCreateSupplierTransactionInput = z.infer<typeof createSupplierTransactionSchema>;
+export type CreateSupplierTransactionInput = Omit<ParsedCreateSupplierTransactionInput, 'currency'> & { currency?: Currency };
 export type UpdateSupplierTransactionInput = z.infer<typeof updateSupplierTransactionSchema>;
 export type SupplierTransactionActionInput = z.infer<typeof supplierTransactionActionSchema>;
 export type SupplierTransactionListQueryInput = z.infer<typeof supplierTransactionListQuerySchema>;

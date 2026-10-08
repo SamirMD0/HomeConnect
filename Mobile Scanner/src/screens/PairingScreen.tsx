@@ -24,7 +24,7 @@ export function PairingScreen({ connection, onPaired, onChangeConnection }: Pair
     const trimmedCode = code.trim();
     const trimmedLabel = deviceLabel.trim();
     if (!/^\d{6}$/.test(trimmedCode)) {
-      setMessage('Enter the six-digit code shown on the PC / أدخل الرمز المكوّن من 6 أرقام');
+      setMessage('Enter the six-digit code shown on the PC');
       return;
     }
     if (trimmedLabel.length > 40) {
@@ -40,11 +40,11 @@ export function PairingScreen({ connection, onPaired, onChangeConnection }: Pair
       onPaired(result.token);
     } catch (error) {
       if (error instanceof ScannerApiError && error.kind === 'RATE_LIMITED') {
-        setMessage('Too many attempts. Slow down and try again shortly / محاولات كثيرة، حاول لاحقاً');
+        setMessage('Too many attempts. Slow down and try again shortly');
       } else if (error instanceof ScannerApiError && error.kind === 'NETWORK') {
         setMessage(error.message);
       } else if (error instanceof ScannerApiError && error.kind === 'UNAUTHORIZED') {
-        setMessage('Pairing failed. Generate a new code on the PC and try again / فشل الربط، أنشئ رمزاً جديداً');
+        setMessage('Pairing failed. Generate a new code on the PC and try again');
       } else {
         setMessage('Could not pair this phone. Try again.');
       }
@@ -57,7 +57,7 @@ export function PairingScreen({ connection, onPaired, onChangeConnection }: Pair
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.hero}>
-          <Text style={styles.title}>Pair this phone / ربط الهاتف</Text>
+          <Text style={styles.title}>Pair this phone</Text>
           <Text style={styles.subtitle}>On the PC, open Scanner Hub and press Generate Code. The code works once and expires after five minutes.</Text>
           <Text style={styles.address}>{scannerBaseUrl(connection)}</Text>
         </View>
@@ -66,7 +66,7 @@ export function PairingScreen({ connection, onPaired, onChangeConnection }: Pair
 
         <View style={styles.form}>
           <AppInput
-            label="Six-digit pairing code / رمز الربط"
+            label="Six-digit pairing code"
             value={code}
             onChangeText={setCode}
             keyboardType="number-pad"
@@ -76,14 +76,14 @@ export function PairingScreen({ connection, onPaired, onChangeConnection }: Pair
             style={styles.codeInput}
           />
           <AppInput
-            label="Device name (optional) / اسم الجهاز"
+            label="Device name (optional)"
             value={deviceLabel}
             onChangeText={setDeviceLabel}
             maxLength={40}
             placeholder="Shop phone"
           />
-          <AppButton label="Pair phone / ربط الهاتف" onPress={() => void pair()} loading={busy} />
-          <AppButton label="Change PC address / تغيير عنوان الكمبيوتر" onPress={onChangeConnection} variant="secondary" />
+          <AppButton label="Pair phone" onPress={() => void pair()} loading={busy} />
+          <AppButton label="Change PC address" onPress={onChangeConnection} variant="secondary" />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

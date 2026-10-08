@@ -1,13 +1,26 @@
 import { spawn, ChildProcess } from 'child_process';
 import http from 'http';
+import fs from 'fs';
+import path from 'path';
 
 const HOST = '127.0.0.1';
 const BACKEND_PORT = '3001';
 const FRONTEND_PORT = '3002';
 const BACKEND_URL = `http://${HOST}:${BACKEND_PORT}/api/v1/health`;
 const FRONTEND_URL = `http://${HOST}:${FRONTEND_PORT}`;
-const READY_TIMEOUT_MS = 45_000;
+const BACKEND_READY_TIMEOUT_MS = 60_000;
+// Vite 8 completes explicit dependency optimization before it starts listening.
+// A cold cache (including after config/lockfile changes) can take over a minute
+// on Windows. Let that build finish so the next launch can reuse its output.
+const FRONTEND_READY_TIMEOUT_MS = 180_000;
 const CHECK_ONLY = process.env.ELECTRON_DEV_CHECK_ONLY === '1';
+// The backend has ~400 TypeScript source files; tsx transpiles each on first
+// import, which on Windows pushes the full module graph to a minute or more.
+// esbuild bundles our own source to a single CJS file in a couple of seconds
+// and keeps node_modules external, so Node starts the whole backend in ~3s.
+const BACKEND_BUNDLE = path.resolve('dist/dev/backend.cjs');
+const BACKEND_SRC_DIR = path.resolve('backend/src');
+const SHARED_SRC_DIR = path.resolve('shared');
 
 const children: ChildProcess[] = [];
 let shuttingDown = false;
@@ -16,18 +29,21 @@ async function main() {
   // `npm run dev` is still useful for browser-only work, and developers often
   // leave it running before opening Electron. Reuse healthy services instead
   // of starting duplicates that immediately die with EADDRINUSE.
+  // Serial, not parallel: Vite's dep optimizer and the backend's startup each
+  // peg a CPU core, so running them together on Windows blows past any
+  // reasonable readiness window.
+  if (!await canReach(BACKEND_URL)) await ensureBackendBundle();
   const backend = await canReach(BACKEND_URL)
     ? null
-    : startProcess('backend', process.execPath, [
-        'node_modules/tsx/dist/cli.mjs',
-        'backend/src/index.ts',
-      ], {
+    : startProcess('backend', process.execPath, [BACKEND_BUNDLE], {
         HOST,
         PORT: BACKEND_PORT,
         NODE_ENV: 'development',
         FRONTEND_URL,
         CORS_ORIGINS: FRONTEND_URL,
       });
+  await waitForUrl(BACKEND_URL, BACKEND_READY_TIMEOUT_MS, 'Development Express backend');
+
   const frontend = await canReach(FRONTEND_URL)
     ? null
     : startProcess('frontend', process.execPath, [
@@ -40,11 +56,10 @@ async function main() {
         '--port',
         FRONTEND_PORT,
       ]);
-
-  await Promise.all([
-    waitForUrl(BACKEND_URL, READY_TIMEOUT_MS, 'Development Express backend'),
-    waitForUrl(FRONTEND_URL, READY_TIMEOUT_MS, 'Vite frontend'),
-  ]);
+  if (frontend) {
+    console.log('[frontend] starting Vite; rebuilding its dependency cache can take up to 3 minutes…');
+  }
+  await waitForUrl(FRONTEND_URL, FRONTEND_READY_TIMEOUT_MS, 'Vite frontend');
 
   if (CHECK_ONLY) {
     console.log('Electron dev dependencies are ready.');
@@ -91,6 +106,59 @@ function startProcess(
   return child;
 }
 
+/**
+ * Rebuilds the dev backend bundle when it is missing or any backend source
+ * file is newer than the output. Keeps node_modules external, so the file
+ * stays small and Node resolves native/binary packages at runtime the same
+ * way the tsx-based script used to.
+ */
+async function ensureBackendBundle(): Promise<void> {
+  const outMtime = tryMtime(BACKEND_BUNDLE);
+  const newestSrcMtime = Math.max(newestMtimeIn(BACKEND_SRC_DIR) ?? 0, newestMtimeIn(SHARED_SRC_DIR) ?? 0);
+  if (outMtime !== null && newestSrcMtime > 0 && outMtime >= newestSrcMtime) return;
+
+  console.log('[backend] bundling with esbuild…');
+  const started = Date.now();
+  await fs.promises.mkdir(path.dirname(BACKEND_BUNDLE), { recursive: true });
+  await runOnce('backend-bundle', process.execPath, [
+    'node_modules/esbuild/bin/esbuild',
+    'backend/src/index.ts',
+    '--bundle',
+    '--platform=node',
+    '--target=node20',
+    '--format=cjs',
+    '--packages=external',
+    `--outfile=${BACKEND_BUNDLE}`,
+    '--log-level=error',
+  ]);
+  console.log(`[backend] bundled in ${Date.now() - started}ms`);
+}
+
+function tryMtime(file: string): number | null {
+  try { return fs.statSync(file).mtimeMs; } catch { return null; }
+}
+
+/**
+ * Walks the backend source tree once to find the newest modification time.
+ * Skips test/spec files because they are not part of the bundle entry graph
+ * and would churn the rebuild on every unrelated edit.
+ */
+function newestMtimeIn(dir: string): number | null {
+  let newest = 0;
+  const walk = (current: string) => {
+    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+      const next = path.join(current, entry.name);
+      if (entry.isDirectory()) { walk(next); continue; }
+      if (!entry.isFile()) continue;
+      if (/\.(test|spec)\.[cm]?[tj]sx?$/.test(entry.name)) continue;
+      const m = tryMtime(next);
+      if (m !== null && m > newest) newest = m;
+    }
+  };
+  try { walk(dir); } catch { return null; }
+  return newest > 0 ? newest : null;
+}
+
 function runOnce(label: string, command: string, args: string[]) {
   return new Promise<void>((resolve, reject) => {
     const child = spawn(command, args, {
@@ -109,8 +177,13 @@ function runOnce(label: string, command: string, args: string[]) {
 
 async function waitForUrl(url: string, timeoutMs: number, label: string) {
   const startedAt = Date.now();
+  let nextProgressAt = startedAt + 15_000;
   while (Date.now() - startedAt < timeoutMs) {
     if (await canReach(url)) return;
+    if (Date.now() >= nextProgressAt) {
+      console.log(`[startup] waiting for ${label} (${Math.round((Date.now() - startedAt) / 1000)}s / ${timeoutMs / 1000}s)…`);
+      nextProgressAt = Date.now() + 15_000;
+    }
     await delay(500);
   }
 

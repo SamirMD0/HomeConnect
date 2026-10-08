@@ -275,6 +275,8 @@ export interface ProductImportPreviewRow {
   family: string;
   externalCode: string;
   description: string;
+  brand?: string | null;
+  productType?: string | null;
   quantity: number;
   costUsd: string | null;
   categoryId?: string | null;
@@ -295,6 +297,7 @@ export interface ProductImportPreview {
   committedAt: string | null;
   categoryMappings: Record<string, string | null>;
   families: string[];
+  categoryGroups?: Array<{ key: string; label: string; suggestedCategory: string | null }>;
   previousCommittedImport: { id: string; committedAt: string | null } | null;
   counts: { total: number; ready: number; conflicts: number; invalid: number; quantity: number };
   rows: ProductImportPreviewRow[];
