@@ -2,8 +2,9 @@ import type { Prisma } from '@prisma/client';
 import { AppError } from '../../lib/errors';
 import { multiBranchScopingEnabled } from './branch-config';
 
-/** New accounts only. Reactivation never rewrites or replaces existing grants. */
-export async function grantNewEmployeeBranch(
+/** Grant the sole active branch on employee creation or ADMIN demotion while scoping is off.
+ * Existing grants are preserved; promotion and reactivation never rewrite them. */
+export async function grantSoleBranchToEmployee(
   user: { id: string; role: string },
   tx: Prisma.TransactionClient
 ): Promise<void> {

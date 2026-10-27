@@ -1,4 +1,4 @@
-import { grantNewEmployeeBranch } from '../features/branches/new-employee-access';
+import { grantSoleBranchToEmployee } from '../features/branches/employee-branch-access';
 import { runFinancialTransaction } from '../features/financial/infrastructure/transaction';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
@@ -162,7 +162,7 @@ export class AuthService {
           role: data.role ?? Role.EMPLOYEE,
         },
       });
-      await grantNewEmployeeBranch(user, tx);
+      await grantSoleBranchToEmployee(user, tx);
       return user;
     });
 

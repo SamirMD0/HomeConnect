@@ -1,4 +1,4 @@
-import { grantNewEmployeeBranch } from '../features/branches/new-employee-access';
+import { grantSoleBranchToEmployee } from '../features/branches/employee-branch-access';
 import { runFinancialTransaction } from '../features/financial/infrastructure/transaction';
 import { UsersRepository } from '../repositories/users.repository';
 import { NotFoundError, ValidationError } from '../lib/errors';
@@ -22,7 +22,7 @@ export class UsersService {
         fullName: data.fullName,
         role: data.role || 'EMPLOYEE',
       }, tx);
-      await grantNewEmployeeBranch(user, tx);
+      await grantSoleBranchToEmployee(user, tx);
       return user;
     });
   }
@@ -62,7 +62,15 @@ export class UsersService {
       updateData.password = await bcrypt.hash(data.passwordString, 12);
     }
 
-    const updatedUser = await UsersRepository.update(id, updateData);
+    const updatedUser = await runFinancialTransaction(async tx => {
+      const before = await UsersRepository.findById(id, tx);
+      if (!before) throw new NotFoundError('User not found');
+      const updated = await UsersRepository.update(id, updateData, tx);
+      if (before.role === 'ADMIN' && updated.role === 'EMPLOYEE') {
+        await grantSoleBranchToEmployee(updated, tx);
+      }
+      return updated;
+    });
     invalidateUserSessionStatus(id);
     return updatedUser;
   }
