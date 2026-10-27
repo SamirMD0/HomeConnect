@@ -137,7 +137,7 @@ export class InstallmentPlansController {
       const plan = await InstallmentPlansService.recordPlanPayment(
         req.params.planId,
         req.body,
-        req.user!
+        req.user!, req.branchScope!
       );
       res.status(201).json({
         success: true,

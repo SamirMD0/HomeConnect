@@ -2,7 +2,7 @@ import { branchFixture } from "../../../test/branch-fixture";
 import { DebtStatus, PaymentMethod, Role } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it} from 'vitest';
 import { prisma } from '../../../lib/prisma';
 import {
   FinancialRecordAlreadyPaidError,
@@ -11,6 +11,8 @@ import {
   PaymentIdempotencyConflictError,
 } from '../domain/financial-errors';
 import { DebtsService } from './debts.service';
+const phase3bScope = async () => ({ mode: 'all' as const, branchIds: [await branchFixture(prisma)] });
+
 
 const runDebtDbTests = process.env.RUN_PHASE4_DEBT_DB_TESTS === '1';
 const databaseUrl = process.env.DATABASE_URL ?? '';
@@ -91,7 +93,7 @@ describeDebtDb('single debt database flow', () => {
           notes: null,
           idempotencyKey: 'phase4-partial-key',
         },
-        { userId: adminId, role: Role.ADMIN }
+        { userId: adminId, role: Role.ADMIN }, await phase3bScope()
       );
       paymentIds.push(partial.payments[0].id);
 
@@ -115,7 +117,7 @@ describeDebtDb('single debt database flow', () => {
             notes: null,
             idempotencyKey: 'phase4-overpay-key',
           },
-          { userId: adminId, role: Role.ADMIN }
+          { userId: adminId, role: Role.ADMIN }, await phase3bScope()
         )
       ).rejects.toThrow(OverpaymentError);
 
@@ -129,7 +131,7 @@ describeDebtDb('single debt database flow', () => {
           notes: null,
           idempotencyKey: 'phase4-partial-key',
         },
-        { userId: adminId, role: Role.ADMIN }
+        { userId: adminId, role: Role.ADMIN }, await phase3bScope()
       );
       expect(retry.payments).toHaveLength(1);
 
@@ -144,7 +146,7 @@ describeDebtDb('single debt database flow', () => {
             notes: null,
             idempotencyKey: 'phase4-partial-key',
           },
-          { userId: adminId, role: Role.ADMIN }
+          { userId: adminId, role: Role.ADMIN }, await phase3bScope()
         )
       ).rejects.toThrow(PaymentIdempotencyConflictError);
 
@@ -158,7 +160,7 @@ describeDebtDb('single debt database flow', () => {
           notes: null,
           idempotencyKey: 'phase4-final-key',
         },
-        { userId: adminId, role: Role.ADMIN }
+        { userId: adminId, role: Role.ADMIN }, await phase3bScope()
       );
       paymentIds.push(paid.payments.find((payment) => payment.id !== paymentIds[0])?.id ?? '');
 
@@ -177,7 +179,7 @@ describeDebtDb('single debt database flow', () => {
             notes: null,
             idempotencyKey: 'phase4-after-paid-key',
           },
-          { userId: adminId, role: Role.ADMIN }
+          { userId: adminId, role: Role.ADMIN }, await phase3bScope()
         )
       ).rejects.toThrow(FinancialRecordAlreadyPaidError);
 
@@ -213,7 +215,7 @@ describeDebtDb('single debt database flow', () => {
             notes: null,
             idempotencyKey: 'phase4-cancelled-payment-key',
           },
-          { userId: adminId, role: Role.ADMIN }
+          { userId: adminId, role: Role.ADMIN }, await phase3bScope()
         )
       ).rejects.toThrow(FinancialRecordCancelledError);
     } finally {

@@ -1,14 +1,16 @@
 import type { NextFunction, Request, Response } from 'express';
 import { assertInScope, writeBranch } from '../features/branches/branch-scope';
-import { prisma } from '../lib/prisma';
+import {
+  findScopeRecord,
+  scopeRecordMissing,
+  type ScopeRecordKind,
+} from '../features/branches/parent-branch';
 import { databaseUuidSchema } from '../validators/database-uuid';
 
-/** Mounted at the entity prefix, before every router sharing that prefix. */
-function parentScopeGuard(kind: 'customer' | 'supplier') {
+/** One branch-only guard before every router sharing a branch-owned prefix. */
+function parentScopeGuard(kind: ScopeRecordKind, enforceCollectionWrites = false) {
   return async function guardParentScope(req: Request, _res: Response, next: NextFunction) {
     try {
-      // Decode the same segment Express will expose to downstream parameter handlers.
-      // An encoded UUID must not bypass the parent guard.
       const rawId = req.path.split('/')[1] ?? '';
       let id: string;
       try {
@@ -16,21 +18,27 @@ function parentScopeGuard(kind: 'customer' | 'supplier') {
       } catch {
         return next();
       }
-      if (!databaseUuidSchema().safeParse(id).success) return next();
-      const parent =
-        kind === 'customer'
-          ? await prisma.customer.findUnique({ where: { id }, select: { branchId: true } })
-          : await prisma.supplier.findUnique({ where: { id }, select: { branchId: true } });
-      // Preserve downstream missing-parent handling (including validation and role checks).
+      const mutation = !['GET', 'HEAD', 'OPTIONS'].includes(req.method);
+      if (!databaseUuidSchema().safeParse(id).success) {
+        if (enforceCollectionWrites && mutation) writeBranch(req.branchScope!);
+        return next();
+      }
+      // Legacy receipt URLs identify a receiving; purchase detail identifies a transaction.
+      const recordKind =
+        kind === 'supplierPurchase' && req.path.split('/')[2]?.toLowerCase() === 'receipts'
+          ? 'receiptReceiving'
+          : kind;
+      const parent = await findScopeRecord(recordKind, id);
+      // Leave missing-parent behavior to the existing downstream handler.
       if (parent) {
         const message =
-          kind === 'customer'
-            ? 'Customer not found'
-            : req.method === 'POST' && req.path.split('/')[2]?.toLowerCase() === 'purchases'
-              ? 'Supplier not found / المورد غير موجود'
-              : 'Supplier not found';
+          kind === 'supplier' &&
+          req.method === 'POST' &&
+          req.path.split('/')[2]?.toLowerCase() === 'purchases'
+            ? 'Supplier not found / المورد غير موجود'
+            : scopeRecordMissing[recordKind];
         assertInScope(parent.branchId, req.branchScope!, message);
-        if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)) writeBranch(req.branchScope!);
+        if (mutation) writeBranch(req.branchScope!);
       }
       next();
     } catch (error) {
@@ -41,3 +49,4 @@ function parentScopeGuard(kind: 'customer' | 'supplier') {
 
 export const customerParentGuard = parentScopeGuard('customer');
 export const supplierParentGuard = parentScopeGuard('supplier');
+export const recordScopeGuard = (kind: ScopeRecordKind) => parentScopeGuard(kind, true);

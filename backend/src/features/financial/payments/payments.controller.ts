@@ -27,7 +27,7 @@ export class PaymentsController {
     next: NextFunction
   ) {
     try {
-      const result = await PaymentsService.voidPayment(req.params.paymentId, req.body, req.user!);
+      const result = await PaymentsService.voidPayment(req.params.paymentId, req.body, req.user!, req.branchScope!);
       res.status(200).json({
         success: true,
         data: result,
@@ -44,7 +44,7 @@ export class PaymentsController {
     next: NextFunction
   ) {
     try {
-      const result = await PaymentsService.correctPayment(req.params.paymentId, req.body, req.user!);
+      const result = await PaymentsService.correctPayment(req.params.paymentId, req.body, req.user!, req.branchScope!);
       res.status(200).json({
         success: true,
         data: result,
@@ -61,7 +61,7 @@ export class PaymentsController {
     next: NextFunction
   ) {
     try {
-      const result = await PaymentsService.reallocatePayment(req.params.paymentId, req.body, req.user!);
+      const result = await PaymentsService.reallocatePayment(req.params.paymentId, req.body, req.user!, req.branchScope!);
       res.status(200).json({
         success: true,
         data: result,

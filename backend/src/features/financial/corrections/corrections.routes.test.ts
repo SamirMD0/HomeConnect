@@ -2,6 +2,12 @@ import jwt from 'jsonwebtoken';
 import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { app } from '../../../app';
+const phase3bScope = { mode: 'all' as const, branchIds: ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'] };
+vi.mock('../../branches/parent-branch', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../branches/parent-branch')>()),
+  assertRecordInScope: vi.fn().mockResolvedValue('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
+}));
+
 
 const { correctionsServiceMock } = vi.hoisted(() => ({
   correctionsServiceMock: {
@@ -74,7 +80,7 @@ describe('corrections routes', () => {
       recordId,
       from: '2026-07-01',
       to: '2026-07-31',
-    });
+    }, phase3bScope);
   });
 
   it('lists customer correction audits through the customer route', async () => {
@@ -86,6 +92,6 @@ describe('corrections routes', () => {
     expect(correctionsServiceMock.listCorrections).toHaveBeenCalledWith({
       recordType: 'DEBT',
       customerId,
-    });
+    }, phase3bScope);
   });
 });

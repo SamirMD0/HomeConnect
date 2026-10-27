@@ -1,3 +1,5 @@
+import { writeBranch, type BranchScope } from '../../branches/branch-scope';
+import { assertRecordInScope } from '../../branches/parent-branch';
 import {
   Currency,
   FinancialCorrectionAction,
@@ -478,8 +480,9 @@ export class InstallmentPlansService {
   static async recordPlanPayment(
     planId: string,
     input: CreateInstallmentPlanPaymentInput,
-    user: AuthenticatedUser
+    user: AuthenticatedUser, scope: BranchScope
   ): Promise<InstallmentPlanView> {
+    writeBranch(scope);
     const paymentCurrency = input.currency ?? Currency.USD;
     const paymentAmount = assertPositiveMoney(input.amount, paymentCurrency);
     const paymentMethod = input.paymentMethod ?? PaymentMethod.CASH;
@@ -491,6 +494,7 @@ export class InstallmentPlansService {
       if (!plan) {
         throw new NotFoundError('Installment plan not found');
       }
+      await assertRecordInScope('installmentPlan', planId, scope, tx);
       const planCurrency = plan.currency ?? Currency.USD;
       const effectiveAt = businessDateToPrisma(paymentDate);
       const paymentExchangeRate = await ExchangeRatesService.snapshotFor(paymentCurrency, effectiveAt, tx);
@@ -507,6 +511,7 @@ export class InstallmentPlansService {
       if (idempotencyKey) {
         const existingPayment = await InstallmentPlansRepository.findPaymentByIdempotencyKey(tx, idempotencyKey);
         if (existingPayment) {
+          await assertRecordInScope('payment', existingPayment.id, scope, tx);
           const planInstallmentIds = new Set(plan.installments.map((installment) => installment.id));
           const belongsToPlan = existingPayment.allocations.every(
             (allocation) =>

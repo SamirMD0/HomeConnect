@@ -2,6 +2,12 @@ import jwt from 'jsonwebtoken';
 import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { app } from '../../../app';
+const phase3bScope = { mode: 'all' as const, branchIds: ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'] };
+vi.mock('../../branches/parent-branch', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../branches/parent-branch')>()),
+  assertRecordInScope: vi.fn().mockResolvedValue('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
+}));
+
 
 const { paymentsServiceMock } = vi.hoisted(() => ({
   paymentsServiceMock: {
@@ -16,8 +22,9 @@ vi.mock('./payments.service', () => ({
   PaymentsService: paymentsServiceMock,
 }));
 
-vi.mock('../../../lib/prisma', () => ({
+vi.mock('../../../lib/prisma', async () => ({
   prisma: {
+...(await import('../../../test/branch-scope-fixture.js')).singleBranchRouteModels(),
     $queryRaw: vi.fn().mockResolvedValue([{ result: 1 }]),
   },
   transactionModel: {},
@@ -97,7 +104,7 @@ describe('payment correction routes', () => {
         sourceScreen: 'LEDGER',
         accountPassword: 'admin-password',
       },
-      expect.objectContaining({ role: 'ADMIN' })
+      expect.objectContaining({ role: 'ADMIN' }), phase3bScope
     );
   });
 
@@ -158,7 +165,7 @@ describe('payment correction routes', () => {
         sourceScreen: 'PLAN_DETAILS',
         accountPassword: 'admin-password',
       },
-      expect.objectContaining({ role: 'ADMIN' })
+      expect.objectContaining({ role: 'ADMIN' }), phase3bScope
     );
   });
 

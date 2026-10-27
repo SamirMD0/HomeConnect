@@ -15,6 +15,12 @@ import {
   FinancialLedgerPlanRecord,
 } from './financial-ledger.repository';
 import { FinancialLedgerService } from './financial-ledger.service';
+const phase3bScope = { mode: 'all' as const, branchIds: ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'] };
+vi.mock('../../branches/parent-branch', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../branches/parent-branch')>()),
+  assertRecordInScope: vi.fn().mockResolvedValue('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
+}));
+
 
 const { repositoryMock } = vi.hoisted(() => ({
   repositoryMock: {
@@ -213,11 +219,11 @@ describe('FinancialLedgerService', () => {
       currency: 'LBP', exchangeRate: new Decimal('89500'), totalAmount: new Decimal('8950000'),
       baseAmount: new Decimal('100'), allocations: [] });
     mockRecordSet({ debts: [makeDebt()], payments: [counter] });
-    const result = await FinancialLedgerService.getFinancialLedger(baseQuery({ includeCompleted: true }));
+    const result = await FinancialLedgerService.getFinancialLedger(baseQuery({ includeCompleted: true }), phase3bScope);
     expect(result.summary.totalPaid).toBe('100.00');
     expect(result.summary.totalOutstanding).toBe('600.00');
     expect(result.items.find((item) => item.type === 'PAYMENT')).toMatchObject({ customer: null, currency: 'LBP', amount: '8950000', baseAmount: '100.00' });
-    const cashOnly = await FinancialLedgerService.getFinancialLedger(baseQuery({ type: 'PAYMENT' }));
+    const cashOnly = await FinancialLedgerService.getFinancialLedger(baseQuery({ type: 'PAYMENT' }), phase3bScope);
     expect(cashOnly.summary.totalPaid).toBe('100.00');
   });
 
@@ -228,7 +234,7 @@ describe('FinancialLedgerService', () => {
   it('returns zero summary and empty pagination without financial data', async () => {
     mockRecordSet();
 
-    const result = await FinancialLedgerService.getFinancialLedger(baseQuery({ includeCompleted: true }));
+    const result = await FinancialLedgerService.getFinancialLedger(baseQuery({ includeCompleted: true }), phase3bScope);
 
     expect(result.summary.basis).toBe('filtered');
     expect(result.summary.totalOutstanding).toBe('0.00');
@@ -246,7 +252,7 @@ describe('FinancialLedgerService', () => {
     });
     mockRecordSet({ debts: [debt] });
 
-    const result = await FinancialLedgerService.getFinancialLedger(baseQuery());
+    const result = await FinancialLedgerService.getFinancialLedger(baseQuery(), phase3bScope);
 
     expect(result.items[0]).toMatchObject({
       type: 'DEBT',
@@ -281,9 +287,9 @@ describe('FinancialLedgerService', () => {
     });
     mockRecordSet({ debts: [completedDebt, olderActiveDebt, activeDebt] });
 
-    const defaultResult = await FinancialLedgerService.getFinancialLedger(baseQuery());
+    const defaultResult = await FinancialLedgerService.getFinancialLedger(baseQuery(), phase3bScope);
     const includedResult = await FinancialLedgerService.getFinancialLedger(
-      baseQuery({ includeCompleted: true })
+      baseQuery({ includeCompleted: true }), phase3bScope
     );
 
     expect(defaultResult.items.map((item) => item.id)).toEqual([activeDebt.id, olderActiveDebt.id]);
@@ -357,7 +363,7 @@ describe('FinancialLedgerService', () => {
       totalPaid: new Decimal('350.00'),
     });
 
-    const result = await FinancialLedgerService.getFinancialLedger(baseQuery({ includeCompleted: true }));
+    const result = await FinancialLedgerService.getFinancialLedger(baseQuery({ includeCompleted: true }), phase3bScope);
 
     expect(result.summary.totalOutstanding).toBe('550.00');
     expect(result.summary.totalPaid).toBe('350.00');
@@ -388,7 +394,7 @@ describe('FinancialLedgerService', () => {
     mockRecordSet({ debts: [standardDebt] });
 
     const allResult = await FinancialLedgerService.getFinancialLedger(
-      baseQuery({ includeCompleted: true })
+      baseQuery({ includeCompleted: true }), phase3bScope
     );
 
     expect(allResult.summary.activeDebtCount).toBe(1);
@@ -403,7 +409,7 @@ describe('FinancialLedgerService', () => {
     mockRecordSet({ debts: [makeDebt({ id: '33333333-3333-4333-8333-333333333334' })] });
 
     await FinancialLedgerService.getFinancialLedger(
-      baseQuery({ type: 'DEBT', includeCompleted: true })
+      baseQuery({ type: 'DEBT', includeCompleted: true }), phase3bScope
     );
 
     expect(repositoryMock.loadFinancialLedger).toHaveBeenLastCalledWith(
@@ -411,7 +417,7 @@ describe('FinancialLedgerService', () => {
         includeDebts: true,
         includePlans: false,
         includePayments: false,
-      })
+      }), phase3bScope
     );
   });
 
@@ -439,7 +445,7 @@ describe('FinancialLedgerService', () => {
         dueTo: '2026-08-31',
         paymentFrom: '2026-08-01',
         paymentTo: '2026-08-31',
-      })
+      }), phase3bScope
     );
 
     expect(result.summary.totalOutstanding).toBe('60.00');
@@ -485,7 +491,7 @@ describe('FinancialLedgerService', () => {
       payments: new Map(),
     });
 
-    const result = await FinancialLedgerService.getFinancialLedger(baseQuery({ correctedOnly: true }));
+    const result = await FinancialLedgerService.getFinancialLedger(baseQuery({ correctedOnly: true }), phase3bScope);
 
     expect(repositoryMock.loadCorrectionMarkers).toHaveBeenCalledWith({
       debtIds: [debt.id],
@@ -512,9 +518,9 @@ describe('FinancialLedgerService', () => {
     });
     mockRecordSet({ debts: [cancelledDebt] });
 
-    const defaultResult = await FinancialLedgerService.getFinancialLedger(baseQuery());
+    const defaultResult = await FinancialLedgerService.getFinancialLedger(baseQuery(), phase3bScope);
     const includedResult = await FinancialLedgerService.getFinancialLedger(
-      baseQuery({ includeCancelled: true, status: 'CANCELLED' })
+      baseQuery({ includeCancelled: true, status: 'CANCELLED' }), phase3bScope
     );
 
     expect(defaultResult.items).toEqual([]);
@@ -545,7 +551,7 @@ describe('FinancialLedgerService', () => {
     });
 
     const result = await FinancialLedgerService.getFinancialLedger(
-      baseQuery({ type: 'OVERDUE', page: 2, limit: 1 })
+      baseQuery({ type: 'OVERDUE', page: 2, limit: 1 }), phase3bScope
     );
 
     expect(result.pagination.total).toBe(2);
@@ -563,7 +569,7 @@ describe('FinancialLedgerService', () => {
         dueFrom: '2026-08-01',
         paymentTo: '2026-08-31',
         type: 'PAYMENT',
-      })
+      }), phase3bScope
     );
 
     expect(repositoryMock.loadFinancialLedger).toHaveBeenCalledWith(
@@ -574,7 +580,7 @@ describe('FinancialLedgerService', () => {
         includePayments: true,
         dueFrom: new Date(Date.UTC(2026, 7, 1)),
         paymentTo: new Date(Date.UTC(2026, 7, 31)),
-      })
+      }), phase3bScope
     );
   });
 });

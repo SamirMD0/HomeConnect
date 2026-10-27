@@ -1,17 +1,31 @@
 import type { Request, Response } from 'express';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { customer, supplier } = vi.hoisted(() => ({
+const { customer, supplier, debt, supplierReceiving, prepaidPurchase } = vi.hoisted(() => ({
+  debt: { findUnique: vi.fn() },
+  supplierReceiving: { findUnique: vi.fn() },
+  prepaidPurchase: { findUnique: vi.fn() },
   customer: { findUnique: vi.fn() },
   supplier: { findUnique: vi.fn() },
 }));
-vi.mock('../lib/prisma', () => ({ prisma: { customer, supplier } }));
-import { customerParentGuard, supplierParentGuard } from './branch-parent.middleware';
+vi.mock('../lib/prisma', () => ({
+  prisma: { customer, supplier, debt, supplierReceiving, prepaidPurchase },
+}));
+import {
+  customerParentGuard,
+  supplierParentGuard,
+  recordScopeGuard,
+} from './branch-parent.middleware';
 
 const a = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const b = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const id = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
-async function run(guard: typeof customerParentGuard, path: string, method = 'GET', branchIds = [a]) {
+async function run(
+  guard: typeof customerParentGuard,
+  path: string,
+  method = 'GET',
+  branchIds = [a]
+) {
   const next = vi.fn();
   await guard(
     { path, method, branchScope: { mode: 'all', branchIds } } as Request,
@@ -75,8 +89,51 @@ describe('shared parent scope guard', () => {
 
 it('blocks nested writes in multi-branch all scope while allowing reads', async () => {
   customer.findUnique.mockResolvedValue({ branchId: a });
-  expect(await run(customerParentGuard, '/' + id + '/debts', 'GET', [a, b])).toHaveBeenCalledExactlyOnceWith();
+  expect(
+    await run(customerParentGuard, '/' + id + '/debts', 'GET', [a, b])
+  ).toHaveBeenCalledExactlyOnceWith();
   expect(await run(customerParentGuard, '/' + id + '/debts', 'POST', [a, b])).toHaveBeenCalledWith(
     expect.objectContaining({ statusCode: 409, code: 'BRANCH_SELECTION_REQUIRED' })
   );
+});
+
+describe('3B record guards', () => {
+  it('hides a debt before action handlers and applies the sole-branch write policy', async () => {
+    debt.findUnique.mockResolvedValue({ branchId: b });
+    expect(
+      await run(recordScopeGuard('debt'), '/' + id + '/payments', 'POST')
+    ).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 404, message: 'Debt not found' }));
+    debt.findUnique.mockResolvedValue({ branchId: a });
+    expect(
+      await run(recordScopeGuard('debt'), '/' + id + '/payments', 'POST', [a, b])
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({ statusCode: 409, code: 'BRANCH_SELECTION_REQUIRED' })
+    );
+  });
+  it('guards collection writes before payload validation', async () => {
+    expect(await run(recordScopeGuard('salesOrder'), '/', 'POST', [a, b])).toHaveBeenCalledWith(
+      expect.objectContaining({ statusCode: 409, code: 'BRANCH_SELECTION_REQUIRED' })
+    );
+  });
+  it('checks receipt URLs against receiving ownership rather than purchase IDs', async () => {
+    supplierReceiving.findUnique.mockResolvedValue({ branchId: b });
+    expect(
+      await run(recordScopeGuard('supplierPurchase'), '/' + id + '/receipts')
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        statusCode: 404,
+        message: 'The supplier purchase for this receipt was not found.',
+      })
+    );
+    expect(supplierReceiving.findUnique).toHaveBeenCalledWith({
+      where: { id },
+      select: { branchId: true },
+    });
+  });
+  it('inherits prepaid ownership from its debt', async () => {
+    prepaidPurchase.findUnique.mockResolvedValue({ debt: { branchId: b } });
+    expect(await run(recordScopeGuard('prepaid'), '/' + id)).toHaveBeenCalledWith(
+      expect.objectContaining({ statusCode: 404, message: 'Prepaid purchase not found' })
+    );
+  });
 });

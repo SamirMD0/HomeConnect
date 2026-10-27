@@ -17,6 +17,7 @@ export interface ReceivableCustomerView {
 }
 
 export interface ReceivableItemView {
+  branchId: string;
   customer: ReceivableCustomerView;
   tier: ReceivableTier;
   tierReason: string;

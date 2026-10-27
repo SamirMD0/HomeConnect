@@ -10,7 +10,10 @@ export function scopeWhere(scope: BranchScope) {
   return { branchId: { in: scope.branchIds } };
 }
 
-/** Write policy: every mutation needs exactly one accessible branch, even when its\n * record supplies the branch. Multi-branch all scope always returns 409. Missing\n * headers stay writable for a single-branch shop. Phase 4 mutations from All must\n * send X-Branch-Scope set to the record’s branch. */
+/** Write policy: every mutation needs exactly one accessible branch, even when its
+ * record supplies the branch. Multi-branch all scope always returns 409. Missing
+ * headers stay writable for a single-branch shop. Phase 4 mutations from All must
+ * send X-Branch-Scope set to the record’s branch. */
 export function writeBranch(scope: BranchScope): string {
   if (scope.branchIds.length === 0) {
     throw new AppError(

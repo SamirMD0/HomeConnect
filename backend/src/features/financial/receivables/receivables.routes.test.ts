@@ -2,6 +2,12 @@ import jwt from 'jsonwebtoken';
 import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { app } from '../../../app';
+const phase3bScope = { mode: 'all' as const, branchIds: ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'] };
+vi.mock('../../branches/parent-branch', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../branches/parent-branch')>()),
+  assertRecordInScope: vi.fn().mockResolvedValue('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
+}));
+
 
 const { receivablesServiceMock } = vi.hoisted(() => ({
   receivablesServiceMock: {
@@ -13,8 +19,9 @@ vi.mock('./receivables.service', () => ({
   ReceivablesService: receivablesServiceMock,
 }));
 
-vi.mock('../../../lib/prisma', () => ({
+vi.mock('../../../lib/prisma', async () => ({
   prisma: {
+...(await import('../../../test/branch-scope-fixture.js')).singleBranchRouteModels(),
     $queryRaw: vi.fn().mockResolvedValue([{ result: 1 }]),
   },
   transactionModel: {},
@@ -80,7 +87,7 @@ describe('receivables routes', () => {
       limit: 25,
       sortBy: 'standing',
       sortOrder: 'desc',
-    });
+    }, phase3bScope);
   });
 
   it('accepts repeated tier filters and normalizes a single tier to an array', async () => {
@@ -93,7 +100,7 @@ describe('receivables routes', () => {
         tier: ['SEVERE', 'CRITICAL'],
         onlyWithBalance: true,
         search: 'ali',
-      })
+      }), phase3bScope
     );
 
     await request(app)
@@ -101,7 +108,7 @@ describe('receivables routes', () => {
       .set('Authorization', `Bearer ${employeeToken}`);
 
     expect(receivablesServiceMock.getReceivables).toHaveBeenLastCalledWith(
-      expect.objectContaining({ tier: ['WATCH'] })
+      expect.objectContaining({ tier: ['WATCH'] }), phase3bScope
     );
   });
 
@@ -111,7 +118,7 @@ describe('receivables routes', () => {
       .set('Authorization', `Bearer ${employeeToken}`);
 
     expect(receivablesServiceMock.getReceivables).toHaveBeenCalledWith(
-      expect.objectContaining({ month: '2026-07' })
+      expect.objectContaining({ month: '2026-07' }), phase3bScope
     );
 
     for (const badMonth of ['2026-13', '2026-7', 'July', '2026-07-01']) {

@@ -2,7 +2,7 @@ import { branchFixture } from "../../../test/branch-fixture";
 import { InstallmentPlanFrequency, InstallmentPlanStatus, InstallmentStatus, PaymentMethod, Role } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it} from 'vitest';
 import { prisma } from '../../../lib/prisma';
 import {
   FinancialRecordAlreadyPaidError,
@@ -12,6 +12,8 @@ import {
 } from '../domain/financial-errors';
 import { addMonthsToBusinessDate, todayInBusinessTimezone } from '../domain/business-date';
 import { InstallmentPlansService } from './installment-plans.service';
+const phase3bScope = async () => ({ mode: 'all' as const, branchIds: [await branchFixture(prisma)] });
+
 
 const runPlanDbTests = process.env.RUN_PHASE5_INSTALLMENT_DB_TESTS === '1';
 const databaseUrl = process.env.DATABASE_URL ?? '';
@@ -80,7 +82,7 @@ describePlanDb('installment plan database flow', () => {
           notes: null,
           idempotencyKey: 'phase5-partial-key',
         },
-        { userId: adminId, role: Role.ADMIN }
+        { userId: adminId, role: Role.ADMIN }, await phase3bScope()
       );
 
       expect(partial.totalPaid).toBe('150.00');
@@ -105,7 +107,7 @@ describePlanDb('installment plan database flow', () => {
           notes: null,
           idempotencyKey: 'phase5-partial-key',
         },
-        { userId: adminId, role: Role.ADMIN }
+        { userId: adminId, role: Role.ADMIN }, await phase3bScope()
       );
       expect(replay.payments).toHaveLength(1);
 
@@ -120,7 +122,7 @@ describePlanDb('installment plan database flow', () => {
             notes: null,
             idempotencyKey: 'phase5-partial-key',
           },
-          { userId: adminId, role: Role.ADMIN }
+          { userId: adminId, role: Role.ADMIN }, await phase3bScope()
         )
       ).rejects.toThrow(PaymentIdempotencyConflictError);
 
@@ -135,7 +137,7 @@ describePlanDb('installment plan database flow', () => {
             notes: null,
             idempotencyKey: 'phase5-overpay-key',
           },
-          { userId: adminId, role: Role.ADMIN }
+          { userId: adminId, role: Role.ADMIN }, await phase3bScope()
         )
       ).rejects.toThrow(OverpaymentError);
 
@@ -149,7 +151,7 @@ describePlanDb('installment plan database flow', () => {
           notes: null,
           idempotencyKey: 'phase5-final-key',
         },
-        { userId: adminId, role: Role.ADMIN }
+        { userId: adminId, role: Role.ADMIN }, await phase3bScope()
       );
 
       expect(completed.totalPaid).toBe('600.00');
@@ -168,7 +170,7 @@ describePlanDb('installment plan database flow', () => {
             notes: null,
             idempotencyKey: 'phase5-after-complete-key',
           },
-          { userId: adminId, role: Role.ADMIN }
+          { userId: adminId, role: Role.ADMIN }, await phase3bScope()
         )
       ).rejects.toThrow(FinancialRecordAlreadyPaidError);
 
@@ -206,7 +208,7 @@ describePlanDb('installment plan database flow', () => {
             notes: null,
             idempotencyKey: 'phase5-cancelled-payment-key',
           },
-          { userId: adminId, role: Role.ADMIN }
+          { userId: adminId, role: Role.ADMIN }, await phase3bScope()
         )
       ).rejects.toThrow(FinancialRecordCancelledError);
     } finally {

@@ -148,7 +148,7 @@ export class DebtsController {
     next: NextFunction
   ) {
     try {
-      const debt = await DebtsService.recordDebtPayment(req.params.debtId, req.body, req.user!);
+      const debt = await DebtsService.recordDebtPayment(req.params.debtId, req.body, req.user!, req.branchScope!);
       res.status(201).json({
         success: true,
         data: debt,

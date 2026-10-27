@@ -9,6 +9,12 @@ import {
 } from './receivables.repository';
 import { ReceivablesService } from './receivables.service';
 import { ReceivablesQueryInput } from './receivables.validator';
+const phase3bScope = { mode: 'all' as const, branchIds: ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'] };
+vi.mock('../../branches/parent-branch', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../branches/parent-branch')>()),
+  assertRecordInScope: vi.fn().mockResolvedValue('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
+}));
+
 
 const { repositoryMock } = vi.hoisted(() => ({
   repositoryMock: {
@@ -41,7 +47,7 @@ function makeCustomer(
   phone: string,
   isActive = true
 ): ReceivableCustomerRecord {
-  return { id, name, phone, isActive };
+  return { branchId: phase3bScope.branchIds[0], id, name, phone, isActive };
 }
 
 function businessDate(value: string): Date {
@@ -234,7 +240,7 @@ describe('ReceivablesService.computeReceivableProjections', () => {
   it('reports the same figures the receivables page reports for the same records', async () => {
     repositoryMock.loadReceivableRecords.mockResolvedValue(recordSet());
     const receivables = await ReceivablesService.getReceivables(
-      query({ sortBy: 'name', sortOrder: 'asc' })
+      query({ sortBy: 'name', sortOrder: 'asc' }), phase3bScope
     );
 
     repositoryMock.loadReceivableRecords.mockResolvedValue(recordSet());
