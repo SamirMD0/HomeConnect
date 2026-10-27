@@ -10,7 +10,7 @@ const { suppliersService, transactionsService } = vi.hoisted(() => ({
 vi.mock('./suppliers/suppliers.service', () => ({ SuppliersService: suppliersService }));
 vi.mock('./transactions/supplier-transactions.service', () => ({ SupplierTransactionsService: transactionsService }));
 vi.mock('../../lib/prisma', async () => ({ prisma: {
-    ...(await import('../../test/branch-scope-fixture')).singleBranchRouteModels(), $queryRaw: vi.fn().mockResolvedValue([{ result: 1 }]) }, transactionModel: {}, activityLogModel: {} }));
+    ...(await import('../../test/branch-scope-fixture.js')).singleBranchRouteModels(), $queryRaw: vi.fn().mockResolvedValue([{ result: 1 }]) }, transactionModel: {}, activityLogModel: {} }));
 
 const secret = process.env.JWT_SECRET!;
 const admin = jwt.sign({ userId: '11111111-1111-4111-8111-111111111111', role: 'ADMIN' }, secret);

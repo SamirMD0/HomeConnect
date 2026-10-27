@@ -22,7 +22,7 @@ vi.mock('./installment-plans.service', () => ({
 
 vi.mock('../../../lib/prisma', async () => ({
   prisma: {
-    ...(await import('../../../test/branch-scope-fixture')).singleBranchRouteModels(),
+    ...(await import('../../../test/branch-scope-fixture.js')).singleBranchRouteModels(),
     $queryRaw: vi.fn().mockResolvedValue([{ result: 1 }]),
   },
   transactionModel: {},

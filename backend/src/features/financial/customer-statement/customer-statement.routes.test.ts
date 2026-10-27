@@ -6,7 +6,7 @@ import { app } from '../../../app';
 const { serviceMock } = vi.hoisted(() => ({ serviceMock: { get: vi.fn() } }));
 vi.mock('./customer-statement.service', () => ({ CustomerStatementService: serviceMock }));
 vi.mock('../../../lib/prisma', async () => ({ prisma: {
-    ...(await import('../../../test/branch-scope-fixture')).singleBranchRouteModels(), $queryRaw: vi.fn() }, transactionModel: {}, activityLogModel: {} }));
+    ...(await import('../../../test/branch-scope-fixture.js')).singleBranchRouteModels(), $queryRaw: vi.fn() }, transactionModel: {}, activityLogModel: {} }));
 
 const customerId = '22222222-2222-4222-8222-222222222222';
 const token = jwt.sign({ userId: '44444444-4444-4444-8444-444444444444', role: 'EMPLOYEE' }, process.env.JWT_SECRET!);
