@@ -36,6 +36,7 @@ import {
  */
 
 interface SearchTarget {
+  branchOwned: boolean;
   table: Prisma.Sql;
   /** Restricts the search to live rows, e.g. soft-delete filters. */
   baseFilter: Prisma.Sql | null;
@@ -53,6 +54,7 @@ interface SearchTarget {
  */
 const SEARCH_TARGETS = {
   customer: {
+    branchOwned: true,
     table: Prisma.sql`customers`,
     baseFilter: Prisma.sql`"deletedAt" IS NULL`,
     textColumns: [Prisma.sql`name`, Prisma.sql`address`, Prisma.sql`notes`],
@@ -60,6 +62,7 @@ const SEARCH_TARGETS = {
     tokenMode: 'AND',
   },
   customerNamePhone: {
+    branchOwned: true,
     table: Prisma.sql`customers`,
     baseFilter: Prisma.sql`"deletedAt" IS NULL`,
     textColumns: [Prisma.sql`name`],
@@ -67,6 +70,7 @@ const SEARCH_TARGETS = {
     tokenMode: 'AND',
   },
   supplier: {
+    branchOwned: true,
     table: Prisma.sql`suppliers`,
     baseFilter: null,
     textColumns: [Prisma.sql`name`, Prisma.sql`"companyName"`],
@@ -74,6 +78,7 @@ const SEARCH_TARGETS = {
     tokenMode: 'PHRASE',
   },
   supplierTransaction: {
+    branchOwned: true,
     table: Prisma.sql`supplier_transactions`,
     baseFilter: null,
     textColumns: [Prisma.sql`description`, Prisma.sql`reference`],
@@ -81,6 +86,7 @@ const SEARCH_TARGETS = {
     tokenMode: 'PHRASE',
   },
   debt: {
+    branchOwned: true,
     table: Prisma.sql`debts`,
     baseFilter: null,
     textColumns: [Prisma.sql`description`],
@@ -88,6 +94,7 @@ const SEARCH_TARGETS = {
     tokenMode: 'PHRASE',
   },
   product: {
+    branchOwned: false,
     table: Prisma.sql`products`,
     baseFilter: null,
     textColumns: [
@@ -119,12 +126,14 @@ export async function findSearchMatchIds(
   limit: number = MAX_SEARCH_IDS,
   scope?: BranchScope
 ): Promise<string[] | null> {
-  // 3A supplies scope for customer/supplier routes. Financial callers migrate in 3B.
+  const config = SEARCH_TARGETS[target];
+  if (scope && !config.branchOwned) {
+    throw new Error('Branch scope cannot be applied to global search target: ' + target);
+  }
   if (scope && scope.branchIds.length === 0) return [];
   const trimmed = (rawTerm ?? '').trim();
   if (!trimmed) return null;
 
-  const config = SEARCH_TARGETS[target];
   // AND targets require every word while allowing different fields to satisfy
   // different words. PHRASE targets intentionally retain whole-query matching.
   // A phone-only query remains one token so separators/spaces normalize as a
