@@ -4,6 +4,7 @@ import { DiagnosticsPanel } from '../../features/diagnostics/components/Diagnost
 import { MaintenancePanel } from '../../features/maintenance/components/MaintenancePanel';
 import { ExchangeRatePanel } from '../../features/exchange-rates/components/ExchangeRatePanel';
 import { BusinessSettingsPanel } from '../../features/documents/components/BusinessSettingsPanel';
+import { BranchesPanel } from '../../features/branches/BranchesPanel';
 import { useAuth } from '../../hooks/useAuth';
 import { UpdateSettingsPanel } from '../../features/updates/UpdateSettingsPanel';
 
@@ -34,6 +35,8 @@ export const SettingsPage: React.FC = () => {
       <UpdateSettingsPanel />
 
       <BusinessSettingsPanel />
+
+      <BranchesPanel />
 
       <ExchangeRatePanel />
 

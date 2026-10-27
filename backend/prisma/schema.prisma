@@ -460,8 +460,51 @@ model User {
   cashRefundsProcessed           CashRefund[]                 @relation("CashRefundProcessedBy")
   customerCreditsIssued          CustomerCredit[]             @relation("CustomerCreditIssuedBy")
   customerCreditApplications     CustomerCreditApplication[]  @relation("CustomerCreditApplicationAppliedBy")
+  branchesCreated                Branch[]                     @relation("BranchCreatedBy")
+  branchesUpdated                Branch[]                     @relation("BranchUpdatedBy")
+  branchAccess                   UserBranchAccess[]           @relation("UserBranchAccessUser")
+  branchAccessGranted            UserBranchAccess[]           @relation("UserBranchAccessGrantedBy")
 
   @@map("users")
+}
+
+/// A shop branch. Branches are deactivated, never deleted, because branch-owned
+/// records (from the multi-branch ownership phase onward) reference them forever.
+model Branch {
+  id          String   @id @default(uuid()) @db.Uuid
+  code        String   @unique
+  name        String   @unique
+  address     String?  @db.Text
+  phone       String?
+  isActive    Boolean  @default(true)
+  createdById String   @db.Uuid
+  createdBy   User     @relation("BranchCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedById String?  @db.Uuid
+  updatedBy   User?    @relation("BranchUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userAccess UserBranchAccess[]
+
+  @@index([isActive])
+  @@map("branches")
+}
+
+/// Branches an EMPLOYEE may work in. ADMIN users implicitly access every active
+/// branch and need no rows here. Read from the database on every request, never
+/// from the JWT, so revoking access takes effect immediately.
+model UserBranchAccess {
+  userId      String   @db.Uuid
+  user        User     @relation("UserBranchAccessUser", fields: [userId], references: [id], onDelete: Restrict)
+  branchId    String   @db.Uuid
+  branch      Branch   @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  grantedById String   @db.Uuid
+  grantedBy   User     @relation("UserBranchAccessGrantedBy", fields: [grantedById], references: [id], onDelete: Restrict)
+  grantedAt   DateTime @default(now())
+
+  @@id([userId, branchId])
+  @@index([branchId])
+  @@map("user_branch_access")
 }
 
 model BusinessSettings {

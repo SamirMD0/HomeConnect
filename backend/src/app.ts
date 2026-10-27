@@ -8,6 +8,7 @@ import { requestLogger } from './middleware/logger.middleware';
 import { prisma } from './lib/prisma';
 import { authRoutes } from './routes/auth.routes';
 import { usersRoutes } from './routes/users.routes';
+import { branchesRoutes } from './features/branches/branches.routes';
 import customersRoutes from './routes/customers.routes';
 import { dashboardRoutes } from './routes/dashboard.routes';
 import { requireAuth } from './middleware/auth.middleware';
@@ -97,6 +98,7 @@ app.get('/api/v1/health', async (_req, res) => {
 // API Routes
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', requireAuth, usersRoutes);
+app.use('/api/v1/branches', requireAuth, branchesRoutes);
 app.use('/api/v1/customers', requireAuth, customerDebtsRoutes);
 app.use('/api/v1/customers', requireAuth, customerInstallmentPlansRoutes);
 app.use('/api/v1/customers', requireAuth, customerFinancialSummaryRoutes);
