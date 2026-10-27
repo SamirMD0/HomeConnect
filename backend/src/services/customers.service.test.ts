@@ -1,3 +1,4 @@
+const scope = { mode: 'all' as const, branchIds: ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'] };
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { repositoryMock, receivablesMock, searchQueryMock } = vi.hoisted(() => ({
@@ -68,7 +69,7 @@ describe('CustomersService.listCustomers', () => {
   it('leaves the payload lean when financial figures were not requested', async () => {
     repositoryMock.findAll.mockResolvedValue({ customers: [alice, bilal], total: 2 });
 
-    const result = await CustomersService.listCustomers({ skip: 0, take: 10 });
+    const result = await CustomersService.listCustomers({ skip: 0, take: 10 }, scope);
 
     expect(result.customers).toEqual([alice, bilal]);
     expect(receivablesMock.computeReceivableProjections).not.toHaveBeenCalled();
@@ -87,7 +88,7 @@ describe('CustomersService.listCustomers', () => {
       skip: 0,
       take: 10,
       includeFinancial: true,
-    });
+    }, scope);
 
     // One call, carrying every id on the page: this is what replaced the
     // per-row balance request the customers table used to fire.
@@ -111,7 +112,7 @@ describe('CustomersService.listCustomers', () => {
       skip: 0,
       take: 10,
       includeFinancial: true,
-    });
+    }, scope);
 
     expect(result.customers[0]).toMatchObject({ financial: null });
   });
@@ -124,7 +125,7 @@ describe('CustomersService.listCustomers', () => {
       take: 10,
       search: 'no such customer',
       includeFinancial: true,
-    });
+    }, scope);
 
     expect(result.customers).toEqual([]);
     expect(receivablesMock.computeReceivableProjections).not.toHaveBeenCalled();
@@ -138,13 +139,13 @@ describe('CustomersService.listCustomers', () => {
       take: 10,
       search: 'محمد عمار',
       includeFinancial: true,
-    });
+    }, scope);
 
     expect(repositoryMock.findAll).toHaveBeenCalledWith({
       skip: 0,
       take: 10,
       search: 'محمد عمار',
-    });
+    }, scope);
   });
 
   it('marks only customers outside the name-and-phone match set as notes-only matches', async () => {
@@ -155,9 +156,9 @@ describe('CustomersService.listCustomers', () => {
       skip: 0,
       take: 10,
       search: 'محمد',
-    });
+    }, scope);
 
-    expect(searchQueryMock.findSearchMatchIds).toHaveBeenCalledWith('customerNamePhone', 'محمد');
+    expect(searchQueryMock.findSearchMatchIds).toHaveBeenCalledWith('customerNamePhone', 'محمد', undefined, scope);
     expect(result.customers[0]).toMatchObject({ id: alice.id, matchedInNotesOnly: false });
     expect(result.customers[1]).toMatchObject({ id: bilal.id, matchedInNotesOnly: true });
   });
@@ -165,7 +166,7 @@ describe('CustomersService.listCustomers', () => {
   it('omits notes-only provenance when no search term was sent', async () => {
     repositoryMock.findAll.mockResolvedValue({ customers: [alice, bilal], total: 2 });
 
-    const result = await CustomersService.listCustomers({ skip: 0, take: 10 });
+    const result = await CustomersService.listCustomers({ skip: 0, take: 10 }, scope);
 
     expect(result.customers[0]).not.toHaveProperty('matchedInNotesOnly');
     expect(result.customers[1]).not.toHaveProperty('matchedInNotesOnly');
@@ -181,21 +182,21 @@ describe('CustomersService.listCustomers', () => {
     const result = await CustomersService.listCustomers({
       skip: 0, take: 10, includeFinancial: true, filter: 'withBalance',
       sortBy: 'outstanding', sortOrder: 'desc',
-    });
+    }, scope);
 
     expect(result.total).toBe(1);
     expect(result.customers.map((customer) => customer.id)).toEqual([alice.id]);
-    expect(repositoryMock.findAll).toHaveBeenCalledWith(expect.objectContaining({ skip: undefined, take: undefined, sortBy: 'createdAt' }));
+    expect(repositoryMock.findAll).toHaveBeenCalledWith(expect.objectContaining({ skip: undefined, take: undefined, sortBy: 'createdAt' }), scope);
   });
 });
 
 
 describe('credit-limit configuration authorization', () => {
   it.each([null, '0.00', '100000.00'])('rejects employee limit edits, including clearing: %s', async (creditLimit) => {
-    await expect(CustomersService.updateCustomer(alice.id, { creditLimit }, { role: 'EMPLOYEE' })).rejects.toThrow('Only an ADMIN');
+    await expect(CustomersService.updateCustomer(alice.id, { creditLimit }, scope, { role: 'EMPLOYEE' })).rejects.toThrow('Only an ADMIN');
   });
   it('rejects a supplied limit without an actor and on employee customer creation', async () => {
-    await expect(CustomersService.updateCustomer(alice.id, { creditLimit: null })).rejects.toThrow('Only an ADMIN');
-    await expect(CustomersService.createCustomer({ name: 'New', phone: '70123456', createdBy: 'actor', creditLimit: null }, { role: 'EMPLOYEE' })).rejects.toThrow('Only an ADMIN');
+    await expect(CustomersService.updateCustomer(alice.id, { creditLimit: null }, scope)).rejects.toThrow('Only an ADMIN');
+    await expect(CustomersService.createCustomer({ name: 'New', phone: '70123456', createdBy: 'actor', creditLimit: null }, scope, { role: 'EMPLOYEE' })).rejects.toThrow('Only an ADMIN');
   });
 });

@@ -1,3 +1,4 @@
+import type { BranchScope } from '../features/branches/branch-scope';
 import { Prisma } from '@prisma/client';
 import { prisma } from './prisma';
 import {
@@ -115,8 +116,11 @@ export const MAX_SEARCH_IDS = 2000;
 export async function findSearchMatchIds(
   target: SearchTargetName,
   rawTerm: string | null | undefined,
-  limit: number = MAX_SEARCH_IDS
+  limit: number = MAX_SEARCH_IDS,
+  scope?: BranchScope
 ): Promise<string[] | null> {
+  // 3A supplies scope for customer/supplier routes. Financial callers migrate in 3B.
+  if (scope && scope.branchIds.length === 0) return [];
   const trimmed = (rawTerm ?? '').trim();
   if (!trimmed) return null;
 
@@ -172,8 +176,11 @@ export async function findSearchMatchIds(
     ? Prisma.sql`${config.baseFilter} AND (${matcher})`
     : Prisma.sql`(${matcher})`;
 
+  const branchFilter = scope
+    ? Prisma.sql`AND "branchId" = ANY(${scope.branchIds}::uuid[])`
+    : Prisma.empty;
   const rows = await prisma.$queryRaw<Array<{ id: string }>>(
-    Prisma.sql`SELECT id FROM ${config.table} WHERE ${where} LIMIT ${limit}`
+    Prisma.sql`SELECT id FROM ${config.table} WHERE ${where} ${branchFilter} LIMIT ${limit}`
   );
 
   return rows.map((row) => row.id);

@@ -8,7 +8,7 @@ export class CustomersController {
       const customer = await CustomersService.createCustomer({
         ...req.body,
         createdBy: req.user!.userId,
-      }, req.user!);
+      }, req.branchScope!, req.user!);
       res.status(201).json({
         success: true,
         data: customer,
@@ -34,7 +34,7 @@ export class CustomersController {
         sortOrder,
         includeFinancial: include === 'financial',
         filter,
-      });
+      }, req.branchScope!);
 
       res.status(200).json({
         success: true,
@@ -57,7 +57,7 @@ export class CustomersController {
   static async searchSuggestions(req: Request, res: Response, next: NextFunction) {
     try {
       const { q, limit } = req.query as unknown as { q: string; limit: number };
-      const suggestions = await CustomerSuggestionsService.suggest(q, Number(limit));
+      const suggestions = await CustomerSuggestionsService.suggest(q, req.branchScope!, Number(limit));
       res.status(200).json({ success: true, data: { suggestions } });
     } catch (error) {
       next(error);
@@ -66,7 +66,7 @@ export class CustomersController {
 
   static async getCustomer(req: Request, res: Response, next: NextFunction) {
     try {
-      const customer = await CustomersService.getCustomer(req.params.id as string);
+      const customer = await CustomersService.getCustomer(req.params.id as string, req.branchScope!);
       res.status(200).json({
         success: true,
         data: customer,
@@ -79,7 +79,7 @@ export class CustomersController {
 
   static async updateCustomer(req: Request, res: Response, next: NextFunction) {
     try {
-      const customer = await CustomersService.updateCustomer(req.params.id as string, req.body, req.user!);
+      const customer = await CustomersService.updateCustomer(req.params.id as string, req.body, req.branchScope!, req.user!);
       res.status(200).json({
         success: true,
         data: customer,
@@ -92,7 +92,7 @@ export class CustomersController {
 
   static async deleteCustomer(req: Request, res: Response, next: NextFunction) {
     try {
-      await CustomersService.deleteCustomer(req.params.id as string);
+      await CustomersService.deleteCustomer(req.params.id as string, req.branchScope!);
       res.status(200).json({
         success: true,
         data: { message: 'Customer successfully deleted' },

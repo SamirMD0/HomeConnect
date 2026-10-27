@@ -1,3 +1,5 @@
+let branchId: string;
+const scope = () => ({ mode: 'all' as const, branchIds: [branchId] });
 import { branchFixture } from "../../../test/branch-fixture";
 import { isIsolatedTestDatabase } from '../../../test/database';
 import { Currency, PrismaClient } from '@prisma/client';
@@ -32,7 +34,8 @@ describeDb('customer credit-limit transaction invariants', () => {
   beforeEach(async () => {
     userId = randomUUID(); customerId = randomUUID(); taxProfileId = randomUUID(); taxRateId = randomUUID();
     await db.user.create({ data: { id: userId, username: `credit-${userId}`, fullName: 'Credit Test Admin', password: await bcrypt.hash(password, 4), role: 'ADMIN' } });
-    await db.customer.create({ data: { branchId: await branchFixture(db), id: customerId, name: 'Credit Customer', phone: `credit-${customerId}`, createdBy: userId } });
+    branchId = await branchFixture(db);
+    await db.customer.create({ data: { branchId, id: customerId, name: 'Credit Customer', phone: `credit-${customerId}`, createdBy: userId } });
     await db.taxRate.create({ data: { id: taxRateId, code: `CREDIT_${taxRateId}`, name: 'Credit VAT', nameAr: 'اختبار', ratePercent: '11', effectiveFrom: new Date('2020-01-01'), createdById: userId } });
     await db.taxProfile.create({ data: { id: taxProfileId, code: `CREDIT_${taxProfileId}`, name: 'Credit VAT', nameAr: 'اختبار', taxRateId } });
   });
@@ -58,11 +61,11 @@ describeDb('customer credit-limit transaction invariants', () => {
   it('preserves NULL/unrestricted creation and supports setting, clearing, and zero limits', async () => {
     expect((await db.customer.findUniqueOrThrow({ where: { id: customerId } })).creditLimit).toBeNull();
     await DebtsService.createDebt(customerId, debt('1000'), actor());
-    await CustomersService.updateCustomer(customerId, { creditLimit: '0.00' }, actor());
+    await CustomersService.updateCustomer(customerId, { creditLimit: '0.00' }, scope(), actor());
     await expect(DebtsService.createDebt(customerId, debt('1'), actor())).rejects.toMatchObject({ code: 'CREDIT_LIMIT_EXCEEDED' });
-    await CustomersService.updateCustomer(customerId, { creditLimit: null }, actor());
+    await CustomersService.updateCustomer(customerId, { creditLimit: null }, scope(), actor());
     await DebtsService.createDebt(customerId, debt('1'), actor());
-    const created = await CustomersService.createCustomer({ name: 'Limit Customer', phone: `new-${customerId}`, createdBy: userId, creditLimit: '100.00' }, actor());
+    const created = await CustomersService.createCustomer({ name: 'Limit Customer', phone: `new-${customerId}`, createdBy: userId, creditLimit: '100.00' }, scope(), actor());
     expect(created.creditLimit?.toFixed(2)).toBe('100.00');
     await expect(db.customer.update({ where: { id: customerId }, data: { creditLimit: '-1' } })).rejects.toThrow();
   });
