@@ -7,29 +7,29 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('Start seeding...');
   await seedDefaultCategories(prisma);
-  
+
   // Clean existing data if needed, or check if admin exists
   const admin = await prisma.$transaction(async tx => {
-  const existingAdmin = await tx.user.findFirst({
-    where: { role: Role.ADMIN },
-  });
-
-  
-  let admin = existingAdmin;
-  if (!admin) {
-    const hashedPassword = await bcrypt.hash('admin123', 12);
-    admin = await tx.user.create({
-      data: {
-        username: 'admin',
-        password: hashedPassword,
-        fullName: 'System Administrator',
-        role: Role.ADMIN,
-      },
+    const existingAdmin = await tx.user.findFirst({
+      where: { role: Role.ADMIN },
     });
-    console.log(`Created admin user with id: ${admin.id}`);
-  } else {
-    console.log('Admin user already exists');
-  }
+
+
+    let admin = existingAdmin;
+    if (!admin) {
+      const hashedPassword = await bcrypt.hash('admin123', 12);
+      admin = await tx.user.create({
+        data: {
+          username: 'admin',
+          password: hashedPassword,
+          fullName: 'System Administrator',
+          role: Role.ADMIN,
+        },
+      });
+      console.log(`Created admin user with id: ${admin.id}`);
+    } else {
+      console.log('Admin user already exists');
+    }
 
     if (!(await tx.branch.findFirst({select:{id:true}}))) {
       await tx.branch.create({data:{code:'MAIN',name:'Main branch',createdById:admin!.id}});

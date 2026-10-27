@@ -186,13 +186,13 @@ export class AuthService {
 
     const newAdmin = await prisma.$transaction(async tx => {
       const admin = await tx.user.create({
-      data: {
-        username,
-        password: hashedPassword,
-        fullName,
-        role: Role.ADMIN,
-      }
-    });
+        data: {
+          username,
+          password: hashedPassword,
+          fullName,
+          role: Role.ADMIN,
+        },
+      });
 
       if (!(await tx.branch.findFirst({select:{id:true}}))) {
         await tx.branch.create({data:{code:'MAIN',name:'Main branch',createdById:admin.id}});

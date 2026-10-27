@@ -4,7 +4,10 @@ import { Prisma, PrismaClient } from '@prisma/client';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { isIsolatedTestDatabase } from '../src/test/database';
 import { insertMigrationRow, seedOwnershipHistory } from '../src/test/branch-migration-fixture';
-import { MigrationExecutor, type MigrationClient } from '../src/features/maintenance/migration-executor';
+import {
+  MigrationExecutor,
+  type MigrationClient,
+} from '../src/features/maintenance/migration-executor';
 import { MigrationRunner } from '../src/features/maintenance/migration-runner';
 
 import { SalesOrdersRepository } from '../src/features/sales/sales-orders/sales-orders.repository';
@@ -55,7 +58,10 @@ describe.runIf(enabled)('ownership migration on an isolated pre-Phase-2 database
     const bundled = MigrationRunner.readBundled('backend/prisma/migrations').filter(
       (m) => !m.name.includes('add_branch_ownership')
     );
-    const outcomes = await MigrationExecutor.applyPending(db as unknown as MigrationClient, bundled);
+    const outcomes = await MigrationExecutor.applyPending(
+      db as unknown as MigrationClient,
+      bundled
+    );
     const failed = outcomes.filter((o) => !o.applied);
     expect(failed).toEqual([]);
   }, 120000);
@@ -226,7 +232,7 @@ describe.runIf(enabled)('ownership migration on an isolated pre-Phase-2 database
                   : '') +
               'ORDER BY id LIMIT 1'
           );
-          const row = { ...source.row, id: randomUUID(), branchId: b };
+          const row: Record<string, unknown> = { ...source.row, id: randomUUID(), branchId: b };
           for (const key of ['orderNumber', 'returnNumber', 'idempotencyKey', 'jobNumber'])
             if (key in row) row[key] = randomUUID();
           if (table === 'sales_returns') row.sequence = 99;

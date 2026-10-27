@@ -92,31 +92,53 @@ Keep the app closed throughout both snapshots. Never point these commands at
 `homeconnect`. Restore the latest verified backup into `homeconnect_reconcile`,
 using the backup/restore procedure. Retain the original archive and checksum.
 
-Before installing a build containing the ownership migration, check out the
-first Phase 2 commit (`feat(branches): add pre-migration reconciliation tool`).
+In a clean reviewer checkout, before installing a build containing the ownership
+migration, check out the
+first Phase 2 commit (`52d5fd4`, `feat(branches): add pre-migration reconciliation tool`).
 Install its locked dependencies and generate its Prisma client. Set
 `DATABASE_URL` to the restored `homeconnect_reconcile` database and confirm the
 resolved name. Do not run migrations yet. Choose a historical month containing
 returns and LBP activity; use that identical month and as-of date for both runs.
 
 ```powershell
+git switch --detach 52d5fd4
 npm ci
 npx prisma generate --schema backend/prisma/schema.prisma
-# DATABASE_URL must name homeconnect_reconcile; use the restored-copy credentials.
-npx tsx scripts/branch-reconciliation.ts snapshot --out phase0-before.json --period 2026-08 --as-of 2026-10-27
-npx tsx scripts/branch-reconciliation.ts compare --before phase0-before.json --after phase0-before.json
+function Confirm-ReconciliationDatabase {
+  if (([uri]$env:DATABASE_URL).AbsolutePath -ne '/homeconnect_reconcile') {
+    throw 'DATABASE_URL must resolve to homeconnect_reconcile'
+  }
+  Write-Host 'Confirmed database: homeconnect_reconcile'
+}
+# Enter only the restored-copy URL. Input is masked and is never printed.
+$restoreUrl = Read-Host 'Restored homeconnect_reconcile connection URL' -AsSecureString
+$env:DATABASE_URL = [Net.NetworkCredential]::new('', $restoreUrl).Password
+$branchEvidence = Join-Path $env:USERPROFILE 'Documents/HomeConnect-Phase0-Evidence'
+New-Item -ItemType Directory -Force -Path $branchEvidence | Out-Null
+$before = Join-Path $branchEvidence 'phase0-before.json'
+$after = Join-Path $branchEvidence 'phase2-after.json'
+Confirm-ReconciliationDatabase
+npx tsx scripts/branch-reconciliation.ts snapshot --out $before --period 2026-08 --as-of 2026-10-27
+Confirm-ReconciliationDatabase
+npx tsx scripts/branch-reconciliation.ts compare --before $before --after $before
 ```
 
 The baseline comparison reports `pre-branch schema: closure checks not applicable`.
 Archive this evidence before checking out/installing the completed Phase 2 build.
-Confirm DATABASE_URL still names homeconnect_reconcile, then:
+Confirm DATABASE_URL still names homeconnect_reconcile, then switch to the reviewed
+Phase 2 branch/build. Keep both snapshot files outside the checkout so switching
+builds does not lose the baseline. The example filenames below use that directory.
 
 ```powershell
+git switch --detach feature/multi-branch-phase-2
 npm ci
 npx prisma generate --schema backend/prisma/schema.prisma
+Confirm-ReconciliationDatabase
 npx prisma migrate deploy --schema backend/prisma/schema.prisma
-npx tsx scripts/branch-reconciliation.ts snapshot --out phase2-after.json --period 2026-08 --as-of 2026-10-27
-npx tsx scripts/branch-reconciliation.ts compare --before phase0-before.json --after phase2-after.json
+Confirm-ReconciliationDatabase
+npx tsx scripts/branch-reconciliation.ts snapshot --out $after --period 2026-08 --as-of 2026-10-27
+Confirm-ReconciliationDatabase
+npx tsx scripts/branch-reconciliation.ts compare --before $before --after $after
 ```
 
 Release requires COMPARE PASS, zero snapshot differences, every closure count zero,
@@ -125,3 +147,16 @@ for analysis, monthly review and aging; independent SQL mirrors the integrity
 reports. It excludes generation clocks and additive branch ownership metadata.
 Changing any amount, date, status or row count still fails comparison. Partial
 ownership schemas are rejected. The tool refuses business database names.
+
+The builder's synthetic proof is reproducible with `npx tsx scripts/branch-reconciliation-proof.ts`
+from a worktree configured for `homeconnect_test_phase4_phase5_phase6`. It creates
+a separate `homeconnect_test_mb_proof_*` database, seeds both currencies, captures
+both snapshots, applies the ownership migration through the bundled runner,
+compares all financial evidence and 34 closure checks, then drops its database.
+The checked-in sample evidence is in `docs/releases/evidence/multi-branch-phase2/`.
+Run CI with `NODE_ENV=test` and the required RUN_* flags via `npm run test:ci`;
+a copied development .env otherwise changes unrelated environment-sensitive tests.
+
+If the migration guard reports an inactive conflicting MAIN code/name, the owner
+must activate the branch holding history or rename that inactive conflict before
+retrying. The migration never guesses which inactive branch holds history.
