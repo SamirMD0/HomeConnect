@@ -1,3 +1,5 @@
+import { grantNewEmployeeBranch } from '../features/branches/new-employee-access';
+import { runFinancialTransaction } from '../features/financial/infrastructure/transaction';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../lib/prisma';
@@ -151,13 +153,17 @@ export class AuthService {
     }
 
     const hashedPassword = await bcrypt.hash(data.passwordString, 12);
-    const newUser = await prisma.user.create({
-      data: {
-        username: data.username,
-        password: hashedPassword,
-        fullName: data.fullName,
-        role: data.role ?? Role.EMPLOYEE,
-      },
+    const newUser = await runFinancialTransaction(async tx => {
+      const user = await tx.user.create({
+        data: {
+          username: data.username,
+          password: hashedPassword,
+          fullName: data.fullName,
+          role: data.role ?? Role.EMPLOYEE,
+        },
+      });
+      await grantNewEmployeeBranch(user, tx);
+      return user;
     });
 
     return {

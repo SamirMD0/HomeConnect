@@ -1,5 +1,7 @@
+import { grantNewEmployeeBranch } from '../features/branches/new-employee-access';
+import { runFinancialTransaction } from '../features/financial/infrastructure/transaction';
 import { UsersRepository } from '../repositories/users.repository';
-import { AppError, NotFoundError, ValidationError } from '../lib/errors';
+import { NotFoundError, ValidationError } from '../lib/errors';
 import bcrypt from 'bcrypt';
 import { Prisma } from '@prisma/client';
 import { invalidateUserSessionStatus } from '../lib/user-session-status';
@@ -13,11 +15,15 @@ export class UsersService {
 
     const hashedPassword = await bcrypt.hash(data.passwordString, 12);
     
-    return UsersRepository.create({
-      username: data.username,
-      password: hashedPassword,
-      fullName: data.fullName,
-      role: data.role || 'EMPLOYEE',
+    return runFinancialTransaction(async tx => {
+      const user = await UsersRepository.create({
+        username: data.username,
+        password: hashedPassword,
+        fullName: data.fullName,
+        role: data.role || 'EMPLOYEE',
+      }, tx);
+      await grantNewEmployeeBranch(user, tx);
+      return user;
     });
   }
 

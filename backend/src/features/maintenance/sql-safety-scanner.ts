@@ -192,7 +192,7 @@ const REVIEWED_THERMAL_RECONCILE_DO_SHA256 = '663b614e7cd4863d965d64ccf55012bac5
 
 // Ownership changes only verified-empty scaffolding and new ownership metadata.
 // Pin the entire guarded, atomic statement: edits to any guard or write invalidate it.
-const BRANCH_OWNERSHIP_DO_SHA256 = '3e1b70ce070772e7260e4af93b85a2b86a757189e3c45ea2eba1b7a212c81135';
+const BRANCH_OWNERSHIP_DO_SHA256 = '101304fae6cad84c593947ad92d270cb4c4cdc33227b8f16253809c0bd8d8e8f';
 
 export function scanSqlForUnsafeStatements(sql: string): SqlSafetyResult {
   return scanStatements(sql, false);

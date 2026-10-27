@@ -236,7 +236,7 @@ describe('ownership migration fingerprint',()=>{
   expect(scanSqlForUnsafeStatements(sql.replaceAll('\r\n','\n').replaceAll('\n','\r\n')).safe).toBe(true);
  });
  it('rejects edits to money columns, guard conditions, or dropped-column targets',()=>{
-  for(const altered of [sql.replace('SET "branchId" = historical_branch','SET "baseOriginalAmount" = 0'),sql.replace('active_count > 1','active_count > 2'),sql.replace('"users" DROP COLUMN "branchId"','"users" DROP COLUMN "password"')]) {
+  for(const altered of [sql.replace('SET "branchId" = historical_branch','SET "baseOriginalAmount" = 0'),sql.replace('active_count > 1','active_count > 2'),sql.replace("employee.\"role\" = 'EMPLOYEE'","employee.\"role\" = 'ADMIN'"),sql.replace('"users" DROP COLUMN "branchId"','"users" DROP COLUMN "password"')]) {
    expect(scanSqlForUnsafeStatements(altered).safe).toBe(false);
   }
  });

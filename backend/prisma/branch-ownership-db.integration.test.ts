@@ -13,6 +13,8 @@ import { MigrationRunner } from '../src/features/maintenance/migration-runner';
 import { SalesOrdersRepository } from '../src/features/sales/sales-orders/sales-orders.repository';
 import { SupplierReceivingsRepository } from '../src/features/inventory/receiving/supplier-receivings.repository';
 import { SalesOrdersService } from '../src/features/sales/sales-orders/sales-orders.service';
+import { CustomersService } from '../src/services/customers.service';
+import { CustomersRepository } from '../src/repositories/customers.repository';
 import * as transactions from '../src/features/financial/infrastructure/transaction';
 
 const enabled =
@@ -102,7 +104,8 @@ describe.runIf(enabled)('ownership migration on an isolated pre-Phase-2 database
         : 'creates MAIN and backfills USD/LBP history without changing a value',
       () =>
         scenario(async (tx) => {
-          const { userId } = await seedOwnershipHistory(tx);
+          const { userId, employeeId, inactiveEmployeeId, deletedEmployeeId, deletedAdminId } =
+            await seedOwnershipHistory(tx);
           const branch = existing
             ? await insertMigrationRow(tx, 'branches', {
                 code: 'HISTORY',
@@ -118,6 +121,15 @@ describe.runIf(enabled)('ownership migration on an isolated pre-Phase-2 database
           );
           expect(main.code).toBe(existing ? 'HISTORY' : 'MAIN');
           if (branch) expect(main.id).toBe(branch);
+          const grants = await tx.userBranchAccess.findMany({ orderBy: { userId: 'asc' } });
+          expect(grants).toHaveLength(2);
+          for (const id of [employeeId, inactiveEmployeeId]) {
+            expect(grants.filter((g) => g.userId === id)).toEqual([
+              expect.objectContaining({ userId: id, branchId: main.id, grantedById: userId }),
+            ]);
+          }
+          for (const id of [userId, deletedEmployeeId, deletedAdminId])
+            expect(grants.some((g) => g.userId === id)).toBe(false);
           for (const table of tables) {
             const [n] = await tx.$queryRawUnsafe<Array<{ n: number }>>(
               'SELECT count(*)::int n FROM "' +
@@ -184,6 +196,66 @@ describe.runIf(enabled)('ownership migration on an isolated pre-Phase-2 database
         }),
       120000
     );
+  it(
+    'migration grants let a fresh employee create a customer without manual fixture grants',
+    () =>
+      scenario(async (tx) => {
+        const { employeeId } = await seedOwnershipHistory(tx);
+        expect(await tx.userBranchAccess.count()).toBe(0);
+        await tx.$executeRawUnsafe(migration);
+        const transaction = vi
+          .spyOn(transactions, 'runFinancialTransaction')
+          .mockImplementation((operation) => operation(tx));
+        const phoneLookup = vi
+          .spyOn(CustomersRepository, 'findByPhone')
+          .mockImplementation((phone) =>
+            tx.customer.findFirst({ where: { phone, deletedAt: null } })
+          );
+        try {
+          const created = await CustomersService.createCustomer(
+            { name: 'Employee customer', phone: randomUUID(), createdBy: employeeId },
+            { role: 'EMPLOYEE' }
+          );
+          const grant = await tx.userBranchAccess.findFirstOrThrow({
+            where: { userId: employeeId },
+          });
+          expect(created.branchId).toBe(grant.branchId);
+          expect(
+            (await tx.customer.findUniqueOrThrow({ where: { id: created.id } })).createdBy
+          ).toBe(employeeId);
+        } finally {
+          transaction.mockRestore();
+          phoneLookup.mockRestore();
+        }
+      }),
+    120000
+  );
+
+  it(
+    'migration preserves existing Phase 1 grants and their original timestamps',
+    () =>
+      scenario(async (tx) => {
+        const { userId, employeeId } = await seedOwnershipHistory(tx);
+        const branchId = await insertMigrationRow(tx, 'branches', {
+          code: 'HISTORY',
+          name: 'History',
+          createdById: userId,
+        });
+        const grantedAt = new Date('2026-08-01T10:00:00Z');
+        await tx.userBranchAccess.create({
+          data: { userId: employeeId, branchId, grantedById: userId, grantedAt },
+        });
+        await tx.$executeRawUnsafe(migration);
+        expect(
+          await tx.userBranchAccess.findUniqueOrThrow({
+            where: { userId_branchId: { userId: employeeId, branchId } },
+          })
+        ).toMatchObject({ grantedById: userId, grantedAt });
+        expect(await tx.userBranchAccess.count({ where: { userId: employeeId } })).toBe(1);
+      }),
+    120000
+  );
+
   async function ownedScenario(
     run: (
       tx: Prisma.TransactionClient,

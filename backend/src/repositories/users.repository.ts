@@ -42,8 +42,8 @@ export class UsersRepository {
     });
   }
 
-  static async create(data: Prisma.UserCreateInput) {
-    return prisma.user.create({
+  static async create(data: Prisma.UserCreateInput, tx?: Prisma.TransactionClient) {
+    return (tx ?? prisma).user.create({
       data,
       select: {
         id: true,

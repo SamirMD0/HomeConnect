@@ -61,7 +61,22 @@ export async function seedOwnershipHistory(tx: Prisma.TransactionClient) {
     username: 'branch-fixture-' + randomUUID(),
     role: 'ADMIN',
   });
-  const records: Record<string, string[]> = { users: [userId] };
+  const employeeId = await insertMigrationRow(tx, 'users', { role: 'EMPLOYEE' });
+  const inactiveEmployeeId = await insertMigrationRow(tx, 'users', {
+    role: 'EMPLOYEE',
+    isActive: false,
+  });
+  const deletedEmployeeId = await insertMigrationRow(tx, 'users', {
+    role: 'EMPLOYEE',
+    deletedAt: new Date('2026-08-01'),
+  });
+  const deletedAdminId = await insertMigrationRow(tx, 'users', {
+    role: 'ADMIN',
+    deletedAt: new Date('2026-08-01'),
+  });
+  const records: Record<string, string[]> = {
+    users: [userId, employeeId, inactiveEmployeeId, deletedEmployeeId, deletedAdminId],
+  };
   const add = async (t: string, v: Record<string, unknown>) => {
     const id = await insertMigrationRow(tx, t, v);
     (records[t] ??= []).push(id);
@@ -196,5 +211,5 @@ export async function seedOwnershipHistory(tx: Prisma.TransactionClient) {
       serviceCreatedDate: new Date('2026-08-15'),
     });
   }
-  return { userId, records };
+  return { userId, employeeId, inactiveEmployeeId, deletedEmployeeId, deletedAdminId, records };
 }
