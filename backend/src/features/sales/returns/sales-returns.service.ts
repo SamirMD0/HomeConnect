@@ -306,6 +306,7 @@ export class SalesReturnsService {
         let settlementReference: string | null = null;
         if (input.refundMethod === SalesReturnRefundMethod.CASH_OUT) {
           const cashRefund = await tx.cashRefund.create({ data: {
+            branchId: header.branchId,
             salesReturnId: header.id,
             customerId: order.customerId,
             amount: settlement.refundable,
@@ -321,6 +322,7 @@ export class SalesReturnsService {
           settlementReference = cashRefund.id;
         } else if (input.refundMethod === SalesReturnRefundMethod.STORE_CREDIT) {
           const credit = await tx.customerCredit.create({ data: {
+            branchId: header.branchId,
             salesReturnId: header.id,
             customerId: order.customerId!,
             issuedAmount: settlement.refundable,

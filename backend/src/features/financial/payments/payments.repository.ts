@@ -1,3 +1,4 @@
+import { customerBranch, paymentBranch } from '../../branches/parent-branch';
 import { Currency, PaymentMethod, Prisma } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { prisma } from '../../../lib/prisma';
@@ -117,8 +118,8 @@ export class PaymentsRepository {
   static findByIdempotencyKey(idempotencyKey: string, tx: FinancialTransactionClient) {
     return tx.payment.findUnique({ where: { idempotencyKey } });
   }
-  static createCounterReceipt(tx: FinancialTransactionClient, data: Prisma.PaymentUncheckedCreateInput) {
-    return tx.payment.create({ data });
+  static async createCounterReceipt(tx: FinancialTransactionClient, data: Omit<Prisma.PaymentUncheckedCreateInput, 'branchId'>) {
+    return tx.payment.create({ data: { ...data, branchId: await paymentBranch(data, tx) } });
   }
   static async findPaymentReceipt(paymentId: string): Promise<PaymentReceiptRecord | null> {
     return prisma.payment.findUnique({ where: { id: paymentId }, include: paymentReceiptInclude });
@@ -214,6 +215,7 @@ export class PaymentsRepository {
     return tx.payment.create({
       data: {
         ...data,
+        branchId: await customerBranch(data.customerId, tx),
         idempotencyKey: null,
         baseAmount: data.baseAmount ?? data.totalAmount,
       },

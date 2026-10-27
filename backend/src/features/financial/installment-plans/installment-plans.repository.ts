@@ -1,3 +1,4 @@
+import { customerBranch } from '../../branches/parent-branch';
 import { Currency, InstallmentPlanFrequency, InstallmentPlanStatus, InstallmentStatus, PaymentMethod, Prisma } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { prisma } from '../../../lib/prisma';
@@ -131,6 +132,7 @@ export class InstallmentPlansRepository {
     return tx.installmentPlan.create({
       data: {
         ...planData,
+        branchId: await customerBranch(planData.customerId, tx),
         baseTotalAmount: planData.baseTotalAmount ?? planData.totalAmount,
         installments: {
           create: installments.map((installment) => ({
@@ -185,6 +187,7 @@ export class InstallmentPlansRepository {
     return tx.payment.create({
       data: {
         ...data,
+        branchId: await customerBranch(data.customerId, tx),
         baseAmount: data.baseAmount ?? data.totalAmount,
       },
       include: {

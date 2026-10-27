@@ -1,3 +1,4 @@
+import { resolveCreationBranchForUser } from '../../branches/creation-branch';
 import { Prisma, SupplierTransactionDirection, SupplierTransactionStatus } from '@prisma/client';
 import { prisma } from '../../../lib/prisma';
 import { findSearchMatchIds } from '../../../lib/search-query';
@@ -32,7 +33,7 @@ export class SuppliersRepository {
     };
     return prisma.supplier.findMany({ where, include: supplierInclude, orderBy: [{ name: 'asc' }, { id: 'asc' }] });
   }
-  static create(data: Prisma.SupplierUncheckedCreateInput, tx: Prisma.TransactionClient) { return tx.supplier.create({ data, include: supplierInclude }); }
+  static async create(data: Omit<Prisma.SupplierUncheckedCreateInput, 'branchId'>, tx: Prisma.TransactionClient) { return tx.supplier.create({ data: { ...data, branchId: await resolveCreationBranchForUser(data.createdById, tx) }, include: supplierInclude }); }
   static update(id: string, data: Prisma.SupplierUncheckedUpdateInput, tx: Prisma.TransactionClient) { return tx.supplier.update({ where: { id }, data, include: supplierInclude }); }
   static transactionCount(id: string, tx: Prisma.TransactionClient) { return tx.supplierTransaction.count({ where: { supplierId: id } }); }
   static receivingCount(id: string, tx: Prisma.TransactionClient) { return tx.supplierReceiving.count({ where: { supplierId: id } }); }

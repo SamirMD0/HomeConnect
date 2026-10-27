@@ -61,6 +61,7 @@ interface DebtListResult {
 }
 
 interface DebtView {
+  branchId: string;
   id: string;
   kind: DebtKind;
   customer: {
@@ -100,6 +101,7 @@ interface DebtView {
 }
 
 interface DebtPaymentView {
+  branchId: string;
   id: string;
   totalAmount: string;
   currency: Currency;
@@ -573,6 +575,7 @@ export class DebtsService {
 
     return {
       id: debt.id,
+      branchId: debt.branchId,
       kind: debt.kind,
       customer: debt.customer,
       description: debt.description,
@@ -626,6 +629,7 @@ export class DebtsService {
       if (!paymentsById.has(payment.id)) {
         paymentsById.set(payment.id, {
           id: payment.id,
+          branchId: payment.branchId,
           totalAmount: moneyToApiString(payment.totalAmount, payment.currency ?? Currency.USD),
           currency: payment.currency ?? Currency.USD,
           exchangeRate: (payment.exchangeRate ?? new Decimal(1)).toFixed(6),

@@ -47,8 +47,8 @@ export class CustomersRepository {
     return { customers, total };
   }
 
-  static async create(data: Prisma.CustomerCreateInput) {
-    return prisma.customer.create({
+  static async create(data: Prisma.CustomerUncheckedCreateInput, tx: Prisma.TransactionClient) {
+    return tx.customer.create({
       data
     });
   }

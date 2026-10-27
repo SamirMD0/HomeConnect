@@ -233,7 +233,7 @@ export class ServiceJobsService {
   }
 }
 
-function createData(input: CreateServiceJobInput, createdById: string, jobNumber: string): Prisma.ServiceJobUncheckedCreateInput {
+function createData(input: CreateServiceJobInput, createdById: string, jobNumber: string): Omit<Prisma.ServiceJobUncheckedCreateInput, 'branchId'> {
   return {
     jobNumber, customerId: input.customerId, productId: input.productId ?? null,
     manualProductName: input.manualProductName ?? null, manualProductModel: input.manualProductModel ?? null,

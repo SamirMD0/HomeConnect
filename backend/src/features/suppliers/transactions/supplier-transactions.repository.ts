@@ -1,3 +1,4 @@
+import { supplierBranch } from '../../branches/parent-branch';
 import { Prisma, SupplierTransactionStatus } from '@prisma/client';
 import { prisma } from '../../../lib/prisma';
 import { findSearchMatchIds } from '../../../lib/search-query';
@@ -53,14 +54,14 @@ export function supplierTransactionWhere(
 
 export class SupplierTransactionsRepository {
   static findById(id: string, tx?: Prisma.TransactionClient) { return (tx ?? prisma).supplierTransaction.findUnique({ where: { id }, include: supplierTransactionInclude }); }
-  static create(
-    data: Omit<Prisma.SupplierTransactionUncheckedCreateInput, 'baseAmount'> & {
+  static async create(
+    data: Omit<Prisma.SupplierTransactionUncheckedCreateInput, 'baseAmount' | 'branchId'> & {
       baseAmount?: Prisma.SupplierTransactionUncheckedCreateInput['baseAmount'];
     },
     tx: Prisma.TransactionClient
   ) {
     return tx.supplierTransaction.create({
-      data: { ...data, baseAmount: data.baseAmount ?? data.amount },
+      data: { ...data, branchId: await supplierBranch(data.supplierId, tx), baseAmount: data.baseAmount ?? data.amount },
       include: supplierTransactionInclude,
     });
   }

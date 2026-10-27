@@ -228,3 +228,16 @@ describe('sql safety scanner — real bundled files', () => {
     expect(sql).toContain('DROP TYPE "TransactionType"');
   });
 });
+
+describe('ownership migration fingerprint',()=>{
+ const sql=fs.readFileSync(path.join(MIGRATIONS_DIR,'20261027120000_add_branch_ownership/migration.sql'),'utf8');
+ it('accepts only the exact guarded migration, across checkout line endings',()=>{
+  expect(scanSqlForUnsafeStatements(sql).safe).toBe(true);
+  expect(scanSqlForUnsafeStatements(sql.replaceAll('\r\n','\n').replaceAll('\n','\r\n')).safe).toBe(true);
+ });
+ it('rejects edits to money columns, guard conditions, or dropped-column targets',()=>{
+  for(const altered of [sql.replace('SET "branchId" = historical_branch','SET "baseOriginalAmount" = 0'),sql.replace('active_count > 1','active_count > 2'),sql.replace('"users" DROP COLUMN "branchId"','"users" DROP COLUMN "password"')]) {
+   expect(scanSqlForUnsafeStatements(altered).safe).toBe(false);
+  }
+ });
+});

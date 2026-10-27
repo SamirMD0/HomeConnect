@@ -1,3 +1,5 @@
+import { customerBranch } from '../../branches/parent-branch';
+import { resolveCreationBranchForUser } from '../../branches/creation-branch';
 import {
   Prisma,
   SalesChannel,
@@ -119,8 +121,8 @@ export class SalesOrdersRepository {
     return nextSalesOrderNumber(year, latest?.orderNumber);
   }
 
-  static create(data: Prisma.SalesOrderUncheckedCreateInput, tx: Prisma.TransactionClient) {
-    return tx.salesOrder.create({ data, include: salesOrderInclude });
+  static async create(data: Omit<Prisma.SalesOrderUncheckedCreateInput, 'branchId'>, tx: Prisma.TransactionClient) {
+    return tx.salesOrder.create({ data: { ...data, branchId: data.customerId ? await customerBranch(data.customerId, tx) : await resolveCreationBranchForUser(data.createdById, tx) }, include: salesOrderInclude });
   }
 
   static update(id: string, data: Prisma.SalesOrderUncheckedUpdateInput, tx: Prisma.TransactionClient) {

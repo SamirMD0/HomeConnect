@@ -1,3 +1,4 @@
+import { customerBranch } from '../../branches/parent-branch';
 import { Prisma, ServiceJobStatus } from '@prisma/client';
 import { prisma } from '../../../lib/prisma';
 import { OPEN_SERVICE_STATUSES, TERMINAL_SERVICE_STATUSES } from '../domain/service-status';
@@ -28,8 +29,8 @@ export class ServiceJobsRepository {
     return nextServiceJobNumber(year, latest?.jobNumber);
   }
 
-  static create(data: Prisma.ServiceJobUncheckedCreateInput, tx: Prisma.TransactionClient) {
-    return tx.serviceJob.create({ data, include: serviceJobInclude });
+  static async create(data: Omit<Prisma.ServiceJobUncheckedCreateInput, 'branchId'>, tx: Prisma.TransactionClient) {
+    return tx.serviceJob.create({ data: { ...data, branchId: await customerBranch(data.customerId, tx) }, include: serviceJobInclude });
   }
 
   static update(id: string, data: Prisma.ServiceJobUncheckedUpdateInput, tx: Prisma.TransactionClient) {

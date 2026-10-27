@@ -54,6 +54,7 @@ interface PaymentCorrectionResult {
 }
 
 export interface PaymentReceiptView {
+  branchId: string;
   id: string;
   customer: { id: string; name: string; phone: string; address: string | null } | null;
   sourceSalesOrder?: { id: string; orderNumber: string } | null;
@@ -143,6 +144,7 @@ export class PaymentsService {
 
     return {
       id: payment.id,
+      branchId: payment.branchId,
       customer: payment.customer,
       sourceSalesOrder: payment.salesOrder ?? null,
       sourceSnapshot: payment.sourceSnapshot ?? null,

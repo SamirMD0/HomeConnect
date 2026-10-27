@@ -1,3 +1,5 @@
+import { supplierBranch } from '../../branches/parent-branch';
+import { resolveCreationBranchForUser } from '../../branches/creation-branch';
 import { Prisma, ServiceAuditAction, ServiceAuditRecordType, SupplierReceivingItemStatus, SupplierReceivingStatus } from '@prisma/client';
 import { prisma } from '../../../lib/prisma';
 
@@ -39,8 +41,8 @@ export class SupplierReceivingsRepository {
   static findSupplier(id: string, tx: Prisma.TransactionClient) {
     return tx.supplier.findUnique({ where: { id }, select: { id: true, name: true, isActive: true } });
   }
-  static create(data: Prisma.SupplierReceivingUncheckedCreateInput, tx: Prisma.TransactionClient) {
-    return tx.supplierReceiving.create({ data });
+  static async create(data: Omit<Prisma.SupplierReceivingUncheckedCreateInput, 'branchId'>, tx: Prisma.TransactionClient) {
+    return tx.supplierReceiving.create({ data: { ...data, branchId: data.supplierId ? await supplierBranch(data.supplierId, tx) : await resolveCreationBranchForUser(data.receivedById, tx) } });
   }
   static createItem(data: Prisma.SupplierReceivingItemUncheckedCreateInput, tx: Prisma.TransactionClient) {
     return tx.supplierReceivingItem.create({ data });

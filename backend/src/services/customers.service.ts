@@ -1,3 +1,5 @@
+import { resolveCreationBranchForUser } from '../features/branches/creation-branch';
+import { runFinancialTransaction } from '../features/financial/infrastructure/transaction';
 import { CustomersRepository } from '../repositories/customers.repository';
 import { AuthorizationError, NotFoundError, ValidationError } from '../lib/errors';
 import { Prisma } from '@prisma/client';
@@ -12,14 +14,15 @@ export class CustomersService {
       throw new ValidationError('A customer with this phone number already exists.');
     }
 
-    return CustomersRepository.create({
+    return runFinancialTransaction(async tx => CustomersRepository.create({
+      branchId: await resolveCreationBranchForUser(data.createdBy, tx),
       name: data.name,
       phone: data.phone,
       address: data.address,
       notes: data.notes,
       createdBy: data.createdBy,
       ...(data.creditLimit !== undefined ? { creditLimit: data.creditLimit } : {}),
-    });
+    }, tx));
   }
 
   /**

@@ -11,7 +11,7 @@ import {
   SalesOrderStockFulfillmentStatus,
 } from '@prisma/client';
 import { verifyAdminPassword } from '../../../lib/admin-verification';
-import { NotFoundError, ValidationError } from '../../../lib/errors';
+import { AppError, NotFoundError, ValidationError } from '../../../lib/errors';
 import {
   businessDateToPrisma,
   compareBusinessDates,
@@ -228,10 +228,14 @@ export class SalesOrdersService {
       const sensitive = existing.fulfillmentStatus !== SalesOrderFulfillmentStatus.DRAFT && containsSensitiveSalesOrderFields(fields);
       if (sensitive) await requireAdminVerification(input, user, context, id, 'UPDATE_SALES_ORDER', tx);
 
-      const customerId = input.customerId === undefined ? existing.customerId : input.customerId;
-      if (input.customerId && !(await SalesOrdersRepository.findActiveCustomer(input.customerId, tx))) {
-        throw new NotFoundError('Customer not found');
+      if (input.customerId) {
+        const customer = await SalesOrdersRepository.findActiveCustomer(input.customerId, tx);
+        if (!customer) throw new NotFoundError('Customer not found');
+        if (customer.branchId !== existing.branchId) {
+          throw new AppError('The selected customer belongs to a different branch.', 409, 'CUSTOMER_BRANCH_MISMATCH');
+        }
       }
+      const customerId = input.customerId === undefined ? existing.customerId : input.customerId;
       const channel = input.salesChannel ?? existing.salesChannel;
       const orderDate = input.orderDate ?? prismaDateToBusinessDate(existing.orderDate);
       const deliveryDate = input.deliveryDate === undefined ? dateString(existing.deliveryDate) : input.deliveryDate;

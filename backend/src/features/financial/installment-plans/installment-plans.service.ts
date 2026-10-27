@@ -86,6 +86,7 @@ interface InstallmentPlanListResult {
 }
 
 interface InstallmentPlanView {
+  branchId: string;
   id: string;
   customer: {
     id: string;
@@ -142,6 +143,7 @@ interface InstallmentView {
 }
 
 interface InstallmentPlanPaymentView {
+  branchId: string;
   id: string;
   totalAmount: string;
   currency: Currency;
@@ -901,6 +903,7 @@ export class InstallmentPlansService {
 
     return {
       id: plan.id,
+      branchId: plan.branchId,
       customer: plan.customer,
       description: plan.description,
       totalAmount: moneyToApiString(plan.totalAmount, plan.currency ?? Currency.USD),
@@ -982,6 +985,7 @@ export class InstallmentPlansService {
         if (!paymentsById.has(payment.id)) {
           paymentsById.set(payment.id, {
             id: payment.id,
+          branchId: payment.branchId,
             totalAmount: moneyToApiString(payment.totalAmount, payment.currency ?? Currency.USD),
             currency: payment.currency ?? Currency.USD,
             exchangeRate: (payment.exchangeRate ?? new Decimal(1)).toFixed(6),
