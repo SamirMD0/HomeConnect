@@ -134,7 +134,7 @@ git switch --detach feature/multi-branch-phase-2
 npm ci
 npx prisma generate --schema backend/prisma/schema.prisma
 Confirm-ReconciliationDatabase
-npx prisma migrate deploy --schema backend/prisma/schema.prisma
+npx tsx scripts/apply-bundled-migrations.ts
 Confirm-ReconciliationDatabase
 npx tsx scripts/branch-reconciliation.ts snapshot --out $after --period 2026-08 --as-of 2026-10-27
 Confirm-ReconciliationDatabase
@@ -151,8 +151,11 @@ ownership schemas are rejected. The tool refuses business database names.
 The builder's synthetic proof is reproducible with `npx tsx scripts/branch-reconciliation-proof.ts`
 from a worktree configured for `homeconnect_test_phase4_phase5_phase6`. It creates
 a separate `homeconnect_test_mb_proof_*` database, seeds both currencies, captures
-both snapshots, applies the ownership migration through the bundled runner,
-compares all financial evidence and 34 closure checks, then drops its database.
+both snapshots, executes `scripts/apply-bundled-migrations.ts` for the upgrade,
+prints historical employee/admin grant counts, compares all financial evidence and
+34 closure checks, then drops its database. It seeds the existing allowlisted
+category-migration checksum and verifies that the desktop runner accepts and
+preserves that recorded checksum. No checksum bypass or new allowlist entry is used.
 The checked-in sample evidence is in `docs/releases/evidence/multi-branch-phase2/`.
 Run CI with `NODE_ENV=test` and the required RUN_* flags via `npm run test:ci`;
 a copied development .env otherwise changes unrelated environment-sensitive tests.
@@ -160,3 +163,50 @@ a copied development .env otherwise changes unrelated environment-sensitive test
 If the migration guard reports an inactive conflicting MAIN code/name, the owner
 must activate the branch holding history or rename that inactive conflict before
 retrying. The migration never guesses which inactive branch holds history.
+
+
+### Hosted (Render) Phase 0 drill
+
+The owner takes a fresh dump of the hosted Render database using the verified
+backup procedure, and restores it into the disposable **homeconnect_reconcile_hosted**
+database. Keep the application closed for this drill. The builder never connects
+to the hosted/business database. Preserve that dump and the snapshots outside the
+checkout. Render deploys with Prisma, so this drill deliberately uses Prisma rather
+than the desktop runner. Its existing checksum behavior remains unchanged; stop on
+any migration error instead of resolving or changing a checksum.
+
+In the same clean reviewer checkout, capture the baseline before installing the
+Phase 2 build (use a month with returns and LBP activity):
+
+```powershell
+git switch --detach 52d5fd4
+npm ci
+npx prisma generate --schema backend/prisma/schema.prisma
+$hostedRestoreUrl = Read-Host 'Restored homeconnect_reconcile_hosted URL' -AsSecureString
+$env:DATABASE_URL = [Net.NetworkCredential]::new('', $hostedRestoreUrl).Password
+function Confirm-HostedReconciliationDatabase {
+  if (([uri]$env:DATABASE_URL).AbsolutePath -ne '/homeconnect_reconcile_hosted') {
+    throw 'DATABASE_URL must resolve to homeconnect_reconcile_hosted'
+  }
+  Write-Host 'Confirmed database: homeconnect_reconcile_hosted'
+}
+$hostedEvidence = Join-Path $env:USERPROFILE 'Documents/HomeConnect-Phase0-Hosted-Evidence'
+New-Item -ItemType Directory -Force -Path $hostedEvidence | Out-Null
+$hostedBefore = Join-Path $hostedEvidence 'before.json'
+$hostedAfter = Join-Path $hostedEvidence 'after.json'
+Confirm-HostedReconciliationDatabase
+npx tsx scripts/branch-reconciliation.ts snapshot --out $hostedBefore --period 2026-08 --as-of 2026-10-27
+
+git switch --detach feature/multi-branch-phase-2
+npm ci
+npx prisma generate --schema backend/prisma/schema.prisma
+Confirm-HostedReconciliationDatabase
+npx prisma migrate deploy --schema backend/prisma/schema.prisma
+Confirm-HostedReconciliationDatabase
+npx tsx scripts/branch-reconciliation.ts snapshot --out $hostedAfter --period 2026-08 --as-of 2026-10-27
+Confirm-HostedReconciliationDatabase
+npx tsx scripts/branch-reconciliation.ts compare --before $hostedBefore --after $hostedAfter
+```
+
+Release requires the same zero-difference, zero-closure-mismatch evidence as the
+desktop drill. Rollback restores the fresh pre-upgrade dump and compatible build.
