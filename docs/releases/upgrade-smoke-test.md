@@ -82,3 +82,46 @@ GREEN requires successful fixture seeding, successful first launch (and a backup
 If GREEN, copy the notes from `docs/releases/<version>.md` into the drafted GitHub Release body, clear **This is a pre-release** if applicable, and publish the release.
 
 If NOT GREEN, do not publish. File an issue with the failing step, migration-failure diagnostics if applicable, and the pre-migration backup path.
+
+
+## Multi-branch Phase 2: baseline and migration proof
+
+Phase 0 evidence gates release, not implementation. The owner/reviewer performs
+this drill on a restored copy; builders use synthetic scratch data only.
+Keep the app closed throughout both snapshots. Never point these commands at
+`homeconnect`. Restore the latest verified backup into `homeconnect_reconcile`,
+using the backup/restore procedure. Retain the original archive and checksum.
+
+Before installing a build containing the ownership migration, check out the
+first Phase 2 commit (`feat(branches): add pre-migration reconciliation tool`).
+Install its locked dependencies and generate its Prisma client. Set
+`DATABASE_URL` to the restored `homeconnect_reconcile` database and confirm the
+resolved name. Do not run migrations yet. Choose a historical month containing
+returns and LBP activity; use that identical month and as-of date for both runs.
+
+```powershell
+npm ci
+npx prisma generate --schema backend/prisma/schema.prisma
+# DATABASE_URL must name homeconnect_reconcile; use the restored-copy credentials.
+npx tsx scripts/branch-reconciliation.ts snapshot --out phase0-before.json --period 2026-08 --as-of 2026-10-27
+npx tsx scripts/branch-reconciliation.ts compare --before phase0-before.json --after phase0-before.json
+```
+
+The baseline comparison reports `pre-branch schema: closure checks not applicable`.
+Archive this evidence before checking out/installing the completed Phase 2 build.
+Confirm DATABASE_URL still names homeconnect_reconcile, then:
+
+```powershell
+npm ci
+npx prisma generate --schema backend/prisma/schema.prisma
+npx prisma migrate deploy --schema backend/prisma/schema.prisma
+npx tsx scripts/branch-reconciliation.ts snapshot --out phase2-after.json --period 2026-08 --as-of 2026-10-27
+npx tsx scripts/branch-reconciliation.ts compare --before phase0-before.json --after phase2-after.json
+```
+
+Release requires COMPARE PASS, zero snapshot differences, every closure count zero,
+and clean customer/supplier integrity rows. Snapshot uses existing report services
+for analysis, monthly review and aging; independent SQL mirrors the integrity
+reports. It excludes generation clocks and additive branch ownership metadata.
+Changing any amount, date, status or row count still fails comparison. Partial
+ownership schemas are rejected. The tool refuses business database names.

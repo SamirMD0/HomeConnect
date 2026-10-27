@@ -66,3 +66,17 @@ Send the developer the diagnostics from step 2 and report when the update was at
 An update can change how Home Connect stores information. Reinstalling an older app does not undo those changes. Home Connect takes a backup before the update so the previous app and its data can be brought back together. The update refuses to continue if that backup fails.
 
 The developer-facing reasoning is in [Failure and rollback](../../.claude/github-auto-update-plan/FAILURE_AND_ROLLBACK.md); the steps above are sufficient for the operator.
+
+
+## Multi-branch Phase 2 ownership rollback
+
+Stop the app and stop shop entry. Restore the verified pre-migration backup taken
+by desktop/src/pre-migration-guard.ts, using the standard restore procedure.
+Do not try to move ownership or rewrite amounts to repair a failed migration.
+The ownership SQL runs transactionally; dead-column and multiple-active-branch
+errors abort it. Preserve the error and backup checksum for support/reviewer.
+Validate recovery on homeconnect_reconcile with the Phase 0 reconciliation tool
+and retained baseline (see docs/releases/upgrade-smoke-test.md).
+After a committed migration, rollback means restoring that backup, with the old
+compatible app build. Transactions entered since backup require controlled
+re-entry; perform the release drill before the shop opens.
