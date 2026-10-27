@@ -2,6 +2,12 @@ import jwt from 'jsonwebtoken';
 import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { app } from '../../../app';
+const phase3bScope = { mode: 'all' as const, branchIds: ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'] };
+vi.mock('../../branches/parent-branch', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../branches/parent-branch')>()),
+  assertRecordInScope: vi.fn().mockResolvedValue('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
+}));
+
 
 const { transactionsService } = vi.hoisted(() => ({
   transactionsService: {
@@ -56,7 +62,7 @@ describe('supplier payment route', () => {
       supplierId,
       expect.objectContaining(payload),
       expect.objectContaining({ role: 'ADMIN' }),
-      expect.any(Object),
+      expect.any(Object), phase3bScope
     );
   });
 

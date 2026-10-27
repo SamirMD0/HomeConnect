@@ -1,3 +1,5 @@
+import { writeBranch, type BranchScope } from '../../branches/branch-scope';
+import { assertRecordInScope } from '../../branches/parent-branch';
 import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -62,7 +64,8 @@ export interface StoreReceiptInput {
   bytes: Buffer;
 }
 
-export async function storeReceipt(input: StoreReceiptInput) {
+export async function storeReceipt(input: StoreReceiptInput, scope: BranchScope) {
+  writeBranch(scope);
   if (!ALLOWED_MIMES.has(input.mime)) {
     throw new ReceiptError(
       'INVALID_MIME',
@@ -81,6 +84,7 @@ export async function storeReceipt(input: StoreReceiptInput) {
     throw new ReceiptError('NOT_FOUND', 'The supplier purchase for this receipt was not found.');
   }
 
+  const branchId = await assertRecordInScope('receiptReceiving', input.supplierReceivingId, scope);
   const dir = receiptsDir();
   await ensureDir(dir);
 
@@ -90,7 +94,7 @@ export async function storeReceipt(input: StoreReceiptInput) {
   await fs.writeFile(absolutePath, input.bytes, { flag: 'wx' });
 
   try {
-    return await prisma.supplierReceivingReceipt.create({
+    const created = await prisma.supplierReceivingReceipt.create({
       data: {
         id,
         supplierReceivingId: input.supplierReceivingId,
@@ -100,6 +104,7 @@ export async function storeReceipt(input: StoreReceiptInput) {
         capturedById: input.capturedById,
       },
     });
+    return { ...created, branchId };
   } catch (error) {
     // Rollback the orphan file so the operator can retry with the same id namespace.
     await fs.unlink(absolutePath).catch(() => undefined);
@@ -107,8 +112,9 @@ export async function storeReceipt(input: StoreReceiptInput) {
   }
 }
 
-export async function listReceiptsForReceiving(supplierReceivingId: string) {
-  return prisma.supplierReceivingReceipt.findMany({
+export async function listReceiptsForReceiving(supplierReceivingId: string, scope: BranchScope) {
+  const branchId = await assertRecordInScope('receiptReceiving', supplierReceivingId, scope);
+  const rows = await prisma.supplierReceivingReceipt.findMany({
     where: { supplierReceivingId },
     orderBy: { capturedAt: 'desc' },
     select: {
@@ -121,6 +127,7 @@ export async function listReceiptsForReceiving(supplierReceivingId: string) {
       capturedBy: { select: { id: true, fullName: true } },
     },
   });
+  return rows.map(row => ({ ...row, branchId }));
 }
 
 export const RECEIPT_LIMITS = {

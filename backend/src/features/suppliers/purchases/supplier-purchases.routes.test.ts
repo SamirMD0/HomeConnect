@@ -10,6 +10,12 @@ vi.mock('../../../lib/prisma', async () => ({ prisma: {
     ...(await import('../../../test/branch-scope-fixture.js')).singleBranchRouteModels(), $queryRaw: vi.fn().mockResolvedValue([{ result: 1 }]) }, transactionModel: {}, activityLogModel: {} }));
 
 import { app } from '../../../app';
+const phase3bScope = { mode: 'all' as const, branchIds: ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'] };
+vi.mock('../../branches/parent-branch', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../branches/parent-branch')>()),
+  assertRecordInScope: vi.fn().mockResolvedValue('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
+}));
+
 
 const secret = process.env.JWT_SECRET!;
 const admin = jwt.sign({ userId: '11111111-1111-4111-8111-111111111111', role: 'ADMIN' }, secret);
@@ -39,7 +45,7 @@ describe('supplier purchase routes', () => {
   it('lets an admin post a purchase', async () => {
     const response = await request(app).post(`/api/v1/suppliers/${supplierId}/purchases`).set(auth(admin)).send(body());
     expect(response.status).toBe(201);
-    expect(service.create).toHaveBeenCalledWith(supplierId, expect.objectContaining({ receiptNumber: 'INV-2291' }), expect.objectContaining({ role: 'ADMIN' }), expect.any(Object));
+    expect(service.create).toHaveBeenCalledWith(supplierId, expect.objectContaining({ receiptNumber: 'INV-2291' }), expect.objectContaining({ role: 'ADMIN' }), expect.any(Object), phase3bScope);
   });
 
   /**
@@ -65,7 +71,7 @@ describe('supplier purchase routes', () => {
   it('registers receipt-check before the id route', async () => {
     const url = `/api/v1/supplier-purchases/receipt-check?supplierId=${supplierId}&receiptNumber=INV-1`;
     expect((await request(app).get(url).set(auth(employee))).status).toBe(200);
-    expect(service.receiptCheck).toHaveBeenCalledWith({ supplierId, receiptNumber: 'INV-1' });
+    expect(service.receiptCheck).toHaveBeenCalledWith({ supplierId, receiptNumber: 'INV-1' }, phase3bScope);
     expect(service.get).not.toHaveBeenCalled();
   });
 

@@ -40,6 +40,12 @@ vi.mock('../../financial/infrastructure/transaction', () => ({
 
 import { summaryForWhere, SupplierTransactionsService } from './supplier-transactions.service';
 import { supplierTransactionWhere } from './supplier-transactions.repository';
+const phase3bScope = { mode: 'all' as const, branchIds: ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'] };
+vi.mock('../../branches/parent-branch', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../branches/parent-branch')>()),
+  assertRecordInScope: vi.fn().mockResolvedValue('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
+}));
+
 
 const admin = { userId: '11111111-1111-4111-8111-111111111111', role: 'ADMIN' };
 const context = { requestId: null, ipAddress: null };
@@ -116,7 +122,7 @@ describe('SupplierTransactionsService', () => {
     suppliersRepository.findById.mockResolvedValue({ id: supplierId, isActive: false });
 
     await expect(
-      SupplierTransactionsService.create(supplierId, createInput, admin, context)
+      SupplierTransactionsService.create(supplierId, createInput, admin, context, phase3bScope)
     ).rejects.toMatchObject({ statusCode: 409, code: 'SUPPLIER_ARCHIVED' });
 
     expect(repository.create).not.toHaveBeenCalled();
@@ -129,7 +135,7 @@ describe('SupplierTransactionsService', () => {
     repository.findByReceivingId.mockResolvedValue(null);
     repository.create.mockResolvedValue(makeTransaction({ supplierReceivingId: receivingId, supplierReceiving: null }));
 
-    await SupplierTransactionsService.create(supplierId, { ...createInput, supplierReceivingId: receivingId } as never, admin, context);
+    await SupplierTransactionsService.create(supplierId, { ...createInput, supplierReceivingId: receivingId } as never, admin, context, phase3bScope);
 
     expect(repository.create).toHaveBeenCalledWith(expect.objectContaining({ supplierId, supplierReceivingId: receivingId }), tx);
   });
@@ -138,11 +144,11 @@ describe('SupplierTransactionsService', () => {
     const receivingId = '44444444-4444-4444-8444-444444444444';
     suppliersRepository.findById.mockResolvedValue({ id: supplierId, isActive: true });
     repository.findReceiving.mockResolvedValue({ id: receivingId, supplierId: '55555555-5555-4555-8555-555555555555' });
-    await expect(SupplierTransactionsService.create(supplierId, { ...createInput, supplierReceivingId: receivingId } as never, admin, context)).rejects.toThrow(/different supplier/);
+    await expect(SupplierTransactionsService.create(supplierId, { ...createInput, supplierReceivingId: receivingId } as never, admin, context, phase3bScope)).rejects.toThrow(/different supplier/);
 
     repository.findReceiving.mockResolvedValue({ id: receivingId, supplierId });
     repository.findByReceivingId.mockResolvedValue({ id: transactionId });
-    await expect(SupplierTransactionsService.create(supplierId, { ...createInput, supplierReceivingId: receivingId } as never, admin, context)).rejects.toMatchObject({ code: 'RECEIVING_ALREADY_LINKED' });
+    await expect(SupplierTransactionsService.create(supplierId, { ...createInput, supplierReceivingId: receivingId } as never, admin, context, phase3bScope)).rejects.toMatchObject({ code: 'RECEIVING_ALREADY_LINKED' });
   });
 
   it('excludes removed transactions from the active balance', async () => {
@@ -160,7 +166,7 @@ describe('SupplierTransactionsService', () => {
 
     const result = await SupplierTransactionsService.ledger({
       includeRemoved: true, page: 1, pageSize: 25, sortBy: 'transactionDate', sortOrder: 'desc',
-    } as never);
+    } as never, phase3bScope);
 
     expect(result.items).toHaveLength(1);
     expect(result.items[0]).toMatchObject({ status: SupplierTransactionStatus.REMOVED });

@@ -2,6 +2,12 @@ import jwt from 'jsonwebtoken';
 import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { app } from '../../app';
+const phase3bScope = { mode: 'all' as const, branchIds: ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'] };
+vi.mock('../branches/parent-branch', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../branches/parent-branch')>()),
+  assertRecordInScope: vi.fn().mockResolvedValue('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
+}));
+
 
 const { suppliersService, transactionsService } = vi.hoisted(() => ({
   suppliersService: { create: vi.fn(), list: vi.fn(), get: vi.fn(), summary: vi.fn(), update: vi.fn(), archive: vi.fn(), restore: vi.fn(), delete: vi.fn(), audit: vi.fn() },
@@ -49,7 +55,7 @@ describe('supplier routes', () => {
   it('registers supplier transaction subresources before the supplier id route', async () => {
     const response = await request(app).get(`/api/v1/suppliers/${supplierId}/transactions`).set('Authorization', `Bearer ${employee}`);
     expect(response.status).toBe(200);
-    expect(transactionsService.listForSupplier).toHaveBeenCalledWith(supplierId, expect.objectContaining({ includeRemoved: false }));
+    expect(transactionsService.listForSupplier).toHaveBeenCalledWith(supplierId, expect.objectContaining({ includeRemoved: false }), phase3bScope);
     expect(suppliersService.get).not.toHaveBeenCalled();
   });
 

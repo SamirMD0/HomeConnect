@@ -5,6 +5,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { SupplierReceivingsService } from './receiving/supplier-receivings.service';
 import { SupplierReceivingsRepository } from './receiving/supplier-receivings.repository';
 import { todayInBusinessTimezone } from '../financial/domain/business-date';
+const phase3bScope = async (prisma: PrismaClient) => ({ mode: 'all' as const, branchIds: [await branchFixture(prisma)] });
+
 
 const runDatabaseTests =
   process.env.RUN_SUPPLIER_RECEIVING_DB_TESTS === '1' && Boolean(process.env.DATABASE_URL);
@@ -251,8 +253,8 @@ describeDatabase('supplier receiving database contract', () => {
         })),
       });
 
-      const original = await SupplierReceivingsService.create(input, user);
-      const replay = await SupplierReceivingsService.create(input, user);
+      const original = await SupplierReceivingsService.create(input, user, await phase3bScope(prisma));
+      const replay = await SupplierReceivingsService.create(input, user, await phase3bScope(prisma));
       expect(replay.id).toBe(original.id);
       expect(await prisma.supplierReceiving.count({ where: { idempotencyKey } })).toBe(1);
       expect(await prisma.stockMovement.count({
@@ -262,12 +264,12 @@ describeDatabase('supplier receiving database contract', () => {
 
       await expect(SupplierReceivingsService.create(
         { ...input, items: [{ productId: firstProductId, quantity: 3 }] },
-        user
+        user, await phase3bScope(prisma)
       )).rejects.toMatchObject({ statusCode: 409, code: 'PAYMENT_IDEMPOTENCY_CONFLICT' });
 
       const withoutKey = await SupplierReceivingsService.create(
         { ...input, idempotencyKey: null, referenceNumber: 'NO-KEY', items: [{ productId: firstProductId, quantity: 1 }] },
-        user
+        user, await phase3bScope(prisma)
       );
       expect(withoutKey.id).not.toBe(original.id);
 
@@ -293,8 +295,8 @@ describeDatabase('supplier receiving database contract', () => {
           return result;
         });
       const concurrent = await Promise.allSettled([
-        SupplierReceivingsService.create(concurrentInput, user),
-        SupplierReceivingsService.create(concurrentInput, user),
+        SupplierReceivingsService.create(concurrentInput, user, await phase3bScope(prisma)),
+        SupplierReceivingsService.create(concurrentInput, user, await phase3bScope(prisma)),
       ]);
       lookupSpy.mockRestore();
       expect(concurrent.filter((result) => result.status === 'fulfilled')).toHaveLength(1);

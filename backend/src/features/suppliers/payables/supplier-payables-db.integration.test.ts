@@ -6,6 +6,8 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { SupplierPayablesService } from './supplier-payables.service';
 import { SupplierPurchasesService } from '../purchases/supplier-purchases.service';
 import { businessDateToPrisma, todayInBusinessTimezone } from '../../financial/domain/business-date';
+const phase3bScope = async () => ({ mode: 'all' as const, branchIds: [await branchFixture(db)] });
+
 
 
 const describeDb = process.env.RUN_SUPPLIER_PURCHASE_DB_TESTS === '1' && isIsolatedTestDatabase(process.env.DATABASE_URL) ? describe : describe.skip;
@@ -56,11 +58,11 @@ describeDb('supplier payable database invariants', () => {
         description: 'Scheduled supplier purchase', receiveStock: false, paidAmount: '50.00',
         lines: [{ kind: 'MANUAL' as const, description: 'Supplier service', amount: '100.00', taxProfileId }],
       };
-      const first = await SupplierPurchasesService.create(supplierId, input, { userId, role: 'ADMIN' }, {});
+      const first = await SupplierPurchasesService.create(supplierId, input, { userId, role: 'ADMIN' }, {}, await phase3bScope());
       expect(first.dueDate).toBe('2030-01-01');
-      const replay = await SupplierPurchasesService.create(supplierId, input, { userId, role: 'ADMIN' }, {});
+      const replay = await SupplierPurchasesService.create(supplierId, input, { userId, role: 'ADMIN' }, {}, await phase3bScope());
       expect(replay.id).toBe(first.id);
-      await expect(SupplierPurchasesService.create(supplierId, { ...input, dueDate: '2030-01-02' }, { userId, role: 'ADMIN' }, {})).rejects.toThrow();
+      await expect(SupplierPurchasesService.create(supplierId, { ...input, dueDate: '2030-01-02' }, { userId, role: 'ADMIN' }, {}, await phase3bScope())).rejects.toThrow();
       const payment = await db.supplierTransaction.findFirstOrThrow({ where: { supplierId, type: 'SUPPLIER_PAYMENT' } });
       expect(payment.amount.toFixed(2)).toBe('50.00');
       expect(payment.dueDate).toBeNull();

@@ -1,3 +1,5 @@
+import { writeBranch, type BranchScope } from '../../branches/branch-scope';
+import { assertRecordInScope } from '../../branches/parent-branch';
 import { Currency, Prisma, SupplierAuditAction, SupplierAuditRecordType, SupplierTransactionStatus } from '@prisma/client';
 import { verifyAdminPassword } from '../../../lib/admin-verification';
 import { AppError, NotFoundError, ValidationError } from '../../../lib/errors';
@@ -14,7 +16,8 @@ import { SupplierTransactionsRepository, supplierTransactionWhere } from './supp
 import { CreateSupplierTransactionInput, SupplierLedgerQueryInput, SupplierTransactionActionInput, SupplierTransactionListQueryInput, UpdateSupplierTransactionInput } from './supplier-transactions.validator';
 
 export class SupplierTransactionsService {
-  static async create(supplierId: string, input: CreateSupplierTransactionInput, user: SupplierMutationUser, context: SupplierRequestContext) {
+  static async create(supplierId: string, input: CreateSupplierTransactionInput, user: SupplierMutationUser, context: SupplierRequestContext, scope: BranchScope) {
+    writeBranch(scope);
     assertSupplierAdmin(user);
     const currency = input.currency ?? Currency.USD;
     const amount = assertPositiveMoney(input.amount, currency);
@@ -23,6 +26,8 @@ export class SupplierTransactionsService {
     return runFinancialTransaction(async (tx) => {
       const supplier = await SuppliersRepository.findById(supplierId, tx);
       if (!supplier) throw new NotFoundError('Supplier not found');
+      await assertRecordInScope('supplier', supplierId, scope, tx);
+      if (input.supplierReceivingId) await assertRecordInScope('receiving', input.supplierReceivingId, scope, tx, 'Receiving document not found / مستند الإدخال غير موجود');
       if (!supplier.isActive) throw new AppError('Archived suppliers cannot receive new transactions', 409, 'SUPPLIER_ARCHIVED');
       await validateReceivingLink(supplierId, input, tx);
       const exchangeRate = await ExchangeRatesService.snapshotFor(currency, transactionDate, tx);
@@ -35,20 +40,20 @@ export class SupplierTransactionsService {
 
   static async get(id: string) { const transaction = await SupplierTransactionsRepository.findById(id); if (!transaction) throw new NotFoundError('Supplier transaction not found'); return serializeTransaction(transaction); }
 
-  static async list(query: SupplierLedgerQueryInput) {
-    const result = await SupplierTransactionsRepository.list(query);
+  static async list(query: SupplierLedgerQueryInput, scope: BranchScope) {
+    const result = await SupplierTransactionsRepository.list(query, scope);
     return { items: result.items.map(serializeTransaction), total: result.total, page: query.page, pageSize: query.pageSize };
   }
 
-  static async listForSupplier(supplierId: string, query: SupplierTransactionListQueryInput) {
+  static async listForSupplier(supplierId: string, query: SupplierTransactionListQueryInput, scope: BranchScope) {
     if (!(await SuppliersRepository.findById(supplierId))) throw new NotFoundError('Supplier not found');
     const ledgerQuery: SupplierLedgerQueryInput = { ...query, supplierId, type: undefined, direction: undefined, dateFrom: undefined, dateTo: undefined, search: undefined, sortBy: 'transactionDate', sortOrder: 'desc' };
-    const result = await SupplierTransactionsRepository.list(ledgerQuery, supplierId);
+    const result = await SupplierTransactionsRepository.list(ledgerQuery, scope, supplierId);
     return { items: result.items.map(serializeTransaction), total: result.total, page: query.page, pageSize: query.pageSize };
   }
 
-  static async ledger(query: SupplierLedgerQueryInput) {
-    const result = await SupplierTransactionsRepository.list(query);
+  static async ledger(query: SupplierLedgerQueryInput, scope: BranchScope) {
+    const result = await SupplierTransactionsRepository.list(query, scope);
     const [summary, supplierCount] = await Promise.all([summaryForWhere(result.where), SupplierTransactionsRepository.supplierCount(result.where)]);
     return { summary: { ...summary, supplierCount, basis: 'filtered' as const }, items: result.items.map(serializeTransaction), pagination: { page: query.page, pageSize: query.pageSize, total: result.total, totalPages: Math.ceil(result.total / query.pageSize) } };
   }
