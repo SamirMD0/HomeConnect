@@ -20,8 +20,9 @@ vi.mock('./installment-plans.service', () => ({
   InstallmentPlansService: installmentPlansServiceMock,
 }));
 
-vi.mock('../../../lib/prisma', () => ({
+vi.mock('../../../lib/prisma', async () => ({
   prisma: {
+    ...(await import('../../../test/branch-scope-fixture')).singleBranchRouteModels(),
     $queryRaw: vi.fn().mockResolvedValue([{ result: 1 }]),
   },
   transactionModel: {},

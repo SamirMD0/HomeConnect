@@ -6,7 +6,8 @@ const { service } = vi.hoisted(() => ({
   service: { create: vi.fn(), listForSupplier: vi.fn(), get: vi.fn(), receiptCheck: vi.fn() },
 }));
 vi.mock('./supplier-purchases.service', () => ({ SupplierPurchasesService: service }));
-vi.mock('../../../lib/prisma', () => ({ prisma: { $queryRaw: vi.fn().mockResolvedValue([{ result: 1 }]) }, transactionModel: {}, activityLogModel: {} }));
+vi.mock('../../../lib/prisma', async () => ({ prisma: {
+    ...(await import('../../../test/branch-scope-fixture')).singleBranchRouteModels(), $queryRaw: vi.fn().mockResolvedValue([{ result: 1 }]) }, transactionModel: {}, activityLogModel: {} }));
 
 import { app } from '../../../app';
 
