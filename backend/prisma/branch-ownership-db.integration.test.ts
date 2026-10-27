@@ -1,3 +1,4 @@
+import { BranchesService } from '../src/features/branches/branches.service';
 import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { Prisma, PrismaClient } from '@prisma/client';
@@ -208,12 +209,18 @@ describe.runIf(enabled)('ownership migration on an isolated pre-Phase-2 database
           .mockImplementation((operation) => operation(tx));
         const phoneLookup = vi
           .spyOn(CustomersRepository, 'findByPhone')
-          .mockImplementation((phone) =>
-            tx.customer.findFirst({ where: { phone, deletedAt: null } })
+          .mockImplementation((phone, branchId) =>
+            tx.customer.findFirst({ where: { phone, branchId, deletedAt: null } })
           );
         try {
+          const branches = await BranchesService.accessibleBranches(
+            { userId: employeeId, role: 'EMPLOYEE' },
+            tx
+          );
+          const scope = { mode: 'all' as const, branchIds: branches.map((branch) => branch.id) };
           const created = await CustomersService.createCustomer(
             { name: 'Employee customer', phone: randomUUID(), createdBy: employeeId },
+            scope,
             { role: 'EMPLOYEE' }
           );
           const grant = await tx.userBranchAccess.findFirstOrThrow({
