@@ -356,7 +356,7 @@ describe.runIf(enabled)('ownership migration on an isolated pre-Phase-2 database
         const sale = await tx.salesOrder.findFirstOrThrow({ where: { customerId: null } });
         const created = await SalesOrdersRepository.create(
           { ...sale, id: randomUUID(), orderNumber: randomUUID(), idempotencyKey: null },
-          tx
+          tx, { mode: 'single', branchIds: [a] }
         );
         expect(created.branchId).toBe(a);
         const receiving = await tx.supplierReceiving.findFirstOrThrow({
@@ -364,7 +364,7 @@ describe.runIf(enabled)('ownership migration on an isolated pre-Phase-2 database
         });
         const received = await SupplierReceivingsRepository.create(
           { ...receiving, id: randomUUID(), idempotencyKey: null },
-          tx
+          tx, { mode: 'single', branchIds: [a] }
         );
         expect(received.branchId).toBe(a);
         expect(created.createdById).toBe(fixture.userId);
@@ -372,9 +372,9 @@ describe.runIf(enabled)('ownership migration on an isolated pre-Phase-2 database
     120000
   );
   it(
-    'returns CUSTOMER_BRANCH_MISMATCH before attempting an order customer change',
+    'hides an out-of-scope customer before attempting an order customer change',
     () =>
-      ownedScenario(async (tx, fixture, _a, b) => {
+      ownedScenario(async (tx, fixture, a, b) => {
         const customerId = await insertMigrationRow(tx, 'customers', {
           createdBy: fixture.userId,
           branchId: b,
@@ -390,9 +390,9 @@ describe.runIf(enabled)('ownership migration on an isolated pre-Phase-2 database
               id,
               { customerId, reason: 'Choose customer' },
               { userId: fixture.userId, role: 'ADMIN' },
-              {}
+              {}, { mode: 'single', branchIds: [a] }
             )
-          ).rejects.toMatchObject({ statusCode: 409, code: 'CUSTOMER_BRANCH_MISMATCH' });
+          ).rejects.toMatchObject({ statusCode: 404, code: 'NOT_FOUND' });
           expect((await tx.salesOrder.findUniqueOrThrow({ where: { id } })).customerId).not.toBe(
             customerId
           );
