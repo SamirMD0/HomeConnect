@@ -221,6 +221,7 @@ Each phase is a separate PR into `develop`, with its own migration where applica
 - Answer §7. Record the decision that this supersedes Phase 4 T4 ("drop `branchId`") in the ERP-upgrade docs and risk register (R-21 becomes "mitigated by design").
 - Capture baseline evidence on a restored copy of the live DB: per-customer and per-supplier outstanding, integrity-report CSVs, all report totals for 3 sample periods (`scripts/` snapshot tool, read-only).
 - Confirm dead `branchId` columns are all NULL.
+- Timing: the snapshot tool is built in Phase 2, so this evidence is captured with it after Phase 2 code exists and **before** the Phase 2 migration is applied to any real or restored-production database. It gates the release, not the coding.
 
 ### Phase 1 — Branch entity & access (no data scoping yet)
 
@@ -236,6 +237,7 @@ Each phase is a separate PR into `develop`, with its own migration where applica
 - **Risk:** high (live money tables). Mitigations: pre-migration backup is mandatory (guard), dry run on restored copy, migration is additive until the final `NOT NULL` step, documented rollback (§4.8).
 
 ### Phase 3 — Backend scoping & authorization
+- Add `branchId` to all branch-owned list and detail responses.
 - **Files:** new `middleware/branch-scope.middleware.ts`; every repository/service for branch-owned data (`repositories/customers.repository.ts`, `features/financial/**`, `features/sales/**`, `features/suppliers/**`, `features/service/**` jobs); reports (`reports/rows/report-rows.repository.ts` raw SQL, `monthly-*`, `analysis`), dashboards (`features/dashboard/**`, `services/dashboard.service.ts` raw SQL), search (`lib/search-query.ts`, `customer-suggestions.service.ts`), documents (invoice/receipt/statement print branch name), CSV export (Branch column), diagnostics export.
 - Customer phone duplicate check becomes per branch (D2).
 - Mobile: scanner/LAN session binds to one branch chosen at pairing; gateway forwards the header; supplier endpoints scoped (`features/scanner/*`, `Mobile Scanner/src/api/hc-client.ts`, branch shown on mobile home).
@@ -361,7 +363,7 @@ Uses the existing DB integration test pattern (15 `*-db.integration.test.ts` fil
 
 ## 7. Decisions
 
-> **Approved 2026-10-17:** the owner approved this plan with every recommended default below (D1 yes → single historical branch; D2 yes; D3 shared stock; D4 admins all / employees assigned, no manager role; D5 one central database; D6 returns booked to the original sale's branch). Phase 0 baseline evidence on a restored production copy is still required before Phase 2.
+> **Approved 2026-10-17:** the owner approved this plan with every recommended default below (D1 yes → single historical branch; D2 yes; D3 shared stock; D4 admins all / employees assigned, no manager role; D5 one central database; D6 returns booked to the original sale's branch). Phase 0 baseline evidence on a restored production copy is a **release gate** for Phase 2: it must exist before the Phase 2 migration runs against any real data (business PC, hosted production, or a restored production copy used for sign-off). It is **not** an implementation gate — Phase 2 code, the reconciliation script that captures the baseline, and seeded scratch-database tests are built first, and the script is then used to capture Phase 0 evidence.
 
 Routine choices already defaulted above (header-based scope, explicit repository scope param, global document numbering, STANDARD-kind opening debts with import link, no CSV branch column, admin-only import). These need your answer:
 
