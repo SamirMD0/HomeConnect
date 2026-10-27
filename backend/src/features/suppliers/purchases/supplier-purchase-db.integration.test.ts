@@ -1,3 +1,4 @@
+import { branchFixture } from "../../../test/branch-fixture";
 import { Prisma, PrismaClient, Role, StockMovementType, SupplierTransactionType } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { describe, expect, it, vi } from 'vitest';
@@ -28,12 +29,12 @@ describeDatabase('supplier purchase database contract', () => {
 
     const seed = async () => {
       await prisma.user.create({ data: { id: userId, username: `purchase-db-${userId}`, password: 'not-used', fullName: 'Purchase DB Contract User', role: 'ADMIN' } });
-      await prisma.supplier.create({ data: { id: supplierId, name: 'Purchase DB Contract Supplier', phone: `pur-${supplierId}`, createdById: userId } });
+      await prisma.supplier.create({ data: { branchId: await branchFixture(prisma), id: supplierId, name: 'Purchase DB Contract Supplier', phone: `pur-${supplierId}`, createdById: userId } });
       await prisma.product.create({ data: { id: productId, sku: `HC-PUR-${productId}`, name: 'Purchase DB Contract Product', model: 'PUR-1', trackStock: true, stockQuantity: 0, createdById: userId } });
       await prisma.stockMovement.create({ data: { id: movementId, productId, movementType: 'PURCHASE_RECEIPT', quantityChange: 2, quantityBefore: 0, quantityAfter: 2, reason: 'Purchase DB contract', createdById: userId } });
-      await prisma.supplierReceiving.create({ data: { id: receivingId, supplierId, receivedOn: new Date('2026-08-15T00:00:00.000Z'), receivedById: userId } });
+      await prisma.supplierReceiving.create({ data: { branchId: await branchFixture(prisma), id: receivingId, supplierId, receivedOn: new Date('2026-08-15T00:00:00.000Z'), receivedById: userId } });
       await prisma.supplierReceivingItem.create({ data: { id: receivingItemId, receivingId, productId, quantity: 2, stockMovementId: movementId } });
-      await prisma.supplierTransaction.create({ data: { id: debtId, supplierId, supplierReceivingId: receivingId, type: 'SUPPLIER_DEBT', direction: 'INCREASE_OWED', amount: '420.00', baseAmount: '420.00', transactionDate: new Date('2026-08-15T00:00:00.000Z'), description: 'Purchase DB contract', receiptNumber: 'INV-DBTEST', createdById: userId } });
+      await prisma.supplierTransaction.create({ data: { branchId: await branchFixture(prisma), id: debtId, supplierId, supplierReceivingId: receivingId, type: 'SUPPLIER_DEBT', direction: 'INCREASE_OWED', amount: '420.00', baseAmount: '420.00', transactionDate: new Date('2026-08-15T00:00:00.000Z'), description: 'Purchase DB contract', receiptNumber: 'INV-DBTEST', createdById: userId } });
     };
 
     const line = (overrides: Record<string, unknown>) => prisma.supplierPurchaseLine.create({
@@ -79,7 +80,7 @@ describeDatabase('supplier purchase database contract', () => {
 
       // Receipt numbers are deliberately reusable.
       await expect(prisma.supplierTransaction.create({
-        data: { id: randomUUID(), supplierId, type: 'SUPPLIER_DEBT', direction: 'INCREASE_OWED', amount: '10.00', baseAmount: '10.00', transactionDate: new Date('2026-08-15T00:00:00.000Z'), description: 'Second invoice, same number', receiptNumber: 'INV-DBTEST', createdById: userId },
+        data: { branchId: await branchFixture(prisma), id: randomUUID(), supplierId, type: 'SUPPLIER_DEBT', direction: 'INCREASE_OWED', amount: '10.00', baseAmount: '10.00', transactionDate: new Date('2026-08-15T00:00:00.000Z'), description: 'Second invoice, same number', receiptNumber: 'INV-DBTEST', createdById: userId },
       })).resolves.toBeTruthy();
 
       // History stays restrictive: a billed purchase line pins its receiving item.
@@ -131,7 +132,7 @@ describeDatabase('supplier purchase database contract', () => {
         data: { id: userId, username: `purchase-idem-${userId}`, password: 'not-used', fullName: 'Purchase Idempotency User', role: Role.ADMIN },
       });
       await prisma.supplier.create({
-        data: { id: supplierId, name: 'Purchase Idempotency Supplier', phone: `idem-${supplierId}`, createdById: userId },
+        data: { branchId: await branchFixture(prisma), id: supplierId, name: 'Purchase Idempotency Supplier', phone: `idem-${supplierId}`, createdById: userId },
       });
       await prisma.taxRate.create({
         data: { id: taxRateId, code: `PURCHASE_ZERO_${taxRateId}`, name: 'Purchase test zero rate', nameAr: 'اختبار', ratePercent: '0.000', effectiveFrom: new Date('2020-01-01T00:00:00.000Z'), createdById: userId },

@@ -1,3 +1,4 @@
+import { branchFixture } from "../../../test/branch-fixture";
 import { isIsolatedTestDatabase } from '../../../test/database';
 import { Currency, PrismaClient } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
@@ -36,7 +37,7 @@ describeDb('new counter Payment invariants (INV-09)', () => {
   beforeEach(async () => {
     userId = randomUUID(); customerId = randomUUID(); taxRateId = randomUUID(); taxProfileId = randomUUID();
     await db.user.create({ data: { id: userId, username: `counter-${userId}`, fullName: 'Counter Test Admin', password: 'unused', role: 'ADMIN' } });
-    await db.customer.create({ data: { id: customerId, name: 'Counter Named Customer', phone: `counter-${customerId}`, createdBy: userId } });
+    await db.customer.create({ data: { branchId: await branchFixture(db), id: customerId, name: 'Counter Named Customer', phone: `counter-${customerId}`, createdBy: userId } });
     await db.taxRate.create({ data: { id: taxRateId, code: `COUNTER_${taxRateId}`, name: 'Counter 11%', nameAr: 'اختبار', ratePercent: '11.000', effectiveFrom: new Date('2020-01-01'), createdById: userId } });
     await db.taxProfile.create({ data: { id: taxProfileId, code: `COUNTER_${taxProfileId}`, name: 'Counter VAT', nameAr: 'اختبار', taxRateId } });
   });
@@ -173,10 +174,10 @@ describeDb('new counter Payment invariants (INV-09)', () => {
   }, 30_000);
 
   it('does not rewrite historical Payments and rejects customerless receipts for named sales', async () => {
-    const old = await db.payment.create({ data: { customerId, totalAmount: '7.00', baseAmount: '7.00', paymentDate: new Date('2020-01-01'), createdById: userId } });
+    const old = await db.payment.create({ data: { branchId: await branchFixture(db), customerId, totalAmount: '7.00', baseAmount: '7.00', paymentDate: new Date('2020-01-01'), createdById: userId } });
     const sale = await SalesOrdersService.create(command({ customerId }), { userId, role: 'ADMIN' }, {});
     expect(await db.payment.findUnique({ where: { id: old.id } })).toEqual(old);
-    await expect(db.payment.create({ data: { customerId: null, salesOrderId: sale.id, sourceSnapshot: {}, totalAmount: '1.00', baseAmount: '1.00', paymentDate: new Date(today), createdById: userId } })).rejects.toThrow();
-    await expect(db.payment.create({ data: { customerId: null, totalAmount: '1.00', baseAmount: '1.00', paymentDate: new Date(today), createdById: userId } })).rejects.toThrow();
+    await expect(db.payment.create({ data: { branchId: await branchFixture(db), customerId: null, salesOrderId: sale.id, sourceSnapshot: {}, totalAmount: '1.00', baseAmount: '1.00', paymentDate: new Date(today), createdById: userId } })).rejects.toThrow();
+    await expect(db.payment.create({ data: { branchId: await branchFixture(db), customerId: null, totalAmount: '1.00', baseAmount: '1.00', paymentDate: new Date(today), createdById: userId } })).rejects.toThrow();
   }, 30_000);
 });

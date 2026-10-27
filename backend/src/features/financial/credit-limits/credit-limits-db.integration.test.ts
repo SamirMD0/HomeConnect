@@ -1,3 +1,4 @@
+import { branchFixture } from "../../../test/branch-fixture";
 import { isIsolatedTestDatabase } from '../../../test/database';
 import { Currency, PrismaClient } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
@@ -31,7 +32,7 @@ describeDb('customer credit-limit transaction invariants', () => {
   beforeEach(async () => {
     userId = randomUUID(); customerId = randomUUID(); taxProfileId = randomUUID(); taxRateId = randomUUID();
     await db.user.create({ data: { id: userId, username: `credit-${userId}`, fullName: 'Credit Test Admin', password: await bcrypt.hash(password, 4), role: 'ADMIN' } });
-    await db.customer.create({ data: { id: customerId, name: 'Credit Customer', phone: `credit-${customerId}`, createdBy: userId } });
+    await db.customer.create({ data: { branchId: await branchFixture(db), id: customerId, name: 'Credit Customer', phone: `credit-${customerId}`, createdBy: userId } });
     await db.taxRate.create({ data: { id: taxRateId, code: `CREDIT_${taxRateId}`, name: 'Credit VAT', nameAr: 'اختبار', ratePercent: '11', effectiveFrom: new Date('2020-01-01'), createdById: userId } });
     await db.taxProfile.create({ data: { id: taxProfileId, code: `CREDIT_${taxProfileId}`, name: 'Credit VAT', nameAr: 'اختبار', taxRateId } });
   });
@@ -67,7 +68,7 @@ describeDb('customer credit-limit transaction invariants', () => {
   });
   it('derives outstanding from non-void allocations rather than stored paid status', async () => {
     const existing = await DebtsService.createDebt(customerId, debt('100'), actor());
-    const payment = await db.payment.create({ data: { customerId, totalAmount: '40', baseAmount: '40', paymentDate: new Date(today), paymentMethod: 'CASH', createdById: userId } });
+    const payment = await db.payment.create({ data: { branchId: await branchFixture(db), customerId, totalAmount: '40', baseAmount: '40', paymentDate: new Date(today), paymentMethod: 'CASH', createdById: userId } });
     await db.paymentAllocation.create({ data: { paymentId: payment.id, debtId: existing.id, amount: '40', paymentAmount: '40' } });
     await db.customer.update({ where: { id: customerId }, data: { creditLimit: '100' } });
     expect(await outstanding()).toBe('60.00');
@@ -77,8 +78,8 @@ describeDb('customer credit-limit transaction invariants', () => {
     await expect(DebtsService.createDebt(customerId, debt('1'), actor())).rejects.toMatchObject({ details: { currentOutstanding: '140.00', projectedOutstanding: '141.00' } });
   });
   it('excludes cancelled debt and includes outstanding installment schedules', async () => {
-    await db.debt.create({ data: { customerId, originalAmount: '500', baseOriginalAmount: '500', description: 'Cancelled', dueDate: new Date(today), status: 'CANCELLED', cancelledAt: new Date(), cancelledById: userId, createdById: userId } });
-    await db.installmentPlan.create({ data: { customerId, description: 'Existing plan', totalAmount: '30', baseTotalAmount: '30', installmentCount: 2, startDate: new Date(today), createdById: userId, installments: { create: [1, 2].map((n) => ({ installmentNumber: n, dueDate: new Date(today), amountDue: '15', baseAmountDue: '15' })) } } });
+    await db.debt.create({ data: { branchId: await branchFixture(db), customerId, originalAmount: '500', baseOriginalAmount: '500', description: 'Cancelled', dueDate: new Date(today), status: 'CANCELLED', cancelledAt: new Date(), cancelledById: userId, createdById: userId } });
+    await db.installmentPlan.create({ data: { branchId: await branchFixture(db), customerId, description: 'Existing plan', totalAmount: '30', baseTotalAmount: '30', installmentCount: 2, startDate: new Date(today), createdById: userId, installments: { create: [1, 2].map((n) => ({ installmentNumber: n, dueDate: new Date(today), amountDue: '15', baseAmountDue: '15' })) } } });
     await db.customer.update({ where: { id: customerId }, data: { creditLimit: '40' } });
     await DebtsService.createDebt(customerId, debt('10'), actor());
     expect(await outstanding()).toBe('40.00');

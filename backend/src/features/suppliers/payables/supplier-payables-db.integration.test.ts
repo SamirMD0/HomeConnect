@@ -1,3 +1,4 @@
+import { branchFixture } from "../../../test/branch-fixture";
 import { isIsolatedTestDatabase } from '../../../test/database';
 import { PrismaClient } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
@@ -16,13 +17,13 @@ describeDb('supplier payable database invariants', () => {
     const userId = randomUUID();
     const supplierId = randomUUID();
     await db.user.create({ data: { id: userId, username: `aging-${userId}`, fullName: 'Aging Admin', role: 'ADMIN', password: 'unused-test-password-hash' } });
-    await db.supplier.create({ data: { id: supplierId, name: 'Aging Test Supplier', phone: `aging-${supplierId}`, createdById: userId } });
+    await db.supplier.create({ data: { branchId: await branchFixture(db), id: supplierId, name: 'Aging Test Supplier', phone: `aging-${supplierId}`, createdById: userId } });
     try {
       for (const [amount, dueDate, type, direction] of [
         ['100', '2026-08-01', 'SUPPLIER_DEBT', 'INCREASE_OWED'], ['100', '2026-09-20', 'SUPPLIER_DEBT', 'INCREASE_OWED'],
         ['40', null, 'SUPPLIER_DEBT', 'INCREASE_OWED'], ['60', null, 'SUPPLIER_PAYMENT', 'DECREASE_OWED'],
         ['70', null, 'SUPPLIER_CREDIT', 'DECREASE_OWED'],
-      ] as const) await db.supplierTransaction.create({ data: { supplierId, amount, baseAmount: amount, type, direction,
+      ] as const) await db.supplierTransaction.create({ data: { branchId: await branchFixture(db), supplierId, amount, baseAmount: amount, type, direction,
         transactionDate: businessDateToPrisma('2026-08-01'), dueDate: dueDate ? businessDateToPrisma(dueDate) : null,
         description: 'FIFO fixture', createdById: userId,
       } });
@@ -47,7 +48,7 @@ describeDb('supplier payable database invariants', () => {
     const taxRateId = randomUUID();
     const taxProfileId = randomUUID();
     await db.user.create({ data: { id: userId, username: `due-${userId}`, fullName: 'Due Admin', role: 'ADMIN', password: 'unused-test-password-hash' } });
-    await db.supplier.create({ data: { id: supplierId, name: 'Due Test Supplier', phone: `due-${supplierId}`, createdById: userId } });
+    await db.supplier.create({ data: { branchId: await branchFixture(db), id: supplierId, name: 'Due Test Supplier', phone: `due-${supplierId}`, createdById: userId } });
     try {
       await db.taxRate.create({ data: { id: taxRateId, code: `DUE_ZERO_${taxRateId}`, name: 'Due date test zero rate', nameAr: 'اختبار', ratePercent: '0.000', effectiveFrom: new Date('2020-01-01T00:00:00.000Z'), createdById: userId } });
       await db.taxProfile.create({ data: { id: taxProfileId, code: `DUE_ZERO_${taxProfileId}`, name: 'Due date test zero profile', nameAr: 'اختبار', taxRateId } });

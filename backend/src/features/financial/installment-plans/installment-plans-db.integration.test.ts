@@ -1,3 +1,4 @@
+import { branchFixture } from "../../../test/branch-fixture";
 import { InstallmentPlanFrequency, InstallmentPlanStatus, InstallmentStatus, PaymentMethod, Role } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
@@ -40,7 +41,7 @@ describePlanDb('installment plan database flow', () => {
       });
 
       await prisma.customer.create({
-        data: {
+        data: { branchId: await branchFixture(prisma),
           id: customerId,
           name: 'Phase 5 Customer',
           phone: `phase5_${customerId}`,

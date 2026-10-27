@@ -1,3 +1,4 @@
+import { branchFixture } from "../../../test/branch-fixture";
 import bcrypt from 'bcrypt';
 import {
   PrismaClient,
@@ -293,14 +294,14 @@ async function createFixture(): Promise<Fixture> {
   const today = businessDateToPrisma(todayInBusinessTimezone());
 
   await prisma.user.create({ data: { id: userId, username: `return-${userId}`, password: await bcrypt.hash('correct-password', 4), fullName: 'Return Test Admin', role: 'ADMIN' } });
-  await prisma.customer.create({ data: { id: customerId, name: 'Return Test Customer', phone: `return-${customerId}`, createdBy: userId } });
+  await prisma.customer.create({ data: { branchId: await branchFixture(prisma), id: customerId, name: 'Return Test Customer', phone: `return-${customerId}`, createdBy: userId } });
   await prisma.product.create({ data: { id: productId, sku: `RET-${productId}`, name: 'Return Test Product', model: 'RET-1', trackStock: true, stockQuantity: 8, createdById: userId } });
   await prisma.stockMovement.createMany({ data: [
     { id: openingMovementId, productId, movementType: StockMovementType.OPENING_BALANCE, quantityChange: 10, quantityBefore: 0, quantityAfter: 10, reason: 'Return fixture opening', createdById: userId },
     { id: saleMovementId, productId, movementType: StockMovementType.SALE_FULFILLMENT, quantityChange: -2, quantityBefore: 10, quantityAfter: 8, reason: 'Return fixture sale', referenceType: 'SALES_ORDER_ITEM', referenceId: itemId, createdById: userId },
   ] });
-  await prisma.debt.create({ data: { id: debtId, customerId, description: 'Return fixture receivable', originalAmount: '50.00', baseOriginalAmount: '50.00', dueDate: today, createdById: userId } });
-  await prisma.salesOrder.create({ data: {
+  await prisma.debt.create({ data: { branchId: await branchFixture(prisma), id: debtId, customerId, description: 'Return fixture receivable', originalAmount: '50.00', baseOriginalAmount: '50.00', dueDate: today, createdById: userId } });
+  await prisma.salesOrder.create({ data: { branchId: await branchFixture(prisma),
     id: orderId, orderNumber: `SO-RET-${orderId}`, customerId, salesChannel: 'SHOP_DIRECT', orderDate: today, deliveredAt: today,
     fulfillmentStatus: SalesOrderFulfillmentStatus.DELIVERED, paymentStatus: 'PARTIALLY_PAID', settlement: 'DEBT',
     itemsSubtotal: '100.00', deliveryTaxTreatment: 'STANDARD', deliveryTaxRateSnapshot: '0.000', deliveryVatAmount: '0.00',

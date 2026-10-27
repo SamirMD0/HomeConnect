@@ -1,3 +1,4 @@
+import { branchFixture, branchFixtureRows } from "../../../test/branch-fixture";
 import { randomUUID } from 'crypto';
 import { config } from 'dotenv';
 import { Currency, Role } from '@prisma/client';
@@ -34,7 +35,7 @@ describeDatabase('financial Prisma integration', () => {
       });
 
       await prisma.customer.create({
-        data: {
+        data: { branchId: await branchFixture(prisma),
           id: customerId,
           name: 'Phase 3 Integration Customer',
           phone: `phase3_${customerId}`,
@@ -43,7 +44,7 @@ describeDatabase('financial Prisma integration', () => {
       });
 
       await prisma.debt.create({
-        data: {
+        data: { branchId: await branchFixture(prisma),
           id: debtId,
           customerId,
           description: 'Phase 3 decimal/date round trip',
@@ -59,7 +60,7 @@ describeDatabase('financial Prisma integration', () => {
       expect(prismaDateToBusinessDate(debt.dueDate)).toBe('2026-02-28');
 
       await prisma.payment.create({
-        data: {
+        data: { branchId: await branchFixture(prisma),
           id: paymentId,
           customerId,
           totalAmount: '10.00',
@@ -81,7 +82,7 @@ describeDatabase('financial Prisma integration', () => {
 
       await expect(
         prisma.debt.create({
-          data: {
+          data: { branchId: await branchFixture(prisma),
             customerId,
             description: 'Rejected zero amount',
             originalAmount: '0.00',
@@ -128,10 +129,10 @@ describeDatabase('financial Prisma integration', () => {
         },
       });
       await prisma.customer.create({
-        data: { id: customerId, name: 'Currency Customer', phone: `currency_${customerId}`, createdBy: userId },
+        data: { branchId: await branchFixture(prisma), id: customerId, name: 'Currency Customer', phone: `currency_${customerId}`, createdBy: userId },
       });
       await prisma.supplier.create({
-        data: { id: supplierId, name: 'Currency Supplier', phone: `currency_${supplierId}`, createdById: userId },
+        data: { branchId: await branchFixture(prisma), id: supplierId, name: 'Currency Supplier', phone: `currency_${supplierId}`, createdById: userId },
       });
       await prisma.exchangeRate.create({
         data: {
@@ -192,12 +193,12 @@ describeDatabase('financial Prisma integration', () => {
 
       // INV-25: native LBP totals exceed the money cap, but authoritative aggregation uses safe USD base values.
       await prisma.supplierTransaction.createMany({
-        data: [0, 1].map((index) => ({
+        data: await branchFixtureRows(prisma, [0, 1].map((index) => ({
           supplierId, type: 'SUPPLIER_DEBT' as const, direction: 'INCREASE_OWED' as const,
           amount: '9000000000', currency: Currency.LBP, exchangeRate: '90000', baseAmount: '100000.00',
           transactionDate: new Date(`2026-02-${20 + index}T00:00:00.000Z`),
           description: `Large LBP purchase ${index + 1}`, createdById: userId,
-        })),
+        }))),
       });
       const balances = await SuppliersRepository.balances([supplierId]);
       expect(balances.get(supplierId)?.increase).toBe('200000');
