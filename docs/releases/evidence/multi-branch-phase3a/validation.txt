@@ -1,0 +1,37 @@
+Phase 3A validation — 2026-10-27.
+Database: homeconnect_test_phase4_phase5_phase6 (resolved name confirmed before every DB command).
+
+npm run typecheck: PASS (frontend + backend, 0 errors).
+npm run lint: PASS (0 errors; 91 existing warnings; 0 added warning instances).
+Supplemental changed backend/prisma migration-test typecheck (with existing Electron ambient types): PASS.
+Supplemental changed backend/prisma migration-test ESLint: PASS (0 errors/warnings).
+Graphify local structural update: PASS after final code/fixture changes.
+
+Final NODE_ENV=test npm run test:ci: PASS.
+Test Files: 400 passed, 0 failed, 0 skipped.
+Tests: 3099 passed, 0 failed, 0 skipped/todo.
+CI gate passed: 400 files, 3099 tests, 0 skipped files, 0 skipped tests.
+Duration: 396.24 seconds.
+
+Focused scope foundation: 18 passed, 0 failed/skipped.
+Focused parent guard + compatibility routes: 49 passed, 0 failed/skipped.
+Focused customer/supplier/search/guard units: 49 passed, 0 failed/skipped.
+Focused DB isolation: 33 passed, 0 failed/skipped.
+Focused Express coverage: 3 passed, 0 failed/skipped.
+Focused ownership migration test after scope-fixture update: 22 passed, 0 failed/skipped.
+
+Earlier runs, preserved for transparency:
+- Initial new isolation fixture run: 32 passed, 1 failed, 0 skipped. Fuzzy search legitimately matched similar A/B note strings; distinct fixture phrases fixed it without changing search logic.
+- First full CI: 3097 passed, 2 failed, 0 skipped. One missed direct-service scope fixture in the existing migration test; one unchanged SVG seed cold-load timeout at 5000ms.
+- The migration fixture now derives scope from the actual migrated employee grant; all prior assertions remain.
+- SVG seed first focused retry: 1 passed, 1 failed, 0 skipped (same unchanged 5000ms cold-load timeout).
+- SVG seed next focused retry: 2 passed, 0 failed/skipped; 1.48 seconds of test time.
+- Second full CI: 3098 passed, 1 failed, 0 skipped; only the unchanged SVG seed timeout (5.76 seconds).
+- Final full CI: all 3099 passed. The unchanged SVG seed tests passed in 1.77 seconds.
+No SVG timeout, assertion, or source change; no tests disabled or skipped.
+
+Phone duplicate precheck: 0 duplicate non-deleted (branchId, phone) groups on the throwaway test DB.
+User explicitly confirmed no migrations; no phone index added. Per-branch checks and writes are serializable.
+No schema/migration or money/balance computation changes. No production or business database access.
+Ownership migration SHA-256 remains 776a8bb45e18c487cf8841c4f53416f7faba327c44e43e67e42327e98ca55ee5.
+Reconciliation and migration rehearsal were not rerun.

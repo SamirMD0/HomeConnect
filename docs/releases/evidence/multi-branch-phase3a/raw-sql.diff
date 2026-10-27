@@ -1,0 +1,38 @@
+diff --git a/backend/src/features/customers/customer-suggestions.service.ts b/backend/src/features/customers/customer-suggestions.service.ts
+index ce3eb07..bfc53db 100644
+--- a/backend/src/features/customers/customer-suggestions.service.ts
++++ b/backend/src/features/customers/customer-suggestions.service.ts
+@@ -0,0 +1 @@
++import type { BranchScope } from '../branches/branch-scope';
+@@ -19 +20,2 @@ export class CustomerSuggestionsService {
+-  static async suggest(rawTerm: string | null | undefined, requestedLimit = MAX_SUGGESTIONS) {
++  static async suggest(rawTerm: string | null | undefined, scope: BranchScope, requestedLimit = MAX_SUGGESTIONS) {
++    if (scope.branchIds.length === 0) return [];
+@@ -25 +27 @@ export class CustomerSuggestionsService {
+-    const primaryMatches = await findSearchMatchIds('customer', trimmed);
++    const primaryMatches = await findSearchMatchIds('customer', trimmed, undefined, scope);
+@@ -33,0 +36 @@ export class CustomerSuggestionsService {
++          AND "branchId" = ANY(${scope.branchIds}::uuid[])
+@@ -46 +49 @@ export class CustomerSuggestionsService {
+-      const matches = await findSearchMatchIds('customerNamePhone', candidate.query);
++      const matches = await findSearchMatchIds('customerNamePhone', candidate.query, undefined, scope);
+diff --git a/backend/src/lib/search-query.ts b/backend/src/lib/search-query.ts
+index aaa5626..a237751 100644
+--- a/backend/src/lib/search-query.ts
++++ b/backend/src/lib/search-query.ts
+@@ -0,0 +1 @@
++import type { BranchScope } from '../features/branches/branch-scope';
+@@ -118 +119,2 @@ export async function findSearchMatchIds(
+-  limit: number = MAX_SEARCH_IDS
++  limit: number = MAX_SEARCH_IDS,
++  scope?: BranchScope
+@@ -119,0 +122,2 @@ export async function findSearchMatchIds(
++  // 3A supplies scope for customer/supplier routes. Financial callers migrate in 3B.
++  if (scope && scope.branchIds.length === 0) return [];
+@@ -174,0 +179,3 @@ export async function findSearchMatchIds(
++  const branchFilter = scope
++    ? Prisma.sql`AND "branchId" = ANY(${scope.branchIds}::uuid[])`
++    : Prisma.empty;
+@@ -176 +183 @@ export async function findSearchMatchIds(
+-    Prisma.sql`SELECT id FROM ${config.table} WHERE ${where} LIMIT ${limit}`
++    Prisma.sql`SELECT id FROM ${config.table} WHERE ${where} ${branchFilter} LIMIT ${limit}`

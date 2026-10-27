@@ -1,0 +1,347 @@
+[
+  {
+    "file": "backend/src/app-branch-scope-meta.test.ts",
+    "name": "branch-scope route coverage registry (Phase 3A) walks every registered customer and supplier route and requires authentication, scope and parent guards before it",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/app-branch-scope-meta.test.ts",
+    "name": "branch-scope route coverage registry (Phase 3A) detects a router registered before the scope boundary",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/app-branch-scope-meta.test.ts",
+    "name": "branch-scope route coverage registry (Phase 3A) keeps scope coverage through nested router mounts",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/lib/search-query.customer.test.ts",
+    "name": "scoped customer and supplier raw SQL search binds the accessible UUID array before LIMIT for customer",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/lib/search-query.customer.test.ts",
+    "name": "scoped customer and supplier raw SQL search binds the accessible UUID array before LIMIT for customerNamePhone",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/lib/search-query.customer.test.ts",
+    "name": "scoped customer and supplier raw SQL search binds the accessible UUID array before LIMIT for supplier",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/lib/search-query.customer.test.ts",
+    "name": "scoped customer and supplier raw SQL search returns no search IDs without querying when the accessible set is empty",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/middleware/branch-parent.middleware.test.ts",
+    "name": "shared parent scope guard hides an out-of-scope customer before nested handlers run",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/middleware/branch-parent.middleware.test.ts",
+    "name": "shared parent scope guard hides an out-of-scope supplier before nested handlers run",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/middleware/branch-parent.middleware.test.ts",
+    "name": "shared parent scope guard passes accessible and missing parents to the existing downstream handler",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/middleware/branch-parent.middleware.test.ts",
+    "name": "shared parent scope guard leaves literal/invalid path /search untouched",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/middleware/branch-parent.middleware.test.ts",
+    "name": "shared parent scope guard leaves literal/invalid path /search-suggestions untouched",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/middleware/branch-parent.middleware.test.ts",
+    "name": "shared parent scope guard leaves literal/invalid path / untouched",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/middleware/branch-parent.middleware.test.ts",
+    "name": "shared parent scope guard leaves literal/invalid path /not-a-uuid/debts untouched",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/middleware/branch-parent.middleware.test.ts",
+    "name": "shared parent scope guard leaves literal/invalid path /%ZZ/debts untouched",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/middleware/branch-parent.middleware.test.ts",
+    "name": "shared parent scope guard checks URL-encoded UUID segments rather than letting Express decode them after the guard",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/middleware/branch-parent.middleware.test.ts",
+    "name": "shared parent scope guard preserves the supplier purchase creation missing-parent message",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/middleware/branch-parent.middleware.test.ts",
+    "name": "blocks nested writes in multi-branch all scope while allowing reads",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/middleware/branch-scope.middleware.test.ts",
+    "name": "request branch scope resolves an accessible UUID to single scope, normalizing UUID case",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/middleware/branch-scope.middleware.test.ts",
+    "name": "request branch scope rejects an inaccessible UUID header with 403 BRANCH_ACCESS_DENIED",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/middleware/branch-scope.middleware.test.ts",
+    "name": "request branch scope rejects invalid header \"\" with 400",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/middleware/branch-scope.middleware.test.ts",
+    "name": "request branch scope rejects invalid header \"ALL\" with 400",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/middleware/branch-scope.middleware.test.ts",
+    "name": "request branch scope rejects invalid header \"garbage\" with 400",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/middleware/branch-scope.middleware.test.ts",
+    "name": "request branch scope rejects invalid header \"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa,bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb\" with 400",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/middleware/branch-scope.middleware.test.ts",
+    "name": "request branch scope rejects invalid header \"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa\" with 400",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/middleware/branch-scope.middleware.test.ts",
+    "name": "request branch scope resolves missing/all header undefined to the accessible set",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/middleware/branch-scope.middleware.test.ts",
+    "name": "request branch scope resolves missing/all header \"all\" to the accessible set",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/middleware/branch-scope.middleware.test.ts",
+    "name": "request branch scope leaves an employee without grants with an empty all scope",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/middleware/branch-scope.middleware.test.ts",
+    "name": "request branch scope reloads access on each request so revocation is immediate",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/middleware/branch-scope.middleware.test.ts",
+    "name": "request branch scope requires authentication before resolving branches",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-scope-db.integration.test.ts",
+    "name": "Phase 3A customer and supplier branch isolation employee lists and searches only A customers, including financial filtering and notes search",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-scope-db.integration.test.ts",
+    "name": "Phase 3A customer and supplier branch isolation employee suggestions exclude B primary matches, candidate names and counts; literal path stays a search route",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-scope-db.integration.test.ts",
+    "name": "Phase 3A customer and supplier branch isolation denies the employee B header on customers with BRANCH_ACCESS_DENIED",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-scope-db.integration.test.ts",
+    "name": "Phase 3A customer and supplier branch isolation denies the employee B header on suppliers with BRANCH_ACCESS_DENIED",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-scope-db.integration.test.ts",
+    "name": "Phase 3A customer and supplier branch isolation rejects an invalid branch header on customers",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-scope-db.integration.test.ts",
+    "name": "Phase 3A customer and supplier branch isolation rejects an invalid branch header on suppliers",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-scope-db.integration.test.ts",
+    "name": "Phase 3A customer and supplier branch isolation returns the same customer 404 for employee GET, PUT and DELETE of a B record, without changing it",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-scope-db.integration.test.ts",
+    "name": "Phase 3A customer and supplier branch isolation hides B supplier detail, summary, audit, PATCH, archive, restore and DELETE before role checks",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-scope-db.integration.test.ts",
+    "name": "Phase 3A customer and supplier branch isolation guards the B customer nested route /debts by parent",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-scope-db.integration.test.ts",
+    "name": "Phase 3A customer and supplier branch isolation guards the B customer nested route /installment-plans by parent",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-scope-db.integration.test.ts",
+    "name": "Phase 3A customer and supplier branch isolation guards the B customer nested route /statement?from=2026-01-01&to=2026-01-31 by parent",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-scope-db.integration.test.ts",
+    "name": "Phase 3A customer and supplier branch isolation guards the B customer nested route /financial-summary by parent",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-scope-db.integration.test.ts",
+    "name": "Phase 3A customer and supplier branch isolation guards the B customer nested route /activity by parent",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-scope-db.integration.test.ts",
+    "name": "Phase 3A customer and supplier branch isolation guards the B customer nested route /corrections by parent",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-scope-db.integration.test.ts",
+    "name": "Phase 3A customer and supplier branch isolation guards the B customer nested route /sales-orders by parent",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-scope-db.integration.test.ts",
+    "name": "Phase 3A customer and supplier branch isolation guards the B customer nested route /service-jobs by parent",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-scope-db.integration.test.ts",
+    "name": "Phase 3A customer and supplier branch isolation guards the B supplier nested route /transactions by parent",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-scope-db.integration.test.ts",
+    "name": "Phase 3A customer and supplier branch isolation guards the B supplier nested route /purchases by parent",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-scope-db.integration.test.ts",
+    "name": "Phase 3A customer and supplier branch isolation employee supplier list, search, balance sort and detail contain only A",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-scope-db.integration.test.ts",
+    "name": "Phase 3A customer and supplier branch isolation admin header A sees A and all sees A+B for customers",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-scope-db.integration.test.ts",
+    "name": "Phase 3A customer and supplier branch isolation admin header A sees A and all sees A+B for suppliers",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-scope-db.integration.test.ts",
+    "name": "Phase 3A customer and supplier branch isolation admin header A hides B customer and supplier detail",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-scope-db.integration.test.ts",
+    "name": "Phase 3A customer and supplier branch isolation admin cannot create customers in multi-branch all scope",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-scope-db.integration.test.ts",
+    "name": "Phase 3A customer and supplier branch isolation admin cannot create suppliers in multi-branch all scope",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-scope-db.integration.test.ts",
+    "name": "Phase 3A customer and supplier branch isolation multi-branch all scope rejects direct and nested writes before downstream mutations",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-scope-db.integration.test.ts",
+    "name": "Phase 3A customer and supplier branch isolation same phone is allowed across branches and rejected within A on creation",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-scope-db.integration.test.ts",
+    "name": "Phase 3A customer and supplier branch isolation phone updates compare only the record branch and preserve phone formatting",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-scope-db.integration.test.ts",
+    "name": "Phase 3A customer and supplier branch isolation serializable phone checks admit only one concurrent create in the same branch",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-scope-db.integration.test.ts",
+    "name": "Phase 3A customer and supplier branch isolation no-header single-accessible-branch requests preserve customer read/create/update/delete behavior",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-scope-db.integration.test.ts",
+    "name": "Phase 3A customer and supplier branch isolation selected-branch supplier create, contact edit, archive, restore and delete retain their behavior",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-scope-db.integration.test.ts",
+    "name": "Phase 3A customer and supplier branch isolation no-grant employee sees empty lists/search/suggestions and cannot create",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-scope-db.integration.test.ts",
+    "name": "Phase 3A customer and supplier branch isolation grant revocation is effective on the next request despite unchanged JWT claims",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-scope-db.integration.test.ts",
+    "name": "Phase 3A customer and supplier branch isolation branch deactivation removes access on the next request",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-scope.test.ts",
+    "name": "branch scope helpers scopeWhere restricts reads to the accessible set, including an empty set",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-scope.test.ts",
+    "name": "branch scope helpers writeBranch permits exactly one branch in single scope",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-scope.test.ts",
+    "name": "branch scope helpers writeBranch permits exactly one branch in all scope",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-scope.test.ts",
+    "name": "branch scope helpers writeBranch rejects an empty accessible set with NO_BRANCH_AVAILABLE",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-scope.test.ts",
+    "name": "branch scope helpers writeBranch rejects a multi-branch all scope with BRANCH_SELECTION_REQUIRED",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-scope.test.ts",
+    "name": "branch scope helpers assertInScope accepts an accessible record and hides other records with the caller’s 404",
+    "status": "passed"
+  }
+]

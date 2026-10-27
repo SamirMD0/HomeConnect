@@ -1,0 +1,126 @@
+[
+  {
+    "method": "GET",
+    "path": "/api/v1/customers/:customerId/debts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/customers/:customerId/debts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/customers/:customerId/prepaid-purchases"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/customers/:customerId/installment-plans"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/customers/:customerId/installment-plans"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/customers/:customerId/activity"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/customers/:customerId/financial-summary"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/customers/:customerId/statement"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/customers/:customerId/corrections"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/customers/:customerId/service-jobs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/customers/:customerId/sales-orders"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/customers"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/customers/search"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/customers/search-suggestions"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/customers"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/customers/:id"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/customers/:id"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/customers/:id"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/suppliers/:supplierId/transactions"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/suppliers/:supplierId/transactions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/suppliers/:supplierId/purchases"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/suppliers/:supplierId/purchases"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/suppliers"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/suppliers"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/suppliers/:supplierId/summary"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/suppliers/:supplierId/audit"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/suppliers/:supplierId/archive"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/suppliers/:supplierId/restore"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/suppliers/:supplierId"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/suppliers/:supplierId"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/suppliers/:supplierId"
+  }
+]
