@@ -1,3 +1,4 @@
+import { AppError } from '../../lib/errors';
 import jwt from 'jsonwebtoken';
 import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -81,4 +82,10 @@ describe('branch routes', () => {
     await request(app).put(`/api/v1/branches/users/${upper}/access`).set(admin).send({ branchIds: [upper] });
     expect(service.setUserAccess).toHaveBeenCalledWith(id, { branchIds: [id] }, expect.anything());
   });
+});
+
+it('returns the LAST_ACTIVE_BRANCH conflict and server message from branch deactivation',async()=>{
+ service.update.mockRejectedValueOnce(new AppError('At least one branch must stay active',409,'LAST_ACTIVE_BRANCH'));
+ const response=await request(app).patch('/api/v1/branches/'+id).set(auth('ADMIN')).send({isActive:false});
+ expect(response.status).toBe(409);expect(response.body.error).toMatchObject({code:'LAST_ACTIVE_BRANCH',message:'At least one branch must stay active'});
 });

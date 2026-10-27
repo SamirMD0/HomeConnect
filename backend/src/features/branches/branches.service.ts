@@ -75,6 +75,12 @@ export class BranchesService {
     return runFinancialTransaction(async (tx) => {
       const before = await BranchesRepository.find(id, tx);
       if (!before) throw new NotFoundError('Branch not found');
+      if (before.isActive && values.isActive === false) {
+        const active = await BranchesRepository.listActive(tx);
+        if (!active.some(branch => branch.id !== id)) {
+          throw new AppError('At least one branch must stay active', 409, 'LAST_ACTIVE_BRANCH');
+        }
+      }
       if(values.isActive === true && !before.isActive) await assertSingleActiveBranch(true, id, tx);
       const branch = await BranchesRepository.update(id, { ...values, updatedById: actor.userId }, tx);
       await audit(tx, actor, 'BRANCH_UPDATE', 'Branch', id, { before, after: branch });

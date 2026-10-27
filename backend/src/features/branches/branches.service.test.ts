@@ -146,3 +146,17 @@ describe('single active branch release guard',()=>{
   expect(repo.create).toHaveBeenCalledTimes(2);expect(repo.update).toHaveBeenCalledTimes(1);
  });
 });
+
+describe('last active branch protection',()=>{
+ beforeEach(()=>{vi.clearAllMocks();repo.find.mockResolvedValue(main);repo.listActive.mockResolvedValue([main]);repo.update.mockResolvedValue(main);});
+ it.each(['false','true'])('rejects deactivating the last active branch regardless of scoping flag %s',async flag=>{
+  vi.stubEnv('MULTI_BRANCH_SCOPING_ENABLED',flag);
+  await expect(BranchesService.update(MAIN_ID,{isActive:false},admin)).rejects.toMatchObject({statusCode:409,code:'LAST_ACTIVE_BRANCH',message:'At least one branch must stay active'});
+  expect(repo.listActive).toHaveBeenCalledWith(tx);expect(repo.update).not.toHaveBeenCalled();expect(tx.activityLog.create).not.toHaveBeenCalled();
+ });
+ it('allows deactivation when another branch stays active',async()=>{
+  repo.listActive.mockResolvedValue([main,{...main,id:CLOSED_ID}]);
+  await BranchesService.update(MAIN_ID,{isActive:false},admin);
+  expect(repo.update).toHaveBeenCalledWith(MAIN_ID,expect.objectContaining({isActive:false}),tx);
+ });
+});
