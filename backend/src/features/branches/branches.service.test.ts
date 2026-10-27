@@ -42,6 +42,8 @@ const closed = { ...main, id: CLOSED_ID, code: 'OLD', name: 'Old', isActive: fal
 describe('BranchesService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubEnv('MULTI_BRANCH_SCOPING_ENABLED', 'false');
+    repo.listActive.mockResolvedValue([]);
     tx.user.findUnique.mockResolvedValue({ id: 'emp-1', role: 'EMPLOYEE', deletedAt: null });
     repo.listUserAccess.mockResolvedValue([]);
   });
@@ -51,7 +53,7 @@ describe('BranchesService', () => {
     repo.listActiveForUser.mockResolvedValue([]);
     expect(await BranchesService.accessibleBranches(admin)).toEqual([main]);
     expect(await BranchesService.accessibleBranches(employee)).toEqual([]);
-    expect(repo.listActiveForUser).toHaveBeenCalledWith('emp-1');
+    expect(repo.listActiveForUser).toHaveBeenCalledWith('emp-1', undefined);
   });
 
   it('refuses every management operation for non-admins', async () => {
@@ -124,4 +126,23 @@ describe('BranchesService', () => {
     await expect(BranchesService.setUserAccess('gone', { branchIds: [] }, admin)).rejects.toMatchObject({ statusCode: 404 });
     expect(repo.replaceUserAccess).not.toHaveBeenCalled();
   });
+});
+
+describe('single active branch release guard',()=>{
+ beforeEach(()=>{vi.clearAllMocks();vi.stubEnv('MULTI_BRANCH_SCOPING_ENABLED','false');repo.listActive.mockResolvedValue([main]);repo.find.mockResolvedValue(closed);repo.create.mockResolvedValue(main);repo.update.mockResolvedValue(main);});
+ it('blocks creating a second active branch while scoping is off',async()=>{
+  await expect(BranchesService.create({code:'B',name:'B'},admin)).rejects.toMatchObject({statusCode:409,code:'BRANCH_SCOPING_NOT_RELEASED'});
+  expect(repo.create).not.toHaveBeenCalled();
+ });
+ it('blocks activating a second branch while scoping is off',async()=>{
+  await expect(BranchesService.update(CLOSED_ID,{isActive:true},admin)).rejects.toMatchObject({statusCode:409,code:'BRANCH_SCOPING_NOT_RELEASED'});
+  expect(repo.update).not.toHaveBeenCalled();
+ });
+ it('allows inactive branches and permits multiple active branches only with the flag on',async()=>{
+  await BranchesService.create({code:'B',name:'B',isActive:false},admin);
+  vi.stubEnv('MULTI_BRANCH_SCOPING_ENABLED','true');
+  await BranchesService.create({code:'B',name:'B'},admin);
+  await BranchesService.update(CLOSED_ID,{isActive:true},admin);
+  expect(repo.create).toHaveBeenCalledTimes(2);expect(repo.update).toHaveBeenCalledTimes(1);
+ });
 });

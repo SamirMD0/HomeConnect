@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { AppError, AuthorizationError, NotFoundError, ValidationError } from '../../lib/errors';
 import { prisma } from '../../lib/prisma';
 import { runFinancialTransaction } from '../financial/infrastructure/transaction';
+import { multiBranchScopingEnabled } from './branch-config';
 import { BranchesRepository } from './branches.repository';
 import {
   createBranchSchema,
@@ -36,10 +37,10 @@ export class BranchesService {
    * branches explicitly granted. Always read from the database so a revoked
    * grant or a deactivated branch takes effect on the next request.
    */
-  static async accessibleBranches(user: BranchActor) {
+  static async accessibleBranches(user: BranchActor, tx?: Prisma.TransactionClient) {
     return user.role === Role.ADMIN
-      ? BranchesRepository.listActive()
-      : BranchesRepository.listActiveForUser(user.userId);
+      ? BranchesRepository.listActive(tx)
+      : BranchesRepository.listActiveForUser(user.userId, tx);
   }
 
   static async get(id: string, actor: BranchActor) {
@@ -53,6 +54,7 @@ export class BranchesService {
     assertAdmin(actor);
     const values = createBranchSchema.parse(input);
     return runFinancialTransaction(async (tx) => {
+      await assertSingleActiveBranch(values.isActive ?? true, undefined, tx);
       const branch = await BranchesRepository.create({
         id: randomUUID(),
         code: values.code,
@@ -73,6 +75,7 @@ export class BranchesService {
     return runFinancialTransaction(async (tx) => {
       const before = await BranchesRepository.find(id, tx);
       if (!before) throw new NotFoundError('Branch not found');
+      if(values.isActive === true && !before.isActive) await assertSingleActiveBranch(true, id, tx);
       const branch = await BranchesRepository.update(id, { ...values, updatedById: actor.userId }, tx);
       await audit(tx, actor, 'BRANCH_UPDATE', 'Branch', id, { before, after: branch });
       return branch;
@@ -154,4 +157,10 @@ function mapBranchError(error: unknown): never {
     throw new AppError(`Another branch already uses this ${field}`, 409, 'BRANCH_CONFLICT', { field });
   }
   throw error;
+}
+
+async function assertSingleActiveBranch(activating:boolean, exceptId:string|undefined, tx:Prisma.TransactionClient) {
+  if(!activating || multiBranchScopingEnabled())return;
+  const active=await BranchesRepository.listActive(tx);
+  if(active.some(branch=>branch.id!==exceptId))throw new AppError('Branch separation is not released yet. Only one branch may be active.',409,'BRANCH_SCOPING_NOT_RELEASED');
 }

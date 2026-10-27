@@ -14,16 +14,11 @@ vi.mock('bcrypt', () => ({
   },
 }));
 
-vi.mock('../lib/prisma', () => ({
-  prisma: {
-    user: {
-      findFirst: vi.fn(),
-      findUnique: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
-    },
-  },
-}));
+vi.mock('../lib/prisma', () => {
+  const prisma={user:{findFirst:vi.fn(),findUnique:vi.fn(),create:vi.fn(),update:vi.fn()},branch:{findFirst:vi.fn().mockResolvedValue(null),create:vi.fn()},$transaction:vi.fn()};
+  prisma.$transaction.mockImplementation((operation:(tx:unknown)=>Promise<unknown>)=>operation(prisma));
+  return {prisma};
+});
 
 const activeAdmin = {
   id: 'admin-1',
@@ -68,6 +63,8 @@ describe('AuthService setup account', () => {
         role: Role.ADMIN,
       },
     });
+    expect(prisma.branch.create).toHaveBeenCalledWith({data:{code:'MAIN',name:'Main branch',createdById:'admin-1'}});
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
     expect(result.user.role).toBe(Role.ADMIN);
     expect(result).toHaveProperty('accessToken');
     expect(result).toHaveProperty('refreshToken');

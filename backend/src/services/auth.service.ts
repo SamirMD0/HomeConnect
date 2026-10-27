@@ -184,13 +184,20 @@ export class AuthService {
 
     const hashedPassword = await bcrypt.hash(passwordString, 12);
 
-    const newAdmin = await prisma.user.create({
+    const newAdmin = await prisma.$transaction(async tx => {
+      const admin = await tx.user.create({
       data: {
         username,
         password: hashedPassword,
         fullName,
         role: Role.ADMIN,
       }
+    });
+
+      if (!(await tx.branch.findFirst({select:{id:true}}))) {
+        await tx.branch.create({data:{code:'MAIN',name:'Main branch',createdById:admin.id}});
+      }
+      return admin;
     });
 
     const tokens = this.generateTokens(newAdmin.id, newAdmin.role);
