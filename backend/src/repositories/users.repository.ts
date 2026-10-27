@@ -14,7 +14,6 @@ export class UsersRepository {
         createdAt: true,
         updatedAt: true,
         deletedAt: true,
-        branchId: true,
       }
     });
   }
@@ -38,7 +37,6 @@ export class UsersRepository {
         isActive: true,
         createdAt: true,
         updatedAt: true,
-        branchId: true,
       },
       orderBy: { createdAt: 'desc' }
     });

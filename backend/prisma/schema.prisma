@@ -401,7 +401,6 @@ model User {
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
   deletedAt           DateTime?
-  branchId            String?   @db.Uuid
 
   activityLogs                   ActivityLog[]
   debtsCreated                   Debt[]                       @relation("DebtCreatedBy")
@@ -444,8 +443,8 @@ model User {
   pricingCardTemplatesCreated    PricingCardTemplate[]        @relation("PricingCardTemplateCreatedBy")
   pricingCardTemplatesUpdated    PricingCardTemplate[]        @relation("PricingCardTemplateUpdatedBy")
   pricingCardPrintsGenerated     PricingCardPrint[]           @relation("PricingCardPrintGeneratedBy")
-  productImportsCreated          ProductImport[]               @relation("ProductImportCreatedBy")
-  productImportsCommitted        ProductImport[]               @relation("ProductImportCommittedBy")
+  productImportsCreated          ProductImport[]              @relation("ProductImportCreatedBy")
+  productImportsCommitted        ProductImport[]              @relation("ProductImportCommittedBy")
   repairsApplied                 RepairHistory[]              @relation("RepairHistoryAppliedBy")
   stockMovements                 StockMovement[]              @relation("StockMovementCreatedBy")
   salesStockFulfillmentsCreated  SalesOrderStockFulfillment[] @relation("FulfillmentCreatedBy")
@@ -484,7 +483,20 @@ model Branch {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  userAccess UserBranchAccess[]
+  userAccess           UserBranchAccess[]
+  customers            Customer[]
+  suppliers            Supplier[]
+  salesOrders          SalesOrder[]
+  debts                Debt[]
+  installmentPlans     InstallmentPlan[]
+  payments             Payment[]
+  salesReturns         SalesReturn[]
+  cashRefunds          CashRefund[]
+  customerCredits      CustomerCredit[]
+  supplierTransactions SupplierTransaction[]
+  supplierReceivings   SupplierReceiving[]
+  serviceJobs          ServiceJob[]
+  activityLogs         ActivityLog[]
 
   @@index([isActive])
   @@map("branches")
@@ -543,6 +555,9 @@ model ExchangeRate {
 }
 
 model Customer {
+  branchId String @db.Uuid
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
   creditLimit Decimal?  @db.Decimal(12, 2)
   id          String    @id @default(uuid()) @db.Uuid
   name        String
@@ -554,7 +569,6 @@ model Customer {
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
   createdBy   String    @db.Uuid
-  branchId    String?   @db.Uuid
 
   debts                Debt[]
   installmentPlans     InstallmentPlan[]
@@ -567,9 +581,11 @@ model Customer {
   customerCredits      CustomerCredit[]
   creditApplications   CustomerCreditApplication[]
 
+  @@unique([id, branchId])
   @@index([name])
   @@index([phone])
   @@index([deletedAt])
+  @@index([branchId])
   @@map("customers")
 }
 
@@ -584,13 +600,18 @@ model ActivityLog {
   ipAddress  String?
   createdAt  DateTime @default(now())
   branchId   String?  @db.Uuid
+  branch     Branch?  @relation(fields: [branchId], references: [id], onDelete: Restrict)
 
   @@index([entityType, entityId])
   @@index([createdAt])
   @@map("activity_logs")
 }
 
+/// Raw SQL branch closure: debts_customerId_branchId_fkey.
 model Debt {
+  branchId String @db.Uuid
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
   id                 String     @id @default(uuid()) @db.Uuid
   customerId         String     @db.Uuid
   customer           Customer   @relation(fields: [customerId], references: [id], onDelete: Restrict)
@@ -625,6 +646,7 @@ model Debt {
   @@index([status])
   @@index([kind])
   @@index([customerId, status])
+  @@index([branchId])
   @@map("debts")
 }
 
@@ -661,7 +683,11 @@ model PrepaidPurchase {
   @@map("prepaid_purchases")
 }
 
+/// Raw SQL branch closure: installment_plans_customerId_branchId_fkey.
 model InstallmentPlan {
+  branchId String @db.Uuid
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
   id               String                   @id @default(uuid()) @db.Uuid
   customerId       String                   @db.Uuid
   customer         Customer                 @relation(fields: [customerId], references: [id], onDelete: Restrict)
@@ -690,6 +716,7 @@ model InstallmentPlan {
   @@index([customerId])
   @@index([status])
   @@index([startDate])
+  @@index([branchId])
   @@map("installment_plans")
 }
 
@@ -718,7 +745,11 @@ model Installment {
   @@map("installments")
 }
 
+/// Raw SQL branch closure: payments_customerId_branchId_fkey, payments_salesOrderId_branchId_fkey.
 model Payment {
+  branchId String @db.Uuid
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
   id                     String        @id @default(uuid()) @db.Uuid
   customerId             String?       @db.Uuid
   customer               Customer?     @relation(fields: [customerId], references: [id], onDelete: Restrict)
@@ -749,6 +780,7 @@ model Payment {
   @@index([paymentDate])
   @@index([createdById])
   @@index([salesOrderId])
+  @@index([branchId])
   @@map("payments")
 }
 
@@ -930,7 +962,7 @@ model Product {
   image                  ProductImage?
   pricingCardFeatures    ProductPricingCardFeature[]
   pricingCardPrints      PricingCardPrint[]
-  externalIdentifiers   ProductExternalIdentifier[]
+  externalIdentifiers    ProductExternalIdentifier[]
 
   @@index([name])
   @@index([sku])
@@ -948,15 +980,15 @@ model Product {
 /// immutable UUID and generated SKU. Imports can therefore match safely even
 /// when supplier codes contain characters (such as `/`) that are not valid SKUs.
 model ProductExternalIdentifier {
-  id             String        @id @default(uuid()) @db.Uuid
-  productId      String        @db.Uuid
-  product        Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  id             String         @id @default(uuid()) @db.Uuid
+  productId      String         @db.Uuid
+  product        Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
   sourceSystem   String
   externalCode   String
   normalizedCode String
-  importId       String?       @db.Uuid
+  importId       String?        @db.Uuid
   import         ProductImport? @relation(fields: [importId], references: [id], onDelete: SetNull)
-  createdAt      DateTime      @default(now())
+  createdAt      DateTime       @default(now())
 
   @@unique([sourceSystem, normalizedCode])
   @@index([productId])
@@ -976,7 +1008,7 @@ model ProductImport {
   rows             Json
   categoryMappings Json      @default("{}")
   decisions        Json?
-  result            Json?
+  result           Json?
   createdById      String    @db.Uuid
   createdBy        User      @relation("ProductImportCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
   committedById    String?   @db.Uuid
@@ -1132,8 +1164,8 @@ model PricingCardTemplate {
   createdAt           DateTime              @default(now())
   updatedAt           DateTime              @updatedAt
 
-  shopDefaultFor    ShopProfile[] @relation("ShopDefaultCardTemplate")
-  assignedProducts  Product[]     @relation("ProductPricingCardTemplate")
+  shopDefaultFor    ShopProfile[]      @relation("ShopDefaultCardTemplate")
+  assignedProducts  Product[]          @relation("ProductPricingCardTemplate")
   pricingCardPrints PricingCardPrint[]
 
   @@index([isActive])
@@ -1237,7 +1269,11 @@ model LabelSecretEncodingPreset {
   @@map("label_secret_encoding_presets")
 }
 
+/// Raw SQL branch closure: service_jobs_customerId_branchId_fkey.
 model ServiceJob {
+  branchId String @db.Uuid
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
   id        String @id @default(uuid()) @db.Uuid
   jobNumber String @unique
 
@@ -1302,6 +1338,7 @@ model ServiceJob {
   @@index([serviceCreatedDate])
   @@index([status, serviceCreatedDate])
   @@index([requestType])
+  @@index([branchId])
   @@map("service_jobs")
 }
 
@@ -1329,7 +1366,11 @@ model ServiceAudit {
   @@map("service_audits")
 }
 
+/// Raw SQL branch closure: sales_orders_customerId_branchId_fkey.
 model SalesOrder {
+  branchId String @db.Uuid
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
   id                     String  @id @default(uuid()) @db.Uuid
   orderNumber            String  @unique
   idempotencyKey         String? @unique
@@ -1395,6 +1436,7 @@ model SalesOrder {
   creditApplications CustomerCreditApplication[]
   counterPayments    Payment[]
 
+  @@unique([id, branchId])
   @@index([customerId])
   @@index([orderDate])
   @@index([deliveryDate])
@@ -1404,6 +1446,7 @@ model SalesOrder {
   @@index([settlement])
   @@index([fulfillmentStatus, orderDate])
   @@index([customerId, fulfillmentStatus])
+  @@index([branchId])
   @@map("sales_orders")
 }
 
@@ -1481,7 +1524,11 @@ model SalesOrderStockFulfillment {
   @@map("sales_order_stock_fulfillments")
 }
 
+/// Raw SQL branch closure: sales_returns_customerId_branchId_fkey, sales_returns_salesOrderId_branchId_fkey.
 model SalesReturn {
+  branchId String @db.Uuid
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
   id           String     @id @default(uuid()) @db.Uuid
   returnNumber String     @unique
   salesOrderId String     @db.Uuid
@@ -1538,9 +1585,11 @@ model SalesReturn {
   customerCredit        CustomerCredit?
 
   @@unique([salesOrderId, sequence])
+  @@unique([id, branchId])
   @@index([salesOrderId, returnDate])
   @@index([customerId, returnDate])
   @@index([processedAt])
+  @@index([branchId])
   @@map("sales_returns")
 }
 
@@ -1601,7 +1650,11 @@ model SalesReturnReceivableAllocation {
   @@map("sales_return_receivable_allocations")
 }
 
+/// Raw SQL branch closure: cash_refunds_customerId_branchId_fkey, cash_refunds_salesReturnId_branchId_fkey.
 model CashRefund {
+  branchId String @db.Uuid
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
   id                  String      @id @default(uuid()) @db.Uuid
   salesReturnId       String      @unique @db.Uuid
   salesReturn         SalesReturn @relation(fields: [salesReturnId], references: [id], onDelete: Restrict)
@@ -1619,10 +1672,15 @@ model CashRefund {
   reason              String      @db.Text
 
   @@index([customerId, processedAt])
+  @@index([branchId])
   @@map("cash_refunds")
 }
 
+/// Raw SQL branch closure: customer_credits_customerId_branchId_fkey, customer_credits_salesReturnId_branchId_fkey.
 model CustomerCredit {
+  branchId String @db.Uuid
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
   id               String      @id @default(uuid()) @db.Uuid
   salesReturnId    String      @unique @db.Uuid
   salesReturn      SalesReturn @relation(fields: [salesReturnId], references: [id], onDelete: Restrict)
@@ -1642,6 +1700,7 @@ model CustomerCredit {
   applications CustomerCreditApplication[]
 
   @@index([customerId, issuedAt])
+  @@index([branchId])
   @@map("customer_credits")
 }
 
@@ -1699,6 +1758,9 @@ model SalesAudit {
 }
 
 model Supplier {
+  branchId String @db.Uuid
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
   id             String    @id @default(uuid()) @db.Uuid
   name           String
   phone          String
@@ -1720,10 +1782,12 @@ model Supplier {
   audits       SupplierAudit[]
   receivings   SupplierReceiving[]
 
+  @@unique([id, branchId])
   @@index([name])
   @@index([phone])
   @@index([companyName])
   @@index([isActive])
+  @@index([branchId])
   @@map("suppliers")
 }
 
@@ -1732,7 +1796,11 @@ model Supplier {
 /// history. An admin may correct the two fields that carry no stock meaning
 /// (`referenceNumber`, `note`) and may void the whole document, which reverses
 /// the stock through compensating movements rather than erasing anything.
+/// Raw SQL branch closure: supplier_receivings_supplierId_branchId_fkey.
 model SupplierReceiving {
+  branchId String @db.Uuid
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
   id              String                  @id @default(uuid()) @db.Uuid
   idempotencyKey  String?                 @unique
   supplierId      String?                 @db.Uuid
@@ -1759,6 +1827,7 @@ model SupplierReceiving {
   @@index([receivedOn])
   @@index([receivedById])
   @@index([status])
+  @@index([branchId])
   @@map("supplier_receivings")
 }
 
@@ -1880,7 +1949,11 @@ model SupplierPurchaseLine {
   @@map("supplier_purchase_lines")
 }
 
+/// Raw SQL branch closure: supplier_transactions_supplierId_branchId_fkey.
 model SupplierTransaction {
+  branchId String @db.Uuid
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
   id                   String                       @id @default(uuid()) @db.Uuid
   idempotencyKey       String?                      @unique
   supplierId           String                       @db.Uuid
@@ -1929,6 +2002,7 @@ model SupplierTransaction {
   @@index([status])
   @@index([supplierId, receiptNumber])
   @@index([status, dueDate])
+  @@index([branchId])
   @@map("supplier_transactions")
 }
 

@@ -26,7 +26,6 @@ const admin = {
   createdAt: new Date(),
   updatedAt: new Date(),
   deletedAt: null,
-  branchId: null,
 };
 
 describe('UsersService session invalidation', () => {

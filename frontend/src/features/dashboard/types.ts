@@ -65,7 +65,6 @@ export interface ActivityLog {
   details: Record<string, unknown>;
   ipAddress?: string;
   createdAt: string;
-  branchId?: string;
 }
 
 export type DashboardRangePreset = 'today' | 'week' | 'month' | 'quarter' | 'year' | 'custom';
