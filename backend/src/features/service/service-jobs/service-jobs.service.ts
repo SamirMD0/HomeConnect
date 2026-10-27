@@ -1,3 +1,5 @@
+import { writeBranch, type BranchScope } from '../../branches/branch-scope';
+import { assertRecordInScope } from '../../branches/parent-branch';
 import {
   Prisma,
   ServiceAuditAction,
@@ -39,11 +41,13 @@ import {
 } from './service-jobs.validator';
 
 export class ServiceJobsService {
-  static async create(input: CreateServiceJobInput, user: ServiceMutationUser, context: RequestContext) {
+  static async create(input: CreateServiceJobInput, user: ServiceMutationUser, context: RequestContext, scope: BranchScope) {
+    writeBranch(scope);
     validateInputDates(input);
     for (let attempt = 0; attempt < 3; attempt += 1) {
       try {
         return await runFinancialTransaction(async (tx) => {
+          await assertRecordInScope('customer', input.customerId, scope, tx);
           await assertReferences(input.customerId, input.productId, tx);
           const year = Number(input.serviceCreatedDate.slice(0, 4));
           const jobNumber = await ServiceJobsRepository.nextJobNumber(year, tx);
@@ -72,8 +76,8 @@ export class ServiceJobsService {
     throw new ValidationError('Unable to allocate a service job number');
   }
 
-  static async list(query: ServiceJobListQueryInput) {
-    const result = await ServiceJobsRepository.list(query);
+  static async list(query: ServiceJobListQueryInput, scope: BranchScope) {
+    const result = await ServiceJobsRepository.list(query, scope);
     return {
       items: result.items.map(serializeServiceJob),
       total: result.total,
@@ -92,7 +96,7 @@ export class ServiceJobsService {
     id: string,
     input: UpdateServiceJobInput,
     user: ServiceMutationUser,
-    context: RequestContext
+    context: RequestContext, scope: BranchScope
   ) {
     const fields = Object.keys(input);
     if (!fields.length) throw new ValidationError('At least one service job field is required');
@@ -104,7 +108,10 @@ export class ServiceJobsService {
     return runFinancialTransaction(async (tx) => {
       const existing = await ServiceJobsRepository.findById(id, tx);
       if (!existing) throw new NotFoundError('Service job not found');
+      writeBranch(scope);
+      await assertRecordInScope('serviceJob', id, scope, tx);
       const merged = mergedJobValues(existing, input);
+      await assertRecordInScope('customer', merged.customerId, scope, tx);
       assertJobBusinessRules(merged);
       validateInputDates(merged);
       await assertReferences(merged.customerId, merged.productId, tx);
@@ -214,12 +221,12 @@ export class ServiceJobsService {
     return ServiceAuditRepository.list(ServiceAuditRecordType.SERVICE_JOB, id, (query.page - 1) * query.pageSize, query.pageSize);
   }
 
-  static async summary() {
+  static async summary(scope: BranchScope) {
     const today = businessDateToPrisma(todayInBusinessTimezone());
     const overdueBefore = new Date(today); overdueBefore.setUTCDate(overdueBefore.getUTCDate() - 30);
     const monthStart = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
     const nextMonthStart = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 1));
-    const result = await ServiceJobsRepository.summary(overdueBefore, monthStart, nextMonthStart);
+    const result = await ServiceJobsRepository.summary(overdueBefore, monthStart, nextMonthStart, scope);
     const counts = Object.fromEntries(result.groups.map((group) => [group.status, group._count._all]));
     return {
       open: result.groups.reduce((sum, group) => sum + group._count._all, 0),
