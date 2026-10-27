@@ -1,24 +1,15 @@
-Validation on 2026-10-27; only synthetic throwaway databases used.
-
+Review R1–R4 validation, 2026-10-27. Only authorized synthetic throwaway databases used.
 npm run typecheck: PASS (frontend and backend; 0 errors)
-npm run lint: PASS (0 errors, 92 warnings)
-NODE_ENV=test npm run test:ci: PASS (392 files, 3009 passed, 0 failed, 0 skipped/todo)
-npm run rehearse:migrations -- --confirm-scratch: PASS (70 migrations applied; both rehearsal phases passed)
-  REHEARSAL_DB=homeconnect_test_mb_rehearsal_1793098260588; removed after completion.
-  Simulated interruption was detected; non-idempotent replay correctly refused.
-  The pre-existing default homeconnect_rehearsal database has an initial-migration
-  checksum mismatch. It was left unchanged; no checksum bypass was used.
-
-Supplemental checks: 20 ownership DB cases passed; 118 SQL safety cases passed;
-new reconciliation tooling lint/typecheck passed; final local graphify update passed.
-
-Synthetic proof: 30 owned rows in 12 tables, USD and LBP; 3 report periods.
-Customer independent/reported outstanding: 356.00 / 356.00, 0 mismatches.
-Supplier independent/reported owed: 200.00 / 200.00, 0 mismatches.
-Before/after snapshots match; all 34 ownership/link closure checks are zero.
-Temporary proof and migration-test databases were removed.
-
-Initial CI attempts: a development NODE_ENV caused an unrelated CSP assertion;
-the SQL scanner needed the ownership statement fingerprint; a synchronous SVG
-seed check was slow while the graph rebuilt. The unchanged SVG check passed in
-isolation. The final full run above passed with no concurrent heavy checks.
+npm run lint: PASS (0 errors; 91 warnings, down from 92)
+Changed files: 0 added warning instances; supplemental scripts/migration-test lint and typecheck pass.
+NODE_ENV=test npm run test:ci: PASS (395 files; 3024 passed; 0 failed; 0 skipped/todo)
+npm run rehearse:migrations -- --confirm-scratch: PASS (70 migrations, both verification phases)
+REHEARSAL_DB=homeconnect_test_mb_rehearsal_1793101348234; removed after completion.
+Synthetic proof: snapshot -> apply-bundled-migrations.ts -> snapshot -> compare: COMPARE PASS.
+34 closure counts zero; no snapshot differences; USD/LBP history unchanged.
+Existing category checksum allowlist triple accepted and recorded checksum preserved; no new allowlist entries/bypasses.
+Grant counts: {"employeesGranted":2,"employeeGrantRows":2,"adminsGranted":0,"deletedUsersGranted":0,"employeesWithoutGrant":0}
+Raw migration SHA-256: 776a8bb45e18c487cf8841c4f53416f7faba327c44e43e67e42327e98ca55ee5
+SQL-scanner DO-statement SHA-256: 101304fae6cad84c593947ad92d270cb4c4cdc33227b8f16253809c0bd8d8e8f
+Graphify local update passed before the final validation/evidence commit.
+The first full run had one unchanged SVG seed cold-load timeout (5 seconds); it passed unchanged in isolation and in the final full run.

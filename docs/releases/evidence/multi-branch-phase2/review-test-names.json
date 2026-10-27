@@ -1,0 +1,23 @@
+{
+  "R1": [
+    "createUser grants the single active branch to a fresh employee in the creation transaction when scoping is off",
+    "createUser grants nothing when branch scoping is enabled",
+    "createUser does not grant administrators",
+    "createUser is a no-op for grants when no active branch exists",
+    "reactivating a soft-deleted employee leaves existing grants untouched",
+    "migration grants let a fresh employee create a customer without manual fixture grants",
+    "migration preserves existing Phase 1 grants and their original timestamps"
+  ],
+  "R2": [
+    "rejects deactivating the last active branch regardless of scoping flag false",
+    "rejects deactivating the last active branch regardless of scoping flag true",
+    "allows deactivation when another branch stays active",
+    "returns the LAST_ACTIVE_BRANCH conflict and server message from branch deactivation",
+    "shows the server LAST_ACTIVE_BRANCH message after deactivation is rejected"
+  ],
+  "R3": [
+    "refuses the business database before any database command",
+    "accepts and prints the existing allowlisted checksum triple without rewriting it",
+    "prints rejection and blocks an unknown checksum with no execution transaction"
+  ]
+}
