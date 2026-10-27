@@ -660,8 +660,9 @@ export class SalesOrdersService {
   }
 
   static async audit(id: string, query: SalesAuditQueryInput) {
-    await this.get(id);
-    return SalesAuditRepository.list(id, (query.page - 1) * query.pageSize, query.pageSize);
+    const order = await this.get(id);
+    const rows = await SalesAuditRepository.list(id, (query.page - 1) * query.pageSize, query.pageSize);
+    return rows.map(row => ({ ...row, branchId: order.branchId }));
   }
 }
 

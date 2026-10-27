@@ -217,8 +217,9 @@ export class ServiceJobsService {
   }
 
   static async audit(id: string, query: ServiceAuditQueryInput) {
-    await this.get(id);
-    return ServiceAuditRepository.list(ServiceAuditRecordType.SERVICE_JOB, id, (query.page - 1) * query.pageSize, query.pageSize);
+    const job = await this.get(id);
+    const rows = await ServiceAuditRepository.list(ServiceAuditRecordType.SERVICE_JOB, id, (query.page - 1) * query.pageSize, query.pageSize);
+    return rows.map(row => ({ ...row, branchId: job.branchId }));
   }
 
   static async summary(scope: BranchScope) {
