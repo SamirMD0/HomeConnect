@@ -14,7 +14,8 @@ const { service, inventoryService } = vi.hoisted(() => ({
 }));
 vi.mock('./sales-orders.service', () => ({ SalesOrdersService: service }));
 vi.mock('./sales-order-inventory.service', () => ({ SalesOrderInventoryService: inventoryService }));
-vi.mock('../../../lib/prisma', () => ({ prisma: { $queryRaw: vi.fn().mockResolvedValue([{ result: 1 }]) }, transactionModel: {}, activityLogModel: {} }));
+vi.mock('../../../lib/prisma', async () => ({ prisma: {
+...(await import('../../../test/branch-scope-fixture.js')).singleBranchRouteModels(), $queryRaw: vi.fn().mockResolvedValue([{ result: 1 }]) }, transactionModel: {}, activityLogModel: {} }));
 
 const secret = process.env.JWT_SECRET!;
 const admin = jwt.sign({ userId: '11111111-1111-4111-8111-111111111111', role: 'ADMIN' }, secret);

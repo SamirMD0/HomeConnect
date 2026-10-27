@@ -1,3 +1,5 @@
+import { assertRecordInScope } from '../../branches/parent-branch';
+import { writeBranch, type BranchScope } from '../../branches/branch-scope';
 import {
   Currency,
   DeliveryTaxTreatment,
@@ -68,7 +70,8 @@ const INVENTORY_DEDUCTIBLE_STATUSES = new Set<SalesOrderFulfillmentStatus>([
 ]);
 
 export class SalesOrdersService {
-  static async create(input: CreateSalesOrderInput, user: SalesMutationUser, context: SalesRequestContext) {
+  static async create(input: CreateSalesOrderInput, user: SalesMutationUser, context: SalesRequestContext, scope: BranchScope) {
+    writeBranch(scope);
     validateOrderDates(input.orderDate, input.deliveryDate);
     const currency = input.currency ?? Currency.USD;
     const key = normalizeIdempotencyKey(input.idempotencyKey);
@@ -81,14 +84,17 @@ export class SalesOrdersService {
           if (key) {
             const replay = await SalesOrdersRepository.findByIdempotencyKey(key, tx);
             if (replay) {
+              await assertRecordInScope('salesOrder', replay.id, scope, tx);
               assertIdempotentReplay({ existingFingerprint: replay.idempotencyFingerprint ?? '', incomingFingerprint: fingerprint });
               return serializeSalesOrder(replay);
             }
           }
           const rate = input.exchangeRate ? parseExchangeRate(input.exchangeRate) : await ExchangeRatesService.snapshotFor(currency, businessDateToPrisma(input.orderDate), tx);
           const base = (amount: string | Prisma.Decimal) => toBaseAmount(amount, currency, rate, Prisma.Decimal.ROUND_HALF_UP);
-          if (input.customerId && !(await SalesOrdersRepository.findActiveCustomer(input.customerId, tx))) {
-            throw new NotFoundError('Customer not found');
+          if (input.customerId) {
+            const customer = await SalesOrdersRepository.findActiveCustomer(input.customerId, tx);
+            if (!customer) throw new NotFoundError('Customer not found');
+            await assertRecordInScope('customer', customer.id, scope, tx);
           }
           const preparedItems = await prepareItems(input.items, businessDateToPrisma(input.orderDate), tx, currency, rate);
           const deliveryVat = await prepareDeliveryVat(
@@ -132,7 +138,7 @@ export class SalesOrdersService {
             notes: input.notes ?? null,
             createdById: user.userId,
             items: { create: preparedItems },
-          }, tx);
+          }, tx, scope);
 
           const finalOrder = compareMoney(totals.remainingAmount, '0.00') > 0 && input.fulfillmentStatus !== SalesOrderFulfillmentStatus.DRAFT
             ? await this.createAndLinkDebt(created, {
@@ -160,6 +166,7 @@ export class SalesOrdersService {
         if (key && error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
           const replay = await SalesOrdersRepository.findByIdempotencyKey(key);
           if (replay) {
+              await assertRecordInScope('salesOrder', replay.id, scope);
             assertIdempotentReplay({ existingFingerprint: replay.idempotencyFingerprint ?? '', incomingFingerprint: fingerprint });
             return serializeSalesOrder(replay);
           }
@@ -171,8 +178,8 @@ export class SalesOrdersService {
     throw new ValidationError('Unable to allocate a sales order number');
   }
 
-  static async list(query: SalesOrderListQueryInput) {
-    const result = await SalesOrdersRepository.list(query);
+  static async list(query: SalesOrderListQueryInput, scope: BranchScope) {
+    const result = await SalesOrdersRepository.list(query, scope);
     return {
       items: result.items.map(serializeSalesOrder),
       total: result.total,
@@ -187,7 +194,7 @@ export class SalesOrdersService {
     return serializeSalesOrder(order);
   }
 
-  static async summary(query: SalesOrderSummaryQueryInput = {}) {
+  static async summary(query: SalesOrderSummaryQueryInput = {}, scope: BranchScope) {
     // The period cards follow whatever range the page is showing, so the cards and
     // the table can never disagree. The backlog counts below stay global on purpose:
     // an unpaid order from last week is still unpaid while you look at today.
@@ -199,7 +206,7 @@ export class SalesOrdersService {
     }
     const toExclusive = new Date(toInclusive);
     toExclusive.setUTCDate(toExclusive.getUTCDate() + 1);
-    const result = await SalesOrdersRepository.summary(from, toExclusive);
+    const result = await SalesOrdersRepository.summary(from, toExclusive, scope);
     const grossSales = parseMoney(result.todayAggregate._sum.baseTotalAmount ?? ZERO_MONEY);
     const returns = parseMoney(result.returnsAggregate?._sum.baseTotalIncVat ?? ZERO_MONEY);
     return {
@@ -214,11 +221,13 @@ export class SalesOrdersService {
     };
   }
 
-  static async update(id: string, input: UpdateSalesOrderInput, user: SalesMutationUser, context: SalesRequestContext) {
+  static async update(id: string, input: UpdateSalesOrderInput, user: SalesMutationUser, context: SalesRequestContext, scope: BranchScope) {
     const fields = Object.keys(input).filter((field) => !['reason', 'accountPassword', 'debtDueDate', 'deliveryTaxProfileId', 'overrideCreditLimit', 'creditLimitOverrideReason'].includes(field));
     if (!fields.length) throw new ValidationError('At least one sales order field is required');
     return runFinancialTransaction(async (tx) => {
       const existing = await requiredOrder(id, tx);
+      await assertRecordInScope('salesOrder', id, scope, tx);
+      writeBranch(scope);
       assertEditable(existing);
       const moneyOrIdentityChange = fields.some((field) => ['customerId', 'orderDate', 'deliveryFee', 'deliveryTaxTreatment'].includes(field));
       if (moneyOrIdentityChange) assertNoFinancialLink(existing);
@@ -231,6 +240,7 @@ export class SalesOrdersService {
       if (input.customerId) {
         const customer = await SalesOrdersRepository.findActiveCustomer(input.customerId, tx);
         if (!customer) throw new NotFoundError('Customer not found');
+        await assertRecordInScope('customer', customer.id, scope, tx);
         if (customer.branchId !== existing.branchId) {
           throw new AppError('The selected customer belongs to a different branch.', 409, 'CUSTOMER_BRANCH_MISMATCH');
         }
@@ -396,18 +406,21 @@ export class SalesOrdersService {
     });
   }
 
-  static async changePayment(id: string, input: ChangeSalesOrderPaymentInput, user: SalesMutationUser, context: SalesRequestContext) {
+  static async changePayment(id: string, input: ChangeSalesOrderPaymentInput, user: SalesMutationUser, context: SalesRequestContext, scope: BranchScope) {
     const key = normalizeIdempotencyKey(input.idempotencyKey);
     const fingerprint = createIdempotencyFingerprint({ orderId: id, input: { ...input, accountPassword: undefined }, userId: user.userId });
+    writeBranch(scope);
     return runFinancialTransaction(async (tx) => {
       if (key) {
         const replay = await PaymentsRepository.findByIdempotencyKey(`counter-change:${key}`, tx);
         if (replay) {
+              await assertRecordInScope('payment', replay.id, scope, tx);
           assertIdempotentReplay({ existingFingerprint: replay.idempotencyFingerprint ?? '', incomingFingerprint: fingerprint });
           return serializeSalesOrder(await requiredOrder(id, tx));
         }
       }
       const existing = await requiredOrder(id, tx);
+      await assertRecordInScope('salesOrder', id, scope, tx);
       assertEditable(existing);
       assertNoFinancialLink({ ...existing, counterPayments: [] });
       await requireAdminVerification(input, user, context, id, 'CHANGE_SALES_ORDER_PAYMENT', tx);

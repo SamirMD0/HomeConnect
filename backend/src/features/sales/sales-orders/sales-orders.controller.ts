@@ -39,22 +39,22 @@ function paginated(result: { items: unknown[]; total: number; page: number; page
 
 export class SalesOrdersController {
   static async create(req: Request<unknown, unknown, CreateSalesOrderInput>, res: Response, next: NextFunction) {
-    try { res.status(201).json({ success: true, data: await SalesOrdersService.create(req.body, req.user!, contextFrom(req)) }); } catch (error) { next(error); }
+    try { res.status(201).json({ success: true, data: await SalesOrdersService.create(req.body, req.user!, contextFrom(req), req.branchScope!) }); } catch (error) { next(error); }
   }
   static async list(req: Request, res: Response, next: NextFunction) {
-    try { res.json(paginated(await SalesOrdersService.list(req.query as unknown as SalesOrderListQueryInput))); } catch (error) { next(error); }
+    try { res.json(paginated(await SalesOrdersService.list(req.query as unknown as SalesOrderListQueryInput, req.branchScope!))); } catch (error) { next(error); }
   }
   static async listCustomer(req: Request<CustomerSalesOrdersParamsInput>, res: Response, next: NextFunction) {
-    try { res.json(paginated(await SalesOrdersService.list({ ...(req.query as unknown as SalesOrderListQueryInput), customerId: req.params.customerId }))); } catch (error) { next(error); }
+    try { res.json(paginated(await SalesOrdersService.list({ ...(req.query as unknown as SalesOrderListQueryInput), customerId: req.params.customerId }, req.branchScope!))); } catch (error) { next(error); }
   }
   static async get(req: Request<SalesOrderParamsInput>, res: Response, next: NextFunction) {
     try { res.json({ success: true, data: await SalesOrdersService.get(req.params.salesOrderId) }); } catch (error) { next(error); }
   }
   static async summary(req: Request, res: Response, next: NextFunction) {
-    try { res.json({ success: true, data: await SalesOrdersService.summary(req.query as never) }); } catch (error) { next(error); }
+    try { res.json({ success: true, data: await SalesOrdersService.summary(req.query as never, req.branchScope!) }); } catch (error) { next(error); }
   }
   static async update(req: Request<SalesOrderParamsInput, unknown, UpdateSalesOrderInput>, res: Response, next: NextFunction) {
-    try { res.json({ success: true, data: await SalesOrdersService.update(req.params.salesOrderId, req.body, req.user!, contextFrom(req)) }); } catch (error) { next(error); }
+    try { res.json({ success: true, data: await SalesOrdersService.update(req.params.salesOrderId, req.body, req.user!, contextFrom(req), req.branchScope!) }); } catch (error) { next(error); }
   }
   static async addItem(req: Request<SalesOrderParamsInput, unknown, AddSalesOrderItemInput>, res: Response, next: NextFunction) {
     try { res.status(201).json({ success: true, data: await SalesOrdersService.addItem(req.params.salesOrderId, req.body, req.user!, contextFrom(req)) }); } catch (error) { next(error); }
@@ -75,7 +75,7 @@ export class SalesOrdersController {
     try { res.json({ success: true, data: await SalesOrdersService.changeStatus(req.params.salesOrderId, req.body, req.user!, contextFrom(req)) }); } catch (error) { next(error); }
   }
   static async payment(req: Request<SalesOrderParamsInput, unknown, ChangeSalesOrderPaymentInput>, res: Response, next: NextFunction) {
-    try { res.json({ success: true, data: await SalesOrdersService.changePayment(req.params.salesOrderId, req.body, req.user!, contextFrom(req)) }); } catch (error) { next(error); }
+    try { res.json({ success: true, data: await SalesOrdersService.changePayment(req.params.salesOrderId, req.body, req.user!, contextFrom(req), req.branchScope!) }); } catch (error) { next(error); }
   }
   static async cancel(req: Request<SalesOrderParamsInput, unknown, SalesOrderActionInput>, res: Response, next: NextFunction) {
     try { res.json({ success: true, data: await SalesOrdersService.cancel(req.params.salesOrderId, req.body, req.user!, contextFrom(req)) }); } catch (error) { next(error); }
@@ -84,7 +84,7 @@ export class SalesOrdersController {
     try { res.json({ success: true, data: await SalesOrdersService.restore(req.params.salesOrderId, req.body, req.user!, contextFrom(req)) }); } catch (error) { next(error); }
   }
   static async returnOrder(req: Request<SalesOrderParamsInput, unknown, ReturnSalesOrderInput>, res: Response, next: NextFunction) {
-    try { res.status(201).json({ success: true, data: await SalesReturnsService.create(req.params.salesOrderId, req.body, req.user!, contextFrom(req)) }); } catch (error) { next(error); }
+    try { res.status(201).json({ success: true, data: await SalesReturnsService.create(req.params.salesOrderId, req.body, req.user!, contextFrom(req), req.branchScope!) }); } catch (error) { next(error); }
   }
   static async createDebt(req: Request<SalesOrderParamsInput, unknown, CreateSalesOrderDebtInput>, res: Response, next: NextFunction) {
     try { res.status(201).json({ success: true, data: await SalesOrdersService.createDebt(req.params.salesOrderId, req.body, req.user!, contextFrom(req)) }); } catch (error) { next(error); }

@@ -22,6 +22,8 @@ import { financialLedgerQuerySchema } from '../../financial/ledger/financial-led
 import { DebtsService } from '../../financial/debts/debts.service';
 import { PaymentsService } from '../../financial/payments/payments.service';
 import { CustomerStatementService } from '../../financial/customer-statement/customer-statement.service';
+const phase3bScope = async () => ({ mode: 'all' as const, branchIds: [await branchFixture(prisma)] });
+
 
 const runDatabaseTests = process.env.RUN_SALES_RETURN_DB_TESTS === '1' && Boolean(process.env.DATABASE_URL);
 const describeDatabase = runDatabaseTests ? describe : describe.skip;
@@ -59,8 +61,8 @@ describeDatabase('atomic sales return database integration', () => {
       accountPassword: 'correct-password',
     };
 
-    const first = await SalesReturnsService.create(fixture.orderId, input, { userId: fixture.userId, role: 'ADMIN' });
-    const replay = await SalesReturnsService.create(fixture.orderId, input, { userId: fixture.userId, role: 'ADMIN' });
+    const first = await SalesReturnsService.create(fixture.orderId, input, { userId: fixture.userId, role: 'ADMIN' }, undefined, await phase3bScope());
+    const replay = await SalesReturnsService.create(fixture.orderId, input, { userId: fixture.userId, role: 'ADMIN' }, undefined, await phase3bScope());
 
     expect(replay.id).toBe(first.id);
     expect(first.salesOrder.orderDate).toBe(today);
@@ -102,7 +104,7 @@ describeDatabase('atomic sales return database integration', () => {
     expect(monthly.rows.find((row) => row.customer.id === fixture.customerId)?.totalOutstanding ?? '0.00').toBe('0.00');
     expect((await CustomerStatementService.get(fixture.customerId, { from: today, to: today })).closingBalance).toBe('0.00');
     expect((await DashboardFinancialService.getFinancialSummary()).money.totalOutstanding).toBe('0.00');
-    const ledger = await FinancialLedgerService.getFinancialLedger(financialLedgerQuerySchema.parse({ customerId: fixture.customerId }));
+    const ledger = await FinancialLedgerService.getFinancialLedger(financialLedgerQuerySchema.parse({ customerId: fixture.customerId }), await phase3bScope());
     expect(ledger.summary.totalOutstanding).toBe('0.00');
     expect((await ReportRowsService.get('sales-unpaid', reportQuery)).data.rows).toHaveLength(0);
     expect((await ReportRowsService.get('customers-aging', reportQuery)).data.rows).toHaveLength(0);
@@ -112,13 +114,13 @@ describeDatabase('atomic sales return database integration', () => {
     const activity = await MonthlyDebtsService.getMonthlyFinancialActivity({ month: today.slice(0, 7), customerId: fixture.customerId, page: 1, limit: 100 });
     expect(activity.summary).toMatchObject({ returnCredits: '50.00', cashRefunds: '50.00', paymentsReceived: '0.00', netFinancialChange: '0.00' });
     expect(activity.items.find((item) => item.type === 'SALES_RETURN')).toMatchObject({ amount: '-50.00', cashRefundAmount: '50.00' });
-    await expect(DebtsService.recordDebtPayment(fixture.debtId, { amount: '1.00', paymentDate: today }, { userId: fixture.userId, role: 'ADMIN' })).rejects.toThrow();
+    await expect(DebtsService.recordDebtPayment(fixture.debtId, { amount: '1.00', paymentDate: today }, { userId: fixture.userId, role: 'ADMIN' }, await phase3bScope())).rejects.toThrow();
     await expect(DebtsService.cancelDebt(fixture.debtId, { reason: 'Unsafe correction', accountPassword: 'correct-password' }, { userId: fixture.userId, role: 'ADMIN' })).rejects.toThrow('credited by a sales return');
 
     await expect(SalesReturnsService.create(fixture.orderId, {
       ...input,
       idempotencyKey: `return-again-${randomUUID()}`,
-    }, { userId: fixture.userId, role: 'ADMIN' })).rejects.toThrow('Only delivered or partially returned orders can be returned');
+    }, { userId: fixture.userId, role: 'ADMIN' }, undefined, await phase3bScope())).rejects.toThrow('Only delivered or partially returned orders can be returned');
   }, 30_000);
 
   it('retains the database constraint requiring a real movement for a cancelled fulfillment', async () => {
@@ -133,12 +135,12 @@ describeDatabase('atomic sales return database integration', () => {
     const today = todayInBusinessTimezone();
     await prisma.debt.update({ where: { id: fixture.debtId }, data: { originalAmount: '100.00', baseOriginalAmount: '100.00' } });
     await prisma.salesOrder.update({ where: { id: fixture.orderId }, data: { paidAmount: '0.00', basePaidAmount: '0.00', remainingAmount: '100.00', baseRemainingAmount: '100.00', paymentStatus: 'UNPAID' } });
-    await SalesReturnsService.create(fixture.orderId, { idempotencyKey: randomUUID(), items: [{ salesOrderItemId: fixture.itemId, quantity: 1, stockDisposition: SalesReturnStockDisposition.SELLABLE }], returnDeliveryFee: false, refundMethod: SalesReturnRefundMethod.NONE, reason: 'Partial return before payment', overrideReturnWindow: false, windowOverrideReason: null, accountPassword: 'correct-password' }, actor);
-    await DebtsService.recordDebtPayment(fixture.debtId, { amount: '10.00', paymentDate: today }, actor);
+    await SalesReturnsService.create(fixture.orderId, { idempotencyKey: randomUUID(), items: [{ salesOrderItemId: fixture.itemId, quantity: 1, stockDisposition: SalesReturnStockDisposition.SELLABLE }], returnDeliveryFee: false, refundMethod: SalesReturnRefundMethod.NONE, reason: 'Partial return before payment', overrideReturnWindow: false, windowOverrideReason: null, accountPassword: 'correct-password' }, actor, undefined, await phase3bScope());
+    await DebtsService.recordDebtPayment(fixture.debtId, { amount: '10.00', paymentDate: today }, actor, await phase3bScope());
     const payment = await prisma.payment.findFirstOrThrow({ where: { customerId: fixture.customerId } });
     expect((await PaymentsService.getReceipt(payment.id)).remainingBalances[0].amount).toBe('40.00');
-    await expect(DebtsService.recordDebtPayment(fixture.debtId, { amount: '41.00', paymentDate: today }, actor)).rejects.toThrow();
-    await expect(PaymentsService.voidPayment(payment.id, { reason: 'Unsafe independent reversal', accountPassword: 'correct-password', sourceScreen: 'API' }, actor)).rejects.toThrow('cannot be corrected independently');
+    await expect(DebtsService.recordDebtPayment(fixture.debtId, { amount: '41.00', paymentDate: today }, actor, await phase3bScope())).rejects.toThrow();
+    await expect(PaymentsService.voidPayment(payment.id, { reason: 'Unsafe independent reversal', accountPassword: 'correct-password', sourceScreen: 'API' }, actor, await phase3bScope())).rejects.toThrow('cannot be corrected independently');
     expect((await ReportRowsService.get('customers-financial-integrity', { period: 'thisMonth' })).data.summary).toMatchObject({ mismatches: 0, reportedTotal: '40.00' });
   }, 30_000);
 
@@ -153,7 +155,7 @@ describeDatabase('atomic sales return database integration', () => {
       overrideReturnWindow: false,
       windowOverrideReason: null,
       accountPassword: 'correct-password',
-    }, { userId: fixture.userId, role: 'ADMIN' });
+    }, { userId: fixture.userId, role: 'ADMIN' }, undefined, await phase3bScope());
 
     expect(result.totalIncVat).toBe('50.00');
     expect(result.receivableReliefAmount).toBe('50.00');
@@ -178,7 +180,7 @@ describeDatabase('atomic sales return database integration', () => {
         items: [{ salesOrderItemId: fixture.itemId, quantity: 1, stockDisposition: SalesReturnStockDisposition.SELLABLE, conditionNote: null }],
         returnDeliveryFee: false, refundMethod: method, reason: `Original VAT snapshot return ${index}`,
         overrideReturnWindow: false, windowOverrideReason: null, accountPassword: 'correct-password',
-      }, { userId: fixture.userId, role: 'ADMIN' }));
+      }, { userId: fixture.userId, role: 'ADMIN' }, undefined, await phase3bScope()));
     }
     expect(results.map((result) => result.subtotalExVat)).toEqual(['45.04', '45.05']);
     expect(results.map((result) => result.vatAmount)).toEqual(['4.96', '4.95']);
@@ -219,7 +221,7 @@ describeDatabase('atomic sales return database integration', () => {
         items: [{ salesOrderItemId: fixture.itemId, quantity, stockDisposition: SalesReturnStockDisposition.SELLABLE, conditionNote: null }],
         returnDeliveryFee: false, refundMethod: SalesReturnRefundMethod.CASH_OUT, reason: 'Original LBP snapshots return',
         overrideReturnWindow: false, windowOverrideReason: null, accountPassword: 'correct-password',
-      }, { userId: fixture.userId, role: 'ADMIN' });
+      }, { userId: fixture.userId, role: 'ADMIN' }, undefined, await phase3bScope());
       expect(new Decimal(result.subtotalExVat).plus(result.vatAmount).equals(result.totalIncVat)).toBe(true);
       expect(new Decimal(result.baseSubtotalExVat).plus(result.baseVatAmount).equals(result.baseTotalIncVat)).toBe(true);
     }
@@ -266,7 +268,7 @@ describeDatabase('atomic sales return database integration', () => {
         overrideReturnWindow: false,
         windowOverrideReason: null,
         accountPassword: 'correct-password',
-      }, { userId: fixture.userId, role: 'ADMIN' })).rejects.toThrow('injected return audit failure');
+      }, { userId: fixture.userId, role: 'ADMIN' }, undefined, await phase3bScope())).rejects.toThrow('injected return audit failure');
     } finally {
       await prisma.$executeRawUnsafe(`DROP TRIGGER IF EXISTS "${triggerName}" ON "sales_audits"`);
       await prisma.$executeRawUnsafe(`DROP FUNCTION IF EXISTS "${functionName}"()`);
