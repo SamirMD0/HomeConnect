@@ -35,3 +35,11 @@ pnpm-debug.log*
 *.tsbuildinfo
 frontend/vite.config.js
 frontend/vite.config.d.ts
+
+# Project Claude Code / Graphify integration
+!.claude/CLAUDE.md
+!.claude/settings.json
+!.claude/skills/
+!.claude/skills/graphify/
+!.claude/skills/graphify/**
+graphify-out/
