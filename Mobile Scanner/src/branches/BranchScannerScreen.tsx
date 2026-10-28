@@ -11,6 +11,7 @@ import type { MobileBranch } from './branch-selection';
 import { clearSelectedBranch, loadSelectedBranch, saveSelectedBranch } from './branch-storage';
 
 export function BranchScannerScreen(props: ComponentProps<typeof ScannerScreen>) {
+  const requireSelection = useRef(false);
   const invalidate = useRef(props.onSessionInvalid);
   invalidate.current = props.onSessionInvalid;
   const [branches, setBranches] = useState<MobileBranch[]>([]);
@@ -30,7 +31,7 @@ export function BranchScannerScreen(props: ComponentProps<typeof ScannerScreen>)
           { headers: authedHeaders({ baseUrl: '', token: props.token }) },
         );
         if (!active) return;
-        const branch = selectAccessibleBranch(accessible, saved);
+        const branch = selectAccessibleBranch(accessible, saved, requireSelection.current);
         if (branch) await saveSelectedBranch(branch.id);
         else await clearSelectedBranch();
         if (!active) return;
@@ -46,6 +47,7 @@ export function BranchScannerScreen(props: ComponentProps<typeof ScannerScreen>)
     return () => { active = false; };
   }, [props.connection, props.token, refresh]);
   useEffect(() => onBranchRejected(() => {
+    requireSelection.current = true;
     setSelected(null); // Unmount supplier forms immediately, before the refresh.
     setBranches([]);
     setBusy(true);
@@ -53,7 +55,7 @@ export function BranchScannerScreen(props: ComponentProps<typeof ScannerScreen>)
   }), []);
   useEffect(() => () => setSelectedBranch(null), []);
   const choose = async (branch: MobileBranch) => {
-    try { await saveSelectedBranch(branch.id); setSelected(branch); }
+    try { await saveSelectedBranch(branch.id); requireSelection.current = false; setSelected(branch); }
     catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not store branch.'); }
   };
   if (!selected && !busy && !error && branches.length === 0) return <View style={styles.container}>

@@ -1,7 +1,8 @@
 export interface MobileBranch { id: string; name: string }
 
 /** Revalidate saved selections against the fresh accessible list on each login. */
-export function selectAccessibleBranch(branches: MobileBranch[], savedId: string | null): MobileBranch | null {
+export function selectAccessibleBranch(branches: MobileBranch[], savedId: string | null, requireSelection = false): MobileBranch | null {
+  if (requireSelection) return null;
   if (branches.length === 1) return branches[0]!;
   return branches.find((branch) => branch.id === savedId) ?? null;
 }

@@ -11,6 +11,7 @@ describe('mobile branch selection', () => {
     expect(selectAccessibleBranch([a, b], 'revoked')).toBeNull();
     expect(selectAccessibleBranch([a, b], 'b')).toEqual(b);
   });
+  it('requires an explicit selection after rejection even when one branch remains', () => { expect(selectAccessibleBranch([b], null, true)).toBeNull(); });
   it('blocks supplier actions with zero accessible branches', () => { expect(selectAccessibleBranch([], 'a')).toBeNull(); });
   it('attaches selected scope to every JSON request and authenticated headers', async () => {
     setSelectedBranch('a');
