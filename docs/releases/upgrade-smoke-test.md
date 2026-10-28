@@ -210,3 +210,13 @@ npx tsx scripts/branch-reconciliation.ts compare --before $hostedBefore --after 
 
 Release requires the same zero-difference, zero-closure-mismatch evidence as the
 desktop drill. Rollback restores the fresh pre-upgrade dump and compatible build.
+
+
+## Branch scoping smoke test
+
+Keep `MULTI_BRANCH_SCOPING_ENABLED` OFF in production until Phase 4's desktop branch selector ships. Exercise scoping only on a restored throwaway copy.
+
+1. With one active branch and no scope header, customer/supplier lists, financial actions and reports behave as before. Print an invoice, payment receipt, sales return and customer statement: the existing shop header is unchanged and no branch line appears.
+2. Sign in as an employee without a branch grant. Branch-owned lists are empty; creation gives the clear `NO_BRANCH_AVAILABLE` error. Grant a branch, repeat the request, then revoke it and verify the next request reflects the change.
+3. On a multi-branch test copy, select a branch in mobile after login. Its name stays visible; supplier actions carry `X-Branch-Scope`. A revoked selection returns to branch selection; zero accessible branches shows “No branch assigned — ask an administrator”.
+4. With two active branches, print each document and confirm its record's branch name/address/phone appears below the shop header. A statement uses the customer's branch. An out-of-scope document ID returns 404.
