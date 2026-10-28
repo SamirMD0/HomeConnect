@@ -1,4 +1,4 @@
-import { writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { todayInBusinessTimezone, businessDateToPrisma } from '../financial';
 import { addDays } from '../dashboard/shared/dashboard-range';
 import { Decimal } from '@prisma/client/runtime/library';
@@ -931,6 +931,8 @@ describe.runIf(enabled)('Phase 3C reports and dashboards branch isolation', () =
     expect(supplier.left.totals).toMatchObject({ owed: '80.00' });
     expect(supplier.right.totals).toMatchObject({ owed: '160.00' });
     expect(supplier.total.totals).toMatchObject({ owed: '240.00' });
+    // The evidence folder may not exist yet when this suite runs first.
+    mkdirSync('node_modules/.cache/home-connect', { recursive: true });
     writeFileSync('node_modules/.cache/home-connect/phase3c-all-example.json',JSON.stringify({totals:supplier.total.totals,branchBreakdown:(supplier.total.branchBreakdown as Array<Record<string,unknown>>).map(row=>({branchId:row.branchId,branchCode:row.branchCode,branchName:row.branchName,totals:row.totals})),proof:'80.00 + 160.00 = 240.00'},null,2));
     const customer = await scopeValues(dashboardUrl('customer-financial'));
     expect(customer.left.totals).toMatchObject({ outstanding: '425.00' });
