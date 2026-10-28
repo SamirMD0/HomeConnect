@@ -19,9 +19,11 @@ const main: Branch = { id: 'b1', code: 'MAIN', name: 'Main shop', address: 'Beir
 const old: Branch = { id: 'b2', code: 'OLD', name: 'Old shop', address: null, phone: null, isActive: false, assignedUserCount: 0 };
 
 describe('BranchesPanel', () => {
-  it('states plainly that records are not yet separated by branch', () => {
+  it('explains branch separation and the single-active-branch rule', () => {
     const html = render([]);
-    expect(html).toContain('not separated by branch yet');
+    expect(html).toContain('keeps its own customers, suppliers, sales and balances');
+    expect(html).toContain('only one branch can be active');
+    expect(html).not.toContain('not separated by branch yet');
     expect(html).toContain('No branches have been set up.');
     expect(html).not.toContain('Staff branch access');
   });

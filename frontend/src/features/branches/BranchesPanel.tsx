@@ -61,8 +61,8 @@ export const BranchesPanel: React.FC = () => {
         <p className="mt-1 text-sm text-slate-500">
           Set up shop branches and choose which branches each employee works in. Administrators always have access to every branch.
         </p>
-        <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          Customers, suppliers, sales and balances are not separated by branch yet. Every user still sees all records until branch separation is released.
+        <p className="mt-3 rounded-lg border border-border bg-slate-50 px-3 py-2 text-sm text-slate-700">
+          Each branch keeps its own customers, suppliers, sales and balances, and employees see only the branches assigned to them. Until multi-branch is switched on, only one branch can be active.
         </p>
       </div>
 
