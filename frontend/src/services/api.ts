@@ -2,7 +2,7 @@ import axios from 'axios';
 import {
   BRANCH_ACCESS_DENIED_EVENT,
   BRANCH_SCOPE_HEADER,
-  getBranchScopeHeader,
+  scopeHeaderForRequest,
 } from '../features/branches/scope/branch-scope-store';
 
 
@@ -33,8 +33,8 @@ api.interceptors.request.use(
     if (currentAccessToken) {
       config.headers['Authorization'] = `Bearer ${currentAccessToken}`;
     }
-    const scope = getBranchScopeHeader();
-    if (scope && !config.headers[BRANCH_SCOPE_HEADER]) {
+    const scope = scopeHeaderForRequest(config.method, config.headers[BRANCH_SCOPE_HEADER]);
+    if (scope) {
       config.headers[BRANCH_SCOPE_HEADER] = scope;
     }
     return config;

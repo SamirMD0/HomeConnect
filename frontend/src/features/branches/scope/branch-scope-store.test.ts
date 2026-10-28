@@ -2,6 +2,10 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   BRANCH_SCOPE_HEADER,
   clearStoredSelection,
+  getRecordBranch,
+  pushRecordBranch,
+  scopeHeaderForRequest,
+  setBranchScopeHeader,
   headerForSelection,
   isBranchDependentQuery,
   readStoredSelection,
@@ -105,5 +109,38 @@ describe('isBranchDependentQuery', () => {
 
   it('still resets a product\'s service-job history', () => {
     expect(isBranchDependentQuery(['products', 'p1', 'service-jobs'])).toBe(true);
+  });
+});
+
+describe('record branch and request header priority', () => {
+  afterEach(() => setBranchScopeHeader(null));
+
+  it('uses an explicit per-request header first', () => {
+    setBranchScopeHeader('all');
+    const release = pushRecordBranch(A.id);
+    expect(scopeHeaderForRequest('post', B.id)).toBe(B.id);
+    release();
+  });
+
+  it('sends the open record\'s branch on writes, never on reads', () => {
+    setBranchScopeHeader('all');
+    const release = pushRecordBranch(A.id);
+    for (const method of ['post', 'PUT', 'patch', 'delete']) expect(scopeHeaderForRequest(method, undefined)).toBe(A.id);
+    for (const method of ['get', 'HEAD', undefined]) expect(scopeHeaderForRequest(method, undefined)).toBe('all');
+    release();
+    expect(scopeHeaderForRequest('post', undefined)).toBe('all');
+  });
+
+  it('lets a dialog opened on a record page win until it closes, in any release order', () => {
+    const releasePage = pushRecordBranch(A.id);
+    const releaseDialog = pushRecordBranch(B.id);
+    expect(getRecordBranch()).toBe(B.id);
+    releaseDialog();
+    expect(getRecordBranch()).toBe(A.id);
+    const releaseAgain = pushRecordBranch(B.id);
+    releasePage();
+    expect(getRecordBranch()).toBe(B.id);
+    releaseAgain();
+    expect(getRecordBranch()).toBeNull();
   });
 });

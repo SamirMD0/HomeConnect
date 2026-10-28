@@ -33,6 +33,45 @@ export function setBranchScopeHeader(value: string | null): void {
   currentHeader = value;
 }
 
+/**
+ * Record branch for writes. While a page or dialog for one record is open
+ * (a customer profile, an edit dialog), its writes must name that record's
+ * branch even when the header selector shows "All branches": the server
+ * rejects writes in multi-branch "all" scope. Entries stack, so a dialog
+ * opened on a profile page wins until it closes. Reads are never affected.
+ */
+const recordBranchStack: Array<{ token: symbol; branchId: string }> = [];
+
+export function pushRecordBranch(branchId: string): () => void {
+  const token = Symbol('record-branch');
+  recordBranchStack.push({ token, branchId });
+  return () => {
+    const index = recordBranchStack.findIndex((entry) => entry.token === token);
+    if (index >= 0) recordBranchStack.splice(index, 1);
+  };
+}
+
+export function getRecordBranch(): string | null {
+  return recordBranchStack[recordBranchStack.length - 1]?.branchId ?? null;
+}
+
+const READ_METHODS = new Set(['get', 'head', 'options']);
+
+/**
+ * The X-Branch-Scope a request should carry, in priority order: an explicit
+ * per-request header, then (for writes only) the open record's branch, then
+ * the selected scope.
+ */
+export function scopeHeaderForRequest(method: string | undefined, explicit: unknown): string | null {
+  if (typeof explicit === 'string' && explicit) return explicit;
+  const isWrite = !READ_METHODS.has((method ?? 'get').toLowerCase());
+  if (isWrite) {
+    const record = getRecordBranch();
+    if (record) return record;
+  }
+  return currentHeader;
+}
+
 /** The header value a selection sends. `none` sends nothing: the server answers with an empty set. */
 export function headerForSelection(selection: BranchSelection): string | null {
   if (selection.kind === 'branch') return selection.branchId;
