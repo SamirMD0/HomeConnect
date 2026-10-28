@@ -1,4 +1,5 @@
-import { AuthedClient, HcApiError } from './hc-client';
+import { handleBranchRejection } from '../branches/branch-selection';
+import { AuthedClient, authedHeaders, HcApiError } from './hc-client';
 
 /**
  * Upload a captured receipt photo. The backend accepts raw image bytes with
@@ -31,12 +32,13 @@ export async function uploadReceipt(client: AuthedClient, input: UploadReceiptIn
   const fileResponse = await fetch(input.localUri);
   const blob = await fileResponse.blob();
 
+  const headers = authedHeaders(client);
   const envelope = await fetch(
     `${client.baseUrl}/api/v1/supplier-purchases/${encodeURIComponent(input.supplierPurchaseId)}/receipts`,
     {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${client.token}`,
+        ...headers,
         'Content-Type': input.mime,
       },
       body: blob,
@@ -57,6 +59,7 @@ export async function uploadReceipt(client: AuthedClient, input: UploadReceiptIn
   const errorEnvelope = parsed as { error?: { code?: string; message?: string } } | null;
   const code = errorEnvelope?.error?.code ?? null;
   const message = errorEnvelope?.error?.message ?? 'Upload failed.';
+  handleBranchRejection(envelope.status, code, headers['X-Branch-Scope'] ?? null);
   throw new HcApiError(
     message,
     envelope.status === 401 ? 'UNAUTHORIZED' : envelope.status === 413 ? 'VALIDATION' : envelope.status >= 500 ? 'SERVER' : 'VALIDATION',

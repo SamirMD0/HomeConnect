@@ -1,4 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
+import { clearSelectedBranch } from '../branches/branch-storage';
 import { ConnectionSettings } from '../types/scanner.types';
 import { parseConnection } from '../utils/scanner-url';
 
@@ -75,5 +76,5 @@ export const saveAuthUser = (user: StoredAuthUser) =>
 export const clearAuthUser = () => SecureStore.deleteItemAsync(AUTH_USER_KEY, secureOptions);
 
 export async function clearAllAuth(): Promise<void> {
-  await Promise.all([clearAuthToken(), clearAuthUser()]);
+  await Promise.all([clearAuthToken(), clearAuthUser(), clearSelectedBranch()]);
 }
