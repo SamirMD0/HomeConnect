@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import express, { Router, type Application } from 'express';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { requireAuth } from './middleware/auth.middleware';
 import { branchScopeMiddleware } from './middleware/branch-scope.middleware';
 import { customerParentGuard, supplierParentGuard } from './middleware/branch-parent.middleware';
@@ -22,9 +22,33 @@ interface CoveredRoute {
 }
 
 // Later checkpoints extend this registry as their prefixes become fully scoped.
-const scopedPrefixes = [
+const scopedPrefixes: { prefix: string; parentGuard?: unknown }[] = [
   { prefix: '/api/v1/customers', parentGuard: customerParentGuard },
   { prefix: '/api/v1/suppliers', parentGuard: supplierParentGuard },
+  { prefix: '/api/v1/debts' },
+  { prefix: '/api/v1/installment-plans' },
+  { prefix: '/api/v1/payments' },
+  { prefix: '/api/v1/financial-ledger' },
+  { prefix: '/api/v1/receivables' },
+  { prefix: '/api/v1/prepaid-purchases' },
+  { prefix: '/api/v1/corrections' },
+  { prefix: '/api/v1/sales-orders' },
+  { prefix: '/api/v1/sales-returns' },
+  { prefix: '/api/v1/service-jobs' },
+  { prefix: '/api/v1/supplier-transactions' },
+  { prefix: '/api/v1/supplier-purchases' },
+  { prefix: '/api/v1/supplier-ledger' },
+  { prefix: '/api/v1/inventory/receivings' },
+];
+
+// D3: stock counts, movements and onboarding stay global. New inventory routes
+// must be explicitly classified here or added to the scoped receiving registry.
+const globalInventory = [
+  'GET /api/v1/inventory/onboarding/pending',
+  'POST /api/v1/inventory/onboarding/batch',
+  'GET /api/v1/inventory/summary',
+  'GET /api/v1/inventory/low-stock',
+  'GET /api/v1/inventory/movements',
 ];
 
 // Express 5 hides mount paths inside matcher closures. Record the registration
@@ -62,11 +86,14 @@ function inventory(application: Application): CoveredRoute[] {
           const registration = scopedPrefixes.find(
             ({ prefix }) => fullPath === prefix || fullPath.startsWith(prefix + '/')
           );
-          if (!registration) continue;
+          if (!registration && !fullPath.startsWith('/api/v1/inventory/')) continue;
           const has = (handle: unknown) =>
             preceding.some(
               (item) =>
-                item.handle === handle && (item.path === registration.prefix || item.path === '/')
+                item.handle === handle &&
+                (item.path === '/' ||
+                  fullPath === item.path ||
+                  fullPath.startsWith(item.path + '/'))
             );
           for (const method of Object.keys(layer.route.methods)) {
             found.push({
@@ -74,7 +101,7 @@ function inventory(application: Application): CoveredRoute[] {
               path: fullPath,
               authenticated: has(requireAuth),
               scoped: has(branchScopeMiddleware),
-              guarded: has(registration.parentGuard),
+              guarded: registration?.parentGuard ? has(registration.parentGuard) : true,
             });
           }
         }
@@ -96,16 +123,31 @@ function inventory(application: Application): CoveredRoute[] {
   return found;
 }
 
-describe('branch-scope route coverage registry (Phase 3A)', () => {
+describe('branch-scope route coverage registry (Phase 3B)', () => {
   let app: Application;
   beforeAll(async () => {
     app = (await import('./app.js')).app;
   }, 30_000);
-  it('walks every registered customer and supplier route and requires authentication, scope and parent guards before it', () => {
+  afterAll(() => vi.restoreAllMocks());
+  it('walks every 3B route and classifies the global inventory allow-list explicitly', () => {
     const routes = inventory(app);
     expect(scopedPrefixes.map((entry) => entry.prefix)).toEqual([
       '/api/v1/customers',
       '/api/v1/suppliers',
+      '/api/v1/debts',
+      '/api/v1/installment-plans',
+      '/api/v1/payments',
+      '/api/v1/financial-ledger',
+      '/api/v1/receivables',
+      '/api/v1/prepaid-purchases',
+      '/api/v1/corrections',
+      '/api/v1/sales-orders',
+      '/api/v1/sales-returns',
+      '/api/v1/service-jobs',
+      '/api/v1/supplier-transactions',
+      '/api/v1/supplier-purchases',
+      '/api/v1/supplier-ledger',
+      '/api/v1/inventory/receivings',
     ]);
     expect(
       routes.filter((route) => route.path.startsWith('/api/v1/customers')).length
@@ -113,20 +155,61 @@ describe('branch-scope route coverage registry (Phase 3A)', () => {
     expect(
       routes.filter((route) => route.path.startsWith('/api/v1/suppliers')).length
     ).toBeGreaterThanOrEqual(13);
+    expect(
+      routes
+        .filter(
+          (r) =>
+            r.path.startsWith('/api/v1/inventory/') &&
+            !r.path.startsWith('/api/v1/inventory/receivings')
+        )
+        .map((r) => r.method + ' ' + r.path)
+        .sort()
+    ).toEqual([...globalInventory].sort());
+    expect(
+      routes
+        .filter((r) => r.path.startsWith('/api/v1/inventory/receivings'))
+        .map((r) => r.method + ' ' + r.path)
+        .sort()
+    ).toEqual(
+      [
+        'GET /api/v1/inventory/receivings',
+        'POST /api/v1/inventory/receivings',
+        'GET /api/v1/inventory/receivings/duplicate-check',
+        'GET /api/v1/inventory/receivings/:receivingId',
+        'PATCH /api/v1/inventory/receivings/:receivingId/metadata',
+        'POST /api/v1/inventory/receivings/:receivingId/void',
+      ].sort()
+    );
     for (const route of routes) {
       expect(route.authenticated, route.method + ' ' + route.path).toBe(true);
-      expect(route.scoped, route.method + ' ' + route.path).toBe(true);
+      expect(route.scoped, route.method + ' ' + route.path).toBe(
+        !globalInventory.includes(route.method + ' ' + route.path)
+      );
       expect(route.guarded, route.method + ' ' + route.path).toBe(true);
     }
     mkdirSync('node_modules/.cache/home-connect', { recursive: true });
     writeFileSync(
-      'node_modules/.cache/home-connect/phase3a-route-inventory.json',
+      'node_modules/.cache/home-connect/phase3b-route-inventory.json',
       JSON.stringify(
         routes.map(({ method, path }) => ({ method, path })),
         null,
         2
       )
     );
+  });
+  it('includes new unclassified inventory routes so the allow-list cannot silently miss them', () => {
+    const broken = express();
+    broken.use(
+      '/api/v1/inventory',
+      requireAuth,
+      Router().get('/unclassified', (_req, res) => res.sendStatus(200))
+    );
+    const routes = inventory(broken);
+    expect(routes.map((r) => r.method + ' ' + r.path)).toEqual([
+      'GET /api/v1/inventory/unclassified',
+    ]);
+    expect(routes.filter((r) => !globalInventory.includes(r.method + ' ' + r.path)).length).toBe(1);
+    expect(routes[0].scoped).toBe(false);
   });
   it('detects a router registered before the scope boundary', () => {
     const broken = express();

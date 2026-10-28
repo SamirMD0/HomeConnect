@@ -1,0 +1,1 @@
+# No production raw SQL statement changed in 3B. Existing 3A parameterized Prisma.sql scope predicates are reused by passing the scope through customer/debt/supplier/supplierTransaction search callers.

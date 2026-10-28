@@ -1,0 +1,418 @@
+[
+  {
+    "method": "GET",
+    "path": "/api/v1/customers/:customerId/debts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/customers/:customerId/debts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/customers/:customerId/prepaid-purchases"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/customers/:customerId/installment-plans"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/customers/:customerId/installment-plans"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/customers/:customerId/activity"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/customers/:customerId/financial-summary"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/customers/:customerId/statement"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/customers/:customerId/corrections"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/customers/:customerId/service-jobs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/customers/:customerId/sales-orders"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/customers"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/customers/search"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/customers/search-suggestions"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/customers"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/customers/:id"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/customers/:id"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/customers/:id"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/debts/:debtId"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/debts/:debtId/payments"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/debts/:debtId"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/debts/:debtId/corrections"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/debts/:debtId/payments"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/debts/:debtId/cancel"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/installment-plans/:planId"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/installment-plans/:planId/payments"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/installment-plans/:planId"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/installment-plans/:planId/corrections"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/installment-plans/:planId/payments"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/installment-plans/:planId/cancel"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/payments/:paymentId/receipt"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/payments/:paymentId/void"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/payments/:paymentId/corrections"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/payments/:paymentId/reallocate"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/financial-ledger"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/receivables"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/prepaid-purchases"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/prepaid-purchases/:id"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/prepaid-purchases/:id/deliver"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/prepaid-purchases/:id/revert-delivery"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/inventory/receivings/duplicate-check"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/inventory/receivings"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/inventory/receivings"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/inventory/receivings/:receivingId"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/inventory/receivings/:receivingId/metadata"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/inventory/receivings/:receivingId/void"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/inventory/onboarding/pending"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/inventory/onboarding/batch"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/inventory/summary"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/inventory/low-stock"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/inventory/movements"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/service-jobs/summary"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/service-jobs"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/service-jobs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/service-jobs/:serviceJobId/audit"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/service-jobs/:serviceJobId/status"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/service-jobs/:serviceJobId/cancel"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/service-jobs/:serviceJobId/reopen"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/service-jobs/:serviceJobId"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/service-jobs/:serviceJobId"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/sales-orders/summary"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/sales-orders"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/sales-orders"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/sales-orders/:salesOrderId/audit"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/sales-orders/:salesOrderId/fulfillment-status"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/sales-orders/:salesOrderId/payment"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/sales-orders/:salesOrderId/cancel"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/sales-orders/:salesOrderId/restore"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/sales-orders/:salesOrderId/return"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/sales-orders/:salesOrderId/create-debt"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/sales-orders/:salesOrderId/create-installment-plan"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/sales-orders/:salesOrderId/unlink-financial"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/sales-orders/:salesOrderId/items"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/sales-orders/:salesOrderId/items/:itemId"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/sales-orders/:salesOrderId/items/:itemId/remove"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/sales-orders/:salesOrderId/deduct-stock"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/sales-orders/:salesOrderId/restore-stock"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/sales-orders/:salesOrderId"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/sales-orders/:salesOrderId"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/sales-returns/:salesReturnId"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/suppliers/:supplierId/transactions"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/suppliers/:supplierId/transactions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/suppliers/:supplierId/purchases"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/suppliers/:supplierId/purchases"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/suppliers"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/suppliers"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/suppliers/:supplierId/summary"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/suppliers/:supplierId/audit"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/suppliers/:supplierId/archive"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/suppliers/:supplierId/restore"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/suppliers/:supplierId"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/suppliers/:supplierId"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/suppliers/:supplierId"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/supplier-transactions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/supplier-transactions/:transactionId"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/supplier-transactions/:transactionId"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/supplier-transactions/:transactionId/remove"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/supplier-transactions/:transactionId/restore"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/supplier-purchases/receipt-check"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/supplier-purchases/:purchaseId"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/supplier-purchases/:supplierReceivingId/receipts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/supplier-purchases/:supplierReceivingId/receipts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/supplier-ledger"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/corrections"
+  }
+]

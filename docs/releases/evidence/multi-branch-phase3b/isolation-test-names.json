@@ -1,0 +1,454 @@
+[
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) GET debts/:id hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) GET debts/:id/payments hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) PATCH debts/:id hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) POST debts/:id/corrections hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) POST debts/:id/payments hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) POST debts/:id/cancel hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) GET installment-plans/:id hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) GET installment-plans/:id/payments hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) PATCH installment-plans/:id hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) POST installment-plans/:id/corrections hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) POST installment-plans/:id/payments hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) POST installment-plans/:id/cancel hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) GET payments/:id/receipt hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) POST payments/:id/void hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) POST payments/:id/corrections hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) POST payments/:id/reallocate hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) GET prepaid-purchases/:id hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) POST prepaid-purchases/:id/deliver hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) POST prepaid-purchases/:id/revert-delivery hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) GET sales-orders/:id hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) GET sales-orders/:id/audit hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) POST sales-orders/:id/fulfillment-status hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) POST sales-orders/:id/payment hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) POST sales-orders/:id/cancel hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) POST sales-orders/:id/restore hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) POST sales-orders/:id/return hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) POST sales-orders/:id/create-debt hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) POST sales-orders/:id/create-installment-plan hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) POST sales-orders/:id/unlink-financial hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) POST sales-orders/:id/items hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) PATCH sales-orders/:id/items/:item hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) POST sales-orders/:id/items/:item/remove hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) POST sales-orders/:id/deduct-stock hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) POST sales-orders/:id/restore-stock hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) PATCH sales-orders/:id hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) GET sales-returns/:id hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) GET service-jobs/:id hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) GET service-jobs/:id/audit hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) POST service-jobs/:id/status hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) POST service-jobs/:id/cancel hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) POST service-jobs/:id/reopen hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) PATCH service-jobs/:id hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) GET supplier-transactions/:id hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) PATCH supplier-transactions/:id hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) POST supplier-transactions/:id/remove hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) POST supplier-transactions/:id/restore hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) GET supplier-purchases/:id hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) GET supplier-purchases/:id/receipts hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) POST supplier-purchases/:id/receipts hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) GET inventory/receivings/:id hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) PATCH inventory/receivings/:id/metadata hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) POST inventory/receivings/:id/void hides B before validation/roles and leaves all records unchanged",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) debts rejects employee header B on the next request",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) installment-plans rejects employee header B on the next request",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) payments rejects employee header B on the next request",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) financial-ledger rejects employee header B on the next request",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) receivables rejects employee header B on the next request",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) prepaid-purchases rejects employee header B on the next request",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) corrections rejects employee header B on the next request",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) sales-orders rejects employee header B on the next request",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) sales-returns rejects employee header B on the next request",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) service-jobs rejects employee header B on the next request",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) supplier-transactions rejects employee header B on the next request",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) supplier-purchases rejects employee header B on the next request",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) supplier-ledger rejects employee header B on the next request",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) inventory/receivings rejects employee header B on the next request",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) financial-ledger filters A, admin A and admin all with branchId metadata",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) receivables filters A, admin A and admin all with branchId metadata",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) prepaid-purchases filters A, admin A and admin all with branchId metadata",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) corrections filters A, admin A and admin all with branchId metadata",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) sales-orders filters A, admin A and admin all with branchId metadata",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) service-jobs filters A, admin A and admin all with branchId metadata",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) supplier-transactions filters A, admin A and admin all with branchId metadata",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) supplier-ledger filters A, admin A and admin all with branchId metadata",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) inventory/receivings filters A, admin A and admin all with branchId metadata",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) keeps walk-in counter receipts and customerless correction ownership in the ledger",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) sales-orders scopes searches as well as lists",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) service-jobs scopes searches as well as lists",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) supplier-transactions scopes searches as well as lists",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) financial-ledger scopes searches as well as lists",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) receivables scopes searches as well as lists",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) debts/:id debt exposes branchId for an in-scope detail",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) installment-plans/:id plan exposes branchId for an in-scope detail",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) payments/:id/receipt payment exposes branchId for an in-scope detail",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) payments/:id/receipt counter exposes branchId for an in-scope detail",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) prepaid-purchases/:id prepaid exposes branchId for an in-scope detail",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) sales-orders/:id order exposes branchId for an in-scope detail",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) sales-orders/:id walkin exposes branchId for an in-scope detail",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) sales-returns/:id return exposes branchId for an in-scope detail",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) sales-returns/:id creditReturn exposes branchId for an in-scope detail",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) service-jobs/:id job exposes branchId for an in-scope detail",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) supplier-transactions/:id transaction exposes branchId for an in-scope detail",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) supplier-purchases/:id purchase exposes branchId for an in-scope detail",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) inventory/receivings/:id receiving exposes branchId for an in-scope detail",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) inventory/receivings/:id anonymousReceiving exposes branchId for an in-scope detail",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) adds inherited branchId to sales and service audit history",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) scopes supplier purchase lists, receipt checks, and receipt photo metadata",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) creates customer financial and supplier records in selected branch A",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) rejects B installment allocation before verification logs or financial writes",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) rejects A supplier transaction linked to B receiving without writes",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) rejects B sales-order line on an A return without writes",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) denies B receipt upload before creating a file and permits an A upload",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) rejects every available create in multi-branch all before any write",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) rejects in-scope record mutations in multi-branch all",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) creates walk-in sales and supplier-less receivings in header A and sole accessible no-header scope",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) keeps no-header walk-in creation unchanged for an admin with one active branch",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) creates parent-owned sales and service jobs in A and hides B customers",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) financial-ledger observes grant revocation and branch deactivation on the next request",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) sales-orders observes grant revocation and branch deactivation on the next request",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) service-jobs observes grant revocation and branch deactivation on the next request",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) supplier-transactions observes grant revocation and branch deactivation on the next request",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) inventory/receivings observes grant revocation and branch deactivation on the next request",
+    "status": "passed"
+  },
+  {
+    "name": "Phase 3B financial and sales branch isolation (real database) leaves global inventory summary, movements and onboarding outside branch scope",
+    "status": "passed"
+  }
+]
