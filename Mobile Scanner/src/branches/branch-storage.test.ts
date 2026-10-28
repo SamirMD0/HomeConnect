@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-const storage = vi.hoisted(() => ({ getItemAsync: vi.fn(), setItemAsync: vi.fn(), deleteItemAsync: vi.fn(), WHEN_UNLOCKED_THIS_DEVICE_ONLY: 'device-only' }));
-vi.mock('expo-secure-store', () => storage);
 import { clearSelectedBranch, loadSelectedBranch, saveSelectedBranch } from './branch-storage';
 import { selectedBranchHeaders, setSelectedBranch } from './branch-selection';
 import { clearAllAuth } from '../storage/secure-storage';
+const storage = vi.hoisted(() => ({ getItemAsync: vi.fn(), setItemAsync: vi.fn(), deleteItemAsync: vi.fn(), WHEN_UNLOCKED_THIS_DEVICE_ONLY: 'device-only' }));
+vi.mock('expo-secure-store', () => storage);
 beforeEach(() => { vi.clearAllMocks(); setSelectedBranch(null); });
 describe('secure branch storage', () => {
   it('persists branch selection using the existing device-only secure storage', async () => {
