@@ -1,3 +1,4 @@
+import { branchFields } from '../../branches/branch-breakdown';
 import { Currency } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import {
@@ -39,6 +40,7 @@ export function agingBucket(daysUnpaid: number): AgingBucketKey {
 }
 
 export interface AgingDebtRecord {
+  branchId?:string; branch?:{name:string};
   id: string;
   description: string;
   originalAmount: Decimal;
@@ -53,6 +55,7 @@ export interface AgingDebtRecord {
 }
 
 export interface AgingRow {
+  branchId?:string; branchName?:string;
   debtId: string;
   customer: { id: string; name: string; phone: string };
   description: string;
@@ -104,7 +107,7 @@ export function buildAgingRows(debts: AgingDebtRecord[], cutoff: string, nextDay
       : null;
 
     rows.push({
-      debtId: debt.id,
+      ...branchFields(debt), debtId: debt.id,
       customer: debt.customer,
       description: debt.description,
       reference: debt.salesOrder?.orderNumber ?? null,
@@ -147,8 +150,8 @@ export function summariseAging(rows: AgingRow[]) {
     over30: owed((row) => row.daysUnpaid > 30),
     over60: owed((row) => row.daysUnpaid > 60),
     over90: owed((row) => row.daysUnpaid > 90),
-    oldestDebt: oldest ? { debtId: oldest.debtId, customerName: oldest.customer.name, daysUnpaid: oldest.daysUnpaid, remainingAmount: oldest.remainingAmount } : null,
-    largestCustomer: largest ? { customerId: largest.id, customerName: largest.name, remainingAmount: moneyToApiString(largest.amount) } : null,
+    oldestDebt: oldest ? { ...branchFields(oldest), debtId: oldest.debtId, customerName: oldest.customer.name, daysUnpaid: oldest.daysUnpaid, remainingAmount: oldest.remainingAmount } : null,
+    largestCustomer: largest ? { ...branchFields(rows.find(row=>row.customer.id===largest.id)??{}), customerId: largest.id, customerName: largest.name, remainingAmount: moneyToApiString(largest.amount) } : null,
     buckets: AGING_BUCKETS.map((bucket) => ({
       key: bucket.key,
       label: bucket.label,

@@ -7,7 +7,7 @@ export class ReportRowsController {
   static get(slice: ReportSlice) {
     return async (req: Request, res: Response, next: NextFunction) => {
       try {
-        const report = await ReportRowsService.get(slice, req.query as unknown as ReportRowsQueryInput);
+        const report = await ReportRowsService.get(slice, req.query as unknown as ReportRowsQueryInput, undefined, req.branchScope!);
         res.status(200).json({ success: true, ...report });
       } catch (error) { next(error); }
     };
@@ -16,7 +16,7 @@ export class ReportRowsController {
   static exportCsv(slice: ReportSlice) {
     return async (req: Request, res: Response, next: NextFunction) => {
       try {
-        const result = await ReportRowsService.exportCsv(slice, req.query as unknown as ReportRowsQueryInput);
+        const result = await ReportRowsService.exportCsv(slice, req.query as unknown as ReportRowsQueryInput, undefined, req.branchScope!);
         res.setHeader('Content-Type', 'text/csv; charset=utf-8');
         res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
         res.status(200).send(result.csv);

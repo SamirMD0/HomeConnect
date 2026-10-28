@@ -1,3 +1,6 @@
+import { branchFields } from '../../branches/branch-breakdown';
+import { withEnvelopeBranchBreakdown } from '../../branches/branch-breakdown';
+import { type BranchScope } from '../../branches/branch-scope';
 import { Currency, StockMovementType, SupplierReceivingItemStatus, SupplierReceivingStatus } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import {
@@ -34,6 +37,7 @@ const HIGH_BALANCE = new Decimal('500.00');
 const CATEGORY_REPORTS = new Set<ReportSlice>(['products-bought', 'products-cost-changes', 'inventory-movements', 'inventory-reconciliation']);
 
 export interface CustomerMovementRow {
+  branchId?:string; branchName?:string;
   customer: { id: string; name: string; phone: string };
   openingBalance: string;
   newDebt: string;
@@ -48,13 +52,18 @@ export interface CustomerMovementRow {
 }
 
 export class ReportRowsService {
-  static async get(slice: ReportSlice, query: ReportRowsQueryInput, options: ReportRowsOptions = {}) {
+  static async get(slice: ReportSlice, query: ReportRowsQueryInput, options: ReportRowsOptions = {}, scope: BranchScope) {
+    if (CATEGORY_REPORTS.has(slice)) return this.calculateGet(slice, query, options, scope);
+    return withEnvelopeBranchBreakdown(scope, scope => this.calculateGet(slice, query, options, scope));
+  }
+
+  static async calculateGet(slice: ReportSlice, query: ReportRowsQueryInput, options: ReportRowsOptions = {}, scope: BranchScope) {
     const businessDate = options.businessDate ?? todayInBusinessTimezone();
     const period = resolveReportsPeriod(query, businessDate);
     const generatedAt = (options.generatedAt ?? new Date()).toISOString();
     const payload = slice === 'suppliers-aging'
-      ? { ...await SupplierPayablesService.get(businessDate), operationalSnapshot: true }
-      : await this.load(slice, period);
+      ? { ...await SupplierPayablesService.get(businessDate, scope), operationalSnapshot: true }
+      : await this.load(slice, period, scope);
     const classifications = CATEGORY_REPORTS.has(slice) && payload.rows.length
       ? await ReportRowsRepository.productCategories([...new Set(payload.rows.map((row) => reportProductId(row)).filter((id): id is string => Boolean(id)))])
       : [];
@@ -65,16 +74,16 @@ export class ReportRowsService {
     }) } : payload;
     return {
       meta: { ...period, generatedAt, currency: 'USD' as const },
-      data,
+      data: CATEGORY_REPORTS.has(slice) ? {...data, inventoryScope: 'all-branches' as const} : data,
     };
   }
 
-  static async exportCsv(slice: ReportSlice, query: ReportRowsQueryInput, options: ReportRowsOptions = {}) {
-    const report = await this.get(slice, query, options);
+  static async exportCsv(slice: ReportSlice, query: ReportRowsQueryInput, options: ReportRowsOptions = {}, scope: BranchScope) {
+    const report = await this.get(slice, query, options, scope);
     const definition = csvDefinition(slice, report.data.rows as Array<Record<string, unknown>>);
     return {
       filename: `${slice}-${report.meta.from}-to-${report.meta.to}.csv`,
-      csv: buildCsv(definition.headers, definition.rows),
+      csv: buildCsv(CATEGORY_REPORTS.has(slice) ? definition.headers : ['Branch', ...definition.headers], CATEGORY_REPORTS.has(slice) ? definition.rows : definition.rows.map((row,index) => [(report.data.rows[index] as {branchName?:string}).branchName, ...row])),
     };
   }
 
@@ -88,7 +97,7 @@ export class ReportRowsService {
    * payments come from the same service's activity view, so this report can
    * never disagree with the Customer Debts report about the same customer.
    */
-  static async customerMovements(period: ReturnType<typeof resolveReportsPeriod>): Promise<CustomerMovementRow[]> {
+  static async customerMovements(period: ReturnType<typeof resolveReportsPeriod>, scope: BranchScope): Promise<CustomerMovementRow[]> {
     const dayBeforePeriod = addDays(parseBusinessDate(period.from), -1);
     const snapshotQuery = {
       month: period.from.slice(0, 7), mode: 'SNAPSHOT' as const, includeZero: true,
@@ -96,10 +105,10 @@ export class ReportRowsService {
       sortBy: 'OUTSTANDING' as const, sortOrder: 'DESC' as const,
     };
     const [opening, closing, activity] = await Promise.all([
-      MonthlyDebtsService.getDebtReportForRange(snapshotQuery, dayBeforePeriod, dayBeforePeriod),
-      MonthlyDebtsService.getDebtReportForRange(snapshotQuery, period.from, period.to),
+      MonthlyDebtsService.getDebtReportForRange(snapshotQuery, dayBeforePeriod, dayBeforePeriod, scope),
+      MonthlyDebtsService.getDebtReportForRange(snapshotQuery, period.from, period.to, scope),
       MonthlyDebtsService.getFinancialActivityForRange(
-        { month: period.from.slice(0, 7), page: 1, limit: 10000 }, period.from, period.to),
+        { month: period.from.slice(0, 7), page: 1, limit: 10000 }, period.from, period.to, scope),
     ]);
 
     const openingByCustomer = new Map(opening.rows.map((row) => [row.customer.id, row]));
@@ -139,6 +148,7 @@ export class ReportRowsService {
       if (closingBalance.equals(ZERO_MONEY) && openingBalance.equals(ZERO_MONEY) && entry.paymentCount === 0 && entry.returnCredits.equals(ZERO_MONEY)) continue;
 
       rows.push({
+        ...branchFields(closingRow ?? openingRow ?? activity.items.find(item => item.customer?.id === customerId) ?? {}),
         customer,
         openingBalance: moneyToApiString(openingBalance),
         newDebt: moneyToApiString(entry.newDebt),
@@ -174,11 +184,11 @@ export class ReportRowsService {
     };
   }
 
-  private static async load(slice: ReportSlice, period: ReturnType<typeof resolveReportsPeriod>) {
+  private static async load(slice: ReportSlice, period: ReturnType<typeof resolveReportsPeriod>, scope: BranchScope) {
     if (slice === 'customers-new') {
-      const records = await ReportRowsRepository.newCustomers(period);
+      const records = await ReportRowsRepository.newCustomers(period, scope);
       const rows = records.map((record) => ({
-        id: record.id, name: record.name, phone: record.phone, isActive: record.isActive,
+        ...branchFields(record), id: record.id, name: record.name, phone: record.phone, isActive: record.isActive,
         createdOn: prismaDateToBusinessDate(record.createdAt),
       }));
       return { summary: { count: rows.length }, rows };
@@ -189,14 +199,14 @@ export class ReportRowsService {
         month: period.from.slice(0, 7), mode: 'SNAPSHOT', includeZero: false,
         includeCancelled: false, overdueOnly: false, page: 1, limit: 10000,
         sortBy: 'OUTSTANDING', sortOrder: 'DESC',
-      }, period.from, period.to);
+      }, period.from, period.to, scope);
       return { summary: report.summary, rows: report.rows };
     }
 
     if (slice === 'customers-payments') {
-      const records = await ReportRowsRepository.customerPayments(period);
+      const records = await ReportRowsRepository.customerPayments(period, scope);
       const rows = records.map((record) => ({
-        id: record.id, customer: record.customer, amount: moneyToApiString(record.totalAmount, record.currency),
+        ...branchFields(record), id: record.id, customer: record.customer, amount: moneyToApiString(record.totalAmount, record.currency),
         currency: record.currency, exchangeRate: record.exchangeRate?.toFixed(6) ?? '1.000000',
         baseAmount: moneyToApiString(record.baseAmount ?? record.totalAmount), sourceSalesOrder: record.salesOrder ?? null,
         paymentDate: prismaDateToBusinessDate(record.paymentDate), paymentMethod: record.paymentMethod,
@@ -207,13 +217,13 @@ export class ReportRowsService {
 
     if (slice === 'customers-aging') {
       const nextDay = nextDayAfter(period.to);
-      const debts = await ReportRowsRepository.openDebtsAsOf(nextDay);
+      const debts = await ReportRowsRepository.openDebtsAsOf(nextDay, scope);
       const rows = buildAgingRows(debts, period.to, nextDay);
       return { summary: { ...summariseAging(rows), asOf: period.to, scope: 'STANDARD_DEBTS_ONLY' }, rows };
     }
 
     if (slice === 'customers-not-paid' || slice === 'customers-paid') {
-      const movements = await this.customerMovements(period);
+      const movements = await this.customerMovements(period, scope);
       const rows = movements.filter((row) => (slice === 'customers-paid' ? row.paymentCount > 0 : row.paymentCount === 0));
       return { summary: this.movementSummary(slice, rows), rows };
     }
@@ -318,11 +328,11 @@ export class ReportRowsService {
     }
 
     if (slice === 'suppliers-debts') {
-      const records = await ReportRowsRepository.supplierTransactions(period);
-      const increases = records.filter((record) => record.direction === 'INCREASE_OWED').map((record) => record.amount);
-      const decreases = records.filter((record) => record.direction === 'DECREASE_OWED').map((record) => record.amount);
-      const rows = records.map((record) => ({
-        ...record, amount: moneyToApiString(record.amount),
+      const records = await ReportRowsRepository.supplierTransactions(period, scope);
+      const increases = records.filter((record) => record.direction === 'INCREASE_OWED').map((record) => record.baseAmount);
+      const decreases = records.filter((record) => record.direction === 'DECREASE_OWED').map((record) => record.baseAmount);
+      const rows = records.map(({branch, baseAmount: _baseAmount, ...record}) => ({
+        ...record, branchName:branch?.name, amount: moneyToApiString(record.amount),
         transactionDate: prismaDateToBusinessDate(record.transactionDate),
       }));
       return {
@@ -337,9 +347,9 @@ export class ReportRowsService {
     }
 
     if (slice === 'suppliers-receiving') {
-      const records = await ReportRowsRepository.supplierReceivings(period);
+      const records = await ReportRowsRepository.supplierReceivings(period, scope);
       const rows = records.map((record) => ({
-        id: record.id, referenceNumber: record.referenceNumber,
+        ...branchFields(record), id: record.id, referenceNumber: record.referenceNumber,
         receivedOn: prismaDateToBusinessDate(record.receivedOn), status: record.status,
         supplier: record.supplier, receivedBy: record.receivedBy,
         lineCount: record.items.length,
@@ -353,15 +363,15 @@ export class ReportRowsService {
 
     if (slice === 'sales-orders') {
       const [records, metrics] = await Promise.all([
-        ReportRowsRepository.salesOrders(period),
-        ReportsMetricsService.get(period),
+        ReportRowsRepository.salesOrders(period, scope),
+        ReportsMetricsService.get(period, scope),
       ]);
       const rows = records.map(serializeSalesOrder);
       return { summary: metrics.sales, rows };
     }
 
     if (slice === 'sales-unpaid') {
-      const records = await ReportRowsRepository.unpaidSalesOrders();
+      const records = await ReportRowsRepository.unpaidSalesOrders(scope);
       const rows = records.map((record) => {
         const balanceInput = (obligation: NonNullable<typeof record.debt> | NonNullable<typeof record.installmentPlan>['installments'][number]) => ({
           allocations: obligation.paymentAllocations.map((allocation) => ({
@@ -402,8 +412,9 @@ export class ReportRowsService {
     }
 
     if (slice === 'customers-financial-integrity') {
-      const evidence = await ReportRowsRepository.customerFinancialIntegrity();
+      const evidence = await ReportRowsRepository.customerFinancialIntegrity(scope);
       const reported = await ReceivablesService.computeReceivableProjections({
+        scope,
         customerIds: evidence.map((row) => row.customerId),
       });
       const rows = evidence.map((record) => {
@@ -418,7 +429,7 @@ export class ReportRowsService {
         if (allocationTotal.greaterThan(obligationTotal)) issues.push('Non-voided allocations exceed non-cancelled obligations');
         if (!difference.equals(ZERO_MONEY)) issues.push('Reported outstanding does not match obligations minus allocations');
         return {
-          customer: { id: record.customerId, name: record.customerName, phone: record.customerPhone },
+          ...branchFields(record), customer: { id: record.customerId, name: record.customerName, phone: record.customerPhone },
           obligationTotal: moneyToApiString(obligationTotal),
           allocationTotal: moneyToApiString(allocationTotal),
           reportedOutstanding: moneyToApiString(reportedOutstanding),
@@ -434,7 +445,7 @@ export class ReportRowsService {
     }
 
     if (slice === 'suppliers-financial-integrity') {
-      const evidence = await ReportRowsRepository.supplierFinancialIntegrity();
+      const evidence = await ReportRowsRepository.supplierFinancialIntegrity(scope);
       const reported = await SuppliersRepository.balances(evidence.map((row) => row.supplierId));
       const rows = evidence.map((record) => {
         const increaseTotal = new Decimal(record.increaseTotal);
@@ -446,7 +457,7 @@ export class ReportRowsService {
         const issues: string[] = [];
         if (!difference.equals(ZERO_MONEY)) issues.push('Reported balance does not match active increases minus active decreases');
         return {
-          supplier: { id: record.supplierId, name: record.supplierName, phone: record.supplierPhone },
+          ...branchFields(record), supplier: { id: record.supplierId, name: record.supplierName, phone: record.supplierPhone },
           increaseTotal: moneyToApiString(increaseTotal),
           decreaseTotal: moneyToApiString(decreaseTotal),
           reportedBalance: moneyToApiString(reportedBalance),
@@ -483,8 +494,9 @@ type SalesOrderRowRecord =
   | Omit<Awaited<ReturnType<typeof ReportRowsRepository.unpaidSalesOrders>>[number], 'debt' | 'installmentPlan' | 'returns'>;
 
 function serializeSalesOrder(record: SalesOrderRowRecord) {
+  const {branch, ...fields} = record;
   return {
-    ...record, orderDate: prismaDateToBusinessDate(record.orderDate),
+    ...fields, branchName:branch.name, orderDate: prismaDateToBusinessDate(record.orderDate),
     totalAmount: moneyToApiString(record.baseTotalAmount ?? record.totalAmount), paidAmount: moneyToApiString(record.basePaidAmount ?? record.paidAmount),
     remainingAmount: moneyToApiString(record.baseRemainingAmount ?? record.remainingAmount),
   };
