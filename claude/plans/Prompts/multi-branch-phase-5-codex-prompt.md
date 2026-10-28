@@ -75,7 +75,14 @@ Add `CustomerImport` and `Debt.sourceCustomerImportId` exactly as §4.7 specifie
 Endpoints, mirroring the product import routes: `POST /customers/imports` (`branchId`, `fileName`, `csvText`; same size/row limits as product import), `GET` and `PATCH /customers/imports/:id` (mapping, decisions), `POST /customers/imports/:id/commit` (`decisions`, `accountPassword?`). ADMIN-only; validators in the existing style.
 
 - **Column mapping:** auto-detect from header aliases in English and Arabic (`Name/الاسم`, `Phone/الهاتف`, `Address/العنوان`, `Notes/ملاحظات`, `Credit limit/سقف الدين`, `Opening balance/رصيد افتتاحي`, `Currency/العملة`, `Due date/تاريخ الاستحقاق`, `Active/نشط`); user-adjustable; stored on the draft.
-- **Fields and rules:** use the table in §4.7. Normalize and validate phone and name with the **same functions the customer create path uses**. Find them; do not write new ones. Credit limit follows the existing credit-limit permission rule.
+- **Fields and rules:** use the table in §4.7, except for phone (next item). Validate name, address and notes with the existing customer validator schemas (`backend/src/validators/customers.validator.ts`). Credit limit follows the existing credit-limit permission rule.
+- **Phone rule (decided; supersedes §4.7's "normalized" wording):** the customer create path does not normalize phones. It checks length (5–20) and matches the exact stored text. Do **not** add normalization to manual create or update, and do **not** rewrite any existing customer's phone.
+  - **Validate and store:** validate imported phones with the existing phone schema, trim surrounding whitespace, and store them as entered.
+  - **Match on a digits-only key:** every duplicate check (`FILE_PHONE`, `EXISTING_PHONE`, `OTHER_BRANCH_PHONE`) and the commit-time stale recheck compare digit keys from `normalizePhoneTerm` (`backend/src/lib/search-normalize.ts`), the helper customer search already uses. So `03 123 456` in the file matches an existing `03123456`.
+  - **No country-code folding:** `+961…` and `961…` are not folded into local numbers. None of the current data uses a `+` or a country code.
+  - **Empty key:** a phone whose digit key is empty is `INVALID`.
+  - **Implementation:** compute existing keys in SQL (`regexp_replace(phone, '[^0-9]', '', 'g')`, filtered by branch) or in memory from the branch's customers. Add no column and no index for it.
+  - **Tests:** spaced vs plain numbers match; another branch's same-digits phone is only an `OTHER_BRANCH_PHONE` hint; the stored phone is the trimmed input.
 - **Duplicate detection:** `FILE_PHONE`, `EXISTING_PHONE` (destination branch only; default `UPDATE` with chosen fields among name/address/notes/creditLimit, or `SKIP`), `OTHER_BRANCH_PHONE` (informational only, never mergeable), `NAME_SIMILAR` (warning). Row statuses `READY` / `CONFLICT` / `INVALID` with issue text and summary counts.
 - **Repeat imports:** same `fileHash` already committed **to the same branch** → previous-import warning, and matching rows default to `SKIP`. The same file into a different branch is allowed (new per-branch customers) and shows the `OTHER_BRANCH_PHONE` hint.
 - **Result:** counts (created, updated, skipped, opening debts and their USD total) plus a downloadable CSV of skipped and invalid rows with reasons.
@@ -88,7 +95,7 @@ Endpoints, mirroring the product import routes: `POST /customers/imports` (`bran
 
 - **§5.3 duplicate handling** and **§5.4 repeat imports**, every bullet, as DB integration tests (`*-db.integration.test.ts`, gated by the existing `RUN_*_DB_TESTS` flags). Include: import into branch A leaves every branch-B customer and debt unchanged (compare checksums); access revoked between preview and commit → 404 and nothing written; inactive branch → 409; stale conflict → 409 and nothing written; same draft committed twice → one set of effects; same file to the same branch → zero new customers and zero new debts; edited file with opening amounts for already-imported customers → blocked, debt count unchanged.
 - **Money:** USD and LBP opening debts have the correct `baseOriginalAmount`, branch, `sourceCustomerImportId` and audit rows; customer balances computed by the existing services equal the imported amounts.
-- **Unit:** alias mapping (English and Arabic), phone normalization reuse, every conflict kind, decision validation.
+- **Unit:** alias mapping (English and Arabic), the digits-only phone matching rule, every conflict kind, decision validation.
 - **Product importer:** existing tests pass unchanged after the helper extraction.
 - **Frontend:** dialog steps, the forced branch choice in "All branches", the destination banner, the password gate, and the result summary.
 - **Migration:** additive-only, applies on a scratch database at the current `develop` schema, and is recognized as present afterwards by `classifyPresence` (`backend/src/features/maintenance/migration-presence.ts`).
