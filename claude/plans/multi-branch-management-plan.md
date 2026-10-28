@@ -204,6 +204,10 @@ Before migration the business must state **[D1]** whether every existing record 
 | Inventory position in analysis | Global (stock is not branch-scoped, labelled "all branches stock") | same |
 | Profit, cash drawer | Not present today — not added by this project | — |
 
+Aggregate breakdowns retain the original full-scope total and rerun the same calculation per branch. Responses consistently omit branchBreakdown for zero or one branch; global stock metrics remain unchanged and are labelled inventoryScope: all-branches.
+
+Activity visibility: branch-owned activity writes store the record's branchId. Feeds show rows in the accessible branch scope; historical/global NULL-branch activity is visible only to ADMIN users, and audit sources inherit scope through their parent record.
+
 ### 3.4 Customer CSV import (UX mirrors product import)
 1. **Choose destination branch** — required first field (preselected from the header scope if single; forced choice in "All"). Shown as a prominent banner on every subsequent step: *"Importing into: Branch X"*.
 2. **Upload** CSV (same size/row limits).
@@ -239,8 +243,9 @@ Each phase is a separate PR into `develop`, with its own migration where applica
 - **Risk:** high (live money tables). Mitigations: pre-migration backup is mandatory (guard), dry run on restored copy, migration is additive until the final `NOT NULL` step, documented rollback (§4.8).
 
 ### Phase 3 — Backend scoping & authorization
+- Diagnostics and preflight remain global and admin-only; they are not branch-scoped.
 - Add `branchId` to all branch-owned list and detail responses.
-- **Files:** new `middleware/branch-scope.middleware.ts`; every repository/service for branch-owned data (`repositories/customers.repository.ts`, `features/financial/**`, `features/sales/**`, `features/suppliers/**`, `features/service/**` jobs); reports (`reports/rows/report-rows.repository.ts` raw SQL, `monthly-*`, `analysis`), dashboards (`features/dashboard/**`, `services/dashboard.service.ts` raw SQL), search (`lib/search-query.ts`, `customer-suggestions.service.ts`), documents (invoice/receipt/statement print branch name), CSV export (Branch column), diagnostics export.
+- **Files:** new `middleware/branch-scope.middleware.ts`; every repository/service for branch-owned data (`repositories/customers.repository.ts`, `features/financial/**`, `features/sales/**`, `features/suppliers/**`, `features/service/**` jobs); reports (`reports/rows/report-rows.repository.ts` raw SQL, `monthly-*`, `analysis`), dashboards (`features/dashboard/**`, `services/dashboard.service.ts` raw SQL), search (`lib/search-query.ts`, `customer-suggestions.service.ts`), documents (invoice/receipt/statement print branch name), CSV export (Branch column).
 - Customer phone duplicate check becomes per branch (D2).
 - Mobile: scanner/LAN session binds to one branch chosen at pairing; gateway forwards the header; supplier endpoints scoped (`features/scanner/*`, `Mobile Scanner/src/api/hc-client.ts`, branch shown on mobile home).
 - Route-coverage meta-test.

@@ -3,15 +3,15 @@ import { DashboardAnalyticsService } from './dashboard.service';
 import type { DashboardActivityQueryInput, DashboardMonthEndQueryInput, DashboardQueryInput } from './dashboard.validator';
 
 export class DashboardAnalyticsController {
-  static overview = handler((req, options) => DashboardAnalyticsService.overview(req.query as unknown as DashboardQueryInput, options));
-  static customerFinancial = handler((req, options) => DashboardAnalyticsService.customerFinancial(req.query as unknown as DashboardQueryInput, options));
-  static supplierFinancial = handler((req, options) => DashboardAnalyticsService.supplierFinancial(req.query as unknown as DashboardQueryInput, options));
-  static serviceSummary = handler((req, options) => DashboardAnalyticsService.serviceSummary(req.query as unknown as DashboardQueryInput, options));
-  static productSummary = handler((req, options) => DashboardAnalyticsService.productSummary(req.query as unknown as DashboardQueryInput, options));
-  static salesSummary = handler((req, options) => DashboardAnalyticsService.salesSummary(req.query as unknown as DashboardQueryInput, options));
-  static alerts = handler((req, options) => DashboardAnalyticsService.alerts(req.query as unknown as DashboardQueryInput, options));
-  static activity = handler((req, options) => DashboardAnalyticsService.activity((req.query as unknown as DashboardActivityQueryInput).limit, options));
-  static monthEnd = handler((req, options) => DashboardAnalyticsService.monthEnd((req.query as unknown as DashboardMonthEndQueryInput).month, options));
+  static overview = handler((req, options) => DashboardAnalyticsService.overview(req.query as unknown as DashboardQueryInput, options, req.branchScope!));
+  static customerFinancial = handler((req, options) => DashboardAnalyticsService.customerFinancial(req.query as unknown as DashboardQueryInput, options, req.branchScope!));
+  static supplierFinancial = handler((req, options) => DashboardAnalyticsService.supplierFinancial(req.query as unknown as DashboardQueryInput, options, req.branchScope!));
+  static serviceSummary = handler((req, options) => DashboardAnalyticsService.serviceSummary(req.query as unknown as DashboardQueryInput, options, req.branchScope!));
+  static productSummary = handler((req, options) => DashboardAnalyticsService.productSummary(req.query as unknown as DashboardQueryInput, options, req.branchScope!));
+  static salesSummary = handler((req, options) => DashboardAnalyticsService.salesSummary(req.query as unknown as DashboardQueryInput, options, req.branchScope!));
+  static alerts = handler((req, options) => DashboardAnalyticsService.alerts(req.query as unknown as DashboardQueryInput, options, req.branchScope!));
+  static activity = handler((req, options) => DashboardAnalyticsService.activity((req.query as unknown as DashboardActivityQueryInput).limit, options, req.branchScope!));
+  static monthEnd = handler((req, options) => DashboardAnalyticsService.monthEnd((req.query as unknown as DashboardMonthEndQueryInput).month, options, req.branchScope!));
 }
 
 function handler(load: (req: Request, options: { role: string; bypassCache: boolean }) => Promise<unknown>) {

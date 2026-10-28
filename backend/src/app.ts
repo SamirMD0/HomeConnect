@@ -141,10 +141,10 @@ app.use('/api/v1/pricing-card-feature-icons', requireAuth, featureIconRoutes);
 app.use('/api/v1/pricing-card-templates', requireAuth, pricingCardTemplateRoutes);
 app.use('/api/v1/pricing-card-prints', requireAuth, printSnapshotRoutes);
 app.use('/api/v1/corrections', requireAuth, branchScopeMiddleware, correctionsRoutes);
-app.use('/api/v1/reports', requireAuth, monthlyDebtsRoutes);
-app.use('/api/v1/reports', requireAuth, monthlyReviewRoutes);
-app.use('/api/v1/reports', requireAuth, reportRowsRoutes);
-app.use('/api/v1/reports', requireAuth, analysisRoutes);
+app.use('/api/v1/reports', requireAuth, branchScopeMiddleware, monthlyDebtsRoutes);
+app.use('/api/v1/reports', requireAuth, branchScopeMiddleware, monthlyReviewRoutes);
+app.use('/api/v1/reports', requireAuth, branchScopeMiddleware, reportRowsRoutes);
+app.use('/api/v1/reports', requireAuth, branchScopeMiddleware, analysisRoutes);
 if (process.env.HOSTED_MODE !== 'true') {
   app.use('/api/v1/admin/backups', requireAuth, backupRoutes);
 }
@@ -154,7 +154,7 @@ app.use('/api/v1/admin/maintenance', requireAuth, maintenanceRoutes);
 app.use('/api/v1/system', requireAuth, systemRoutes);
 app.use('/api/v1/scanner', requireAuth, scannerRoutes);
 app.use('/api/v1/business-settings', requireAuth, businessSettingsRoutes);
-app.use('/api/v1/dashboard', requireAuth, dashboardRoutes);
+app.use('/api/v1/dashboard', requireAuth, branchScopeMiddleware, dashboardRoutes);
 
 // Global Error Handler
 app.use(errorHandler);

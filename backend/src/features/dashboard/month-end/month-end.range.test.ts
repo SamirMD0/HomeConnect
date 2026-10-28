@@ -44,13 +44,13 @@ describe('MonthEndService explicit ranges', () => {
   });
 
   it('uses from minus one day as opening and reconciles through the exact cutoff', async () => {
-    const result = await MonthEndService.get({ from: '2026-08-05', to: '2026-08-10' });
+    const result = await MonthEndService.get({ from: '2026-08-05', to: '2026-08-10' }, phase3cScope);
 
     expect(monthlyDebtsMock.getDebtReportForRange).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({ includeZero: false }),
       '2026-08-04',
-      '2026-08-04'
+      '2026-08-04', phase3cScope
     );
     expect(result.meta).toEqual({ from: '2026-08-05', to: '2026-08-10' });
     expect(result.customers).toMatchObject({
@@ -69,19 +69,19 @@ describe('MonthEndService explicit ranges', () => {
     ['month crossing', '2026-07-28', '2026-08-03', '2026-07-27'],
     ['single day', '2026-08-17', '2026-08-17', '2026-08-16'],
   ])('keeps meta.to and opening cutoff correct for a %s range', async (_label, from, to, openingCutoff) => {
-    const result = await MonthEndService.get({ from, to });
+    const result = await MonthEndService.get({ from, to }, phase3cScope);
 
     expect(result.meta.to).toBe(to);
     expect(monthlyDebtsMock.getDebtReportForRange).toHaveBeenNthCalledWith(
       1,
       expect.any(Object),
       openingCutoff,
-      openingCutoff
+      openingCutoff, phase3cScope
     );
     expect(monthlyDebtsMock.getFinancialActivityForRange).toHaveBeenCalledWith(
       expect.any(Object),
       from,
-      to
+      to, phase3cScope
     );
   });
 });
@@ -97,3 +97,10 @@ function transaction(id: string, amount: string, transactionDate: string) {
     transactionDate: new Date(`${transactionDate}T00:00:00.000Z`),
   };
 }
+
+const phase3cScope = { mode: 'all' as const, branchIds: ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'] };
+
+vi.mock('../../branches/branch-breakdown', async (importOriginal) => ({
+  ...await importOriginal<typeof import('../../branches/branch-breakdown')>(),
+  branchLabel: vi.fn().mockResolvedValue('Phase 3C A'),
+}));

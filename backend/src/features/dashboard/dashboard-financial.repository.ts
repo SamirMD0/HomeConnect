@@ -1,3 +1,4 @@
+import { scopeWhere, type BranchScope } from '../branches/branch-scope';
 import { DebtStatus, InstallmentPlanStatus, Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { businessDateToPrisma, todayInBusinessTimezone } from '../financial';
@@ -62,18 +63,18 @@ export interface DashboardFinancialRecordSet {
 }
 
 export class DashboardFinancialRepository {
-  static async loadFinancialRecords(): Promise<DashboardFinancialRecordSet> {
+  static async loadFinancialRecords(scope: BranchScope): Promise<DashboardFinancialRecordSet> {
     const businessDate = todayInBusinessTimezone();
     const monthStart = businessDateToPrisma(`${businessDate.slice(0, 7)}-01`);
     const [totalCustomers, debts, plans, monthlyPayments, recentPayments, returns] = await Promise.all([
       prisma.customer.count({
-        where: {
+        where: { ...scopeWhere(scope),
           deletedAt: null,
           isActive: true,
         },
       }),
       prisma.debt.findMany({
-        where: {
+        where: { ...scopeWhere(scope),
           customer: {
             deletedAt: null,
             isActive: true,
@@ -84,11 +85,11 @@ export class DashboardFinancialRepository {
             { createdAt: { gte: monthStart } },
           ],
         },
-        include: dashboardDebtInclude,
+        include: { ...dashboardDebtInclude, branch: {select:{name:true}} },
         orderBy: [{ dueDate: 'asc' }, { createdAt: 'desc' }, { id: 'asc' }],
       }),
       prisma.installmentPlan.findMany({
-        where: {
+        where: { ...scopeWhere(scope),
           customer: {
             deletedAt: null,
             isActive: true,
@@ -99,30 +100,30 @@ export class DashboardFinancialRepository {
             { createdAt: { gte: monthStart } },
           ],
         },
-        include: dashboardPlanInclude,
+        include: { ...dashboardPlanInclude, branch: {select:{name:true}} },
         orderBy: [{ startDate: 'asc' }, { createdAt: 'desc' }, { id: 'asc' }],
       }),
       prisma.payment.findMany({
-        where: {
+        where: { ...scopeWhere(scope),
           OR: [{ customerId: null }, { customer: { deletedAt: null, isActive: true } }],
           voidedAt: null,
           paymentDate: { gte: monthStart },
         },
-        include: dashboardPaymentInclude,
+        include: { ...dashboardPaymentInclude, branch: {select:{name:true}} },
         orderBy: [{ paymentDate: 'desc' }, { createdAt: 'desc' }, { id: 'asc' }],
       }),
       prisma.payment.findMany({
-        where: {
+        where: { ...scopeWhere(scope),
           OR: [{ customerId: null }, { customer: { deletedAt: null, isActive: true } }],
           voidedAt: null,
         },
-        include: dashboardPaymentInclude,
+        include: { ...dashboardPaymentInclude, branch: {select:{name:true}} },
         orderBy: [{ paymentDate: 'desc' }, { createdAt: 'desc' }, { id: 'asc' }],
         take: 5,
       }),
       prisma.salesReturn.findMany({
-        where: { returnDate: { gte: monthStart }, OR: [{ customerId: null }, { customer: { deletedAt: null, isActive: true } }] },
-        select: { returnDate: true, baseReceivableReliefAmount: true, baseRefundableAmount: true, refundMethod: true },
+        where: { ...scopeWhere(scope),  returnDate: { gte: monthStart }, OR: [{ customerId: null }, { customer: { deletedAt: null, isActive: true } }] },
+        select: { branchId: true, branch: {select:{name:true}},  returnDate: true, baseReceivableReliefAmount: true, baseRefundableAmount: true, refundMethod: true },
       }),
     ]);
 

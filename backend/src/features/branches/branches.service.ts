@@ -152,7 +152,8 @@ function audit(
   details: Record<string, unknown>
 ) {
   return tx.activityLog.create({
-    data: { userId: actor.userId, action, entityType, entityId, details: details as Prisma.InputJsonObject },
+    data: {
+      branchId: null, userId: actor.userId, action, entityType, entityId, details: details as Prisma.InputJsonObject },
   });
 }
 

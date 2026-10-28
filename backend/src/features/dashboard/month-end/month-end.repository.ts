@@ -1,22 +1,23 @@
+import { scopeWhere, type BranchScope } from '../../branches/branch-scope';
 import { SupplierTransactionStatus } from '@prisma/client';
 import { prisma } from '../../../lib/prisma';
 
 export class MonthEndRepository {
-  static async loadOperationalRecords() {
+  static async loadOperationalRecords(scope: BranchScope) {
     const [supplierTransactions, serviceJobs] = await Promise.all([
       prisma.supplierTransaction.findMany({
-        where: { status: SupplierTransactionStatus.ACTIVE },
+        where: { ...scopeWhere(scope),  status: SupplierTransactionStatus.ACTIVE },
         select: {
           id: true,
           supplierId: true,
           type: true,
           direction: true,
-          amount: true,
+          amount: true, baseAmount: true,
           transactionDate: true,
           supplier: { select: { isActive: true } },
         },
       }),
-      prisma.serviceJob.findMany({
+      prisma.serviceJob.findMany({ where: scopeWhere(scope),
         select: {
           id: true,
           status: true,
@@ -26,7 +27,7 @@ export class MonthEndRepository {
         },
       }),
     ]);
-    return { supplierTransactions, serviceJobs };
+    return { supplierTransactions: supplierTransactions.map(row => ({ ...row, amount: row.baseAmount })), serviceJobs };
   }
 }
 

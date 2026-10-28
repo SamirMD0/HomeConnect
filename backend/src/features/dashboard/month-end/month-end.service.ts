@@ -1,3 +1,4 @@
+import { type BranchScope } from '../../branches/branch-scope';
 import { SupplierTransactionDirection, SupplierTransactionType } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import {
@@ -20,13 +21,13 @@ const DISCLOSURE = {
 } as const;
 
 export class MonthEndService {
-  static get(month: string): Promise<MonthEndData>;
-  static get(range: { from: string; to: string }): Promise<RangeMonthEndData>;
-  static get(input: string | { from: string; to: string }): Promise<MonthEndData | RangeMonthEndData> {
-    return typeof input === 'string' ? this.getMonth(input) : this.getRange(input.from, input.to);
+  static get(month: string, scope: BranchScope): Promise<MonthEndData>;
+  static get(range: { from: string; to: string }, scope: BranchScope): Promise<RangeMonthEndData>;
+  static get(input: string | { from: string; to: string }, scope: BranchScope): Promise<MonthEndData | RangeMonthEndData> {
+    return typeof input === 'string' ? this.getMonth(input, scope) : this.getRange(input.from, input.to, scope);
   }
 
-  private static async getMonth(month: string): Promise<MonthEndData> {
+  private static async getMonth(month: string, scope: BranchScope): Promise<MonthEndData> {
     const { from, to } = resolveMonthRange(month);
     const priorMonth = addDays(from, -1).slice(0, 7);
     const query = (value: string, includeZero: boolean) => ({
@@ -41,10 +42,10 @@ export class MonthEndService {
       sortOrder: 'DESC' as const,
     });
     const [openingReport, closingReport, activity, operational] = await Promise.all([
-      MonthlyDebtsService.getMonthlyDebtReport(query(priorMonth, false)),
-      MonthlyDebtsService.getMonthlyDebtReport(query(month, true)),
-      MonthlyDebtsService.getMonthlyFinancialActivity({ month, page: 1, limit: 10_000 }),
-      MonthEndRepository.loadOperationalRecords(),
+      MonthlyDebtsService.getMonthlyDebtReport(query(priorMonth, false), scope),
+      MonthlyDebtsService.getMonthlyDebtReport(query(month, true), scope),
+      MonthlyDebtsService.getMonthlyFinancialActivity({ month, page: 1, limit: 10_000 }, scope),
+      MonthEndRepository.loadOperationalRecords(scope),
     ]);
 
     return this.aggregateOperational(
@@ -56,7 +57,7 @@ export class MonthEndService {
     );
   }
 
-  private static async getRange(fromInput: string, toInput: string): Promise<RangeMonthEndData> {
+  private static async getRange(fromInput: string, toInput: string, scope: BranchScope): Promise<RangeMonthEndData> {
     const from = parseRangeDate(fromInput);
     const to = parseRangeDate(toInput);
     if (from > to) throw new Error('Month-end range from must not be after to');
@@ -76,15 +77,15 @@ export class MonthEndService {
       MonthlyDebtsService.getDebtReportForRange(
         snapshotQuery(openingCutoff.slice(0, 7), false),
         openingCutoff,
-        openingCutoff
+        openingCutoff, scope
       ),
-      MonthlyDebtsService.getDebtReportForRange(snapshotQuery(to.slice(0, 7), true), from, to),
+      MonthlyDebtsService.getDebtReportForRange(snapshotQuery(to.slice(0, 7), true), from, to, scope),
       MonthlyDebtsService.getFinancialActivityForRange(
         { month: from.slice(0, 7), page: 1, limit: 10_000 },
         from,
-        to
+        to, scope
       ),
-      MonthEndRepository.loadOperationalRecords(),
+      MonthEndRepository.loadOperationalRecords(scope),
     ]);
     const result = this.aggregateOperational(
       from.slice(0, 7),

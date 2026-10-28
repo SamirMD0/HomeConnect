@@ -1,3 +1,4 @@
+import { customerBranch } from '../../branches/parent-branch';
 import { Currency, Prisma } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { AppError, AuthorizationError, ValidationError } from '../../../lib/errors';
@@ -57,7 +58,7 @@ export class CreditLimitService {
   static async audit(tx: Prisma.TransactionClient, customerId: string, debtId: string, decision: OverrideDecision, user: Actor): Promise<void> {
     if (!decision) return;
     await tx.activityLog.create({ data: {
-      userId: user.userId, action: 'CREDIT_LIMIT_OVERRIDE', entityType: 'Debt', entityId: debtId,
+      branchId: await customerBranch(customerId, tx), userId: user.userId, action: 'CREDIT_LIMIT_OVERRIDE', entityType: 'Debt', entityId: debtId,
       details: { customerId, debtId, ...decision },
     } });
   }

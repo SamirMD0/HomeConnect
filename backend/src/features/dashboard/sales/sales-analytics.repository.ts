@@ -1,3 +1,4 @@
+import { scopeWhere, type BranchScope } from '../../branches/branch-scope';
 import {
   SalesChannel,
   SalesOrderFulfillmentStatus,
@@ -15,13 +16,13 @@ const EXCLUDED = [
 ];
 
 export class SalesAnalyticsRepository {
-  static async load(range: ResolvedDashboardRange, businessDate: string) {
+  static async load(range: ResolvedDashboardRange, businessDate: string, scope: BranchScope) {
     const from = businessDateToPrisma(range.from);
     const rangeEnd = nextDay(range.to);
     const today = businessDateToPrisma(businessDate);
     const tomorrow = nextDay(businessDate);
     const counted = { fulfillmentStatus: { notIn: EXCLUDED } };
-    const ranged = { ...counted, orderDate: { gte: from, lt: rangeEnd } };
+    const ranged = { ...scopeWhere(scope), ...counted, orderDate: { gte: from, lt: rangeEnd } };
 
     const [
       todayAggregate,
@@ -35,12 +36,12 @@ export class SalesAnalyticsRepository {
       topProductGroups,
     ] = await Promise.all([
       prisma.salesOrder.aggregate({
-        where: { ...counted, orderDate: { gte: today, lt: tomorrow } },
+        where: { ...scopeWhere(scope),  ...counted, orderDate: { gte: today, lt: tomorrow } },
         _sum: { baseTotalAmount: true },
         _count: { _all: true },
       }),
       prisma.salesOrder.count({
-        where: {
+        where: { ...scopeWhere(scope),
           salesChannel: { in: [SalesChannel.SHOP_DELIVERY, SalesChannel.PHONE_ORDER] },
           fulfillmentStatus: { in: [
             SalesOrderFulfillmentStatus.CONFIRMED,
@@ -50,17 +51,17 @@ export class SalesAnalyticsRepository {
           ] },
         },
       }),
-      prisma.salesOrder.count({ where: { ...counted, paymentStatus: SalesOrderPaymentStatus.UNPAID } }),
-      prisma.salesOrder.count({ where: { ...counted, paymentStatus: SalesOrderPaymentStatus.PARTIALLY_PAID } }),
-      prisma.salesOrder.count({ where: { ...counted, settlement: SalesOrderSettlement.INSTALLMENT } }),
+      prisma.salesOrder.count({ where: { ...scopeWhere(scope),  ...counted, paymentStatus: SalesOrderPaymentStatus.UNPAID } }),
+      prisma.salesOrder.count({ where: { ...scopeWhere(scope),  ...counted, paymentStatus: SalesOrderPaymentStatus.PARTIALLY_PAID } }),
+      prisma.salesOrder.count({ where: { ...scopeWhere(scope),  ...counted, settlement: SalesOrderSettlement.INSTALLMENT } }),
       prisma.salesOrder.groupBy({
-        by: ['orderDate'], where: ranged, _sum: { baseTotalAmount: true }, _count: { _all: true }, orderBy: { orderDate: 'asc' },
+        by: ['orderDate'], where: { ...scopeWhere(scope), ...ranged }, _sum: { baseTotalAmount: true }, _count: { _all: true }, orderBy: { orderDate: 'asc' },
       }),
       prisma.salesOrder.groupBy({
-        by: ['paymentStatus'], where: ranged, _count: { _all: true }, orderBy: { paymentStatus: 'asc' },
+        by: ['paymentStatus'], where: { ...scopeWhere(scope), ...ranged }, _count: { _all: true }, orderBy: { paymentStatus: 'asc' },
       }),
       prisma.salesOrder.groupBy({
-        by: ['fulfillmentStatus'], where: { orderDate: { gte: from, lt: rangeEnd } }, _count: { _all: true }, orderBy: { fulfillmentStatus: 'asc' },
+        by: ['fulfillmentStatus'], where: { ...scopeWhere(scope),  orderDate: { gte: from, lt: rangeEnd } }, _count: { _all: true }, orderBy: { fulfillmentStatus: 'asc' },
       }),
       prisma.salesOrderItem.groupBy({
         by: ['productId'],

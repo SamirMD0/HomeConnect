@@ -1,3 +1,4 @@
+import { scopeWhere, type BranchScope } from '../../branches/branch-scope';
 import type { Prisma } from '@prisma/client';
 import { prisma } from '../../../lib/prisma';
 
@@ -8,8 +9,8 @@ const include = {
 export type ServiceAnalyticsJob = Prisma.ServiceJobGetPayload<{ include: typeof include }>;
 
 export class ServiceAnalyticsRepository {
-  static load(): Promise<ServiceAnalyticsJob[]> {
-    return prisma.serviceJob.findMany({
+  static load(scope: BranchScope): Promise<ServiceAnalyticsJob[]> {
+    return prisma.serviceJob.findMany({ where: scopeWhere(scope),
       include,
       orderBy: [{ serviceCreatedDate: 'asc' }, { id: 'asc' }],
     });

@@ -10,7 +10,7 @@ const { service } = vi.hoisted(() => ({
   },
 }));
 vi.mock('./dashboard.service', () => ({ DashboardAnalyticsService: service }));
-vi.mock('../../lib/prisma', () => ({ prisma: { $queryRaw: vi.fn().mockResolvedValue([{ result: 1 }]) }, transactionModel: {}, activityLogModel: {} }));
+vi.mock('../../lib/prisma', async () => ({ prisma: { ...((await import('../../test/branch-scope-fixture.js')).singleBranchRouteModels()), $queryRaw: vi.fn().mockResolvedValue([{ result: 1 }]) }, transactionModel: {}, activityLogModel: {} }));
 
 const secret = process.env.JWT_SECRET!;
 const employee = jwt.sign({ userId: '44444444-4444-4444-8444-444444444444', role: 'EMPLOYEE' }, secret);
@@ -31,7 +31,7 @@ describe('dashboard analytics routes', () => {
     const response = await request(app).get('/api/v1/dashboard/overview?range=month').set('Authorization', `Bearer ${employee}`).set('x-dashboard-refresh', 'true');
     expect(response.status).toBe(200);
     expect(response.body.data.meta.currency).toBe('USD');
-    expect(service.overview).toHaveBeenCalledWith(expect.objectContaining({ range: 'month' }), expect.objectContaining({ role: 'EMPLOYEE', bypassCache: true }));
+    expect(service.overview).toHaveBeenCalledWith(expect.objectContaining({ range: 'month' }), expect.objectContaining({ role: 'EMPLOYEE', bypassCache: true }), phase3cScope);
   });
 
   it('rejects invalid custom ranges', async () => {
@@ -50,3 +50,10 @@ describe('dashboard analytics routes', () => {
     expect(service.activity).toHaveBeenCalled();
   });
 });
+
+const phase3cScope = { mode: 'all' as const, branchIds: ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'] };
+
+vi.mock('../branches/branch-breakdown', async (importOriginal) => ({
+  ...await importOriginal<typeof import('../branches/branch-breakdown')>(),
+  branchLabel: vi.fn().mockResolvedValue('Phase 3C A'),
+}));
