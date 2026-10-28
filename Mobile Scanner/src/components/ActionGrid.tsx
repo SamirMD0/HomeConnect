@@ -2,6 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 interface ActionGridProps {
+  supplierActionsDisabled?: boolean;
   onScan: () => void;
   onAttachReceipt: () => void;
   onSupplierInvoice: () => void;
@@ -12,12 +13,12 @@ interface ActionGridProps {
 }
 
 export function ActionGrid(props: ActionGridProps) {
-  const actions: { label: string; accessibilityLabel: string; icon: keyof typeof Ionicons.glyphMap; onPress: () => void; primary?: boolean }[] = [
+  const actions: { label: string; accessibilityLabel: string; icon: keyof typeof Ionicons.glyphMap; onPress: () => void; primary?: boolean; disabled?: boolean }[] = [
     { label: 'Scan product', accessibilityLabel: 'Scan a product', icon: 'barcode-outline', onPress: props.onScan, primary: true },
-    { label: 'Attach receipt', accessibilityLabel: 'Attach supplier receipt', icon: 'receipt-outline', onPress: props.onAttachReceipt },
-    { label: 'Supplier invoice', accessibilityLabel: 'Record supplier invoice', icon: 'document-text-outline', onPress: props.onSupplierInvoice },
-    { label: 'Supplier payment', accessibilityLabel: 'Record supplier payment', icon: 'wallet-outline', onPress: props.onSupplierPayment },
-    { label: 'Supplier statement', accessibilityLabel: 'Supplier statement', icon: 'list-outline', onPress: props.onSupplierStatement },
+    { label: 'Attach receipt', accessibilityLabel: 'Attach supplier receipt', icon: 'receipt-outline', onPress: props.onAttachReceipt, disabled: props.supplierActionsDisabled },
+    { label: 'Supplier invoice', accessibilityLabel: 'Record supplier invoice', icon: 'document-text-outline', onPress: props.onSupplierInvoice, disabled: props.supplierActionsDisabled },
+    { label: 'Supplier payment', accessibilityLabel: 'Record supplier payment', icon: 'wallet-outline', onPress: props.onSupplierPayment, disabled: props.supplierActionsDisabled },
+    { label: 'Supplier statement', accessibilityLabel: 'Supplier statement', icon: 'list-outline', onPress: props.onSupplierStatement, disabled: props.supplierActionsDisabled },
     { label: 'Sign out', accessibilityLabel: 'Sign out', icon: 'log-out-outline', onPress: props.onSignOut },
   ];
 
@@ -29,8 +30,10 @@ export function ActionGrid(props: ActionGridProps) {
             key={action.icon}
             accessibilityRole="button"
             accessibilityLabel={action.accessibilityLabel}
+            disabled={action.disabled}
+            accessibilityState={{ disabled: Boolean(action.disabled) }}
             onPress={action.onPress}
-            style={({ pressed }) => [styles.card, action.primary && styles.primaryCard, pressed && styles.pressed]}
+            style={({ pressed }) => [styles.card, action.primary && styles.primaryCard, action.disabled && { opacity: 0.45 }, pressed && styles.pressed]}
           >
             <Ionicons name={action.icon} size={36} color={action.primary ? '#047857' : '#0f172a'} accessible={false} />
             <Text style={[styles.label, action.primary && styles.primaryLabel]}>{action.label}</Text>

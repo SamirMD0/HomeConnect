@@ -17,7 +17,7 @@ describe('mobile branch selection', () => {
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ success: true, data: [] }) });
     vi.stubGlobal('fetch', fetchMock);
     await requestJson('http://pc/api/v1/suppliers');
-    expect(fetchMock.mock.calls[0][1].headers['X-Branch-Scope']).toBe('a');
+    expect(fetchMock.mock.calls[0]?.[1]?.headers['X-Branch-Scope']).toBe('a');
     expect(authedHeaders({ baseUrl: '', token: 'jwt' })).toEqual({ Authorization: 'Bearer jwt', 'X-Branch-Scope': 'a' });
     setSelectedBranch(null);
     expect(selectedBranchHeaders()).toEqual({});
@@ -33,7 +33,7 @@ describe('mobile branch selection', () => {
     const fetchMock = vi.fn().mockResolvedValueOnce({ blob: async () => new Blob(['photo']) }).mockResolvedValueOnce({ ok: false, status: 403, json: async () => ({ error: { code: 'BRANCH_ACCESS_DENIED' } }) });
     vi.stubGlobal('fetch', fetchMock);
     await expect(uploadReceipt({ baseUrl: 'http://pc', token: 'jwt' }, { supplierPurchaseId: 'p', localUri: 'file:photo', mime: 'image/jpeg' })).rejects.toMatchObject({ code: 'BRANCH_ACCESS_DENIED' });
-    expect(fetchMock.mock.calls[1][1].headers['X-Branch-Scope']).toBe('b');
+    expect(fetchMock.mock.calls[1]?.[1]?.headers['X-Branch-Scope']).toBe('b');
     expect(listener).toHaveBeenCalledOnce(); expect(selectedBranchHeaders()).toEqual({}); off();
   });
   it('does not clear a new selection for a stale denial or unrelated error', () => {

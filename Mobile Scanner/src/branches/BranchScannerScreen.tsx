@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import type { ComponentProps } from 'react';
 import { authedHeaders, backendBaseUrl, HcApiError, requestJson } from '../api/hc-client';
 import { AppButton } from '../components/AppButton';
+import { StatusBanner } from '../components/StatusBanner';
 import { ScannerScreen } from '../screens/ScannerScreen';
 import { BranchPickerScreen } from './BranchPickerScreen';
 import { onBranchRejected, selectAccessibleBranch, setSelectedBranch } from './branch-selection';
@@ -55,6 +56,13 @@ export function BranchScannerScreen(props: ComponentProps<typeof ScannerScreen>)
     try { await saveSelectedBranch(branch.id); setSelected(branch); }
     catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not store branch.'); }
   };
+  if (!selected && !busy && !error && branches.length === 0) return <View style={styles.container}>
+    <View style={styles.branch}>
+      <StatusBanner tone="warning" message="No branch assigned — ask an administrator" />
+      <AppButton label="Refresh branches" variant="secondary" onPress={() => setRefresh((value) => value + 1)} />
+    </View>
+    <ScannerScreen {...props} supplierActionsDisabled />
+  </View>;
   if (!selected || busy) return <BranchPickerScreen branches={branches} error={error} busy={busy} onSelect={(branch) => void choose(branch)} onRetry={() => setRefresh((value) => value + 1)} onLogout={() => void props.onLogout()} />;
   return <View style={styles.container}>
     <View style={styles.branch}>
