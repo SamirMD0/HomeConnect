@@ -153,7 +153,7 @@ export class CustomersService {
   }
 }
 
-function assertCreditLimitPermission(data: { creditLimit?: string | null }, actor?: { role: string }) {
+export function assertCreditLimitPermission(data: { creditLimit?: string | null }, actor?: { role: string }) {
   if (data.creditLimit !== undefined && actor?.role !== 'ADMIN') {
     throw new AuthorizationError('Only an ADMIN can configure customer credit limits / تعديل حد الائتمان متاح للمسؤول فقط');
   }
