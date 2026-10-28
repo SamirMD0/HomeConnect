@@ -19,6 +19,7 @@ import { useSalesOrder, useSalesOrderAction, useUpdateSalesOrder } from '../../f
 import type { SalesOrderItem, SalesOrderLineInput } from '../../features/sales-orders/types/sales-orders.types';
 import { NEXT_FULFILLMENT_STATUS } from '../../features/sales-orders/utils/sales-order-status';
 import { useAuth } from '../../hooks/useAuth';
+import { branchIdOf, useRecordBranch } from '../../features/branches/scope/branch-ui';
 
 type Dialog = 'cancel' | 'restore' | 'return' | 'debt' | 'installment' | 'unlink' | 'payment' | 'edit-details' | 'add-item' | 'edit-item' | 'remove-item' | null;
 
@@ -27,6 +28,7 @@ export function SalesOrderDetailsPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
   const orderQuery = useSalesOrder(id);
+  useRecordBranch(branchIdOf(orderQuery.data));
   const credit = useCreditLimitWarning();
   const receiptKey = useRef(crypto.randomUUID());
   const [dialog, setDialog] = useState<Dialog>(null);

@@ -33,6 +33,7 @@ export interface CustomerFinancialSnapshot {
 }
 
 export interface Customer {
+  branchId?: string;
   id: string;
   name: string;
   phone: string;

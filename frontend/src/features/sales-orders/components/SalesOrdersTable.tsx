@@ -8,12 +8,15 @@ import {
   shouldShowSalesOrderSettlement,
 } from '../utils/sales-order-status';
 import { PaymentStatusChip } from './PaymentStatusChip';
+import { BRANCH_COLUMN_LABEL, BranchBadge, useShowBranchColumn } from '../../branches/scope/branch-ui';
 import { SalesOrderStatusChip } from './SalesOrderStatusChip';
 
 export function SalesOrdersTable({ orders }: { orders: SalesOrder[] }) {
   const navigate = useNavigate();
+  const showBranch = useShowBranchColumn();
   const columns = [
     { header: 'Order', accessor: (order: SalesOrder) => <div><p className="font-semibold text-slate-900">{order.orderNumber}</p><p className="text-xs text-slate-500">{formatBusinessDate(order.orderDate)}</p></div> },
+    ...(showBranch ? [{ header: BRANCH_COLUMN_LABEL, accessor: (order: SalesOrder) => <BranchBadge branchId={order.branchId} /> }] : []),
     { header: 'Customer', accessor: (order: SalesOrder) => <div dir="auto"><p className="user-text font-medium text-slate-900">{order.customer?.name ?? 'Customer'}</p>{order.customer && <p className="text-xs text-slate-500">{order.customer.phone}</p>}</div> },
     { header: 'Items', accessor: (order: SalesOrder) => <div><p className="user-text" dir="auto">{order.items[0]?.productNameSnapshot ?? '—'}{order.items.length > 1 ? ` +${order.items.length - 1}` : ''}</p><p className="text-xs text-slate-500">{order.items.reduce((sum, item) => sum + item.quantity, 0)} units</p></div> },
     { header: 'Total', accessor: (order: SalesOrder) => <span className="font-semibold tabular-nums">{formatMoney(order.totalAmount, order.currency)}</span> },

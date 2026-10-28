@@ -11,6 +11,7 @@ export interface ServiceProduct { id: string; name: string; model: string; brand
 export interface ServiceActor { id: string; fullName: string; username: string }
 
 export interface ServiceJob {
+  branchId?: string;
   id: string;
   jobNumber: string;
   customerId: string;

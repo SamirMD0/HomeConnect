@@ -14,6 +14,7 @@ import {
 } from '../types/financial-ledger.types';
 import { LEDGER_CORRECTION_ENABLED, LedgerActionItem, LedgerRowActions } from './LedgerRowActions';
 import { LedgerCustomerLink } from './LedgerCustomerLink';
+import { BranchRowLabel } from '../../branches/scope/branch-ui';
 
 const ledgerCellHover =
   'bg-white transition-all duration-200 group-hover:bg-gray-600 group-hover:text-yellow-300 group-hover:[text-shadow:0_0_8px_rgba(250,204,21,0.8)]';
@@ -109,6 +110,7 @@ export const LedgerObligationRow: React.FC<LedgerObligationRowProps> = ({
       <td className={`px-4 py-2 ${ledgerCellHover}`}>
         <LedgerCustomerLink customer={item.customer} className="font-medium" />
         <p className="text-[11px] text-slate-500 transition-colors group-hover:text-yellow-200">{item.customer.phone}</p>
+        <BranchRowLabel branchId={item.branchId} />
       </td>
       <td className={`hidden px-4 py-2 lg:table-cell ${ledgerCellHover}`}>
         <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700 transition-colors group-hover:bg-yellow-300 group-hover:text-slate-950">

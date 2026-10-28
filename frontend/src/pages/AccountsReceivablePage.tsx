@@ -28,6 +28,7 @@ import {
   ReceivableSortBy,
 } from '../features/receivables/types/receivables.types';
 import { hasActiveReceivableFilters } from '../features/receivables/utils/receivables-query';
+import { branchIdOf, useRecordBranch } from '../features/branches/scope/branch-ui';
 
 const emptyTierCounts = {
   NO_ACTIVITY: 0,
@@ -52,6 +53,7 @@ export const AccountsReceivablePage: React.FC = () => {
     sortOrder: 'desc',
   });
   const [customerForPayment, setCustomerForPayment] = useState<ReceivableCustomer | null>(null);
+  useRecordBranch(branchIdOf(customerForPayment));
   const { expandedRows, toggleRow } = useExpandedRows();
 
   const { data, isLoading, isError, refetch } = useReceivables(filters);
@@ -67,7 +69,9 @@ export const AccountsReceivablePage: React.FC = () => {
     });
   };
 
-  const openPaymentDialog = (item: ReceivableItem) => setCustomerForPayment(item.customer);
+  // Keep the row's branch with the customer so the payment is written to that branch.
+  const openPaymentDialog = (item: ReceivableItem) =>
+    setCustomerForPayment({ ...item.customer, branchId: item.branchId } as ReceivableCustomer);
 
   const closePaymentDialogAndRefresh = () => {
     setCustomerForPayment(null);

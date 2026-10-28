@@ -44,6 +44,7 @@ export interface SalesOrderItem {
   inventory: { state: SalesOrderInventoryState; activeFulfillmentId: string | null };
 }
 export interface SalesOrder extends DocumentBranchData {
+  branchId?: string;
   id: string; orderNumber: string; customerId: string | null; customer: SalesOrderCustomer | null;
   salesChannel: SalesChannel; orderDate: string; deliveryDate: string | null; deliveredAt: string | null;
   fulfillmentStatus: SalesOrderFulfillmentStatus; paymentStatus: SalesOrderPaymentStatus; settlement: SalesOrderSettlement;

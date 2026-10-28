@@ -15,6 +15,7 @@ import { isFinancialAdmin } from '../../features/customer-financial/utils/financ
 import { AddFinancialObligationDialog } from '../../features/customer-financial/components/AddFinancialObligationDialog';
 import { GlobalReceivePaymentDialog } from '../../features/financial-ledger/components/GlobalReceivePaymentDialog';
 import { CustomerCommunicationSection } from '../../features/customer-communication/components/CustomerCommunicationSection';
+import { useRecordBranch } from '../../features/branches/scope/branch-ui';
 
 interface CustomerFormData {
   name: string;
@@ -41,6 +42,7 @@ export const CustomerProfilePage: React.FC = () => {
   const canMutateFinancial = isFinancialAdmin(user?.role);
 
   const { data: customer, isLoading, isError } = useCustomer(id || '');
+  useRecordBranch(customer?.branchId);
   const updateCustomer = useUpdateCustomer();
   const deleteCustomer = useDeleteCustomer();
 

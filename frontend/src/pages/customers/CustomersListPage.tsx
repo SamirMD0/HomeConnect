@@ -14,8 +14,9 @@ import { CustomerForm } from '../../features/customers/components/CustomerForm';
 import { formatBusinessDate } from '../../features/customer-financial/utils/financial-format';
 import { formatDaysAgo } from '../../features/receivables/utils/receivables-tier';
 import { businessLabels } from '../../shared/labels/business-labels';
+import { BRANCH_COLUMN_LABEL, BranchBadge, useCreateGuard, useShowBranchColumn } from '../../features/branches/scope/branch-ui';
 
-const emptyCell = <span className="text-slate-400 group-hover:text-yellow-300">—</span>;
+const emptyCell = <span className="text-slate-400 group-hover:text-brand-700">—</span>;
 
 export const CustomersListPage: React.FC = () => {
   const { user } = useAuth();
@@ -36,6 +37,8 @@ export const CustomersListPage: React.FC = () => {
   useEffect(() => setPage(1), [customerSearch.debouncedQuery, pageSize, sortBy, filter]);
 
   const createCustomer = useCreateCustomer();
+  const showBranch = useShowBranchColumn();
+  const createGuard = useCreateGuard();
 
   const handleCreateCustomer = (formData: any) => {
     createCustomer.mutate(formData, {
@@ -50,17 +53,20 @@ export const CustomersListPage: React.FC = () => {
       header: 'Customer',
       accessor: (customer: Customer) => (
         <div className="flex flex-col">
-          <span className="user-text font-medium text-slate-900 transition-colors group-hover:text-yellow-300" dir="auto">
+          <span className="user-text font-medium text-slate-900 transition-colors group-hover:text-brand-700" dir="auto">
             {customer.name}
           </span>
           {customer.matchedInNotesOnly && (
-            <span className="text-[11px] text-slate-400 transition-colors group-hover:text-yellow-200">
+            <span className="text-[11px] text-slate-400 transition-colors ">
               Matched in notes
             </span>
           )}
         </div>
       ),
     },
+    ...(showBranch
+      ? [{ header: BRANCH_COLUMN_LABEL, accessor: (customer: Customer) => <BranchBadge branchId={customer.branchId} /> }]
+      : []),
     {
       header: 'Phone',
       accessor: (customer: Customer) => formatCustomerPhone(customer.phone),
@@ -73,7 +79,7 @@ export const CustomersListPage: React.FC = () => {
         return (
           <div className="flex flex-col">
             <span>{formatBusinessDate(financial.lastPaymentDate)}</span>
-            <span className="text-[11px] text-slate-400 transition-colors group-hover:text-yellow-200">
+            <span className="text-[11px] text-slate-400 transition-colors ">
               {formatDaysAgo(financial.daysSinceLastPayment)}
             </span>
           </div>
@@ -88,7 +94,7 @@ export const CustomersListPage: React.FC = () => {
     {
       header: 'Status',
       accessor: (customer: Customer) => (
-        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold transition-colors group-hover:bg-yellow-300 group-hover:text-slate-950 ${
+        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold transition-colors  ${
           customer.isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'
         }`}>
           {customer.isActive ? 'Active' : 'Inactive'}
@@ -104,7 +110,7 @@ export const CustomersListPage: React.FC = () => {
             event.stopPropagation();
             navigate(`/customers/${customer.id}`);
           }}
-          className="inline-flex items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition-all duration-200 hover:border-yellow-300 hover:bg-gray-600 hover:text-yellow-300 hover:shadow-[0_0_14px_rgba(250,204,21,0.4)] focus:outline-none focus:ring-2 focus:ring-yellow-300/50 group-hover:border-yellow-300/70"
+          className="inline-flex items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition-all duration-200 hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 focus:outline-none focus:ring-2 focus:ring-ring/50 "
         >
           <Eye className="h-3.5 w-3.5" aria-hidden="true" />
           View profile
@@ -123,7 +129,9 @@ export const CustomersListPage: React.FC = () => {
         </div>
         <button
           onClick={() => setIsAddModalOpen(true)}
-          className="inline-flex items-center justify-center px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors focus:ring-4 focus:ring-emerald-500/20 font-medium"
+          disabled={createGuard.blocked}
+          title={createGuard.reason}
+          className="inline-flex items-center justify-center px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors focus:ring-4 focus:ring-emerald-500/20 font-medium disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Plus className="w-5 h-5 mr-2" />
           Add Customer
@@ -174,7 +182,7 @@ export const CustomersListPage: React.FC = () => {
                       {columns.map((column, index) => (
                         <td
                           key={column.header}
-                          className={`bg-white px-4 py-2 align-middle transition-all duration-200 group-hover:bg-gray-600 group-hover:text-yellow-300 group-hover:[text-shadow:0_0_8px_rgba(250,204,21,0.8)] ${index === 0 ? 'rounded-l-md' : ''} ${index === columns.length - 1 ? 'rounded-r-md' : ''}`}
+                          className={`bg-white px-4 py-2 align-middle transition-colors duration-150 group-hover:bg-slate-50 ${index === 0 ? 'rounded-l-md' : ''} ${index === columns.length - 1 ? 'rounded-r-md' : ''}`}
                         >
                           {column.accessor(customer)}
                         </td>
@@ -193,7 +201,9 @@ export const CustomersListPage: React.FC = () => {
                 !customerSearch.debouncedQuery && (
                   <button
                     onClick={() => setIsAddModalOpen(true)}
-                    className="mt-2 inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+          disabled={createGuard.blocked}
+          title={createGuard.reason}
+                    className="mt-2 inline-flex items-center disabled:cursor-not-allowed disabled:opacity-50 px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
                   >
                     <Plus className="w-5 h-5 mr-2 -ml-1" aria-hidden="true" />
                     Add Customer
@@ -202,7 +212,7 @@ export const CustomersListPage: React.FC = () => {
               }
             />
           )}
-          <div className="grid gap-2 md:hidden">{(data?.data ?? []).map((customer) => <button type="button" key={customer.id} onClick={() => navigate(`/customers/${customer.id}`)} className="group rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-left shadow-sm transition-all duration-200 hover:border-yellow-300 hover:bg-gray-600 hover:text-yellow-300 hover:shadow-[0_0_14px_rgba(250,204,21,0.3)]"><div className="flex items-center justify-between gap-3"><span className="user-text text-sm font-semibold transition-colors group-hover:text-yellow-300" dir="auto">{customer.name}</span><span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 transition-colors group-hover:bg-yellow-300 group-hover:text-slate-950">{customer.isActive ? 'Active' : 'Inactive'}</span></div><p className="mt-0.5 text-xs text-slate-500 transition-colors group-hover:text-yellow-200">{formatCustomerPhone(customer.phone)}</p></button>)}</div>
+          <div className="grid gap-2 md:hidden">{(data?.data ?? []).map((customer) => <button type="button" key={customer.id} onClick={() => navigate(`/customers/${customer.id}`)} className="group rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-left shadow-sm transition-all duration-200 hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 hover:shadow-[0_0_14px_rgba(250,204,21,0.3)]"><div className="flex items-center justify-between gap-3"><span className="user-text text-sm font-semibold transition-colors group-hover:text-brand-700" dir="auto">{customer.name}</span><span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 transition-colors ">{customer.isActive ? 'Active' : 'Inactive'}</span></div><p className="mt-0.5 text-xs text-slate-500 transition-colors ">{formatCustomerPhone(customer.phone)}</p></button>)}</div>
           {data?.meta && data.meta.pagination.totalPages > 1 && (
             <Pagination
               currentPage={page}

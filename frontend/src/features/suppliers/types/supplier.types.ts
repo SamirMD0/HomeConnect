@@ -5,12 +5,14 @@ export type SupplierTransactionStatus = 'ACTIVE'|'REMOVED';
 export interface SupplierActor { id: string; fullName: string; username: string }
 export interface SupplierSummary { totalOwed: string; totalPaid: string; totalCredit: string; balance: string; transactionCount: number; basis: 'lifetime'|'filtered'; supplierCount?: number }
 export interface Supplier {
+  branchId?: string;
   id: string; name: string; phone: string; companyName: string|null; secondaryPhone: string|null;
   email: string|null; notes: string|null; isActive: boolean; archivedAt: string|null; archivedReason: string|null;
   createdAt: string; updatedAt: string; balance: string; summary?: SupplierSummary;
   createdBy?: SupplierActor; updatedBy?: SupplierActor|null;
 }
 export interface SupplierTransaction {
+  branchId?: string;
   id: string; supplierId: string; supplier: Pick<Supplier,'id'|'name'|'phone'|'companyName'|'isActive'>;
   type: SupplierTransactionType; direction: SupplierTransactionDirection; amount: string; transactionDate: string; dueDate?: string|null;
   description: string; reference: string|null; notes: string|null; status: SupplierTransactionStatus;

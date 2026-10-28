@@ -9,6 +9,7 @@ import { useSupplierReceiving } from '../hooks/useSupplierReceivings';
 import { ReceivingMetadataDialog } from '../components/ReceivingMetadataDialog';
 import { ReceivingVoidDialog } from '../components/ReceivingVoidDialog';
 import { canCorrectReceiving, isReceivingVoided, receivingStatus, receivingStatusLabel } from '../utils/receiving-correction';
+import { branchIdOf, useRecordBranch } from '../../../branches/scope/branch-ui';
 
 export function supplierDebtPrefillForReceiving(receiving: SupplierReceiving): SupplierTransactionPrefill {
   const identity = receiving.referenceNumber || receiving.receivedOn;
@@ -26,6 +27,7 @@ export const SupplierReceivingDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const query = useSupplierReceiving(receivingId);
+  useRecordBranch(branchIdOf(query.data));
   const [editing, setEditing] = useState(false);
   const [voiding, setVoiding] = useState(false);
   if (query.isLoading) return <p className="rounded-xl border bg-white p-8 text-center text-slate-500">Loading receiving… / جارٍ تحميل المستند…</p>;
