@@ -163,7 +163,7 @@ export class ProductsController {
   }
   static async serviceJobs(req: Request<ProductParamsInput>, res: Response, next: NextFunction) {
     try {
-      const result = await ProductsService.serviceJobs(req.params.productId, req.query as unknown as ProductServiceJobsQueryInput);
+      const result = await ProductsService.serviceJobs(req.params.productId, req.query as unknown as ProductServiceJobsQueryInput, req.branchScope!);
       res.json({ success: true, data: result.items, meta: { pagination: { page: result.page, pageSize: result.pageSize, totalItems: result.total, totalPages: Math.ceil(result.total / result.pageSize) } } });
     } catch (error) { next(error); }
   }

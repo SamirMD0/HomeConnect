@@ -3,6 +3,8 @@ import express, { Router, type Application } from 'express';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { requireAuth } from './middleware/auth.middleware';
 import { branchScopeMiddleware } from './middleware/branch-scope.middleware';
+import { globalRoutes, globalRouteGroups, scannerGlobalReasons } from './test/branch-global-routes';
+import { buildLanApp } from './features/scanner/lan-listener';
 import { customerParentGuard, supplierParentGuard } from './middleware/branch-parent.middleware';
 
 interface Layer {
@@ -21,7 +23,7 @@ interface CoveredRoute {
   guarded: boolean;
 }
 
-// Later checkpoints extend this registry as their prefixes become fully scoped.
+// Phase 3 final boundary: every registered /api/v1 route must be classified.
 const scopedPrefixes: { prefix: string; parentGuard?: unknown }[] = [
   { prefix: '/api/v1/customers', parentGuard: customerParentGuard },
   { prefix: '/api/v1/suppliers', parentGuard: supplierParentGuard },
@@ -41,6 +43,7 @@ const scopedPrefixes: { prefix: string; parentGuard?: unknown }[] = [
   { prefix: '/api/v1/inventory/receivings' },
   { prefix: '/api/v1/reports' },
   { prefix: '/api/v1/dashboard' },
+  { prefix: '/api/v1/products/:productId/service-jobs' },
 ];
 
 // D3: stock counts, movements and onboarding stay global. New inventory routes
@@ -88,7 +91,7 @@ function inventory(application: Application): CoveredRoute[] {
           const registration = scopedPrefixes.find(
             ({ prefix }) => fullPath === prefix || fullPath.startsWith(prefix + '/')
           );
-          if (!registration && !fullPath.startsWith('/api/v1/inventory/')) continue;
+          if (!fullPath.startsWith('/api/v1/')) continue;
           const has = (handle: unknown) =>
             preceding.some(
               (item) =>
@@ -125,13 +128,13 @@ function inventory(application: Application): CoveredRoute[] {
   return found;
 }
 
-describe('branch-scope route coverage registry (Phase 3C)', () => {
+describe('branch-scope route coverage registry (Phase 3D)', () => {
   let app: Application;
   beforeAll(async () => {
     app = (await import('./app.js')).app;
   }, 30_000);
   afterAll(() => vi.restoreAllMocks());
-  it('walks every 3C route and classifies the global inventory allow-list explicitly', () => {
+  it('classifies every API route and checks actual middleware before each scoped handler', () => {
     const routes = inventory(app);
     expect(scopedPrefixes.map((entry) => entry.prefix)).toEqual([
       '/api/v1/customers',
@@ -152,6 +155,7 @@ describe('branch-scope route coverage registry (Phase 3C)', () => {
       '/api/v1/inventory/receivings',
       '/api/v1/reports',
       '/api/v1/dashboard',
+      '/api/v1/products/:productId/service-jobs',
     ]);
     expect(
       routes.filter((route) => route.path.startsWith('/api/v1/customers')).length
@@ -185,21 +189,40 @@ describe('branch-scope route coverage registry (Phase 3C)', () => {
       ].sort()
     );
     for (const route of routes) {
-      expect(route.authenticated, route.method + ' ' + route.path).toBe(true);
-      expect(route.scoped, route.method + ' ' + route.path).toBe(
-        !globalInventory.includes(route.method + ' ' + route.path)
-      );
-      expect(route.guarded, route.method + ' ' + route.path).toBe(true);
+      const key = route.method + ' ' + route.path;
+      const scoped = scopedPrefixes.some(({ prefix }) => route.path === prefix || route.path.startsWith(prefix + '/'));
+      expect(scoped || globalRoutes.has(key), 'Unclassified route: ' + key).toBe(true);
+      expect(scoped && globalRoutes.has(key), 'Ambiguous classification: ' + key).toBe(false);
+      expect(route.scoped, key).toBe(scoped);
+      if (scoped) {
+        expect(route.authenticated, key).toBe(true);
+        expect(route.guarded, key).toBe(true);
+      }
     }
+    const lan = inventory(buildLanApp());
+    for (const route of lan) {
+      expect(scannerGlobalReasons[route.method + ' ' + route.path]).toBeTruthy();
+      expect(route.scoped).toBe(false);
+    }
+    // Pin scanner surfaces individually, including LAN-only pair/session paths.
+    expect([...new Set([...routes, ...lan].filter((r) => r.path.startsWith('/api/v1/scanner/')).map((r) => r.method + ' ' + r.path))].sort()).toEqual(Object.keys(scannerGlobalReasons).sort());
     mkdirSync('node_modules/.cache/home-connect', { recursive: true });
-    writeFileSync(
-      'node_modules/.cache/home-connect/phase3c-route-inventory.json',
-      JSON.stringify(
-        routes.map(({ method, path }) => ({ method, path })),
-        null,
-        2
-      )
-    );
+    writeFileSync('node_modules/.cache/home-connect/phase3d-route-inventory.json', JSON.stringify({
+      scopedPrefixes: scopedPrefixes.map(({ prefix }) => prefix), globalRouteGroups,
+      routes: routes.map(({ method, path, scoped }) => ({ method, path, classification: scoped ? 'scoped' : 'global', reason: scoped ? 'Authenticated branchScopeMiddleware before handler' : globalRoutes.get(method + ' ' + path) })),
+      scannerLanRoutes: lan.map(({ method, path }) => ({ method, path, classification: 'global', reason: scannerGlobalReasons[method + ' ' + path] })),
+    }, null, 2));
+  });
+  it('includes unknown routes under any prefix so additions require classification', () => {
+    const broken = express();
+    broken.use('/api/v1/products', Router().get('/unclassified', (_req, res) => res.sendStatus(200)));
+    broken.get('/api/v1/new-feature', (_req, res) => res.sendStatus(200));
+    const found = inventory(broken);
+    expect(found).toHaveLength(2);
+    for (const route of found) {
+      expect(globalRoutes.has(route.method + ' ' + route.path)).toBe(false);
+      expect(scopedPrefixes.some(({ prefix }) => route.path.startsWith(prefix))).toBe(false);
+    }
   });
   it('includes new unclassified inventory routes so the allow-list cannot silently miss them', () => {
     const broken = express();

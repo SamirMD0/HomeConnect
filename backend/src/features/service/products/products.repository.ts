@@ -1,3 +1,4 @@
+import { scopeWhere, type BranchScope } from '../../branches/branch-scope';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../../lib/prisma';
 import { findSearchMatchIds } from '../../../lib/search-query';
@@ -283,8 +284,8 @@ export class ProductsRepository {
     return { sameNameModel, sameModelBrand };
   }
 
-  static async serviceJobs(productId: string, skip: number, take: number) {
-    const where: Prisma.ServiceJobWhereInput = { productId };
+  static async serviceJobs(productId: string, skip: number, take: number, scope: BranchScope) {
+    const where: Prisma.ServiceJobWhereInput = { productId, ...scopeWhere(scope) };
     const [items, total] = await Promise.all([
       prisma.serviceJob.findMany({
         where,

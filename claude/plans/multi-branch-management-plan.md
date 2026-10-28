@@ -243,11 +243,13 @@ Each phase is a separate PR into `develop`, with its own migration where applica
 - **Risk:** high (live money tables). Mitigations: pre-migration backup is mandatory (guard), dry run on restored copy, migration is additive until the final `NOT NULL` step, documented rollback (§4.8).
 
 ### Phase 3 — Backend scoping & authorization
+- **Implemented (3A–3D).** `MULTI_BRANCH_SCOPING_ENABLED` must stay **OFF in production** until Phase 4 ships the desktop branch selector.
+- Coverage exception: `GET /products/:productId/service-jobs` is branch-scoped because it returns branch-owned service jobs; the remaining product catalog/stock/pricing routes stay global.
 - Diagnostics and preflight remain global and admin-only; they are not branch-scoped.
 - Add `branchId` to all branch-owned list and detail responses.
 - **Files:** new `middleware/branch-scope.middleware.ts`; every repository/service for branch-owned data (`repositories/customers.repository.ts`, `features/financial/**`, `features/sales/**`, `features/suppliers/**`, `features/service/**` jobs); reports (`reports/rows/report-rows.repository.ts` raw SQL, `monthly-*`, `analysis`), dashboards (`features/dashboard/**`, `services/dashboard.service.ts` raw SQL), search (`lib/search-query.ts`, `customer-suggestions.service.ts`), documents (invoice/receipt/statement print branch name), CSV export (Branch column).
 - Customer phone duplicate check becomes per branch (D2).
-- Mobile: scanner/LAN session binds to one branch chosen at pairing; gateway forwards the header; supplier endpoints scoped (`features/scanner/*`, `Mobile Scanner/src/api/hc-client.ts`, branch shown on mobile home).
+- Mobile JWT sessions select an accessible branch after login and forward `X-Branch-Scope` to scoped supplier endpoints; the branch is shown on mobile home. Desktop/LAN `x-scanner-session` pairing stays global: it carries product scans and device session state only, with no customer/supplier/sale/payment access. Each scanner route is explicitly classified in the coverage registry.
 - Route-coverage meta-test.
 - **Acceptance:** isolation suite (§5.1) green; consolidated totals = Σ branches for every report/dashboard endpoint; out-of-scope IDs return 404; writes in `all` scope rejected.
 - **Risk:** high (leakage by omission). Mitigation: required `scope` parameter makes omissions a type error; meta-test; raw-SQL files reviewed individually.
