@@ -17,6 +17,7 @@ import { BackupSettingsStore } from './backup-settings.store';
 import { verifyAdminPasswordForCorrection } from '../financial/authorization/account-password';
 import { PostgresToolDiscovery } from './postgres-tools';
 import { parsePostgresConnectionString } from './postgres-url';
+import { receiptSnapshotPath, restoreReceiptSnapshot, snapshotReceipts, verifyReceiptSnapshot } from './receipt-snapshot';
 import {
   BackupListQuery,
   BackupListResult,
@@ -142,6 +143,25 @@ export class BackupService {
       await fs.copyFile(sourceAbsolutePath, destinationPath);
     }
 
+    const sourceReceiptPath = receiptSnapshotPath(sourceAbsolutePath);
+    const destinationReceiptPath = receiptSnapshotPath(destinationPath);
+    let importedReceiptSnapshot = false;
+    try {
+      if (await verifyReceiptSnapshot(sourceAbsolutePath)) {
+        importedReceiptSnapshot = true;
+        if (copiedFile) {
+          await fs.cp(sourceReceiptPath, destinationReceiptPath, { recursive: true, errorOnExist: true, force: false });
+          await verifyReceiptSnapshot(destinationPath);
+        }
+      }
+    } catch (error) {
+      if (copiedFile) {
+        await BackupCommandRunner.removeIncompleteFile(destinationPath);
+        await fs.rm(destinationReceiptPath, { recursive: true, force: true }).catch(() => undefined);
+      }
+      throw error;
+    }
+
     const connection = parsePostgresConnectionString();
     const record = BackupMetadataStore.createRecord({
       filename: path.basename(destinationPath),
@@ -161,6 +181,7 @@ export class BackupService {
         sizeBytes: verified.sizeBytes,
         checksum: verified.checksum,
         verified: verified.verified,
+        receiptSnapshot: importedReceiptSnapshot,
         durationMs: null,
       };
       await BackupMetadataStore.upsert(settings.backupDirectory, completedRecord);
@@ -169,6 +190,7 @@ export class BackupService {
     } catch (error) {
       if (copiedFile) {
         await BackupCommandRunner.removeIncompleteFile(destinationPath);
+        await fs.rm(destinationReceiptPath, { recursive: true, force: true }).catch(() => undefined);
       }
       throw error;
     }
@@ -190,6 +212,8 @@ export class BackupService {
     const validation = await this.verifyBackupFile(settings, record);
     const checksumMatches = record.checksum ? validation.checksum === record.checksum : true;
     const compatible = record.applicationVersion === APPLICATION_VERSION;
+    const receiptSnapshot = await verifyReceiptSnapshot(record.absolutePath);
+    if (record.receiptSnapshot && !receiptSnapshot) throw new BackupInvalidError('Receipt-photo snapshot is missing');
 
     return {
       backup: this.toPublicRecord({ ...record, checksum: validation.checksum, verified: validation.verified }),
@@ -199,6 +223,7 @@ export class BackupService {
       warnings: [
         ...(checksumMatches ? [] : ['Backup checksum does not match stored metadata']),
         ...(compatible ? [] : ['Backup was created by a different application version']),
+        ...(receiptSnapshot ? [] : ['Backup has no receipt-photo snapshot; receipt images may need separate recovery']),
       ],
     };
   }
@@ -232,6 +257,7 @@ export class BackupService {
         if (!validation.archiveReadable || !validation.checksumMatches || !validation.compatible) {
           throw new BackupInvalidError('Backup is not safe to restore', validation);
         }
+        await verifyReceiptSnapshot(record.absolutePath);
 
         logger.warn('pre_restore_backup_started', { backupId, actor: createdBy });
         const safetyBackup = await this.createBackupInternal('PRE_RESTORE', createdBy, false);
@@ -239,6 +265,10 @@ export class BackupService {
 
         const tools = this.requireTools(settings);
         const connection = parsePostgresConnectionString();
+        // Copy first: a missing/corrupt photo must not be discovered only after
+        // PostgreSQL has already been replaced. UUID filenames are immutable;
+        // newer orphan files remain untouched if the DB restore later fails.
+        await restoreReceiptSnapshot(record.absolutePath);
         await prisma.$disconnect();
         const result = await BackupCommandRunner.runCommand(
           tools.pgRestorePath,
@@ -294,7 +324,10 @@ export class BackupService {
     for (const record of deletable) {
       try {
         assertPathInsideDirectory(settings.backupDirectory, record.absolutePath);
-        await fs.unlink(record.absolutePath);
+        await fs.unlink(record.absolutePath).catch((error: NodeJS.ErrnoException) => {
+          if (error.code !== 'ENOENT') throw error;
+        });
+        await fs.rm(receiptSnapshotPath(record.absolutePath), { recursive: true, force: true });
         await BackupMetadataStore.updateStatus(settings.backupDirectory, record.id, 'DELETED', {
           errorMessage: null,
         });
@@ -345,12 +378,14 @@ export class BackupService {
         }
 
         const verified = await this.verifyBackupFile(settings, { ...record, absolutePath });
+        await snapshotReceipts(absolutePath);
         const completedRecord: BackupRecord = {
           ...record,
           status: 'COMPLETED',
           sizeBytes: verified.sizeBytes,
           checksum: verified.checksum,
           verified: verified.verified,
+          receiptSnapshot: true,
           durationMs: Date.now() - startedAt,
         };
         await BackupMetadataStore.upsert(settings.backupDirectory, completedRecord);
@@ -364,6 +399,7 @@ export class BackupService {
         return completedRecord;
       } catch (error) {
         await BackupCommandRunner.removeIncompleteFile(absolutePath);
+        await fs.rm(receiptSnapshotPath(absolutePath), { recursive: true, force: true }).catch(() => undefined);
         const failedRecord: BackupRecord = {
           ...record,
           status: 'FAILED',

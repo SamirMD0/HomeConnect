@@ -1,5 +1,17 @@
 # Incident: Home Connect could not update
 
+## Updates started from 2.0.6 or later
+
+**2.0.6/2.0.7 says “Update not installed” while preparing an update.** The updater can fail while copying `app.asar` because Electron presents the archive as a virtual directory. Version 2.0.8 corrects application snapshot and recovery filesystem access. Close HomeConnect and run the 2.0.8 installer directly once; retrying the old in-app updater cannot acquire this fix. This archive-copy failure happens before the installer starts. Keep the existing configuration and backups.
+
+HomeConnect saves the working application and verifies its database backup before launching an update. If backup preparation fails, installation does not start and the current backend resumes. If the new version fails during migration or first startup, a separate recovery process restores the previous application and pre-update database and reopens HomeConnect. Do not start a second copy while recovery runs. The rejected version is skipped until a newer patch is available.
+
+This recovery runs before the new version is opened for business use. It does not automatically restore old data after a successfully completed update has been used for sales. Recovery snapshots and private failure details are retained under `%APPDATA%\home-connect\update-rollback\` and `config\update-rollback.json`.
+
+If recovery itself cannot complete (for example, a backup is damaged or the disk cannot be written), keep the snapshot and contact support; never run an older app against data that failed to restore. The attended procedure below remains available for older installations and recovery tool failures.
+
+## Older updates, including 2.0.4 to 2.0.5
+
 Use this runbook if startup shows **Home Connect could not update**. Stop using Home Connect for sales until recovery is verified. Keep the failure screen open until you have copied its backup path and diagnostics.
 
 ## Do not
@@ -7,6 +19,7 @@ Use this runbook if startup shows **Home Connect could not update**. Stop using 
 - Do not retry the update or reinstall the new version.
 - Do not close the failure screen before steps 1 and 2.
 - Do not delete or move the backup file.
+- Do not delete or move the matching `.receipts` folder beside the backup file.
 - Do not try to apply the failed database update manually.
 
 ## Do, in order
@@ -20,6 +33,8 @@ D:\Backups\HomeConnect\pre-update-2.0.2-to-2.0.3-2026-10-05T13-22-00Z.backup
 ```
 
 Keep the note outside Home Connect. If no path is shown, write **No backup path shown**; do not guess a file to restore.
+
+If a folder with the same name ending in `.receipts` exists next to that `.backup` file, keep it together with the archive. It contains the supplier receipt photos and a `manifest.json` inventory. Both are needed for a complete recovery.
 
 ### 2. Copy the diagnostics
 
@@ -41,7 +56,7 @@ Get the last known-good `HomeConnect-Setup-<previous-version>.exe` from `release
 
 Read the failure code copied in step 2:
 
-- `BACKUP_TOOL_NOT_FOUND`, `BACKUP_FAILED_COMMAND`, or `BACKUP_FAILED_EMPTY`: the database update did not start. **Skip step 7**; continue to step 8. A partial or too-small backup is not a restore source.
+- `BACKUP_TOOL_NOT_FOUND`, `BACKUP_FAILED_COMMAND`, `BACKUP_FAILED_EMPTY`, or `RECEIPT_BACKUP_FAILED`: the database update did not start. **Skip step 7**; continue to step 8. A partial backup or receipt snapshot is not a restore source.
 - `MIGRATION_FAILED`, `MIGRATION_TIMEOUT`, or `POST_MIGRATION_HEALTH_FAIL`: the database might have changed. **Complete step 7 before using the previous version for sales.**
 - Missing or different code: stop and send the diagnostics to the developer. Do not guess whether a restore is needed.
 
@@ -50,7 +65,9 @@ Read the failure code copied in step 2:
 Only do this when step 6 directs you here. Restoring replaces the current database with its state immediately before the attempted update. Confirm no business transactions were entered after that backup; if any were, stop and tell the developer before restoring.
 
 - Confirm the file at the path from step 1 exists. If the path is missing or no file exists, stop and contact the developer. Do not use an older backup without guidance.
+- Keep the matching `.receipts` folder next to the `.backup` file while importing/restoring it. If that folder is missing or damaged and supplier receipt photos existed, stop and contact the developer; a database-only restore cannot recover those photos.
 - Try to open the reinstalled previous version. If it opens normally, sign in as an ADMIN user, open **Settings > Backup and Restore**, select **Restore from file**, and choose the pre-update backup. Complete the on-screen validation and confirmation. Restart Home Connect when prompted.
+- Before resuming sales, check that a known supplier receipt photo is still available. If the previous version cannot restore the photo snapshot, stop and ask the developer to recover it from the matching folder; do not copy files by guesswork.
 - If the previous version does not open, or its restore screen cannot be reached, **stop**. Ask the developer or technical support to restore that exact backup with PostgreSQL tools. Do not reset the database or keep relaunching the app. See [Backup and Restore Recovery Guide](../setup/BACKUP_RESTORE_RECOVERY_GUIDE.md), **If The App Cannot Open**.
 
 ### 8. Verify the previous version

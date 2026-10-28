@@ -70,7 +70,7 @@ Run for every release drafted by CI after a `v<version>` tag push. A draft is no
 
 ## 9. Retain recovery material
 
-- Keep the pre-migration backup in `BACKUP_DIR`. Its name resembles `pre-update-<prev>-to-<new>-<ISO-timestamp>.backup`.
+- Keep the pre-migration backup in `BACKUP_DIR` together with its matching `.receipts` folder. Its name resembles `pre-update-<prev>-to-<new>-<ISO-timestamp>.backup`.
 - Keep it until a newer release has been in service for at least one week. Only then may an older pre-update backup be deleted manually.
 - The developer-machine copy under `release/<version>/` may be retained as an offline installer fallback.
 

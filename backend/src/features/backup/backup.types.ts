@@ -26,6 +26,7 @@ export interface BackupRecord {
   postgresVersion: string | null;
   checksum: string | null;
   verified: boolean;
+  receiptSnapshot?: boolean;
   createdBy: string | null;
   durationMs: number | null;
   errorMessage: string | null;

@@ -104,4 +104,44 @@ describe('startUpdateChecker', () => {
     expect(states).toEqual(['idle', 'checking', 'available', 'downloading', 'ready']);
     handle.stop();
   });
+
+  it('keeps the old app running when recovery preparation fails', async () => {
+    const updater = new FakeAutoUpdater();
+    const handle = startUpdateChecker(mainWindow() as any, { autoUpdater: updater as any, logger: logger(),
+      beforeInstall: vi.fn().mockRejectedValue(new Error('backup failed')) });
+    updater.emit('update-downloaded', { version: '2.0.7' });
+    await expect(handle.installNow()).rejects.toThrow('previous version');
+    expect(updater.quitAndInstall).not.toHaveBeenCalled();
+    handle.stop();
+  });
+
+  it('waits for recovery preparation and suppresses duplicate install requests', async () => {
+    const updater = new FakeAutoUpdater();
+    let complete!: () => void;
+    const beforeInstall = vi.fn(() => new Promise<void>((resolve) => { complete = resolve; }));
+    const handle = startUpdateChecker(mainWindow() as any, { autoUpdater: updater as any, logger: logger(), beforeInstall });
+    updater.emit('update-downloaded', { version: '2.0.7' });
+    const first = handle.installNow();
+    await handle.installNow();
+    expect(updater.quitAndInstall).not.toHaveBeenCalled();
+    expect(beforeInstall).toHaveBeenCalledOnce();
+    complete();
+    await first;
+    expect(updater.quitAndInstall).toHaveBeenCalledOnce();
+    handle.stop();
+  });
+
+  it('does not offer or reinstall a version that was automatically rolled back', async () => {
+    const updater = new FakeAutoUpdater();
+    const handle = startUpdateChecker(mainWindow() as any, { autoUpdater: updater as any, logger: logger(), rejectedVersion: '2.0.7' });
+    updater.emit('update-available', { version: '2.0.7' });
+    updater.emit('download-progress', { percent: 100 });
+    updater.emit('update-downloaded', { version: '2.0.7' });
+    expect(handle.currentStatus().state).toBe('idle');
+    await handle.installNow();
+    expect(updater.quitAndInstall).not.toHaveBeenCalled();
+    updater.emit('update-downloaded', { version: '2.0.8' });
+    expect(handle.currentStatus()).toMatchObject({ state: 'ready', version: '2.0.8' });
+    handle.stop();
+  });
 });

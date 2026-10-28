@@ -1,14 +1,18 @@
 import { spawn as nodeSpawn } from 'child_process';
+import crypto from 'node:crypto';
+import type { Dirent } from 'fs';
 import type { ChildProcess, SpawnOptions } from 'child_process';
 import fsPromises from 'fs/promises';
 import Module from 'module';
 import path from 'path';
 import type { PrismaClient as PrismaClientType } from '@prisma/client';
+import { migrationEnvironment, safeMigrationError } from './prisma-migration-runtime';
 
 export type PreMigrationFailureCode =
   | 'BACKUP_TOOL_NOT_FOUND'
   | 'BACKUP_FAILED_COMMAND'
   | 'BACKUP_FAILED_EMPTY'
+  | 'RECEIPT_BACKUP_FAILED'
   | 'MIGRATION_FAILED'
   | 'MIGRATION_TIMEOUT';
 
@@ -21,6 +25,7 @@ export interface PreMigrationGuardOptions {
   currentVersion: string;
   userDataDir: string;
   backupDir: string;
+  receiptsDir?: string;
   migrationsDir: string;
   databaseUrl: string;
   isPackaged: boolean;
@@ -31,6 +36,7 @@ export interface PreMigrationGuardOptions {
   queryAppliedMigrations?: (dbUrl: string) => Promise<Set<string>>;
   logger?: { info(msg: string, meta?: unknown): void; error(msg: string, meta?: unknown): void };
   now?: () => Date;
+  onMigrationStarting?: () => Promise<void>;
 }
 
 // Packaged Electron main does not get the NODE_PATH that backend-process.ts
@@ -80,14 +86,14 @@ function safeFilePart(value: string): string {
   return value.replace(/[^a-zA-Z0-9._-]/g, '-') || 'unknown';
 }
 
-function discoverPackagedPgDump(): string | null {
+export function discoverPackagedPostgresTool(tool: 'pg_dump' | 'pg_restore' | 'psql' = 'pg_dump'): string | null {
   try {
     const compiledTools = path.join(process.resourcesPath, 'dist/server/backend/src/features/backup/postgres-tools.js');
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { PostgresToolDiscovery } = require(compiledTools) as {
-      PostgresToolDiscovery: { findTool(name: 'pg_dump'): string | null };
+      PostgresToolDiscovery: { findTool(name: 'pg_dump' | 'pg_restore' | 'psql'): string | null };
     };
-    return PostgresToolDiscovery.findTool('pg_dump');
+    return PostgresToolDiscovery.findTool(tool);
   } catch {
     return null;
   }
@@ -99,6 +105,7 @@ function runCommand(
   args: string[],
   options: SpawnOptions,
   timeoutMs: number,
+  onErrorOutput?: (output: string) => void,
 ): Promise<'success' | 'failed' | 'timeout'> {
   return new Promise((resolve) => {
     let child: ChildProcess;
@@ -108,19 +115,21 @@ function runCommand(
       resolve('failed');
       return;
     }
-    child.stderr?.on('data', () => undefined);
+    let stderr = '';
+    child.stderr?.on('data', (chunk) => { stderr = (stderr + String(chunk)).slice(-8000); });
     let settled = false;
     const finish = (result: 'success' | 'failed' | 'timeout') => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
+      if (result !== 'success') onErrorOutput?.(stderr);
       resolve(result);
     };
     const timer = setTimeout(() => {
       try { child.kill(); } catch { /* A dead child is already stopped. */ }
       finish('timeout');
     }, timeoutMs);
-    child.once('error', () => finish('failed'));
+    child.once('error', (error) => { stderr += error.message; finish('failed'); });
     child.once('close', (code) => finish(code === 0 ? 'success' : 'failed'));
   });
 }
@@ -168,7 +177,7 @@ export async function runPreMigrationGuard(options: PreMigrationGuardOptions): P
       return { kind: 'skipped', reason: 'no-pending-migrations' };
     }
 
-    const pgDump = (options.discoverPgDump ?? discoverPackagedPgDump)();
+    const pgDump = (options.discoverPgDump ?? discoverPackagedPostgresTool)();
     if (!pgDump) return failed('BACKUP_TOOL_NOT_FOUND', 'PostgreSQL backup tool was not found');
     const timestamp = (options.now ?? (() => new Date()))().toISOString().replace(/[:.]/g, '-');
     backupPath = path.join(options.backupDir, `pre-update-${safeFilePart(from)}-to-${safeFilePart(to)}-${timestamp}.backup`);
@@ -182,18 +191,58 @@ export async function runPreMigrationGuard(options: PreMigrationGuardOptions): P
     try { backupSize = (await io.stat(backupPath)).size; } catch { /* Missing output is an untrusted backup. */ }
     if (backupSize < 1_000_000) return failed('BACKUP_FAILED_EMPTY', 'Pre-update backup file is too small');
 
+    // Receipt images live outside PostgreSQL. Keep a matching directory next to
+    // the database archive and do not migrate if any image cannot be copied.
+    const receiptSource = options.receiptsDir?.trim() || process.env.RECEIPTS_DIR?.trim() || path.join(options.userDataDir, 'receipts');
+    const receiptSnapshot = backupPath.replace(/\.backup$/, '.receipts');
+    try {
+      let receiptEntries: Dirent[];
+      try {
+        receiptEntries = await io.readdir(receiptSource, { withFileTypes: true });
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+        receiptEntries = [];
+      }
+      await io.mkdir(receiptSnapshot, { recursive: false });
+      const files: Array<{ filename: string; bytes: number; sha256: string }> = [];
+      for (const entry of receiptEntries) {
+        if (!entry.isFile()) throw new Error('Receipt directory contains a non-file entry');
+        if (!/^[0-9a-f-]{36}\.(jpg|png|heic|heif|webp)$/.test(entry.name)) {
+          throw new Error('Receipt directory contains an unexpected filename');
+        }
+        const source = path.join(receiptSource, entry.name);
+        const destination = path.join(receiptSnapshot, entry.name);
+        await io.copyFile(source, destination);
+        const [original, copied] = await Promise.all([io.stat(source), io.stat(destination)]);
+        if (!original.isFile() || !copied.isFile() || original.size !== copied.size) {
+          throw new Error('Receipt snapshot verification failed');
+        }
+        const digest = crypto.createHash('sha256').update(await io.readFile(source)).digest('hex');
+        if (digest !== crypto.createHash('sha256').update(await io.readFile(destination)).digest('hex')) {
+          throw new Error('Receipt snapshot checksum did not match');
+        }
+        files.push({ filename: entry.name, bytes: copied.size, sha256: digest });
+      }
+      await io.writeFile(path.join(receiptSnapshot, 'manifest.json'), JSON.stringify({ version: 1, files }));
+    } catch {
+      return failed('RECEIPT_BACKUP_FAILED', 'Receipt photos could not be backed up; database update was not started');
+    }
+
     let prismaEntry: string;
     try { prismaEntry = require.resolve('prisma/build/index.js'); }
     catch { return failed('MIGRATION_FAILED', 'Prisma migration tool was not found'); }
     const schemaPath = path.join(path.dirname(options.migrationsDir), 'schema.prisma');
+    await options.onMigrationStarting?.();
     migrationStarted = true;
+    let migrationError = '';
     const migrationResult = await runCommand(
       spawn, process.execPath, [prismaEntry, 'migrate', 'deploy', '--schema', schemaPath],
-      { env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', DATABASE_URL: options.databaseUrl } },
+      { env: migrationEnvironment(prismaEntry, options.databaseUrl), cwd: path.dirname(schemaPath) },
       options.timeoutMs ?? 300_000,
+      (output) => { migrationError = safeMigrationError(output, options.databaseUrl); },
     );
     if (migrationResult === 'timeout') return failed('MIGRATION_TIMEOUT', 'Database update timed out');
-    if (migrationResult !== 'success') return failed('MIGRATION_FAILED', 'Database update did not complete');
+    if (migrationResult !== 'success') return failed('MIGRATION_FAILED', migrationError || 'Database update did not complete');
 
     await io.mkdir(path.dirname(fromFile), { recursive: true });
     await io.writeFile(fromFile, to, 'utf8');

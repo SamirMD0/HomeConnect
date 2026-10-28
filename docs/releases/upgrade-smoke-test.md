@@ -46,7 +46,7 @@ Confirm one `PASS` line for the admin, customers, products, sales orders, paymen
 ## 5. Watch first-launch migrations
 
 - Open Home Connect and watch the startup monitor for `Running pre-migration guard...` and `Startup complete. Opening app...`.
-- If migrations ran, record the `Applied N migration(s). Backup at <path>` message. Confirm the named backup exists and is larger than 1 MB.
+- If migrations ran, record the `Applied N migration(s). Backup at <path>` message. Confirm the named backup exists and is larger than 1 MB. Confirm a matching `.receipts` folder exists beside it with `manifest.json`; if the fixture has supplier receipt photos, confirm they are present there.
 - If no migrations were pending, record that outcome instead.
 - If the migration-failed screen appears, stop. Record its failure code, follow `docs/incident-runbooks/migration-failure.md`, and do not publish the release.
 
@@ -78,6 +78,8 @@ Confirm one `PASS` line for the admin, customers, products, sales orders, paymen
 ## 10. Pass criteria
 
 GREEN requires successful fixture seeding, successful first launch (and a backup larger than 1 MB if migrations ran), five matching dashboard values, both matching spot-checks, three successful write operations, and the expected update/About results.
+
+For a release that includes mobile supplier workflows, GREEN also requires the installable APK to pass the real-phone supplier workflow checklist in `Mobile Scanner/README.md`. A passing desktop smoke test alone is not sufficient.
 
 If GREEN, copy the notes from `docs/releases/<version>.md` into the drafted GitHub Release body, clear **This is a pre-release** if applicable, and publish the release.
 

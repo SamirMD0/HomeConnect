@@ -3,7 +3,7 @@ import type { BrowserWindow } from 'electron';
 import { autoUpdater as defaultAutoUpdater } from 'electron-updater';
 import type { AppUpdater, ProgressInfo, UpdateInfo } from 'electron-updater';
 
-export type UpdaterState = 'idle' | 'checking' | 'available' | 'downloading' | 'ready' | 'error';
+export type UpdaterState = 'idle' | 'checking' | 'available' | 'downloading' | 'ready' | 'preparing' | 'error';
 
 export interface UpdaterStatus {
   state: UpdaterState;
@@ -28,18 +28,21 @@ export interface StartUpdateCheckerOptions {
   initialCheckDelayMs?: number;
   recurringCheckIntervalMs?: number;
   progressThrottleMs?: number;
+  beforeInstall?: (version: string) => Promise<void>;
+  onInstallFailure?: (version: string) => Promise<void>;
+  rejectedVersion?: string;
 }
 
 export interface UpdaterHandle {
   checkNow(): Promise<void>;
-  installNow(): void;
+  installNow(): Promise<void>;
   currentStatus(): UpdaterStatus;
   stop(): void;
 }
 
 const noopHandle = (status: UpdaterStatus = { state: 'idle' }): UpdaterHandle => ({
   checkNow: () => Promise.resolve(),
-  installNow: () => undefined,
+  installNow: async () => undefined,
   currentStatus: () => ({ ...status }),
   stop: () => undefined,
 });
@@ -76,6 +79,8 @@ export function startUpdateChecker(
   let status: UpdaterStatus = { state: 'idle' };
   let inFlight: Promise<void> | undefined;
   let lastProgressEmittedAt: number | undefined;
+  let installing = false;
+  let rejectedUpdate = false;
   let initialTimer: ReturnType<typeof setTimeout>;
   let recurringTimer: ReturnType<typeof setInterval>;
   const listeners: Array<[string, (...args: any[]) => void]> = [];
@@ -97,6 +102,7 @@ export function startUpdateChecker(
   };
 
   const checkNow = (): Promise<void> => {
+    if (installing) return Promise.resolve();
     if (inFlight) return inFlight;
     logger.info('updater: check started');
     inFlight = Promise.resolve()
@@ -112,13 +118,24 @@ export function startUpdateChecker(
 
   const handle: UpdaterHandle = {
     checkNow,
-    installNow: () => {
+    installNow: async () => {
+      if (installing || status.state !== 'ready' || !status.version || status.version === options.rejectedVersion) return;
+      installing = true;
+      const version = status.version;
       try {
+        publish({ state: 'preparing', version });
+        await options.beforeInstall?.(version);
+        if ((status as UpdaterStatus).state === 'error') throw new Error('Update preparation was interrupted');
         logger.info('updater: install-requested');
         updater.quitAndInstall(false, true);
+        if ((status as UpdaterStatus).state === 'error') throw new Error('Installer could not start');
       } catch {
+        await options.onInstallFailure?.(version);
         logger.info('updater: install-failed');
         publish({ state: 'error', error: 'install-failed' });
+        throw new Error('Update was not installed; the previous version is still running');
+      } finally {
+        installing = false;
       }
     },
     currentStatus: () => ({ ...status }),
@@ -135,9 +152,13 @@ export function startUpdateChecker(
     updater.allowDowngrade = false;
     updater.allowPrerelease = false;
     listen('checking-for-update', () => publish({ state: 'checking' }));
-    listen('update-available', (info: UpdateInfo) => publish({ state: 'available', version: info.version }));
+    listen('update-available', (info: UpdateInfo) => {
+      rejectedUpdate = info.version === options.rejectedVersion;
+      publish(rejectedUpdate ? { state: 'idle', lastCheckedAt: new Date().toISOString() } : { state: 'available', version: info.version });
+    });
     listen('update-not-available', () => publish({ state: 'idle', lastCheckedAt: new Date().toISOString() }));
     listen('download-progress', (progress: ProgressInfo) => {
+      if (rejectedUpdate) return;
       const next = { state: 'downloading' as const, version: status.version, progressPct: progress.percent };
       const now = Date.now();
       if (lastProgressEmittedAt === undefined || now - lastProgressEmittedAt >= progressThrottle) {
@@ -145,11 +166,17 @@ export function startUpdateChecker(
         publish(next);
       } else publish(next, false);
     });
-    listen('update-downloaded', (info: UpdateInfo) => publish({ state: 'ready', version: info.version }));
+    listen('update-downloaded', (info: UpdateInfo) => {
+      if (info.version !== options.rejectedVersion) publish({ state: 'ready', version: info.version });
+    });
     listen('error', (error: Error) => {
+      const pendingVersion = status.state === 'preparing' ? status.version : undefined;
       const reason = /sha-?512/i.test(error?.message ?? '') ? 'sha512-mismatch' : 'download-failed';
       (reason === 'sha512-mismatch' ? logger.error : logger.info)(`updater: ${reason}`);
       publish({ state: 'error', error: reason, lastCheckedAt: new Date().toISOString() });
+      if (pendingVersion && !installing) void options.onInstallFailure?.(pendingVersion).catch(() => {
+        logger.error('updater: could not resume the previous backend');
+      });
     });
     activeHandle = handle;
     registerIpcHandlers();
