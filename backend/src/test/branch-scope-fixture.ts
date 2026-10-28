@@ -6,7 +6,11 @@ export const routeBranchId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
  * Isolation tests exercise real grants and parents separately. */
 export function singleBranchRouteModels() {
   return {
-    branch: { findMany: vi.fn().mockResolvedValue([{ id: routeBranchId }]) },
+    branch: {
+      findMany: vi.fn().mockResolvedValue([{ id: routeBranchId }]),
+      findUniqueOrThrow: vi.fn().mockResolvedValue({ name: 'Main branch', address: null, phone: null }),
+      count: vi.fn().mockResolvedValue(1),
+    },
     customer: { findUnique: vi.fn().mockResolvedValue({ branchId: routeBranchId }) },
     supplier: { findUnique: vi.fn().mockResolvedValue({ branchId: routeBranchId }) },
     debt: { findUnique: vi.fn().mockResolvedValue({ branchId: routeBranchId }) },

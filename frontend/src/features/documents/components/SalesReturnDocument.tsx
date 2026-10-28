@@ -3,6 +3,7 @@ import { formatBusinessDate } from '../../customer-financial/utils/financial-for
 import type { SalesReturn } from '../../sales-orders/types/sales-orders.types';
 import type { BusinessSettings } from '../types/document.types';
 import { DocumentMoney } from './DocumentMoney';
+import { DocumentBranchLine } from './DocumentBranchLine';
 
 const label = (en: string, ar: string) => ({ en, ar });
 const disposition = {
@@ -22,7 +23,7 @@ export function SalesReturnDocument({ salesReturn, business }: { salesReturn: Sa
     <header className="document-header">
       <div className="flex min-w-0 items-start gap-4">
         {business.logoUrl ? <img className="document-logo" src={business.logoUrl} alt="Business logo / شعار المتجر" /> : <div className="document-logo-placeholder">Logo<br /><span dir="rtl">الشعار</span></div>}
-        <div className="min-w-0"><h1 className="user-text text-2xl font-black" dir="auto">{configured(business.shopName, 'Shop name', 'اسم المتجر')}</h1><p className="user-text-pre mt-1 text-sm" dir="auto">{configured(business.address, 'Address', 'العنوان')}</p><p className="mt-1 text-sm" dir="ltr">{configured(business.phone, 'Phone', 'الهاتف')}</p><p className="mt-1 text-sm" dir="ltr">VAT / الضريبة: {configured(business.taxNumber, 'Tax number', 'الرقم الضريبي')}</p></div>
+        <div className="min-w-0"><h1 className="user-text text-2xl font-black" dir="auto">{configured(business.shopName, 'Shop name', 'اسم المتجر')}</h1><p className="user-text-pre mt-1 text-sm" dir="auto">{configured(business.address, 'Address', 'العنوان')}</p><p className="mt-1 text-sm" dir="ltr">{configured(business.phone, 'Phone', 'الهاتف')}</p><p className="mt-1 text-sm" dir="ltr">VAT / الضريبة: {configured(business.taxNumber, 'Tax number', 'الرقم الضريبي')}</p><DocumentBranchLine data={salesReturn} /></div>
       </div>
       <div className="text-right"><BilingualLabel label={label('SALES RETURN', 'مرتجع مبيعات')} className="text-xl font-black text-brand-800" /><Datum name={label('Return no.', 'رقم المرتجع')} value={salesReturn.returnNumber} /><Datum name={label('Original invoice', 'الفاتورة الأصلية')} value={salesReturn.salesOrder.orderNumber} /><Datum name={label('Sale date', 'تاريخ البيع')} value={formatBusinessDate(salesReturn.salesOrder.orderDate)} /><Datum name={label('Return date', 'تاريخ الإرجاع')} value={formatBusinessDate(salesReturn.returnDate)} /><Datum name={label('Currency', 'العملة')} value={salesReturn.currency} />{exchangeRelevant && <Datum name={label('Exchange rate', 'سعر الصرف')} value={salesReturn.exchangeRate} />}</div>
     </header>

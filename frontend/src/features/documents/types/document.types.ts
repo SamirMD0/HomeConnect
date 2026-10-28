@@ -27,7 +27,12 @@ export interface PaymentReceiptUser {
   username: string;
 }
 
-export interface PaymentReceipt {
+export interface DocumentBranchData {
+  branch?: { name: string; address: string | null; phone: string | null };
+  showBranchLine?: boolean;
+}
+
+export interface PaymentReceipt extends DocumentBranchData {
   id: string;
   customer: { id: string; name: string; phone: string; address: string | null } | null;
   sourceSnapshot?: Record<string, unknown> | null;
@@ -68,7 +73,7 @@ export interface PaymentReceipt {
 
 export type CustomerStatementEntryStatus = 'POSTED' | 'VOIDED' | 'CANCELLED';
 
-export interface CustomerStatement {
+export interface CustomerStatement extends DocumentBranchData {
   businessDate: string;
   currency: 'USD';
   customer: { id: string; name: string; phone: string; address: string | null };

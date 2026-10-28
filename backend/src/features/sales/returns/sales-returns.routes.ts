@@ -1,3 +1,4 @@
+import { documentBranch } from '../../documents/document-branch';
 import { Router } from 'express';
 import type { NextFunction, Request, Response } from 'express';
 import { z } from 'zod';
@@ -13,7 +14,7 @@ salesReturnsRoutes.get('/:salesReturnId', validate(paramsSchema, 'params'), asyn
   req: Request<Params>, res: Response, next: NextFunction
 ) => {
   try {
-    res.json({ success: true, data: await SalesReturnsService.get(req.params.salesReturnId) });
+    res.json({ success: true, data: { ...await SalesReturnsService.get(req.params.salesReturnId), ...await documentBranch('salesReturn', req.params.salesReturnId) } });
   } catch (error) {
     next(error);
   }

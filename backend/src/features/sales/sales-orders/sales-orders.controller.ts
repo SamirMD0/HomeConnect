@@ -1,3 +1,4 @@
+import { documentBranch } from '../../documents/document-branch';
 import type { NextFunction, Request, Response } from 'express';
 import { SalesOrdersService } from './sales-orders.service';
 import { SalesOrderInventoryService } from './sales-order-inventory.service';
@@ -48,7 +49,7 @@ export class SalesOrdersController {
     try { res.json(paginated(await SalesOrdersService.list({ ...(req.query as unknown as SalesOrderListQueryInput), customerId: req.params.customerId }, req.branchScope!))); } catch (error) { next(error); }
   }
   static async get(req: Request<SalesOrderParamsInput>, res: Response, next: NextFunction) {
-    try { res.json({ success: true, data: await SalesOrdersService.get(req.params.salesOrderId) }); } catch (error) { next(error); }
+    try { res.json({ success: true, data: { ...await SalesOrdersService.get(req.params.salesOrderId), ...await documentBranch('salesOrder', req.params.salesOrderId) } }); } catch (error) { next(error); }
   }
   static async summary(req: Request, res: Response, next: NextFunction) {
     try { res.json({ success: true, data: await SalesOrdersService.summary(req.query as never, req.branchScope!) }); } catch (error) { next(error); }

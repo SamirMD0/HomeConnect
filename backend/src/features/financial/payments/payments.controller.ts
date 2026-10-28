@@ -1,3 +1,4 @@
+import { documentBranch } from '../../documents/document-branch';
 import { NextFunction, Request, Response } from 'express';
 import {
   CorrectPaymentInput,
@@ -15,7 +16,7 @@ export class PaymentsController {
   ) {
     try {
       const receipt = await PaymentsService.getReceipt(req.params.paymentId);
-      res.status(200).json({ success: true, data: receipt, meta: { timestamp: new Date().toISOString() } });
+      res.status(200).json({ success: true, data: { ...receipt, ...await documentBranch('payment', req.params.paymentId) }, meta: { timestamp: new Date().toISOString() } });
     } catch (error) {
       next(error);
     }
