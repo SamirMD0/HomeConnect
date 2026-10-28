@@ -1,3 +1,5 @@
+// Load the real jsdom sanitizer during collection, outside assertion timeouts.
+import 'isomorphic-dompurify';
 import { describe, expect, it } from 'vitest';
 import { sanitizeSvg } from './sanitize-svg';
 

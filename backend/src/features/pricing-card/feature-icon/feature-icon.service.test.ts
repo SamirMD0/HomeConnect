@@ -1,3 +1,5 @@
+// Load the real jsdom sanitizer during collection, outside assertion timeouts.
+import 'isomorphic-dompurify';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { FeatureIconService } from './feature-icon.service';
 
