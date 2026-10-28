@@ -33,6 +33,7 @@ import type {
 import { ReportEmptyState, ReportErrorState, ReportLoadingState } from './ReportStates';
 import { ReportPeriodSelector } from './ReportPeriodSelector';
 import { TopSupplierBalancesChart } from './ReportCharts';
+import { BranchBreakdownTable, type WithBranchBreakdown } from '../../branches/scope/BranchBreakdownTable';
 
 type ReviewEnvelope = Omit<MonthlyReviewResponse, 'success'>;
 
@@ -125,6 +126,20 @@ export function MonthlyReviewContent({
           <StatCard title="New customers / زبائن جدد" value={data.customers.newCustomers} icon={<UserPlus className="h-5 w-5" />} color="warning" />
         </div>
       </section>
+
+      <BranchBreakdownTable<MonthlyReviewData>
+        title="By branch / حسب الفرع"
+        description="This period's sales per branch, in USD."
+        total={data}
+        rows={(data as WithBranchBreakdown<MonthlyReviewData>).branchBreakdown}
+        metrics={[
+          { label: 'Sales', numeric: true, value: (figures) => formatMoney(figures.sales.totalAmount) },
+          { label: 'Paid', numeric: true, value: (figures) => formatMoney(figures.sales.paidAmount) },
+          { label: 'Unpaid', numeric: true, value: (figures) => formatMoney(figures.sales.unpaidAmount) },
+          { label: 'Returns', numeric: true, value: (figures) => formatMoney(figures.sales.returnsAmount ?? '0.00') },
+          { label: 'Orders', numeric: true, value: (figures) => figures.sales.orderCount },
+        ]}
+      />
 
       <section className="rounded-xl border border-slate-200 bg-white p-4" aria-labelledby="monthly-review-comparison">
         <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">

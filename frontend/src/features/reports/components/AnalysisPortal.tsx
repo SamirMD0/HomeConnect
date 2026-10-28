@@ -7,6 +7,7 @@ import type {
 } from '../types/analysis.types';
 import type { MonthlyReviewQuery } from '../types/monthly-review.types';
 import { ReportErrorState, ReportLoadingState } from './ReportStates';
+import { BranchBreakdownTable, type WithBranchBreakdown } from '../../branches/scope/BranchBreakdownTable';
 
 /**
  * The analysis portal: one period read against the one before it.
@@ -50,6 +51,20 @@ export function AnalysisPortal({ period }: { period: MonthlyReviewQuery }) {
         <CountCompare label="Units sold / وحدات مباعة" value={data.health.inventorySoldUnits} />
       </div>
     </Section>
+
+    <BranchBreakdownTable<AnalysisData>
+      title="By branch / حسب الفرع"
+      description="This period, in USD. Customer receivables and supplier payables are separate balances and are never netted."
+      total={data}
+      rows={(data as WithBranchBreakdown<AnalysisData>).branchBreakdown}
+      metrics={[
+        { label: 'Sales', numeric: true, value: (figures) => formatMoney(figures.health.salesTotal.current) },
+        { label: 'Customer collected', numeric: true, value: (figures) => formatMoney(figures.health.customerCollected.current) },
+        { label: 'Customer receivables', numeric: true, value: (figures) => formatMoney(figures.health.customerReceivables.current) },
+        { label: 'Supplier paid', numeric: true, value: (figures) => formatMoney(figures.health.supplierPaid.current) },
+        { label: 'Supplier payables', numeric: true, value: (figures) => formatMoney(figures.health.supplierPayables.current) },
+      ]}
+    />
 
     <Section title="Cashflow pressure / ضغط التدفق النقدي">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">

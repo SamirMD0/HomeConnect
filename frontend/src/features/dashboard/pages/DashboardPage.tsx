@@ -17,6 +17,7 @@ import { ServiceAnalytics } from '../components/sections/ServiceAnalytics';
 import { SalesAnalytics } from '../components/sections/SalesAnalytics';
 import { SupplierAnalytics } from '../components/sections/SupplierAnalytics';
 import { MonthEndSnapshot } from '../components/sections/MonthEndSnapshot';
+import { BranchComparison } from '../components/sections/BranchComparison';
 import {
   useCustomerAnalytics,
   useDashboardActivity,
@@ -109,6 +110,10 @@ export function DashboardPage() {
           isError={overview.isError}
           onRetry={() => overview.refetch()}
         />
+      </DashboardSectionBoundary>
+
+      <DashboardSectionBoundary>
+        <BranchComparison />
       </DashboardSectionBoundary>
 
       <DashboardAnchorNav anchors={anchors} />
