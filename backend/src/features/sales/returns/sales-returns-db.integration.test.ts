@@ -49,7 +49,7 @@ describeDatabase('atomic sales return database integration', () => {
     const fixture = await createFixture();
     const today = todayInBusinessTimezone();
     const reportQuery = { period: 'custom' as const, from: today, to: today };
-    expect((await ReportRowsService.get('customers-financial-integrity', reportQuery)).data.summary).toMatchObject({ mismatches: 0 });
+    expect((await ReportRowsService.get('customers-financial-integrity', reportQuery, undefined, await phase3bScope())).data.summary).toMatchObject({ mismatches: 0 });
     const input = {
       idempotencyKey: `return-full-${randomUUID()}`,
       items: [{ salesOrderItemId: fixture.itemId, quantity: 2, stockDisposition: SalesReturnStockDisposition.SELLABLE, conditionNote: 'Unopened' }],
@@ -93,25 +93,25 @@ describeDatabase('atomic sales return database integration', () => {
       GROUP BY p."id"
     `;
     expect(BigInt(reconciliation[0].cached)).toBe(reconciliation[0].movement);
-    const financial = await ReportRowsService.get('customers-financial-integrity', reportQuery);
+    const financial = await ReportRowsService.get('customers-financial-integrity', reportQuery, undefined, await phase3bScope());
     expect(financial.data.summary).toMatchObject({ mismatches: 0 });
     expect(financial.data.rows.find((row: any) => row.customer.id === fixture.customerId)).toMatchObject({
       reportedOutstanding: '0.00', independentOutstanding: '0.00', difference: '0.00',
     });
-    expect((await ReportRowsService.get('inventory-reconciliation', reportQuery)).data.summary).toMatchObject({ mismatches: 0 });
-    expect((await ReportRowsService.get('suppliers-financial-integrity', reportQuery)).data.summary).toMatchObject({ mismatches: 0 });
-    const monthly = await MonthlyDebtsService.getDebtReportForRange({ month: today.slice(0, 7), mode: 'SNAPSHOT', includeZero: true, includeCancelled: false, overdueOnly: false, page: 1, limit: 10000, sortBy: 'OUTSTANDING', sortOrder: 'DESC' }, today, today);
+    expect((await ReportRowsService.get('inventory-reconciliation', reportQuery, undefined, await phase3bScope())).data.summary).toMatchObject({ mismatches: 0 });
+    expect((await ReportRowsService.get('suppliers-financial-integrity', reportQuery, undefined, await phase3bScope())).data.summary).toMatchObject({ mismatches: 0 });
+    const monthly = await MonthlyDebtsService.getDebtReportForRange({ month: today.slice(0, 7), mode: 'SNAPSHOT', includeZero: true, includeCancelled: false, overdueOnly: false, page: 1, limit: 10000, sortBy: 'OUTSTANDING', sortOrder: 'DESC' }, today, today, await phase3bScope());
     expect(monthly.rows.find((row) => row.customer.id === fixture.customerId)?.totalOutstanding ?? '0.00').toBe('0.00');
     expect((await CustomerStatementService.get(fixture.customerId, { from: today, to: today })).closingBalance).toBe('0.00');
-    expect((await DashboardFinancialService.getFinancialSummary()).money.totalOutstanding).toBe('0.00');
+    expect((await DashboardFinancialService.getFinancialSummary(await phase3bScope())).money.totalOutstanding).toBe('0.00');
     const ledger = await FinancialLedgerService.getFinancialLedger(financialLedgerQuerySchema.parse({ customerId: fixture.customerId }), await phase3bScope());
     expect(ledger.summary.totalOutstanding).toBe('0.00');
-    expect((await ReportRowsService.get('sales-unpaid', reportQuery)).data.rows).toHaveLength(0);
-    expect((await ReportRowsService.get('customers-aging', reportQuery)).data.rows).toHaveLength(0);
-    expect((await ReportRowsService.get('sales-orders', reportQuery)).data.summary).toMatchObject({ totalAmount: '100.00', returnsAmount: '100.00', netSalesAmount: '0.00', cashRefunds: '50.00', storeCreditIssued: '0.00' });
-    const movement = await ReportRowsService.get('customers-not-paid', reportQuery);
+    expect((await ReportRowsService.get('sales-unpaid', reportQuery, undefined, await phase3bScope())).data.rows).toHaveLength(0);
+    expect((await ReportRowsService.get('customers-aging', reportQuery, undefined, await phase3bScope())).data.rows).toHaveLength(0);
+    expect((await ReportRowsService.get('sales-orders', reportQuery, undefined, await phase3bScope())).data.summary).toMatchObject({ totalAmount: '100.00', returnsAmount: '100.00', netSalesAmount: '0.00', cashRefunds: '50.00', storeCreditIssued: '0.00' });
+    const movement = await ReportRowsService.get('customers-not-paid', reportQuery, undefined, await phase3bScope());
     expect(movement.data.rows.find((row: any) => row.customer.id === fixture.customerId)).toMatchObject({ newDebt: '50.00', returnCredits: '50.00', closingBalance: '0.00' });
-    const activity = await MonthlyDebtsService.getMonthlyFinancialActivity({ month: today.slice(0, 7), customerId: fixture.customerId, page: 1, limit: 100 });
+    const activity = await MonthlyDebtsService.getMonthlyFinancialActivity({ month: today.slice(0, 7), customerId: fixture.customerId, page: 1, limit: 100 }, await phase3bScope());
     expect(activity.summary).toMatchObject({ returnCredits: '50.00', cashRefunds: '50.00', paymentsReceived: '0.00', netFinancialChange: '0.00' });
     expect(activity.items.find((item) => item.type === 'SALES_RETURN')).toMatchObject({ amount: '-50.00', cashRefundAmount: '50.00' });
     await expect(DebtsService.recordDebtPayment(fixture.debtId, { amount: '1.00', paymentDate: today }, { userId: fixture.userId, role: 'ADMIN' }, await phase3bScope())).rejects.toThrow();
@@ -141,7 +141,7 @@ describeDatabase('atomic sales return database integration', () => {
     expect((await PaymentsService.getReceipt(payment.id)).remainingBalances[0].amount).toBe('40.00');
     await expect(DebtsService.recordDebtPayment(fixture.debtId, { amount: '41.00', paymentDate: today }, actor, await phase3bScope())).rejects.toThrow();
     await expect(PaymentsService.voidPayment(payment.id, { reason: 'Unsafe independent reversal', accountPassword: 'correct-password', sourceScreen: 'API' }, actor, await phase3bScope())).rejects.toThrow('cannot be corrected independently');
-    expect((await ReportRowsService.get('customers-financial-integrity', { period: 'thisMonth' })).data.summary).toMatchObject({ mismatches: 0, reportedTotal: '40.00' });
+    expect((await ReportRowsService.get('customers-financial-integrity', { period: 'thisMonth' }, undefined, await phase3bScope())).data.summary).toMatchObject({ mismatches: 0, reportedTotal: '40.00' });
   }, 30_000);
 
   it('posts a partial condition return without adding damaged goods to sellable stock', async () => {

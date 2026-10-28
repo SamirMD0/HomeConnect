@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { review, repository } = vi.hoisted(() => ({
   review: { get: vi.fn() },
-  repository: { receivedQuantityTotal: vi.fn(), soldQuantityByProduct: vi.fn(), receivedProducts: vi.fn() },
+  repository: { supplierReceivings:vi.fn(), receivedQuantityTotal: vi.fn(), soldQuantityByProduct: vi.fn(), receivedProducts: vi.fn() },
 }));
 vi.mock('../monthly-review/monthly-review.service', () => ({ MonthlyReviewService: review }));
 vi.mock('../rows/report-rows.repository', () => ({ ReportRowsRepository: repository }));
@@ -48,6 +48,10 @@ describe('AnalysisService', () => {
     repository.receivedQuantityTotal.mockResolvedValue({ units: 0, lines: 0 });
     repository.soldQuantityByProduct.mockResolvedValue(new Map());
     repository.receivedProducts.mockResolvedValue([]);
+    repository.supplierReceivings.mockImplementation(async () => {
+      const records = await repository.receivedProducts.mock.results.at(-1)?.value ?? [];
+      return [...new Map(records.map((row: {receiving:{id:string;transactions:unknown[]}}) => [row.receiving.id,{...row.receiving,items:[row]}])).values()];
+    });
     review.get.mockResolvedValue(envelope());
   });
 
@@ -56,7 +60,7 @@ describe('AnalysisService', () => {
       .mockResolvedValueOnce(envelope({ sales: { totalAmount: '1000.00', orderCount: 10 } }))
       .mockResolvedValueOnce(envelope({ sales: { totalAmount: '800.00', orderCount: 8 } }));
 
-    const report = await AnalysisService.get({ period: 'thisMonth' }, options);
+    const report = await AnalysisService.get({ period: 'thisMonth' }, options, phase3cScope);
 
     expect(report.data.health.salesTotal).toEqual({ current: '1000.00', previous: '800.00', change: '200.00', changePercent: 25 });
     expect(report.data.health.orderCount).toEqual({ current: 10, previous: 8, change: 2 });
@@ -67,7 +71,7 @@ describe('AnalysisService', () => {
       .mockResolvedValueOnce(envelope({ sales: { totalAmount: '500.00' } }))
       .mockResolvedValueOnce(envelope({ sales: { totalAmount: '0.00' } }));
 
-    const report = await AnalysisService.get({ period: 'thisMonth' }, options);
+    const report = await AnalysisService.get({ period: 'thisMonth' }, options, phase3cScope);
 
     expect(report.data.health.salesTotal.changePercent).toBeNull();
   });
@@ -77,7 +81,7 @@ describe('AnalysisService', () => {
       customerMovement: { closing: '300.00' }, supplierMovement: { closing: '700.00' },
     }));
 
-    const report = await AnalysisService.get({ period: 'thisMonth' }, options);
+    const report = await AnalysisService.get({ period: 'thisMonth' }, options, phase3cScope);
 
     expect(report.data.health.customerReceivables.current).toBe('300.00');
     expect(report.data.health.supplierPayables.current).toBe('700.00');
@@ -89,7 +93,7 @@ describe('AnalysisService', () => {
       .mockResolvedValueOnce(envelope({ supplierMovement: { closing: '900.00' }, customerMovement: { collected: '100.00' } }))
       .mockResolvedValueOnce(envelope({ supplierMovement: { closing: '200.00' } }));
 
-    const report = await AnalysisService.get({ period: 'thisMonth' }, options);
+    const report = await AnalysisService.get({ period: 'thisMonth' }, options, phase3cScope);
     const finding = report.data.findings.find((item) => item.key === 'SUPPLIER_DEBT_OUTRUNNING_COLLECTIONS');
 
     expect(report.data.cashflow.supplierDebtOutrunningCollections).toBe(true);
@@ -101,7 +105,7 @@ describe('AnalysisService', () => {
   it('warns when collections fell short of newly created debt', async () => {
     review.get.mockResolvedValue(envelope({ customerMovement: { newAmount: '500.00', collected: '100.00' } }));
 
-    const report = await AnalysisService.get({ period: 'thisMonth' }, options);
+    const report = await AnalysisService.get({ period: 'thisMonth' }, options, phase3cScope);
 
     expect(report.data.cashflow.collectionShortfall).toBe(true);
     expect(report.data.findings.map((item) => item.key)).toContain('COLLECTION_SHORTFALL');
@@ -113,7 +117,7 @@ describe('AnalysisService', () => {
       topDebtors: [{ customerId: 'c1', customerName: 'Rami', outstanding: '600.00' }],
     }));
 
-    const report = await AnalysisService.get({ period: 'thisMonth' }, options);
+    const report = await AnalysisService.get({ period: 'thisMonth' }, options, phase3cScope);
     const finding = report.data.findings.find((item) => item.key === 'RECEIVABLE_CONCENTRATION');
 
     expect(finding?.detail.en).toContain('Rami');
@@ -122,10 +126,10 @@ describe('AnalysisService', () => {
 
   it('reports the unpaid share of sales and leaves it null when there were no sales', async () => {
     review.get.mockResolvedValue(envelope({ sales: { totalAmount: '400.00', unpaidAmount: '100.00' } }));
-    expect((await AnalysisService.get({ period: 'thisMonth' }, options)).data.salesVsDebt.unpaidPercentOfSales).toBe(25);
+    expect((await AnalysisService.get({ period: 'thisMonth' }, options, phase3cScope)).data.salesVsDebt.unpaidPercentOfSales).toBe(25);
 
     review.get.mockResolvedValue(envelope());
-    expect((await AnalysisService.get({ period: 'thisMonth' }, options)).data.salesVsDebt.unpaidPercentOfSales).toBeNull();
+    expect((await AnalysisService.get({ period: 'thisMonth' }, options, phase3cScope)).data.salesVsDebt.unpaidPercentOfSales).toBeNull();
   });
 
   it('counts inventory received, sold, and received-but-unsold products', async () => {
@@ -136,7 +140,7 @@ describe('AnalysisService', () => {
       { product: { id: 'p2' }, receiving: { id: 'r2', transactions: [] } },
     ]);
 
-    const report = await AnalysisService.get({ period: 'thisMonth' }, options);
+    const report = await AnalysisService.get({ period: 'thisMonth' }, options, phase3cScope);
 
     expect(report.data.inventoryPosition.receivedUnits).toBe(25);
     expect(report.data.inventoryPosition.soldUnits).toBe(4);
@@ -147,20 +151,20 @@ describe('AnalysisService', () => {
 
   it('raises stock findings by severity, preferring out-of-stock over low-stock', async () => {
     review.get.mockResolvedValue(envelope({ inventory: { lowStockProducts: 3, outOfStockProducts: 2 } }));
-    const keys = (await AnalysisService.get({ period: 'thisMonth' }, options)).data.findings.map((item) => item.key);
+    const keys = (await AnalysisService.get({ period: 'thisMonth' }, options, phase3cScope)).data.findings.map((item) => item.key);
 
     expect(keys).toContain('OUT_OF_STOCK');
     expect(keys).not.toContain('LOW_STOCK');
   });
 
   it('produces no findings for a quiet, balanced period', async () => {
-    expect((await AnalysisService.get({ period: 'thisMonth' }, options)).data.findings).toEqual([]);
+    expect((await AnalysisService.get({ period: 'thisMonth' }, options, phase3cScope)).data.findings).toEqual([]);
   });
 
   it('exports a CSV of the analysis alone, with a BOM and its own filename', async () => {
     review.get.mockResolvedValue(envelope({ sales: { totalAmount: '1000.00' } }));
 
-    const result = await AnalysisService.exportCsv({ period: 'thisMonth' }, options);
+    const result = await AnalysisService.exportCsv({ period: 'thisMonth' }, options, phase3cScope);
 
     expect(result.csv.startsWith('﻿')).toBe(true);
     expect(result.csv).toContain('Sales');
@@ -169,7 +173,7 @@ describe('AnalysisService', () => {
   });
 
   it('never writes: every collaborator it uses is a read', async () => {
-    await AnalysisService.get({ period: 'thisMonth' }, options);
+    await AnalysisService.get({ period: 'thisMonth' }, options, phase3cScope);
 
     expect(review.get).toHaveBeenCalled();
     for (const mock of Object.values(repository)) {
@@ -187,9 +191,16 @@ describe('AnalysisService money handling', () => {
     repository.soldQuantityByProduct.mockResolvedValue(new Map());
     repository.receivedProducts.mockResolvedValue([]);
 
-    const report = await AnalysisService.get({ period: 'thisMonth' }, options);
+    const report = await AnalysisService.get({ period: 'thisMonth' }, options, phase3cScope);
 
     expect(report.data.health.customerReceivables.change).toBe('-0.10');
     expect(new Decimal(report.data.health.customerReceivables.change).toString()).toBe('-0.1');
   });
 });
+
+const phase3cScope = { mode: 'all' as const, branchIds: ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'] };
+
+vi.mock('../../branches/branch-breakdown', async (importOriginal) => ({
+  ...await importOriginal<typeof import('../../branches/branch-breakdown')>(),
+  branchLabel: vi.fn().mockResolvedValue('Phase 3C A'),
+}));

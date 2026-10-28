@@ -1,3 +1,7 @@
+import { branchFields } from '../../branches/branch-breakdown';
+import { branchLabel } from '../../branches/branch-breakdown';
+import { withEnvelopeBranchBreakdown } from '../../branches/branch-breakdown';
+import { type BranchScope } from '../../branches/branch-scope';
 import { Decimal } from '@prisma/client/runtime/library';
 import { moneyToApiString, subtractMoney, todayInBusinessTimezone, ZERO_MONEY } from '../../financial';
 import { buildCsv } from '../shared/csv';
@@ -20,15 +24,19 @@ interface AnalysisOptions { businessDate?: string; generatedAt?: Date }
  * named constants. No scoring, no AI, no invented numbers.
  */
 export class AnalysisService {
-  static async get(query: MonthlyReviewQueryInput, options: AnalysisOptions = {}): Promise<AnalysisEnvelope> {
+  static async get(query: MonthlyReviewQueryInput, options: AnalysisOptions = {}, scope: BranchScope) {
+    return withEnvelopeBranchBreakdown(scope, scope => this.calculateGet(query, options, scope));
+  }
+
+  static async calculateGet(query: MonthlyReviewQueryInput, options: AnalysisOptions = {}, scope: BranchScope): Promise<AnalysisEnvelope> {
     const businessDate = options.businessDate ?? todayInBusinessTimezone();
     const generatedAt = (options.generatedAt ?? new Date()).toISOString();
     const period = resolveReportsPeriod(query, businessDate);
     const previousQuery = { period: 'custom' as const, from: period.previousFrom, to: period.previousTo };
 
     const [current, previous, received, previousReceived, soldByProduct, previousSold] = await Promise.all([
-      MonthlyReviewService.get(query, { businessDate, generatedAt: options.generatedAt }),
-      MonthlyReviewService.get(previousQuery, { businessDate, generatedAt: options.generatedAt }),
+      MonthlyReviewService.get(query, { businessDate, generatedAt: options.generatedAt }, scope),
+      MonthlyReviewService.get(previousQuery, { businessDate, generatedAt: options.generatedAt }, scope),
       ReportRowsRepository.receivedQuantityTotal(period),
       ReportRowsRepository.receivedQuantityTotal({ ...period, from: period.previousFrom, to: period.previousTo }),
       ReportRowsRepository.soldQuantityByProduct(period),
@@ -38,9 +46,8 @@ export class AnalysisService {
     const receivedProducts = await ReportRowsRepository.receivedProducts(period);
     const receivedProductIds = new Set(receivedProducts.map((item) => item.product.id));
     const receivedNotSoldProducts = [...receivedProductIds].filter((id) => (soldByProduct.get(id) ?? 0) === 0).length;
-    const receivingWithoutLinkedDebt = new Set(
-      receivedProducts.filter((item) => item.receiving.transactions.length === 0).map((item) => item.receiving.id)
-    ).size;
+    const scopedReceivings = await ReportRowsRepository.supplierReceivings(period, scope);
+    const receivingWithoutLinkedDebt = scopedReceivings.filter(item => item.items.length > 0 && item.transactions.length === 0).length;
 
     const soldUnits = sumMapValues(soldByProduct);
     const previousSoldUnits = sumMapValues(previousSold);
@@ -52,8 +59,9 @@ export class AnalysisService {
     return { meta: { ...current.meta, generatedAt }, data };
   }
 
-  static async exportCsv(query: MonthlyReviewQueryInput, options: AnalysisOptions = {}) {
-    const report = await this.get(query, options);
+  static async exportCsv(query: MonthlyReviewQueryInput, options: AnalysisOptions = {}, scope: BranchScope) {
+    const csvBranchName = await branchLabel(scope);
+    const report = await this.get(query, options, scope);
     const { health, cashflow, inventoryPosition } = report.data;
     const comparisons: Array<[string, AnalysisComparison]> = [
       ['Sales', health.salesTotal], ['Customer debt added', health.customerDebtAdded],
@@ -64,8 +72,8 @@ export class AnalysisService {
     return {
       filename: `analysis-${report.meta.from}-to-${report.meta.to}.csv`,
       csv: buildCsv(
-        ['Measure', 'Current', 'Previous', 'Change', 'Change %'],
-        [
+        ['Branch', ...['Measure', 'Current', 'Previous', 'Change', 'Change %']],
+        ([
           ...comparisons.map(([label, value]) => [label, value.current, value.previous, value.change, value.changePercent]),
           ['Orders', health.orderCount.current, health.orderCount.previous, health.orderCount.change, null],
           ['Inventory received (units)', health.inventoryReceivedUnits.current, health.inventoryReceivedUnits.previous, health.inventoryReceivedUnits.change, null],
@@ -73,7 +81,7 @@ export class AnalysisService {
           ['Unpaid customer amount', cashflow.unpaidCustomerAmount, null, null, null],
           ['Supplier amount owed', cashflow.supplierAmountOwed, null, null, null],
           ['Products received but not sold', inventoryPosition.receivedNotSoldProducts, null, null, null],
-        ]
+        ]).map(row => [csvBranchName, ...row])
       ),
     };
   }
@@ -127,7 +135,7 @@ export class AnalysisService {
     const receivables = new Decimal(now.customers.movement.closing);
     const topDebtors = now.customers.operationalSnapshot.topDebtors
       .slice(0, 5)
-      .map((debtor) => ({ customerId: debtor.customerId, customerName: debtor.customerName, outstanding: debtor.outstanding }));
+      .map((debtor) => ({ customerId:debtor.customerId, customerName:debtor.customerName, outstanding:debtor.outstanding, ...branchFields(debtor) }));
 
     const salesTotal = new Decimal(now.sales.totalAmount);
     const data: AnalysisEnvelope['data'] = {
@@ -147,11 +155,12 @@ export class AnalysisService {
         suppliersWithBalance: now.suppliers.operationalSnapshot.suppliersWithBalance,
         paidInPeriod: now.suppliers.movement.collected,
         topBalances: now.suppliers.operationalSnapshot.topBalances.slice(0, 5).map((entry) => ({
-          supplierId: entry.supplierId, supplierName: entry.supplierName, balance: entry.balance,
+          supplierId:entry.supplierId,supplierName:entry.supplierName,balance:entry.balance,...branchFields(entry),
         })),
         receivingWithoutLinkedDebt: counts.receivingWithoutLinkedDebt,
       },
       inventoryPosition: {
+        inventoryScope: 'all-branches' as const,
         receivedUnits: counts.received.units,
         receivedLines: counts.received.lines,
         soldUnits: counts.soldUnits,

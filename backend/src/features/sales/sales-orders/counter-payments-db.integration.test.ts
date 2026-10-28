@@ -119,25 +119,25 @@ describeDb('new counter Payment invariants (INV-09)', () => {
 
   it('includes walk-in cash exactly once in payment reports and collected totals', async () => {
     const query = { period: 'custom' as const, from: today, to: today };
-    const before = await ReportRowsService.get('customers-payments', query);
-    const beforeActivity = await MonthlyDebtsService.getFinancialActivityForRange({ month: today.slice(0, 7), page: 1, limit: 10000 }, today, today);
+    const before = await ReportRowsService.get('customers-payments', query, undefined, await phase3bScope());
+    const beforeActivity = await MonthlyDebtsService.getFinancialActivityForRange({ month: today.slice(0, 7), page: 1, limit: 10000 }, today, today, await phase3bScope());
     const range = resolveDashboardRange({ range: 'custom', from: today, to: today }, today);
-    const beforeDashboard = await CustomerAnalyticsService.get(range, { includeArchived: false, includeAdminData: true, businessDate: today });
+    const beforeDashboard = await CustomerAnalyticsService.get(range, { includeArchived: false, includeAdminData: true, businessDate: today }, await phase3bScope());
     const sale = await SalesOrdersService.create(command(), { userId, role: 'ADMIN' }, {}, await phase3bScope());
-    const after = await ReportRowsService.get('customers-payments', query);
+    const after = await ReportRowsService.get('customers-payments', query, undefined, await phase3bScope());
     expect(Number((after.data.summary as { totalAmount: string }).totalAmount) - Number((before.data.summary as { totalAmount: string }).totalAmount)).toBe(100);
     const own = after.data.rows.filter((r) => (r as { sourceSalesOrder?: { id: string } }).sourceSalesOrder?.id === sale.id);
     expect(own).toHaveLength(1);
-    const activity = await MonthlyDebtsService.getFinancialActivityForRange({ month: today.slice(0, 7), page: 1, limit: 10000 }, today, today);
+    const activity = await MonthlyDebtsService.getFinancialActivityForRange({ month: today.slice(0, 7), page: 1, limit: 10000 }, today, today, await phase3bScope());
     expect(Number(activity.summary.paymentsReceived) - Number(beforeActivity.summary.paymentsReceived)).toBe(100);
     expect(Number(activity.summary.counterReceipts) - Number(beforeActivity.summary.counterReceipts)).toBe(100);
-    const dashboard = await CustomerAnalyticsService.get(range, { includeArchived: false, includeAdminData: true, businessDate: today });
+    const dashboard = await CustomerAnalyticsService.get(range, { includeArchived: false, includeAdminData: true, businessDate: today }, await phase3bScope());
     expect(Number(dashboard.totals.collected) - Number(beforeDashboard.totals.collected)).toBe(100);
     expect(Number(dashboard.today.collected) - Number(beforeDashboard.today.collected)).toBe(100);
     expect(dashboard.totals.distinctPayers).toBe(beforeDashboard.totals.distinctPayers);
-    const csv = await ReportRowsService.exportCsv('customers-payments', query);
+    const csv = await ReportRowsService.exportCsv('customers-payments', query, undefined, await phase3bScope());
     expect(csv.csv).toContain('Walk-in / زبون عابر');
-    const payers = await ReportRowsService.get('customers-paid', query);
+    const payers = await ReportRowsService.get('customers-paid', query, undefined, await phase3bScope());
     expect(payers.data.rows.some((r) => (r as { customer: { id: string } }).customer?.id == null)).toBe(false);
   }, 30_000);
 

@@ -5,8 +5,7 @@ import { app } from '../../../app';
 
 const { service } = vi.hoisted(() => ({ service: { get: vi.fn(), exportCsv: vi.fn() } }));
 vi.mock('./monthly-review.service', () => ({ MonthlyReviewService: service }));
-vi.mock('../../../lib/prisma', () => ({
-  prisma: { $queryRaw: vi.fn().mockResolvedValue([{ result: 1 }]) },
+vi.mock('../../../lib/prisma', async () => ({ prisma: { ...((await import('../../../test/branch-scope-fixture.js')).singleBranchRouteModels()), $queryRaw: vi.fn().mockResolvedValue([{ result: 1 }]) },
   transactionModel: {},
   activityLogModel: {},
 }));
@@ -42,7 +41,7 @@ describe('monthly review route', () => {
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ success: true, ...envelope });
-    expect(service.get).toHaveBeenCalledWith({ period: 'lastMonth', from: undefined, to: undefined });
+    expect(service.get).toHaveBeenCalledWith({ period: 'lastMonth', from: undefined, to: undefined }, undefined, phase3cScope);
   });
 
   it('validates custom business-date ranges before calling the service', async () => {
@@ -68,3 +67,10 @@ describe('monthly review route', () => {
     expect(response.headers['content-disposition']).toContain('monthly-review.csv');
   });
 });
+
+const phase3cScope = { mode: 'all' as const, branchIds: ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'] };
+
+vi.mock('../../branches/branch-breakdown', async (importOriginal) => ({
+  ...await importOriginal<typeof import('../../branches/branch-breakdown')>(),
+  branchLabel: vi.fn().mockResolvedValue('Phase 3C A'),
+}));

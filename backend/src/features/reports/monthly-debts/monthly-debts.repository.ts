@@ -1,7 +1,9 @@
+import { scopeWhere, type BranchScope } from '../../branches/branch-scope';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../../lib/prisma';
 
 const customerSelect = {
+  branchId:true, branch:{select:{name:true}},
   id: true,
   name: true,
   phone: true,
@@ -45,6 +47,7 @@ const planInclude = {
 } satisfies Prisma.InstallmentPlanInclude;
 
 const activityDebtSelect = {
+  branchId:true, branch:{select:{name:true}},
   id: true,
   customer: { select: customerSelect },
   description: true,
@@ -55,6 +58,7 @@ const activityDebtSelect = {
 } satisfies Prisma.DebtSelect;
 
 const activityPlanSelect = {
+  branchId:true, branch:{select:{name:true}},
   id: true,
   customer: { select: customerSelect },
   description: true,
@@ -64,6 +68,7 @@ const activityPlanSelect = {
 } satisfies Prisma.InstallmentPlanSelect;
 
 const activityPaymentSelect = {
+  branchId:true, branch:{select:{name:true}},
   salesOrderId: true,
   id: true,
   customer: { select: customerSelect },
@@ -96,6 +101,7 @@ export interface LoadMonthlyDebtSnapshotParams {
 }
 
 const activityReturnSelect = {
+  branchId:true, branch:{select:{name:true}},
   id: true, returnNumber: true, returnDate: true,
   baseReceivableReliefAmount: true, baseRefundableAmount: true, refundMethod: true,
   customer: { select: { id: true, name: true, phone: true } },
@@ -122,29 +128,29 @@ export interface LoadMonthlyFinancialActivityParams {
 
 export class MonthlyDebtsRepository {
   static async loadSnapshotRecords(
-    params: LoadMonthlyDebtSnapshotParams
+    params: LoadMonthlyDebtSnapshotParams, scope: BranchScope
   ): Promise<MonthlyDebtSnapshotRecordSet> {
     const customerWhere = this.customerWhere(params.search);
 
     const [debts, plans, paymentsThroughCutoff, monthlyPayments] = await Promise.all([
       prisma.debt.findMany({
-        where: {
+        where: { ...scopeWhere(scope),
           ...customerWhere,
           createdAt: { lt: params.nextDayAfterCutoff },
         },
-        include: debtInclude,
+        include: { ...debtInclude, branch: {select:{name:true}} },
         orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
       }),
       prisma.installmentPlan.findMany({
-        where: {
+        where: { ...scopeWhere(scope),
           ...customerWhere,
           createdAt: { lt: params.nextDayAfterCutoff },
         },
-        include: planInclude,
+        include: { ...planInclude, branch: {select:{name:true}} },
         orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
       }),
       prisma.payment.findMany({
-        where: {
+        where: { ...scopeWhere(scope),
           ...customerWhere,
           paymentDate: { lte: params.cutoffDate },
         },
@@ -152,7 +158,7 @@ export class MonthlyDebtsRepository {
         orderBy: [{ paymentDate: 'desc' }, { createdAt: 'desc' }, { id: 'asc' }],
       }),
       prisma.payment.findMany({
-        where: {
+        where: { ...scopeWhere(scope),
           ...(params.search ? customerWhere : { OR: [{ customerId: null }, customerWhere] }),
           paymentDate: { gte: params.startDate, lte: params.cutoffDate },
         },
@@ -165,7 +171,7 @@ export class MonthlyDebtsRepository {
   }
 
   static async loadActivityRecords(
-    params: LoadMonthlyFinancialActivityParams
+    params: LoadMonthlyFinancialActivityParams, scope: BranchScope
   ): Promise<MonthlyFinancialActivityRecordSet> {
     const customerIdWhere = params.customerId ? { customerId: params.customerId } : {};
     const createdAtStart = params.startInstantUtc ?? params.startDate;
@@ -173,7 +179,7 @@ export class MonthlyDebtsRepository {
 
     const [debts, plans, payments, returns] = await Promise.all([
       prisma.debt.findMany({
-        where: {
+        where: { ...scopeWhere(scope),
           ...customerIdWhere,
           customer: { deletedAt: null },
           createdAt: { gte: createdAtStart, lt: createdAtEndExclusive },
@@ -182,7 +188,7 @@ export class MonthlyDebtsRepository {
         orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
       }),
       prisma.installmentPlan.findMany({
-        where: {
+        where: { ...scopeWhere(scope),
           ...customerIdWhere,
           customer: { deletedAt: null },
           createdAt: { gte: createdAtStart, lt: createdAtEndExclusive },
@@ -191,7 +197,7 @@ export class MonthlyDebtsRepository {
         orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
       }),
       prisma.payment.findMany({
-        where: {
+        where: { ...scopeWhere(scope),
           ...customerIdWhere,
           OR: [{ customerId: null }, { customer: { deletedAt: null } }],
           paymentDate: { gte: params.startDate, lte: params.endDate },
@@ -200,7 +206,7 @@ export class MonthlyDebtsRepository {
         orderBy: [{ paymentDate: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
       }),
       prisma.salesReturn.findMany({
-        where: { ...customerIdWhere, returnDate: { gte: params.startDate, lt: params.nextDayAfterEnd } },
+        where: { ...scopeWhere(scope),  ...customerIdWhere, returnDate: { gte: params.startDate, lt: params.nextDayAfterEnd } },
         select: activityReturnSelect,
         orderBy: [{ returnDate: 'asc' }, { id: 'asc' }],
       }),
