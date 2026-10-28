@@ -1,10 +1,11 @@
+import { createRequire } from 'node:module';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { prepareRollback, readRollback, updateRollback, rollbackStatePath } from './update-rollback';
 import { migrationEnvironment, safeMigrationError } from './prisma-migration-runtime';
-const { recover } = require('./rollback-helper.cjs');
+const { recover } = createRequire(__filename)('./rollback-helper.cjs');
 
 const roots: string[] = [];
 afterEach(async () => {
