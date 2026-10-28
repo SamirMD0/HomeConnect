@@ -39,6 +39,8 @@ const scopedPrefixes: { prefix: string; parentGuard?: unknown }[] = [
   { prefix: '/api/v1/supplier-purchases' },
   { prefix: '/api/v1/supplier-ledger' },
   { prefix: '/api/v1/inventory/receivings' },
+  { prefix: '/api/v1/reports' },
+  { prefix: '/api/v1/dashboard' },
 ];
 
 // D3: stock counts, movements and onboarding stay global. New inventory routes
@@ -123,13 +125,13 @@ function inventory(application: Application): CoveredRoute[] {
   return found;
 }
 
-describe('branch-scope route coverage registry (Phase 3B)', () => {
+describe('branch-scope route coverage registry (Phase 3C)', () => {
   let app: Application;
   beforeAll(async () => {
     app = (await import('./app.js')).app;
   }, 30_000);
   afterAll(() => vi.restoreAllMocks());
-  it('walks every 3B route and classifies the global inventory allow-list explicitly', () => {
+  it('walks every 3C route and classifies the global inventory allow-list explicitly', () => {
     const routes = inventory(app);
     expect(scopedPrefixes.map((entry) => entry.prefix)).toEqual([
       '/api/v1/customers',
@@ -148,6 +150,8 @@ describe('branch-scope route coverage registry (Phase 3B)', () => {
       '/api/v1/supplier-purchases',
       '/api/v1/supplier-ledger',
       '/api/v1/inventory/receivings',
+      '/api/v1/reports',
+      '/api/v1/dashboard',
     ]);
     expect(
       routes.filter((route) => route.path.startsWith('/api/v1/customers')).length
@@ -189,7 +193,7 @@ describe('branch-scope route coverage registry (Phase 3B)', () => {
     }
     mkdirSync('node_modules/.cache/home-connect', { recursive: true });
     writeFileSync(
-      'node_modules/.cache/home-connect/phase3b-route-inventory.json',
+      'node_modules/.cache/home-connect/phase3c-route-inventory.json',
       JSON.stringify(
         routes.map(({ method, path }) => ({ method, path })),
         null,
