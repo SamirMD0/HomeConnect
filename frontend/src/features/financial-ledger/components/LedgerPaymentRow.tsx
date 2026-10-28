@@ -4,6 +4,7 @@ import { formatBusinessDate, formatDateTime, formatMoney } from '../../customer-
 import { LedgerRowActions } from './LedgerRowActions';
 import { MoneyCell } from './LedgerObligationRow';
 import { LedgerCustomerLink } from './LedgerCustomerLink';
+import { BranchRowLabel } from '../../branches/scope/branch-ui';
 
 interface LedgerPaymentRowProps {
   item: FinancialLedgerPaymentItem;
@@ -29,6 +30,7 @@ export const LedgerPaymentRow: React.FC<LedgerPaymentRowProps> = ({
     <td className="bg-white px-4 py-2 transition-all duration-200 group-hover:bg-gray-600 group-hover:text-yellow-300">
       <LedgerCustomerLink customer={item.customer} className="font-medium" />
       <p className="text-[11px] text-slate-500 transition-colors group-hover:text-yellow-200">{item.customer?.phone ?? '—'}</p>
+      <BranchRowLabel branchId={item.branchId} />
     </td>
     <td className="hidden bg-white px-4 py-2 transition-all duration-200 group-hover:bg-gray-600 lg:table-cell">
       <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700 transition-colors group-hover:bg-yellow-300 group-hover:text-slate-950">

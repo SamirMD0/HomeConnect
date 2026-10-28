@@ -12,7 +12,7 @@ export class CorrectionsController {
     next: NextFunction
   ) {
     try {
-      const corrections = await CorrectionsService.listCorrections(req.query);
+      const corrections = await CorrectionsService.listCorrections(req.query, req.branchScope!);
       res.status(200).json({
         success: true,
         data: corrections,
@@ -32,7 +32,7 @@ export class CorrectionsController {
       const corrections = await CorrectionsService.listCorrections({
         ...req.query,
         customerId: req.params.customerId,
-      });
+      }, req.branchScope!);
       res.status(200).json({
         success: true,
         data: corrections,

@@ -1,0 +1,68 @@
+{
+  "database": "homeconnect_test_phase4_phase5_phase6",
+  "databaseUrl": "Explicit child environment from ignored worktree backend/.env; never printed",
+  "nodeEnv": "test",
+  "targeted": {
+    "files": 24,
+    "passed": 211,
+    "failed": 0,
+    "skipped": 0
+  },
+  "mobile": {
+    "files": 6,
+    "passed": 22,
+    "failed": 0,
+    "skipped": 0,
+    "initialRun": {
+      "files": 6,
+      "passed": 21,
+      "failed": 0,
+      "skipped": 0
+    },
+    "selectionUpdate": {
+      "files": 1,
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0
+    },
+    "nativeScreenRunner": false
+  },
+  "fullRuns": [
+    {
+      "run": 1,
+      "passed": 3311,
+      "failed": 4,
+      "skipped": 0
+    },
+    {
+      "run": 2,
+      "passed": 3314,
+      "failed": 1,
+      "skipped": 0
+    },
+    {
+      "run": 3,
+      "explicitlyApprovedByOwner": true,
+      "passed": 3315,
+      "failed": 0,
+      "skipped": 0
+    }
+  ],
+  "typecheck": {
+    "root": "PASS",
+    "mobile": "PASS"
+  },
+  "lint": {
+    "files": 44,
+    "errors": 0,
+    "warnings": 0
+  },
+  "rehearsal": {
+    "result": "PASS",
+    "freshDatabase": "homeconnect_test_mb_phase3d_20261028_1012",
+    "dropped": true
+  },
+  "migrationSha256": "776a8bb45e18c487cf8841c4f53416f7faba327c44e43e67e42327e98ca55ee5",
+  "existingDocumentSnapshotsByteIdentical": true,
+  "productionScopingFlag": "Must remain OFF until Phase 4 desktop selector ships"
+}

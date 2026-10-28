@@ -1,4 +1,6 @@
+import { scopeWhere, type BranchScope } from '../../branches/branch-scope';
 import {
+  Prisma,
   DebtKind,
   SalesOrderFulfillmentStatus,
   SalesOrderPaymentStatus,
@@ -18,6 +20,7 @@ const excludedSalesStatuses = [
 ];
 
 export interface CustomerFinancialIntegrityEvidence {
+  branchId: string; branchName: string;
   customerId: string;
   customerName: string;
   customerPhone: string;
@@ -28,6 +31,7 @@ export interface CustomerFinancialIntegrityEvidence {
 }
 
 export interface SupplierFinancialIntegrityEvidence {
+  branchId: string; branchName: string;
   supplierId: string;
   supplierName: string;
   supplierPhone: string;
@@ -69,23 +73,23 @@ export class ReportRowsRepository {
   static productCategories(ids: string[]) {
     return prisma.product.findMany({ where: { id: { in: ids } }, select: { id: true, categoryId: true, category: { include: categoryInclude } } });
   }
-  static newCustomers(period: ResolvedReportsPeriod) {
+  static newCustomers(period: ResolvedReportsPeriod, scope: BranchScope) {
     const { from, toExclusive } = boundaries(period);
     return prisma.customer.findMany({
-      where: { deletedAt: null, createdAt: { gte: from, lt: toExclusive } },
-      select: { id: true, name: true, phone: true, isActive: true, createdAt: true },
+      where: { ...scopeWhere(scope),  deletedAt: null, createdAt: { gte: from, lt: toExclusive } },
+      select: { branchId: true, branch: {select:{name:true}},  id: true, name: true, phone: true, isActive: true, createdAt: true },
       orderBy: [{ createdAt: 'asc' }, { name: 'asc' }, { id: 'asc' }],
     });
   }
 
-  static customerPayments(period: ResolvedReportsPeriod) {
+  static customerPayments(period: ResolvedReportsPeriod, scope: BranchScope) {
     const { from, toExclusive } = boundaries(period);
     return prisma.payment.findMany({
-      where: {
+      where: { ...scopeWhere(scope),
         paymentDate: { gte: from, lt: toExclusive },
         OR: [{ voidedAt: null }, { voidedAt: { gte: toExclusive } }],
       },
-      select: {
+      select: { branchId: true, branch: {select:{name:true}},
         id: true, totalAmount: true, paymentDate: true, paymentMethod: true,
         reference: true, notes: true,
         currency: true, exchangeRate: true, baseAmount: true,
@@ -97,12 +101,12 @@ export class ReportRowsRepository {
     });
   }
 
-  static supplierTransactions(period: ResolvedReportsPeriod) {
+  static supplierTransactions(period: ResolvedReportsPeriod, scope: BranchScope) {
     const { from, toExclusive } = boundaries(period);
     return prisma.supplierTransaction.findMany({
-      where: { status: SupplierTransactionStatus.ACTIVE, transactionDate: { gte: from, lt: toExclusive } },
-      select: {
-        id: true, type: true, direction: true, amount: true, transactionDate: true,
+      where: { ...scopeWhere(scope),  status: SupplierTransactionStatus.ACTIVE, transactionDate: { gte: from, lt: toExclusive } },
+      select: { branchId: true, branch: {select:{name:true}},
+        id: true, type: true, direction: true, amount: true, baseAmount:true, transactionDate: true,
         description: true, reference: true, receiptNumber: true, supplierReceivingId: true,
         supplier: { select: { id: true, name: true, companyName: true } },
       },
@@ -110,11 +114,11 @@ export class ReportRowsRepository {
     });
   }
 
-  static supplierReceivings(period: ResolvedReportsPeriod) {
+  static supplierReceivings(period: ResolvedReportsPeriod, scope: BranchScope) {
     const { from, toExclusive } = boundaries(period);
     return prisma.supplierReceiving.findMany({
-      where: { receivedOn: { gte: from, lt: toExclusive } },
-      select: {
+      where: { ...scopeWhere(scope),  receivedOn: { gte: from, lt: toExclusive } },
+      select: { branchId: true, branch: {select:{name:true}},
         id: true, referenceNumber: true, receivedOn: true, status: true,
         supplier: { select: { id: true, name: true } },
         receivedBy: { select: { fullName: true, username: true } },
@@ -128,14 +132,14 @@ export class ReportRowsRepository {
     });
   }
 
-  static salesOrders(period: ResolvedReportsPeriod) {
+  static salesOrders(period: ResolvedReportsPeriod, scope: BranchScope) {
     const { from, toExclusive } = boundaries(period);
     return prisma.salesOrder.findMany({
-      where: {
+      where: { ...scopeWhere(scope),
         orderDate: { gte: from, lt: toExclusive },
         fulfillmentStatus: { notIn: excludedSalesStatuses },
       },
-      select: {
+      select: { branchId: true, branch: {select:{name:true}},
         id: true, orderNumber: true, orderDate: true, salesChannel: true,
         fulfillmentStatus: true, paymentStatus: true, settlement: true,
         totalAmount: true, paidAmount: true, remainingAmount: true,
@@ -146,13 +150,13 @@ export class ReportRowsRepository {
     });
   }
 
-  static unpaidSalesOrders() {
+  static unpaidSalesOrders(scope: BranchScope) {
     return prisma.salesOrder.findMany({
-      where: {
+      where: { ...scopeWhere(scope),
         paymentStatus: { in: [SalesOrderPaymentStatus.UNPAID, SalesOrderPaymentStatus.PARTIALLY_PAID] },
         fulfillmentStatus: { notIn: excludedSalesStatuses },
       },
-      select: {
+      select: { branchId: true, branch: {select:{name:true}},
         id: true, orderNumber: true, orderDate: true, paymentStatus: true,
         fulfillmentStatus: true, totalAmount: true, paidAmount: true, remainingAmount: true,
         baseTotalAmount: true, basePaidAmount: true, baseRemainingAmount: true,
@@ -189,14 +193,14 @@ export class ReportRowsRepository {
    * dropped by the service once it knows whether the cancellation happened
    * before the cutoff.
    */
-  static openDebtsAsOf(cutoffExclusive: Date) {
+  static openDebtsAsOf(cutoffExclusive: Date, scope: BranchScope) {
     return prisma.debt.findMany({
-      where: {
+      where: { ...scopeWhere(scope),
         kind: { not: DebtKind.PREPAID_PURCHASE },
         customer: { deletedAt: null },
         createdAt: { lt: cutoffExclusive },
       },
-      select: {
+      select: { branchId: true, branch: {select:{name:true}},
         id: true, description: true, originalAmount: true, baseOriginalAmount: true, dueDate: true,
         status: true, createdAt: true, cancelledAt: true,
         customer: { select: { id: true, name: true, phone: true } },
@@ -216,14 +220,14 @@ export class ReportRowsRepository {
   }
 
   /** Every non-voided payment on or before the cutoff, for last-payment dates. */
-  static paymentsThrough(cutoffExclusive: Date) {
+  static paymentsThrough(cutoffExclusive: Date, scope: BranchScope) {
     return prisma.payment.findMany({
-      where: {
+      where: { ...scopeWhere(scope),
         customer: { deletedAt: null },
         paymentDate: { lt: cutoffExclusive },
         OR: [{ voidedAt: null }, { voidedAt: { gte: cutoffExclusive } }],
       },
-      select: {
+      select: { branchId: true, branch: {select:{name:true}},
         id: true, totalAmount: true, paymentDate: true,
         customer: { select: { id: true, name: true, phone: true } },
       },
@@ -318,7 +322,7 @@ export class ReportRowsRepository {
 
   static productCostChanges(period: ResolvedReportsPeriod) {
     const { from, toExclusive } = boundaries(period);
-    return prisma.$queryRaw<ProductCostChangeEvidence[]>`
+    return prisma.$queryRaw<ProductCostChangeEvidence[]>(Prisma.sql`
       SELECT
         audit."id" AS "auditId",
         audit."changedAt",
@@ -347,7 +351,7 @@ export class ReportRowsRepository {
         AND audit."changedAt" >= ${from}
         AND audit."changedAt" < ${toExclusive}
       ORDER BY audit."changedAt" ASC, audit."id" ASC
-    `;
+    `);
   }
 
   /**
@@ -359,20 +363,20 @@ export class ReportRowsRepository {
    * parent payment are both live. Keeping this SQL separate is what lets the
    * report catch a regression in the normal application projection.
    */
-  static customerFinancialIntegrity() {
-    return prisma.$queryRaw<CustomerFinancialIntegrityEvidence[]>`
+  static customerFinancialIntegrity(scope: BranchScope) {
+    return prisma.$queryRaw<CustomerFinancialIntegrityEvidence[]>(Prisma.sql`
       WITH obligation_rows AS (
         SELECT d."customerId", d."baseOriginalAmount" AS amount
         FROM "debts" d
         WHERE d."kind" <> 'PREPAID_PURCHASE'
           AND d."status" <> 'CANCELLED'
-          AND d."cancelledAt" IS NULL
+          AND d."cancelledAt" IS NULL AND d."branchId" = ANY(${scope.branchIds}::uuid[])
         UNION ALL
         SELECT p."customerId", i."baseAmountDue" AS amount
         FROM "installments" i
         JOIN "installment_plans" p ON p."id" = i."installmentPlanId"
         WHERE p."status" <> 'CANCELLED'
-          AND p."cancelledAt" IS NULL
+          AND p."cancelledAt" IS NULL AND p."branchId" = ANY(${scope.branchIds}::uuid[])
           AND i."status" <> 'CANCELLED'
       ),
       obligation_totals AS (
@@ -390,10 +394,10 @@ export class ReportRowsRepository {
         JOIN "payments" payment ON payment."id" = a."paymentId"
         JOIN "debts" d ON d."id" = a."debtId"
         WHERE a."voidedAt" IS NULL
-          AND payment."voidedAt" IS NULL
+          AND payment."voidedAt" IS NULL AND payment."branchId" = ANY(${scope.branchIds}::uuid[])
           AND d."kind" <> 'PREPAID_PURCHASE'
           AND d."status" <> 'CANCELLED'
-          AND d."cancelledAt" IS NULL
+          AND d."cancelledAt" IS NULL AND d."branchId" = ANY(${scope.branchIds}::uuid[])
         UNION ALL
         SELECT p."customerId",
           CASE WHEN payment."currency" = 'USD'
@@ -405,9 +409,9 @@ export class ReportRowsRepository {
         JOIN "installments" i ON i."id" = a."installmentId"
         JOIN "installment_plans" p ON p."id" = i."installmentPlanId"
         WHERE a."voidedAt" IS NULL
-          AND payment."voidedAt" IS NULL
+          AND payment."voidedAt" IS NULL AND payment."branchId" = ANY(${scope.branchIds}::uuid[])
           AND p."status" <> 'CANCELLED'
-          AND p."cancelledAt" IS NULL
+          AND p."cancelledAt" IS NULL AND p."branchId" = ANY(${scope.branchIds}::uuid[])
           AND i."status" <> 'CANCELLED'
         UNION ALL
         SELECT d."customerId", a."baseAmount" AS amount
@@ -415,14 +419,14 @@ export class ReportRowsRepository {
         JOIN "debts" d ON d."id" = a."debtId"
         WHERE d."kind" <> 'PREPAID_PURCHASE'
           AND d."status" <> 'CANCELLED'
-          AND d."cancelledAt" IS NULL
+          AND d."cancelledAt" IS NULL AND d."branchId" = ANY(${scope.branchIds}::uuid[])
         UNION ALL
         SELECT p."customerId", a."baseAmount" AS amount
         FROM "sales_return_receivable_allocations" a
         JOIN "installments" i ON i."id" = a."installmentId"
         JOIN "installment_plans" p ON p."id" = i."installmentPlanId"
         WHERE p."status" <> 'CANCELLED'
-          AND p."cancelledAt" IS NULL
+          AND p."cancelledAt" IS NULL AND p."branchId" = ANY(${scope.branchIds}::uuid[])
           AND i."status" <> 'CANCELLED'
       ),
       allocation_totals AS (
@@ -431,24 +435,24 @@ export class ReportRowsRepository {
         GROUP BY "customerId"
       )
       SELECT
-        customer."id" AS "customerId",
+        customer."id" AS "customerId", customer."branchId" AS "branchId", branch."name" AS "branchName",
         customer."name" AS "customerName",
         customer."phone" AS "customerPhone",
         COALESCE(obligations.amount, 0)::text AS "obligationTotal",
         COALESCE(allocations.amount, 0)::text AS "allocationTotal",
         COALESCE(obligations.count, 0)::integer AS "obligationCount",
         COALESCE(allocations.count, 0)::integer AS "allocationCount"
-      FROM "customers" customer
+      FROM "customers" customer JOIN "branches" branch ON branch.id = customer."branchId"
       LEFT JOIN obligation_totals obligations ON obligations."customerId" = customer."id"
       LEFT JOIN allocation_totals allocations ON allocations."customerId" = customer."id"
-      WHERE customer."deletedAt" IS NULL
+      WHERE customer."deletedAt" IS NULL AND customer."branchId" = ANY(${scope.branchIds}::uuid[])
       ORDER BY customer."name" ASC, customer."id" ASC
-    `;
+    `);
   }
 
   /** Independent direction-and-status aggregation for every supplier. */
-  static supplierFinancialIntegrity() {
-    return prisma.$queryRaw<SupplierFinancialIntegrityEvidence[]>`
+  static supplierFinancialIntegrity(scope: BranchScope) {
+    return prisma.$queryRaw<SupplierFinancialIntegrityEvidence[]>(Prisma.sql`
       WITH transaction_totals AS (
         SELECT
           st."supplierId",
@@ -460,18 +464,20 @@ export class ReportRowsRepository {
           ), 0) AS decreases,
           COUNT(*) FILTER (WHERE st."status" = 'ACTIVE')::integer AS count
         FROM "supplier_transactions" st
+        WHERE st."branchId" = ANY(${scope.branchIds}::uuid[])
         GROUP BY st."supplierId"
       )
       SELECT
-        supplier."id" AS "supplierId",
+        supplier."id" AS "supplierId", supplier."branchId" AS "branchId", branch."name" AS "branchName",
         supplier."name" AS "supplierName",
         supplier."phone" AS "supplierPhone",
         COALESCE(totals.increases, 0)::text AS "increaseTotal",
         COALESCE(totals.decreases, 0)::text AS "decreaseTotal",
         COALESCE(totals.count, 0)::integer AS "transactionCount"
-      FROM "suppliers" supplier
+      FROM "suppliers" supplier JOIN "branches" branch ON branch.id = supplier."branchId"
       LEFT JOIN transaction_totals totals ON totals."supplierId" = supplier."id"
+      WHERE supplier."branchId" = ANY(${scope.branchIds}::uuid[])
       ORDER BY supplier."name" ASC, supplier."id" ASC
-    `;
+    `);
   }
 }

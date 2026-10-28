@@ -7,6 +7,7 @@ import {
   supplierTransactionStatusLabels,
   supplierTransactionTypeLabels,
 } from '../utils/supplier-labels';
+import { BranchRowLabel } from '../../branches/scope/branch-ui';
 
 interface Props {
   items: SupplierTransaction[];
@@ -72,6 +73,7 @@ export const SupplierTransactionTable: React.FC<Props> = ({
                   <p className="text-[11px] text-slate-500 transition-colors group-hover:text-yellow-200">
                     {transaction.supplier.phone}
                   </p>
+                  <BranchRowLabel branchId={transaction.branchId} />
                 </td>
               )}
               <td className={`px-4 py-2 ${cellHover}`}>

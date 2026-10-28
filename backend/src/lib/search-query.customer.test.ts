@@ -103,3 +103,20 @@ describe('customer token search', () => {
     expect(statement.values).toContain("محمد'");
   });
 });
+
+describe('scoped customer and supplier raw SQL search', () => {
+  beforeEach(() => { vi.clearAllMocks(); queryRawMock.mockResolvedValue([]); });
+  const branchIds = ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'];
+  it.each(['customer', 'customerNamePhone', 'supplier'] as const)('binds the accessible UUID array before LIMIT for %s', async (target) => {
+    await findSearchMatchIds(target, "Alexander' OR 1=1 --", 7, { mode: 'single', branchIds });
+    const statement = queryRawMock.mock.calls[0][0] as SqlShape;
+    expect(statementText(statement)).toMatch(/AND "branchId" = ANY\(.*::uuid\[\]\).*LIMIT/);
+    expect(statementText(statement)).not.toContain(branchIds[0]);
+    expect(statement.values).toContainEqual(branchIds);
+    expect(statement.values.at(-1)).toBe(7);
+  });
+  it('returns no search IDs without querying when the accessible set is empty', async () => {
+    expect(await findSearchMatchIds('customer', 'Alexander', undefined, { mode: 'all', branchIds: [] })).toEqual([]);
+    expect(queryRawMock).not.toHaveBeenCalled();
+  });
+});

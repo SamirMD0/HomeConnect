@@ -1,10 +1,12 @@
+import type { BranchScope } from '../../branches/branch-scope';
 import { businessDateToPrisma, parseBusinessDate } from '../index';
 import { CorrectionAuditRepository } from './correction-audit.repository';
 import { CorrectionsQueryInput } from './corrections.validator';
 
 export class CorrectionsService {
-  static async listCorrections(query: CorrectionsQueryInput) {
+  static async listCorrections(query: CorrectionsQueryInput, scope: BranchScope) {
     const corrections = await CorrectionAuditRepository.listCorrectionAudits({
+      scope,
       recordType: query.recordType,
       recordId: query.recordId,
       customerId: query.customerId,
@@ -14,6 +16,7 @@ export class CorrectionsService {
 
     return corrections.map((correction) => ({
       id: correction.id,
+      branchId: correction.branchId,
       recordType: correction.recordType,
       recordId: correction.recordId,
       customerId: correction.customerId,

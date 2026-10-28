@@ -5,7 +5,7 @@ import { app } from '../../../app';
 
 const { service } = vi.hoisted(() => ({ service: { get: vi.fn(), exportCsv: vi.fn() } }));
 vi.mock('./report-rows.service', () => ({ ReportRowsService: service }));
-vi.mock('../../../lib/prisma', () => ({ prisma: { $queryRaw: vi.fn().mockResolvedValue([{ result: 1 }]) }, transactionModel: {}, activityLogModel: {} }));
+vi.mock('../../../lib/prisma', async () => ({ prisma: { ...((await import('../../../test/branch-scope-fixture.js')).singleBranchRouteModels()), $queryRaw: vi.fn().mockResolvedValue([{ result: 1 }]) }, transactionModel: {}, activityLogModel: {} }));
 
 const secret = process.env.JWT_SECRET!;
 const admin = jwt.sign({ userId: '11111111-1111-4111-8111-111111111111', role: 'ADMIN' }, secret);

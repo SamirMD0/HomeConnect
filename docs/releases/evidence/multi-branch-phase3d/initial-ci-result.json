@@ -1,0 +1,53 @@
+{
+  "passed": 3311,
+  "failed": 4,
+  "skipped": 0,
+  "todo": 0,
+  "files": 409,
+  "failedFiles": [
+    {
+      "path": "desktop/src/content-security-policy.test.ts",
+      "tests": [
+        {
+          "name": "resolveCspMode only treats an explicit development NODE_ENV as development",
+          "failures": [
+            "AssertionError: expected 'development' to be 'production' // Object.is equality\n    at D:/User/Documents/HomeConnect-mb-phase3/desktop/src/content-security-policy.test.ts:23:39\n    at file:///D:/User/Documents/HomeConnect-mb-phase2/node_modules/@vitest/runner/dist/chunk-artifact.js:302:11\n    at file:///D:/User/Documents/HomeConnect-mb-phase2/node_modules/@vitest/runner/dist/chunk-artifact.js:1903:26\n    at file:///D:/User/Documents/HomeConnect-mb-phase2/node_modules/@vitest/runner/dist/chunk-artifact.js:2326:20\n    at new Promise (<anonymous>)\n    at runWithCancel (file:///D:/User/Documents/HomeConnect-mb-phase2/node_modules/@vitest/runner/dist/chunk-artifact.js:2323:10)\n    at file:///D:/User/Documents/HomeConnect-mb-phase2/node_modules/@vitest/runner/dist/chunk-artifact.js:2305:20\n    at new Promise (<anonymous>)\n    at runWithTimeout (file:///D:/User/Documents/HomeConnect-mb-phase2/node_modules/@vitest/runner/dist/chunk-artifact.js:2272:10)\n    at file:///D:/User/Documents/HomeConnect-mb-phase2/node_modules/@vitest/runner/dist/chunk-artifact.js:2955:64"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "backend/src/features/financial/credit-limits/credit-limit.service.test.ts",
+      "tests": [
+        {
+          "name": "derived customer credit-limit enforcement audits the exact derived projection and reason without storing the password",
+          "failures": [
+            "TypeError: Cannot read properties of undefined (reading 'findUnique')\n    at customerBranch (D:/User/Documents/HomeConnect-mb-phase3/backend/src/features/branches/parent-branch.ts:7:36)\n    at Function.audit (D:/User/Documents/HomeConnect-mb-phase3/backend/src/features/financial/credit-limits/credit-limit.service.ts:61:23)\n    at D:/User/Documents/HomeConnect-mb-phase3/backend/src/features/financial/credit-limits/credit-limit.service.test.ts:43:30\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at file:///D:/User/Documents/HomeConnect-mb-phase2/node_modules/@vitest/runner/dist/chunk-artifact.js:1903:20"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "backend/src/features/financial/debts/debts.routes.test.ts",
+      "tests": [
+        {
+          "name": "debt routes allows admins to create debts and rejects unknown financial fields",
+          "failures": [
+            "AssertionError: expected 500 to be 201 // Object.is equality\n    at D:/User/Documents/HomeConnect-mb-phase3/backend/src/features/financial/debts/debts.routes.test.ts:155:29\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at file:///D:/User/Documents/HomeConnect-mb-phase2/node_modules/@vitest/runner/dist/chunk-artifact.js:1903:20"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "backend/src/features/pricing-card/feature-icon/feature-icon.seed.test.ts",
+      "tests": [
+        {
+          "name": "pricing card feature icon seeds contains exactly the 17 planned safe filled currentColor SVGs under 2 KB",
+          "failures": [
+            "Error: STACK_TRACE_ERROR\n    at task (file:///D:/User/Documents/HomeConnect-mb-phase2/node_modules/@vitest/runner/dist/chunk-artifact.js:1784:27)\n    at Object.<anonymous> (file:///D:/User/Documents/HomeConnect-mb-phase2/node_modules/@vitest/runner/dist/chunk-artifact.js:1817:16)\n    at Object.<anonymous> (file:///D:/User/Documents/HomeConnect-mb-phase2/node_modules/@vitest/runner/dist/chunk-artifact.js:1563:28)\n    at chain (file:///D:/User/Documents/HomeConnect-mb-phase2/node_modules/@vitest/runner/dist/chunk-artifact.js:599:14)\n    at D:/User/Documents/HomeConnect-mb-phase3/backend/src/features/pricing-card/feature-icon/feature-icon.seed.test.ts:13:3\n    at file:///D:/User/Documents/HomeConnect-mb-phase2/node_modules/@vitest/runner/dist/chunk-artifact.js:1889:40\n    at runWithSuite (file:///D:/User/Documents/HomeConnect-mb-phase2/node_modules/@vitest/runner/dist/chunk-artifact.js:2258:8)\n    at Object.collect (file:///D:/User/Documents/HomeConnect-mb-phase2/node_modules/@vitest/runner/dist/chunk-artifact.js:1889:10)\n    at Object.collect (file:///D:/User/Documents/HomeConnect-mb-phase2/node_modules/@vitest/runner/dist/chunk-artifact.js:1893:54)\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)"
+          ]
+        }
+      ]
+    }
+  ]
+}

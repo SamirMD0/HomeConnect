@@ -1,3 +1,4 @@
+import { scopeWhere, type BranchScope } from '../../branches/branch-scope';
 import { DebtKind, DebtStatus, InstallmentPlanStatus, Prisma } from '@prisma/client';
 import { businessDateToPrisma } from '../../financial';
 import { prisma } from '../../../lib/prisma';
@@ -40,7 +41,7 @@ export class CustomerAnalyticsRepository {
   static async load(
     range: ResolvedDashboardRange,
     historyFrom: string,
-    includeArchived: boolean
+    includeArchived: boolean, scope: BranchScope
   ): Promise<CustomerAnalyticsRecords> {
     const customerWhere = includeArchived ? { deletedAt: null } : { deletedAt: null, isActive: true };
     const historyDate = businessDateToPrisma(historyFrom);
@@ -48,50 +49,50 @@ export class CustomerAnalyticsRepository {
 
     const [totalCustomers, openDebts, rangeDebts, openPlans, rangePlans, payments, returns] =
       await Promise.all([
-        prisma.customer.count({ where: customerWhere }),
+        prisma.customer.count({ where: { ...scopeWhere(scope), ...customerWhere } }),
         prisma.debt.findMany({
-          where: {
+          where: { ...scopeWhere(scope),
             customer: customerWhere,
             kind: DebtKind.STANDARD,
             status: { notIn: [DebtStatus.PAID, DebtStatus.CANCELLED] },
             cancelledAt: null,
           },
-          include: debtInclude,
+          include: { ...debtInclude, branch: {select:{name:true}} },
         }),
         prisma.debt.findMany({
-          where: {
+          where: { ...scopeWhere(scope),
             customer: customerWhere,
             kind: DebtKind.STANDARD,
             createdAt: { gte: historyDate, lt: historyEnd },
           },
-          include: debtInclude,
+          include: { ...debtInclude, branch: {select:{name:true}} },
         }),
         prisma.installmentPlan.findMany({
-          where: {
+          where: { ...scopeWhere(scope),
             customer: customerWhere,
             status: { notIn: [InstallmentPlanStatus.COMPLETED, InstallmentPlanStatus.CANCELLED] },
             cancelledAt: null,
           },
-          include: planInclude,
+          include: { ...planInclude, branch: {select:{name:true}} },
         }),
         prisma.installmentPlan.findMany({
-          where: {
+          where: { ...scopeWhere(scope),
             customer: customerWhere,
             createdAt: { gte: historyDate, lt: historyEnd },
           },
-          include: planInclude,
+          include: { ...planInclude, branch: {select:{name:true}} },
         }),
         prisma.payment.findMany({
-          where: {
+          where: { ...scopeWhere(scope),
             OR: [{ customerId: null }, { customer: customerWhere }],
             voidedAt: null,
             paymentDate: { gte: historyDate, lt: historyEnd },
           },
-          include: { customer: { select: { id: true, name: true, phone: true } } },
+          include: { branch: {select:{name:true}},  customer: { select: { id: true, name: true, phone: true } } },
         }),
         prisma.salesReturn.findMany({
-          where: { returnDate: { gte: historyDate, lt: historyEnd }, OR: [{ customerId: null }, { customer: customerWhere }] },
-          select: { returnDate: true, baseReceivableReliefAmount: true, baseRefundableAmount: true, refundMethod: true },
+          where: { ...scopeWhere(scope),  returnDate: { gte: historyDate, lt: historyEnd }, OR: [{ customerId: null }, { customer: customerWhere }] },
+          select: { branchId: true, branch: {select:{name:true}},  returnDate: true, baseReceivableReliefAmount: true, baseRefundableAmount: true, refundMethod: true },
         }),
       ]);
 

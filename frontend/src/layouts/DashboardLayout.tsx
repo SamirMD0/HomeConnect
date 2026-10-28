@@ -4,8 +4,10 @@ import { PanelLeft, PanelLeftClose } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { LocalStatusIndicator } from '../features/system/components/LocalStatusIndicator';
 import { Sidebar } from './Sidebar';
-import { TopBarActions, UserAvatar, WorkspaceSelector } from './TopBarActions';
+import { TopBarActions, UserAvatar } from './TopBarActions';
 import { findActiveItem } from './navigation';
+import { BranchScopeProvider, useBranchScope } from '../features/branches/scope/BranchScopeProvider';
+import { BranchSelector } from '../features/branches/scope/BranchSelector';
 
 const COLLAPSED_STORAGE_KEY = 'homeconnect.sidebar.collapsed';
 
@@ -17,8 +19,15 @@ function readInitialCollapsed(): boolean {
   }
 }
 
-export const DashboardLayout: React.FC = () => {
+export const DashboardLayout: React.FC = () => (
+  <BranchScopeProvider>
+    <DashboardShell />
+  </BranchScopeProvider>
+);
+
+const DashboardShell: React.FC = () => {
   const { user, logout } = useAuth();
+  const { ready: branchScopeReady } = useBranchScope();
   const navigate = useNavigate();
   const location = useLocation();
   const [collapsed, setCollapsed] = React.useState<boolean>(readInitialCollapsed);
@@ -40,7 +49,7 @@ export const DashboardLayout: React.FC = () => {
   const pageTitle = activeItem?.label.en ?? 'Dashboard';
 
   return (
-    <div className="flex min-h-screen overflow-hidden bg-slate-50 font-sans text-slate-900">
+    <div className="flex min-h-screen overflow-hidden bg-background font-sans text-foreground">
       <Sidebar
         collapsed={collapsed}
         onToggle={() => setCollapsed((prev) => !prev)}
@@ -48,19 +57,21 @@ export const DashboardLayout: React.FC = () => {
       />
 
       <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="no-print z-10 flex h-16 shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 shadow-sm lg:px-8">
+        <header className="no-print z-10 flex h-16 shrink-0 items-center justify-between gap-3 border-b border-border bg-white px-4 lg:px-8">
           <div className="flex min-w-0 items-center gap-3">
             <button
               type="button"
               onClick={() => setCollapsed((prev) => !prev)}
               aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
               aria-expanded={!collapsed}
-              className="-ml-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
+              className="-ml-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
             >
               {collapsed ? <PanelLeft className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
             </button>
 
-            <WorkspaceSelector />
+            <BranchSelector />
+
+            <span className="hidden h-5 w-px bg-border lg:block" aria-hidden="true" />
 
             <h2 className="hidden truncate text-lg font-semibold text-slate-800 lg:block">{pageTitle}</h2>
           </div>
@@ -88,7 +99,13 @@ export const DashboardLayout: React.FC = () => {
         </header>
 
         <main className="relative flex-1 overflow-y-auto p-4 lg:p-8">
-          <Outlet />
+          {branchScopeReady ? (
+            <Outlet />
+          ) : (
+            <div role="status" className="flex h-40 items-center justify-center text-sm text-slate-500">
+              Loading branches…
+            </div>
+          )}
         </main>
       </div>
     </div>

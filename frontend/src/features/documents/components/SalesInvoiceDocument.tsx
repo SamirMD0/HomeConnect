@@ -3,6 +3,7 @@ import { formatBusinessDate } from '../../customer-financial/utils/financial-for
 import type { SalesOrder, SalesOrderPaymentStatus } from '../../sales-orders/types/sales-orders.types';
 import type { BusinessSettings } from '../types/document.types';
 import { DocumentMoney } from './DocumentMoney';
+import { DocumentBranchLine } from './DocumentBranchLine';
 
 const labels = {
   invoice: { en: 'SALES INVOICE', ar: 'فاتورة مبيعات' },
@@ -77,7 +78,7 @@ export function SalesInvoiceDocument({ order, business }: { order: SalesOrder; b
             <p className="user-text-pre mt-1 text-sm text-slate-700" dir="auto">{configured(business.address, 'Address', 'العنوان')}</p>
             <p className="mt-1 text-sm" dir="ltr">{configured(business.phone, 'Phone', 'الهاتف')}</p>
             <p className="mt-1 text-sm" dir="ltr">{configured(business.email, 'Email', 'البريد الإلكتروني')}</p>
-            <p className="mt-1 text-sm font-semibold" dir="ltr">VAT / الضريبة: {configured(business.taxNumber, 'Tax number', 'الرقم الضريبي')}</p>
+            <p className="mt-1 text-sm font-semibold" dir="ltr">VAT / الضريبة: {configured(business.taxNumber, 'Tax number', 'الرقم الضريبي')}</p><DocumentBranchLine data={order} />
           </div>
         </div>
         <div className="text-right">

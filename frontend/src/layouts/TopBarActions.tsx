@@ -1,4 +1,4 @@
-import { Bell, ChevronDown, Lock, Mail, Search } from 'lucide-react';
+import { Bell, Lock, Mail, Search } from 'lucide-react';
 
 /**
  * Shell features inspired by the Dreams ERP top bar. Everything that is not
@@ -32,46 +32,6 @@ export function LockedAction({ label, hint, icon }: LockedActionProps) {
       <span
         aria-hidden="true"
         className="absolute -right-0.5 -top-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-slate-300 ring-2 ring-white"
-      >
-        <Lock className="h-2 w-2 text-slate-700" strokeWidth={3} />
-      </span>
-    </button>
-  );
-}
-
-/**
- * Workspace selector styled to look like Dreams ERP's "Falcon LLP" dropdown.
- * Home Connect is single-shop, so the control is locked. The initials chip
- * uses the first two characters of the display name, falling back to "HC".
- */
-export function WorkspaceSelector({ businessName }: { businessName?: string }) {
-  const name = businessName?.trim() || 'Home Connect';
-  const initials = name
-    .split(/\s+/)
-    .map((word) => word.charAt(0))
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
-
-  return (
-    <button
-      type="button"
-      disabled
-      aria-label={`Workspace: ${name}`}
-      title="Multi-shop support is coming soon"
-      className="relative hidden cursor-not-allowed items-center gap-2 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm font-medium text-slate-700 opacity-90 md:flex"
-    >
-      <span
-        aria-hidden="true"
-        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-sm bg-emerald-600 text-[10px] font-bold uppercase tracking-wide text-white"
-      >
-        {initials}
-      </span>
-      <span className="max-w-[140px] truncate text-slate-800">{name}</span>
-      <ChevronDown className="h-3.5 w-3.5 text-slate-400" aria-hidden="true" />
-      <span
-        aria-hidden="true"
-        className="absolute -right-1.5 -top-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-slate-300 ring-2 ring-white"
       >
         <Lock className="h-2 w-2 text-slate-700" strokeWidth={3} />
       </span>

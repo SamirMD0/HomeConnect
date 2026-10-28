@@ -40,6 +40,12 @@ vi.mock('./sales-orders.repository', async (importOriginal) => {
 
 import { SalesOrdersService, serializeSalesOrder } from './sales-orders.service';
 import { createIdempotencyFingerprint } from '../../financial/infrastructure/idempotency';
+const phase3bScope = { mode: 'all' as const, branchIds: ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'] };
+vi.mock('../../branches/parent-branch', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../branches/parent-branch')>()),
+  assertRecordInScope: vi.fn().mockResolvedValue('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
+}));
+
 
 const user = { userId: '11111111-1111-4111-8111-111111111111', role: 'EMPLOYEE' };
 const input = {
@@ -121,7 +127,7 @@ describe('sales order service transaction boundary', () => {
     const fingerprint = createIdempotencyFingerprint({ orderId: baseOrder.id, input: { ...command, accountPassword: undefined }, userId: admin.userId });
     paymentRepository.findByIdempotencyKey.mockResolvedValueOnce(null).mockResolvedValueOnce({ idempotencyFingerprint: fingerprint });
     repository.update.mockRejectedValueOnce(new Prisma.PrismaClientKnownRequestError('Unique receipt key', { code: 'P2002', clientVersion: 'test' }));
-    await expect(SalesOrdersService.changePayment(baseOrder.id, command, admin, {})).resolves.toMatchObject({ id: baseOrder.id });
+    await expect(SalesOrdersService.changePayment(baseOrder.id, command, admin, {}, phase3bScope)).resolves.toMatchObject({ id: baseOrder.id });
     expect(counterPayment).not.toHaveBeenCalled();
   });
   beforeEach(() => {
@@ -174,7 +180,7 @@ describe('sales order service transaction boundary', () => {
   });
 
   it('creates the debt for the remainder through the caller transaction and audits create plus debt link', async () => {
-    const result = await SalesOrdersService.create(input, user, {});
+    const result = await SalesOrdersService.create(input, user, {}, phase3bScope);
     expect(result.totalAmount).toBe('100.00');
     expect(result.paidAmount).toBe('20.00');
     expect(result.remainingAmount).toBe('80.00');
@@ -193,7 +199,7 @@ describe('sales order service transaction boundary', () => {
       fulfillmentStatus: SalesOrderFulfillmentStatus.DRAFT,
       paidAmount: '0.00',
       items: [{ manualProductName: 'Fan', quantity: 1, unitPrice: '150.00' }],
-    }, user, {});
+    }, user, {}, phase3bScope);
 
     expect(repository.create).toHaveBeenCalledWith(expect.objectContaining({
       itemsSubtotal: '135.14', totalAmount: '150.00', remainingAmount: '150.00',
@@ -202,7 +208,7 @@ describe('sales order service transaction boundary', () => {
         taxCodeSnapshot: 'LB_STANDARD', unitPriceExVat: expect.objectContaining({}),
         vatAmount: expect.objectContaining({}), lineTotalIncVat: expect.objectContaining({}),
       })] },
-    }), tx);
+    }), tx, phase3bScope);
     const line = repository.create.mock.calls.at(-1)![0].items.create[0];
     expect(line.lineTotal.toFixed(2)).toBe('135.14');
     expect(line.vatAmount.toFixed(2)).toBe('14.86');
@@ -219,7 +225,7 @@ describe('sales order service transaction boundary', () => {
         { manualProductName: 'Small line A', quantity: 1, unitPrice: '0.05', priceIncludesVat: false },
         { manualProductName: 'Small line B', quantity: 1, unitPrice: '0.05', priceIncludesVat: false },
       ],
-    }, user, {});
+    }, user, {}, phase3bScope);
 
     const created = repository.create.mock.calls.at(-1)![0];
     const lines = created.items.create;
@@ -238,7 +244,7 @@ describe('sales order service transaction boundary', () => {
       fulfillmentStatus: SalesOrderFulfillmentStatus.DRAFT,
       deliveryFee: '10.00',
       paidAmount: '0.00',
-    }, user, {});
+    }, user, {}, phase3bScope);
 
     const created = repository.create.mock.calls.at(-1)![0];
     expect(created).toMatchObject({
@@ -264,7 +270,7 @@ describe('sales order service transaction boundary', () => {
       deliveryFee: '10.00',
       deliveryTaxTreatment: DeliveryTaxTreatment.ZERO_RATED,
       paidAmount: '0.00',
-    }, user, {});
+    }, user, {}, phase3bScope);
     let created = repository.create.mock.calls.at(-1)![0];
     expect(created.deliveryTaxCodeSnapshot).toBe('LB_ZERO');
     expect(created.deliveryVatAmount.toFixed(2)).toBe('0.00');
@@ -277,7 +283,7 @@ describe('sales order service transaction boundary', () => {
       deliveryFee: '10.00',
       deliveryTaxTreatment: DeliveryTaxTreatment.EXEMPT,
       paidAmount: '0.00',
-    }, user, {});
+    }, user, {}, phase3bScope);
     created = repository.create.mock.calls.at(-1)![0];
     expect(created.deliveryTaxCodeSnapshot).toBe('EXEMPT');
     expect(created.deliveryTaxRateSnapshot.toFixed(3)).toBe('0.000');
@@ -303,7 +309,7 @@ describe('sales order service transaction boundary', () => {
       paidAmount: '300.00', idempotencyKey: 'counter-unit-change',
       reason: 'Settle historical invoice',
       accountPassword: 'password',
-    }, { ...user, role: 'ADMIN' }, {});
+    }, { ...user, role: 'ADMIN' }, {}, phase3bScope);
 
     expect(taxRepository.requireEffectiveProfile).not.toHaveBeenCalled();
     expect(taxRepository.requireEffectiveZeroRatedProfile).not.toHaveBeenCalled();
@@ -315,14 +321,14 @@ describe('sales order service transaction boundary', () => {
 
   it('does not write an audit when debt creation fails, leaving the transaction to roll back the inserted order', async () => {
     debtService.createDebt.mockRejectedValueOnce(new Error('debt failed'));
-    await expect(SalesOrdersService.create(input, user, {})).rejects.toThrow('debt failed');
+    await expect(SalesOrdersService.create(input, user, {}, phase3bScope)).rejects.toThrow('debt failed');
     expect(audit).not.toHaveBeenCalled();
   });
 
   it('creates a recognized Payment but no debt for a fully-paid cash sale and returns money as strings', async () => {
     const paidOrder = { ...baseOrder, paymentStatus: SalesOrderPaymentStatus.PAID, paidAmount: '100.00', remainingAmount: '0.00' };
     repository.create.mockResolvedValueOnce(paidOrder);
-    const result = await SalesOrdersService.create({ ...input, paidAmount: '100.00', debtDueDate: null }, user, {});
+    const result = await SalesOrdersService.create({ ...input, paidAmount: '100.00', debtDueDate: null }, user, {}, phase3bScope);
     expect(debtService.createDebt).not.toHaveBeenCalled();
     expect(counterPayment).toHaveBeenCalledTimes(1);
     expect(counterPayment).toHaveBeenCalledWith(tx, expect.objectContaining({ amount: '100.00', customerId: input.customerId, idempotencyKey: 'counter-create:counter-unit-create' }));
@@ -339,14 +345,14 @@ describe('sales order service transaction boundary', () => {
   it('allows only an admin fully-paid sale to omit the customer', async () => {
     const paidOrder = { ...baseOrder, customerId: null, customer: null, paymentStatus: SalesOrderPaymentStatus.PAID, paidAmount: '100.00', remainingAmount: '0.00' };
     repository.create.mockResolvedValueOnce(paidOrder);
-    const result = await SalesOrdersService.create({ ...input, customerId: null, paidAmount: '100.00', debtDueDate: null }, { ...user, role: 'ADMIN' }, {});
+    const result = await SalesOrdersService.create({ ...input, customerId: null, paidAmount: '100.00', debtDueDate: null }, { ...user, role: 'ADMIN' }, {}, phase3bScope);
     expect(result.customerId).toBeNull();
     expect(result.customer).toBeNull();
     expect(repository.findActiveCustomer).not.toHaveBeenCalled();
     expect(debtService.createDebt).not.toHaveBeenCalled();
 
-    await expect(SalesOrdersService.create({ ...input, customerId: null, paidAmount: '100.00', debtDueDate: null }, user, {})).rejects.toThrow('Customer is required');
-    await expect(SalesOrdersService.create({ ...input, customerId: null }, { ...user, role: 'ADMIN' }, {})).rejects.toThrow('Customer is required');
+    await expect(SalesOrdersService.create({ ...input, customerId: null, paidAmount: '100.00', debtDueDate: null }, user, {}, phase3bScope)).rejects.toThrow('Customer is required');
+    await expect(SalesOrdersService.create({ ...input, customerId: null }, { ...user, role: 'ADMIN' }, {}, phase3bScope)).rejects.toThrow('Customer is required');
   });
 
   it('rejects a second financial conversion and cancellation with a live link', async () => {
@@ -399,14 +405,14 @@ describe('sales order service transaction boundary', () => {
 
   it('rejects edits to cancelled orders and sensitive edits without valid admin verification', async () => {
     repository.findById.mockResolvedValueOnce({ ...baseOrder, fulfillmentStatus: SalesOrderFulfillmentStatus.CANCELLED });
-    await expect(SalesOrdersService.update(baseOrder.id, { notes: 'Updated note' }, user, {})).rejects.toMatchObject({ statusCode: 409 });
+    await expect(SalesOrdersService.update(baseOrder.id, { notes: 'Updated note' }, user, {}, phase3bScope)).rejects.toMatchObject({ statusCode: 409 });
 
     repository.findById.mockResolvedValueOnce(baseOrder);
-    await expect(SalesOrdersService.update(baseOrder.id, { orderDate: '2026-08-03' }, user, {})).rejects.toMatchObject({ statusCode: 403 });
+    await expect(SalesOrdersService.update(baseOrder.id, { orderDate: '2026-08-03' }, user, {}, phase3bScope)).rejects.toMatchObject({ statusCode: 403 });
 
     repository.findById.mockResolvedValueOnce(baseOrder);
     verifyAdmin.mockRejectedValueOnce(Object.assign(new Error('Account password is incorrect'), { statusCode: 401 }));
-    await expect(SalesOrdersService.update(baseOrder.id, { orderDate: '2026-08-03', reason: 'Correct order date', accountPassword: 'wrong' }, { ...user, role: 'ADMIN' }, {})).rejects.toMatchObject({ statusCode: 401 });
+    await expect(SalesOrdersService.update(baseOrder.id, { orderDate: '2026-08-03', reason: 'Correct order date', accountPassword: 'wrong' }, { ...user, role: 'ADMIN' }, {}, phase3bScope)).rejects.toMatchObject({ statusCode: 401 });
   });
 
   it('writes exactly one audit row when an unlinked order is cancelled', async () => {
@@ -516,7 +522,7 @@ describe('sales order service transaction boundary', () => {
       debtDueDate: '2026-08-10',
       reason: 'Add delivery charge',
       accountPassword: 'password',
-    }, { ...user, role: 'ADMIN' }, {});
+    }, { ...user, role: 'ADMIN' }, {}, phase3bScope);
 
     expect(debtService.createDebt).toHaveBeenCalledTimes(1);
     expect(debtService.createDebt).toHaveBeenCalledWith(
@@ -540,7 +546,7 @@ describe('sales order service transaction boundary', () => {
     }, { ...user, role: 'ADMIN' }, {})],
     ['update deliveryFee', () => SalesOrdersService.update(baseOrder.id, {
       deliveryFee: '200.00', reason: 'Add delivery charge', accountPassword: 'password',
-    }, { ...user, role: 'ADMIN' }, {})],
+    }, { ...user, role: 'ADMIN' }, {}, phase3bScope)],
   ])('%s rejects a recalculated remainder without debtDueDate', async (entryPoint, mutate) => {
     const existing = entryPoint === 'removeItem'
       ? { ...fullyPaidOrder(), paidAmount: '300.00', items: [fullyPaidOrder().items[0], addedItem] }

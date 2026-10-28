@@ -21,6 +21,12 @@ import {
   InstallmentPlanWithDetails,
 } from './installment-plans.repository';
 import { InstallmentPlansService } from './installment-plans.service';
+const phase3bScope = { mode: 'all' as const, branchIds: ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'] };
+vi.mock('../../branches/parent-branch', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../branches/parent-branch')>()),
+  assertRecordInScope: vi.fn().mockResolvedValue('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
+}));
+
 
 const tx = {
   id: 'tx',
@@ -421,7 +427,7 @@ describe('InstallmentPlansService', () => {
         notes: null,
         idempotencyKey: 'plan-payment-key',
       },
-      adminUser
+      adminUser, phase3bScope
     );
 
     expect(repositoryMock.createPaymentAllocations).toHaveBeenCalledWith(
@@ -473,7 +479,7 @@ describe('InstallmentPlansService', () => {
           notes: null,
           idempotencyKey: null,
         },
-        adminUser
+        adminUser, phase3bScope
       )
     ).rejects.toThrow(OverpaymentError);
 
@@ -493,7 +499,7 @@ describe('InstallmentPlansService', () => {
           notes: null,
           idempotencyKey: null,
         },
-        adminUser
+        adminUser, phase3bScope
       )
     ).rejects.toThrow(FinancialRecordCancelledError);
 
@@ -528,7 +534,7 @@ describe('InstallmentPlansService', () => {
           notes: null,
           idempotencyKey: null,
         },
-        adminUser
+        adminUser, phase3bScope
       )
     ).rejects.toThrow(FinancialRecordAlreadyPaidError);
   });
@@ -558,7 +564,7 @@ describe('InstallmentPlansService', () => {
         notes: null,
         idempotencyKey: 'same-plan-key',
       },
-      adminUser
+      adminUser, phase3bScope
     );
 
     expect(replay.payments).toHaveLength(1);
@@ -575,7 +581,7 @@ describe('InstallmentPlansService', () => {
           notes: null,
           idempotencyKey: 'same-plan-key',
         },
-        adminUser
+        adminUser, phase3bScope
       )
     ).rejects.toThrow(PaymentIdempotencyConflictError);
   });

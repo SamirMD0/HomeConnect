@@ -1,3 +1,4 @@
+import { assertInScope, writeBranch, type BranchScope } from '../../branches/branch-scope';
 import { Prisma, SupplierAuditAction, SupplierAuditRecordType } from '@prisma/client';
 import { verifyAdminPassword } from '../../../lib/admin-verification';
 import { AppError, NotFoundError, ValidationError } from '../../../lib/errors';
@@ -15,10 +16,11 @@ import {
 import { SuppliersRepository } from './suppliers.repository';
 
 export class SuppliersService {
-  static async create(input: CreateSupplierInput, user: SupplierMutationUser, context: SupplierRequestContext) {
+  static async create(input: CreateSupplierInput, user: SupplierMutationUser, context: SupplierRequestContext, scope: BranchScope) {
     assertSupplierAdmin(user);
     return runFinancialTransaction(async (tx) => {
       const supplier = await SuppliersRepository.create({
+        branchId: writeBranch(scope),
         name: input.name, phone: normalizePhone(input.phone), companyName: input.companyName ?? null,
         secondaryPhone: input.secondaryPhone ? normalizePhone(input.secondaryPhone) : null,
         email: input.email ?? null, notes: input.notes ?? null, createdById: user.userId,
@@ -29,10 +31,10 @@ export class SuppliersService {
     });
   }
 
-  static async list(query: SupplierListQueryInput) {
+  static async list(query: SupplierListQueryInput, scope: BranchScope) {
     const result = query.sortBy === 'balance'
-      ? { items: await SuppliersRepository.listAllForBalance(query), total: 0 }
-      : await SuppliersRepository.list({ ...query, skip: (query.page - 1) * query.pageSize, take: query.pageSize });
+      ? { items: await SuppliersRepository.listAllForBalance(query, scope), total: 0 }
+      : await SuppliersRepository.list({ ...query, skip: (query.page - 1) * query.pageSize, take: query.pageSize }, scope);
     if (query.sortBy === 'balance') result.total = result.items.length;
     const balances = await SuppliersRepository.balances(result.items.map((item) => item.id));
     let items = result.items.map((item) => {
@@ -47,15 +49,14 @@ export class SuppliersService {
     return { items, total: result.total, page: query.page, pageSize: query.pageSize };
   }
 
-  static async get(id: string) {
-    const supplier = await SuppliersRepository.findById(id);
-    if (!supplier) throw new NotFoundError('Supplier not found');
-    const summary = await this.summary(id);
+  static async get(id: string, scope: BranchScope) {
+    const supplier = await requiredSupplier(id, scope);
+    const summary = await this.summary(id, scope);
     return { ...serializeSupplier(supplier, summary.balance), summary };
   }
 
-  static async summary(id: string) {
-    if (!(await SuppliersRepository.findById(id))) throw new NotFoundError('Supplier not found');
+  static async summary(id: string, scope: BranchScope) {
+    await requiredSupplier(id, scope);
     const rows = await SuppliersRepository.summaryRows(id);
     const base = (row: typeof rows[number]) => row._sum.baseAmount ?? ZERO_MONEY;
     const increase = rows.filter((r) => r.direction === 'INCREASE_OWED').map(base);
@@ -70,14 +71,15 @@ export class SuppliersService {
     };
   }
 
-  static async update(id: string, input: UpdateSupplierInput, user: SupplierMutationUser, context: SupplierRequestContext) {
+  static async update(id: string, input: UpdateSupplierInput, user: SupplierMutationUser, context: SupplierRequestContext, scope: BranchScope) {
     assertSupplierAdmin(user);
     const fields = Object.keys(input).filter((field) => !['reason', 'accountPassword'].includes(field) && input[field as keyof UpdateSupplierInput] !== undefined);
     if (!fields.length) throw new ValidationError('At least one supplier field is required');
     const sensitive = containsSensitiveSupplierFields(fields);
     if (sensitive && (!input.reason || !input.accountPassword)) throw new ValidationError('Reason and account password are required for name or phone changes');
     return runFinancialTransaction(async (tx) => {
-      const existing = await requiredSupplier(id, tx);
+      const existing = await requiredSupplier(id, scope, tx);
+      writeBranch(scope);
       if (sensitive) await verify(user.userId, input.accountPassword!, 'UPDATE_SUPPLIER', id, context, tx);
       const data: Prisma.SupplierUncheckedUpdateInput = { updatedById: user.userId };
       if (input.name !== undefined) data.name = input.name;
@@ -94,13 +96,14 @@ export class SuppliersService {
     });
   }
 
-  static archive(id: string, input: SupplierActionInput, user: SupplierMutationUser, context: SupplierRequestContext) { return this.setActive(id, false, SupplierAuditAction.ARCHIVE, input, user, context); }
-  static restore(id: string, input: SupplierActionInput, user: SupplierMutationUser, context: SupplierRequestContext) { return this.setActive(id, true, SupplierAuditAction.RESTORE, input, user, context); }
+  static archive(id: string, input: SupplierActionInput, user: SupplierMutationUser, context: SupplierRequestContext, scope: BranchScope) { return this.setActive(id, false, SupplierAuditAction.ARCHIVE, input, user, context, scope); }
+  static restore(id: string, input: SupplierActionInput, user: SupplierMutationUser, context: SupplierRequestContext, scope: BranchScope) { return this.setActive(id, true, SupplierAuditAction.RESTORE, input, user, context, scope); }
 
-  static async delete(id: string, input: SupplierActionInput, user: SupplierMutationUser, context: SupplierRequestContext) {
+  static async delete(id: string, input: SupplierActionInput, user: SupplierMutationUser, context: SupplierRequestContext, scope: BranchScope) {
     assertSupplierAdmin(user);
     return runFinancialTransaction(async (tx) => {
-      const existing = await requiredSupplier(id, tx);
+      const existing = await requiredSupplier(id, scope, tx);
+      writeBranch(scope);
       await verify(user.userId, input.accountPassword, 'DELETE_SUPPLIER', id, context, tx);
       if ((await SuppliersRepository.receivingCount(id, tx)) > 0) throw new AppError('Supplier with stock receivings can only be archived / المورد الذي لديه مستندات استلام مخزون يمكن أرشفته فقط', 409, 'SUPPLIER_HAS_RECEIVINGS');
       if ((await SuppliersRepository.transactionCount(id, tx)) > 0) throw new AppError('Supplier with transactions can only be archived', 409, 'SUPPLIER_HAS_TRANSACTIONS');
@@ -112,16 +115,17 @@ export class SuppliersService {
     });
   }
 
-  static async audit(id: string, query: SupplierAuditQueryInput) {
-    await requiredSupplier(id);
+  static async audit(id: string, query: SupplierAuditQueryInput, scope: BranchScope) {
+    await requiredSupplier(id, scope);
     const result = await SupplierAuditRepository.list(id, (query.page - 1) * query.pageSize, query.pageSize);
     return { ...result, page: query.page, pageSize: query.pageSize };
   }
 
-  private static async setActive(id: string, active: boolean, action: SupplierAuditAction, input: SupplierActionInput, user: SupplierMutationUser, context: SupplierRequestContext) {
+  private static async setActive(id: string, active: boolean, action: SupplierAuditAction, input: SupplierActionInput, user: SupplierMutationUser, context: SupplierRequestContext, scope: BranchScope) {
     assertSupplierAdmin(user);
     return runFinancialTransaction(async (tx) => {
-      const existing = await requiredSupplier(id, tx);
+      const existing = await requiredSupplier(id, scope, tx);
+      writeBranch(scope);
       if (existing.isActive === active) throw new AppError(`Supplier is already ${active ? 'active' : 'archived'}`, 409, 'SUPPLIER_STATE_CONFLICT');
       await verify(user.userId, input.accountPassword, active ? 'RESTORE_SUPPLIER' : 'ARCHIVE_SUPPLIER', id, context, tx);
       const updated = await SuppliersRepository.update(id, { isActive: active, archivedAt: active ? null : new Date(), archivedReason: active ? null : input.reason, updatedById: user.userId }, tx);
@@ -132,7 +136,7 @@ export class SuppliersService {
   }
 }
 
-async function requiredSupplier(id: string, tx?: Prisma.TransactionClient) { const supplier = await SuppliersRepository.findById(id, tx); if (!supplier) throw new NotFoundError('Supplier not found'); return supplier; }
+async function requiredSupplier(id: string, scope: BranchScope, tx?: Prisma.TransactionClient) { const supplier = await SuppliersRepository.findById(id, tx); if (!supplier) throw new NotFoundError('Supplier not found'); assertInScope(supplier.branchId, scope, 'Supplier not found'); return supplier; }
 async function loadActor(id: string, tx: Prisma.TransactionClient) { const actor = await tx.user.findUnique({ where: { id }, select: { fullName: true, username: true } }); if (!actor) throw new NotFoundError('User not found'); return actor; }
 async function balanceInTx(id: string, tx: Prisma.TransactionClient) { const map = await SuppliersRepository.balances([id], tx); const v = map.get(id) ?? { increase: '0.00', decrease: '0.00' }; return moneyToApiString(subtractMoney(v.increase, v.decrease)); }
 function normalizePhone(value: string) { return value.trim().replace(/[\s\-()]/g, ''); }

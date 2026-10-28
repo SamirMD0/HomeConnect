@@ -1,3 +1,6 @@
+import { branchLabel } from '../../branches/branch-breakdown';
+import { withEnvelopeBranchBreakdown } from '../../branches/branch-breakdown';
+import { type BranchScope } from '../../branches/branch-scope';
 import { DashboardAlertsService } from '../../dashboard/alerts/dashboard-alerts.service';
 import { CustomerAnalyticsService } from '../../dashboard/customer/customer-analytics.service';
 import { MonthEndService } from '../../dashboard/month-end/month-end.service';
@@ -20,7 +23,14 @@ interface MonthlyReviewOptions {
 export class MonthlyReviewService {
   static async get(
     query: MonthlyReviewQueryInput,
-    options: MonthlyReviewOptions = {}
+    options: MonthlyReviewOptions = {}, scope: BranchScope
+  ) {
+    return withEnvelopeBranchBreakdown(scope, scope => this.calculateGet(query, options, scope));
+  }
+
+  static async calculateGet(
+    query: MonthlyReviewQueryInput,
+    options: MonthlyReviewOptions = {}, scope: BranchScope
   ): Promise<MonthlyReviewEnvelope> {
     const businessDate = options.businessDate ?? todayInBusinessTimezone();
     const generatedAt = (options.generatedAt ?? new Date()).toISOString();
@@ -33,21 +43,21 @@ export class MonthlyReviewService {
     }, businessDate);
 
     const [monthEnd, metrics, customer, supplier, sales, inventory, risk] = await Promise.all([
-      MonthEndService.get({ from: period.from, to: period.to }),
-      ReportsMetricsService.get(period),
+      MonthEndService.get({ from: period.from, to: period.to }, scope),
+      ReportsMetricsService.get(period, scope),
       CustomerAnalyticsService.get(dashboardRange, {
         includeArchived: false,
         includeAdminData: true,
         businessDate,
-      }),
-      SupplierAnalyticsService.get(dashboardRange, false, businessDate),
-      SalesAnalyticsService.get(dashboardRange, businessDate),
+      }, scope),
+      SupplierAnalyticsService.get(dashboardRange, false, businessDate, scope),
+      SalesAnalyticsService.get(dashboardRange, businessDate, scope),
       InventoryService.getInventorySummary(),
       DashboardAlertsService.get(dashboardRange, {
         includeArchived: false,
         includeAdminData: true,
         businessDate,
-      }),
+      }, scope),
     ]);
 
     return {
@@ -86,14 +96,15 @@ export class MonthlyReviewService {
             topBalances: supplier.topBalances,
           },
         },
-        inventory: { operationalSnapshot: { generatedAt, summary: inventory } },
+        inventory: { inventoryScope: 'all-branches' as const, operationalSnapshot: { generatedAt, summary: inventory } },
         risk: { ...risk, operationalSnapshotAt: generatedAt },
       },
     };
   }
 
-  static async exportCsv(query: MonthlyReviewQueryInput, options: MonthlyReviewOptions = {}) {
-    const report = await this.get(query, options);
+  static async exportCsv(query: MonthlyReviewQueryInput, options: MonthlyReviewOptions = {}, scope: BranchScope) {
+    const csvBranchName = await branchLabel(scope);
+    const report = await this.get(query, options, scope);
     const { sales, customers, suppliers, inventory, risk } = report.data;
     const rows = [
       ['Sales', 'Orders', sales.orderCount],
@@ -125,7 +136,7 @@ export class MonthlyReviewService {
     ];
     return {
       filename: `monthly-review-${report.meta.from}-to-${report.meta.to}.csv`,
-      csv: buildCsv(['Domain', 'Metric', 'Value'], rows),
+      csv: buildCsv(['Branch', ...['Domain', 'Metric', 'Value']], (rows).map(row => [csvBranchName, ...row])),
     };
   }
 }

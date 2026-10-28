@@ -1,0 +1,7 @@
+a3ce40e fix(branches): guard global search and document write policy
+42e772d feat(branches): scope financial routes and guard record actions
+37befe6 feat(branches): scope sales orders returns and counter receipts
+7005f82 feat(branches): scope service job lists and customer links
+5d61deb feat(branches): scope supplier ledger purchases and receivings
+f5f815f refactor(branches): remove legacy creation branch resolver
+517cc0d fix(branches): include ownership in sales and service audit lists

@@ -4,9 +4,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { service } = vi.hoisted(() => ({ service: { create: vi.fn(), list: vi.fn(), get: vi.fn(), duplicateCheck: vi.fn(), updateMetadata: vi.fn(), void: vi.fn() } }));
 vi.mock('./supplier-receivings.service', () => ({ SupplierReceivingsService: service }));
-vi.mock('../../../lib/prisma', () => ({ prisma: { $queryRaw: vi.fn().mockResolvedValue([{ result: 1 }]) }, transactionModel: {}, activityLogModel: {} }));
+vi.mock('../../../lib/prisma', async () => ({ prisma: {
+...(await import('../../../test/branch-scope-fixture.js')).singleBranchRouteModels(), $queryRaw: vi.fn().mockResolvedValue([{ result: 1 }]) }, transactionModel: {}, activityLogModel: {} }));
 
 import { app } from '../../../app';
+const phase3bScope = { mode: 'all' as const, branchIds: ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'] };
+vi.mock('../../branches/parent-branch', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../branches/parent-branch')>()),
+  assertRecordInScope: vi.fn().mockResolvedValue('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
+}));
+
 
 const secret = process.env.JWT_SECRET!;
 const admin = jwt.sign({ userId: '11111111-1111-4111-8111-111111111111', role: 'ADMIN' }, secret);
@@ -32,7 +39,7 @@ describe('supplier receiving routes', () => {
     const body = { receivedOn: '2026-08-14', items: [{ productId, quantity: 2 }] };
     const response = await request(app).post('/api/v1/inventory/receivings').set(auth(token)).send(body);
     expect(response.status).toBe(201);
-    expect(service.create).toHaveBeenCalledWith(body, expect.objectContaining({ userId: expect.any(String) }));
+    expect(service.create).toHaveBeenCalledWith(body, expect.objectContaining({ userId: expect.any(String) }), phase3bScope);
   });
 
   it('requires authentication and an allowed role', async () => {
@@ -43,7 +50,7 @@ describe('supplier receiving routes', () => {
   it('registers duplicate-check before the id route and requires supplier plus reference', async () => {
     const url = `/api/v1/inventory/receivings/duplicate-check?supplierId=${supplierId}&referenceNumber=INV-1`;
     expect((await request(app).get(url).set(auth(employee))).status).toBe(200);
-    expect(service.duplicateCheck).toHaveBeenCalledWith({ supplierId, referenceNumber: 'INV-1' }, expect.any(Object));
+    expect(service.duplicateCheck).toHaveBeenCalledWith({ supplierId, referenceNumber: 'INV-1' }, expect.any(Object), phase3bScope);
     expect((await request(app).get('/api/v1/inventory/receivings/duplicate-check').set(auth(employee))).status).toBe(400);
     expect(service.get).not.toHaveBeenCalled();
   });

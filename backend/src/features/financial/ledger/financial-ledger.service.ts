@@ -1,3 +1,4 @@
+import type { BranchScope } from '../../branches/branch-scope';
 import {
   DebtStatus,
   InstallmentPlanStatus,
@@ -62,7 +63,7 @@ interface PlanComputation {
 }
 
 export class FinancialLedgerService {
-  static async getFinancialLedger(query: FinancialLedgerQueryInput): Promise<FinancialLedgerView> {
+  static async getFinancialLedger(query: FinancialLedgerQueryInput, scope: BranchScope): Promise<FinancialLedgerView> {
     const type = query.type;
     const includeDebts = type === 'ALL' || type === 'DEBT' || type === 'OVERDUE';
     const includePlans = type === 'ALL' || type === 'INSTALLMENT_PLAN' || type === 'OVERDUE';
@@ -81,7 +82,7 @@ export class FinancialLedgerService {
       includeDebts,
       includePlans,
       includePayments,
-    });
+    }, scope);
 
     const businessDate = todayInBusinessTimezone();
     const correctionMarkers = await FinancialLedgerRepository.loadCorrectionMarkers({
@@ -213,6 +214,7 @@ export class FinancialLedgerService {
         type: 'DEBT',
         kind: debt.kind,
         id: debt.id,
+      branchId: debt.branchId,
         customer: debt.customer,
         description: debt.description,
         originalAmount: moneyToApiString(debt.originalAmount),
@@ -312,6 +314,7 @@ export class FinancialLedgerService {
       item: {
         type: 'INSTALLMENT_PLAN',
         id: plan.id,
+      branchId: plan.branchId,
         customer: plan.customer,
         description: plan.description,
         totalAmount: moneyToApiString(plan.totalAmount),
@@ -371,6 +374,7 @@ export class FinancialLedgerService {
     return {
       type: 'PAYMENT',
       id: payment.id,
+      branchId: payment.branchId,
       customer: payment.customer,
       amount: moneyToApiString(payment.totalAmount, payment.currency),
       currency: payment.currency,

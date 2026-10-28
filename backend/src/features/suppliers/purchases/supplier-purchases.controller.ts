@@ -10,13 +10,13 @@ const context = (req: { headers: Request['headers']; ip?: string }) => ({
 export class SupplierPurchasesController {
   static async create(req: Request<{ supplierId: string }, unknown, CreateSupplierPurchaseInput>, res: Response, next: NextFunction) {
     try {
-      res.status(201).json({ success: true, data: await SupplierPurchasesService.create(req.params.supplierId, req.body, req.user!, context(req)) });
+      res.status(201).json({ success: true, data: await SupplierPurchasesService.create(req.params.supplierId, req.body, req.user!, context(req), req.branchScope!) });
     } catch (error) { next(error); }
   }
 
   static async listForSupplier(req: Request<{ supplierId: string }>, res: Response, next: NextFunction) {
     try {
-      const result = await SupplierPurchasesService.listForSupplier(req.params.supplierId, req.query as unknown as SupplierPurchaseListInput);
+      const result = await SupplierPurchasesService.listForSupplier(req.params.supplierId, req.query as unknown as SupplierPurchaseListInput, req.branchScope!);
       res.json({ success: true, data: result.items, meta: { pagination: { page: result.page, pageSize: result.pageSize, totalItems: result.total, totalPages: Math.ceil(result.total / result.pageSize) } } });
     } catch (error) { next(error); }
   }
@@ -26,6 +26,6 @@ export class SupplierPurchasesController {
   }
 
   static async receiptCheck(req: Request, res: Response, next: NextFunction) {
-    try { res.json({ success: true, data: await SupplierPurchasesService.receiptCheck(req.query as unknown as ReceiptCheckInput) }); } catch (error) { next(error); }
+    try { res.json({ success: true, data: await SupplierPurchasesService.receiptCheck(req.query as unknown as ReceiptCheckInput, req.branchScope!) }); } catch (error) { next(error); }
   }
 }

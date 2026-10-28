@@ -13,7 +13,7 @@ export const analysisRoutes = Router();
 analysisRoutes.get('/analysis/export.csv', requireRole(['ADMIN']), validate(monthlyReviewQuerySchema, 'query'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { filename, csv } = await AnalysisService.exportCsv(req.query as unknown as MonthlyReviewQueryInput);
+      const { filename, csv } = await AnalysisService.exportCsv(req.query as unknown as MonthlyReviewQueryInput, undefined, req.branchScope!);
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       res.send(csv);
@@ -23,7 +23,7 @@ analysisRoutes.get('/analysis/export.csv', requireRole(['ADMIN']), validate(mont
 analysisRoutes.get('/analysis', requireRole(['ADMIN']), validate(monthlyReviewQuerySchema, 'query'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const result = await AnalysisService.get(req.query as unknown as MonthlyReviewQueryInput);
+      const result = await AnalysisService.get(req.query as unknown as MonthlyReviewQueryInput, undefined, req.branchScope!);
       res.json({ success: true, ...result });
     } catch (error) { next(error); }
   });

@@ -1,0 +1,2029 @@
+{
+  "scopedPrefixes": [
+    "/api/v1/customers",
+    "/api/v1/suppliers",
+    "/api/v1/debts",
+    "/api/v1/installment-plans",
+    "/api/v1/payments",
+    "/api/v1/financial-ledger",
+    "/api/v1/receivables",
+    "/api/v1/prepaid-purchases",
+    "/api/v1/corrections",
+    "/api/v1/sales-orders",
+    "/api/v1/sales-returns",
+    "/api/v1/service-jobs",
+    "/api/v1/supplier-transactions",
+    "/api/v1/supplier-purchases",
+    "/api/v1/supplier-ledger",
+    "/api/v1/inventory/receivings",
+    "/api/v1/reports",
+    "/api/v1/dashboard",
+    "/api/v1/products/:productId/service-jobs"
+  ],
+  "globalRouteGroups": [
+    {
+      "group": "health",
+      "reason": "Process and database health, with no branch-owned records.",
+      "routes": [
+        "GET /api/v1/health"
+      ]
+    },
+    {
+      "group": "auth",
+      "reason": "Identity and JWT session lifecycle are global.",
+      "routes": [
+        "POST /api/v1/auth/setup",
+        "POST /api/v1/auth/login",
+        "POST /api/v1/auth/logout",
+        "POST /api/v1/auth/refresh",
+        "GET /api/v1/auth/me",
+        "PUT /api/v1/auth/password"
+      ]
+    },
+    {
+      "group": "users",
+      "reason": "User administration is global; branch grants are managed separately.",
+      "routes": [
+        "GET /api/v1/users",
+        "POST /api/v1/users",
+        "GET /api/v1/users/:id",
+        "PUT /api/v1/users/:id",
+        "DELETE /api/v1/users/:id"
+      ]
+    },
+    {
+      "group": "branches",
+      "reason": "Branch catalog and access administration define the accessible set.",
+      "routes": [
+        "GET /api/v1/branches/accessible",
+        "GET /api/v1/branches",
+        "POST /api/v1/branches",
+        "GET /api/v1/branches/access",
+        "GET /api/v1/branches/users/:userId/access",
+        "PUT /api/v1/branches/users/:userId/access",
+        "GET /api/v1/branches/:branchId",
+        "PATCH /api/v1/branches/:branchId"
+      ]
+    },
+    {
+      "group": "admin/exchange-rates",
+      "reason": "Global FX configuration; stored transaction conversion amounts are unchanged.",
+      "routes": [
+        "GET /api/v1/admin/exchange-rates",
+        "POST /api/v1/admin/exchange-rates"
+      ]
+    },
+    {
+      "group": "products",
+      "reason": "Shared product catalog, stock and pricing under D3.",
+      "routes": [
+        "GET /api/v1/products",
+        "POST /api/v1/products",
+        "POST /api/v1/products/imports",
+        "GET /api/v1/products/imports/:importId",
+        "PATCH /api/v1/products/imports/:importId",
+        "POST /api/v1/products/imports/:importId/commit",
+        "GET /api/v1/products/check-duplicate",
+        "POST /api/v1/products/brands/normalize",
+        "GET /api/v1/products/brands",
+        "GET /api/v1/products/labels",
+        "GET /api/v1/products/pricing-cards/index",
+        "GET /api/v1/products/pricing-cards",
+        "POST /api/v1/products/pricing-cards/print-snapshot",
+        "POST /api/v1/products/labels/secret-preview",
+        "GET /api/v1/products/scan",
+        "GET /api/v1/products/:productId/label",
+        "GET /api/v1/products/:productId/pricing-card",
+        "POST /api/v1/products/:productId/pricing-card/secret-preview",
+        "GET /api/v1/products/:productId/pricing-cards/prints",
+        "POST /api/v1/products/:productId/label/secret-preview",
+        "GET /api/v1/products/:productId/image",
+        "PUT /api/v1/products/:productId/image",
+        "DELETE /api/v1/products/:productId/image",
+        "GET /api/v1/products/:productId/audit",
+        "GET /api/v1/products/:productId/inventory",
+        "POST /api/v1/products/:productId/opening-count",
+        "POST /api/v1/products/:productId/stock-movements",
+        "GET /api/v1/products/:productId/pricing-preview",
+        "PATCH /api/v1/products/:productId/pricing",
+        "PATCH /api/v1/products/:productId/sku",
+        "POST /api/v1/products/:productId/regenerate-sku",
+        "PATCH /api/v1/products/:productId/stock",
+        "PATCH /api/v1/products/:productId/features",
+        "POST /api/v1/products/:productId/archive",
+        "POST /api/v1/products/:productId/restore",
+        "PATCH /api/v1/products/:productId",
+        "GET /api/v1/products/:productId"
+      ]
+    },
+    {
+      "group": "categories",
+      "reason": "Shared product categories under D3.",
+      "routes": [
+        "GET /api/v1/categories",
+        "GET /api/v1/categories/:categoryId",
+        "POST /api/v1/categories",
+        "PATCH /api/v1/categories/:categoryId",
+        "DELETE /api/v1/categories/:categoryId"
+      ]
+    },
+    {
+      "group": "inventory",
+      "reason": "Shared stock counts, onboarding and movements under D3; receivings are scoped.",
+      "routes": [
+        "GET /api/v1/inventory/onboarding/pending",
+        "POST /api/v1/inventory/onboarding/batch",
+        "GET /api/v1/inventory/summary",
+        "GET /api/v1/inventory/low-stock",
+        "GET /api/v1/inventory/movements"
+      ]
+    },
+    {
+      "group": "pricing-presets",
+      "reason": "Shared pricing configuration.",
+      "routes": [
+        "GET /api/v1/pricing-presets",
+        "POST /api/v1/pricing-presets",
+        "GET /api/v1/pricing-presets/label-secret-settings",
+        "PATCH /api/v1/pricing-presets/label-secret-settings",
+        "POST /api/v1/pricing-presets/label-secret-encodings",
+        "PATCH /api/v1/pricing-presets/label-secret-encodings/:encodingId",
+        "GET /api/v1/pricing-presets/:presetId/audit",
+        "POST /api/v1/pricing-presets/:presetId/archive",
+        "POST /api/v1/pricing-presets/:presetId/restore",
+        "POST /api/v1/pricing-presets/:presetId/set-default",
+        "POST /api/v1/pricing-presets/:presetId/set-label-secret",
+        "POST /api/v1/pricing-presets/:presetId/clear-label-secret",
+        "PATCH /api/v1/pricing-presets/:presetId",
+        "GET /api/v1/pricing-presets/:presetId"
+      ]
+    },
+    {
+      "group": "pricing",
+      "reason": "Global product pricing calculator.",
+      "routes": [
+        "POST /api/v1/pricing/calculate"
+      ]
+    },
+    {
+      "group": "shop-profile",
+      "reason": "Global shop presentation settings.",
+      "routes": [
+        "GET /api/v1/shop-profile",
+        "PATCH /api/v1/shop-profile",
+        "PUT /api/v1/shop-profile/logo"
+      ]
+    },
+    {
+      "group": "brand-logos",
+      "reason": "Shared catalog artwork.",
+      "routes": [
+        "GET /api/v1/brand-logos",
+        "POST /api/v1/brand-logos",
+        "PATCH /api/v1/brand-logos/:brandLogoId",
+        "POST /api/v1/brand-logos/:brandLogoId/archive"
+      ]
+    },
+    {
+      "group": "pricing-card-feature-icons",
+      "reason": "Shared product artwork.",
+      "routes": [
+        "GET /api/v1/pricing-card-feature-icons",
+        "POST /api/v1/pricing-card-feature-icons",
+        "PATCH /api/v1/pricing-card-feature-icons/:featureIconId",
+        "POST /api/v1/pricing-card-feature-icons/:featureIconId/archive"
+      ]
+    },
+    {
+      "group": "pricing-card-templates",
+      "reason": "Shared product print templates.",
+      "routes": [
+        "GET /api/v1/pricing-card-templates/spec-catalog",
+        "GET /api/v1/pricing-card-templates",
+        "POST /api/v1/pricing-card-templates",
+        "POST /api/v1/pricing-card-templates/:templateId/archive",
+        "PATCH /api/v1/pricing-card-templates/:templateId",
+        "GET /api/v1/pricing-card-templates/:templateId"
+      ]
+    },
+    {
+      "group": "pricing-card-prints",
+      "reason": "Global product print snapshots.",
+      "routes": [
+        "POST /api/v1/pricing-card-prints",
+        "GET /api/v1/pricing-card-prints/product/:productId"
+      ]
+    },
+    {
+      "group": "admin/backups",
+      "reason": "Whole-database administration and restore.",
+      "routes": [
+        "GET /api/v1/admin/backups/status",
+        "GET /api/v1/admin/backups/settings",
+        "PUT /api/v1/admin/backups/settings",
+        "GET /api/v1/admin/backups",
+        "POST /api/v1/admin/backups",
+        "POST /api/v1/admin/backups/import",
+        "POST /api/v1/admin/backups/:backupId/validate-restore",
+        "POST /api/v1/admin/backups/:backupId/restore"
+      ]
+    },
+    {
+      "group": "admin/diagnostics",
+      "reason": "Global operational diagnostics.",
+      "routes": [
+        "POST /api/v1/admin/diagnostics/report-error",
+        "GET /api/v1/admin/diagnostics/health",
+        "GET /api/v1/admin/diagnostics/errors",
+        "GET /api/v1/admin/diagnostics/export",
+        "POST /api/v1/admin/diagnostics/clear-errors"
+      ]
+    },
+    {
+      "group": "admin/preflight",
+      "reason": "Whole-installation readiness checks.",
+      "routes": [
+        "GET /api/v1/admin/preflight"
+      ]
+    },
+    {
+      "group": "admin/maintenance",
+      "reason": "Whole-database migration maintenance.",
+      "routes": [
+        "GET /api/v1/admin/maintenance",
+        "POST /api/v1/admin/maintenance/apply",
+        "POST /api/v1/admin/maintenance/migrations/resolve",
+        "GET /api/v1/admin/maintenance/thermal-reconcile-notes"
+      ]
+    },
+    {
+      "group": "system",
+      "reason": "Desktop process status.",
+      "routes": [
+        "GET /api/v1/system/local-status"
+      ]
+    },
+    {
+      "group": "business-settings",
+      "reason": "Singleton shop/document settings.",
+      "routes": [
+        "GET /api/v1/business-settings",
+        "PUT /api/v1/business-settings"
+      ]
+    },
+    {
+      "group": "scanner",
+      "reason": "Global product-scanner sessions only; JWT supplier gateway requests use their destination scope.",
+      "routes": [
+        "POST /api/v1/scanner/pairing-code",
+        "POST /api/v1/scanner/lan/enable",
+        "POST /api/v1/scanner/lan/disable",
+        "GET /api/v1/scanner/lan-status",
+        "GET /api/v1/scanner/sessions",
+        "POST /api/v1/scanner/sessions/:sessionId/revoke",
+        "GET /api/v1/scanner/events/recent",
+        "POST /api/v1/scanner/events",
+        "POST /api/v1/scanner/pair",
+        "GET /api/v1/scanner/session"
+      ]
+    }
+  ],
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/v1/health",
+      "classification": "global",
+      "reason": "Process and database health, with no branch-owned records."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/setup",
+      "classification": "global",
+      "reason": "Identity and JWT session lifecycle are global."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/login",
+      "classification": "global",
+      "reason": "Identity and JWT session lifecycle are global."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/logout",
+      "classification": "global",
+      "reason": "Identity and JWT session lifecycle are global."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/refresh",
+      "classification": "global",
+      "reason": "Identity and JWT session lifecycle are global."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/me",
+      "classification": "global",
+      "reason": "Identity and JWT session lifecycle are global."
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/auth/password",
+      "classification": "global",
+      "reason": "Identity and JWT session lifecycle are global."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/users",
+      "classification": "global",
+      "reason": "User administration is global; branch grants are managed separately."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/users",
+      "classification": "global",
+      "reason": "User administration is global; branch grants are managed separately."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/users/:id",
+      "classification": "global",
+      "reason": "User administration is global; branch grants are managed separately."
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/users/:id",
+      "classification": "global",
+      "reason": "User administration is global; branch grants are managed separately."
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/users/:id",
+      "classification": "global",
+      "reason": "User administration is global; branch grants are managed separately."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/branches/accessible",
+      "classification": "global",
+      "reason": "Branch catalog and access administration define the accessible set."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/branches",
+      "classification": "global",
+      "reason": "Branch catalog and access administration define the accessible set."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/branches",
+      "classification": "global",
+      "reason": "Branch catalog and access administration define the accessible set."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/branches/access",
+      "classification": "global",
+      "reason": "Branch catalog and access administration define the accessible set."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/branches/users/:userId/access",
+      "classification": "global",
+      "reason": "Branch catalog and access administration define the accessible set."
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/branches/users/:userId/access",
+      "classification": "global",
+      "reason": "Branch catalog and access administration define the accessible set."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/branches/:branchId",
+      "classification": "global",
+      "reason": "Branch catalog and access administration define the accessible set."
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/branches/:branchId",
+      "classification": "global",
+      "reason": "Branch catalog and access administration define the accessible set."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/customers/:customerId/debts",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/customers/:customerId/debts",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/customers/:customerId/prepaid-purchases",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/customers/:customerId/installment-plans",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/customers/:customerId/installment-plans",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/customers/:customerId/activity",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/customers/:customerId/financial-summary",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/customers/:customerId/statement",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/customers/:customerId/corrections",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/customers/:customerId/service-jobs",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/customers/:customerId/sales-orders",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/customers",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/customers/search",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/customers/search-suggestions",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/customers",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/customers/:id",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/customers/:id",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/customers/:id",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/debts/:debtId",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/debts/:debtId/payments",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/debts/:debtId",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/debts/:debtId/corrections",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/debts/:debtId/payments",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/debts/:debtId/cancel",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/installment-plans/:planId",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/installment-plans/:planId/payments",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/installment-plans/:planId",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/installment-plans/:planId/corrections",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/installment-plans/:planId/payments",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/installment-plans/:planId/cancel",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/payments/:paymentId/receipt",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/payments/:paymentId/void",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/payments/:paymentId/corrections",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/payments/:paymentId/reallocate",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/exchange-rates",
+      "classification": "global",
+      "reason": "Global FX configuration; stored transaction conversion amounts are unchanged."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/exchange-rates",
+      "classification": "global",
+      "reason": "Global FX configuration; stored transaction conversion amounts are unchanged."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/financial-ledger",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/receivables",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/prepaid-purchases",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/prepaid-purchases/:id",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/prepaid-purchases/:id/deliver",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/prepaid-purchases/:id/revert-delivery",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/products",
+      "classification": "global",
+      "reason": "Shared product catalog, stock and pricing under D3."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/products",
+      "classification": "global",
+      "reason": "Shared product catalog, stock and pricing under D3."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/products/imports",
+      "classification": "global",
+      "reason": "Shared product catalog, stock and pricing under D3."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/products/imports/:importId",
+      "classification": "global",
+      "reason": "Shared product catalog, stock and pricing under D3."
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/products/imports/:importId",
+      "classification": "global",
+      "reason": "Shared product catalog, stock and pricing under D3."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/products/imports/:importId/commit",
+      "classification": "global",
+      "reason": "Shared product catalog, stock and pricing under D3."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/products/check-duplicate",
+      "classification": "global",
+      "reason": "Shared product catalog, stock and pricing under D3."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/products/brands/normalize",
+      "classification": "global",
+      "reason": "Shared product catalog, stock and pricing under D3."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/products/brands",
+      "classification": "global",
+      "reason": "Shared product catalog, stock and pricing under D3."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/products/labels",
+      "classification": "global",
+      "reason": "Shared product catalog, stock and pricing under D3."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/products/pricing-cards/index",
+      "classification": "global",
+      "reason": "Shared product catalog, stock and pricing under D3."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/products/pricing-cards",
+      "classification": "global",
+      "reason": "Shared product catalog, stock and pricing under D3."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/products/pricing-cards/print-snapshot",
+      "classification": "global",
+      "reason": "Shared product catalog, stock and pricing under D3."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/products/labels/secret-preview",
+      "classification": "global",
+      "reason": "Shared product catalog, stock and pricing under D3."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/products/scan",
+      "classification": "global",
+      "reason": "Shared product catalog, stock and pricing under D3."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/products/:productId/label",
+      "classification": "global",
+      "reason": "Shared product catalog, stock and pricing under D3."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/products/:productId/pricing-card",
+      "classification": "global",
+      "reason": "Shared product catalog, stock and pricing under D3."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/products/:productId/pricing-card/secret-preview",
+      "classification": "global",
+      "reason": "Shared product catalog, stock and pricing under D3."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/products/:productId/pricing-cards/prints",
+      "classification": "global",
+      "reason": "Shared product catalog, stock and pricing under D3."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/products/:productId/label/secret-preview",
+      "classification": "global",
+      "reason": "Shared product catalog, stock and pricing under D3."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/products/:productId/image",
+      "classification": "global",
+      "reason": "Shared product catalog, stock and pricing under D3."
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/products/:productId/image",
+      "classification": "global",
+      "reason": "Shared product catalog, stock and pricing under D3."
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/products/:productId/image",
+      "classification": "global",
+      "reason": "Shared product catalog, stock and pricing under D3."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/products/:productId/audit",
+      "classification": "global",
+      "reason": "Shared product catalog, stock and pricing under D3."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/products/:productId/service-jobs",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/products/:productId/inventory",
+      "classification": "global",
+      "reason": "Shared product catalog, stock and pricing under D3."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/products/:productId/opening-count",
+      "classification": "global",
+      "reason": "Shared product catalog, stock and pricing under D3."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/products/:productId/stock-movements",
+      "classification": "global",
+      "reason": "Shared product catalog, stock and pricing under D3."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/products/:productId/pricing-preview",
+      "classification": "global",
+      "reason": "Shared product catalog, stock and pricing under D3."
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/products/:productId/pricing",
+      "classification": "global",
+      "reason": "Shared product catalog, stock and pricing under D3."
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/products/:productId/sku",
+      "classification": "global",
+      "reason": "Shared product catalog, stock and pricing under D3."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/products/:productId/regenerate-sku",
+      "classification": "global",
+      "reason": "Shared product catalog, stock and pricing under D3."
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/products/:productId/stock",
+      "classification": "global",
+      "reason": "Shared product catalog, stock and pricing under D3."
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/products/:productId/features",
+      "classification": "global",
+      "reason": "Shared product catalog, stock and pricing under D3."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/products/:productId/archive",
+      "classification": "global",
+      "reason": "Shared product catalog, stock and pricing under D3."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/products/:productId/restore",
+      "classification": "global",
+      "reason": "Shared product catalog, stock and pricing under D3."
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/products/:productId",
+      "classification": "global",
+      "reason": "Shared product catalog, stock and pricing under D3."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/products/:productId",
+      "classification": "global",
+      "reason": "Shared product catalog, stock and pricing under D3."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/categories",
+      "classification": "global",
+      "reason": "Shared product categories under D3."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/categories/:categoryId",
+      "classification": "global",
+      "reason": "Shared product categories under D3."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/categories",
+      "classification": "global",
+      "reason": "Shared product categories under D3."
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/categories/:categoryId",
+      "classification": "global",
+      "reason": "Shared product categories under D3."
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/categories/:categoryId",
+      "classification": "global",
+      "reason": "Shared product categories under D3."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/inventory/receivings/duplicate-check",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/inventory/receivings",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/inventory/receivings",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/inventory/receivings/:receivingId",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/inventory/receivings/:receivingId/metadata",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/inventory/receivings/:receivingId/void",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/inventory/onboarding/pending",
+      "classification": "global",
+      "reason": "Shared stock counts, onboarding and movements under D3; receivings are scoped."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/inventory/onboarding/batch",
+      "classification": "global",
+      "reason": "Shared stock counts, onboarding and movements under D3; receivings are scoped."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/inventory/summary",
+      "classification": "global",
+      "reason": "Shared stock counts, onboarding and movements under D3; receivings are scoped."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/inventory/low-stock",
+      "classification": "global",
+      "reason": "Shared stock counts, onboarding and movements under D3; receivings are scoped."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/inventory/movements",
+      "classification": "global",
+      "reason": "Shared stock counts, onboarding and movements under D3; receivings are scoped."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/service-jobs/summary",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/service-jobs",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/service-jobs",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/service-jobs/:serviceJobId/audit",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/service-jobs/:serviceJobId/status",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/service-jobs/:serviceJobId/cancel",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/service-jobs/:serviceJobId/reopen",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/service-jobs/:serviceJobId",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/service-jobs/:serviceJobId",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/sales-orders/summary",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/sales-orders",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/sales-orders",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/sales-orders/:salesOrderId/audit",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/sales-orders/:salesOrderId/fulfillment-status",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/sales-orders/:salesOrderId/payment",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/sales-orders/:salesOrderId/cancel",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/sales-orders/:salesOrderId/restore",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/sales-orders/:salesOrderId/return",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/sales-orders/:salesOrderId/create-debt",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/sales-orders/:salesOrderId/create-installment-plan",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/sales-orders/:salesOrderId/unlink-financial",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/sales-orders/:salesOrderId/items",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/sales-orders/:salesOrderId/items/:itemId",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/sales-orders/:salesOrderId/items/:itemId/remove",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/sales-orders/:salesOrderId/deduct-stock",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/sales-orders/:salesOrderId/restore-stock",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/sales-orders/:salesOrderId",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/sales-orders/:salesOrderId",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/sales-returns/:salesReturnId",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/suppliers/:supplierId/transactions",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/suppliers/:supplierId/transactions",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/suppliers/:supplierId/purchases",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/suppliers/:supplierId/purchases",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/suppliers",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/suppliers",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/suppliers/:supplierId/summary",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/suppliers/:supplierId/audit",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/suppliers/:supplierId/archive",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/suppliers/:supplierId/restore",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/suppliers/:supplierId",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/suppliers/:supplierId",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/suppliers/:supplierId",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/supplier-transactions",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/supplier-transactions/:transactionId",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/supplier-transactions/:transactionId",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/supplier-transactions/:transactionId/remove",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/supplier-transactions/:transactionId/restore",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/supplier-purchases/receipt-check",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/supplier-purchases/:purchaseId",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/supplier-purchases/:supplierReceivingId/receipts",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/supplier-purchases/:supplierReceivingId/receipts",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/supplier-ledger",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/pricing-presets",
+      "classification": "global",
+      "reason": "Shared pricing configuration."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/pricing-presets",
+      "classification": "global",
+      "reason": "Shared pricing configuration."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/pricing-presets/label-secret-settings",
+      "classification": "global",
+      "reason": "Shared pricing configuration."
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/pricing-presets/label-secret-settings",
+      "classification": "global",
+      "reason": "Shared pricing configuration."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/pricing-presets/label-secret-encodings",
+      "classification": "global",
+      "reason": "Shared pricing configuration."
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/pricing-presets/label-secret-encodings/:encodingId",
+      "classification": "global",
+      "reason": "Shared pricing configuration."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/pricing-presets/:presetId/audit",
+      "classification": "global",
+      "reason": "Shared pricing configuration."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/pricing-presets/:presetId/archive",
+      "classification": "global",
+      "reason": "Shared pricing configuration."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/pricing-presets/:presetId/restore",
+      "classification": "global",
+      "reason": "Shared pricing configuration."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/pricing-presets/:presetId/set-default",
+      "classification": "global",
+      "reason": "Shared pricing configuration."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/pricing-presets/:presetId/set-label-secret",
+      "classification": "global",
+      "reason": "Shared pricing configuration."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/pricing-presets/:presetId/clear-label-secret",
+      "classification": "global",
+      "reason": "Shared pricing configuration."
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/pricing-presets/:presetId",
+      "classification": "global",
+      "reason": "Shared pricing configuration."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/pricing-presets/:presetId",
+      "classification": "global",
+      "reason": "Shared pricing configuration."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/pricing/calculate",
+      "classification": "global",
+      "reason": "Global product pricing calculator."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/shop-profile",
+      "classification": "global",
+      "reason": "Global shop presentation settings."
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/shop-profile",
+      "classification": "global",
+      "reason": "Global shop presentation settings."
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/shop-profile/logo",
+      "classification": "global",
+      "reason": "Global shop presentation settings."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/brand-logos",
+      "classification": "global",
+      "reason": "Shared catalog artwork."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/brand-logos",
+      "classification": "global",
+      "reason": "Shared catalog artwork."
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/brand-logos/:brandLogoId",
+      "classification": "global",
+      "reason": "Shared catalog artwork."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/brand-logos/:brandLogoId/archive",
+      "classification": "global",
+      "reason": "Shared catalog artwork."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/pricing-card-feature-icons",
+      "classification": "global",
+      "reason": "Shared product artwork."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/pricing-card-feature-icons",
+      "classification": "global",
+      "reason": "Shared product artwork."
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/pricing-card-feature-icons/:featureIconId",
+      "classification": "global",
+      "reason": "Shared product artwork."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/pricing-card-feature-icons/:featureIconId/archive",
+      "classification": "global",
+      "reason": "Shared product artwork."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/pricing-card-templates/spec-catalog",
+      "classification": "global",
+      "reason": "Shared product print templates."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/pricing-card-templates",
+      "classification": "global",
+      "reason": "Shared product print templates."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/pricing-card-templates",
+      "classification": "global",
+      "reason": "Shared product print templates."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/pricing-card-templates/:templateId/archive",
+      "classification": "global",
+      "reason": "Shared product print templates."
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/pricing-card-templates/:templateId",
+      "classification": "global",
+      "reason": "Shared product print templates."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/pricing-card-templates/:templateId",
+      "classification": "global",
+      "reason": "Shared product print templates."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/pricing-card-prints",
+      "classification": "global",
+      "reason": "Global product print snapshots."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/pricing-card-prints/product/:productId",
+      "classification": "global",
+      "reason": "Global product print snapshots."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/corrections",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/monthly-debts",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/monthly-debts/export.csv",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/monthly-financial-activity/export.csv",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/monthly-financial-activity",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/monthly-review/export.csv",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/monthly-review",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/customers/new/export.csv",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/customers/new",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/customers/debts/export.csv",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/customers/debts",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/customers/payments/export.csv",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/customers/payments",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/customers/receivables-aging/export.csv",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/customers/receivables-aging",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/customers/not-paid/export.csv",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/customers/not-paid",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/customers/paid/export.csv",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/customers/paid",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/products/bought/export.csv",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/products/bought",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/products/cost-changes/export.csv",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/products/cost-changes",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/suppliers/debts/export.csv",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/suppliers/debts",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/suppliers/payables-aging/export.csv",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/suppliers/payables-aging",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/suppliers/receiving/export.csv",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/suppliers/receiving",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/sales/orders/export.csv",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/sales/orders",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/sales/unpaid/export.csv",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/sales/unpaid",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/inventory/movements/export.csv",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/inventory/movements",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/inventory/reconciliation/export.csv",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/inventory/reconciliation",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/customers/financial-integrity/export.csv",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/customers/financial-integrity",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/suppliers/financial-integrity/export.csv",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/suppliers/financial-integrity",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/analysis/export.csv",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/analysis",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/backups/status",
+      "classification": "global",
+      "reason": "Whole-database administration and restore."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/backups/settings",
+      "classification": "global",
+      "reason": "Whole-database administration and restore."
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/admin/backups/settings",
+      "classification": "global",
+      "reason": "Whole-database administration and restore."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/backups",
+      "classification": "global",
+      "reason": "Whole-database administration and restore."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/backups",
+      "classification": "global",
+      "reason": "Whole-database administration and restore."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/backups/import",
+      "classification": "global",
+      "reason": "Whole-database administration and restore."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/backups/:backupId/validate-restore",
+      "classification": "global",
+      "reason": "Whole-database administration and restore."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/backups/:backupId/restore",
+      "classification": "global",
+      "reason": "Whole-database administration and restore."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/diagnostics/report-error",
+      "classification": "global",
+      "reason": "Global operational diagnostics."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/diagnostics/health",
+      "classification": "global",
+      "reason": "Global operational diagnostics."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/diagnostics/errors",
+      "classification": "global",
+      "reason": "Global operational diagnostics."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/diagnostics/export",
+      "classification": "global",
+      "reason": "Global operational diagnostics."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/diagnostics/clear-errors",
+      "classification": "global",
+      "reason": "Global operational diagnostics."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/preflight",
+      "classification": "global",
+      "reason": "Whole-installation readiness checks."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/maintenance",
+      "classification": "global",
+      "reason": "Whole-database migration maintenance."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/maintenance/apply",
+      "classification": "global",
+      "reason": "Whole-database migration maintenance."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/maintenance/migrations/resolve",
+      "classification": "global",
+      "reason": "Whole-database migration maintenance."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/maintenance/thermal-reconcile-notes",
+      "classification": "global",
+      "reason": "Whole-database migration maintenance."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/system/local-status",
+      "classification": "global",
+      "reason": "Desktop process status."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/scanner/pairing-code",
+      "classification": "global",
+      "reason": "Global product-scanner sessions only; JWT supplier gateway requests use their destination scope."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/scanner/lan/enable",
+      "classification": "global",
+      "reason": "Global product-scanner sessions only; JWT supplier gateway requests use their destination scope."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/scanner/lan/disable",
+      "classification": "global",
+      "reason": "Global product-scanner sessions only; JWT supplier gateway requests use their destination scope."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/scanner/lan-status",
+      "classification": "global",
+      "reason": "Global product-scanner sessions only; JWT supplier gateway requests use their destination scope."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/scanner/sessions",
+      "classification": "global",
+      "reason": "Global product-scanner sessions only; JWT supplier gateway requests use their destination scope."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/scanner/sessions/:sessionId/revoke",
+      "classification": "global",
+      "reason": "Global product-scanner sessions only; JWT supplier gateway requests use their destination scope."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/scanner/events/recent",
+      "classification": "global",
+      "reason": "Global product-scanner sessions only; JWT supplier gateway requests use their destination scope."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/scanner/events",
+      "classification": "global",
+      "reason": "Global product-scanner sessions only; JWT supplier gateway requests use their destination scope."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/business-settings",
+      "classification": "global",
+      "reason": "Singleton shop/document settings."
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/business-settings",
+      "classification": "global",
+      "reason": "Singleton shop/document settings."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/dashboard/financial-summary",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/dashboard/overview",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/dashboard/customer-financial",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/dashboard/supplier-financial",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/dashboard/service-summary",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/dashboard/product-summary",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/dashboard/sales-summary",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/dashboard/alerts",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/dashboard/activity",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/dashboard/recent-activity",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/dashboard/month-end",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/dashboard/summary",
+      "classification": "scoped",
+      "reason": "Authenticated branchScopeMiddleware before handler"
+    }
+  ],
+  "scannerLanRoutes": [
+    {
+      "method": "POST",
+      "path": "/api/v1/scanner/pair",
+      "classification": "global",
+      "reason": "Pairs a product scanner; session token cannot authorize supplier APIs."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/scanner/events",
+      "classification": "global",
+      "reason": "Records a global product code scan only (desktop or paired phone)."
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/scanner/session",
+      "classification": "global",
+      "reason": "Reports product-scanner session expiry/device label only."
+    }
+  ]
+}

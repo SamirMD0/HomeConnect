@@ -22,7 +22,7 @@ describe('supplier payable dashboard alerts', () => {
     })), '2026-09-14'));
   });
   it('shows overdue, today through day seven, and the oldest overdue, excluding future/unscheduled', async () => {
-    const result = await DashboardAlertsService.get(range, { includeArchived: false, includeAdminData: true, businessDate: '2026-09-14' });
+    const result = await DashboardAlertsService.get(range, { includeArchived: false, includeAdminData: true, businessDate: '2026-09-14' }, phase3cScope);
     const overdue = result.alerts.find((a) => a.key === 'overdue-supplier-payables');
     const soon = result.alerts.find((a) => a.key === 'supplier-payables-due-soon');
     expect(overdue).toMatchObject({ count: 1, amount: '10.00', route: '/reports/supplier-aging' });
@@ -33,8 +33,15 @@ describe('supplier payable dashboard alerts', () => {
     expect(soon?.offenders.map((o) => o.id)).toEqual(['debt-1', 'debt-2']);
   });
   it('does not load or expose administrative payable details to staff', async () => {
-    const result = await DashboardAlertsService.get(range, { includeArchived: false, includeAdminData: false });
+    const result = await DashboardAlertsService.get(range, { includeArchived: false, includeAdminData: false }, phase3cScope);
     expect(payables.get).not.toHaveBeenCalled();
     expect(result.alerts.some((a) => a.key.includes('supplier-payables'))).toBe(false);
   });
 });
+
+const phase3cScope = { mode: 'all' as const, branchIds: ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'] };
+
+vi.mock('../../branches/branch-breakdown', async (importOriginal) => ({
+  ...await importOriginal<typeof import('../../branches/branch-breakdown')>(),
+  branchLabel: vi.fn().mockResolvedValue('Phase 3C A'),
+}));

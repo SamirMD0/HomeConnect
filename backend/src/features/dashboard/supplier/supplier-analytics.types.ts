@@ -4,6 +4,7 @@ export interface SupplierTrendPoint {
 }
 
 export interface SupplierBalanceItem {
+  branchId?:string; branchName?:string;
   supplierId: string;
   supplierName: string;
   companyName: string | null;

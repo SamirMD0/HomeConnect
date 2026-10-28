@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { Bell } from 'lucide-react';
-import { LockedAction, TopBarActions, UserAvatar, WorkspaceSelector } from './TopBarActions';
+import { LockedAction, TopBarActions, UserAvatar } from './TopBarActions';
 
 describe('TopBarActions', () => {
   it('renders three locked actions: search, notifications, messages', () => {
@@ -27,26 +27,6 @@ describe('LockedAction', () => {
     );
     expect(html).toContain('aria-label="Future thing"');
     expect(html).toContain('title="Future thing is coming soon"');
-    expect(html).toContain('disabled=""');
-  });
-});
-
-describe('WorkspaceSelector', () => {
-  it('shows the provided business name and derives two-letter initials', () => {
-    const html = renderToStaticMarkup(<WorkspaceSelector businessName="Falcon LLP" />);
-    expect(html).toContain('Falcon LLP');
-    expect(html).toContain('>FL<');
-  });
-
-  it('falls back to "Home Connect" with "HC" initials when no name is supplied', () => {
-    const html = renderToStaticMarkup(<WorkspaceSelector />);
-    expect(html).toContain('Home Connect');
-    expect(html).toContain('>HC<');
-  });
-
-  it('is locked with a multi-shop tooltip', () => {
-    const html = renderToStaticMarkup(<WorkspaceSelector businessName="Any Shop" />);
-    expect(html).toContain('Multi-shop');
     expect(html).toContain('disabled=""');
   });
 });

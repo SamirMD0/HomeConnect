@@ -21,6 +21,12 @@ import {
 } from './receivables.repository';
 import { ReceivablesService } from './receivables.service';
 import { ReceivablesQueryInput } from './receivables.validator';
+const phase3bScope = { mode: 'all' as const, branchIds: ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'] };
+vi.mock('../../branches/parent-branch', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../branches/parent-branch')>()),
+  assertRecordInScope: vi.fn().mockResolvedValue('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
+}));
+
 
 const { repositoryMock } = vi.hoisted(() => ({
   repositoryMock: {
@@ -76,7 +82,7 @@ const ahmad = makeCustomer('99999999-9999-4999-8999-999999999998', 'احمد', '
 const mohammad = makeCustomer('99999999-9999-4999-8999-999999999999', 'محمد سالم عمار', '70999999');
 
 function makeCustomer(id: string, name: string, phone: string): ReceivableCustomerRecord {
-  return { id, name, phone, isActive: true };
+  return { branchId: phase3bScope.branchIds[0], id, name, phone, isActive: true };
 }
 
 function businessDate(value: string): Date {
@@ -229,7 +235,7 @@ describe('ReceivablesService', () => {
     });
 
     const result = await ReceivablesService.getReceivables(
-      query({ sortBy: 'name', sortOrder: 'asc' })
+      query({ sortBy: 'name', sortOrder: 'asc' }), phase3bScope
     );
 
     expect(result.businessDate).toBe('2026-07-28');
@@ -285,7 +291,7 @@ describe('ReceivablesService', () => {
       payments: [makePayment(alice.id, '2026-07-05', '200.00')],
     });
 
-    const [row] = (await ReceivablesService.getReceivables(query())).items;
+    const [row] = (await ReceivablesService.getReceivables(query(), phase3bScope)).items;
 
     expect(row.totalPaid).toBe('200.00');
     expect(row.outstanding).toBe('300.00');
@@ -305,7 +311,7 @@ describe('ReceivablesService', () => {
       payments: [makePayment(alice.id, '2026-07-05', '100.00')],
     });
 
-    const result = await ReceivablesService.getReceivables(query());
+    const result = await ReceivablesService.getReceivables(query(), phase3bScope);
     expect(result.items[0]).toMatchObject({
       totalObligated: '0.00',
       totalPaid: '0.00',
@@ -336,7 +342,7 @@ describe('ReceivablesService', () => {
       payments: [makePayment(bilal.id, '2026-05-09', '100.00')],
     });
 
-    const [row] = (await ReceivablesService.getReceivables(query())).items;
+    const [row] = (await ReceivablesService.getReceivables(query(), phase3bScope)).items;
 
     expect(row.billsTotal).toBe(2);
     expect(row.billsPaid).toBe(1);
@@ -352,7 +358,7 @@ describe('ReceivablesService', () => {
       payments: [],
     });
 
-    const [row] = (await ReceivablesService.getReceivables(query())).items;
+    const [row] = (await ReceivablesService.getReceivables(query(), phase3bScope)).items;
 
     expect(row.tier).toBe('WATCH');
     expect(row.paymentCount).toBe(0);
@@ -379,7 +385,7 @@ describe('ReceivablesService', () => {
       ],
     });
 
-    const result = await ReceivablesService.getReceivables(query());
+    const result = await ReceivablesService.getReceivables(query(), phase3bScope);
 
     expect(result.items.map((item) => item.tier)).toEqual(['CRITICAL', 'CRITICAL', 'WATCH']);
     expect(result.summary.customerCount).toBe(3);
@@ -429,7 +435,7 @@ describe('ReceivablesService', () => {
 
     it('scopes amounts to obligations due in the month', async () => {
       const result = await ReceivablesService.getReceivables(
-        query({ month: '2026-07', sortBy: 'name', sortOrder: 'asc' })
+        query({ month: '2026-07', sortBy: 'name', sortOrder: 'asc' }), phase3bScope
       );
       const [aliceRow, bilalRow] = result.items;
 
@@ -450,13 +456,13 @@ describe('ReceivablesService', () => {
 
     it('scopes payment activity to the month', async () => {
       const july = await ReceivablesService.getReceivables(
-        query({ month: '2026-07', sortBy: 'name', sortOrder: 'asc' })
+        query({ month: '2026-07', sortBy: 'name', sortOrder: 'asc' }), phase3bScope
       );
       expect(july.items[0].lastPaymentDate).toBeNull();
       expect(july.items[0].paymentCount).toBe(0);
 
       const june = await ReceivablesService.getReceivables(
-        query({ month: '2026-06', sortBy: 'name', sortOrder: 'asc' })
+        query({ month: '2026-06', sortBy: 'name', sortOrder: 'asc' }), phase3bScope
       );
       expect(june.items[0].lastPaymentDate).toBe('2026-06-20');
       expect(june.items[0].paymentCount).toBe(1);
@@ -467,7 +473,7 @@ describe('ReceivablesService', () => {
 
     it('reports customers with nothing due in the month as NO_ACTIVITY', async () => {
       const result = await ReceivablesService.getReceivables(
-        query({ month: '2026-08', sortBy: 'name', sortOrder: 'asc' })
+        query({ month: '2026-08', sortBy: 'name', sortOrder: 'asc' }), phase3bScope
       );
 
       expect(result.items.map((item) => item.tier)).toEqual(['NO_ACTIVITY', 'NO_ACTIVITY']);
@@ -477,7 +483,7 @@ describe('ReceivablesService', () => {
 
     it('covers the full month including a 31-day end date', async () => {
       const result = await ReceivablesService.getReceivables(
-        query({ month: '2026-07', sortBy: 'name', sortOrder: 'asc' })
+        query({ month: '2026-07', sortBy: 'name', sortOrder: 'asc' }), phase3bScope
       );
 
       expect(result.businessDate).toBe('2026-07-28');
@@ -488,7 +494,7 @@ describe('ReceivablesService', () => {
 
     it('leaves unfiltered totals on plan level when no month is given', async () => {
       const result = await ReceivablesService.getReceivables(
-        query({ sortBy: 'name', sortOrder: 'asc' })
+        query({ sortBy: 'name', sortOrder: 'asc' }), phase3bScope
       );
       const [, bilalRow] = result.items;
 
@@ -506,18 +512,18 @@ describe('ReceivablesService', () => {
       payments: [makePayment(alice.id, '2026-07-05', '200.00')],
     });
 
-    const searched = await ReceivablesService.getReceivables(query({ search: '7122' }));
+    const searched = await ReceivablesService.getReceivables(query({ search: '7122' }), phase3bScope);
     expect(searched.items).toHaveLength(1);
     expect(searched.items[0].customer.name).toBe('Bilal Nassar');
 
-    const withBalance = await ReceivablesService.getReceivables(query({ onlyWithBalance: true }));
+    const withBalance = await ReceivablesService.getReceivables(query({ onlyWithBalance: true }), phase3bScope);
     expect(withBalance.items.map((item) => item.customer.name)).not.toContain('Carla Rizk');
 
-    const paged = await ReceivablesService.getReceivables(query({ limit: 1, page: 2 }));
+    const paged = await ReceivablesService.getReceivables(query({ limit: 1, page: 2 }), phase3bScope);
     expect(paged.items).toHaveLength(1);
     expect(paged.pagination).toEqual({ page: 2, limit: 1, total: 3, totalPages: 3 });
 
-    const tierFiltered = await ReceivablesService.getReceivables(query({ tier: ['NO_ACTIVITY'] }));
+    const tierFiltered = await ReceivablesService.getReceivables(query({ tier: ['NO_ACTIVITY'] }), phase3bScope);
     expect(tierFiltered.items).toHaveLength(1);
     expect(tierFiltered.tierCounts.WATCH).toBe(1);
     expect(tierFiltered.summary.customerCount).toBe(1);
@@ -531,7 +537,7 @@ describe('ReceivablesService', () => {
       payments: [],
     });
 
-    const result = await ReceivablesService.getReceivables(query({ search: 'أحمد' }));
+    const result = await ReceivablesService.getReceivables(query({ search: 'أحمد' }), phase3bScope);
 
     expect(result.items.map((item) => item.customer.name)).toEqual(['احمد']);
   });
@@ -544,7 +550,7 @@ describe('ReceivablesService', () => {
       payments: [],
     });
 
-    const result = await ReceivablesService.getReceivables(query({ search: 'محمد عمار' }));
+    const result = await ReceivablesService.getReceivables(query({ search: 'محمد عمار' }), phase3bScope);
 
     expect(result.items.map((item) => item.customer.name)).toEqual(['محمد سالم عمار']);
   });
@@ -557,7 +563,7 @@ describe('ReceivablesService', () => {
       payments: [],
     });
 
-    const result = await ReceivablesService.getReceivables(query({ search }));
+    const result = await ReceivablesService.getReceivables(query({ search }), phase3bScope);
 
     expect(result.items).toHaveLength(3);
   });
@@ -571,7 +577,7 @@ describe('ReceivablesService', () => {
     });
 
     const result = await ReceivablesService.getReceivables(
-      query({ search: 'لا يوجد', tier: ['NO_ACTIVITY'] })
+      query({ search: 'لا يوجد', tier: ['NO_ACTIVITY'] }), phase3bScope
     );
 
     expect(result.items).toEqual([]);

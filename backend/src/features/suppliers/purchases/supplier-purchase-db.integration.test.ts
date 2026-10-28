@@ -5,6 +5,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { SupplierPurchasesService } from './supplier-purchases.service';
 import { SupplierPurchasesRepository } from './supplier-purchases.repository';
 import { todayInBusinessTimezone } from '../../financial/domain/business-date';
+const phase3bScope = async (prisma: PrismaClient) => ({ mode: 'all' as const, branchIds: [await branchFixture(prisma)] });
+
 
 /**
  * Proves the v1.9.4 constraints actually bite in PostgreSQL rather than only in
@@ -147,8 +149,8 @@ describeDatabase('supplier purchase database contract', () => {
         data: { productId, movementType: StockMovementType.OPENING_BALANCE, quantityChange: 0, quantityBefore: 0, quantityAfter: 0, reason: 'Verified zero opening count', createdById: userId },
       });
 
-      const original = await SupplierPurchasesService.create(supplierId, input, user, context);
-      const replay = await SupplierPurchasesService.create(supplierId, input, user, context);
+      const original = await SupplierPurchasesService.create(supplierId, input, user, context, await phase3bScope(prisma));
+      const replay = await SupplierPurchasesService.create(supplierId, input, user, context, await phase3bScope(prisma));
 
       expect(replay.id).toBe(original.id);
       expect(await prisma.supplierTransaction.count({
@@ -168,7 +170,7 @@ describeDatabase('supplier purchase database contract', () => {
         supplierId,
         { ...input, lines: [{ ...input.lines[0], quantity: 3 }] },
         user,
-        context
+        context, await phase3bScope(prisma)
       )).rejects.toMatchObject({ statusCode: 409, code: 'PAYMENT_IDEMPOTENCY_CONFLICT' });
 
       // The product update and its audit happen before this deliberately late
@@ -185,7 +187,7 @@ describeDatabase('supplier purchase database contract', () => {
           lines: [{ ...input.lines[0], unitPrice: '20.00' }],
         },
         user,
-        context
+        context, await phase3bScope(prisma)
       )).rejects.toThrow('Paid amount cannot exceed the purchase total');
       expect((await prisma.product.findUniqueOrThrow({ where: { id: productId } })).costPrice?.toFixed(2)).toBe('15.00');
       expect(await prisma.serviceAudit.count({
@@ -206,7 +208,7 @@ describeDatabase('supplier purchase database contract', () => {
           ],
         },
         user,
-        context
+        context, await phase3bScope(prisma)
       );
       expect(withoutKey.id).not.toBe(original.id);
       expect((await prisma.product.findUniqueOrThrow({ where: { id: productId } })).costPrice?.toFixed(2)).toBe('10.01');
@@ -236,8 +238,8 @@ describeDatabase('supplier purchase database contract', () => {
           return result;
         });
       const concurrent = await Promise.allSettled([
-        SupplierPurchasesService.create(supplierId, concurrentInput, user, context),
-        SupplierPurchasesService.create(supplierId, concurrentInput, user, context),
+        SupplierPurchasesService.create(supplierId, concurrentInput, user, context, await phase3bScope(prisma)),
+        SupplierPurchasesService.create(supplierId, concurrentInput, user, context, await phase3bScope(prisma)),
       ]);
       lookupSpy.mockRestore();
       expect(concurrent.filter((result) => result.status === 'fulfilled')).toHaveLength(1);

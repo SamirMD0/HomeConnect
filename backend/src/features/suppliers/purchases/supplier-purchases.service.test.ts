@@ -37,6 +37,12 @@ vi.mock('../../financial/infrastructure/transaction', () => ({
 }));
 
 import { SupplierPurchasesService } from './supplier-purchases.service';
+const phase3bScope = { mode: 'all' as const, branchIds: ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'] };
+vi.mock('../../branches/parent-branch', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../branches/parent-branch')>()),
+  assertRecordInScope: vi.fn().mockResolvedValue('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
+}));
+
 
 const admin = { userId: '11111111-1111-4111-8111-111111111111', role: Role.ADMIN };
 const context = { requestId: 'req-1', ipAddress: '127.0.0.1' };
@@ -104,7 +110,7 @@ describe('SupplierPurchasesService.create', () => {
   });
 
   it('posts one receiving and one debt for the line total, linking each stock line to the item that moved it', async () => {
-    await SupplierPurchasesService.create(supplierId, purchase(), admin, context);
+    await SupplierPurchasesService.create(supplierId, purchase(), admin, context, phase3bScope);
 
     expect(receiving.postSupplierReceiving).toHaveBeenCalledTimes(1);
     expect(receiving.postSupplierReceiving).toHaveBeenCalledWith(expect.objectContaining({
@@ -112,7 +118,7 @@ describe('SupplierPurchasesService.create', () => {
       referenceNumber: 'INV-2291',
       items: [{ productId, quantity: 3 }],
       userId: admin.userId,
-    }), tx);
+    }), tx, phase3bScope);
 
     expect(transactionsRepository.create).toHaveBeenCalledWith(expect.objectContaining({
       supplierId,
@@ -143,7 +149,7 @@ describe('SupplierPurchasesService.create', () => {
         { kind: 'MANUAL', description: 'Zero-rated line', amount: '25.00', taxProfileId: zeroProfileId },
         { kind: 'MANUAL', description: 'Exempt classification fixture', amount: '30.00', taxProfileId: exemptProfileId },
       ],
-    }), admin, context);
+    }), admin, context, phase3bScope);
 
     expect(taxRepository.requireEffectiveProfile.mock.calls[0][0]).toBeNull();
     expect(taxRepository.requireEffectiveProfile.mock.calls[1][0]).toBe(zeroProfileId);
@@ -196,7 +202,7 @@ describe('SupplierPurchasesService.create', () => {
       supplierId,
       purchase({ idempotencyKey }),
       admin,
-      context
+      context, phase3bScope
     );
     expect(replay.id).toBe(transactionId);
     expect(transactionsRepository.create).not.toHaveBeenCalled();
@@ -206,12 +212,12 @@ describe('SupplierPurchasesService.create', () => {
       supplierId,
       purchase({ idempotencyKey, lines: [productLine({ quantity: 4 })] }),
       admin,
-      context
+      context, phase3bScope
     )).rejects.toMatchObject({ statusCode: 409, code: 'PAYMENT_IDEMPOTENCY_CONFLICT' });
   });
 
   it('keeps stock writing inside the shared receiving function and never touches quantities itself', async () => {
-    await SupplierPurchasesService.create(supplierId, purchase(), admin, context);
+    await SupplierPurchasesService.create(supplierId, purchase(), admin, context, phase3bScope);
     // The only movement this service may write itself is a quick-add opening
     // count; a purchase of an existing product must write none.
     expect(inventoryRepository.createMovement).not.toHaveBeenCalled();
@@ -220,7 +226,7 @@ describe('SupplierPurchasesService.create', () => {
   it('creates no receiving at all for a manual-description purchase', async () => {
     await SupplierPurchasesService.create(supplierId, purchase({
       lines: [{ kind: 'MANUAL', description: 'Delivery to shop', amount: '25.00' }],
-    }), admin, context);
+    }), admin, context, phase3bScope);
 
     expect(receiving.postSupplierReceiving).not.toHaveBeenCalled();
     expect(transactionsRepository.create).toHaveBeenCalledWith(expect.objectContaining({ supplierReceivingId: null }), tx);
@@ -231,7 +237,7 @@ describe('SupplierPurchasesService.create', () => {
   });
 
   it('updates cost from an unreceived PRODUCT line and writes one product audit', async () => {
-    await SupplierPurchasesService.create(supplierId, purchase({ receiveStock: false }), admin, context);
+    await SupplierPurchasesService.create(supplierId, purchase({ receiveStock: false }), admin, context, phase3bScope);
 
     expect(productsRepository.update).toHaveBeenCalledWith(productId, {
       costPrice: expect.objectContaining({}), updatedById: admin.userId,
@@ -253,7 +259,7 @@ describe('SupplierPurchasesService.create', () => {
     await SupplierPurchasesService.create(supplierId, purchase({
       receiveStock: false,
       lines: [productLine({ quantity: 1, unitPrice: '10.00' }), productLine({ quantity: 1, unitPrice: '10.01' })],
-    }), admin, context);
+    }), admin, context, phase3bScope);
 
     expect(productsRepository.update).toHaveBeenCalledTimes(1);
     expect(productsRepository.update.mock.calls[0][1].costPrice.toFixed(2)).toBe('10.01');
@@ -265,7 +271,7 @@ describe('SupplierPurchasesService.create', () => {
   it('does not write cost or a cost audit when the weighted price is unchanged', async () => {
     productsRepository.findById.mockResolvedValue(pricingProduct({ costPrice: new Decimal('210.00') }));
 
-    await SupplierPurchasesService.create(supplierId, purchase({ receiveStock: false }), admin, context);
+    await SupplierPurchasesService.create(supplierId, purchase({ receiveStock: false }), admin, context, phase3bScope);
 
     expect(productsRepository.update).not.toHaveBeenCalled();
     expect(audits.writeServiceAudit).not.toHaveBeenCalled();
@@ -274,7 +280,7 @@ describe('SupplierPurchasesService.create', () => {
   it('updates cost but preserves a stored manual selling price and records that decision', async () => {
     productsRepository.findById.mockResolvedValue(pricingProduct({ price: new Decimal('450.00') }));
 
-    await SupplierPurchasesService.create(supplierId, purchase({ receiveStock: false }), admin, context);
+    await SupplierPurchasesService.create(supplierId, purchase({ receiveStock: false }), admin, context, phase3bScope);
 
     expect(productsRepository.update.mock.calls[0][1].costPrice.toFixed(2)).toBe('210.00');
     expect(productsRepository.update.mock.calls[0][1]).not.toHaveProperty('price');
@@ -287,7 +293,7 @@ describe('SupplierPurchasesService.create', () => {
   it('audits old and new selling prices for an explicitly preset-derived product', async () => {
     productsRepository.findById.mockResolvedValue(pricingProduct({ pricingPresetId: preset.id, pricingPreset: preset }));
 
-    await SupplierPurchasesService.create(supplierId, purchase({ receiveStock: false }), admin, context);
+    await SupplierPurchasesService.create(supplierId, purchase({ receiveStock: false }), admin, context, phase3bScope);
 
     expect(audits.writeServiceAudit).toHaveBeenCalledWith(expect.objectContaining({
       beforeValues: expect.objectContaining({ sellingPrice: '220.00', sellingPriceSource: 'PRESET', pricingPreset: { id: preset.id, name: preset.name } }),
@@ -304,7 +310,7 @@ describe('SupplierPurchasesService.create', () => {
     await SupplierPurchasesService.create(supplierId, purchase({
       currency: Currency.LBP, receiveStock: false,
       lines: [productLine({ quantity: 1, unitPrice: '100000', priceIncludesVat: true })],
-    }), admin, context);
+    }), admin, context, phase3bScope);
 
     expect(productsRepository.update.mock.calls[0][1].costPrice.toFixed(0)).toBe('90090');
     expect(transactionsRepository.create).toHaveBeenCalledWith(expect.objectContaining({
@@ -313,7 +319,7 @@ describe('SupplierPurchasesService.create', () => {
   });
 
   it('records a priced debt with no stock movement when the goods have not arrived', async () => {
-    await SupplierPurchasesService.create(supplierId, purchase({ receiveStock: false }), admin, context);
+    await SupplierPurchasesService.create(supplierId, purchase({ receiveStock: false }), admin, context, phase3bScope);
 
     expect(receiving.postSupplierReceiving).not.toHaveBeenCalled();
     expect(purchasesRepository.createLine).toHaveBeenCalledWith(expect.objectContaining({
@@ -324,7 +330,7 @@ describe('SupplierPurchasesService.create', () => {
   it('sums mixed product and manual lines into one debt amount', async () => {
     await SupplierPurchasesService.create(supplierId, purchase({
       lines: [productLine(), { kind: 'MANUAL', description: 'Freight', amount: '25.50' }],
-    }), admin, context);
+    }), admin, context, phase3bScope);
     expect(transactionsRepository.create.mock.calls[0][0].amount.toFixed(2)).toBe('655.50');
     expect(purchasesRepository.createLine).toHaveBeenCalledTimes(2);
   });
@@ -332,7 +338,7 @@ describe('SupplierPurchasesService.create', () => {
   it('honours an override total while still storing the line sum on the audit', async () => {
     await SupplierPurchasesService.create(supplierId, purchase({
       amountOverride: '600.00', amountOverrideReason: 'Supplier applied a bulk discount',
-    }), admin, context);
+    }), admin, context, phase3bScope);
 
     expect(transactionsRepository.create.mock.calls[0][0].amount.toFixed(2)).toBe('600.00');
     expect(transactionsRepository.create).toHaveBeenCalledWith(expect.objectContaining({
@@ -346,14 +352,14 @@ describe('SupplierPurchasesService.create', () => {
   it('rejects a zero-value purchase rather than posting a debt of nothing', async () => {
     await expect(SupplierPurchasesService.create(supplierId, purchase({
       lines: [productLine({ unitPrice: '0' })],
-    }), admin, context)).rejects.toMatchObject({ statusCode: 400 });
+    }), admin, context, phase3bScope)).rejects.toMatchObject({ statusCode: 400 });
     expect(transactionsRepository.create).not.toHaveBeenCalled();
   });
 
   it('allows a zero-priced bonus line as long as the purchase total is positive', async () => {
     await SupplierPurchasesService.create(supplierId, purchase({
       lines: [productLine(), { kind: 'MANUAL', description: 'Bonus unit', amount: '0.01' }],
-    }), admin, context);
+    }), admin, context, phase3bScope);
     expect(transactionsRepository.create).toHaveBeenCalled();
   });
 
@@ -363,13 +369,13 @@ describe('SupplierPurchasesService.create', () => {
    * both figures survive and the balance is still direction times amount.
    */
   it('posts only a debt when the bill is left unpaid', async () => {
-    await SupplierPurchasesService.create(supplierId, purchase(), admin, context);
+    await SupplierPurchasesService.create(supplierId, purchase(), admin, context, phase3bScope);
     expect(transactionsRepository.create).toHaveBeenCalledTimes(1);
     expect(transactionsRepository.create.mock.calls[0][0].type).toBe(SupplierTransactionType.SUPPLIER_DEBT);
   });
 
   it('posts a matching payment when the bill is settled in full', async () => {
-    await SupplierPurchasesService.create(supplierId, purchase({ paidAmount: '630.00' }), admin, context);
+    await SupplierPurchasesService.create(supplierId, purchase({ paidAmount: '630.00' }), admin, context, phase3bScope);
 
     expect(transactionsRepository.create).toHaveBeenCalledTimes(2);
     const [debt, payment] = transactionsRepository.create.mock.calls.map((call) => call[0]);
@@ -386,7 +392,7 @@ describe('SupplierPurchasesService.create', () => {
   });
 
   it('leaves the remainder owed when the bill is part-paid', async () => {
-    await SupplierPurchasesService.create(supplierId, purchase({ paidAmount: '200.00' }), admin, context);
+    await SupplierPurchasesService.create(supplierId, purchase({ paidAmount: '200.00' }), admin, context, phase3bScope);
 
     const [debt, payment] = transactionsRepository.create.mock.calls.map((call) => call[0]);
     expect(debt.amount.toFixed(2)).toBe('630.00');
@@ -397,54 +403,54 @@ describe('SupplierPurchasesService.create', () => {
   });
 
   it('never shrinks the debt to represent a payment', async () => {
-    await SupplierPurchasesService.create(supplierId, purchase({ paidAmount: '630.00' }), admin, context);
+    await SupplierPurchasesService.create(supplierId, purchase({ paidAmount: '630.00' }), admin, context, phase3bScope);
     // The bill still says what was billed, so the invoice total stays auditable.
     expect(transactionsRepository.create.mock.calls[0][0].amount.toFixed(2)).toBe('630.00');
   });
 
   it('refuses to pay more than the bill', async () => {
-    await expect(SupplierPurchasesService.create(supplierId, purchase({ paidAmount: '700.00' }), admin, context))
+    await expect(SupplierPurchasesService.create(supplierId, purchase({ paidAmount: '700.00' }), admin, context, phase3bScope))
       .rejects.toThrow('cannot exceed the purchase total');
   });
 
   it('treats a zero paid amount as unpaid', async () => {
-    await SupplierPurchasesService.create(supplierId, purchase({ paidAmount: '0' }), admin, context);
+    await SupplierPurchasesService.create(supplierId, purchase({ paidAmount: '0' }), admin, context, phase3bScope);
     expect(transactionsRepository.create).toHaveBeenCalledTimes(1);
   });
 
   it('measures the payment against an overridden total, not the line sum', async () => {
     await SupplierPurchasesService.create(supplierId, purchase({
       amountOverride: '600.00', amountOverrideReason: 'Bulk discount', paidAmount: '600.00',
-    }), admin, context);
+    }), admin, context, phase3bScope);
     expect(transactionsRepository.create).toHaveBeenCalledTimes(2);
     expect(transactionsRepository.create.mock.calls[1][0].amount.toFixed(2)).toBe('600.00');
   });
 
   it('refuses a non-admin before reading anything', async () => {
-    await expect(SupplierPurchasesService.create(supplierId, purchase(), { ...admin, role: Role.EMPLOYEE }, context))
+    await expect(SupplierPurchasesService.create(supplierId, purchase(), { ...admin, role: Role.EMPLOYEE }, context, phase3bScope))
       .rejects.toMatchObject({ statusCode: 403 });
     expect(suppliersRepository.findById).not.toHaveBeenCalled();
   });
 
   it('refuses an archived or unknown supplier before any write', async () => {
     suppliersRepository.findById.mockResolvedValueOnce({ id: supplierId, name: 'Old', isActive: false });
-    await expect(SupplierPurchasesService.create(supplierId, purchase(), admin, context)).rejects.toMatchObject({ code: 'SUPPLIER_ARCHIVED' });
+    await expect(SupplierPurchasesService.create(supplierId, purchase(), admin, context, phase3bScope)).rejects.toMatchObject({ code: 'SUPPLIER_ARCHIVED' });
     suppliersRepository.findById.mockResolvedValueOnce(null);
-    await expect(SupplierPurchasesService.create(supplierId, purchase(), admin, context)).rejects.toMatchObject({ statusCode: 404 });
+    await expect(SupplierPurchasesService.create(supplierId, purchase(), admin, context, phase3bScope)).rejects.toMatchObject({ statusCode: 404 });
     expect(transactionsRepository.create).not.toHaveBeenCalled();
     expect(receiving.postSupplierReceiving).not.toHaveBeenCalled();
   });
 
   it('refuses to receive a product that does not track stock instead of billing it silently', async () => {
     inventoryRepository.findProduct.mockResolvedValueOnce({ id: productId, sku: 'HC-000042', name: 'Install kit', isActive: true, trackStock: false, stockQuantity: 0, lowStockThreshold: null });
-    await expect(SupplierPurchasesService.create(supplierId, purchase(), admin, context)).rejects.toThrow('Stock tracking is disabled');
+    await expect(SupplierPurchasesService.create(supplierId, purchase(), admin, context, phase3bScope)).rejects.toThrow('Stock tracking is disabled');
     expect(transactionsRepository.create).not.toHaveBeenCalled();
     expect(receiving.postSupplierReceiving).not.toHaveBeenCalled();
   });
 
   it('propagates a receiving failure without writing the ledger', async () => {
     receiving.postSupplierReceiving.mockRejectedValueOnce(Object.assign(new Error('Stock changed'), { code: 'STOCK_CHANGED' }));
-    await expect(SupplierPurchasesService.create(supplierId, purchase(), admin, context)).rejects.toThrow('Stock changed');
+    await expect(SupplierPurchasesService.create(supplierId, purchase(), admin, context, phase3bScope)).rejects.toThrow('Stock changed');
     expect(transactionsRepository.create).not.toHaveBeenCalled();
     expect(purchasesRepository.createLine).not.toHaveBeenCalled();
   });
@@ -471,7 +477,7 @@ describe('SupplierPurchasesService quick add', () => {
   });
 
   it('verifies the admin password before creating anything', async () => {
-    await SupplierPurchasesService.create(supplierId, purchase({ lines: [quickAddLine], accountPassword: 'secret' }), admin, context);
+    await SupplierPurchasesService.create(supplierId, purchase({ lines: [quickAddLine], accountPassword: 'secret' }), admin, context, phase3bScope);
 
     expect(adminVerification.verifyAdminPassword).toHaveBeenCalledWith(
       admin.userId, 'secret',
@@ -483,7 +489,7 @@ describe('SupplierPurchasesService quick add', () => {
   });
 
   it('writes an observed zero opening count rather than skipping onboarding', async () => {
-    await SupplierPurchasesService.create(supplierId, purchase({ lines: [quickAddLine], accountPassword: 'secret' }), admin, context);
+    await SupplierPurchasesService.create(supplierId, purchase({ lines: [quickAddLine], accountPassword: 'secret' }), admin, context, phase3bScope);
 
     expect(productsRepository.create).toHaveBeenCalledWith(expect.objectContaining({
       sku: 'HC-000099', name: 'TCL AC 2HP', model: 'TAC-24', trackStock: true, stockQuantity: 0,
@@ -501,7 +507,7 @@ describe('SupplierPurchasesService quick add', () => {
   });
 
   it('onboards the product before the receiving that depends on it', async () => {
-    await SupplierPurchasesService.create(supplierId, purchase({ lines: [quickAddLine], accountPassword: 'secret' }), admin, context);
+    await SupplierPurchasesService.create(supplierId, purchase({ lines: [quickAddLine], accountPassword: 'secret' }), admin, context, phase3bScope);
     expect(inventoryRepository.createMovement.mock.invocationCallOrder[0])
       .toBeLessThan(receiving.postSupplierReceiving.mock.invocationCallOrder[0]);
   });
@@ -510,13 +516,13 @@ describe('SupplierPurchasesService quick add', () => {
     productsRepository.findByBarcode.mockResolvedValueOnce({ id: 'other' });
     await expect(SupplierPurchasesService.create(supplierId, purchase({
       lines: [{ ...quickAddLine, barcode: 'ABC-1234' }], accountPassword: 'secret',
-    }), admin, context)).rejects.toMatchObject({ code: 'PRODUCT_BARCODE_CONFLICT' });
+    }), admin, context, phase3bScope)).rejects.toMatchObject({ code: 'PRODUCT_BARCODE_CONFLICT' });
     expect(productsRepository.create).not.toHaveBeenCalled();
   });
 
   it('never onboards a product when password verification fails', async () => {
     adminVerification.verifyAdminPassword.mockRejectedValueOnce(Object.assign(new Error('Account password is incorrect'), { statusCode: 401 }));
-    await expect(SupplierPurchasesService.create(supplierId, purchase({ lines: [quickAddLine], accountPassword: 'wrong' }), admin, context)).rejects.toThrow('incorrect');
+    await expect(SupplierPurchasesService.create(supplierId, purchase({ lines: [quickAddLine], accountPassword: 'wrong' }), admin, context, phase3bScope)).rejects.toThrow('incorrect');
     expect(productsRepository.create).not.toHaveBeenCalled();
     expect(inventoryRepository.createMovement).not.toHaveBeenCalled();
     expect(transactionsRepository.create).not.toHaveBeenCalled();
@@ -530,7 +536,7 @@ describe('SupplierPurchasesService.receiptCheck', () => {
     purchasesRepository.findReceiptMatches.mockResolvedValue([
       { id: transactionId, receiptNumber: 'INV-2291', amount: '630.00', transactionDate: new Date('2026-08-14T00:00:00.000Z'), description: 'TCL AC purchase' },
     ]);
-    await expect(SupplierPurchasesService.receiptCheck({ supplierId, receiptNumber: 'INV-2291' })).resolves.toMatchObject({
+    await expect(SupplierPurchasesService.receiptCheck({ supplierId, receiptNumber: 'INV-2291' }, phase3bScope)).resolves.toMatchObject({
       duplicate: true,
       matches: [expect.objectContaining({ amount: '630.00', transactionDate: '2026-08-14' })],
     });
@@ -538,6 +544,6 @@ describe('SupplierPurchasesService.receiptCheck', () => {
 
   it('reports no duplicate when the receipt is new', async () => {
     purchasesRepository.findReceiptMatches.mockResolvedValue([]);
-    await expect(SupplierPurchasesService.receiptCheck({ supplierId, receiptNumber: 'INV-1' })).resolves.toMatchObject({ duplicate: false, matches: [] });
+    await expect(SupplierPurchasesService.receiptCheck({ supplierId, receiptNumber: 'INV-1' }, phase3bScope)).resolves.toMatchObject({ duplicate: false, matches: [] });
   });
 });

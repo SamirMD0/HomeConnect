@@ -1,3 +1,4 @@
+import { handleBranchRejection, selectedBranchHeaders } from '../branches/branch-selection';
 import { ApiFailure, ApiSuccess, ConnectionSettings } from '../types/scanner.types';
 
 /**
@@ -60,10 +61,12 @@ async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Respon
  * the contract and normalises network / 4xx / 5xx failures into `HcApiError`.
  */
 export async function requestJson<T>(url: string, init: RequestInit = {}): Promise<T> {
+  const branchHeaders = selectedBranchHeaders();
   const response = await fetchWithTimeout(url, {
     ...init,
     headers: {
       Accept: 'application/json',
+      ...branchHeaders,
       ...(init.body ? { 'Content-Type': 'application/json' } : {}),
       ...(init.headers ?? {}),
     },
@@ -83,6 +86,7 @@ export async function requestJson<T>(url: string, init: RequestInit = {}): Promi
   const failure = parsed as ApiFailure | null;
   const code = failure?.error?.code ?? null;
   const message = failure?.error?.message ?? defaultMessage(response.status);
+  handleBranchRejection(response.status, code, branchHeaders['X-Branch-Scope'] ?? null);
   throw new HcApiError(message, errorKind(response.status), response.status, code);
 }
 
@@ -99,5 +103,5 @@ export interface AuthedClient {
 }
 
 export function authedHeaders(client: AuthedClient): Record<string, string> {
-  return { Authorization: `Bearer ${client.token}` };
+  return { Authorization: `Bearer ${client.token}`, ...selectedBranchHeaders() };
 }

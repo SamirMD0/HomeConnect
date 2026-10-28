@@ -2,6 +2,7 @@ import { BilingualLabel } from '../../../components/ui';
 import { formatBusinessDate } from '../../customer-financial/utils/financial-format';
 import type { BusinessSettings, CustomerStatement, CustomerStatementEntryStatus } from '../types/document.types';
 import { DocumentMoney } from './DocumentMoney';
+import { DocumentBranchLine } from './DocumentBranchLine';
 
 const labels = {
   statement: { en: 'CUSTOMER STATEMENT', ar: 'كشف حساب زبون' },
@@ -47,7 +48,7 @@ export function CustomerStatementDocument({ statement, business }: { statement: 
             <p className="user-text-pre mt-1 text-sm text-slate-700" dir="auto">{configured(business.address, 'Address', 'العنوان')}</p>
             <p className="mt-1 text-sm" dir="ltr">{configured(business.phone, 'Phone', 'الهاتف')}</p>
             <p className="mt-1 text-sm" dir="ltr">{configured(business.email, 'Email', 'البريد الإلكتروني')}</p>
-            <p className="mt-1 text-sm font-semibold" dir="ltr">VAT / الضريبة: {configured(business.taxNumber, 'Tax number', 'الرقم الضريبي')}</p>
+            <p className="mt-1 text-sm font-semibold" dir="ltr">VAT / الضريبة: {configured(business.taxNumber, 'Tax number', 'الرقم الضريبي')}</p><DocumentBranchLine data={statement} />
           </div>
         </div>
         <div className="text-right">

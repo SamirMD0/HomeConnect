@@ -17,6 +17,7 @@ import {
   todayString,
   type SalesDateMode,
 } from '../../features/sales-orders/utils/sales-order-dates';
+import { useCreateGuard } from '../../features/branches/scope/branch-ui';
 
 const MODES: SalesDateMode[] = ['day', 'month', 'all'];
 
@@ -75,8 +76,9 @@ export function SalesOrdersPage() {
     return () => window.removeEventListener('keydown', onKeyDown);
   });
 
+  const createGuard = useCreateGuard();
   return <div className="space-y-5">
-    <PageHeader title={{ en: 'Sales Orders', ar: 'طلبات البيع' }} description="Record shop and phone sales with fulfillment and ledger integration." icon={<ShoppingCart />} actions={<Button icon={<Plus />} onClick={() => { setOrderPrefill(null); setCreateOpen(true); }}>Add Order / إضافة طلب</Button>} />
+    <PageHeader title={{ en: 'Sales Orders', ar: 'طلبات البيع' }} description="Record shop and phone sales with fulfillment and ledger integration." icon={<ShoppingCart />} actions={<Button icon={<Plus />} disabled={createGuard.blocked} title={createGuard.reason} onClick={() => { setOrderPrefill(null); setCreateOpen(true); }}>Add Order / إضافة طلب</Button>} />
     <SalesOrderDateNavigator range={range} onAnchorChange={(anchor) => setParam('date', anchor)} onModeChange={(value) => setParam('mode', value)} />
     <SalesOrderSummaryCards data={summary.data} loading={summary.isLoading} period={period} />
     {filters.awaitingStockDeduction && <div className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900"><span>Showing orders awaiting stock deduction / عرض الطلبات التي تنتظر إخراج المخزون</span><Button size="sm" variant="ghost" onClick={() => update('awaitingStockDeduction', '')}>Clear / مسح</Button></div>}

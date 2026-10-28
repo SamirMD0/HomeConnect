@@ -1,3 +1,5 @@
+let branchId: string;
+const scope = () => ({ mode: 'all' as const, branchIds: [branchId] });
 import { branchFixture } from "../../../test/branch-fixture";
 import { isIsolatedTestDatabase } from '../../../test/database';
 import { Currency, PrismaClient } from '@prisma/client';
@@ -12,6 +14,8 @@ import { customerFinancialSummaryQuerySchema } from '../customer-summary/custome
 import { todayInBusinessTimezone } from '../domain/business-date';
 import { CustomersService } from '../../../services/customers.service';
 import { CreditLimitService } from './credit-limit.service';
+const phase3bScope = async () => ({ mode: 'all' as const, branchIds: [await branchFixture(db)] });
+
 
 
 const describeDb = process.env.RUN_FINANCIAL_DB_TESTS === '1' && isIsolatedTestDatabase(process.env.DATABASE_URL) ? describe : describe.skip;
@@ -32,7 +36,8 @@ describeDb('customer credit-limit transaction invariants', () => {
   beforeEach(async () => {
     userId = randomUUID(); customerId = randomUUID(); taxProfileId = randomUUID(); taxRateId = randomUUID();
     await db.user.create({ data: { id: userId, username: `credit-${userId}`, fullName: 'Credit Test Admin', password: await bcrypt.hash(password, 4), role: 'ADMIN' } });
-    await db.customer.create({ data: { branchId: await branchFixture(db), id: customerId, name: 'Credit Customer', phone: `credit-${customerId}`, createdBy: userId } });
+    branchId = await branchFixture(db);
+    await db.customer.create({ data: { branchId, id: customerId, name: 'Credit Customer', phone: `credit-${customerId}`, createdBy: userId } });
     await db.taxRate.create({ data: { id: taxRateId, code: `CREDIT_${taxRateId}`, name: 'Credit VAT', nameAr: 'اختبار', ratePercent: '11', effectiveFrom: new Date('2020-01-01'), createdById: userId } });
     await db.taxProfile.create({ data: { id: taxProfileId, code: `CREDIT_${taxProfileId}`, name: 'Credit VAT', nameAr: 'اختبار', taxRateId } });
   });
@@ -58,11 +63,11 @@ describeDb('customer credit-limit transaction invariants', () => {
   it('preserves NULL/unrestricted creation and supports setting, clearing, and zero limits', async () => {
     expect((await db.customer.findUniqueOrThrow({ where: { id: customerId } })).creditLimit).toBeNull();
     await DebtsService.createDebt(customerId, debt('1000'), actor());
-    await CustomersService.updateCustomer(customerId, { creditLimit: '0.00' }, actor());
+    await CustomersService.updateCustomer(customerId, { creditLimit: '0.00' }, scope(), actor());
     await expect(DebtsService.createDebt(customerId, debt('1'), actor())).rejects.toMatchObject({ code: 'CREDIT_LIMIT_EXCEEDED' });
-    await CustomersService.updateCustomer(customerId, { creditLimit: null }, actor());
+    await CustomersService.updateCustomer(customerId, { creditLimit: null }, scope(), actor());
     await DebtsService.createDebt(customerId, debt('1'), actor());
-    const created = await CustomersService.createCustomer({ name: 'Limit Customer', phone: `new-${customerId}`, createdBy: userId, creditLimit: '100.00' }, actor());
+    const created = await CustomersService.createCustomer({ name: 'Limit Customer', phone: `new-${customerId}`, createdBy: userId, creditLimit: '100.00' }, scope(), actor());
     expect(created.creditLimit?.toFixed(2)).toBe('100.00');
     await expect(db.customer.update({ where: { id: customerId }, data: { creditLimit: '-1' } })).rejects.toThrow();
   });
@@ -88,22 +93,22 @@ describeDb('customer credit-limit transaction invariants', () => {
   it.each([Currency.USD, Currency.LBP])('uses original %s base snapshots and only the unpaid sale remainder', async (currency) => {
     await db.customer.update({ where: { id: customerId }, data: { creditLimit: '75' } });
     const input = currency === Currency.USD ? sale() : sale({ currency, exchangeRate: '89500.000000', paidAmount: '2237500', items: [{ manualProductName: 'Credit appliance', quantity: 1, unitPrice: '8950000', taxProfileId, priceIncludesVat: true }] });
-    const order = await SalesOrdersService.create(input, actor(), {});
+    const order = await SalesOrdersService.create(input, actor(), {}, await phase3bScope());
     expect(order.debtId).toBeTruthy(); expect(await outstanding()).toBe('75.00');
     expect(await db.payment.count({ where: { salesOrderId: order.id } })).toBe(1);
     await expect(DebtsService.createDebt(customerId, debt('1'), actor())).rejects.toMatchObject({ code: 'CREDIT_LIMIT_EXCEEDED' });
   });
   it('rolls back an over-limit sale, debt, payment and audit together', async () => {
     await db.customer.update({ where: { id: customerId }, data: { creditLimit: '74' } });
-    await expect(SalesOrdersService.create(sale(), actor(), {})).rejects.toMatchObject({ code: 'CREDIT_LIMIT_EXCEEDED', details: { currentOutstanding: '0.00', overage: '1.00' } });
+    await expect(SalesOrdersService.create(sale(), actor(), {}, await phase3bScope())).rejects.toMatchObject({ code: 'CREDIT_LIMIT_EXCEEDED', details: { currentOutstanding: '0.00', overage: '1.00' } });
     for (const count of [await db.salesOrder.count({ where: { createdById: userId } }), await db.debt.count({ where: { createdById: userId } }), await db.payment.count({ where: { createdById: userId } }), await db.salesAudit.count({ where: { changedById: userId } })]) expect(count).toBe(0);
   });
   it('requires real ADMIN password/reason and audits one successful sale override across retries', async () => {
     await db.customer.update({ where: { id: customerId }, data: { creditLimit: '50' } });
     const input = sale({ overrideCreditLimit: true, creditLimitOverrideReason: 'Owner approved appliance credit', accountPassword: password });
-    await expect(SalesOrdersService.create({ ...input, accountPassword: 'wrong' }, actor(), {})).rejects.toMatchObject({ statusCode: 401 });
-    const order = await SalesOrdersService.create(input, actor(), {});
-    expect((await SalesOrdersService.create(input, actor(), {})).id).toBe(order.id);
+    await expect(SalesOrdersService.create({ ...input, accountPassword: 'wrong' }, actor(), {}, await phase3bScope())).rejects.toMatchObject({ statusCode: 401 });
+    const order = await SalesOrdersService.create(input, actor(), {}, await phase3bScope());
+    expect((await SalesOrdersService.create(input, actor(), {}, await phase3bScope())).id).toBe(order.id);
     const logs = await db.activityLog.findMany({ where: { userId, action: 'CREDIT_LIMIT_OVERRIDE' } });
     expect(logs).toHaveLength(1);
     expect(logs[0].details).toMatchObject({ customerId, debtId: order.debtId, creditLimit: '50.00', projectedOutstanding: '75.00', overage: '25.00', reason: input.creditLimitOverrideReason });
@@ -111,7 +116,7 @@ describeDb('customer credit-limit transaction invariants', () => {
     expect(await outstanding()).toBe('75.00');
   });
   it('checks explicit draft sales-to-debt conversion without double-adding existing cash', async () => {
-    const order = await SalesOrdersService.create(sale({ fulfillmentStatus: 'DRAFT', debtDueDate: null }), actor(), {});
+    const order = await SalesOrdersService.create(sale({ fulfillmentStatus: 'DRAFT', debtDueDate: null }), actor(), {}, await phase3bScope());
     await db.customer.update({ where: { id: customerId }, data: { creditLimit: '50' } });
     await expect(SalesOrdersService.createDebt(order.id, { dueDate: today }, actor(), {})).rejects.toMatchObject({ code: 'CREDIT_LIMIT_EXCEEDED' });
     expect((await db.salesOrder.findUniqueOrThrow({ where: { id: order.id } })).debtId).toBeNull();

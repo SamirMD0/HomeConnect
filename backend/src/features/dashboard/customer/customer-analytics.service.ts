@@ -1,3 +1,5 @@
+import { branchFields } from '../../branches/branch-breakdown';
+import { type BranchScope } from '../../branches/branch-scope';
 import { Currency, DebtKind, DebtStatus, InstallmentPlanStatus, InstallmentStatus } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import {
@@ -32,6 +34,7 @@ import type {
 } from './customer-analytics.types';
 
 interface OpenItem {
+  branchId?: string; branchName?: string;
   customer: { id: string; name: string; phone: string };
   dueDate: string;
   remaining: Decimal;
@@ -41,14 +44,14 @@ interface OpenItem {
 export class CustomerAnalyticsService {
   static async get(
     range: ResolvedDashboardRange,
-    options: { includeArchived: boolean; includeAdminData: boolean; businessDate?: string }
+    options: { includeArchived: boolean; includeAdminData: boolean; businessDate?: string }, scope: BranchScope
   ): Promise<CustomerAnalyticsData> {
     const businessDate = options.businessDate ?? todayInBusinessTimezone();
     const historyFrom = earliestDate(range.previousFrom, monthStartOffset(businessDate, -5));
     const records = await CustomerAnalyticsRepository.load(
       range,
       historyFrom,
-      options.includeArchived
+      options.includeArchived, scope
     );
     return this.aggregate(records, range, businessDate, options.includeAdminData);
   }
@@ -120,6 +123,7 @@ export class CustomerAnalyticsService {
       result.topDebtors = [...byCustomer.entries()]
         .map(([customerId, value]) => ({
           customerId,
+          ...branchFields(openItems.find(item => item.customer.id === customerId) ?? {}),
           customerName: value.customer.name,
           phone: value.customer.phone,
           outstanding: moneyToApiString(value.amount),
@@ -150,7 +154,7 @@ export class CustomerAnalyticsService {
       businessDate,
       balance,
     });
-    return [{ customer: record.customer, dueDate, remaining: balance.remainingBalance, overdue: status === DebtStatus.OVERDUE }];
+    return [{ ...branchFields(record), customer: record.customer, dueDate, remaining: balance.remainingBalance, overdue: status === DebtStatus.OVERDUE }];
   }
 
   private static planItems(record: CustomerAnalyticsPlan, businessDate: string): OpenItem[] {
@@ -183,7 +187,7 @@ export class CustomerAnalyticsService {
       });
       const dueDate = prismaDateToBusinessDate(installment.dueDate);
       const status = determineInstallmentStatus({ isCancelled: false, dueDate, businessDate, balance });
-      return [{ customer: record.customer, dueDate, remaining: balance.remainingBalance, overdue: status === InstallmentStatus.OVERDUE }];
+      return [{ ...branchFields(record), customer: record.customer, dueDate, remaining: balance.remainingBalance, overdue: status === InstallmentStatus.OVERDUE }];
     });
   }
 }

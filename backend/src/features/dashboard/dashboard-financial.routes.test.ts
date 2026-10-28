@@ -13,8 +13,7 @@ vi.mock('./dashboard-financial.service', () => ({
   DashboardFinancialService: dashboardFinancialServiceMock,
 }));
 
-vi.mock('../../lib/prisma', () => ({
-  prisma: {
+vi.mock('../../lib/prisma', async () => ({ prisma: { ...((await import('../../test/branch-scope-fixture.js')).singleBranchRouteModels()),
     $queryRaw: vi.fn().mockResolvedValue([{ result: 1 }]),
   },
   transactionModel: {},

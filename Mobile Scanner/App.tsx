@@ -7,7 +7,7 @@ import { HcApiError } from './src/api/hc-client';
 import { StatusBanner } from './src/components/StatusBanner';
 import { ConnectionSetupScreen } from './src/screens/ConnectionSetupScreen';
 import { LoginScreen } from './src/screens/LoginScreen';
-import { ScannerScreen } from './src/screens/ScannerScreen';
+import { BranchScannerScreen } from './src/branches/BranchScannerScreen';
 import { sessionFlowReducer } from './src/state/session-flow';
 import {
   clearAllAuth,
@@ -149,7 +149,7 @@ export default function App() {
     }
     if (phase === 'SCANNING' && connection && token && authUser) {
       return (
-        <ScannerScreen
+        <BranchScannerScreen
           connection={connection}
           token={token}
           userDisplayName={authUser.fullName || authUser.email}

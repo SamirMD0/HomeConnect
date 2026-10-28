@@ -1,3 +1,4 @@
+import { documentBranch } from '../../documents/document-branch';
 import { NextFunction, Request, Response } from 'express';
 import { CustomerStatementService } from './customer-statement.service';
 import type { CustomerStatementQuery } from './customer-statement.validator';
@@ -11,7 +12,7 @@ export class CustomerStatementController {
       );
       res.status(200).json({
         success: true,
-        data: statement,
+        data: { ...statement, ...await documentBranch('customer', req.params.customerId as string) },
         meta: { timestamp: new Date().toISOString() },
       });
     } catch (error) {

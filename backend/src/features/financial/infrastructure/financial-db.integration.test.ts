@@ -3,11 +3,12 @@ import { randomUUID } from 'crypto';
 import { config } from 'dotenv';
 import { Currency, Role } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it} from 'vitest';
 import { businessDateToPrisma, prismaDateToBusinessDate } from '../domain/business-date';
 import { moneyToApiString, parseMoney, roundMoney } from '../domain/money';
 import { DebtsService } from '../debts/debts.service';
 import { SuppliersRepository } from '../../suppliers/suppliers/suppliers.repository';
+
 
 config({ path: 'backend/.env' });
 
@@ -155,7 +156,7 @@ describeDatabase('financial Prisma integration', () => {
       const paid = await DebtsService.recordDebtPayment(debt.id, {
         amount: '4500000', currency: Currency.LBP, paymentDate: '2026-02-28',
         paymentMethod: 'CASH', reference: null, notes: null, idempotencyKey: `currency-${userId}`,
-      }, { userId, role: Role.ADMIN });
+      }, { userId, role: Role.ADMIN }, { mode: 'all', branchIds: [await branchFixture(prisma)] });
 
       // INV-18: the balance function consumed the USD obligation-side amount.
       expect(paid.remainingBalance).toBe('950.00');

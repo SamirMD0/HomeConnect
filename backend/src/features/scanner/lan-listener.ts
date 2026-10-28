@@ -7,6 +7,7 @@ import { logger } from '../../lib/logger';
 import { privateIpv4Candidates, mobileScannerUrls } from './lan-address';
 import { scannerLanRoutes } from './scanner.lan.routes';
 import { scannerStore } from './scanner.store';
+import { createMobileApiGateway } from './mobile-api-gateway';
 
 export const SCANNER_LAN_PORT = Number(process.env.SCANNER_LAN_PORT || 3011);
 export const SCANNER_LAN_HOST = process.env.SCANNER_LAN_HOST || '0.0.0.0';
@@ -60,10 +61,9 @@ const FIREWALL_GUIDANCE = {
  * A second Express app, entirely separate from the main API.
  *
  * This is the core of the design. The main app stays bound to loopback and is
- * never exposed; the LAN gets its own app that mounts only the scanner surface.
- * A route that was never mounted cannot be reached, so customers, debts,
- * payments, product writes and the admin routes are unreachable from the shop
- * Wi-Fi by construction rather than by a guard that could be misordered.
+ * never exposed; the LAN app mounts global product scans and the exact mobile
+ * JWT gateway allow-list. Forwarded requests retain the desktop API's auth,
+ * role and branch checks; other desktop routes remain unreachable.
  *
  * Exported so tests can drive it with supertest without binding a real port.
  */
@@ -74,6 +74,7 @@ export function buildLanApp(): Express {
   // CSP is disabled here rather than fighting it.
   app.use(helmet({ contentSecurityPolicy: false }));
   app.use(lanRequestLogger);
+  app.use(createMobileApiGateway());
   app.use(express.json({ limit: MAX_LAN_BODY }));
   app.use(scannerLanRoutes);
   app.use(translateBodyParserErrors);

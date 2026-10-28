@@ -1,0 +1,366 @@
+[
+  {
+    "file": "backend/src/app-branch-scope-meta.test.ts",
+    "status": "passed",
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/services/customers.service.test.ts",
+    "status": "passed",
+    "passed": 12,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/services/dashboard.service.test.ts",
+    "status": "passed",
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/branches/branch-breakdown.test.ts",
+    "status": "passed",
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/branches/branch-financial-scope-db.integration.test.ts",
+    "status": "passed",
+    "passed": 113,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "status": "passed",
+    "passed": 62,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/branches/branch-scope-db.integration.test.ts",
+    "status": "passed",
+    "passed": 33,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/branches/branch-scope.test.ts",
+    "status": "passed",
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/branches/branches.routes.test.ts",
+    "status": "passed",
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/branches/branches.service.test.ts",
+    "status": "passed",
+    "passed": 14,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/branches/creation-branch.test.ts",
+    "status": "passed",
+    "passed": 10,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/dashboard/dashboard-financial.routes.test.ts",
+    "status": "passed",
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/dashboard/dashboard-financial.service.test.ts",
+    "status": "passed",
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/dashboard/dashboard.routes.test.ts",
+    "status": "passed",
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/dashboard/activity/dashboard-activity.service.test.ts",
+    "status": "passed",
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/dashboard/alerts/dashboard-alerts.service.test.ts",
+    "status": "passed",
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/dashboard/alerts/supplier-payable-alerts.test.ts",
+    "status": "passed",
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/dashboard/customer/customer-analytics.service.test.ts",
+    "status": "passed",
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/dashboard/month-end/month-end.characterization.test.ts",
+    "status": "passed",
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/dashboard/month-end/month-end.range.test.ts",
+    "status": "passed",
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/dashboard/month-end/month-end.service.test.ts",
+    "status": "passed",
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/dashboard/product/product-analytics.service.test.ts",
+    "status": "passed",
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/dashboard/sales/sales-analytics.service.test.ts",
+    "status": "passed",
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/dashboard/service/service-analytics.service.test.ts",
+    "status": "passed",
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/dashboard/shared/dashboard-cache.test.ts",
+    "status": "passed",
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/dashboard/shared/dashboard-range.test.ts",
+    "status": "passed",
+    "passed": 8,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/dashboard/supplier/supplier-analytics.service.test.ts",
+    "status": "passed",
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/financial/receivables/receivables-scope-contract.test.ts",
+    "status": "passed",
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/financial/receivables/receivables.projection.test.ts",
+    "status": "passed",
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/financial/receivables/receivables.routes.test.ts",
+    "status": "passed",
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/financial/receivables/receivables.service.test.ts",
+    "status": "passed",
+    "passed": 17,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/financial/receivables/receivables.tier.test.ts",
+    "status": "passed",
+    "passed": 18,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/reports/analysis/analysis.service.test.ts",
+    "status": "passed",
+    "passed": 13,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/reports/metrics/reports-metrics.repository.test.ts",
+    "status": "passed",
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/reports/metrics/reports-metrics.service.test.ts",
+    "status": "passed",
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/reports/monthly-debts/monthly-debts.repository.range.test.ts",
+    "status": "passed",
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/reports/monthly-debts/monthly-debts.routes.test.ts",
+    "status": "passed",
+    "passed": 7,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/reports/monthly-debts/monthly-debts.service.test.ts",
+    "status": "passed",
+    "passed": 15,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/reports/monthly-review/monthly-review.routes.test.ts",
+    "status": "passed",
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/reports/monthly-review/monthly-review.service.test.ts",
+    "status": "passed",
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/reports/rows/report-rows.routes.test.ts",
+    "status": "passed",
+    "passed": 27,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/reports/rows/report-rows.service.test.ts",
+    "status": "passed",
+    "passed": 23,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/reports/shared/csv.test.ts",
+    "status": "passed",
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/reports/shared/receivables-aging.test.ts",
+    "status": "passed",
+    "passed": 15,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/reports/shared/reports-envelope.test.ts",
+    "status": "passed",
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/reports/shared/reports-period.test.ts",
+    "status": "passed",
+    "passed": 7,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/reports/shared/reports-read-only.test.ts",
+    "status": "passed",
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/reports/shared/reports-risk.config.test.ts",
+    "status": "passed",
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/sales/returns/sales-returns-db.integration.test.ts",
+    "status": "passed",
+    "passed": 9,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/sales/sales-orders/counter-payments-db.integration.test.ts",
+    "status": "passed",
+    "passed": 9,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/suppliers/payables/supplier-payables-db.integration.test.ts",
+    "status": "passed",
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0
+  },
+  {
+    "file": "backend/src/features/suppliers/transactions/supplier-transactions.service.test.ts",
+    "status": "passed",
+    "passed": 10,
+    "failed": 0,
+    "skipped": 0
+  }
+]

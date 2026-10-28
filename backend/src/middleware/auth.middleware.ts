@@ -1,3 +1,4 @@
+import type { BranchScope } from '../features/branches/branch-scope';
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { AuthenticationError } from '../lib/errors';
@@ -10,6 +11,7 @@ const JWT_SECRET = requireSecretEnv('JWT_SECRET');
 declare global {
   namespace Express {
     interface Request {
+      branchScope?: BranchScope;
       user?: {
         userId: string;
         role: string;

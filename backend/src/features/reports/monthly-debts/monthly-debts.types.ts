@@ -3,12 +3,14 @@ export type MonthlyDebtSortBy = 'CUSTOMER' | 'OUTSTANDING' | 'OVERDUE' | 'LAST_P
 export type MonthlyDebtSortOrder = 'ASC' | 'DESC';
 
 export interface MonthlyDebtCustomer {
+  branchId?:string; branch?:{name:string};
   id: string;
   name: string;
   phone: string;
 }
 
 export interface MonthlyDebtReportRow {
+  branchId?:string; branchName?:string;
   customer: MonthlyDebtCustomer;
   singleDebtOutstanding: string;
   installmentPlanOutstanding: string;
@@ -50,6 +52,7 @@ export interface MonthlyDebtReport {
 }
 
 export interface MonthlyFinancialActivityItem {
+  branchId?:string; branchName?:string;
   cashRefundAmount?: string;
   storeCreditAmount?: string;
   id: string;

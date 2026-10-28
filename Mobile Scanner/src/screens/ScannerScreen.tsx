@@ -17,6 +17,7 @@ import { SupplierPurchaseScreen } from './SupplierPurchaseScreen';
 import { SupplierStatementScreen } from './SupplierStatementScreen';
 
 interface ScannerScreenProps {
+  supplierActionsDisabled?: boolean;
   connection: ConnectionSettings;
   token: string;
   userDisplayName: string;
@@ -31,6 +32,7 @@ type Banner = { tone: 'info' | 'warning' | 'danger'; message: string };
 const PRODUCT_BARCODE_TYPES: BarcodeType[] = ['ean13', 'ean8', 'upc_a', 'upc_e', 'code128', 'code39', 'codabar'];
 
 export function ScannerScreen({
+  supplierActionsDisabled = false,
   connection,
   token,
   userDisplayName,
@@ -157,6 +159,7 @@ export function ScannerScreen({
       {banner && <StatusBanner tone={banner.tone} message={banner.message} />}
 
       <ActionGrid
+        supplierActionsDisabled={supplierActionsDisabled}
         onScan={() => void openCamera()}
         onAttachReceipt={() => setReceiptModalVisible(true)}
         onSupplierInvoice={() => setPurchaseModalVisible(true)}

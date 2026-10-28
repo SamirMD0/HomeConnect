@@ -1,11 +1,13 @@
 import { branchFixture } from "../../../test/branch-fixture";
 import { DebtStatus, InstallmentPlanFrequency, PaymentMethod, Role } from '@prisma/client';
 import { randomUUID } from 'crypto';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it} from 'vitest';
 import { prisma } from '../../../lib/prisma';
 import { DebtsService } from '../debts/debts.service';
 import { InstallmentPlansService } from '../installment-plans/installment-plans.service';
 import { CustomerFinancialSummaryService } from './customer-financial-summary.service';
+const phase3bScope = async () => ({ mode: 'all' as const, branchIds: [await branchFixture(prisma)] });
+
 
 const runSummaryDbTests = process.env.RUN_PHASE6_CUSTOMER_SUMMARY_DB_TESTS === '1';
 const databaseUrl = process.env.DATABASE_URL ?? '';
@@ -87,7 +89,7 @@ describeSummaryDb('customer financial summary database flow', () => {
           notes: null,
           idempotencyKey: `phase6-debt-payment-${customerId}`,
         },
-        { userId: adminId, role: Role.ADMIN }
+        { userId: adminId, role: Role.ADMIN }, await phase3bScope()
       );
 
       const plan = await InstallmentPlansService.createPlan(
@@ -114,7 +116,7 @@ describeSummaryDb('customer financial summary database flow', () => {
           notes: null,
           idempotencyKey: `phase6-plan-payment-${customerId}`,
         },
-        { userId: adminId, role: Role.ADMIN }
+        { userId: adminId, role: Role.ADMIN }, await phase3bScope()
       );
 
       const summary = await CustomerFinancialSummaryService.getCustomerFinancialSummary(customerId, {

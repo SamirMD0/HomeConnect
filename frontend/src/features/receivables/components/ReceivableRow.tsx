@@ -9,6 +9,7 @@ import { formatDaysAgo, getReceivableTierStyle } from '../utils/receivables-tier
 import { BillsPaidMeter } from './BillsPaidMeter';
 import { ReceivableExpandedPanel } from './ReceivableExpandedPanel';
 import { StandingChip } from './StandingChip';
+import { BranchBadge, useShowBranchColumn } from '../../branches/scope/branch-ui';
 
 export const RECEIVABLE_COLUMN_COUNT = 9;
 
@@ -31,6 +32,7 @@ export const ReceivableRow: React.FC<ReceivableRowProps> = ({
   openMenuKey,
   onOpenMenuChange,
 }) => {
+  const showBranch = useShowBranchColumn();
   const style = getReceivableTierStyle(item.tier);
   const panelId = `receivable-panel-${item.customer.id}`;
   const hasOverdue = item.overdueItemCount > 0;
@@ -76,6 +78,12 @@ export const ReceivableRow: React.FC<ReceivableRowProps> = ({
             {!item.customer.isActive && ' · inactive'}
           </p>
         </td>
+
+        {showBranch && (
+          <td className="px-3 py-3 align-middle">
+            <BranchBadge branchId={item.branchId} />
+          </td>
+        )}
 
         <td className="px-3 py-3 align-middle">
           <StandingChip tier={item.tier} reason={item.tierReason} />
@@ -132,7 +140,7 @@ export const ReceivableRow: React.FC<ReceivableRowProps> = ({
 
       {isExpanded && (
         <tr id={panelId} className="bg-slate-50/70">
-          <td colSpan={RECEIVABLE_COLUMN_COUNT} className="border-l-2 border-l-slate-200 px-6 py-4">
+          <td colSpan={RECEIVABLE_COLUMN_COUNT + (showBranch ? 1 : 0)} className="border-l-2 border-l-slate-200 px-6 py-4">
             <motion.div
               initial={{ opacity: 0, y: -4 }}
               animate={{ opacity: 1, y: 0 }}

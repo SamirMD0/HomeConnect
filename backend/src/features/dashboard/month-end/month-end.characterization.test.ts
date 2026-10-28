@@ -38,7 +38,7 @@ describe('MonthEndService full-month characterization', () => {
   });
 
   it('captures the byte-stable dashboard month-end service payload', async () => {
-    const result = await MonthEndService.get('2026-07');
+    const result = await MonthEndService.get('2026-07', phase3cScope);
 
     expect(JSON.stringify(result)).toBe(JSON.stringify({
       month: '2026-07',
@@ -58,3 +58,10 @@ describe('MonthEndService full-month characterization', () => {
     }));
   });
 });
+
+const phase3cScope = { mode: 'all' as const, branchIds: ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'] };
+
+vi.mock('../../branches/branch-breakdown', async (importOriginal) => ({
+  ...await importOriginal<typeof import('../../branches/branch-breakdown')>(),
+  branchLabel: vi.fn().mockResolvedValue('Phase 3C A'),
+}));

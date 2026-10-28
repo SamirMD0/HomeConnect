@@ -1,3 +1,4 @@
+import { scopeWhere, type BranchScope } from '../../branches/branch-scope';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../../lib/prisma';
 import { FinancialTransactionClient } from '../infrastructure/transaction';
@@ -26,6 +27,7 @@ export interface CreateCorrectionAuditData {
 }
 
 export interface ListCorrectionAuditParams {
+  scope: BranchScope;
   recordType?: FinancialCorrectionRecordType;
   recordId?: string;
   customerId?: string;
@@ -34,7 +36,10 @@ export interface ListCorrectionAuditParams {
 }
 
 export class CorrectionAuditRepository {
-  static async createCorrectionAudit(data: CreateCorrectionAuditData, tx?: FinancialTransactionClient) {
+  static async createCorrectionAudit(
+    data: CreateCorrectionAuditData,
+    tx?: FinancialTransactionClient
+  ) {
     const client = tx ?? prisma;
     return client.financialCorrectionAudit.create({
       data: {
@@ -58,8 +63,51 @@ export class CorrectionAuditRepository {
   }
 
   static async listCorrectionAudits(params: ListCorrectionAuditParams) {
-    return prisma.financialCorrectionAudit.findMany({
+    // Audit rows inherit ownership through their polymorphic source record,
+    // including counter receipts whose customerId is null.
+    const scope = params.scope;
+    const [prepaids, customers, debts, plans, payments, installments] = await Promise.all([
+      prisma.prepaidPurchase.findMany({
+        where: { debt: scopeWhere(scope) },
+        select: { id: true, debt: { select: { branchId: true } } },
+      }),
+      prisma.customer.findMany({ where: scopeWhere(scope), select: { id: true, branchId: true } }),
+      prisma.debt.findMany({ where: scopeWhere(scope), select: { id: true, branchId: true } }),
+      prisma.installmentPlan.findMany({
+        where: scopeWhere(scope),
+        select: { id: true, branchId: true },
+      }),
+      prisma.payment.findMany({ where: scopeWhere(scope), select: { id: true, branchId: true } }),
+      prisma.installment.findMany({
+        where: { installmentPlan: scopeWhere(scope) },
+        select: { id: true, installmentPlan: { select: { branchId: true } } },
+      }),
+    ]);
+    const debtBranches = new Map(debts.map((row) => [row.id, row.branchId]));
+    const planBranches = new Map(plans.map((row) => [row.id, row.branchId]));
+    const paymentBranches = new Map(payments.map((row) => [row.id, row.branchId]));
+    const branches = {
+      PREPAID_PURCHASE: new Map(prepaids.map((row) => [row.id, row.debt.branchId])),
+      CUSTOMER_BILLING: new Map(customers.map((row) => [row.id, row.branchId])),
+      INSTALLMENT: new Map(installments.map((row) => [row.id, row.installmentPlan.branchId])),
+      DEBT: debtBranches,
+      INSTALLMENT_PLAN: planBranches,
+      PAYMENT: paymentBranches,
+      PAYMENT_ALLOCATION: paymentBranches,
+    };
+    const rows = await prisma.financialCorrectionAudit.findMany({
       where: {
+        OR: [
+          { recordType: 'PREPAID_PURCHASE', recordId: { in: prepaids.map((row) => row.id) } },
+          { recordType: 'CUSTOMER_BILLING', recordId: { in: customers.map((row) => row.id) } },
+          { recordType: 'DEBT', recordId: { in: debts.map((row) => row.id) } },
+          { recordType: 'INSTALLMENT_PLAN', recordId: { in: plans.map((row) => row.id) } },
+          { recordType: 'INSTALLMENT', recordId: { in: installments.map((row) => row.id) } },
+          {
+            recordType: { in: ['PAYMENT', 'PAYMENT_ALLOCATION'] },
+            recordId: { in: payments.map((row) => row.id) },
+          },
+        ],
         ...(params.recordType ? { recordType: params.recordType } : {}),
         ...(params.recordId ? { recordId: params.recordId } : {}),
         ...(params.customerId ? { customerId: params.customerId } : {}),
@@ -74,5 +122,6 @@ export class CorrectionAuditRepository {
       },
       orderBy: [{ correctedAt: 'desc' }, { id: 'asc' }],
     });
+    return rows.map((row) => ({ ...row, branchId: branches[row.recordType].get(row.recordId)! }));
   }
 }

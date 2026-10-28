@@ -1,3 +1,6 @@
+import { branchFields } from '../../branches/branch-breakdown';
+import { withBranchBreakdown, } from '../../branches/branch-breakdown';
+import { type BranchScope } from '../../branches/branch-scope';
 import { Decimal } from '@prisma/client/runtime/library';
 import { Currency, DebtKind } from '@prisma/client';
 import {
@@ -67,24 +70,28 @@ interface CustomerBucket {
 }
 
 export class MonthlyDebtsService {
-  static async getMonthlyDebtReport(query: MonthlyDebtReportQueryInput): Promise<MonthlyDebtReport> {
-    const report = await this.buildMonthlyDebtReport(query, false, this.monthBoundaries(query.month));
+  static async getMonthlyDebtReport(query: MonthlyDebtReportQueryInput, scope: BranchScope) {
+    return withBranchBreakdown(scope, scope => this.calculateGetMonthlyDebtReport(query, scope));
+  }
+
+  static async calculateGetMonthlyDebtReport(query: MonthlyDebtReportQueryInput, scope: BranchScope): Promise<MonthlyDebtReport> {
+    const report = await this.buildMonthlyDebtReport(query, false, this.monthBoundaries(query.month), scope);
     return report;
   }
 
   static getDebtReportForRange(
     query: MonthlyDebtReportQueryInput,
     from: string,
-    to: string
+    to: string, scope: BranchScope
   ): Promise<MonthlyDebtReport> {
-    return this.buildMonthlyDebtReport(query, false, this.rangeBoundaries(query.month, from, to));
+    return this.buildMonthlyDebtReport(query, false, this.rangeBoundaries(query.month, from, to), scope);
   }
 
-  static async getMonthlyDebtCsv(query: MonthlyDebtCsvQueryInput) {
+  static async getMonthlyDebtCsv(query: MonthlyDebtCsvQueryInput, scope: BranchScope) {
     const report = await this.buildMonthlyDebtReport(
       { ...query, page: 1, limit: 10000 },
       true,
-      this.monthBoundaries(query.month)
+      this.monthBoundaries(query.month), scope
     );
     const csv = this.toCsv(report.rows);
 
@@ -95,21 +102,27 @@ export class MonthlyDebtsService {
   }
 
   static async getMonthlyFinancialActivity(
-    query: MonthlyFinancialActivityQueryInput
-  ): Promise<MonthlyFinancialActivityReport> {
-    return this.buildFinancialActivity(query, this.monthBoundaries(query.month));
+    query: MonthlyFinancialActivityQueryInput, scope: BranchScope
+  ) {
+    return withBranchBreakdown(scope, scope => this.calculateGetMonthlyFinancialActivity(query, scope));
   }
 
-  static async getMonthlyFinancialActivityCsv(query: MonthlyFinancialActivityCsvQueryInput) {
+  static async calculateGetMonthlyFinancialActivity(
+    query: MonthlyFinancialActivityQueryInput, scope: BranchScope
+  ): Promise<MonthlyFinancialActivityReport> {
+    return this.buildFinancialActivity(query, this.monthBoundaries(query.month), scope);
+  }
+
+  static async getMonthlyFinancialActivityCsv(query: MonthlyFinancialActivityCsvQueryInput, scope: BranchScope) {
     const report = await this.buildFinancialActivity(
       { ...query, page: 1, limit: 10000 },
-      this.monthBoundaries(query.month)
+      this.monthBoundaries(query.month), scope
     );
     return {
       filename: `monthly-financial-activity-${query.month}.csv`,
       csv: buildCsv(
-        ['Date', 'Customer', 'Phone', 'Type', 'Description', 'Amount'],
-        report.items.map((item) => [item.date, item.customer?.name ?? 'Walk-in / زبون عابر', item.customer?.phone ?? '', item.type, item.description, item.amount])
+        ['Branch', 'Date', 'Customer', 'Phone', 'Type', 'Description', 'Amount'],
+        report.items.map((item) => [item.branchName,item.date, item.customer?.name ?? 'Walk-in / زبون عابر', item.customer?.phone ?? '', item.type, item.description, item.amount])
       ),
     };
   }
@@ -117,14 +130,14 @@ export class MonthlyDebtsService {
   static getFinancialActivityForRange(
     query: MonthlyFinancialActivityQueryInput,
     from: string,
-    to: string
+    to: string, scope: BranchScope
   ): Promise<MonthlyFinancialActivityReport> {
-    return this.buildFinancialActivity(query, this.rangeBoundaries(query.month, from, to));
+    return this.buildFinancialActivity(query, this.rangeBoundaries(query.month, from, to), scope);
   }
 
   private static async buildFinancialActivity(
     query: MonthlyFinancialActivityQueryInput,
-    boundaries: MonthBoundaries
+    boundaries: MonthBoundaries, scope: BranchScope
   ): Promise<MonthlyFinancialActivityReport> {
     const records = await MonthlyDebtsRepository.loadActivityRecords({
       customerId: query.customerId,
@@ -133,7 +146,7 @@ export class MonthlyDebtsService {
       nextDayAfterEnd: boundaries.nextDayAfterEnd,
       startInstantUtc: boundaries.startInstantUtc,
       endInstantExclusiveUtc: boundaries.endInstantExclusiveUtc,
-    });
+    }, scope);
 
     const standardDebts = records.debts.filter((debt) => debt.kind !== DebtKind.PREPAID_PURCHASE);
     const validPayments = records.payments.filter((payment) =>
@@ -145,7 +158,7 @@ export class MonthlyDebtsService {
     const storeCreditIssued = sumMoney(returns.filter((record) => record.refundMethod === 'STORE_CREDIT').map((record) => record.baseRefundableAmount));
     const items = [
       ...returns.map((record): MonthlyFinancialActivityItem => ({
-        id: record.id, customer: record.customer, type: 'SALES_RETURN',
+        ...branchFields(record), id: record.id, customer: record.customer, type: 'SALES_RETURN',
         date: prismaDateToBusinessDate(record.returnDate), description: record.returnNumber,
         amount: moneyToApiString(subtractMoney(ZERO_MONEY, record.baseReceivableReliefAmount)),
         cashRefundAmount: moneyToApiString(record.refundMethod === 'CASH_OUT' ? record.baseRefundableAmount : ZERO_MONEY),
@@ -208,14 +221,14 @@ export class MonthlyDebtsService {
   private static async buildMonthlyDebtReport(
     query: MonthlyDebtReportQueryInput,
     includeCompleteDataset: boolean,
-    boundaries: MonthBoundaries
+    boundaries: MonthBoundaries, scope: BranchScope
   ): Promise<MonthlyDebtReport> {
     const records = await MonthlyDebtsRepository.loadSnapshotRecords({
       search: query.search,
       startDate: boundaries.startDatePrisma,
       cutoffDate: boundaries.endDatePrisma,
       nextDayAfterCutoff: boundaries.nextDayAfterEnd,
-    });
+    }, scope);
     const buckets = new Map<string, CustomerBucket>();
 
     for (const payment of records.paymentsThroughCutoff) {
@@ -448,7 +461,8 @@ export class MonthlyDebtsService {
     ]);
 
     return {
-      customer: bucket.customer,
+      ...branchFields(bucket.customer),
+      customer: {id:bucket.customer.id,name:bucket.customer.name,phone:bucket.customer.phone},
       singleDebtOutstanding: moneyToApiString(bucket.singleDebtOutstanding),
       installmentPlanOutstanding: moneyToApiString(bucket.installmentPlanOutstanding),
       totalOutstanding: moneyToApiString(totalOutstanding),
@@ -514,7 +528,8 @@ export class MonthlyDebtsService {
   private static activityDebtItem(debt: MonthlyActivityDebtRecord): MonthlyFinancialActivityItem {
     return {
       id: debt.id,
-      customer: debt.customer,
+      ...branchFields(debt),
+      customer: {id:debt.customer.id,name:debt.customer.name,phone:debt.customer.phone},
       type: 'DEBT_CREATED',
       date: prismaDateToBusinessDate(debt.createdAt),
       description: debt.description,
@@ -525,7 +540,8 @@ export class MonthlyDebtsService {
   private static activityPlanItem(plan: MonthlyActivityPlanRecord): MonthlyFinancialActivityItem {
     return {
       id: plan.id,
-      customer: plan.customer,
+      ...branchFields(plan),
+      customer: {id:plan.customer.id,name:plan.customer.name,phone:plan.customer.phone},
       type: 'INSTALLMENT_PLAN_CREATED',
       date: prismaDateToBusinessDate(plan.createdAt),
       description: plan.description,
@@ -536,7 +552,8 @@ export class MonthlyDebtsService {
   private static activityPaymentItem(payment: MonthlyActivityPaymentRecord): MonthlyFinancialActivityItem {
     return {
       id: payment.id,
-      customer: payment.customer,
+      ...branchFields(payment),
+      customer: payment.customer ? {id:payment.customer.id,name:payment.customer.name,phone:payment.customer.phone} : null,
       type: 'PAYMENT_RECEIVED',
       date: prismaDateToBusinessDate(payment.paymentDate),
       description: payment.reference || 'Payment received',
@@ -589,6 +606,7 @@ export class MonthlyDebtsService {
 
   private static toCsv(rows: MonthlyDebtReportRow[]): string {
     const headers = [
+      'Branch',
       'Customer Name',
       'Phone',
       'Single Debt Outstanding',
@@ -604,6 +622,7 @@ export class MonthlyDebtsService {
       'Next Due Date After Cutoff',
     ];
     const body = rows.map((row) => [
+      row.branchName,
       row.customer.name,
       row.customer.phone,
       row.singleDebtOutstanding,

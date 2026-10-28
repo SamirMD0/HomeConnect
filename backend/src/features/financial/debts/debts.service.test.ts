@@ -17,6 +17,12 @@ import {
 } from '../domain/financial-errors';
 import { DebtWithDetails } from './debts.repository';
 import { DebtsService } from './debts.service';
+const phase3bScope = { mode: 'all' as const, branchIds: ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'] };
+vi.mock('../../branches/parent-branch', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../branches/parent-branch')>()),
+  assertRecordInScope: vi.fn().mockResolvedValue('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
+}));
+
 
 const tx = { id: 'tx' };
 
@@ -331,7 +337,7 @@ describe('DebtsService', () => {
         notes: null,
         idempotencyKey: 'partial-key-123',
       },
-      adminUser
+      adminUser, phase3bScope
     );
 
     expect(repositoryMock.createPayment).toHaveBeenCalledWith(
@@ -377,7 +383,7 @@ describe('DebtsService', () => {
         notes: null,
         idempotencyKey: 'full-key-123',
       },
-      adminUser
+      adminUser, phase3bScope
     );
 
     expect(paidResult.totalPaid).toBe('600.00');
@@ -399,7 +405,7 @@ describe('DebtsService', () => {
           notes: null,
           idempotencyKey: null,
         },
-        adminUser
+        adminUser, phase3bScope
       )
     ).rejects.toThrow(OverpaymentError);
 
@@ -415,7 +421,7 @@ describe('DebtsService', () => {
           notes: null,
           idempotencyKey: null,
         },
-        adminUser
+        adminUser, phase3bScope
       )
     ).rejects.toThrow(FinancialRecordCancelledError);
 
@@ -433,7 +439,7 @@ describe('DebtsService', () => {
           notes: null,
           idempotencyKey: null,
         },
-        adminUser
+        adminUser, phase3bScope
       )
     ).rejects.toThrow(FinancialRecordAlreadyPaidError);
   });
@@ -456,7 +462,7 @@ describe('DebtsService', () => {
         notes: null,
         idempotencyKey: 'same-key-123',
       },
-      adminUser
+      adminUser, phase3bScope
     );
 
     expect(sameResult.totalPaid).toBe('200.00');
@@ -473,7 +479,7 @@ describe('DebtsService', () => {
           notes: null,
           idempotencyKey: 'same-key-123',
         },
-        adminUser
+        adminUser, phase3bScope
       )
     ).rejects.toThrow(PaymentIdempotencyConflictError);
   });

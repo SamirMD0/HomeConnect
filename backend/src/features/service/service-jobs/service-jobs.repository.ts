@@ -1,3 +1,4 @@
+import { scopeWhere, type BranchScope } from '../../branches/branch-scope';
 import { customerBranch } from '../../branches/parent-branch';
 import { Prisma, ServiceJobStatus } from '@prisma/client';
 import { prisma } from '../../../lib/prisma';
@@ -37,8 +38,8 @@ export class ServiceJobsRepository {
     return tx.serviceJob.update({ where: { id }, data, include: serviceJobInclude });
   }
 
-  static async list(query: ServiceJobListQueryInput) {
-    const where = buildWhere(query);
+  static async list(query: ServiceJobListQueryInput, scope: BranchScope) {
+    const where = { ...buildWhere(query), ...scopeWhere(scope) };
     const orderBy = buildOrder(query.sort);
     const [items, total] = await Promise.all([
       prisma.serviceJob.findMany({
@@ -53,18 +54,18 @@ export class ServiceJobsRepository {
     return { items, total };
   }
 
-  static async summary(overdueBefore: Date, monthStart: Date, nextMonthStart: Date) {
+  static async summary(overdueBefore: Date, monthStart: Date, nextMonthStart: Date, scope: BranchScope) {
     const [groups, overdue, deliveredThisMonth] = await Promise.all([
       prisma.serviceJob.groupBy({
         by: ['status'],
-        where: { status: { in: [...OPEN_SERVICE_STATUSES] } },
+        where: { ...scopeWhere(scope), status: { in: [...OPEN_SERVICE_STATUSES] } },
         _count: { _all: true },
       }),
       prisma.serviceJob.count({
-        where: { status: { in: [...OPEN_SERVICE_STATUSES] }, serviceCreatedDate: { lte: overdueBefore } },
+        where: { ...scopeWhere(scope), status: { in: [...OPEN_SERVICE_STATUSES] }, serviceCreatedDate: { lte: overdueBefore } },
       }),
       prisma.serviceJob.count({
-        where: {
+        where: { ...scopeWhere(scope),
           status: ServiceJobStatus.DELIVERED_TO_CUSTOMER,
           returnedToCustomerDate: { gte: monthStart, lt: nextMonthStart },
         },

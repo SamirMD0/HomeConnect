@@ -9,6 +9,12 @@ import {
 } from '../domain/financial-errors';
 import { PrepaidService } from './prepaid.service';
 import { PrepaidPurchaseWithDetails } from './prepaid.repository';
+const phase3bScope = { mode: 'all' as const, branchIds: ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'] };
+vi.mock('../../branches/parent-branch', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../branches/parent-branch')>()),
+  assertRecordInScope: vi.fn().mockResolvedValue('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
+}));
+
 
 const tx = { id: 'tx' };
 
@@ -337,7 +343,7 @@ describe('PrepaidService', () => {
         sortOrder: 'desc',
         page: 1,
         pageSize: 25,
-      } as never);
+      } as never, phase3bScope);
 
       expect(result.items).toHaveLength(3);
       expect(result.items.map((item) => item.itemName)).toEqual([
@@ -394,7 +400,7 @@ describe('PrepaidService', () => {
         sortOrder: 'desc',
         page: 1,
         pageSize: 1,
-      } as never);
+      } as never, phase3bScope);
 
       expect(result.summary.totalAdminDebt).toBe('-200.00');
       expect(result.summary.pendingCount).toBe(1);

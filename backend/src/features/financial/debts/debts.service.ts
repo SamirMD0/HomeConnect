@@ -1,3 +1,5 @@
+import { writeBranch, type BranchScope } from '../../branches/branch-scope';
+import { assertRecordInScope } from '../../branches/parent-branch';
 import {
   Currency,
   DebtKind,
@@ -405,8 +407,9 @@ export class DebtsService {
   static async recordDebtPayment(
     debtId: string,
     input: CreateDebtPaymentInput,
-    user: AuthenticatedUser
+    user: AuthenticatedUser, scope: BranchScope
   ): Promise<DebtView> {
+    writeBranch(scope);
     const paymentCurrency = input.currency ?? Currency.USD;
     const paymentAmount = assertPositiveMoney(input.amount, paymentCurrency);
     const paymentMethod = input.paymentMethod ?? PaymentMethod.CASH;
@@ -418,6 +421,7 @@ export class DebtsService {
       if (!debt) {
         throw new NotFoundError('Debt not found');
       }
+      await assertRecordInScope('debt', debtId, scope, tx);
 
       const effectiveAt = businessDateToPrisma(paymentDate);
       const debtCurrency = debt.currency ?? Currency.USD;
@@ -435,6 +439,7 @@ export class DebtsService {
       if (idempotencyKey) {
         const existingPayment = await DebtsRepository.findPaymentByIdempotencyKey(tx, idempotencyKey);
         if (existingPayment) {
+          await assertRecordInScope('payment', existingPayment.id, scope, tx);
           const debtAllocation = existingPayment.allocations.find(
             (allocation) => allocation.debtId === debtId && allocation.installmentId === null
           );

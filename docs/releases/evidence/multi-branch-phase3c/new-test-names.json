@@ -1,0 +1,342 @@
+[
+  {
+    "file": "backend/src/services/dashboard.service.test.ts",
+    "name": "legacy dashboard current-ledger adapter keeps the seven legacy response fields and number types using the scoped current-ledger calculation",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-breakdown.test.ts",
+    "name": "branch aggregate breakdown retains the full-scope calculation and repeats it once per branch with additive money/count metadata",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-breakdown.test.ts",
+    "name": "branch aggregate breakdown omits breakdown consistently for zero/one branch: undefined",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-breakdown.test.ts",
+    "name": "branch aggregate breakdown omits breakdown consistently for zero/one branch: \"a\"",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-breakdown.test.ts",
+    "name": "branch aggregate breakdown preserves report metadata and places breakdown beside the data fields",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation dashboard financial-summary rejects employee header B immediately",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation dashboard overview rejects employee header B immediately",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation dashboard customer-financial rejects employee header B immediately",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation dashboard supplier-financial rejects employee header B immediately",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation dashboard service-summary rejects employee header B immediately",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation dashboard product-summary rejects employee header B immediately",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation dashboard sales-summary rejects employee header B immediately",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation dashboard alerts rejects employee header B immediately",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation dashboard activity rejects employee header B immediately",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation dashboard recent-activity rejects employee header B immediately",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation dashboard month-end rejects employee header B immediately",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation dashboard summary rejects employee header B immediately",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation employee dashboard financial-summary uses A figures and no-header single-branch scope",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation employee dashboard overview uses A figures and no-header single-branch scope",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation employee dashboard customer-financial uses A figures and no-header single-branch scope",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation employee dashboard supplier-financial uses A figures and no-header single-branch scope",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation employee dashboard service-summary uses A figures and no-header single-branch scope",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation employee dashboard product-summary uses A figures and no-header single-branch scope",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation employee dashboard sales-summary uses A figures and no-header single-branch scope",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation employee dashboard summary uses A figures and no-header single-branch scope",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation dashboard financial-summary has additive totals and exact per-branch breakdowns",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation dashboard overview has additive totals and exact per-branch breakdowns",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation dashboard customer-financial has additive totals and exact per-branch breakdowns",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation dashboard supplier-financial has additive totals and exact per-branch breakdowns",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation dashboard service-summary has additive totals and exact per-branch breakdowns",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation dashboard sales-summary has additive totals and exact per-branch breakdowns",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation dashboard month-end has additive totals and exact per-branch breakdowns",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation dashboard summary has additive totals and exact per-branch breakdowns",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation report customers/new scopes A/B and adds exact branch breakdowns without changing totals",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation report customers/debts scopes A/B and adds exact branch breakdowns without changing totals",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation report customers/payments scopes A/B and adds exact branch breakdowns without changing totals",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation report customers/receivables-aging scopes A/B and adds exact branch breakdowns without changing totals",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation report customers/not-paid scopes A/B and adds exact branch breakdowns without changing totals",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation report customers/paid scopes A/B and adds exact branch breakdowns without changing totals",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation report suppliers/debts scopes A/B and adds exact branch breakdowns without changing totals",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation report suppliers/payables-aging scopes A/B and adds exact branch breakdowns without changing totals",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation report suppliers/receiving scopes A/B and adds exact branch breakdowns without changing totals",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation report sales/orders scopes A/B and adds exact branch breakdowns without changing totals",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation report sales/unpaid scopes A/B and adds exact branch breakdowns without changing totals",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation report customers/financial-integrity scopes A/B and adds exact branch breakdowns without changing totals",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation report suppliers/financial-integrity scopes A/B and adds exact branch breakdowns without changing totals",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation report monthly-debts scopes A/B and adds exact branch breakdowns without changing totals",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation report monthly-financial-activity scopes A/B and adds exact branch breakdowns without changing totals",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation report monthly-review scopes A/B and adds exact branch breakdowns without changing totals",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation report analysis scopes A/B and adds exact branch breakdowns without changing totals",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation global report products/bought preserves shared inventory data and labels it",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation global report products/cost-changes preserves shared inventory data and labels it",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation global report inventory/movements preserves shared inventory data and labels it",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation global report inventory/reconciliation preserves shared inventory data and labels it",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation keeps stock and product counts global in mixed dashboards and analysis",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation uses stored USD base amounts for LBP supplier and customer balances and keeps both sides separate",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation sums every receivables aging bucket independently",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation keeps branch identity on top debtors and top supplier balances",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation keeps report and month-end role checks while scoping admin reads",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation isolates cached dashboard results by accessible branch set",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation activity hides B and NULL history from employees and allows NULL history for admins",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation recent-activity hides B and NULL history from employees and allows NULL history for admins",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation scopes each employee alert and labels its shared inventory component",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation prepends Branch to owned and analysis CSVs and leaves the global inventory CSV unchanged",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation applies grant revocation and deactivation on the next dashboard request",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation keeps report reads and exports free of financial or activity writes",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+    "name": "Phase 3C reports and dashboards branch isolation records the created customer debt branch in the same financial transaction",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/financial/receivables/receivables-scope-contract.test.ts",
+    "name": "receivables required scope contract requires BranchScope in repository loads and customer projections",
+    "status": "passed"
+  }
+]

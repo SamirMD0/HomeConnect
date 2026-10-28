@@ -1,0 +1,218 @@
+[
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/monthly-debts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/monthly-debts/export.csv"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/monthly-financial-activity/export.csv"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/monthly-financial-activity"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/monthly-review/export.csv"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/monthly-review"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/customers/new/export.csv"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/customers/new"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/customers/debts/export.csv"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/customers/debts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/customers/payments/export.csv"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/customers/payments"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/customers/receivables-aging/export.csv"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/customers/receivables-aging"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/customers/not-paid/export.csv"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/customers/not-paid"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/customers/paid/export.csv"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/customers/paid"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/products/bought/export.csv"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/products/bought"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/products/cost-changes/export.csv"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/products/cost-changes"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/suppliers/debts/export.csv"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/suppliers/debts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/suppliers/payables-aging/export.csv"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/suppliers/payables-aging"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/suppliers/receiving/export.csv"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/suppliers/receiving"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/sales/orders/export.csv"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/sales/orders"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/sales/unpaid/export.csv"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/sales/unpaid"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/inventory/movements/export.csv"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/inventory/movements"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/inventory/reconciliation/export.csv"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/inventory/reconciliation"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/customers/financial-integrity/export.csv"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/customers/financial-integrity"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/suppliers/financial-integrity/export.csv"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/suppliers/financial-integrity"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/analysis/export.csv"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/analysis"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/dashboard/financial-summary"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/dashboard/overview"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/dashboard/customer-financial"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/dashboard/supplier-financial"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/dashboard/service-summary"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/dashboard/product-summary"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/dashboard/sales-summary"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/dashboard/alerts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/dashboard/activity"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/dashboard/recent-activity"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/dashboard/month-end"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/dashboard/summary"
+  }
+]

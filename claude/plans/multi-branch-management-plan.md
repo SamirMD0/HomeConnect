@@ -157,7 +157,9 @@ Document numbers: keep the global unique sequence (no renumbering of history). O
 - **Scope resolution middleware** (new `middleware/branch-scope.middleware.ts`, after `auth`): reads `X-Branch-Scope: <branchId> | all` (header so it applies uniformly to JSON, CSV export and mobile), loads the user's accessible branch set from DB (not from the JWT, so revocation is immediate), and sets `req.branchScope = { mode: 'single', branchId } | { mode: 'all', branchIds }`. Rejects with 403 if the branch is not accessible; `all` for employees resolves to *their* branches only.
 - **Reads:** every repository function for branch-owned data takes `scope` as a **required parameter** (`where: { branchId: { in: scope.branchIds } }`). No implicit Prisma extension — it would not cover the raw-SQL files in §1.3 and hides the contract. Raw SQL gets an explicit `branch_id = ANY($n)` parameter.
 - **By-id reads/writes:** `findById` becomes `findInScope(id, scope)` → 404 (not 403) when out of scope, so IDs from other branches do not leak existence.
-- **Writes:** require `mode: 'single'`; reject `all` with 400. Branch is **derived server-side** from the parent (customer/order/supplier) whenever one exists; the client-supplied branch is only used for parent-less creations (new customer, new supplier, walk-in sale) and must equal the active single scope. Any referenced entity outside that branch → 404.
+- **Writes:** every mutation requires exactly one accessible branch, including actions whose branch can be derived from an existing record. A single scope is writable; `all` (including a missing header) is writable only when exactly one branch is accessible, preserving single-branch compatibility. Zero branches → `409 NO_BRANCH_AVAILABLE`; more than one → `409 BRANCH_SELECTION_REQUIRED`. Branch is **derived server-side** from the parent (customer/order/supplier) whenever one exists; parent-less creations use the resolved write branch. Any referenced entity outside that branch → 404.
+
+**Phase 4 mutation context:** for any mutation started from the **All branches** view, the UI must send `X-Branch-Scope` set to the record’s branch. This includes updates, cancellations, voids, refunds, credit application, and receipt actions; deriving the branch from a record does not exempt the request from the single-branch write policy. Parent-less creates require the user to select a branch.
 - **Guard rail test (like the planned INV-14 meta-test):** enumerate all registered routes under branch-owned prefixes and assert each passes through `branchScope`; a new endpoint cannot ship unscoped by omission.
 
 ### 2.5 Historical records (no guessing, no destructive reassignment)
@@ -202,6 +204,10 @@ Before migration the business must state **[D1]** whether every existing record 
 | Inventory position in analysis | Global (stock is not branch-scoped, labelled "all branches stock") | same |
 | Profit, cash drawer | Not present today — not added by this project | — |
 
+Aggregate breakdowns retain the original full-scope total and rerun the same calculation per branch. Responses consistently omit branchBreakdown for zero or one branch; global stock metrics remain unchanged and are labelled inventoryScope: all-branches.
+
+Activity visibility: branch-owned activity writes store the record's branchId. Feeds show rows in the accessible branch scope; historical/global NULL-branch activity is visible only to ADMIN users, and audit sources inherit scope through their parent record.
+
 ### 3.4 Customer CSV import (UX mirrors product import)
 1. **Choose destination branch** — required first field (preselected from the header scope if single; forced choice in "All"). Shown as a prominent banner on every subsequent step: *"Importing into: Branch X"*.
 2. **Upload** CSV (same size/row limits).
@@ -237,10 +243,13 @@ Each phase is a separate PR into `develop`, with its own migration where applica
 - **Risk:** high (live money tables). Mitigations: pre-migration backup is mandatory (guard), dry run on restored copy, migration is additive until the final `NOT NULL` step, documented rollback (§4.8).
 
 ### Phase 3 — Backend scoping & authorization
+- **Implemented (3A–3D).** `MULTI_BRANCH_SCOPING_ENABLED` must stay **OFF in production** until Phase 4 ships the desktop branch selector.
+- Coverage exception: `GET /products/:productId/service-jobs` is branch-scoped because it returns branch-owned service jobs; the remaining product catalog/stock/pricing routes stay global.
+- Diagnostics and preflight remain global and admin-only; they are not branch-scoped.
 - Add `branchId` to all branch-owned list and detail responses.
-- **Files:** new `middleware/branch-scope.middleware.ts`; every repository/service for branch-owned data (`repositories/customers.repository.ts`, `features/financial/**`, `features/sales/**`, `features/suppliers/**`, `features/service/**` jobs); reports (`reports/rows/report-rows.repository.ts` raw SQL, `monthly-*`, `analysis`), dashboards (`features/dashboard/**`, `services/dashboard.service.ts` raw SQL), search (`lib/search-query.ts`, `customer-suggestions.service.ts`), documents (invoice/receipt/statement print branch name), CSV export (Branch column), diagnostics export.
+- **Files:** new `middleware/branch-scope.middleware.ts`; every repository/service for branch-owned data (`repositories/customers.repository.ts`, `features/financial/**`, `features/sales/**`, `features/suppliers/**`, `features/service/**` jobs); reports (`reports/rows/report-rows.repository.ts` raw SQL, `monthly-*`, `analysis`), dashboards (`features/dashboard/**`, `services/dashboard.service.ts` raw SQL), search (`lib/search-query.ts`, `customer-suggestions.service.ts`), documents (invoice/receipt/statement print branch name), CSV export (Branch column).
 - Customer phone duplicate check becomes per branch (D2).
-- Mobile: scanner/LAN session binds to one branch chosen at pairing; gateway forwards the header; supplier endpoints scoped (`features/scanner/*`, `Mobile Scanner/src/api/hc-client.ts`, branch shown on mobile home).
+- Mobile JWT sessions select an accessible branch after login and forward `X-Branch-Scope` to scoped supplier endpoints; the branch is shown on mobile home. Desktop/LAN `x-scanner-session` pairing stays global: it carries product scans and device session state only, with no customer/supplier/sale/payment access. Each scanner route is explicitly classified in the coverage registry.
 - Route-coverage meta-test.
 - **Acceptance:** isolation suite (§5.1) green; consolidated totals = Σ branches for every report/dashboard endpoint; out-of-scope IDs return 404; writes in `all` scope rejected.
 - **Risk:** high (leakage by omission). Mitigation: required `scope` parameter makes omissions a type error; meta-test; raw-SQL files reviewed individually.

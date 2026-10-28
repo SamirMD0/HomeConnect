@@ -1,3 +1,5 @@
+import { writeBranch, type BranchScope } from '../../branches/branch-scope';
+import { assertRecordInScope } from '../../branches/parent-branch';
 import { randomUUID } from 'node:crypto';
 import {
   Prisma, Role, StockMovementType, SupplierReceivingAuditAction,
@@ -58,8 +60,10 @@ export interface PostReceivingInput {
  */
 export async function postSupplierReceiving(
   input: PostReceivingInput,
-  tx: Prisma.TransactionClient
+  tx: Prisma.TransactionClient, scope: BranchScope
 ): Promise<{ receivingId: string; itemIdByProductId: Map<string, string> }> {
+  writeBranch(scope);
+  if (input.supplier) await assertRecordInScope('supplier', input.supplier.id, scope, tx, 'Supplier not found / المورد غير موجود');
   validateLines(input.items);
   if (input.supplier && !input.supplier.isActive) {
     throw new AppError('Archived suppliers cannot receive stock / لا يمكن استلام مخزون من مورد مؤرشف', 409, 'SUPPLIER_ARCHIVED');
@@ -77,7 +81,7 @@ export async function postSupplierReceiving(
     note: input.note,
     receivedOn: businessDateToPrisma(input.receivedOn),
     receivedById: input.userId,
-  }, tx);
+  }, tx, scope);
   const reason = buildReason(input.supplier?.name ?? null, input.referenceNumber);
   const itemIdByProductId = new Map<string, string>();
 
@@ -115,7 +119,8 @@ export function assertReceivingDateNotFuture(receivedOn: string): void {
 }
 
 export class SupplierReceivingsService {
-  static async create(input: CreateSupplierReceivingInput, user: InventoryUser) {
+  static async create(input: CreateSupplierReceivingInput, user: InventoryUser, scope: BranchScope) {
+    writeBranch(scope);
     assertRole(user);
     const idempotencyKey = normalizeIdempotencyKey(input.idempotencyKey);
     const supplierId = input.supplierId ?? null;
@@ -128,10 +133,12 @@ export class SupplierReceivingsService {
     return runFinancialTransaction(async (tx) => {
       const supplier = supplierId ? await SupplierReceivingsRepository.findSupplier(supplierId, tx) : null;
       if (supplierId && !supplier) throw new NotFoundError('Supplier not found / المورد غير موجود');
+      if (supplierId) await assertRecordInScope('supplier', supplierId, scope, tx, 'Supplier not found / المورد غير موجود');
 
       if (idempotencyKey) {
         const existingReceiving = await SupplierReceivingsRepository.findByIdempotencyKey(tx, idempotencyKey);
         if (existingReceiving) {
+          await assertRecordInScope('receiving', existingReceiving.id, scope, tx);
           assertIdempotentReplay({
             existingFingerprint: createReceivingFingerprint({
               supplierId: existingReceiving.supplierId,
@@ -158,7 +165,7 @@ export class SupplierReceivingsService {
 
       const { receivingId } = await postSupplierReceiving({
         idempotencyKey, supplier, referenceNumber, note, receivedOn, items: input.items, userId: user.userId,
-      }, tx);
+      }, tx, scope);
 
       const result = await SupplierReceivingsRepository.findById(receivingId, tx);
       if (!result) throw new NotFoundError('Receiving not found after creation');
@@ -166,9 +173,9 @@ export class SupplierReceivingsService {
     }, idempotencyKey ? { maxRetries: 0 } : undefined);
   }
 
-  static async list(input: SupplierReceivingListInput, user: InventoryUser) {
+  static async list(input: SupplierReceivingListInput, user: InventoryUser, scope: BranchScope) {
     assertRole(user);
-    const result = await SupplierReceivingsRepository.list(input);
+    const result = await SupplierReceivingsRepository.list(input, scope);
     return { ...result, items: result.items.map(serializeReceiving) };
   }
 
@@ -182,9 +189,9 @@ export class SupplierReceivingsService {
     return { ...serializeReceiving(receiving), costPriceReviewCount };
   }
 
-  static async duplicateCheck(input: SupplierReceivingDuplicateInput, user: InventoryUser) {
+  static async duplicateCheck(input: SupplierReceivingDuplicateInput, user: InventoryUser, scope: BranchScope) {
     assertRole(user);
-    const match = await SupplierReceivingsRepository.findDuplicate(input.supplierId, input.referenceNumber.trim());
+    const match = await SupplierReceivingsRepository.findDuplicate(input.supplierId, input.referenceNumber.trim(), scope);
     return { duplicate: Boolean(match), match: match ? serializeReceiving(match) : null };
   }
 

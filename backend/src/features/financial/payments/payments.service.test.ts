@@ -10,6 +10,12 @@ import {
 import { Decimal } from '@prisma/client/runtime/library';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PaymentsService } from './payments.service';
+const phase3bScope = { mode: 'all' as const, branchIds: ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'] };
+vi.mock('../../branches/parent-branch', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../branches/parent-branch')>()),
+  assertRecordInScope: vi.fn().mockResolvedValue('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
+}));
+
 
 const tx = { id: 'tx' };
 
@@ -332,7 +338,7 @@ describe('PaymentsService', () => {
         sourceScreen: FinancialCorrectionSourceScreen.LEDGER,
         accountPassword: 'admin-password',
       },
-      adminUser
+      adminUser, phase3bScope
     );
 
     expect(verifyAdminPasswordMock).toHaveBeenCalledWith(adminUser.userId, 'admin-password', {
@@ -435,7 +441,7 @@ describe('PaymentsService', () => {
         sourceScreen: FinancialCorrectionSourceScreen.PLAN_DETAILS,
         accountPassword: 'admin-password',
       },
-      adminUser
+      adminUser, phase3bScope
     );
 
     expect(verifyAdminPasswordMock).toHaveBeenCalledWith(adminUser.userId, 'admin-password', {

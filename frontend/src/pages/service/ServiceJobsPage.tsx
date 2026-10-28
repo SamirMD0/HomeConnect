@@ -15,6 +15,7 @@ import {
   WARRANTY_LABELS,
 } from '../../features/service/utils/service-labels';
 import { businessLabels } from '../../shared/labels/business-labels';
+import { useCreateGuard } from '../../features/branches/scope/branch-ui';
 
 const filterControlClass =
   'h-10 min-w-0 w-full rounded-md border border-slate-300 bg-white px-2.5 text-xs leading-5 text-slate-800 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100';
@@ -49,6 +50,7 @@ export const ServiceJobsPage: React.FC = () => {
     setParams(next);
   };
 
+  const createGuard = useCreateGuard();
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
@@ -66,7 +68,9 @@ export const ServiceJobsPage: React.FC = () => {
         <button
           type="button"
           onClick={() => setCreateOpen(true)}
-          className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-emerald-600 px-4 text-xs font-semibold text-white hover:bg-emerald-700 sm:w-auto"
+          disabled={createGuard.blocked}
+          title={createGuard.reason}
+          className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-emerald-600 px-4 text-xs font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
         >
           <Plus className="h-4 w-4 shrink-0" aria-hidden="true" />
           <span>{businessLabels.service.newJob}</span>

@@ -1,4 +1,5 @@
 import express, { Router } from 'express';
+import { branchScopeMiddleware } from '../../../middleware/branch-scope.middleware';
 import { validate } from '../../../middleware/validate.middleware';
 import { MAX_PRODUCT_IMAGE_BYTES, PRODUCT_IMAGE_MIME_TYPES } from './product-image';
 import { requireServiceAdmin } from '../authorization/service-policy';
@@ -61,6 +62,7 @@ productsRoutes.get('/:productId/image', validate(productParamsSchema, 'params'),
 productsRoutes.put('/:productId/image', validate(productParamsSchema, 'params'), productImageBody, ProductsController.uploadImage);
 productsRoutes.delete('/:productId/image', validate(productParamsSchema, 'params'), ProductsController.removeImage);
 productsRoutes.get('/:productId/audit', requireServiceAdmin, validate(productParamsSchema, 'params'), validate(productAuditQuerySchema, 'query'), ProductsController.audit);
+productsRoutes.use('/:productId/service-jobs', branchScopeMiddleware);
 productsRoutes.get('/:productId/service-jobs', validate(productParamsSchema, 'params'), validate(productServiceJobsQuerySchema, 'query'), ProductsController.serviceJobs);
 productsRoutes.get('/:productId/inventory', validate(inventoryProductParamsSchema, 'params'), InventoryController.productInventory);
 productsRoutes.post('/:productId/opening-count', requireServiceAdmin, validate(inventoryProductParamsSchema, 'params'), validate(verifyOpeningCountSchema), InventoryController.verifyOpeningCount);

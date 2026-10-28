@@ -25,6 +25,7 @@ import {
 import { defaultPrepaidFilters } from '../features/prepaid/utils/prepaid-query';
 import { toPrepaidPaymentTarget } from '../features/prepaid/utils/prepaid-payment-target';
 import { businessLabels } from '../shared/labels/business-labels';
+import { branchIdOf, useRecordBranch } from '../features/branches/scope/branch-ui';
 
 export const PrepaidPurchasesPage: React.FC = () => {
   const { user } = useAuth();
@@ -37,6 +38,7 @@ export const PrepaidPurchasesPage: React.FC = () => {
   const [detailsTarget, setDetailsTarget] = useState<PrepaidPurchase | null>(null);
   const [editTarget, setEditTarget] = useState<PrepaidPurchase | null>(null);
   const [paymentTarget, setPaymentTarget] = useState<PrepaidPurchase | null>(null);
+  useRecordBranch(branchIdOf(deliverTarget ?? revertTarget ?? editTarget ?? paymentTarget ?? detailsTarget));
   const [cancelTarget, setCancelTarget] = useState<PrepaidPurchase | null>(null);
 
   const { data, isLoading, isError, refetch } = usePrepaidPurchases(filters);

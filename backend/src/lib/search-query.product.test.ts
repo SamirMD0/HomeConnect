@@ -42,3 +42,18 @@ describe('product token search', () => {
     await expect(findSearchMatchIds('product', 'unmatchable token')).resolves.toEqual([]);
   });
 });
+
+it('rejects branch scope for global products before blank-term and empty-scope shortcuts', async () => {
+  queryRawMock.mockClear();
+  for (const term of ['', 'fridge']) {
+    for (const scope of [
+      { mode: 'all' as const, branchIds: [] },
+      { mode: 'single' as const, branchIds: ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'] },
+    ]) {
+      await expect(findSearchMatchIds('product', term, undefined, scope)).rejects.toThrow(
+        'Branch scope cannot be applied to global search target: product'
+      );
+    }
+  }
+  expect(queryRawMock).not.toHaveBeenCalled();
+});

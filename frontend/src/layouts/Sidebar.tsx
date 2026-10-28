@@ -28,7 +28,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onLogout 
     <aside
       className={cn(
         'no-print relative z-20 flex shrink-0 flex-col overflow-hidden',
-        'bg-slate-900 text-slate-100 shadow-xl',
+        'border-r border-border bg-white text-slate-700',
         'transition-[width] duration-150 ease-out motion-reduce:transition-none',
         collapsed ? 'w-16' : 'w-64'
       )}
@@ -43,9 +43,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onLogout 
         title={collapsed ? 'Expand navigation' : 'Collapse navigation'}
         className={cn(
           'absolute right-1 top-4 z-10 flex h-6 w-6 items-center justify-center rounded-full',
-          'border border-white/10 bg-slate-800 text-slate-300 shadow-sm',
-          'hover:border-emerald-400/40 hover:text-emerald-300',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900'
+          'border border-border bg-white text-slate-500 shadow-sm',
+          'hover:border-brand-300 hover:text-brand-700',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-2'
         )}
       >
         {collapsed ? <ChevronsRight className="h-3.5 w-3.5" /> : <ChevronsLeft className="h-3.5 w-3.5" />}
@@ -53,7 +53,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onLogout 
 
       <nav
         aria-label="Primary navigation"
-        className="flex-1 space-y-4 overflow-y-auto overflow-x-hidden px-2 py-4 [scrollbar-color:theme(colors.slate.700)_transparent] [scrollbar-width:thin]"
+        className="flex-1 space-y-4 overflow-y-auto overflow-x-hidden px-2 py-4 [scrollbar-color:theme(colors.slate.300)_transparent] [scrollbar-width:thin]"
       >
         {NAVIGATION.map((section) => {
           const items = section.items.filter((item) => isItemVisible(item, role));
@@ -61,11 +61,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onLogout 
           return (
             <div key={section.id}>
               {!collapsed && (
-                <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
                   {section.heading.en}
                 </p>
               )}
-              {collapsed && <div className="mx-3 mb-1 h-px bg-white/5" aria-hidden="true" />}
+              {collapsed && <div className="mx-3 mb-1 h-px bg-slate-100" aria-hidden="true" />}
               <ul className="space-y-0.5">
                 {items.map((item) => (
                   <SidebarNavItem
@@ -90,19 +90,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onLogout 
 const SidebarBrand: React.FC<{ collapsed: boolean }> = ({ collapsed }) => (
   <div
     className={cn(
-      'flex h-16 shrink-0 items-center gap-3 border-b border-white/5 px-3',
+      'flex h-16 shrink-0 items-center gap-3 border-b border-border px-3',
       collapsed && 'justify-center px-0'
     )}
   >
     <img
       src="/homeconnects-logo.webp"
       alt=""
-      className="h-9 w-9 shrink-0 rounded-md bg-white object-contain p-1 shadow-sm"
+      className="h-9 w-9 shrink-0 rounded-lg bg-white object-contain p-1 ring-1 ring-border"
     />
     {!collapsed && (
       <div className="min-w-0 leading-tight">
-        <p className="truncate text-sm font-bold uppercase tracking-[0.14em] text-white">Home Connect</p>
-        <p className="truncate text-[10px] font-medium uppercase tracking-[0.18em] text-emerald-400/80">ERP</p>
+        <p className="truncate text-sm font-bold uppercase tracking-[0.14em] text-slate-900">Home Connect</p>
+        <p className="truncate text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-600">ERP</p>
       </div>
     )}
   </div>
@@ -125,28 +125,19 @@ const SidebarNavItem: React.FC<SidebarNavItemProps> = ({ item, active, collapsed
         aria-label={accessibleName}
         title={collapsed ? accessibleName : undefined}
         className={cn(
-          'group relative flex items-center gap-3 rounded-md text-sm outline-none',
+          'group relative flex items-center gap-3 rounded-lg text-sm outline-none',
           'transition-colors duration-150 motion-reduce:transition-none',
           collapsed ? 'mx-1 justify-center px-0 py-2.5' : 'mx-1 px-2.5 py-2',
           active
-            ? 'bg-emerald-500/10 text-white'
-            : 'text-slate-300 hover:bg-white/[0.04] hover:text-white',
-          'focus-visible:ring-2 focus-visible:ring-emerald-400/70 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900'
+            ? 'bg-brand-600 text-white shadow-sm'
+            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+          'focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-1'
         )}
       >
-        {active && (
-          <span
-            aria-hidden="true"
-            className={cn(
-              'absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-emerald-400',
-              collapsed && 'left-0.5'
-            )}
-          />
-        )}
         <Icon
           className={cn(
             'h-[18px] w-[18px] shrink-0',
-            active ? 'text-emerald-300' : 'text-slate-400 group-hover:text-slate-200'
+            active ? 'text-white' : 'text-slate-400 group-hover:text-slate-600'
           )}
         />
         {!collapsed && (
@@ -156,7 +147,10 @@ const SidebarNavItem: React.FC<SidebarNavItemProps> = ({ item, active, collapsed
             </span>
             <span
               dir="rtl"
-              className="user-text block truncate text-[11px] font-normal leading-tight text-slate-400"
+              className={cn(
+                'user-text block truncate text-[11px] font-normal leading-tight',
+                active ? 'text-brand-100' : 'text-slate-400'
+              )}
             >
               {item.label.ar}
             </span>
@@ -176,7 +170,7 @@ const SidebarAccountRow: React.FC<SidebarAccountRowProps> = ({ collapsed, onLogo
   const { user } = useAuth();
   const initial = user?.fullName?.charAt(0)?.toUpperCase() ?? '?';
   return (
-    <div className="shrink-0 border-t border-white/5 p-2">
+    <div className="shrink-0 border-t border-border p-2">
       <div
         className={cn(
           'flex items-center gap-2 rounded-md px-2 py-2',
@@ -185,14 +179,14 @@ const SidebarAccountRow: React.FC<SidebarAccountRowProps> = ({ collapsed, onLogo
       >
         <div
           aria-hidden="true"
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-sm font-bold text-emerald-300 ring-1 ring-inset ring-emerald-400/25"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-50 text-sm font-bold text-brand-700 ring-1 ring-inset ring-brand-600/20"
         >
           {initial}
         </div>
         {!collapsed && (
           <div className="min-w-0 flex-1 leading-tight">
-            <p className="truncate text-sm font-medium text-white">{user?.fullName}</p>
-            <p className="truncate text-[11px] capitalize text-slate-400">{user?.role?.toLowerCase()}</p>
+            <p className="truncate text-sm font-medium text-slate-900">{user?.fullName}</p>
+            <p className="truncate text-[11px] capitalize text-slate-500">{user?.role?.toLowerCase()}</p>
           </div>
         )}
         {!collapsed && (
@@ -202,10 +196,10 @@ const SidebarAccountRow: React.FC<SidebarAccountRowProps> = ({ collapsed, onLogo
             aria-label="Sign out"
             title="Sign out"
             className={cn(
-              'flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-400',
+              'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400',
               'transition-colors duration-150 motion-reduce:transition-none',
-              'hover:bg-red-500/10 hover:text-red-300',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900'
+              'hover:bg-red-50 hover:text-red-600',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400/60 focus-visible:ring-offset-1'
             )}
           >
             <LogOut className="h-4 w-4" />
@@ -219,10 +213,10 @@ const SidebarAccountRow: React.FC<SidebarAccountRowProps> = ({ collapsed, onLogo
           aria-label="Sign out"
           title="Sign out"
           className={cn(
-            'mt-1 flex h-9 w-full items-center justify-center rounded-md text-slate-400',
+            'mt-1 flex h-9 w-full items-center justify-center rounded-lg text-slate-400',
             'transition-colors duration-150 motion-reduce:transition-none',
-            'hover:bg-red-500/10 hover:text-red-300',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900'
+            'hover:bg-red-50 hover:text-red-600',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400/60 focus-visible:ring-offset-1'
           )}
         >
           <LogOut className="h-4 w-4" />

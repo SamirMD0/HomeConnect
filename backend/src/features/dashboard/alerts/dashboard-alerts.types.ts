@@ -18,6 +18,7 @@ export interface DashboardAlert {
 }
 
 export interface DashboardAlertsData {
+  inventoryScope?: 'all-branches';
   alerts: DashboardAlert[];
   total: number;
 }

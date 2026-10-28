@@ -1,0 +1,20 @@
+{
+  "database": "homeconnect_test_phase4_phase5_phase6",
+  "files": 400,
+  "passed": 3099,
+  "failed": 0,
+  "skipped": 0,
+  "todo": 0,
+  "addedTests": 69,
+  "isolationTests": 33,
+  "typecheck": "PASS",
+  "lint": {
+    "errors": 0,
+    "warnings": 91,
+    "addedWarnings": 0
+  },
+  "migrationTestSupplementalTypecheck": "PASS",
+  "migrationTestSupplementalLint": "PASS",
+  "graphify": "PASS",
+  "migrationSha256": "776a8bb45e18c487cf8841c4f53416f7faba327c44e43e67e42327e98ca55ee5"
+}

@@ -1,3 +1,4 @@
+import { runFinancialTransaction } from '../infrastructure/transaction';
 import { NextFunction, Request, Response } from 'express';
 import { DebtsService } from './debts.service';
 import {
@@ -35,7 +36,11 @@ export class DebtsController {
     next: NextFunction
   ) {
     try {
-      const debt = await DebtsService.createDebt(req.params.customerId, req.body, req.user!);
+      const debt = await runFinancialTransaction(async tx => {
+        const created = await DebtsService.createDebt(req.params.customerId, req.body, req.user!, tx);
+        await tx.activityLog.create({data:{userId:req.user!.userId, branchId:created.branchId, action:'DEBT_CREATED', entityType:'Debt', entityId:created.id, details:{customerId:req.params.customerId}}});
+        return created;
+      });
       res.status(201).json({
         success: true,
         data: debt,
@@ -148,7 +153,7 @@ export class DebtsController {
     next: NextFunction
   ) {
     try {
-      const debt = await DebtsService.recordDebtPayment(req.params.debtId, req.body, req.user!);
+      const debt = await DebtsService.recordDebtPayment(req.params.debtId, req.body, req.user!, req.branchScope!);
       res.status(201).json({
         success: true,
         data: debt,

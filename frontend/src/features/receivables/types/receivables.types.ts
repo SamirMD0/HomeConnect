@@ -30,6 +30,7 @@ export interface ReceivableCustomer {
 }
 
 export interface ReceivableItem {
+  branchId?: string;
   customer: ReceivableCustomer;
   tier: ReceivableTier;
   tierReason: string;

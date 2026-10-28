@@ -1,0 +1,100 @@
+Confirmed command database: homeconnect_test_phase4_phase5_phase6
+Confirmed fresh rehearsal target: homeconnect_test_mb_phase3d_20261028_1012
+
+> home-connect@2.0.5 rehearse:migrations
+> tsx scripts/rehearse-migrations.ts --confirm-scratch
+
+◇ injected env (0) from backend\.env // tip: ◈ encrypted .env [www.dotenvx.com]
+business database "homeconnect_test_phase4_phase5_phase6" will NOT be touched
+created scratch database "homeconnect_test_mb_phase3d_20261028_1012"
+
+bundled migrations: 70
+
+--- PHASE 1: apply pending migrations ---
+attempted 70, applied 70
+  APPLIED 20260723075336_init: 80ms (4 statements)
+  APPLIED 20260723091230_init_customers: 85ms (5 statements)
+  APPLIED 20260723094305_init_ledger: 44ms (13 statements)
+  APPLIED 20260723133024_add_due_date_and_soft_delete_to_transactions: 55ms (3 statements)
+  APPLIED 20260724090000_add_financial_domain_models: 553ms (43 statements)
+  APPLIED 20260727130000_add_financial_correction_audit: 110ms (20 statements)
+  APPLIED 20260729090000_add_service_and_product: 256ms (35 statements)
+  APPLIED 20260729180000_add_prepaid_purchase_kind: 41ms (4 statements)
+  APPLIED 20260730120000_add_suppliers_and_supplier_ledger: 84ms (30 statements)
+  APPLIED 20260731090000_add_prepaid_purchase_delivery: 83ms (17 statements)
+  APPLIED 20260801090000_enable_pgtrgm: 167ms (2 statements)
+  APPLIED 20260801091000_add_search_normalization: 94ms (5 statements)
+  APPLIED 20260801092000_add_search_indexes: 95ms (24 statements)
+  APPLIED 20260802090000_add_pricing_presets_and_product_pricing: 534ms (15 statements)
+  APPLIED 20260803090000_add_product_image: 147ms (4 statements)
+  APPLIED 20260804090000_add_product_sku_stock_specifications: 68ms (14 statements)
+  APPLIED 20260804100000_add_product_installment_option: 22ms (3 statements)
+  APPLIED 20260804110000_add_service_exchange_and_company_home_status: 5ms (3 statements)
+  APPLIED 20260804120000_add_sales_orders: 676ms (37 statements)
+  APPLIED 20260804130000_add_repair_history: 205ms (7 statements)
+  APPLIED 20260805090000_add_label_barcode_auto: 12ms (2 statements)
+  APPLIED 20260805091000_use_label_barcode_auto: 37ms (3 statements)
+  APPLIED 20260805092000_add_product_search_indexes: 139ms (10 statements)
+  APPLIED 20260806093135_add_customer_notes_search_index: 115ms (4 statements)
+  APPLIED 20260806101225_add_weekly_installment_frequency: 10ms (2 statements)
+  APPLIED 20260812090000_add_stock_movements: 93ms (9 statements)
+  APPLIED 20260813160000_add_sales_order_stock_fulfillments: 82ms (18 statements)
+  APPLIED 20260814110000_add_supplier_receivings: 254ms (14 statements)
+  APPLIED 20260814170000_link_supplier_transactions_to_receivings: 52ms (6 statements)
+  APPLIED 20260815120000_add_supplier_purchase_lines: 96ms (12 statements)
+  APPLIED 20260817120000_add_supplier_receiving_corrections: 135ms (20 statements)
+  APPLIED 20260827090000_add_supplier_idempotency: 1298ms (5 statements)
+  APPLIED 20260830183000_remove_legacy_transactions: 86ms (4 statements)
+  APPLIED 20260901090000_add_dual_currency_foundation: 1001ms (39 statements)
+  APPLIED 20260903120000_add_vat_foundation: 834ms (27 statements)
+  APPLIED 20260906150000_seed_default_tax_configuration: 28ms (5 statements)
+  APPLIED 20260908120000_default_retail_prices_vat_inclusive: 14ms (3 statements)
+  APPLIED 20260909100000_add_delivery_vat_and_business_settings: 38ms (7 statements)
+  APPLIED 20260911120000_add_atomic_sales_returns: 434ms (56 statements)
+  APPLIED 20260914123000_add_supplier_due_dates: 13ms (3 statements)
+  APPLIED 20260914140000_add_counter_payment_sources: 41ms (13 statements)
+  APPLIED 20260914160000_add_customer_credit_limits: 11ms (3 statements)
+  APPLIED 20260914180000_add_product_categories: 348ms (10 statements)
+  APPLIED 20260918120000_add_pricing_preset_label_secret: 143ms (3 statements)
+  APPLIED 20260918121000_add_internal_product_barcodes: 8ms (3 statements)
+  APPLIED 20260918122000_redesign_label_secret_pricing: 172ms (18 statements)
+  APPLIED 20260918123000_add_staged_discount_encoding: 3ms (2 statements)
+  APPLIED 20260918123100_seed_staged_discount_encoding: 6ms (2 statements)
+  APPLIED 20260920100000_add_shop_profile: 49ms (7 statements)
+  APPLIED 20260920100200_seed_shop_profile_logo: 7ms (2 statements)
+  APPLIED 20260920101000_add_brand_logos: 81ms (6 statements)
+  APPLIED 20260920102000_add_pricing_card_feature_icons: 53ms (9 statements)
+  APPLIED 20260920103000_add_pricing_card_templates: 66ms (12 statements)
+  APPLIED 20260920104000_add_product_pricing_card_features: 40ms (4 statements)
+  APPLIED 20260920105000_add_pricing_card_prints: 85ms (9 statements)
+  APPLIED 20260920200000_update_legacy_template_visuals: 7ms (2 statements)
+  APPLIED 20260920210000_add_product_pricing_card_template: 23ms (4 statements)
+  APPLIED 20260920211000_add_shop_category_default_templates: 5ms (2 statements)
+  APPLIED 20260920220000_refresh_pricing_card_feature_icons: 26ms (3 statements)
+  APPLIED 20260920230000_set_pricing_card_price_prominence: 6ms (3 statements)
+  APPLIED 20260921100000_switch_tv_large_to_centered_layout: 6ms (2 statements)
+  APPLIED 20260921110000_switch_appliance_shelf_to_centered_layout: 10ms (2 statements)
+  APPLIED 20260924100000_add_appliance_shelf_thermal_template: 6ms (2 statements)
+  APPLIED 20260924110000_refine_appliance_shelf_thermal_template: 10ms (2 statements)
+  APPLIED 20260926130000_add_product_csv_imports: 146ms (12 statements)
+  APPLIED 20260928010000_reconcile_thermal_template_variants: 35ms (3 statements)
+  APPLIED 20261002150000_add_supplier_receiving_receipts: 69ms (6 statements)
+  APPLIED 20261003120000_add_supplier_payment_method: 143ms (3 statements)
+  APPLIED 20261017120000_add_branches: 113ms (12 statements)
+  APPLIED 20261027120000_add_branch_ownership: 163ms (2 statements)
+pending=0 failed=0 mismatched=0
+PHASE 1 PASS
+
+--- PHASE 2: half-applied migration is detected ---
+simulated an interrupted 20261027120000_add_branch_ownership; runner reports failed=[20261027120000_add_branch_ownership]
+  20261027120000_add_branch_ownership: applied=false recovered=true duration=207ms
+     
+after recovery: pending=0 failed=1
+PHASE 2 PASS (detected)
+  NOTE: 20261027120000_add_branch_ownership could not be re-applied automatically.
+  Prisma migration SQL is not idempotent, so a genuinely half-applied
+  migration needs its matching repair file from backend/prisma/repair/.
+
+=== REHEARSAL PASSED ===
+scratch database "homeconnect_test_mb_phase3d_20261028_1012" was left in place; drop it with:
+  DROP DATABASE "homeconnect_test_mb_phase3d_20261028_1012";

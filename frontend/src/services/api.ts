@@ -1,4 +1,9 @@
 import axios from 'axios';
+import {
+  BRANCH_ACCESS_DENIED_EVENT,
+  BRANCH_SCOPE_HEADER,
+  scopeHeaderForRequest,
+} from '../features/branches/scope/branch-scope-store';
 
 
 // Base API URL
@@ -21,11 +26,16 @@ export const setAccessToken = (token: string | null) => {
   currentAccessToken = token;
 };
 
-// Request interceptor to attach access token
+// Request interceptor to attach access token and the selected branch scope.
+// A per-request X-Branch-Scope (see withBranchScope) always wins.
 api.interceptors.request.use(
   (config) => {
     if (currentAccessToken) {
       config.headers['Authorization'] = `Bearer ${currentAccessToken}`;
+    }
+    const scope = scopeHeaderForRequest(config.method, config.headers[BRANCH_SCOPE_HEADER]);
+    if (scope) {
+      config.headers[BRANCH_SCOPE_HEADER] = scope;
     }
     return config;
   },
@@ -94,6 +104,12 @@ api.interceptors.response.use(
       // Retry the original request with the new token
       originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
       return api(originalRequest);
+    }
+
+    // The selected branch is no longer accessible (grant revoked or branch
+    // deactivated). The branch scope provider resets the selection.
+    if (error.response?.status === 403 && error.response?.data?.error?.code === 'BRANCH_ACCESS_DENIED') {
+      window.dispatchEvent(new Event(BRANCH_ACCESS_DENIED_EVENT));
     }
 
     // Log the API failure securely before rejecting
