@@ -112,8 +112,8 @@ function lanRequestLogger(req: express.Request, res: express.Response, next: exp
  * into the diagnostics log for what is a routine rejection. On a port exposed to
  * the shop Wi-Fi that is both misleading and a log-flooding lever.
  *
- * Deliberately local to the LAN app rather than a change to the shared handler,
- * which is out of scope here.
+ * The scanner page uses its own PAYLOAD_TOO_LARGE code; raw receipt uploads
+ * forwarded to the main app use that app's TOO_LARGE response instead.
  */
 function translateBodyParserErrors(
   error: Error & { type?: string; status?: number },

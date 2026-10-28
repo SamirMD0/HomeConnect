@@ -1,6 +1,6 @@
 # Mobile Scanner Setup
 
-A phone on the shop Wi-Fi can scan product barcodes and have the product open on the business PC. The phone is only a scanner: it holds no data, has no login, and cannot see prices, cost, stock, customers, debts, or payments.
+This guide describes the browser-based scanner page. It can scan product barcodes and have the product open on the business PC. The installable native app also supports authenticated supplier workflows; see [`Mobile Scanner/README.md`](../../Mobile%20Scanner/README.md) for its setup and test checklist.
 
 The database stays on the business PC. Nothing goes to the internet.
 
@@ -10,7 +10,7 @@ The database stays on the business PC. Nothing goes to the internet.
 Phone browser  ->  business PC, port 3011  ->  PostgreSQL on the PC
 ```
 
-Port 3011 serves **only** the scanner page and its pairing endpoints. The main HomeConnect application stays on `127.0.0.1` and is never reachable from the Wi-Fi.
+Port 3011 serves the scanner page and pairing endpoints, plus an exact allowlist of login, product lookup and supplier API operations for the native app. The native app signs in with a HomeConnect account; the browser scanner's pairing token cannot authorize supplier actions. The full HomeConnect application stays on `127.0.0.1` and is never reachable from the Wi-Fi.
 
 Mobile scanner mode is **off every time the app starts**. It is never remembered. If the PC restarts, it is off again.
 
@@ -41,6 +41,8 @@ The scanner address contains the PC's network address, for example `http://192.1
 Setting a DHCP reservation for the business PC in the router keeps the address, and therefore the link, stable.
 
 ## Daily use
+
+These steps are for the browser scanner page. The native app uses the same PC address and port, but signs in with an active HomeConnect account instead of entering a pairing code.
 
 1. On the PC, open **Scanner Hub / مركز المسح**.
 2. Press **Turn On**. The phone address appears.
@@ -78,6 +80,10 @@ This is a per-phone testing workaround, not part of the normal setup. Do not app
 
 ## Troubleshooting
 
+**The native app connects but sign-in says the server rejected the request.**
+
+Some desktop builds expose the browser scanner on port 3011 without the native app's account routes. A successful browser scanner connection does not confirm mobile sign-in support. If `POST /api/v1/auth/login` returns 404, install the desktop build containing the mobile LAN gateway, reopen HomeConnect, and turn on Mobile Scanner again. Use the same Scanner Hub IP and port and your normal HomeConnect account. Changing the password or opening the main desktop API port does not fix a missing route.
+
 **The phone says the site refused to connect.**
 
 Nearly always the network or firewall, not the app. Check in this order:
@@ -102,13 +108,13 @@ The session may have expired, been revoked, or mobile scanner mode may have turn
 
 Open the Products page and turn on **Scanner Mode**, or use the Scanner Hub, which always listens. Scans still record either way and appear in Recent Scans.
 
-## What the phone cannot do
+## What the browser scanner page cannot do
 
 By design, and enforced on the server:
 
 - It cannot see prices, cost, the internal price code, stock, specifications, notes, or product images.
 - It cannot create, edit, archive, or re-price a product.
 - It cannot see or touch customers, debts, payments, installments, suppliers, sales orders, or the ledger.
-- It cannot reach any part of HomeConnect other than the scanner page and its own pairing endpoints.
+- Its pairing token cannot access the authenticated supplier endpoints. Customer, debt, sales, admin and other desktop API routes are not exposed on this LAN listener.
 
 A scan returns the product name, model, SKU, barcode, brand, and whether the product is archived. Nothing else.

@@ -2,13 +2,9 @@ import { handleBranchRejection, selectedBranchHeaders } from '../branches/branch
 import { ApiFailure, ApiSuccess, ConnectionSettings } from '../types/scanner.types';
 
 /**
- * Direct HTTP client for Home Connect's main /api/v1/* surface. Unlike the
- * legacy `scanner-api.ts` (which pairs with the desktop app's LAN scanner
- * endpoint on port 3011), this client authenticates with the real backend
- * using the same JWT the Electron frontend uses.
- *
- * Phase 1 scope: login + barcode scan lookup. Later phases add supplier
- * payments, receipt upload, and the Statement of Account.
+ * Account-authenticated HTTP client for the approved /api/v1/* routes on the
+ * Scanner Hub LAN listener. Uses the same JWT as the Electron frontend; the
+ * legacy browser scanner uses a separate pairing token.
  */
 
 const REQUEST_TIMEOUT_MS = 10_000;

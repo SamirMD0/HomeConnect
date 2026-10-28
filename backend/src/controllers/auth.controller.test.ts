@@ -12,4 +12,12 @@ describe('AuthController refresh cookie flags', () => {
     await AuthController.login({ body: { username: 'admin', password: 'password' } } as never, response as never, vi.fn());
     expect(cookie).toHaveBeenCalledWith('refreshToken', 'refresh', expect.objectContaining({ secure, sameSite }));
   });
+  it('does not set a refresh cookie on the mobile LAN listener', async () => {
+    vi.spyOn(AuthService, 'login').mockResolvedValue({ user: {}, accessToken: 'access', refreshToken: 'refresh' } as never);
+    const cookie = vi.fn();
+    const response = { locals: { mobileLan: true }, cookie, status: vi.fn().mockReturnThis(), json: vi.fn() };
+    await AuthController.login({ body: { username: 'admin', password: 'password' } } as never, response as never, vi.fn());
+    expect(cookie).not.toHaveBeenCalled();
+    expect(response.json).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ accessToken: 'access' }) }));
+  });
 });

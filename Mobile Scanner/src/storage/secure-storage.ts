@@ -48,7 +48,7 @@ export const clearSessionToken = () => SecureStore.deleteItemAsync(SESSION_TOKEN
 
 export interface StoredAuthUser {
   id: string;
-  email: string;
+  username: string;
   fullName: string;
   role: 'ADMIN' | 'EMPLOYEE';
 }
@@ -63,7 +63,7 @@ export async function loadAuthUser(): Promise<StoredAuthUser | null> {
   if (!stored) return null;
   try {
     const parsed = JSON.parse(stored) as StoredAuthUser;
-    if (parsed && parsed.id && parsed.email && parsed.fullName && parsed.role) return parsed;
+    if (parsed && parsed.id && parsed.username && parsed.fullName && parsed.role) return parsed;
   } catch {
     // Corrupt — fall through and drop it.
   }

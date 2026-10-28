@@ -10,21 +10,21 @@ import { ConnectionSettings } from '../types/scanner.types';
 interface LoginScreenProps {
   connection: ConnectionSettings;
   startupMessage: string | null;
-  onLoggedIn: (accessToken: string, user: { id: string; email: string; fullName: string; role: 'ADMIN' | 'EMPLOYEE' }) => Promise<void>;
+  onLoggedIn: (accessToken: string, user: { id: string; username: string; fullName: string; role: 'ADMIN' | 'EMPLOYEE' }) => Promise<void>;
   onChangeConnection: () => Promise<void>;
 }
 
 type Banner = { tone: 'info' | 'warning' | 'danger'; message: string };
 
 export function LoginScreen({ connection, startupMessage, onLoggedIn, onChangeConnection }: LoginScreenProps) {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [banner, setBanner] = useState<Banner | null>(
     startupMessage ? { tone: 'info', message: startupMessage } : null,
   );
 
-  const canSubmit = email.trim().length > 0 && password.length > 0 && !submitting;
+  const canSubmit = username.trim().length > 0 && password.length > 0 && !submitting;
 
   const handleSubmit = async () => {
     Keyboard.dismiss();
@@ -32,11 +32,11 @@ export function LoginScreen({ connection, startupMessage, onLoggedIn, onChangeCo
     setBanner(null);
     setSubmitting(true);
     try {
-      const result = await login(connection, { email: email.trim(), password });
+      const result = await login(connection, { username: username.trim(), password });
       await onLoggedIn(result.accessToken, result.user);
     } catch (error) {
       if (error instanceof HcApiError && error.kind === 'UNAUTHORIZED') {
-        setBanner({ tone: 'danger', message: 'Email or password is wrong. Try again.' });
+        setBanner({ tone: 'danger', message: 'Username or password is wrong. Try again.' });
       } else if (error instanceof HcApiError && error.kind === 'RATE_LIMITED') {
         setBanner({ tone: 'warning', message: 'Too many attempts. Wait a minute, then try again.' });
       } else if (error instanceof HcApiError) {
@@ -76,14 +76,12 @@ export function LoginScreen({ connection, startupMessage, onLoggedIn, onChangeCo
 
       <View style={styles.form}>
         <AppInput
-          label="Email"
-          value={email}
-          onChangeText={setEmail}
+          label="Username"
+          value={username}
+          onChangeText={setUsername}
           autoCapitalize="none"
           autoCorrect={false}
-          keyboardType="email-address"
-          textContentType="emailAddress"
-          placeholder="you@shop.local"
+          placeholder="Your HomeConnect username"
           editable={!submitting}
         />
         <AppInput

@@ -57,7 +57,7 @@ export default function App() {
         try {
           const me = await fetchMe(storedConnection, storedToken);
           if (!active) return;
-          const freshUser = { id: me.id, email: me.email, fullName: me.fullName, role: me.role };
+          const freshUser = { id: me.id, username: me.username, fullName: me.fullName, role: me.role };
           setAuthUser(freshUser);
           await saveAuthUser(freshUser);
           dispatch({ type: 'SESSION_VALID' });
@@ -152,7 +152,7 @@ export default function App() {
         <BranchScannerScreen
           connection={connection}
           token={token}
-          userDisplayName={authUser.fullName || authUser.email}
+          userDisplayName={authUser.fullName || authUser.username}
           startupMessage={startupMessage}
           onSessionInvalid={invalidateSession}
           onChangeConnection={changeConnection}
