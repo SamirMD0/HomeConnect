@@ -74,7 +74,7 @@ async function checkedBranch(branchId: string, actor: BranchActor, tx: Client) {
   }
   const accessible = await BranchesService.accessibleBranches(currentActor, tx);
   assertInScope(
-    branchId,
+    branch.id,
     { mode: 'all', branchIds: accessible.map((item) => item.id) },
     'Customer import not found'
   );

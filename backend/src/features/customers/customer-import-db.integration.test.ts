@@ -328,6 +328,17 @@ const http = (method: 'get' | 'patch' | 'post', path: string, body?: object) => 
     expect(result).toMatchObject({ created: 1, skipped: 1, invalid: 1 });
     expect((result as { reportCsv: string }).reportCsv).toContain('Phone must contain digits');
   });
+  it('uses canonical database UUIDs for an explicitly chosen uppercase branch ID', async () => {
+    const response = await http('post', '', {
+      branchId: a.toUpperCase(),
+      fileName: 'uppercase.csv',
+      csvText: 'Name,Phone\nAli,03123456',
+    });
+    expect(response.status).toBe(201);
+    expect(response.body.data.branchId).toBe(a);
+    expect(await commit(response.body.data.id)).toMatchObject({ created: 1 });
+  });
+
   it('accepts a full 2000-row import in one bounded transaction', async () => {
     const csv =
       'Name,Phone\n' +
