@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { describe, expect, it } from 'vitest';
-import { MigrationExecutor, MigrationClient } from './migration-executor';
+import { MIGRATION_TRANSACTION_OPTIONS, MigrationExecutor, MigrationClient, MigrationTransactionOptions } from './migration-executor';
 import {
   BundledMigration,
   checksumOf,
@@ -150,6 +150,7 @@ describe('apply plan', () => {
 function fakeClient(failOn?: RegExp) {
   const executed: string[] = [];
   let transactions = 0;
+  const transactionOptions: Array<MigrationTransactionOptions | undefined> = [];
   const client: MigrationClient = {
     $queryRawUnsafe: async () => [] as never,
     $executeRawUnsafe: async (sql: string) => {
@@ -157,9 +158,9 @@ function fakeClient(failOn?: RegExp) {
       executed.push(sql);
       return 1;
     },
-    $transaction: async (run) => { transactions += 1; return run(client); },
+    $transaction: async (run, options) => { transactions += 1; transactionOptions.push(options); return run(client); },
   };
-  return { client, executed, transactionCount: () => transactions };
+  return { client, executed, transactionCount: () => transactions, transactionOptions };
 }
 
 const summaryFor = (state: 'PENDING' | 'FAILED', name: string): MigrationStatusSummary => ({
@@ -182,6 +183,21 @@ describe('migration executor', () => {
     expect(outcome.applied).toBe(true);
     expect(transactionCount()).toBe(1);
     expect(executed.at(-1)).toContain('INSERT INTO "_prisma_migrations"');
+  });
+
+  /**
+   * Prisma cancels an interactive transaction after 5 s by default. Phase 3's
+   * branch backfills took 5.2 s on a real shop database, so the in-app update
+   * failed and rolled back. Both apply paths must pass the long limit.
+   */
+  it('gives migration transactions far more than the Prisma 5 s default', async () => {
+    const { client, transactionOptions } = fakeClient();
+    await MigrationExecutor.applyOne(client, migration, summaryFor('PENDING', migration.name));
+    await MigrationExecutor.markResolved(client, migration);
+
+    expect(transactionOptions).toEqual([MIGRATION_TRANSACTION_OPTIONS, MIGRATION_TRANSACTION_OPTIONS]);
+    expect(MIGRATION_TRANSACTION_OPTIONS.timeout).toBeGreaterThanOrEqual(10 * 60_000);
+    expect(MIGRATION_TRANSACTION_OPTIONS.maxWait).toBeGreaterThan(2_000);
   });
 
   it('reports a failure without throwing, so one bad migration does not crash the app', async () => {

@@ -99,6 +99,34 @@ describe('classifyPresence', () => {
     }
   });
 
+  it('still vetoes with MISSING when a migration that also drops something never created its objects', () => {
+    const result = classifyPresence(
+      migration('ALTER TABLE "suppliers" ADD COLUMN "branchId" UUID;\nALTER TABLE "users" DROP COLUMN "branchId";'),
+      schema()
+    );
+    expect(result.verdict).toBe('MISSING');
+    expect(result.missing).toEqual(['column:suppliers.branchId']);
+  });
+
+  it('defers with UNKNOWN when a dropping migration created everything it declares', () => {
+    const result = classifyPresence(
+      migration('ALTER TABLE "suppliers" ADD COLUMN "branchId" UUID;\nALTER TABLE "users" DROP COLUMN "branchId";'),
+      schema({ columns: new Set(['suppliers.branchId']) })
+    );
+    expect(result.verdict).toBe('UNKNOWN');
+  });
+
+  it('does not treat an object the migration creates and later drops or renames as missing', () => {
+    for (const sql of [
+      'ALTER TABLE "products" ADD COLUMN "tmp" TEXT;\nALTER TABLE "products" DROP COLUMN "tmp";',
+      'ALTER TABLE "products" ADD COLUMN "old" TEXT;\nALTER TABLE "products" RENAME COLUMN "old" TO "new";',
+      'CREATE TABLE "scratch" ("id" INT);\nDROP TABLE IF EXISTS "scratch";',
+      'CREATE INDEX "tmp_idx" ON "products"("id");\nDROP INDEX "tmp_idx";',
+    ]) {
+      expect(classifyPresence(migration(sql), schema()).verdict).toBe('UNKNOWN');
+    }
+  });
+
   it('reports UNKNOWN when nothing detectable is declared', () => {
     const result = classifyPresence(migration(`UPDATE products SET "x" = 'AUTO';`), schema());
     expect(result.verdict).toBe('UNKNOWN');
@@ -124,6 +152,21 @@ describe('bundled migrations', () => {
       // Nothing can be PRESENT when the database has nothing.
       expect(result.verdict).not.toBe('PRESENT');
     }
+  });
+
+  /**
+   * Regression: this migration also drops users.branchId, and the old check gave
+   * up on any dropping migration, so "resolve" recorded it as applied twice
+   * while none of its ownership columns existed.
+   */
+  it('refuses to let the branch-ownership migration be resolved while its columns are absent', () => {
+    const ownership = bundled.find((entry) => entry.name === '20261027120000_add_branch_ownership');
+    expect(ownership).toBeDefined();
+    const phase2Only = schema({ columns: new Set(['customers.branchId', 'activity_logs.branchId', 'users.branchId']) });
+    const result = classifyPresence(ownership!, phase2Only);
+    expect(result.verdict).toBe('MISSING');
+    expect(result.missing).toEqual(expect.arrayContaining(['column:suppliers.branchId', 'column:payments.branchId', 'column:service_jobs.branchId']));
+    expect(result.missing).not.toContain('column:users.branchId');
   });
 
   it('detects objects in the migrations that create tables', () => {
