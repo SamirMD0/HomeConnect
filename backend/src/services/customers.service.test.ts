@@ -93,7 +93,7 @@ describe('CustomersService.listCustomers', () => {
     // One call, carrying every id on the page: this is what replaced the
     // per-row balance request the customers table used to fire.
     expect(receivablesMock.computeReceivableProjections).toHaveBeenCalledTimes(1);
-    expect(receivablesMock.computeReceivableProjections).toHaveBeenCalledWith({
+    expect(receivablesMock.computeReceivableProjections).toHaveBeenCalledWith({ scope: phase3cScope,
       customerIds: [alice.id, bilal.id],
     });
     expect(result.customers[0]).toMatchObject({
@@ -200,3 +200,10 @@ describe('credit-limit configuration authorization', () => {
     await expect(CustomersService.createCustomer({ name: 'New', phone: '70123456', createdBy: 'actor', creditLimit: null }, scope, { role: 'EMPLOYEE' })).rejects.toThrow('Only an ADMIN');
   });
 });
+
+const phase3cScope = { mode: 'all' as const, branchIds: ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'] };
+
+vi.mock('../features/branches/branch-breakdown', async (importOriginal) => ({
+  ...await importOriginal<typeof import('../features/branches/branch-breakdown')>(),
+  branchLabel: vi.fn().mockResolvedValue('Phase 3C A'),
+}));

@@ -60,8 +60,7 @@ export type ReceivablePaymentRecord = Prisma.PaymentGetPayload<{
 
 export interface LoadReceivableRecordsParams {
   includeInactive: boolean;
-  /** Optional only for the existing internal projection consumers reserved for 3C. */
-  scope?: BranchScope;
+  scope: BranchScope;
   /**
    * Restricts the load to these customers instead of the whole book.
    *
@@ -88,7 +87,7 @@ export class ReceivablesRepository {
     // `relatedCustomerWhere` below, so scoping happens in the database rather
     // than by loading the whole book and discarding most of it.
     const customerWhere: Prisma.CustomerWhereInput = {
-      ...(params.scope ? scopeWhere(params.scope) : {}),
+      ...scopeWhere(params.scope),
       deletedAt: null,
       ...(params.includeInactive ? {} : { isActive: true }),
       ...(params.customerIds ? { id: { in: params.customerIds } } : {}),

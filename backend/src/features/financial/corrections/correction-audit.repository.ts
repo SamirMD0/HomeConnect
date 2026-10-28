@@ -1,4 +1,3 @@
-import { NotFoundError } from '../../../lib/errors';
 import { scopeWhere, type BranchScope } from '../../branches/branch-scope';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../../lib/prisma';
@@ -28,8 +27,7 @@ export interface CreateCorrectionAuditData {
 }
 
 export interface ListCorrectionAuditParams {
-  /** API calls supply scope; the legacy activity loader is restricted by its customer parent. */
-  scope?: BranchScope;
+  scope: BranchScope;
   recordType?: FinancialCorrectionRecordType;
   recordId?: string;
   customerId?: string;
@@ -67,7 +65,7 @@ export class CorrectionAuditRepository {
   static async listCorrectionAudits(params: ListCorrectionAuditParams) {
     // Audit rows inherit ownership through their polymorphic source record,
     // including counter receipts whose customerId is null.
-    const scope = params.scope ?? (await this.scopeForCustomerActivity(params.customerId));
+    const scope = params.scope;
     const [prepaids, customers, debts, plans, payments, installments] = await Promise.all([
       prisma.prepaidPurchase.findMany({
         where: { debt: scopeWhere(scope) },
@@ -125,15 +123,5 @@ export class CorrectionAuditRepository {
       orderBy: [{ correctedAt: 'desc' }, { id: 'asc' }],
     });
     return rows.map((row) => ({ ...row, branchId: branches[row.recordType].get(row.recordId)! }));
-  }
-  private static async scopeForCustomerActivity(customerId?: string): Promise<BranchScope> {
-    if (!customerId)
-      throw new Error('Correction audit reads require a branch scope or customer parent');
-    const customer = await prisma.customer.findUnique({
-      where: { id: customerId },
-      select: { branchId: true },
-    });
-    if (!customer) throw new NotFoundError('Customer not found');
-    return { mode: 'single', branchIds: [customer.branchId] };
   }
 }

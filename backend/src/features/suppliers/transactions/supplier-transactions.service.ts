@@ -12,7 +12,7 @@ import { assertSupplierAdmin } from '../authorization/supplier-policy';
 import { resolveSupplierDirection, supplierTransactionSnapshot, changedSnapshot } from '../domain/supplier-domain';
 import { SupplierMutationUser, SupplierRequestContext } from '../domain/supplier-types';
 import { SuppliersRepository } from '../suppliers/suppliers.repository';
-import { SupplierTransactionsRepository, supplierTransactionWhere } from './supplier-transactions.repository';
+import { SupplierTransactionsRepository } from './supplier-transactions.repository';
 import { CreateSupplierTransactionInput, SupplierLedgerQueryInput, SupplierTransactionActionInput, SupplierTransactionListQueryInput, UpdateSupplierTransactionInput } from './supplier-transactions.validator';
 
 export class SupplierTransactionsService {
@@ -111,7 +111,7 @@ export async function summaryForWhere(where: Prisma.SupplierTransactionWhereInpu
   return { totalOwed: moneyToApiString(sumMoney(increases)), totalPaid: moneyToApiString(sumMoney(paid)), totalCredit: moneyToApiString(sumMoney(credit)), balance: moneyToApiString(subtractMoney(sumMoney(increases), sumMoney(decreases))), transactionCount: rows.reduce((n, r) => n + r._count._all, 0) };
 }
 
-async function supplierBalance(supplierId: string, tx: Prisma.TransactionClient) { return (await summaryForWhere(supplierTransactionWhere({ supplierId, includeRemoved: false }), tx)).balance; }
+async function supplierBalance(supplierId: string, tx: Prisma.TransactionClient) { return (await summaryForWhere({ supplierId, status: SupplierTransactionStatus.ACTIVE }, tx)).balance; }
 async function requiredTransaction(id: string, tx: Prisma.TransactionClient) { const t = await SupplierTransactionsRepository.findById(id, tx); if (!t) throw new NotFoundError('Supplier transaction not found'); return t; }
 async function loadActor(id: string, tx: Prisma.TransactionClient) { const actor = await tx.user.findUnique({ where: { id }, select: { fullName: true, username: true } }); if (!actor) throw new NotFoundError('User not found'); return actor; }
 async function auditChange(before: NonNullable<Awaited<ReturnType<typeof SupplierTransactionsRepository.findById>>>, after: NonNullable<Awaited<ReturnType<typeof SupplierTransactionsRepository.findById>>>, fields: string[], action: SupplierAuditAction, reason: string, userId: string, context: SupplierRequestContext, tx: Prisma.TransactionClient, balanceBefore: string, balanceAfter: string) { const actor = await loadActor(userId, tx); await writeSupplierAudit({ recordType: SupplierAuditRecordType.SUPPLIER_TRANSACTION, recordId: before.id, supplierId: before.supplierId, supplierTransactionId: before.id, action, changedById: userId, changedByName: actor.fullName, changedByUsername: actor.username, reason, beforeValues: changedSnapshot(supplierTransactionSnapshot(before), fields), afterValues: changedSnapshot(supplierTransactionSnapshot(after), fields), affectedTotals: { balanceBefore, balanceAfter }, requestId: context.requestId, ipAddress: context.ipAddress }, tx); }

@@ -30,13 +30,13 @@ describeDb('supplier payable database invariants', () => {
         description: 'FIFO fixture', createdById: userId,
       } });
       const before = await db.supplierTransaction.findMany({ where: { supplierId }, orderBy: { id: 'asc' } });
-      const report = await SupplierPayablesService.get('2026-09-14');
+      const report = await SupplierPayablesService.get('2026-09-14', await phase3bScope());
       const position = report.suppliers.find((s) => s.supplier.id === supplierId);
       expect(position).toMatchObject({ totalPayables: '110.00', ledgerBalance: '110.00', independentlyComputedLedgerBalance: '110.00', difference: '0.00' });
       expect(report.rows.filter((r) => r.supplier.id === supplierId).map((r) => [r.status, r.remainingAmount])).toEqual([['DUE_SOON', '70.00'], ['UNSCHEDULED', '40.00']]);
       expect(await db.supplierTransaction.findMany({ where: { supplierId }, orderBy: { id: 'asc' } })).toEqual(before);
       await db.supplierTransaction.update({ where: { id: before.find((r) => r.type === 'SUPPLIER_CREDIT')!.id }, data: { status: 'REMOVED', removedAt: new Date(), removedById: userId, removedReason: 'Test removal' } });
-      expect((await SupplierPayablesService.get('2026-09-14')).suppliers.find((s) => s.supplier.id === supplierId)?.ledgerBalance).toBe('180.00');
+      expect((await SupplierPayablesService.get('2026-09-14', await phase3bScope())).suppliers.find((s) => s.supplier.id === supplierId)?.ledgerBalance).toBe('180.00');
     } finally {
       await db.supplierTransaction.deleteMany({ where: { supplierId } });
       await db.supplier.delete({ where: { id: supplierId } });

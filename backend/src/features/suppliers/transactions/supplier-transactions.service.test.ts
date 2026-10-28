@@ -152,8 +152,8 @@ describe('SupplierTransactionsService', () => {
   });
 
   it('excludes removed transactions from the active balance', async () => {
-    const activeOnly = supplierTransactionWhere({ supplierId, includeRemoved: false });
-    const withRemoved = supplierTransactionWhere({ supplierId, includeRemoved: true });
+    const activeOnly = supplierTransactionWhere({ supplierId, includeRemoved: false }, phase3bScope);
+    const withRemoved = supplierTransactionWhere({ supplierId, includeRemoved: true }, phase3bScope);
 
     expect(activeOnly).toMatchObject({ status: SupplierTransactionStatus.ACTIVE });
     expect(withRemoved).not.toHaveProperty('status');

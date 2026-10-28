@@ -77,6 +77,7 @@ export class CustomersService {
     }
 
     const projections = await ReceivablesService.computeReceivableProjections({
+      scope,
       customerIds: customersWithMatchInfo.map((customer) => customer.id),
     });
 

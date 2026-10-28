@@ -37,10 +37,10 @@ export async function resolveSupplierSearch(search: string | undefined, scope: B
 }
 
 export function supplierTransactionWhere(
-  query: Partial<SupplierLedgerQueryInput> & { supplierId?: string; searchMatch?: SupplierSearchMatch | null }, scope?: BranchScope
+  query: Partial<SupplierLedgerQueryInput> & { supplierId?: string; searchMatch?: SupplierSearchMatch | null }, scope: BranchScope
 ): Prisma.SupplierTransactionWhereInput {
   return {
-    ...(scope ? scopeWhere(scope) : {}),
+    ...scopeWhere(scope),
     ...(query.supplierId ? { supplierId: query.supplierId } : {}),
     ...(query.type ? { type: query.type } : {}), ...(query.direction ? { direction: query.direction } : {}),
     ...(!query.includeRemoved ? { status: SupplierTransactionStatus.ACTIVE } : {}),

@@ -110,9 +110,9 @@ export class SupplierReceivingsRepository {
   static findActor(userId: string, tx: Prisma.TransactionClient) {
     return tx.user.findUnique({ where: { id: userId }, select: { fullName: true, username: true } });
   }
-  static findDuplicate(supplierId: string, referenceNumber: string, scope?: BranchScope) {
+  static findDuplicate(supplierId: string, referenceNumber: string, scope: BranchScope) {
     return prisma.supplierReceiving.findFirst({
-      where: { ...(scope ? scopeWhere(scope) : {}), supplierId, referenceNumber: { equals: referenceNumber, mode: 'insensitive' } },
+      where: { ...scopeWhere(scope), supplierId, referenceNumber: { equals: referenceNumber, mode: 'insensitive' } },
       include: listInclude,
       orderBy: [{ receivedOn: 'desc' }, { createdAt: 'desc' }],
     });

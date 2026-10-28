@@ -151,6 +151,7 @@ export class ReceivablesService {
    */
   static async computeReceivableProjections(params: {
     customerIds: string[];
+    scope: BranchScope;
   }): Promise<Map<string, ReceivableCustomerProjection>> {
     const projections = new Map<string, ReceivableCustomerProjection>();
     if (params.customerIds.length === 0) return projections;
@@ -158,6 +159,7 @@ export class ReceivablesService {
     const records = await ReceivablesRepository.loadReceivableRecords({
       includeInactive: true,
       customerIds: params.customerIds,
+      scope: params.scope,
     });
     const businessDate = todayInBusinessTimezone();
 
