@@ -1,0 +1,266 @@
+[
+  {
+    "path": "backend/src/app-branch-scope-meta.test.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "path": "backend/src/features/documents/document-branch.routes.test.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "path": "backend/src/features/documents/document-branch.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "path": "backend/src/features/financial/credit-limits/credit-limit.service.test.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "path": "backend/src/features/financial/customer-statement/customer-statement.controller.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "path": "backend/src/features/financial/debts/debts.routes.test.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "path": "backend/src/features/financial/payments/payments.controller.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "path": "backend/src/features/pricing-card/feature-icon/feature-icon.seed.test.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "path": "backend/src/features/pricing-card/feature-icon/feature-icon.service.test.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "path": "backend/src/features/pricing-card/feature-icon/sanitize-svg.test.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "path": "backend/src/features/sales/returns/sales-returns.routes.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "path": "backend/src/features/sales/sales-orders/sales-orders.controller.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "path": "backend/src/features/scanner/lan-listener.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "path": "backend/src/features/scanner/mobile-api-gateway.test.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "path": "backend/src/features/scanner/mobile-api-gateway.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "path": "backend/src/features/service/products/product-service-jobs-scope.test.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "path": "backend/src/features/service/products/products.controller.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "path": "backend/src/features/service/products/products.repository.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "path": "backend/src/features/service/products/products.routes.test.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "path": "backend/src/features/service/products/products.routes.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "path": "backend/src/features/service/products/products.service.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "path": "backend/src/test/branch-global-routes.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "path": "backend/src/test/branch-scope-fixture.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "path": "frontend/src/features/documents/components/branch-document.test-fixtures.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "path": "frontend/src/features/documents/components/CustomerStatementDocument.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "path": "frontend/src/features/documents/components/DocumentBranchLine.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "path": "frontend/src/features/documents/components/MultiBranchDocuments.test.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "path": "frontend/src/features/documents/components/PaymentReceiptDocument.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "path": "frontend/src/features/documents/components/SalesInvoiceDocument.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "path": "frontend/src/features/documents/components/SalesReturnDocument.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "path": "frontend/src/features/documents/types/document.types.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "path": "frontend/src/features/sales-orders/types/sales-orders.types.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "path": "Mobile Scanner/App.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "path": "Mobile Scanner/src/api/hc-client.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "path": "Mobile Scanner/src/api/receipts-api.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "path": "Mobile Scanner/src/branches/branch-selection.test.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "path": "Mobile Scanner/src/branches/branch-selection.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "path": "Mobile Scanner/src/branches/branch-storage.test.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "path": "Mobile Scanner/src/branches/branch-storage.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "path": "Mobile Scanner/src/branches/BranchPickerScreen.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "path": "Mobile Scanner/src/branches/BranchScannerScreen.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "path": "Mobile Scanner/src/components/ActionGrid.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "path": "Mobile Scanner/src/screens/ScannerScreen.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "path": "Mobile Scanner/src/storage/secure-storage.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  }
+]

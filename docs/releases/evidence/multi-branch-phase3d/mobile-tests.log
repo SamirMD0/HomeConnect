@@ -1,0 +1,13 @@
+
+> mobile-scanner@1.0.0 test
+> vitest run src/branches src/api
+
+
+ RUN  v4.1.10 D:/User/Documents/HomeConnect-mb-phase3/Mobile Scanner
+
+
+ Test Files  6 passed (6)
+      Tests  21 passed (21)
+   Start at  12:14:32
+   Duration  1.97s (transform 648ms, setup 0ms, import 942ms, tests 97ms, environment 1ms)
+

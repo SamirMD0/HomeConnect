@@ -1,0 +1,167 @@
+[
+  {
+    "file": "backend/src/features/documents/document-branch.routes.test.ts",
+    "name": "document-only branch response metadata adds record branch contact fields and multi-branch visibility to /api/v1/sales-orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/documents/document-branch.routes.test.ts",
+    "name": "document-only branch response metadata adds record branch contact fields and multi-branch visibility to /api/v1/payments/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/receipt",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/documents/document-branch.routes.test.ts",
+    "name": "document-only branch response metadata adds record branch contact fields and multi-branch visibility to /api/v1/sales-returns/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/documents/document-branch.routes.test.ts",
+    "name": "document-only branch response metadata adds record branch contact fields and multi-branch visibility to /api/v1/customers/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/statement?from=2026-01-01&to=2026-12-31",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/documents/document-branch.routes.test.ts",
+    "name": "document-only branch response metadata hides the branch line for one active branch on /api/v1/sales-orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/documents/document-branch.routes.test.ts",
+    "name": "document-only branch response metadata hides the branch line for one active branch on /api/v1/payments/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/receipt",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/documents/document-branch.routes.test.ts",
+    "name": "document-only branch response metadata hides the branch line for one active branch on /api/v1/sales-returns/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/documents/document-branch.routes.test.ts",
+    "name": "document-only branch response metadata hides the branch line for one active branch on /api/v1/customers/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/statement?from=2026-01-01&to=2026-12-31",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/documents/document-branch.routes.test.ts",
+    "name": "document-only branch response metadata keeps out-of-scope records at 404 before document metadata is read",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/scanner/mobile-api-gateway.test.ts",
+    "name": "mobile JWT gateway allows GET branches/accessible and preserves the selected branch header unchanged",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/scanner/mobile-api-gateway.test.ts",
+    "name": "mobile JWT gateway forwards supplier JSON and raw receipt uploads with scope, without cookies or scanner credentials",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/scanner/mobile-api-gateway.test.ts",
+    "name": "mobile JWT gateway preserves a branch denial response from the desktop",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/scanner/mobile-api-gateway.test.ts",
+    "name": "mobile JWT gateway does not expose unlisted methods, sibling branch routes, or traversal paths",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/service/products/product-service-jobs-scope.test.ts",
+    "name": "product service jobs remain branch-owned filters both rows and count by accessible branch IDs",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/features/service/products/product-service-jobs-scope.test.ts",
+    "name": "product service jobs remain branch-owned passes the resolved scope through the product facade",
+    "status": "passed"
+  },
+  {
+    "file": "frontend/src/features/documents/components/MultiBranchDocuments.test.tsx",
+    "name": "multi-branch printed documents prints the record branch on the sales invoice",
+    "status": "passed"
+  },
+  {
+    "file": "frontend/src/features/documents/components/MultiBranchDocuments.test.tsx",
+    "name": "multi-branch printed documents prints the record branch on the payment receipt",
+    "status": "passed"
+  },
+  {
+    "file": "frontend/src/features/documents/components/MultiBranchDocuments.test.tsx",
+    "name": "multi-branch printed documents prints the record branch on the sales return",
+    "status": "passed"
+  },
+  {
+    "file": "frontend/src/features/documents/components/MultiBranchDocuments.test.tsx",
+    "name": "multi-branch printed documents prints the customer branch on the statement",
+    "status": "passed"
+  },
+  {
+    "file": "frontend/src/features/documents/components/MultiBranchDocuments.test.tsx",
+    "name": "multi-branch printed documents omits the branch for a single active branch even when metadata is supplied",
+    "status": "passed"
+  },
+  {
+    "file": "frontend/src/features/documents/components/MultiBranchDocuments.test.tsx",
+    "name": "multi-branch printed documents skips empty address and phone without separators",
+    "status": "passed"
+  },
+  {
+    "file": "backend/src/app-branch-scope-meta.test.ts",
+    "name": "branch-scope route coverage registry (Phase 3D) includes unknown routes under any prefix so additions require classification",
+    "status": "passed"
+  },
+  {
+    "file": "Mobile Scanner/src/branches/branch-selection.test.ts",
+    "name": "automatically selects the sole accessible branch without a prompt",
+    "status": "passed"
+  },
+  {
+    "file": "Mobile Scanner/src/branches/branch-selection.test.ts",
+    "name": "requires a picker for many branches and restores only an accessible saved selection",
+    "status": "passed"
+  },
+  {
+    "file": "Mobile Scanner/src/branches/branch-selection.test.ts",
+    "name": "requires an explicit selection after rejection even when one branch remains",
+    "status": "passed"
+  },
+  {
+    "file": "Mobile Scanner/src/branches/branch-selection.test.ts",
+    "name": "blocks supplier actions with zero accessible branches",
+    "status": "passed"
+  },
+  {
+    "file": "Mobile Scanner/src/branches/branch-selection.test.ts",
+    "name": "attaches selected scope to every JSON request and authenticated headers",
+    "status": "passed"
+  },
+  {
+    "file": "Mobile Scanner/src/branches/branch-selection.test.ts",
+    "name": "clears a rejected selection and notifies the picker on JSON 403",
+    "status": "passed"
+  },
+  {
+    "file": "Mobile Scanner/src/branches/branch-selection.test.ts",
+    "name": "attaches scope to receipt bytes and returns to picker on upload 403",
+    "status": "passed"
+  },
+  {
+    "file": "Mobile Scanner/src/branches/branch-selection.test.ts",
+    "name": "does not clear a new selection for a stale denial or unrelated error",
+    "status": "passed"
+  },
+  {
+    "file": "Mobile Scanner/src/branches/branch-storage.test.ts",
+    "name": "persists branch selection using the existing device-only secure storage",
+    "status": "passed"
+  },
+  {
+    "file": "Mobile Scanner/src/branches/branch-storage.test.ts",
+    "name": "clears persisted and in-memory selection on access rejection",
+    "status": "passed"
+  },
+  {
+    "file": "Mobile Scanner/src/branches/branch-storage.test.ts",
+    "name": "clears the selected branch together with authentication on logout",
+    "status": "passed"
+  }
+]

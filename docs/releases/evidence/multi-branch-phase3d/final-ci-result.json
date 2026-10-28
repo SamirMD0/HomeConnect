@@ -1,0 +1,2872 @@
+{
+  "passed": 3315,
+  "failed": 0,
+  "skipped": 0,
+  "todo": 0,
+  "files": 409,
+  "perFile": [
+    {
+      "path": "scripts/apply-bundled-migrations.test.ts",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "scripts/branch-reconciliation.test.ts",
+      "status": "passed",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/prisma/branch-ownership-db.integration.test.ts",
+      "status": "passed",
+      "passed": 22,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/prisma/financial-domain-schema.test.ts",
+      "status": "passed",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/prisma/shop-profile-logo.migration.test.ts",
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/app-authorization-meta.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/app-branch-scope-meta.test.ts",
+      "status": "passed",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/app.test.ts",
+      "status": "passed",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/load-env.test.ts",
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "desktop/src/backend-process.test.ts",
+      "status": "passed",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "desktop/src/content-security-policy.test.ts",
+      "status": "passed",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "desktop/src/database-preflight.test.ts",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "desktop/src/label-print.test.ts",
+      "status": "passed",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "desktop/src/lifecycle.test.ts",
+      "status": "passed",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "desktop/src/pre-migration-guard.test.ts",
+      "status": "passed",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "desktop/src/preload.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "desktop/src/readiness.test.ts",
+      "status": "passed",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "desktop/src/startup-diagnostics.test.ts",
+      "status": "passed",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "desktop/src/startup-failure-messages.test.ts",
+      "status": "passed",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "desktop/src/static-frontend-server.test.ts",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "desktop/src/updater.test.ts",
+      "status": "passed",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "desktop/src/whatsapp-link.test.ts",
+      "status": "passed",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "desktop/src/window.test.ts",
+      "status": "passed",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/controllers/auth.controller.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/lib/env.test.ts",
+      "status": "passed",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/lib/hosted-mode-preflight.test.ts",
+      "status": "passed",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/lib/production-secret-policy.test.ts",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/lib/redaction.test.ts",
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/lib/scan-code.contract.test.ts",
+      "status": "passed",
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/lib/scan-code.test.ts",
+      "status": "passed",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/lib/search-normalize.test.ts",
+      "status": "passed",
+      "passed": 21,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/lib/search-query.customer.test.ts",
+      "status": "passed",
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/lib/search-query.product.test.ts",
+      "status": "passed",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/middleware/auth.middleware.test.ts",
+      "status": "passed",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/middleware/branch-parent.middleware.test.ts",
+      "status": "passed",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/middleware/branch-scope.middleware.test.ts",
+      "status": "passed",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/middleware/error.middleware.test.ts",
+      "status": "passed",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/services/auth.service.test.ts",
+      "status": "passed",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/services/customers.service.test.ts",
+      "status": "passed",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/services/dashboard.service.test.ts",
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/services/users-branch-access.service.test.ts",
+      "status": "passed",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/services/users.service.test.ts",
+      "status": "passed",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/test/database.test.ts",
+      "status": "passed",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/validators/customers.validator.test.ts",
+      "status": "passed",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/validators/database-uuid.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/validators/decimal-bounds.test.ts",
+      "status": "passed",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/validators/user-text.test.ts",
+      "status": "passed",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/context/auth-session.test.ts",
+      "status": "passed",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/layouts/Sidebar.test.tsx",
+      "status": "passed",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/layouts/TopBarActions.test.tsx",
+      "status": "passed",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/pages/ReportDetailPage.test.tsx",
+      "status": "passed",
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/pages/ReportsPage.test.tsx",
+      "status": "passed",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/services/api.test.ts",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/auth/auth-rate-limit.test.ts",
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/backup/backup.hosted-mode.test.ts",
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/backup/backup.routes.test.ts",
+      "status": "passed",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/backup/backup.safety.test.ts",
+      "status": "passed",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/branches/branch-breakdown.test.ts",
+      "status": "passed",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/branches/branch-financial-scope-db.integration.test.ts",
+      "status": "passed",
+      "passed": 113,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/branches/branch-report-scope-db.integration.test.ts",
+      "status": "passed",
+      "passed": 62,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/branches/branch-scope-db.integration.test.ts",
+      "status": "passed",
+      "passed": 33,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/branches/branch-scope.test.ts",
+      "status": "passed",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/branches/branches.routes.test.ts",
+      "status": "passed",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/branches/branches.service.test.ts",
+      "status": "passed",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/branches/creation-branch.test.ts",
+      "status": "passed",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/brand-logo/brand-key.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/brand-logo/brand-logo.routes.test.ts",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/brand-logo/brand-logo.service.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/categories/categories-db.integration.test.ts",
+      "status": "passed",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/categories/categories.routes.test.ts",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/categories/categories.validator.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/categories/category-defaults.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/categories/category-hierarchy.test.ts",
+      "status": "passed",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/categories/category-migration.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/customers/customer-suggestions.service.test.ts",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/dashboard/dashboard-financial.routes.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/dashboard/dashboard-financial.service.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/dashboard/dashboard.routes.test.ts",
+      "status": "passed",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/diagnostics/diagnostics-export.test.ts",
+      "status": "passed",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/diagnostics/diagnostics.routes.test.ts",
+      "status": "passed",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/diagnostics/error-logger.test.ts",
+      "status": "passed",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/diagnostics/zip-writer.test.ts",
+      "status": "passed",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/documents/business-settings.routes.test.ts",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/documents/document-branch.routes.test.ts",
+      "status": "passed",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/inventory/inventory-awaiting-deduction-db.integration.test.ts",
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/inventory/inventory-db.integration.test.ts",
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/inventory/inventory-onboarding-db.integration.test.ts",
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/inventory/inventory.onboarding.auth.test.ts",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/inventory/inventory.onboarding.repository.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/inventory/inventory.onboarding.service.test.ts",
+      "status": "passed",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/inventory/inventory.repository.compatibility.test.ts",
+      "status": "passed",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/inventory/inventory.repository.test.ts",
+      "status": "passed",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/inventory/inventory.routes.test.ts",
+      "status": "passed",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/inventory/inventory.service.test.ts",
+      "status": "passed",
+      "passed": 23,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/inventory/inventory.validator.test.ts",
+      "status": "passed",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/inventory/supplier-receiving-db.integration.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/inventory/supplier-receiving-migration.test.ts",
+      "status": "passed",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/preflight/preflight.checks.test.ts",
+      "status": "passed",
+      "passed": 30,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/preflight/preflight.routes.test.ts",
+      "status": "passed",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/pricing-card/spec-catalog.test.ts",
+      "status": "passed",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/pricing-card/template-resolver.test.ts",
+      "status": "passed",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/maintenance/checksum-allowlist.test.ts",
+      "status": "passed",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/maintenance/maintenance.routes.test.ts",
+      "status": "passed",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/maintenance/migration-presence.test.ts",
+      "status": "passed",
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/maintenance/migration-runner.test.ts",
+      "status": "passed",
+      "passed": 21,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/maintenance/repair-history.repository.test.ts",
+      "status": "passed",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/maintenance/repair-registry.test.ts",
+      "status": "passed",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/maintenance/repair-runner.test.ts",
+      "status": "passed",
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/maintenance/sql-safety-scanner.test.ts",
+      "status": "passed",
+      "passed": 118,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/maintenance/sql-statement-splitter.test.ts",
+      "status": "passed",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/maintenance/thermal-reconcile-notes.service.test.ts",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/scanner/lan-address.test.ts",
+      "status": "passed",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/scanner/lan-listener.lifecycle.test.ts",
+      "status": "passed",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/scanner/mobile-api-gateway.test.ts",
+      "status": "passed",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/scanner/mobile-scanner.page.test.ts",
+      "status": "passed",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/scanner/scanner-hardening.test.ts",
+      "status": "passed",
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/scanner/scanner-rate-limit.test.ts",
+      "status": "passed",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/scanner/scanner-session.middleware.test.ts",
+      "status": "passed",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/scanner/scanner.lan.routes.test.ts",
+      "status": "passed",
+      "passed": 22,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/scanner/scanner.routes.test.ts",
+      "status": "passed",
+      "passed": 21,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/scanner/scanner.service.test.ts",
+      "status": "passed",
+      "passed": 28,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/shop/shop-profile.routes.test.ts",
+      "status": "passed",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/shop/shop-profile.service.test.ts",
+      "status": "passed",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/suppliers/supplier-idempotency-migration.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/suppliers/suppliers.routes.test.ts",
+      "status": "passed",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/tax/tax-configuration-migration.test.ts",
+      "status": "passed",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/tax/vat-migration.test.ts",
+      "status": "passed",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/system/system.routes.test.ts",
+      "status": "passed",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/branches/BranchesPanel.interaction.test.tsx",
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/branches/BranchesPanel.test.tsx",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/categories/CategoriesPage.test.tsx",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/categories/CategorySelect.test.tsx",
+      "status": "passed",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/dashboard/dashboard-frontend.test.tsx",
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/inventory/inventory-frontend.test.tsx",
+      "status": "passed",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/inventory/inventory-onboarding.frontend.test.tsx",
+      "status": "passed",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/products/product-catalogue.test.tsx",
+      "status": "passed",
+      "passed": 30,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/reports/reports-money-authority.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/updates/UpdateBusyContext.test.tsx",
+      "status": "passed",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/updates/UpdateChip.test.tsx",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/updates/useUpdater.test.tsx",
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/pages/customers/CustomerProfilePage.communication.test.tsx",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/pages/customers/customers-list.page.test.tsx",
+      "status": "passed",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/pages/pricing-cards/BrandLogosPage.test.tsx",
+      "status": "passed",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/pages/pricing-cards/FeatureIconsPage.test.tsx",
+      "status": "passed",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/pages/pricing-cards/PricingCardsPage.test.tsx",
+      "status": "passed",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/pages/pricing-cards/PricingCardTemplateAssignmentsPage.test.tsx",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/pages/pricing-cards/PricingCardTemplateEditorPage.test.tsx",
+      "status": "passed",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/pages/pricing-cards/ShopProfileSettingsPage.test.tsx",
+      "status": "passed",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/pages/products/ProductPricingCardPage.test.tsx",
+      "status": "passed",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/pages/products/ProductPricingCardsPage.test.tsx",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/pages/sales-orders/sales-orders.page.test.ts",
+      "status": "passed",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/pages/scanner/scanner-hub.page.test.tsx",
+      "status": "passed",
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/pages/settings/SettingsPage.test.tsx",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/pages/suppliers/SupplierProfilePage.test.tsx",
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/shared/labels/business-labels.test.tsx",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/dashboard/activity/dashboard-activity.service.test.ts",
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/dashboard/alerts/dashboard-alerts.service.test.ts",
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/dashboard/alerts/supplier-payable-alerts.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/dashboard/customer/customer-analytics.service.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/dashboard/month-end/month-end.characterization.test.ts",
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/dashboard/month-end/month-end.range.test.ts",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/dashboard/month-end/month-end.service.test.ts",
+      "status": "passed",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/dashboard/product/product-analytics.service.test.ts",
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/dashboard/sales/sales-analytics.service.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/dashboard/service/service-analytics.service.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/financial/authorization/account-password.test.ts",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/financial/authorization/financial-policy.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/dashboard/supplier/supplier-analytics.service.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/dashboard/shared/dashboard-cache.test.ts",
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/dashboard/shared/dashboard-range.test.ts",
+      "status": "passed",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/financial/corrections/correction-audit.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/financial/corrections/corrections.routes.test.ts",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/financial/credit-limits/credit-limit-migration.test.ts",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/financial/credit-limits/credit-limit.service.test.ts",
+      "status": "passed",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/financial/credit-limits/credit-limits-db.integration.test.ts",
+      "status": "passed",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/financial/customer-statement/customer-statement.routes.test.ts",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/financial/customer-statement/customer-statement.service.test.ts",
+      "status": "passed",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/financial/customer-summary/customer-financial-summary-db.integration.test.ts",
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/financial/customer-summary/customer-financial-summary.routes.test.ts",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/financial/customer-summary/customer-financial-summary.service.test.ts",
+      "status": "passed",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/financial/customer-summary/customer-financial-summary.validator.test.ts",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/financial/debts/debts-db.integration.test.ts",
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/financial/debts/debts.create-debt-tx.test.ts",
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/financial/debts/debts.routes.test.ts",
+      "status": "passed",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/financial/debts/debts.service.test.ts",
+      "status": "passed",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/financial/debts/debts.validator.test.ts",
+      "status": "passed",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/financial/domain/balances-statuses-allocation.test.ts",
+      "status": "passed",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/financial/domain/business-date.test.ts",
+      "status": "passed",
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/financial/domain/calculation-contract.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/financial/domain/currency-allocation.test.ts",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/financial/domain/immutable-policy.test.ts",
+      "status": "passed",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/financial/domain/installment-schedule.test.ts",
+      "status": "passed",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/financial/domain/money.test.ts",
+      "status": "passed",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/financial/exchange-rates/exchange-rates.routes.test.ts",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/financial/infrastructure/financial-db.integration.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/financial/infrastructure/idempotency-transaction.test.ts",
+      "status": "passed",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/financial/ledger/financial-ledger.routes.test.ts",
+      "status": "passed",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/financial/ledger/financial-ledger.service.test.ts",
+      "status": "passed",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/financial/payments/payments.routes.test.ts",
+      "status": "passed",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/financial/payments/payments.service.test.ts",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/financial/installment-plans/installment-plans-db.integration.test.ts",
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/financial/installment-plans/installment-plans.routes.test.ts",
+      "status": "passed",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/financial/installment-plans/installment-plans.service.test.ts",
+      "status": "passed",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/financial/installment-plans/installment-plans.validator.test.ts",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/financial/receivables/receivables-scope-contract.test.ts",
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/financial/receivables/receivables.projection.test.ts",
+      "status": "passed",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/financial/receivables/receivables.routes.test.ts",
+      "status": "passed",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/financial/receivables/receivables.service.test.ts",
+      "status": "passed",
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/financial/receivables/receivables.tier.test.ts",
+      "status": "passed",
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/inventory/receiving/supplier-receivings-boundary.test.ts",
+      "status": "passed",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/inventory/receiving/supplier-receivings.routes.test.ts",
+      "status": "passed",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/inventory/receiving/supplier-receivings.service.test.ts",
+      "status": "passed",
+      "passed": 27,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/inventory/receiving/supplier-receivings.validator.test.ts",
+      "status": "passed",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/financial/prepaid/prepaid.service.test.ts",
+      "status": "passed",
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/pricing-card/feature-icon/feature-icon.routes.test.ts",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/pricing-card/feature-icon/feature-icon.seed.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/pricing-card/feature-icon/feature-icon.service.test.ts",
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/pricing-card/feature-icon/sanitize-svg.test.ts",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/pricing/authorization/pricing-policy.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/pricing-card/template/pricing-card-template-config.test.ts",
+      "status": "passed",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/pricing-card/template/template.routes.test.ts",
+      "status": "passed",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/pricing-card/template/template.seed.test.ts",
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/pricing-card/template/template.service.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/pricing-card/print-snapshot/print-snapshot.routes.test.ts",
+      "status": "passed",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/pricing-card/print-snapshot/print-snapshot.service.test.ts",
+      "status": "passed",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/pricing/calculator/label-secret-price.test.ts",
+      "status": "passed",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/pricing/calculator/pricing-calculator.routes.test.ts",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/pricing/calculator/pricing-resolution.test.ts",
+      "status": "passed",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/pricing/domain/internal-price-code.test.ts",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/pricing/domain/pricing-calculator.test.ts",
+      "status": "passed",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/pricing/domain/pricing-percent.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/reports/analysis/analysis.service.test.ts",
+      "status": "passed",
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/pricing/presets/pricing-presets.routes.test.ts",
+      "status": "passed",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/pricing/presets/pricing-presets.service.test.ts",
+      "status": "passed",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/pricing/presets/pricing-presets.validator.test.ts",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/reports/monthly-debts/monthly-debts.repository.range.test.ts",
+      "status": "passed",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/reports/monthly-debts/monthly-debts.routes.test.ts",
+      "status": "passed",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/reports/monthly-debts/monthly-debts.service.test.ts",
+      "status": "passed",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/reports/metrics/reports-metrics.repository.test.ts",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/reports/metrics/reports-metrics.service.test.ts",
+      "status": "passed",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/reports/monthly-review/monthly-review.routes.test.ts",
+      "status": "passed",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/reports/monthly-review/monthly-review.service.test.ts",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/reports/rows/report-rows.routes.test.ts",
+      "status": "passed",
+      "passed": 27,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/reports/rows/report-rows.service.test.ts",
+      "status": "passed",
+      "passed": 23,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/reports/shared/csv.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/reports/shared/receivables-aging.test.ts",
+      "status": "passed",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/reports/shared/reports-envelope.test.ts",
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/reports/shared/reports-period.test.ts",
+      "status": "passed",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/reports/shared/reports-read-only.test.ts",
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/reports/shared/reports-risk.config.test.ts",
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/sales/authorization/sales-policy.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/sales/domain/order-number.test.ts",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/sales/domain/sales-order-status.test.ts",
+      "status": "passed",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/sales/domain/sales-order-totals.test.ts",
+      "status": "passed",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/sales/returns/sales-return-calculation.test.ts",
+      "status": "passed",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/sales/returns/sales-return.validator.test.ts",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/sales/returns/sales-returns-db.integration.test.ts",
+      "status": "passed",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/sales/sales-orders/counter-payment-migration.test.ts",
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/sales/sales-orders/counter-payments-db.integration.test.ts",
+      "status": "passed",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/sales/sales-orders/sales-order-inventory.service.test.ts",
+      "status": "passed",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/sales/sales-orders/sales-order-stock-fulfillment-db.integration.test.ts",
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/sales/sales-orders/sales-order-stock-fulfillment-migration.test.ts",
+      "status": "passed",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/sales/sales-orders/sales-orders.routes.test.ts",
+      "status": "passed",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/sales/sales-orders/sales-orders.service.test.ts",
+      "status": "passed",
+      "passed": 26,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/sales/sales-orders/sales-orders.validator.test.ts",
+      "status": "passed",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/service/audit/audit-reasons.test.ts",
+      "status": "passed",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/service/domain/job-number.test.ts",
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/service/domain/service-status.test.ts",
+      "status": "passed",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/service/service-jobs/service-jobs.routes.test.ts",
+      "status": "passed",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/service/service-jobs/service-jobs.service.test.ts",
+      "status": "passed",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/service/service-jobs/service-jobs.validator.test.ts",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/service/products/product-catalog-defaults.test.ts",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/service/products/product-category-detection.test.ts",
+      "status": "passed",
+      "passed": 21,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/service/products/product-image.test.ts",
+      "status": "passed",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/service/products/product-import.brand-commit.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/service/products/product-import.parser.test.ts",
+      "status": "passed",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/service/products/product-import.routes.test.ts",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/service/products/product-import.service.test.ts",
+      "status": "passed",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/service/products/product-internal-barcode.test.ts",
+      "status": "passed",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/service/products/product-pricing-card-features.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/service/products/product-service-jobs-scope.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/service/products/product-sku.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/service/products/product-specifications.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/service/products/product-stock.test.ts",
+      "status": "passed",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/service/products/products.labels.test.ts",
+      "status": "passed",
+      "passed": 35,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/service/products/products.normalize.service.test.ts",
+      "status": "passed",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/service/products/products.normalize.validator.test.ts",
+      "status": "passed",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/service/products/products.pricing.routes.test.ts",
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/service/products/products.repository.test.ts",
+      "status": "passed",
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/service/products/products.routes.test.ts",
+      "status": "passed",
+      "passed": 30,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/service/products/products.scan.test.ts",
+      "status": "passed",
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/service/products/products.service.test.ts",
+      "status": "passed",
+      "passed": 35,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/service/products/products.validator.test.ts",
+      "status": "passed",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/service/authorization/service-policy.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/suppliers/authorization/supplier-policy.test.ts",
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/suppliers/domain/supplier-domain.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/suppliers/payables/supplier-due-date-migration.test.ts",
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/suppliers/payables/supplier-payables-db.integration.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/suppliers/payables/supplier-payables.test.ts",
+      "status": "passed",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/suppliers/purchases/supplier-purchase-db.integration.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/suppliers/purchases/supplier-purchase-migration.test.ts",
+      "status": "passed",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/suppliers/purchases/supplier-purchases.routes.test.ts",
+      "status": "passed",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/suppliers/purchases/supplier-purchases.service.test.ts",
+      "status": "passed",
+      "passed": 34,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/suppliers/purchases/supplier-purchases.validator.test.ts",
+      "status": "passed",
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/suppliers/transactions/supplier-payment.routes.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/suppliers/transactions/supplier-transaction-receiving-link.migration.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/suppliers/transactions/supplier-transactions.service.test.ts",
+      "status": "passed",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/suppliers/transactions/supplier-transactions.validator.test.ts",
+      "status": "passed",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/suppliers/suppliers/suppliers.service.test.ts",
+      "status": "passed",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/suppliers/suppliers/suppliers.validator.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/backup/components/BackupRestorePanel.test.tsx",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/backup/api/backup.api.test.ts",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "backend/src/features/tax/domain/vat.test.ts",
+      "status": "passed",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/customer-communication/components/customer-communication.components.test.tsx",
+      "status": "passed",
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/customer-communication/utils/build-whatsapp-url.test.ts",
+      "status": "passed",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/customer-communication/utils/composer-state.test.ts",
+      "status": "passed",
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/customer-communication/utils/message-templates.test.ts",
+      "status": "passed",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/customer-communication/utils/normalize-whatsapp-phone.test.ts",
+      "status": "passed",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/customer-communication/utils/render-template.test.ts",
+      "status": "passed",
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/customer-communication/utils/resolve-message-defaults.test.ts",
+      "status": "passed",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/customer-financial/hooks/useCustomerFinancialSummary.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/customer-financial/hooks/useFinancialMutations.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/customer-financial/components/CreditLimitWarning.test.tsx",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/customer-financial/components/customer-financial.components.test.tsx",
+      "status": "passed",
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/customer-financial/api/customer-financial.api.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/customer-financial/api/financial-mutations.api.test.ts",
+      "status": "passed",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/customer-financial/utils/installment-preview.test.ts",
+      "status": "passed",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/customer-financial/utils/money-input.test.ts",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/dashboard/api/dashboard.api.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/customers/api/customers.api.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/customers/components/customer-form.components.test.tsx",
+      "status": "passed",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/customers/components/customer-picker.search.test.tsx",
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/customers/utils/customer-search-history.test.ts",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/inventory/receiving/supplier-receiving.frontend.test.tsx",
+      "status": "passed",
+      "passed": 26,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/financial-ledger/api/financial-ledger.api.test.ts",
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/financial-ledger/components/financial-ledger.components.test.tsx",
+      "status": "passed",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/financial-ledger/hooks/useFinancialLedger.test.ts",
+      "status": "passed",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/documents/api/customer-statements.api.test.ts",
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/documents/components/CustomerStatementDocument.test.tsx",
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/documents/components/MultiBranchDocuments.test.tsx",
+      "status": "passed",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/documents/components/PaymentReceiptDocument.test.tsx",
+      "status": "passed",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/documents/components/SalesInvoiceDocument.test.tsx",
+      "status": "passed",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/documents/components/SalesReturnDocument.test.tsx",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/maintenance/components/maintenance.components.test.tsx",
+      "status": "passed",
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/maintenance/components/ThermalReconcileNotesPanel.test.tsx",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/prepaid/api/prepaid.api.test.ts",
+      "status": "passed",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/prepaid/components/prepaid.components.test.tsx",
+      "status": "passed",
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/pricing-card/api/pricing-card.api.test.ts",
+      "status": "passed",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/pricing-card/components/CanonicalSpecEditor.test.tsx",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/pricing-card/components/pricing-card-renderer.test.tsx",
+      "status": "passed",
+      "passed": 39,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/pricing-card/components/PricingCard.css.test.ts",
+      "status": "passed",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/pricing-card/components/PricingCardPage.test.tsx",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/pricing-card/components/RolloutGuard.test.tsx",
+      "status": "passed",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/pricing-card/components/SpecKeySelector.test.tsx",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/pricing-card/components/ThermalPrintWarning.test.tsx",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/pricing-card/hooks/useRolloutMode.test.ts",
+      "status": "passed",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/pricing-card/schema/template-config-parity.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/pricing/components/pricing.components.test.tsx",
+      "status": "passed",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/pricing-card/utils/print-pricing-cards.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/pricing-card/utils/spec-catalog.test.ts",
+      "status": "passed",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/products/components/brands.test.tsx",
+      "status": "passed",
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/products/components/print-settings-bounds.test.tsx",
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/products/components/product-duplicates.test.tsx",
+      "status": "passed",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/products/components/ProductCsvImportDialog.brands.test.tsx",
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/products/components/ProductCsvImportDialog.classification.test.tsx",
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/products/components/ProductCsvImportDialog.test.tsx",
+      "status": "passed",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/products/components/ProductFeatureHighlightsEditor.test.tsx",
+      "status": "passed",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/products/components/ProductFormPricingPanel.test.tsx",
+      "status": "passed",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/products/components/ProductPicker.search.test.tsx",
+      "status": "passed",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/products/components/ProductPreviewPanel.test.tsx",
+      "status": "passed",
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/products/components/products.components.test.tsx",
+      "status": "passed",
+      "passed": 47,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/products/utils/barcode-geometry.test.ts",
+      "status": "passed",
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/products/utils/dimension-specification.test.ts",
+      "status": "passed",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/products/utils/discount-stages.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/products/utils/label-sheet-layout.test.ts",
+      "status": "passed",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/products/utils/product-form-errors.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/products/utils/product-view.test.ts",
+      "status": "passed",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/receivables/components/receivables.components.test.tsx",
+      "status": "passed",
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/reports/api/monthly-reports.api.test.ts",
+      "status": "passed",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/reports/api/monthly-review.api.test.ts",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/reports/api/report-rows.api.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/reports/components/analysis-portal.test.tsx",
+      "status": "passed",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/reports/components/monthly-reports.components.test.tsx",
+      "status": "passed",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/reports/components/monthly-review.components.test.tsx",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/reports/components/SupplierAgingSummary.test.tsx",
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/sales-orders/api/sales-orders.api.test.ts",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/sales-orders/components/sales-orders.components.test.tsx",
+      "status": "passed",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/sales-orders/components/scanner-quick-order.test.tsx",
+      "status": "passed",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/sales-orders/utils/quick-order-payload.test.ts",
+      "status": "passed",
+      "passed": 22,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/sales-orders/utils/sales-return-form.test.ts",
+      "status": "passed",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/scanner/components/scanner-hub.components.test.tsx",
+      "status": "passed",
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/scanner/components/scanner.components.test.tsx",
+      "status": "passed",
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/scanner/utils/scan-code.contract.test.ts",
+      "status": "passed",
+      "passed": 23,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/scanner/utils/scan-events.test.ts",
+      "status": "passed",
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/scanner/utils/scan-intent.test.ts",
+      "status": "passed",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/scanner/utils/scanner-admin.test.ts",
+      "status": "passed",
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/service/components/service.components.test.tsx",
+      "status": "passed",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/service/utils/service-age.test.ts",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/suppliers/api/suppliers.api.test.ts",
+      "status": "passed",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/suppliers/components/SupplierPurchaseFormDialog.test.tsx",
+      "status": "passed",
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/suppliers/components/suppliers.components.test.tsx",
+      "status": "passed",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/suppliers/components/SupplierTransactionFormDialog.receiving.test.tsx",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/suppliers/utils/supplier-purchase-form.test.ts",
+      "status": "passed",
+      "passed": 35,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/system/components/system.components.test.tsx",
+      "status": "passed",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/system/utils/status-polling.test.ts",
+      "status": "passed",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/dashboard/components/charts/ChartViewport.test.tsx",
+      "status": "passed",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/dashboard/components/layout/DashboardAnchorNav.test.tsx",
+      "status": "passed",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/dashboard/components/kpi/DeltaChip.test.tsx",
+      "status": "passed",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "frontend/src/features/pricing-card/components/blocks/BrandMark.test.tsx",
+      "status": "passed",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0
+    }
+  ]
+}

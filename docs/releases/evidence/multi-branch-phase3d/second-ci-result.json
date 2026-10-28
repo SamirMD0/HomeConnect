@@ -1,0 +1,20 @@
+{
+  "passed": 3314,
+  "failed": 1,
+  "skipped": 0,
+  "todo": 0,
+  "files": 409,
+  "failedFiles": [
+    {
+      "path": "backend/src/features/pricing-card/feature-icon/feature-icon.service.test.ts",
+      "tests": [
+        {
+          "name": "feature icon service sanitizes at write time, verifies the password, and writes an audit",
+          "failures": [
+            "Error: STACK_TRACE_ERROR\n    at task (file:///D:/User/Documents/HomeConnect-mb-phase2/node_modules/@vitest/runner/dist/chunk-artifact.js:1784:27)\n    at Object.<anonymous> (file:///D:/User/Documents/HomeConnect-mb-phase2/node_modules/@vitest/runner/dist/chunk-artifact.js:1817:16)\n    at Object.<anonymous> (file:///D:/User/Documents/HomeConnect-mb-phase2/node_modules/@vitest/runner/dist/chunk-artifact.js:1563:28)\n    at chain (file:///D:/User/Documents/HomeConnect-mb-phase2/node_modules/@vitest/runner/dist/chunk-artifact.js:599:14)\n    at D:/User/Documents/HomeConnect-mb-phase3/backend/src/features/pricing-card/feature-icon/feature-icon.service.test.ts:26:3\n    at file:///D:/User/Documents/HomeConnect-mb-phase2/node_modules/@vitest/runner/dist/chunk-artifact.js:1889:40\n    at runWithSuite (file:///D:/User/Documents/HomeConnect-mb-phase2/node_modules/@vitest/runner/dist/chunk-artifact.js:2258:8)\n    at Object.collect (file:///D:/User/Documents/HomeConnect-mb-phase2/node_modules/@vitest/runner/dist/chunk-artifact.js:1889:10)\n    at Object.collect (file:///D:/User/Documents/HomeConnect-mb-phase2/node_modules/@vitest/runner/dist/chunk-artifact.js:1893:54)\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)"
+          ]
+        }
+      ]
+    }
+  ]
+}
