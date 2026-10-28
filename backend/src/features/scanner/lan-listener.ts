@@ -7,6 +7,7 @@ import { logger } from '../../lib/logger';
 import { privateIpv4Candidates, mobileScannerUrls } from './lan-address';
 import { scannerLanRoutes } from './scanner.lan.routes';
 import { scannerStore } from './scanner.store';
+import { createMobileApiGateway } from './mobile-api-gateway';
 
 export const SCANNER_LAN_PORT = Number(process.env.SCANNER_LAN_PORT || 3011);
 export const SCANNER_LAN_HOST = process.env.SCANNER_LAN_HOST || '0.0.0.0';
@@ -74,6 +75,7 @@ export function buildLanApp(): Express {
   // CSP is disabled here rather than fighting it.
   app.use(helmet({ contentSecurityPolicy: false }));
   app.use(lanRequestLogger);
+  app.use(createMobileApiGateway());
   app.use(express.json({ limit: MAX_LAN_BODY }));
   app.use(scannerLanRoutes);
   app.use(translateBodyParserErrors);
