@@ -56,7 +56,8 @@ async function debtTotals(customerId: string) {
 (enabled ? describe : describe.skip)('customer branch transfer', () => {
   beforeAll(() => {
     const target = decodeURIComponent(new URL(process.env.DATABASE_URL!).pathname.slice(1));
-    if (target === 'homeconnect' || !/^homeconnect_test(?:[_-].*)?$/.test(target)) throw new Error('Refusing unsafe database ' + target);
+    // The local test database or CI's (homeconnect_ci_...); never homeconnect.
+    if (target === 'homeconnect' || !/^homeconnect_(?:test|ci)(?:[_-].*)?$/.test(target)) throw new Error('Refusing unsafe database ' + target);
   });
 
   beforeEach(async () => {

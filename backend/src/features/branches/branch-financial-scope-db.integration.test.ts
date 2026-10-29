@@ -296,7 +296,8 @@ const transaction = (supplierReceivingId?: string) => ({
 describe.runIf(enabled)('Phase 3B financial and sales branch isolation (real database)', () => {
   beforeAll(async () => {
     const name = decodeURIComponent(new URL(process.env.DATABASE_URL!).pathname.slice(1));
-    if (name === 'homeconnect' || name !== 'homeconnect_test_phase4_phase5_phase6')
+    // The local test database, or its CI counterpart in .github/workflows; never homeconnect.
+    if (name === 'homeconnect' || !/^homeconnect_(?:test|ci)_phase4_phase5_phase6$/.test(name))
       throw Error('Unsafe Phase 3B target');
     console.log('Confirmed Phase 3B database: ' + name);
     vi.stubEnv('MULTI_BRANCH_SCOPING_ENABLED', 'true');
