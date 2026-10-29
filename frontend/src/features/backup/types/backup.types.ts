@@ -64,6 +64,8 @@ export interface RestoreValidationData {
   checksumMatches: boolean;
   archiveReadable: boolean;
   compatible: boolean;
+  /** Database updates the backup lacks; the server applies them right after restoring. */
+  pendingMigrations?: string[];
   warnings: string[];
 }
 

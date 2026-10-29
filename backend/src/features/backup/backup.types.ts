@@ -58,6 +58,10 @@ export interface RestoreValidationResult {
   checksumMatches: boolean;
   archiveReadable: boolean;
   compatible: boolean;
+  /** Database updates the backup lacks; applied right after restoring. */
+  pendingMigrations: string[];
+  /** Updates recorded in the backup that this build does not ship (blocks restore). */
+  newerMigrations: string[];
   warnings: string[];
 }
 

@@ -3,6 +3,9 @@ import fs from 'fs/promises';
 import { BackupCommandError } from './backup.errors';
 import { PostgresConnectionInfo } from './postgres-url';
 
+/** pg_dump never emits CREATE SCHEMA public (initdb creates it), so recreate it before replaying. */
+export const RESET_PUBLIC_SCHEMA_SQL = 'DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;';
+
 export interface CommandResult {
   exitCode: number;
   stderr: string;
@@ -74,17 +77,38 @@ export class BackupCommandRunner {
     return ['--list', backupPath];
   }
 
-  static pgRestoreArgs(connection: PostgresConnectionInfo, backupPath: string) {
+  /** Prints the backup's migration history (COPY text) to stdout; reads only the archive. */
+  static pgRestoreMigrationHistoryArgs(backupPath: string) {
+    return ['--data-only', '--table=_prisma_migrations', '--file=-', backupPath];
+  }
+
+  /**
+   * Converts the archive to a plain SQL script. Restoring goes through psql
+   * instead of `pg_restore --clean`: --clean only drops objects named in the
+   * backup, so tables added by later updates kept their foreign keys and blocked
+   * the drops, and pg_restore carried on past the errors, leaving a database
+   * that was half one machine and half the other.
+   */
+  static pgRestoreToSqlArgs(backupPath: string, sqlFile: string) {
+    return ['--no-owner', '--no-privileges', `--file=${sqlFile}`, backupPath];
+  }
+
+  /**
+   * Empties the schema and replays the backup in ONE transaction that stops at
+   * the first error, so a failed restore leaves the database exactly as it was.
+   */
+  static psqlAtomicRestoreArgs(connection: PostgresConnectionInfo, sqlFile: string) {
     return [
-      '--clean',
-      '--if-exists',
-      '--no-owner',
-      '--no-privileges',
+      '--no-psqlrc',
+      '--quiet',
+      '--single-transaction',
+      '--set=ON_ERROR_STOP=1',
       `--host=${connection.host}`,
       `--port=${connection.port}`,
       `--username=${connection.username}`,
       `--dbname=${connection.database}`,
-      backupPath,
+      `--command=${RESET_PUBLIC_SCHEMA_SQL}`,
+      `--file=${sqlFile}`,
     ];
   }
 
