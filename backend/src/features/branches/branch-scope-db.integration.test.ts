@@ -42,7 +42,7 @@ const action = { reason: 'Phase 3A isolation test', accountPassword: password };
 describeDb('Phase 3A customer and supplier branch isolation', () => {
   beforeAll(async () => {
     const target = decodeURIComponent(new URL(process.env.DATABASE_URL!).pathname.slice(1));
-    if (target === 'homeconnect' || !/^homeconnect_test(?:[_-].*)?$/.test(target)) {
+    if (target === 'homeconnect' || !/^homeconnect_(?:test|ci)(?:[_-].*)?$/.test(target)) {
       throw new Error('Refusing unsafe Phase 3A database');
     }
     console.log('Confirmed Phase 3A isolation database: ' + target);
