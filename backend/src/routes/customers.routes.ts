@@ -2,7 +2,8 @@ import { Router } from 'express';
 import { CustomersController } from '../controllers/customers.controller';
 import { requireAuth } from '../middleware/auth.middleware';
 import { validate } from '../middleware/validate.middleware';
-import { createCustomerSchema, updateCustomerSchema, customerQuerySchema, customerSuggestionsQuerySchema } from '../validators/customers.validator';
+import { requireRole } from '../middleware/role.middleware';
+import { createCustomerSchema, updateCustomerSchema, customerQuerySchema, customerSuggestionsQuerySchema, customerBranchTransferPreviewSchema, customerBranchTransferSchema } from '../validators/customers.validator';
 
 const router = Router();
 
@@ -21,6 +22,10 @@ router.post('/', validate(createCustomerSchema), CustomersController.createCusto
 
 // Get customer by ID
 router.get('/:id', CustomersController.getCustomer);
+
+// Move a customer and their whole history to another branch (admin, account password)
+router.get('/:id/branch-transfer/preview', requireRole(['ADMIN']), validate(customerBranchTransferPreviewSchema, 'query'), CustomersController.previewBranchTransfer);
+router.post('/:id/branch-transfer', requireRole(['ADMIN']), validate(customerBranchTransferSchema), CustomersController.transferBranch);
 
 // Update customer
 router.put('/:id', validate(updateCustomerSchema), CustomersController.updateCustomer);
