@@ -21,5 +21,5 @@ export function safeMigrationError(output: string, databaseUrl: string): string 
     }
   } catch { /* A malformed URL is diagnosed by Prisma. */ }
   return safe.replace(/postgres(?:ql)?:\/\/[^\s"'<>]+/gi, '[DATABASE_URL REDACTED]')
-    .replace(/\x1b\[[0-9;]*m/g, '').trim().slice(-4000);
+    .replace(new RegExp(String.fromCharCode(27) + '\\[[0-9;]*m', 'g'), '').trim().slice(-4000);
 }

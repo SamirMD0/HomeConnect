@@ -77,6 +77,7 @@ export interface ListDebtsParams {
 }
 
 export interface CreateDebtData {
+  sourceCustomerImportId?: string;
   customerId: string;
   description: string;
   kind?: DebtKind;

@@ -459,6 +459,8 @@ model User {
   cashRefundsProcessed           CashRefund[]                 @relation("CashRefundProcessedBy")
   customerCreditsIssued          CustomerCredit[]             @relation("CustomerCreditIssuedBy")
   customerCreditApplications     CustomerCreditApplication[]  @relation("CustomerCreditApplicationAppliedBy")
+  customerImportsCreated         CustomerImport[]             @relation("CustomerImportCreatedBy")
+  customerImportsCommitted       CustomerImport[]             @relation("CustomerImportCommittedBy")
   branchesCreated                Branch[]                     @relation("BranchCreatedBy")
   branchesUpdated                Branch[]                     @relation("BranchUpdatedBy")
   branchAccess                   UserBranchAccess[]           @relation("UserBranchAccessUser")
@@ -483,6 +485,7 @@ model Branch {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  customerImports      CustomerImport[]
   userAccess           UserBranchAccess[]
   customers            Customer[]
   suppliers            Supplier[]
@@ -554,6 +557,35 @@ model ExchangeRate {
   @@map("exchange_rates")
 }
 
+enum CustomerImportStatus {
+  DRAFT
+  COMMITTED
+}
+
+model CustomerImport {
+  id            String               @id @default(uuid()) @db.Uuid
+  branchId      String               @db.Uuid
+  branch        Branch               @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  fileName      String
+  fileHash      String
+  status        CustomerImportStatus @default(DRAFT)
+  columnMapping Json
+  rows          Json
+  decisions     Json?
+  result        Json?
+  createdById   String               @db.Uuid
+  createdBy     User                 @relation("CustomerImportCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  committedById String?              @db.Uuid
+  committedBy   User?                @relation("CustomerImportCommittedBy", fields: [committedById], references: [id], onDelete: Restrict)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  committedAt   DateTime?
+  openingDebts  Debt[]
+
+  @@index([branchId, fileHash, status])
+  @@map("customer_imports")
+}
+
 model Customer {
   branchId String @db.Uuid
   branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
@@ -609,6 +641,9 @@ model ActivityLog {
 
 /// Raw SQL branch closure: debts_customerId_branchId_fkey.
 model Debt {
+  sourceCustomerImportId String?         @db.Uuid
+  sourceCustomerImport   CustomerImport? @relation(fields: [sourceCustomerImportId], references: [id], onDelete: Restrict)
+
   branchId String @db.Uuid
   branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
 
@@ -641,6 +676,7 @@ model Debt {
   prepaidRemainderFor PrepaidPurchase? @relation("PrepaidRemainderDebt")
   salesOrder          SalesOrder?      @relation("SalesOrderDebt")
 
+  @@index([sourceCustomerImportId])
   @@index([customerId])
   @@index([dueDate])
   @@index([status])

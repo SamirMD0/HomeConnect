@@ -1,3 +1,4 @@
+import { customerImportBranchGuard } from './features/customers/customer-import-branch.middleware';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import express, { Router, type Application } from 'express';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -25,6 +26,7 @@ interface CoveredRoute {
 
 // Phase 3 final boundary: every registered /api/v1 route must be classified.
 const scopedPrefixes: { prefix: string; parentGuard?: unknown }[] = [
+  { prefix: '/api/v1/customers/imports', parentGuard: customerImportBranchGuard },
   { prefix: '/api/v1/customers', parentGuard: customerParentGuard },
   { prefix: '/api/v1/suppliers', parentGuard: supplierParentGuard },
   { prefix: '/api/v1/debts' },
@@ -105,7 +107,7 @@ function inventory(application: Application): CoveredRoute[] {
               method: method.toUpperCase(),
               path: fullPath,
               authenticated: has(requireAuth),
-              scoped: has(branchScopeMiddleware),
+              scoped: has(branchScopeMiddleware) || has(customerImportBranchGuard),
               guarded: registration?.parentGuard ? has(registration.parentGuard) : true,
             });
           }
@@ -137,6 +139,7 @@ describe('branch-scope route coverage registry (Phase 3D)', () => {
   it('classifies every API route and checks actual middleware before each scoped handler', () => {
     const routes = inventory(app);
     expect(scopedPrefixes.map((entry) => entry.prefix)).toEqual([
+      '/api/v1/customers/imports',
       '/api/v1/customers',
       '/api/v1/suppliers',
       '/api/v1/debts',
@@ -209,7 +212,7 @@ describe('branch-scope route coverage registry (Phase 3D)', () => {
     mkdirSync('node_modules/.cache/home-connect', { recursive: true });
     writeFileSync('node_modules/.cache/home-connect/phase3d-route-inventory.json', JSON.stringify({
       scopedPrefixes: scopedPrefixes.map(({ prefix }) => prefix), globalRouteGroups,
-      routes: routes.map(({ method, path, scoped }) => ({ method, path, classification: scoped ? 'scoped' : 'global', reason: scoped ? 'Authenticated branchScopeMiddleware before handler' : globalRoutes.get(method + ' ' + path) })),
+      routes: routes.map(({ method, path, scoped }) => ({ method, path, classification: scoped ? 'scoped' : 'global', reason: scoped ? (path.startsWith('/api/v1/customers/imports') ? 'Authenticated customerImportBranchGuard binds the immutable batch destination; service rechecks transactionally' : 'Authenticated branchScopeMiddleware before handler') : globalRoutes.get(method + ' ' + path) })),
       scannerLanRoutes: lan.map(({ method, path }) => ({ method, path, classification: 'global', reason: scannerGlobalReasons[method + ' ' + path] })),
     }, null, 2));
   });

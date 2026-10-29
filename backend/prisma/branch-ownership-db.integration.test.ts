@@ -59,7 +59,9 @@ describe.runIf(enabled)('ownership migration on an isolated pre-Phase-2 database
       transactionOptions: { timeout: 120000 },
     });
     const bundled = MigrationRunner.readBundled('backend/prisma/migrations').filter(
-      (m) => !m.name.includes('add_branch_ownership')
+      // This fixture deliberately represents the schema BEFORE Phase 2.
+      // Later migrations depend on ownership and must not run here either.
+      (m) => m.name < '20261027120000_add_branch_ownership'
     );
     const outcomes = await MigrationExecutor.applyPending(
       db as unknown as MigrationClient,

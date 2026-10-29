@@ -1,3 +1,4 @@
+import { CustomerCsvImportDialog } from '../../features/customers/components/CustomerCsvImportDialog';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
@@ -14,7 +15,12 @@ import { CustomerForm } from '../../features/customers/components/CustomerForm';
 import { formatBusinessDate } from '../../features/customer-financial/utils/financial-format';
 import { formatDaysAgo } from '../../features/receivables/utils/receivables-tier';
 import { businessLabels } from '../../shared/labels/business-labels';
-import { BRANCH_COLUMN_LABEL, BranchBadge, useCreateGuard, useShowBranchColumn } from '../../features/branches/scope/branch-ui';
+import {
+  BRANCH_COLUMN_LABEL,
+  BranchBadge,
+  useCreateGuard,
+  useShowBranchColumn,
+} from '../../features/branches/scope/branch-ui';
 
 const emptyCell = <span className="text-slate-400 group-hover:text-brand-700">—</span>;
 
@@ -25,6 +31,7 @@ export const CustomersListPage: React.FC = () => {
   const [pageSize, setPageSize] = useState(25);
   const [sortBy, setSortBy] = useState('createdAt');
   const [filter, setFilter] = useState<CustomerListFilter | undefined>();
+  const [isImportOpen, setIsImportOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const customerSearch = useCustomerSearch({
     page,
@@ -44,7 +51,7 @@ export const CustomersListPage: React.FC = () => {
     createCustomer.mutate(formData, {
       onSuccess: () => {
         setIsAddModalOpen(false);
-      }
+      },
     });
   };
 
@@ -53,19 +60,25 @@ export const CustomersListPage: React.FC = () => {
       header: 'Customer',
       accessor: (customer: Customer) => (
         <div className="flex flex-col">
-          <span className="user-text font-medium text-slate-900 transition-colors group-hover:text-brand-700" dir="auto">
+          <span
+            className="user-text font-medium text-slate-900 transition-colors group-hover:text-brand-700"
+            dir="auto"
+          >
             {customer.name}
           </span>
           {customer.matchedInNotesOnly && (
-            <span className="text-[11px] text-slate-400 transition-colors ">
-              Matched in notes
-            </span>
+            <span className="text-[11px] text-slate-400 transition-colors ">Matched in notes</span>
           )}
         </div>
       ),
     },
     ...(showBranch
-      ? [{ header: BRANCH_COLUMN_LABEL, accessor: (customer: Customer) => <BranchBadge branchId={customer.branchId} /> }]
+      ? [
+          {
+            header: BRANCH_COLUMN_LABEL,
+            accessor: (customer: Customer) => <BranchBadge branchId={customer.branchId} />,
+          },
+        ]
       : []),
     {
       header: 'Phone',
@@ -89,17 +102,21 @@ export const CustomersListPage: React.FC = () => {
     {
       header: 'Next due',
       accessor: (customer: Customer) =>
-        customer.financial?.nextDueDate ? formatBusinessDate(customer.financial.nextDueDate) : emptyCell,
+        customer.financial?.nextDueDate
+          ? formatBusinessDate(customer.financial.nextDueDate)
+          : emptyCell,
     },
     {
       header: 'Status',
       accessor: (customer: Customer) => (
-        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold transition-colors  ${
-          customer.isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'
-        }`}>
+        <span
+          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold transition-colors  ${
+            customer.isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'
+          }`}
+        >
           {customer.isActive ? 'Active' : 'Inactive'}
         </span>
-      )
+      ),
     },
     {
       header: 'Actions',
@@ -121,30 +138,94 @@ export const CustomersListPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      <CustomerCsvImportDialog open={isImportOpen} onClose={() => setIsImportOpen(false)} />
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">{businessLabels.customer.title}</h1>
           <p className="text-slate-500 mt-1">Manage your customers and their accounts.</p>
         </div>
-        <button
-          onClick={() => setIsAddModalOpen(true)}
-          disabled={createGuard.blocked}
-          title={createGuard.reason}
-          className="inline-flex items-center justify-center px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors focus:ring-4 focus:ring-emerald-500/20 font-medium disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <Plus className="w-5 h-5 mr-2" />
-          Add Customer
-        </button>
+        <div className="flex gap-2">
+          {user?.role === 'ADMIN' && (
+            <button
+              type="button"
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium"
+              title={
+                createGuard.blocked
+                  ? 'Choose the destination branch in the import dialog / اختر الفرع في نافذة الاستيراد'
+                  : undefined
+              }
+              onClick={() => setIsImportOpen(true)}
+            >
+              Import CSV / استيراد CSV
+            </button>
+          )}
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            disabled={createGuard.blocked}
+            title={createGuard.reason}
+            className="inline-flex items-center justify-center px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors focus:ring-4 focus:ring-emerald-500/20 font-medium disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            Add Customer
+          </button>
+        </div>
       </div>
 
       {/* Toolbar */}
       <div className="flex flex-col sm:flex-row gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-        <div className="flex-1"><CustomerSearchInput value={customerSearch.query} onChange={customerSearch.setQuery} suggestions={customerSearch.suggestions.data} isLoading={customerSearch.customers.isFetching} resultCount={data?.data.length} /></div>
-        <select aria-label="Sort customers" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" value={sortBy} onChange={(event) => setSortBy(event.target.value)}><option value="name">Name</option><option value="outstanding">Outstanding</option><option value="overdue">Overdue</option><option value="lastPayment">Last payment</option><option value="createdAt">Date added</option></select>
-        <select aria-label="Page size" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))}><option value={10}>10</option><option value={25}>25</option><option value={50}>50</option></select>
+        <div className="flex-1">
+          <CustomerSearchInput
+            value={customerSearch.query}
+            onChange={customerSearch.setQuery}
+            suggestions={customerSearch.suggestions.data}
+            isLoading={customerSearch.customers.isFetching}
+            resultCount={data?.data.length}
+          />
+        </div>
+        <select
+          aria-label="Sort customers"
+          className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          value={sortBy}
+          onChange={(event) => setSortBy(event.target.value)}
+        >
+          <option value="name">Name</option>
+          <option value="outstanding">Outstanding</option>
+          <option value="overdue">Overdue</option>
+          <option value="lastPayment">Last payment</option>
+          <option value="createdAt">Date added</option>
+        </select>
+        <select
+          aria-label="Page size"
+          className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          value={pageSize}
+          onChange={(event) => setPageSize(Number(event.target.value))}
+        >
+          <option value={10}>10</option>
+          <option value={25}>25</option>
+          <option value={50}>50</option>
+        </select>
       </div>
-      <div className="flex flex-wrap gap-2">{([['All', undefined], ['With balance', 'withBalance'], ['Overdue', 'overdue'], ['No debt', 'noDebt'], ['Inactive', 'inactive']] as const).map(([label, value]) => <button type="button" key={label} onClick={() => setFilter(value)} className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${filter === value ? 'border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700' : 'border-slate-200 bg-slate-100 text-slate-700 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800'}`}>{label}</button>)}</div>
+      <div className="flex flex-wrap gap-2">
+        {(
+          [
+            ['All', undefined],
+            ['With balance', 'withBalance'],
+            ['Overdue', 'overdue'],
+            ['No debt', 'noDebt'],
+            ['Inactive', 'inactive'],
+          ] as const
+        ).map(([label, value]) => (
+          <button
+            type="button"
+            key={label}
+            onClick={() => setFilter(value)}
+            className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${filter === value ? 'border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700' : 'border-slate-200 bg-slate-100 text-slate-700 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800'}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
 
       {/* Content */}
       {isLoading && !data ? (
@@ -195,14 +276,18 @@ export const CustomersListPage: React.FC = () => {
           ) : (
             <EmptyState
               title={businessLabels.customer.notFound}
-              description={customerSearch.debouncedQuery ? `No customers matching "${customerSearch.debouncedQuery}"` : "Get started by creating your first customer."}
+              description={
+                customerSearch.debouncedQuery
+                  ? `No customers matching "${customerSearch.debouncedQuery}"`
+                  : 'Get started by creating your first customer.'
+              }
               icon={<Users className="w-12 h-12 text-slate-300" />}
               action={
                 !customerSearch.debouncedQuery && (
                   <button
                     onClick={() => setIsAddModalOpen(true)}
-          disabled={createGuard.blocked}
-          title={createGuard.reason}
+                    disabled={createGuard.blocked}
+                    title={createGuard.reason}
                     className="mt-2 inline-flex items-center disabled:cursor-not-allowed disabled:opacity-50 px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
                   >
                     <Plus className="w-5 h-5 mr-2 -ml-1" aria-hidden="true" />
@@ -212,7 +297,31 @@ export const CustomersListPage: React.FC = () => {
               }
             />
           )}
-          <div className="grid gap-2 md:hidden">{(data?.data ?? []).map((customer) => <button type="button" key={customer.id} onClick={() => navigate(`/customers/${customer.id}`)} className="group rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-left shadow-sm transition-all duration-200 hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 hover:shadow-[0_0_14px_rgba(250,204,21,0.3)]"><div className="flex items-center justify-between gap-3"><span className="user-text text-sm font-semibold transition-colors group-hover:text-brand-700" dir="auto">{customer.name}</span><span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 transition-colors ">{customer.isActive ? 'Active' : 'Inactive'}</span></div><p className="mt-0.5 text-xs text-slate-500 transition-colors ">{formatCustomerPhone(customer.phone)}</p></button>)}</div>
+          <div className="grid gap-2 md:hidden">
+            {(data?.data ?? []).map((customer) => (
+              <button
+                type="button"
+                key={customer.id}
+                onClick={() => navigate(`/customers/${customer.id}`)}
+                className="group rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-left shadow-sm transition-all duration-200 hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 hover:shadow-[0_0_14px_rgba(250,204,21,0.3)]"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <span
+                    className="user-text text-sm font-semibold transition-colors group-hover:text-brand-700"
+                    dir="auto"
+                  >
+                    {customer.name}
+                  </span>
+                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 transition-colors ">
+                    {customer.isActive ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+                <p className="mt-0.5 text-xs text-slate-500 transition-colors ">
+                  {formatCustomerPhone(customer.phone)}
+                </p>
+              </button>
+            ))}
+          </div>
           {data?.meta && data.meta.pagination.totalPages > 1 && (
             <Pagination
               currentPage={page}

@@ -64,7 +64,7 @@ export async function runRollbackCommand(command: string, args: string[], env = 
     const child = spawn(command, args, { env, shell: false, windowsHide: true, stdio: 'ignore' });
     const timer = setTimeout(() => { child.kill(); reject(new Error('Update recovery tool timed out')); }, 300_000);
     child.once('error', () => { clearTimeout(timer); reject(new Error('Update recovery tool could not start')); });
-    child.once('close', (code) => { clearTimeout(timer); code === 0 ? resolve() : reject(new Error('Update recovery tool failed')); });
+    child.once('close', (code) => { clearTimeout(timer); if (code === 0) resolve(); else reject(new Error('Update recovery tool failed')); });
   });
 }
 
