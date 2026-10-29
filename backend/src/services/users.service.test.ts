@@ -13,6 +13,10 @@ vi.mock('../repositories/users.repository', () => ({
   },
 }));
 
+vi.mock('../features/financial/infrastructure/transaction', () => ({
+  runFinancialTransaction: (operation: (client: unknown) => Promise<unknown>) => operation({}),
+}));
+
 vi.mock('../lib/user-session-status', () => ({
   invalidateUserSessionStatus: vi.fn(),
 }));
@@ -26,7 +30,6 @@ const admin = {
   createdAt: new Date(),
   updatedAt: new Date(),
   deletedAt: null,
-  branchId: null,
 };
 
 describe('UsersService session invalidation', () => {

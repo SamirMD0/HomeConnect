@@ -10,6 +10,7 @@ export interface DashboardKpi {
 }
 
 export interface DashboardOverviewData {
+  inventoryScope?: 'all-branches';
   kpis: [DashboardKpi, DashboardKpi, DashboardKpi, DashboardKpi, DashboardKpi, DashboardKpi, DashboardKpi, DashboardKpi];
   moduleCounts: Record<string, number>;
 }

@@ -1,5 +1,7 @@
+import { grantSoleBranchToEmployee } from '../features/branches/employee-branch-access';
+import { runFinancialTransaction } from '../features/financial/infrastructure/transaction';
 import { UsersRepository } from '../repositories/users.repository';
-import { AppError, NotFoundError, ValidationError } from '../lib/errors';
+import { NotFoundError, ValidationError } from '../lib/errors';
 import bcrypt from 'bcrypt';
 import { Prisma } from '@prisma/client';
 import { invalidateUserSessionStatus } from '../lib/user-session-status';
@@ -13,11 +15,15 @@ export class UsersService {
 
     const hashedPassword = await bcrypt.hash(data.passwordString, 12);
     
-    return UsersRepository.create({
-      username: data.username,
-      password: hashedPassword,
-      fullName: data.fullName,
-      role: data.role || 'EMPLOYEE',
+    return runFinancialTransaction(async tx => {
+      const user = await UsersRepository.create({
+        username: data.username,
+        password: hashedPassword,
+        fullName: data.fullName,
+        role: data.role || 'EMPLOYEE',
+      }, tx);
+      await grantSoleBranchToEmployee(user, tx);
+      return user;
     });
   }
 
@@ -56,7 +62,15 @@ export class UsersService {
       updateData.password = await bcrypt.hash(data.passwordString, 12);
     }
 
-    const updatedUser = await UsersRepository.update(id, updateData);
+    const updatedUser = await runFinancialTransaction(async tx => {
+      const before = await UsersRepository.findById(id, tx);
+      if (!before) throw new NotFoundError('User not found');
+      const updated = await UsersRepository.update(id, updateData, tx);
+      if (before.role === 'ADMIN' && updated.role === 'EMPLOYEE') {
+        await grantSoleBranchToEmployee(updated, tx);
+      }
+      return updated;
+    });
     invalidateUserSessionStatus(id);
     return updatedUser;
   }

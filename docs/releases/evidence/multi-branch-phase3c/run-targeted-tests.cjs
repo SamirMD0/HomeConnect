@@ -1,0 +1,26 @@
+'use strict';
+// Run from the repository root. Secrets stay in the child environment, never argv/output.
+const fs = require('node:fs');
+const cp = require('node:child_process');
+const path = require('node:path');
+const directory = __dirname;
+const files = process.argv.slice(2);
+const selected = files.length ? files : JSON.parse(fs.readFileSync(path.join(directory, 'test-files.json'), 'utf8'));
+const env = { ...process.env, ...require('dotenv').parse(fs.readFileSync('backend/.env')) };
+const name = decodeURIComponent(new URL(env.DATABASE_URL).pathname.slice(1));
+if (name === 'homeconnect' || name !== 'homeconnect_test_phase4_phase5_phase6') throw new Error('Unsafe Phase 3C database');
+console.log('Confirmed command database: ' + name);
+env.NODE_ENV = 'test';
+const flags = ['RUN_FINANCIAL_DB_TESTS','RUN_INVENTORY_DB_TESTS','RUN_SALES_FULFILLMENT_DB_TESTS','RUN_SALES_RETURN_DB_TESTS','RUN_SUPPLIER_PURCHASE_DB_TESTS','RUN_SUPPLIER_RECEIVING_DB_TESTS','RUN_PHASE4_DEBT_DB_TESTS','RUN_PHASE5_INSTALLMENT_DB_TESTS','RUN_PHASE6_CUSTOMER_SUMMARY_DB_TESTS'];
+for (const flag of flags) env[flag] = '1';
+console.log('Enabled DB suites: ' + flags.join(', '));
+const report = 'node_modules/.cache/home-connect/phase3c-' + (files.length ? 'retry' : 'targeted') + '.json';
+const args = ['vitest','run','--no-file-parallelism','--reporter=default','--reporter=json','--outputFile.json=' + report, ...selected];
+fs.mkdirSync('node_modules/.cache/home-connect', {recursive:true});
+console.log('Running ' + selected.length + ' targeted test files.');
+const result = cp.spawnSync(process.platform === 'win32' ? 'npx.cmd' : 'npx', args, {env, stdio:'inherit', shell:process.platform === 'win32', windowsHide:true});
+if (!fs.existsSync(report)) process.exit(result.status || 1);
+const summary = JSON.parse(fs.readFileSync(report,'utf8'));
+const skipped = summary.testResults.flatMap(file => file.assertionResults).filter(test => !['passed','failed'].includes(test.status));
+console.log(JSON.stringify({passed:summary.numPassedTests, failed:summary.numFailedTests, skipped:skipped.length, files:selected.length}));
+process.exit(result.status || (skipped.length ? 1 : 0));

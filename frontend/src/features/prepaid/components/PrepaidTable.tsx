@@ -5,6 +5,7 @@ import { PrepaidMobileCard } from './PrepaidMobileCard';
 import { PrepaidRowActions } from './PrepaidRowActions';
 import { formatBusinessDate, formatMoney } from '../../customer-financial/utils/financial-format';
 import { businessLabels } from '../../../shared/labels/business-labels';
+import { BranchRowLabel } from '../../branches/scope/branch-ui';
 
 interface PrepaidTableProps {
   items: PrepaidPurchase[];
@@ -93,6 +94,7 @@ export const PrepaidTable: React.FC<PrepaidTableProps> = ({
                   <p className="user-text text-xs text-slate-500" dir="auto">
                     {item.customer.phone}
                   </p>
+                  <BranchRowLabel branchId={item.branchId} />
                 </td>
                 <td className="px-4 py-3">
                   <p className="user-text text-slate-700" dir="auto">{item.itemName}</p>

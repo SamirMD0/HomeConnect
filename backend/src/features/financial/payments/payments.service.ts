@@ -1,3 +1,5 @@
+import { writeBranch, type BranchScope } from '../../branches/branch-scope';
+import { assertRecordInScope } from '../../branches/parent-branch';
 import {
   Currency,
   Prisma,
@@ -54,6 +56,7 @@ interface PaymentCorrectionResult {
 }
 
 export interface PaymentReceiptView {
+  branchId: string;
   id: string;
   customer: { id: string; name: string; phone: string; address: string | null } | null;
   sourceSalesOrder?: { id: string; orderNumber: string } | null;
@@ -143,6 +146,7 @@ export class PaymentsService {
 
     return {
       id: payment.id,
+      branchId: payment.branchId,
       customer: payment.customer,
       sourceSalesOrder: payment.salesOrder ?? null,
       sourceSnapshot: payment.sourceSnapshot ?? null,
@@ -196,8 +200,10 @@ export class PaymentsService {
   static async voidPayment(
     paymentId: string,
     input: VoidPaymentInput,
-    user: AuthenticatedUser
+    user: AuthenticatedUser, scope: BranchScope
   ): Promise<PaymentCorrectionResult> {
+    writeBranch(scope);
+    await assertRecordInScope('payment', paymentId, scope);
     await verifyAdminPasswordForCorrection(user.userId, input.accountPassword, {
       action: 'VOID_PAYMENT',
       recordType: FinancialCorrectionRecordType.PAYMENT,
@@ -214,6 +220,7 @@ export class PaymentsService {
       if (!payment) {
         throw new NotFoundError('Payment not found');
       }
+      await assertPaymentReferencesInScope(payment, scope, tx);
       this.assertPaymentNotUsedForReturn(payment);
       if (payment.salesOrderId) throw new ValidationError('Counter receipts require an audited sale correction; standalone void is not supported');
 
@@ -272,8 +279,10 @@ export class PaymentsService {
   static async correctPayment(
     paymentId: string,
     input: CorrectPaymentInput,
-    user: AuthenticatedUser
+    user: AuthenticatedUser, scope: BranchScope
   ): Promise<PaymentCorrectionResult> {
+    writeBranch(scope);
+    await assertRecordInScope('payment', paymentId, scope);
     await verifyAdminPasswordForCorrection(user.userId, input.accountPassword, {
       action: 'CORRECT_PAYMENT',
       recordType: FinancialCorrectionRecordType.PAYMENT,
@@ -293,6 +302,7 @@ export class PaymentsService {
       if (!payment) {
         throw new NotFoundError('Payment not found');
       }
+      await assertPaymentReferencesInScope(payment, scope, tx);
       if (payment.voidedAt) {
         throw new ValidationError('Voided payments cannot be corrected');
       }
@@ -349,8 +359,13 @@ export class PaymentsService {
   static async reallocatePayment(
     paymentId: string,
     input: ReallocatePaymentInput,
-    user: AuthenticatedUser
+    user: AuthenticatedUser, scope: BranchScope
   ): Promise<PaymentCorrectionResult> {
+    writeBranch(scope);
+    await assertRecordInScope('payment', paymentId, scope);
+    for (const allocation of input.allocations) {
+      await assertRecordInScope('installment', allocation.installmentId, scope);
+    }
     await verifyAdminPasswordForCorrection(user.userId, input.accountPassword, {
       action: 'REALLOCATE_PAYMENT',
       recordType: FinancialCorrectionRecordType.PAYMENT_ALLOCATION,
@@ -373,6 +388,7 @@ export class PaymentsService {
       if (!payment) {
         throw new NotFoundError('Payment not found');
       }
+      await assertPaymentReferencesInScope(payment, scope, tx);
       if (payment.voidedAt) {
         throw new ValidationError('Voided payments cannot be reallocated');
       }
@@ -839,4 +855,12 @@ export class PaymentsService {
 function requireNamedPaymentCustomer(payment: { customerId: string | null }): string {
   if (!payment.customerId) throw new ValidationError('A receivable payment must have a real customer');
   return payment.customerId;
+}
+
+async function assertPaymentReferencesInScope(payment: PaymentWithDetails, scope: BranchScope, tx: FinancialTransactionClient) {
+  await assertRecordInScope('payment', payment.id, scope, tx);
+  for (const allocation of payment.allocations) {
+    if (allocation.debtId) await assertRecordInScope('debt', allocation.debtId, scope, tx);
+    if (allocation.installmentId) await assertRecordInScope('installment', allocation.installmentId, scope, tx);
+  }
 }

@@ -49,7 +49,7 @@ describe('MonthlyDebtsService', () => {
       limit: 50,
       sortBy: 'OUTSTANDING',
       sortOrder: 'DESC',
-    });
+    }, phase3cScope);
 
     expect(report.summary).toMatchObject({
       month: '2026-07',
@@ -61,7 +61,7 @@ describe('MonthlyDebtsService', () => {
   });
 
   it('characterizes the full-month report response before range support', async () => {
-    const report = await MonthlyDebtsService.getMonthlyDebtReport(baseSnapshotQuery());
+    const report = await MonthlyDebtsService.getMonthlyDebtReport(baseSnapshotQuery(), phase3cScope);
 
     expect(JSON.stringify(report)).toBe(JSON.stringify({
       mode: 'SNAPSHOT',
@@ -101,7 +101,7 @@ describe('MonthlyDebtsService', () => {
       monthlyPayments: [payment(customerA, '200.00', '2026-07-20')],
     });
 
-    const report = await MonthlyDebtsService.getMonthlyDebtReport(baseSnapshotQuery());
+    const report = await MonthlyDebtsService.getMonthlyDebtReport(baseSnapshotQuery(), phase3cScope);
 
     expect(report.rows).toHaveLength(1);
     expect(report.rows[0]).toMatchObject({
@@ -132,7 +132,7 @@ describe('MonthlyDebtsService', () => {
       monthlyPayments: [payment(customerA, '100.00', '2026-07-20')],
     });
 
-    const report = await MonthlyDebtsService.getMonthlyDebtReport(baseSnapshotQuery());
+    const report = await MonthlyDebtsService.getMonthlyDebtReport(baseSnapshotQuery(), phase3cScope);
 
     expect(report.rows[0]).toMatchObject({
       installmentPlanOutstanding: '500.00',
@@ -155,7 +155,7 @@ describe('MonthlyDebtsService', () => {
     const report = await MonthlyDebtsService.getDebtReportForRange(
       { ...baseSnapshotQuery(), month: '2026-08' },
       '2026-08-01',
-      '2026-08-17'
+      '2026-08-17', phase3cScope
     );
 
     expect(report.summary.cutoffDate).toBe('2026-08-17');
@@ -175,14 +175,14 @@ describe('MonthlyDebtsService', () => {
     await MonthlyDebtsService.getDebtReportForRange(
       { ...baseSnapshotQuery(), month: from.slice(0, 7) },
       from,
-      to
+      to, phase3cScope
     );
 
     expect(repositoryMock.loadSnapshotRecords).toHaveBeenCalledWith(expect.objectContaining({
       startDate: date(from),
       cutoffDate: date(to),
       nextDayAfterCutoff: new Date(date(to).getTime() + 86_400_000),
-    }));
+    }), phase3cScope);
   });
 
   it('uses historical cancellation timing at cutoff', async () => {
@@ -206,7 +206,7 @@ describe('MonthlyDebtsService', () => {
       monthlyPayments: [],
     });
 
-    const report = await MonthlyDebtsService.getMonthlyDebtReport(baseSnapshotQuery());
+    const report = await MonthlyDebtsService.getMonthlyDebtReport(baseSnapshotQuery(), phase3cScope);
 
     expect(report.rows).toHaveLength(1);
     expect(report.rows[0].customer.id).toBe(customerB.id);
@@ -228,7 +228,7 @@ describe('MonthlyDebtsService', () => {
       ...baseSnapshotQuery(),
       page: 1,
       limit: 1,
-    });
+    }, phase3cScope);
 
     expect(report.rows).toHaveLength(1);
     expect(report.pagination.total).toBe(2);
@@ -254,7 +254,7 @@ describe('MonthlyDebtsService', () => {
       monthlyPayments: [],
     });
 
-    const report = await MonthlyDebtsService.getMonthlyDebtReport(baseSnapshotQuery());
+    const report = await MonthlyDebtsService.getMonthlyDebtReport(baseSnapshotQuery(), phase3cScope);
 
     expect(report.rows[0].totalOutstanding).toBe('350.00');
   });
@@ -289,7 +289,7 @@ describe('MonthlyDebtsService', () => {
       month: '2026-07',
       page: 1,
       limit: 50,
-    });
+    }, phase3cScope);
 
     expect(activity.summary).toMatchObject({
       newSingleDebtAmount: '500.00',
@@ -319,12 +319,12 @@ describe('MonthlyDebtsService', () => {
       monthlyPayments: [],
     });
 
-    const exportResult = await MonthlyDebtsService.getMonthlyDebtCsv(baseSnapshotQuery());
+    const exportResult = await MonthlyDebtsService.getMonthlyDebtCsv(baseSnapshotQuery(), phase3cScope);
 
     expect(exportResult.filename).toBe('monthly-debts-2026-07.csv');
     const legacyBytes = Buffer.from(
-      '\uFEFFCustomer Name,Phone,Single Debt Outstanding,Installment Plan Outstanding,Total Outstanding,Due By Cutoff,Overdue At Cutoff,Active Debt Count,Active Plan Count,Overdue Debt Count,Overdue Installment Count,Last Payment Date,Next Due Date After Cutoff\r\n' +
-      '"Nour, Trading",03654321,100.00,0.00,100.00,0.00,0.00,1,0,0,0,,2026-08-10\r\n',
+      '\uFEFFBranch,Customer Name,Phone,Single Debt Outstanding,Installment Plan Outstanding,Total Outstanding,Due By Cutoff,Overdue At Cutoff,Active Debt Count,Active Plan Count,Overdue Debt Count,Overdue Installment Count,Last Payment Date,Next Due Date After Cutoff\r\n' +
+      ',"Nour, Trading",03654321,100.00,0.00,100.00,0.00,0.00,1,0,0,0,,2026-08-10\r\n',
       'utf8'
     );
     expect(Buffer.from(exportResult.csv, 'utf8')).toEqual(legacyBytes);
@@ -348,7 +348,7 @@ describe('MonthlyDebtsService', () => {
       monthlyPayments: [],
     });
 
-    const exportResult = await MonthlyDebtsService.getMonthlyDebtCsv(baseSnapshotQuery());
+    const exportResult = await MonthlyDebtsService.getMonthlyDebtCsv(baseSnapshotQuery(), phase3cScope);
 
     expect(exportResult.csv.charCodeAt(0)).toBe(0xfeff);
     expect(exportResult.csv).toContain('"علي، ""بيروت""",03123456,150.00');
@@ -357,9 +357,9 @@ describe('MonthlyDebtsService', () => {
   it('exports monthly financial activity with the shared BOM and CRLF format', async () => {
     const result = await MonthlyDebtsService.getMonthlyFinancialActivityCsv({
       month: '2026-07', customerId: undefined, page: 1, limit: 10000,
-    });
+    }, phase3cScope);
     expect(result.filename).toBe('monthly-financial-activity-2026-07.csv');
-    expect(result.csv).toBe('\uFEFFDate,Customer,Phone,Type,Description,Amount\r\n');
+    expect(result.csv).toBe('\uFEFFBranch,Date,Customer,Phone,Type,Description,Amount\r\n');
   });
 });
 
@@ -480,3 +480,10 @@ function plan(params: {
     installments: params.installments,
   };
 }
+
+const phase3cScope = { mode: 'all' as const, branchIds: ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'] };
+
+vi.mock('../../branches/branch-breakdown', async (importOriginal) => ({
+  ...await importOriginal<typeof import('../../branches/branch-breakdown')>(),
+  branchLabel: vi.fn().mockResolvedValue('Phase 3C A'),
+}));

@@ -1,3 +1,5 @@
+import { writeBranch, type BranchScope } from '../../branches/branch-scope';
+import { assertRecordInScope } from '../../branches/parent-branch';
 import {
   Currency, LabelBarcodeSource, Prisma, ServiceAuditAction, ServiceAuditRecordType, StockMovementType,
   SupplierAuditAction, SupplierAuditRecordType, SupplierPurchaseLineKind,
@@ -64,8 +66,9 @@ export class SupplierPurchasesService {
     supplierId: string,
     input: CreateSupplierPurchaseInput,
     user: SupplierMutationUser,
-    context: SupplierRequestContext
+    context: SupplierRequestContext, scope: BranchScope
   ) {
+    writeBranch(scope);
     assertSupplierAdmin(user);
     const idempotencyKey = normalizeIdempotencyKey(input.idempotencyKey);
     const receiptNumber = input.receiptNumber ?? null;
@@ -76,11 +79,13 @@ export class SupplierPurchasesService {
       const exchangeRate = await ExchangeRatesService.snapshotFor(currency, effectiveAt, tx);
       const supplier = await SuppliersRepository.findById(supplierId, tx);
       if (!supplier) throw new NotFoundError('Supplier not found / المورد غير موجود');
+      await assertRecordInScope('supplier', supplierId, scope, tx, 'Supplier not found / المورد غير موجود');
       if (!supplier.isActive) throw new AppError('Archived suppliers cannot receive new transactions', 409, 'SUPPLIER_ARCHIVED');
 
       if (idempotencyKey) {
         const existingPurchase = await SupplierPurchasesRepository.findByIdempotencyKey(tx, idempotencyKey);
         if (existingPurchase) {
+          await assertRecordInScope('supplierPurchase', existingPurchase.id, scope, tx);
           assertIdempotentReplay({
             existingFingerprint: createExistingPurchaseFingerprint(existingPurchase, input),
             incomingFingerprint: await createIncomingPurchaseFingerprint(
@@ -173,7 +178,7 @@ export class SupplierPurchasesService {
           receivedOn: input.transactionDate,
           items: stockLines.map((line) => ({ productId: line.productId!, quantity: line.quantity! })),
           userId: user.userId,
-        }, tx);
+        }, tx, scope);
         receivingId = posted.receivingId;
         itemIdByProductId = posted.itemIdByProductId;
       }
@@ -308,15 +313,15 @@ export class SupplierPurchasesService {
     return serializePurchase(purchase);
   }
 
-  static async listForSupplier(supplierId: string, query: SupplierPurchaseListInput) {
+  static async listForSupplier(supplierId: string, query: SupplierPurchaseListInput, scope: BranchScope) {
     if (!(await SuppliersRepository.findById(supplierId))) throw new NotFoundError('Supplier not found');
-    const result = await SupplierPurchasesRepository.listForSupplier(supplierId, query.page, query.pageSize);
+    const result = await SupplierPurchasesRepository.listForSupplier(supplierId, query.page, query.pageSize, scope);
     return { items: result.items.map(serializePurchase), total: result.total, page: query.page, pageSize: query.pageSize };
   }
 
   /** Advisory only — never blocks a purchase. */
-  static async receiptCheck(input: ReceiptCheckInput) {
-    const matches = await SupplierPurchasesRepository.findReceiptMatches(input.supplierId, input.receiptNumber);
+  static async receiptCheck(input: ReceiptCheckInput, scope: BranchScope) {
+    const matches = await SupplierPurchasesRepository.findReceiptMatches(input.supplierId, input.receiptNumber, scope);
     return {
       duplicate: matches.length > 0,
       matches: matches.map((match) => ({

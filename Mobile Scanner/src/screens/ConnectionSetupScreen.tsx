@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { scannerApi, ScannerApiError } from '../api/scanner-api';
+import { testBackendConnection } from '../api/auth-api';
+import { HcApiError } from '../api/hc-client';
 import { AppButton } from '../components/AppButton';
 import { AppInput } from '../components/AppInput';
 import { StatusBanner } from '../components/StatusBanner';
@@ -26,12 +27,12 @@ export function ConnectionSetupScreen({ initialSettings, onConnected }: Connecti
 
   const connect = async (settings: ConnectionSettings): Promise<string | null> => {
     try {
-      await scannerApi.testConnection(settings);
+      await testBackendConnection(settings);
       await saveConnection(settings);
       onConnected(settings);
       return null;
     } catch (error) {
-      return error instanceof ScannerApiError ? error.message : 'Could not securely save the PC connection.';
+      return error instanceof HcApiError ? error.message : 'Could not securely save the PC connection.';
     }
   };
 

@@ -1,3 +1,5 @@
+import { scopeWhere, type BranchScope } from '../../branches/branch-scope';
+import { supplierBranch } from '../../branches/parent-branch';
 import { Prisma, SupplierTransactionStatus } from '@prisma/client';
 import { prisma } from '../../../lib/prisma';
 import { findSearchMatchIds } from '../../../lib/search-query';
@@ -25,19 +27,20 @@ export interface SupplierSearchMatch {
  * Resolves a supplier-ledger search term to matching transaction and supplier
  * ids. Returns null when there is no term, meaning "apply no search filter".
  */
-export async function resolveSupplierSearch(search?: string): Promise<SupplierSearchMatch | null> {
+export async function resolveSupplierSearch(search: string | undefined, scope: BranchScope): Promise<SupplierSearchMatch | null> {
   if (!search?.trim()) return null;
   const [transactionIds, supplierIds] = await Promise.all([
-    findSearchMatchIds('supplierTransaction', search),
-    findSearchMatchIds('supplier', search),
+    findSearchMatchIds('supplierTransaction', search, undefined, scope),
+    findSearchMatchIds('supplier', search, undefined, scope),
   ]);
   return { transactionIds: transactionIds ?? [], supplierIds: supplierIds ?? [] };
 }
 
 export function supplierTransactionWhere(
-  query: Partial<SupplierLedgerQueryInput> & { supplierId?: string; searchMatch?: SupplierSearchMatch | null }
+  query: Partial<SupplierLedgerQueryInput> & { supplierId?: string; searchMatch?: SupplierSearchMatch | null }, scope: BranchScope
 ): Prisma.SupplierTransactionWhereInput {
   return {
+    ...scopeWhere(scope),
     ...(query.supplierId ? { supplierId: query.supplierId } : {}),
     ...(query.type ? { type: query.type } : {}), ...(query.direction ? { direction: query.direction } : {}),
     ...(!query.includeRemoved ? { status: SupplierTransactionStatus.ACTIVE } : {}),
@@ -53,14 +56,14 @@ export function supplierTransactionWhere(
 
 export class SupplierTransactionsRepository {
   static findById(id: string, tx?: Prisma.TransactionClient) { return (tx ?? prisma).supplierTransaction.findUnique({ where: { id }, include: supplierTransactionInclude }); }
-  static create(
-    data: Omit<Prisma.SupplierTransactionUncheckedCreateInput, 'baseAmount'> & {
+  static async create(
+    data: Omit<Prisma.SupplierTransactionUncheckedCreateInput, 'baseAmount' | 'branchId'> & {
       baseAmount?: Prisma.SupplierTransactionUncheckedCreateInput['baseAmount'];
     },
     tx: Prisma.TransactionClient
   ) {
     return tx.supplierTransaction.create({
-      data: { ...data, baseAmount: data.baseAmount ?? data.amount },
+      data: { ...data, branchId: await supplierBranch(data.supplierId, tx), baseAmount: data.baseAmount ?? data.amount },
       include: supplierTransactionInclude,
     });
   }
@@ -71,9 +74,9 @@ export class SupplierTransactionsRepository {
     return tx.supplierTransaction.findUnique({ where: { supplierReceivingId }, select: { id: true } });
   }
   static update(id: string, data: Prisma.SupplierTransactionUncheckedUpdateInput, tx: Prisma.TransactionClient) { return tx.supplierTransaction.update({ where: { id }, data, include: supplierTransactionInclude }); }
-  static async list(query: SupplierLedgerQueryInput, supplierId?: string) {
-    const searchMatch = await resolveSupplierSearch(query.search);
-    const where = supplierTransactionWhere({ ...query, supplierId, searchMatch });
+  static async list(query: SupplierLedgerQueryInput, scope: BranchScope, supplierId?: string) {
+    const searchMatch = await resolveSupplierSearch(query.search, scope);
+    const where = supplierTransactionWhere({ ...query, supplierId, searchMatch }, scope);
     const orderBy: Prisma.SupplierTransactionOrderByWithRelationInput[] = query.sortBy === 'supplier'
       ? [{ supplier: { name: query.sortOrder } }, { transactionDate: 'desc' }, { id: 'asc' }]
       : [{ [query.sortBy]: query.sortOrder }, { createdAt: 'desc' }, { id: 'asc' }];

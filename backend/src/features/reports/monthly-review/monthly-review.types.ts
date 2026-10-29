@@ -33,6 +33,7 @@ export interface MonthlyReviewSuppliers {
 }
 
 export interface MonthlyReviewInventory {
+  inventoryScope?: 'all-branches';
   operationalSnapshot: {
     generatedAt: string;
     summary: Awaited<ReturnType<typeof import('../../inventory/inventory.service').InventoryService.getInventorySummary>>;

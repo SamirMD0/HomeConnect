@@ -34,6 +34,7 @@ export interface PrepaidPayment {
 }
 
 export interface PrepaidPurchase {
+  branchId?: string;
   id: string;
   debtId: string;
   customer: PrepaidCustomer;

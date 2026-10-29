@@ -1,0 +1,10 @@
+b299de0 feat(scanner): forward mobile JWT requests with branch scope
+a8cdb71 feat(mobile): select and persist an accessible branch
+27696a5 feat(branches): complete API coverage and scope product service jobs
+a41dc5b docs(releases): describe Phase 3 scoping and reporting corrections
+f84d5c4 feat(documents): show record branch only for multi-branch shops
+3536071 fix(mobile): preserve global scans and verify secure branch cleanup
+0626b8e test(branches): update debt transaction and mobile storage fixtures
+f957917 test: preload SVG sanitizer and complete branch audit fixture
+5c45876 test: preload real sanitizer before service and safety assertions
+e4edde1 fix(mobile): require a branch choice after access denial

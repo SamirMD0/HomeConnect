@@ -16,8 +16,7 @@ vi.mock('./monthly-debts.service', () => ({
   MonthlyDebtsService: reportsServiceMock,
 }));
 
-vi.mock('../../../lib/prisma', () => ({
-  prisma: {
+vi.mock('../../../lib/prisma', async () => ({ prisma: { ...((await import('../../../test/branch-scope-fixture.js')).singleBranchRouteModels()),
     $queryRaw: vi.fn().mockResolvedValue([{ result: 1 }]),
   },
   transactionModel: {},
@@ -120,7 +119,7 @@ describe('monthly debts report routes', () => {
       limit: 25,
       sortBy: 'CUSTOMER',
       sortOrder: 'ASC',
-    });
+    }, phase3cScope);
   });
 
   it('rejects invalid months', async () => {
@@ -154,7 +153,7 @@ describe('monthly debts report routes', () => {
       customerId: undefined,
       page: 1,
       limit: 50,
-    });
+    }, phase3cScope);
   });
 
   it('exports monthly financial activity CSV with download headers', async () => {
@@ -166,3 +165,10 @@ describe('monthly debts report routes', () => {
     expect(response.headers['content-disposition']).toContain('monthly-financial-activity-2026-07.csv');
   });
 });
+
+const phase3cScope = { mode: 'all' as const, branchIds: ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'] };
+
+vi.mock('../../branches/branch-breakdown', async (importOriginal) => ({
+  ...await importOriginal<typeof import('../../branches/branch-breakdown')>(),
+  branchLabel: vi.fn().mockResolvedValue('Phase 3C A'),
+}));

@@ -28,7 +28,7 @@ describe('MonthlyReviewService', () => {
 
     const report = await MonthlyReviewService.get(
       { period: 'custom', from: '2026-07-10', to: '2026-07-20' },
-      { businessDate: '2026-08-17', generatedAt: new Date('2026-08-17T08:00:00.000Z') }
+      { businessDate: '2026-08-17', generatedAt: new Date('2026-08-17T08:00:00.000Z') }, phase3cScope
     );
 
     expect(report.meta).toEqual({
@@ -51,16 +51,16 @@ describe('MonthlyReviewService', () => {
 
     await MonthlyReviewService.get(
       { period: 'thisMonth' },
-      { businessDate: '2026-08-17', generatedAt: new Date('2026-08-17T08:00:00.000Z') }
+      { businessDate: '2026-08-17', generatedAt: new Date('2026-08-17T08:00:00.000Z') }, phase3cScope
     );
 
-    expect(services.monthEnd).toHaveBeenCalledWith({ from: '2026-08-01', to: '2026-08-17' });
+    expect(services.monthEnd).toHaveBeenCalledWith({ from: '2026-08-01', to: '2026-08-17' }, phase3cScope);
     expect(services.metrics).toHaveBeenCalledWith(expect.objectContaining({
       from: '2026-08-01', to: '2026-08-17', preset: 'thisMonth',
-    }));
+    }), phase3cScope);
     expect(services.sales).toHaveBeenCalledWith(expect.objectContaining({
       from: '2026-08-01', to: '2026-08-17',
-    }), '2026-08-17');
+    }), '2026-08-17', phase3cScope);
   });
 
   it('exports the composed review through the shared BOM CSV builder', async () => {
@@ -68,7 +68,7 @@ describe('MonthlyReviewService', () => {
     services.monthEnd.mockResolvedValueOnce({ customers: { ...movement('70.00'), collected: '100.00', nonReceivableCollected: '100.00' }, suppliers: { ...movement('40.00'), withBalance: 1 }, disclosure: { en: 'Disclosure', ar: 'إفصاح' }, service: {} });
     const result = await MonthlyReviewService.exportCsv(
       { period: 'lastMonth' },
-      { businessDate: '2026-08-17', generatedAt: new Date('2026-08-17T08:00:00.000Z') }
+      { businessDate: '2026-08-17', generatedAt: new Date('2026-08-17T08:00:00.000Z') }, phase3cScope
     );
     expect(result.filename).toBe('monthly-review-2026-07-01-to-2026-07-31.csv');
     expect(result.csv.startsWith('\uFEFF')).toBe(true);
@@ -109,3 +109,10 @@ function movement(closing: string) {
     closing, reconciled: true, withDebt: 1, fullyPaid: 0, overdue: 0,
   };
 }
+
+const phase3cScope = { mode: 'all' as const, branchIds: ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'] };
+
+vi.mock('../../branches/branch-breakdown', async (importOriginal) => ({
+  ...await importOriginal<typeof import('../../branches/branch-breakdown')>(),
+  branchLabel: vi.fn().mockResolvedValue('Phase 3C A'),
+}));

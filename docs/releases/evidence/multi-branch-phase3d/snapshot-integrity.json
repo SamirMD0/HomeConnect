@@ -1,0 +1,26 @@
+[
+  {
+    "path": "frontend/src/features/documents/components/__snapshots__/CustomerStatementDocument.test.tsx.snap",
+    "sha256": "bd5e980a0121516c449bc9966f2aee2bc68c1c5f6cba971d8ab2bd083d2e882a",
+    "baselineSha256": "bd5e980a0121516c449bc9966f2aee2bc68c1c5f6cba971d8ab2bd083d2e882a",
+    "byteIdentical": true
+  },
+  {
+    "path": "frontend/src/features/documents/components/__snapshots__/PaymentReceiptDocument.test.tsx.snap",
+    "sha256": "159a3aa1f2c69ed6a259c203ba887d80a93955b89dfed964f99adc3de01c8a36",
+    "baselineSha256": "159a3aa1f2c69ed6a259c203ba887d80a93955b89dfed964f99adc3de01c8a36",
+    "byteIdentical": true
+  },
+  {
+    "path": "frontend/src/features/documents/components/__snapshots__/SalesInvoiceDocument.test.tsx.snap",
+    "sha256": "80fca1e76533a173ccfb5e6578125ddcdd55b4f656b8703c8cd90a36cc057315",
+    "baselineSha256": "80fca1e76533a173ccfb5e6578125ddcdd55b4f656b8703c8cd90a36cc057315",
+    "byteIdentical": true
+  },
+  {
+    "path": "frontend/src/features/documents/components/__snapshots__/SalesReturnDocument.test.tsx.snap",
+    "sha256": "17a88af4cef141aac025de5a42adc7f441169f464578d03b9f39585668ea00ca",
+    "baselineSha256": "17a88af4cef141aac025de5a42adc7f441169f464578d03b9f39585668ea00ca",
+    "byteIdentical": true
+  }
+]

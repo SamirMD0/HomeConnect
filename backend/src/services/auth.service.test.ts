@@ -14,16 +14,11 @@ vi.mock('bcrypt', () => ({
   },
 }));
 
-vi.mock('../lib/prisma', () => ({
-  prisma: {
-    user: {
-      findFirst: vi.fn(),
-      findUnique: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
-    },
-  },
-}));
+vi.mock('../lib/prisma', () => {
+  const prisma={user:{findFirst:vi.fn(),findUnique:vi.fn(),create:vi.fn(),update:vi.fn()},userBranchAccess:{createMany:vi.fn()},branch:{findMany:vi.fn().mockResolvedValue([]),findFirst:vi.fn().mockResolvedValue(null),create:vi.fn()},$transaction:vi.fn()};
+  prisma.$transaction.mockImplementation((operation:(tx:unknown)=>Promise<unknown>)=>operation(prisma));
+  return {prisma};
+});
 
 const activeAdmin = {
   id: 'admin-1',
@@ -41,6 +36,8 @@ describe('AuthService setup account', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     clearUserSessionStatusCache();
+    vi.stubEnv('MULTI_BRANCH_SCOPING_ENABLED', 'false');
+    vi.mocked(prisma.branch.findMany).mockResolvedValue([]);
     vi.mocked(bcrypt.hash).mockResolvedValue('hashed-new-password' as never);
   });
 
@@ -68,6 +65,9 @@ describe('AuthService setup account', () => {
         role: Role.ADMIN,
       },
     });
+    expect(prisma.branch.create).toHaveBeenCalledWith({data:{code:'MAIN',name:'Main branch',createdById:'admin-1'}});
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(prisma.userBranchAccess.createMany).not.toHaveBeenCalled();
     expect(result.user.role).toBe(Role.ADMIN);
     expect(result).toHaveProperty('accessToken');
     expect(result).toHaveProperty('refreshToken');
@@ -108,6 +108,7 @@ describe('AuthService setup account', () => {
   });
 
   it('creates a user after active admin password approval without auto-login tokens', async () => {
+    vi.mocked(prisma.branch.findMany).mockResolvedValue([{id:'main',createdById:'admin-1'}] as never);
     vi.mocked(prisma.user.findFirst).mockResolvedValue(activeAdmin as never);
     vi.mocked(prisma.user.findUnique)
       .mockResolvedValueOnce(activeAdmin as never)
@@ -138,6 +139,7 @@ describe('AuthService setup account', () => {
         role: Role.EMPLOYEE,
       },
     });
+    expect(prisma.userBranchAccess.createMany).toHaveBeenCalledWith({data:[{userId:'employee-1',branchId:'main',grantedById:'admin-1'}],skipDuplicates:true});
     expect(result).toEqual({
       user: {
         id: 'employee-1',

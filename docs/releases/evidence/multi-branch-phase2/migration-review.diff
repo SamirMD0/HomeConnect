@@ -1,0 +1,22 @@
+diff --git a/backend/prisma/migrations/20261027120000_add_branch_ownership/migration.sql b/backend/prisma/migrations/20261027120000_add_branch_ownership/migration.sql
+index 4bc6eeb..c12e8bc 100644
+--- a/backend/prisma/migrations/20261027120000_add_branch_ownership/migration.sql
++++ b/backend/prisma/migrations/20261027120000_add_branch_ownership/migration.sql
+@@ -73,6 +73,17 @@ BEGIN
+     END IF;
+   END IF;
+ 
++  -- D1: existing non-deleted employees worked in the one historical shop.
++  -- Preserve any Phase 1 grant (including its original grantor and timestamp).
++  IF historical_branch IS NOT NULL THEN
++    INSERT INTO "user_branch_access" ("userId", "branchId", "grantedById")
++      SELECT employee."id", historical_branch, branch."createdById"
++      FROM "users" employee
++      JOIN "branches" branch ON branch."id" = historical_branch
++      WHERE employee."role" = 'EMPLOYEE' AND employee."deletedAt" IS NULL
++      ON CONFLICT ("userId", "branchId") DO NOTHING;
++  END IF;
++
+   -- Keep customers.branchId in place; every other owned table gets a nullable column.
+   ALTER TABLE "suppliers" ADD COLUMN "branchId" UUID;
+   ALTER TABLE "sales_orders" ADD COLUMN "branchId" UUID;

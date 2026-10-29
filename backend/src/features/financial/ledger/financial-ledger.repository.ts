@@ -1,3 +1,4 @@
+import { scopeWhere, type BranchScope } from '../../branches/branch-scope';
 import {
   DebtKind,
   DebtStatus,
@@ -119,9 +120,9 @@ export interface FinancialLedgerCorrectionMarkers {
 }
 
 export class FinancialLedgerRepository {
-  static async loadFinancialLedger(params: LoadFinancialLedgerParams): Promise<FinancialLedgerRecordSet> {
+  static async loadFinancialLedger(params: LoadFinancialLedgerParams, scope: BranchScope): Promise<FinancialLedgerRecordSet> {
     const customerWhere = this.customerWhere();
-    const searchIds = await this.resolveSearchIds(params);
+    const searchIds = await this.resolveSearchIds(params, scope);
     // Customer name/phone as before, now also the obligation description.
     const debtSearchWhere: Prisma.DebtWhereInput = searchIds
       ? {
@@ -138,6 +139,7 @@ export class FinancialLedgerRepository {
       : {};
 
     const debtWhere: Prisma.DebtWhereInput = {
+      ...scopeWhere(scope),
       ...customerWhere,
       ...debtSearchWhere,
       ...(params.customerId ? { customerId: params.customerId } : {}),
@@ -155,6 +157,7 @@ export class FinancialLedgerRepository {
         : {}),
     };
     const planWhere: Prisma.InstallmentPlanWhereInput = {
+      ...scopeWhere(scope),
       ...customerWhere,
       ...customerSearchWhere,
       ...(params.customerId ? { customerId: params.customerId } : {}),
@@ -173,6 +176,7 @@ export class FinancialLedgerRepository {
         : {}),
     };
     const paymentWhere: Prisma.PaymentWhereInput = {
+      ...scopeWhere(scope),
       OR: [{ customerId: null }, customerWhere],
       ...customerSearchWhere,
       ...(params.customerId ? { customerId: params.customerId } : {}),
@@ -289,13 +293,13 @@ export class FinancialLedgerRepository {
    * Resolves the ledger search term to matching customer ids and debt ids.
    * Returns null when there is no search, meaning "apply no search filter".
    */
-  private static async resolveSearchIds(params: LoadFinancialLedgerParams) {
+  private static async resolveSearchIds(params: LoadFinancialLedgerParams, scope: BranchScope) {
     const search = params.search?.trim();
     if (!search) return null;
 
     const [customerIds, debtIds] = await Promise.all([
-      findSearchMatchIds('customer', search),
-      findSearchMatchIds('debt', search),
+      findSearchMatchIds('customer', search, undefined, scope),
+      findSearchMatchIds('debt', search, undefined, scope),
     ]);
 
     return { customerIds: customerIds ?? [], debtIds: debtIds ?? [] };

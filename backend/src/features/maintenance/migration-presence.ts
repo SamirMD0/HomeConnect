@@ -11,7 +11,9 @@ import { BundledMigration } from './migration-runner';
  *
  * This is deliberately a *veto*, not an oracle. PRESENT and UNKNOWN both defer to
  * the admin; only MISSING blocks, because a named table or column that should
- * exist and does not is hard evidence the migration never ran.
+ * exist and does not is hard evidence the migration never ran. That evidence
+ * holds even when the migration also drops or renames something, so MISSING is
+ * checked first.
  */
 
 export type PresenceVerdict = 'PRESENT' | 'MISSING' | 'UNKNOWN';
@@ -71,6 +73,17 @@ const CREATE_EXTENSION = new RegExp(String.raw`CREATE\s+EXTENSION\s+(?:IF\s+NOT\
 
 /** Anything that removes or renames makes "already present" meaningless. */
 const DESTRUCTIVE = /\b(DROP\s+(TABLE|COLUMN|TYPE|INDEX|CONSTRAINT)|RENAME\s+(TO|COLUMN))\b/i;
+const DROP_TABLE = new RegExp(String.raw`DROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?${SCHEMA}${IDENT}`, 'gi');
+const RENAME_TABLE = new RegExp(String.raw`ALTER\s+TABLE\s+(?:ONLY\s+)?${SCHEMA}${IDENT}\s+RENAME\s+TO\b`, 'gi');
+const DROP_COLUMN = new RegExp(
+  String.raw`ALTER\s+TABLE\s+(?:ONLY\s+)?${SCHEMA}${IDENT}\s+DROP\s+COLUMN\s+(?:IF\s+EXISTS\s+)?${IDENT}`,
+  'gi'
+);
+const RENAME_COLUMN = new RegExp(
+  String.raw`ALTER\s+TABLE\s+(?:ONLY\s+)?${SCHEMA}${IDENT}\s+RENAME\s+COLUMN\s+${IDENT}`,
+  'gi'
+);
+const DROP_INDEX = new RegExp(String.raw`DROP\s+INDEX\s+(?:CONCURRENTLY\s+)?(?:IF\s+EXISTS\s+)?${SCHEMA}${IDENT}`, 'gi');
 
 function matchAll(sql: string, pattern: RegExp, build: (match: RegExpExecArray) => string): string[] {
   const found: string[] = [];
@@ -100,8 +113,37 @@ export function expectedObjects(sql: string): string[] {
   ].filter((value, index, all) => all.indexOf(value) === index);
 }
 
+/**
+ * Objects the migration itself drops or renames away. One it creates and later
+ * removes is legitimately absent after a real run, so it is not evidence.
+ */
+function removedObjects(sql: string): Set<string> {
+  const stripped = sql.replace(/--[^\n]*/g, '');
+  return new Set([
+    ...matchAll(stripped, DROP_TABLE, (m) => `table:${unquote(m[1])}`),
+    ...matchAll(stripped, RENAME_TABLE, (m) => `table:${unquote(m[1])}`),
+    ...matchAll(stripped, DROP_COLUMN, (m) => `column:${unquote(m[1])}.${unquote(m[2])}`),
+    ...matchAll(stripped, RENAME_COLUMN, (m) => `column:${unquote(m[1])}.${unquote(m[2])}`),
+    ...matchAll(stripped, DROP_INDEX, (m) => `index:${unquote(m[1])}`),
+  ]);
+}
+
 export function classifyPresence(migration: BundledMigration, schema: SchemaObjects): MigrationPresence {
   if (DESTRUCTIVE.test(migration.sql.replace(/--[^\n]*/g, ''))) {
+    // A drop elsewhere does not excuse a created object that is absent: that
+    // still proves the migration never ran. (The branch-ownership migration,
+    // which also drops users.branchId, was twice resolved unrun this way.)
+    const removed = removedObjects(migration.sql);
+    const checkable = expectedObjects(migration.sql).filter((object) => !removed.has(object));
+    const missing = checkable.filter((object) => !hasObject(object, schema));
+    if (missing.length > 0) {
+      return {
+        verdict: 'MISSING',
+        expected: checkable,
+        missing,
+        reason: `The database is missing ${missing.length} of ${checkable.length} items this update creates.`,
+      };
+    }
     return {
       verdict: 'UNKNOWN',
       expected: [],

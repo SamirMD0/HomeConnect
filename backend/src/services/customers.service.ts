@@ -1,3 +1,5 @@
+import { assertInScope, writeBranch, type BranchScope } from '../features/branches/branch-scope';
+import { runFinancialTransaction } from '../features/financial/infrastructure/transaction';
 import { CustomersRepository } from '../repositories/customers.repository';
 import { AuthorizationError, NotFoundError, ValidationError } from '../lib/errors';
 import { Prisma } from '@prisma/client';
@@ -5,20 +7,22 @@ import { ReceivablesService } from '../features/financial/receivables/receivable
 import { findSearchMatchIds } from '../lib/search-query';
 
 export class CustomersService {
-  static async createCustomer(data: { name: string; phone: string; address?: string | null; notes?: string | null; creditLimit?: string | null; createdBy: string }, actor?: { role: string }) {
+  static async createCustomer(data: { name: string; phone: string; address?: string | null; notes?: string | null; creditLimit?: string | null; createdBy: string }, scope: BranchScope, actor?: { role: string }) {
     assertCreditLimitPermission(data, actor);
-    const existingPhone = await CustomersRepository.findByPhone(data.phone);
-    if (existingPhone) {
-      throw new ValidationError('A customer with this phone number already exists.');
-    }
-
-    return CustomersRepository.create({
-      name: data.name,
-      phone: data.phone,
-      address: data.address,
-      notes: data.notes,
-      createdBy: data.createdBy,
-      ...(data.creditLimit !== undefined ? { creditLimit: data.creditLimit } : {}),
+    const branchId = writeBranch(scope);
+    return runFinancialTransaction(async tx => {
+      if (await CustomersRepository.findByPhone(data.phone, branchId, tx)) {
+        throw new ValidationError('A customer with this phone number already exists.');
+      }
+      return CustomersRepository.create({
+        branchId,
+        name: data.name,
+        phone: data.phone,
+        address: data.address,
+        notes: data.notes,
+        createdBy: data.createdBy,
+        ...(data.creditLimit !== undefined ? { creditLimit: data.creditLimit } : {}),
+      }, tx);
     });
   }
 
@@ -39,7 +43,7 @@ export class CustomersService {
     sortOrder?: 'asc' | 'desc';
     includeFinancial?: boolean;
     filter?: 'withBalance' | 'overdue' | 'noDebt' | 'inactive';
-  }) {
+  }, scope: BranchScope) {
     const { includeFinancial, filter, ...requestedListParams } = params;
     const financialSort = ['outstanding', 'overdue', 'lastPayment'].includes(params.sortBy ?? '');
     const needsFinancialView = financialSort || Boolean(filter);
@@ -54,8 +58,8 @@ export class CustomersService {
         }
       : requestedListParams as Parameters<typeof CustomersRepository.findAll>[0];
     const [{ customers, total }, namePhoneMatchedIds] = await Promise.all([
-      CustomersRepository.findAll(listParams),
-      findSearchMatchIds('customerNamePhone', params.search),
+      CustomersRepository.findAll(listParams, scope),
+      findSearchMatchIds('customerNamePhone', params.search, undefined, scope),
     ]);
 
     const namePhoneMatchSet = namePhoneMatchedIds === null
@@ -73,6 +77,7 @@ export class CustomersService {
     }
 
     const projections = await ReceivablesService.computeReceivableProjections({
+      scope,
       customerIds: customersWithMatchInfo.map((customer) => customer.id),
     });
 
@@ -106,49 +111,49 @@ export class CustomersService {
     return { customers: enriched, total: needsFinancialView ? filteredTotal : total };
   }
 
-  static async getCustomer(id: string) {
-    const customer = await CustomersRepository.findById(id);
-    if (!customer) {
-      throw new NotFoundError('Customer not found');
-    }
+  static async getCustomer(id: string, scope: BranchScope) {
+    const customer = await CustomersRepository.findById(id, scope);
+    if (!customer) throw new NotFoundError('Customer not found');
+    assertInScope(customer.branchId, scope, 'Customer not found');
     return customer;
   }
 
-  static async updateCustomer(id: string, data: { name?: string; phone?: string; address?: string | null; notes?: string | null; creditLimit?: string | null; isActive?: boolean }, actor?: { role: string }) {
+  static async updateCustomer(id: string, data: { name?: string; phone?: string; address?: string | null; notes?: string | null; creditLimit?: string | null; isActive?: boolean }, scope: BranchScope, actor?: { role: string }) {
     assertCreditLimitPermission(data, actor);
-    const customer = await CustomersRepository.findById(id);
-    if (!customer) {
-      throw new NotFoundError('Customer not found');
-    }
-
-    if (data.phone && data.phone !== customer.phone) {
-      const existingPhone = await CustomersRepository.findByPhone(data.phone);
-      if (existingPhone) {
-        throw new ValidationError('A customer with this phone number already exists.');
+    return runFinancialTransaction(async tx => {
+      const customer = await CustomersRepository.findById(id, scope, tx);
+      if (!customer) throw new NotFoundError('Customer not found');
+      assertInScope(customer.branchId, scope, 'Customer not found');
+      writeBranch(scope);
+      if (data.phone && data.phone !== customer.phone) {
+        if (await CustomersRepository.findByPhone(data.phone, customer.branchId, tx)) {
+          throw new ValidationError('A customer with this phone number already exists.');
+        }
       }
-    }
 
-    const updateData: Prisma.CustomerUpdateInput = {};
-    if (data.name !== undefined) updateData.name = data.name;
-    if (data.phone !== undefined) updateData.phone = data.phone;
-    if (data.address !== undefined) updateData.address = data.address;
-    if (data.notes !== undefined) updateData.notes = data.notes;
-    if (data.creditLimit !== undefined) updateData.creditLimit = data.creditLimit;
-    if (data.isActive !== undefined) updateData.isActive = data.isActive;
-
-    return CustomersRepository.update(id, updateData);
+      const updateData: Prisma.CustomerUpdateInput = {};
+      if (data.name !== undefined) updateData.name = data.name;
+      if (data.phone !== undefined) updateData.phone = data.phone;
+      if (data.address !== undefined) updateData.address = data.address;
+      if (data.notes !== undefined) updateData.notes = data.notes;
+      if (data.creditLimit !== undefined) updateData.creditLimit = data.creditLimit;
+      if (data.isActive !== undefined) updateData.isActive = data.isActive;
+      return CustomersRepository.update(id, updateData, scope, tx);
+    });
   }
 
-  static async deleteCustomer(id: string) {
-    const customer = await CustomersRepository.findById(id);
-    if (!customer) {
-      throw new NotFoundError('Customer not found');
-    }
-    return CustomersRepository.softDelete(id);
+  static async deleteCustomer(id: string, scope: BranchScope) {
+    return runFinancialTransaction(async tx => {
+      const customer = await CustomersRepository.findById(id, scope, tx);
+      if (!customer) throw new NotFoundError('Customer not found');
+      assertInScope(customer.branchId, scope, 'Customer not found');
+      writeBranch(scope);
+      return CustomersRepository.softDelete(id, scope, tx);
+    });
   }
 }
 
-function assertCreditLimitPermission(data: { creditLimit?: string | null }, actor?: { role: string }) {
+export function assertCreditLimitPermission(data: { creditLimit?: string | null }, actor?: { role: string }) {
   if (data.creditLimit !== undefined && actor?.role !== 'ADMIN') {
     throw new AuthorizationError('Only an ADMIN can configure customer credit limits / تعديل حد الائتمان متاح للمسؤول فقط');
   }

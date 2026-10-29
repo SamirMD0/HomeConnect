@@ -17,11 +17,28 @@ import {
  * scratch database — never the business database — can be used in tests.
  */
 
+/** Prisma's interactive-transaction limits, which the client checks itself. */
+export interface MigrationTransactionOptions {
+  maxWait: number;
+  timeout: number;
+}
+
+/**
+ * Migrations rewrite whole tables (branch backfills, new indexes), so on a real
+ * shop database one can take far longer than Prisma's 5 s default, which would
+ * cancel and roll it back part-way. Allow 30 minutes; the transaction still
+ * rolls back on any error.
+ */
+export const MIGRATION_TRANSACTION_OPTIONS: MigrationTransactionOptions = {
+  maxWait: 30_000,
+  timeout: 30 * 60_000,
+};
+
 /** The slice of the Prisma client this needs, so tests can supply a fake. */
 export interface MigrationClient {
   $queryRawUnsafe<T = unknown>(sql: string): Promise<T>;
   $executeRawUnsafe(sql: string): Promise<number>;
-  $transaction<T>(run: (tx: MigrationClient) => Promise<T>): Promise<T>;
+  $transaction<T>(run: (tx: MigrationClient) => Promise<T>, options?: MigrationTransactionOptions): Promise<T>;
 }
 
 export interface ApplyOutcome {
@@ -65,7 +82,7 @@ export class MigrationExecutor {
     try {
       await client.$transaction(async (tx) => {
         for (const statement of statements) await tx.$executeRawUnsafe(statement);
-      });
+      }, MIGRATION_TRANSACTION_OPTIONS);
       return {
         name: migration.name,
         applied: true,
@@ -96,7 +113,7 @@ export class MigrationExecutor {
     try {
       await client.$transaction(async (tx) => {
         for (const statement of statements) await tx.$executeRawUnsafe(statement);
-      });
+      }, MIGRATION_TRANSACTION_OPTIONS);
       return {
         name: migration.name,
         applied: true,

@@ -16,10 +16,14 @@ function child(exitCode: number | null = 0) {
 function fixture() {
   const fs = {
     readFile: vi.fn().mockResolvedValue('2.0.2'),
-    readdir: vi.fn().mockResolvedValue(['001', '002'].map((name) => ({ name, isDirectory: () => true }))),
+    readdir: vi.fn().mockImplementation(async (directory: string) =>
+      directory.includes('migrations')
+        ? ['001', '002'].map((name) => ({ name, isDirectory: () => true }))
+        : [{ name: '11111111-1111-4111-8111-111111111111.jpg', isFile: () => true }]),
     mkdir: vi.fn().mockResolvedValue(undefined),
     writeFile: vi.fn().mockResolvedValue(undefined),
-    stat: vi.fn().mockResolvedValue({ size: 1_000_001 }),
+    copyFile: vi.fn().mockResolvedValue(undefined),
+    stat: vi.fn().mockResolvedValue({ size: 1_000_001, isFile: () => true }),
   };
   const spawn = vi.fn(() => child()) as unknown as typeof nodeSpawn & ReturnType<typeof vi.fn>;
   const options: PreMigrationGuardOptions = {
@@ -84,7 +88,7 @@ describe('runPreMigrationGuard', () => {
     spawn.mockImplementationOnce(() => child(0)).mockImplementationOnce(() => child(1));
     expect(await runPreMigrationGuard(options)).toMatchObject({ kind: 'failed', code: 'MIGRATION_FAILED', backupPath: expect.any(String) });
     expect(spawn).toHaveBeenCalledTimes(2);
-    expect(fs.writeFile).not.toHaveBeenCalled();
+    expect(fs.writeFile).not.toHaveBeenCalledWith(expect.stringContaining('last-run-version.txt'), expect.anything(), expect.anything());
   });
 
   it('kills a migration that exceeds the timeout', async () => {
@@ -104,7 +108,33 @@ describe('runPreMigrationGuard', () => {
     const { options, fs, spawn } = fixture();
     expect(await runPreMigrationGuard(options)).toMatchObject({ kind: 'migrated', count: 1, backupPath: expect.any(String), from: '2.0.2', to: '2.0.3' });
     expect(spawn).toHaveBeenCalledTimes(2);
+    expect(fs.copyFile).toHaveBeenCalledWith(expect.stringContaining('receipts'), expect.stringContaining('.receipts'));
     expect(fs.writeFile).toHaveBeenCalledWith(expect.stringContaining('last-run-version.txt'), '2.0.3', 'utf8');
+  });
+
+  it('allows an installation with no receipt directory', async () => {
+    const { options, fs, spawn } = fixture();
+    fs.readdir.mockImplementation(async (directory: string) => {
+      if (directory.includes('migrations')) return ['001', '002'].map((name) => ({ name, isDirectory: () => true }));
+      throw Object.assign(new Error('not found'), { code: 'ENOENT' });
+    });
+    expect(await runPreMigrationGuard(options)).toMatchObject({ kind: 'migrated' });
+    expect(fs.copyFile).not.toHaveBeenCalled();
+    expect(spawn).toHaveBeenCalledTimes(2);
+  });
+
+  it('uses the configured receipt directory', async () => {
+    const { options, fs } = fixture();
+    options.receiptsDir = 'D:/shop-photos';
+    expect(await runPreMigrationGuard(options)).toMatchObject({ kind: 'migrated' });
+    expect(fs.copyFile).toHaveBeenCalledWith(expect.stringContaining('shop-photos'), expect.stringContaining('.receipts'));
+  });
+
+  it('does not migrate if a receipt cannot be copied', async () => {
+    const { options, fs, spawn } = fixture();
+    fs.copyFile.mockRejectedValue(new Error('disk full'));
+    expect(await runPreMigrationGuard(options)).toMatchObject({ kind: 'failed', code: 'RECEIPT_BACKUP_FAILED' });
+    expect(spawn).toHaveBeenCalledTimes(1);
   });
 
   it('treats a fresh database with no migration table as pending', async () => {

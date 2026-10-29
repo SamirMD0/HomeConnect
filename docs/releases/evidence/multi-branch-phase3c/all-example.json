@@ -1,0 +1,33 @@
+{
+  "totals": {
+    "owed": "240.00",
+    "paid": "80.00",
+    "paidToday": "80.00",
+    "suppliersWithBalance": 2
+  },
+  "branchBreakdown": [
+    {
+      "branchId": "bdc8f89a-1fc0-45a5-836c-09090e899468",
+      "branchCode": "3CAed9b9b78",
+      "branchName": "3C A ed9b9b78c53947a1a729f8b708f969c2",
+      "totals": {
+        "owed": "80.00",
+        "paid": "30.00",
+        "paidToday": "30.00",
+        "suppliersWithBalance": 1
+      }
+    },
+    {
+      "branchId": "0d47b474-0c6b-4ac8-89c9-9c558a60745b",
+      "branchCode": "3CBed9b9b78",
+      "branchName": "3C B ed9b9b78c53947a1a729f8b708f969c2",
+      "totals": {
+        "owed": "160.00",
+        "paid": "50.00",
+        "paidToday": "50.00",
+        "suppliersWithBalance": 1
+      }
+    }
+  ],
+  "proof": "80.00 + 160.00 = 240.00"
+}

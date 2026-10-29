@@ -1,6 +1,6 @@
 import path from 'path';
 import { describe, expect, it } from 'vitest';
-import { BackupCommandRunner } from './backup-command-runner';
+import { BackupCommandRunner, RESET_PUBLIC_SCHEMA_SQL } from './backup-command-runner';
 import { BackupOperationLock } from './backup-operation-lock';
 import { assertPathInsideDirectory, assertSafeBackupDirectory } from './backup-paths';
 import { BackupService } from './backup.service';
@@ -55,12 +55,21 @@ describe('backup safety helpers', () => {
       '--list',
       'D:/backups/test.backup',
     ]);
-    expect(BackupCommandRunner.pgRestoreArgs(connection, 'D:/backups/test.backup')).toEqual(
-      expect.arrayContaining(['--clean', '--if-exists', '--dbname=homeconnect', 'D:/backups/test.backup'])
+    expect(BackupCommandRunner.pgRestoreToSqlArgs('D:/backups/test.backup', 'C:/tmp/restore.sql')).toEqual([
+      '--no-owner',
+      '--no-privileges',
+      '--file=C:/tmp/restore.sql',
+      'D:/backups/test.backup',
+    ]);
+    const restore = BackupCommandRunner.psqlAtomicRestoreArgs(connection, 'C:/tmp/restore.sql');
+    expect(restore.join(' ')).not.toContain('secret-password');
+    // One transaction that stops at the first error, so a failed restore changes nothing.
+    expect(restore).toEqual(
+      expect.arrayContaining(['--single-transaction', '--set=ON_ERROR_STOP=1', '--dbname=homeconnect'])
     );
-    expect(BackupCommandRunner.pgRestoreArgs(connection, 'D:/backups/test.backup').join(' ')).not.toContain(
-      'secret-password'
-    );
+    // The schema is emptied inside that same transaction, before the backup is replayed.
+    expect(restore.indexOf(`--command=${RESET_PUBLIC_SCHEMA_SQL}`)).toBeLessThan(restore.indexOf('--file=C:/tmp/restore.sql'));
+    expect(restore).not.toContain('--clean');
   });
 
   it('prevents overlapping operations', async () => {

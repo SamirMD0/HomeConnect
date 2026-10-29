@@ -18,6 +18,12 @@ vi.mock('../../financial/infrastructure/transaction', () => ({ runFinancialTrans
 vi.mock('../../../lib/prisma', () => ({ prisma: {}, transactionModel: {}, activityLogModel: {} }));
 
 import { ServiceJobsService } from './service-jobs.service';
+const phase3bScope = { mode: 'all' as const, branchIds: ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'] };
+vi.mock('../../branches/parent-branch', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../branches/parent-branch')>()),
+  assertRecordInScope: vi.fn().mockResolvedValue('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
+}));
+
 
 const admin = { userId: '11111111-1111-4111-8111-111111111111', role: Role.ADMIN, username: 'admin' };
 const employee = { ...admin, userId: '22222222-2222-4222-8222-222222222222', role: Role.EMPLOYEE };
@@ -58,7 +64,7 @@ describe('service job security and audit policy', () => {
   // update wrote NO audit row at all, so relaxing the branch naively would have
   // removed audit coverage instead of only removing friction.
   it('writes an audit row for a NON-sensitive update', async () => {
-    await ServiceJobsService.update(jobId, { notes: 'Left at the counter' }, employee, context);
+    await ServiceJobsService.update(jobId, { notes: 'Left at the counter' }, employee, context, phase3bScope);
     expect(writeAudit).toHaveBeenCalledTimes(1);
     expect(lastAudit()).toMatchObject({
       recordType: 'SERVICE_JOB', recordId: jobId, serviceJobId: jobId, action: 'UPDATE_DETAILS',
@@ -69,29 +75,29 @@ describe('service job security and audit policy', () => {
   });
 
   it('writes an audit row for a sensitive admin update, with no password', async () => {
-    await ServiceJobsService.update(jobId, { finalPrice: '75.00' }, admin, context);
+    await ServiceJobsService.update(jobId, { finalPrice: '75.00' }, admin, context, phase3bScope);
     expect(writeAudit).toHaveBeenCalledTimes(1);
     expect(lastAudit()).toMatchObject({ action: 'CHANGE_PRICE', reason: 'Service job pricing updated / تم تحديث تسعير طلب الصيانة' });
     expect(verify).not.toHaveBeenCalled();
   });
 
   it('derives the reason from the audit action', async () => {
-    await ServiceJobsService.update(jobId, { warrantyStatus: 'UNDER_WARRANTY' }, admin, context);
+    await ServiceJobsService.update(jobId, { warrantyStatus: 'UNDER_WARRANTY' }, admin, context, phase3bScope);
     expect(lastAudit()).toMatchObject({ action: 'CHANGE_WARRANTY', reason: 'Service job warranty updated / تم تحديث ضمان طلب الصيانة' });
 
-    await ServiceJobsService.update(jobId, { routingDecision: 'WORKSHOP' }, admin, context);
+    await ServiceJobsService.update(jobId, { routingDecision: 'WORKSHOP' }, admin, context, phase3bScope);
     expect(lastAudit()).toMatchObject({ action: 'CHANGE_ROUTING', reason: 'Service job routing updated / تم تحديث توجيه طلب الصيانة' });
   });
 
   it('keeps sensitive fields admin-only', async () => {
-    await expect(ServiceJobsService.update(jobId, { finalPrice: '75.00' }, employee, context)).rejects.toThrow();
+    await expect(ServiceJobsService.update(jobId, { finalPrice: '75.00' }, employee, context, phase3bScope)).rejects.toThrow();
     expect(repository.update).not.toHaveBeenCalled();
     expect(writeAudit).not.toHaveBeenCalled();
   });
 
   it('still lets an employee edit the non-sensitive fields they could edit before', async () => {
-    await ServiceJobsService.update(jobId, { notes: 'Left at the counter' }, employee, context);
-    await ServiceJobsService.update(jobId, { requestedPartName: 'Motor' }, employee, context);
+    await ServiceJobsService.update(jobId, { notes: 'Left at the counter' }, employee, context, phase3bScope);
+    await ServiceJobsService.update(jobId, { requestedPartName: 'Motor' }, employee, context, phase3bScope);
     expect(repository.update).toHaveBeenCalledTimes(2);
     expect(writeAudit).toHaveBeenCalledTimes(2);
   });

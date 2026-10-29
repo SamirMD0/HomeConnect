@@ -1,3 +1,4 @@
+import type { BranchScope } from '../../branches/branch-scope';
 import { CorrectionAuditRepository } from '../corrections/correction-audit.repository';
 import { CustomerFinancialSummaryService } from './customer-financial-summary.service';
 
@@ -7,12 +8,12 @@ export interface CustomerActivityItem {
 }
 
 export class CustomerActivityService {
-  static async list(customerId: string, limit = 50): Promise<CustomerActivityItem[]> {
+  static async list(customerId: string, limit = 50, scope: BranchScope): Promise<CustomerActivityItem[]> {
     const [summary, corrections] = await Promise.all([
       CustomerFinancialSummaryService.getCustomerFinancialSummary(customerId, {
         includeCancelled: true, includePayments: true, paymentLimit: 100, debtLimit: 100, planLimit: 100,
       }),
-      CorrectionAuditRepository.listCorrectionAudits({ customerId }),
+      CorrectionAuditRepository.listCorrectionAudits({ customerId, scope }),
     ]);
     return [
       ...summary.debts.map((debt) => ({ id: `debt-${debt.id}`, type: 'DEBT_CREATED' as const, at: debt.createdAt, label: 'Debt created / تمت إضافة دين', amount: debt.originalAmount, actor: debt.createdBy.name, recordId: debt.id })),

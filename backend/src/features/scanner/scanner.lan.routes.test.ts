@@ -1,5 +1,8 @@
+import http from 'node:http';
+import type { Express } from 'express';
 import request from 'supertest';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import jwt from 'jsonwebtoken';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { productsMock } = vi.hoisted(() => ({ productsMock: { scanLookup: vi.fn() } }));
 vi.mock('../service/products/products.service', () => ({ ProductsService: productsMock }));
@@ -9,8 +12,23 @@ import { buildLanApp } from './lan-listener';
 import { resetRateLimits } from './scanner-rate-limit';
 import { ScannerService } from './scanner.service';
 import { scannerStore } from './scanner.store';
+import { AuthService } from '../../services/auth.service';
+import { app as mainApp } from '../../app';
 
-const app = buildLanApp();
+// The LAN gateway forwards mobile requests over HTTP to the desktop API on
+// 127.0.0.1:PORT. Run the real main app on a free port so forwarded requests
+// still pass through its auth, role and handler code.
+let app: Express;
+let desktop: http.Server;
+beforeAll(async () => {
+  desktop = http.createServer(mainApp);
+  await new Promise<void>((resolve) => desktop.listen(0, '127.0.0.1', resolve));
+  process.env.PORT = String((desktop.address() as { port: number }).port);
+  app = buildLanApp();
+});
+afterAll(async () => {
+  await new Promise<void>((resolve) => desktop.close(() => resolve()));
+});
 
 const foundResult = {
   status: 'FOUND',
@@ -42,20 +60,12 @@ beforeEach(() => {
 });
 
 describe('LAN surface', () => {
-  /**
-   * The central security claim of the whole design: routes that were never
-   * mounted cannot be reached, so nothing financial or administrative exists on
-   * the shop Wi-Fi at all.
-   */
-  it('does not mount any ERP route', async () => {
+  it('does not expose desktop-only API routes', async () => {
     const forbidden = [
       '/api/v1/customers',
       '/api/v1/debts',
       '/api/v1/payments',
-      '/api/v1/products',
-      '/api/v1/products/scan?code=HC-000001',
       '/api/v1/sales-orders',
-      '/api/v1/suppliers',
       '/api/v1/financial-ledger',
       '/api/v1/admin/backups',
       '/api/v1/admin/maintenance',
@@ -70,7 +80,50 @@ describe('LAN surface', () => {
     for (const path of forbidden) {
       expect((await request(app).get(path)).status, `GET ${path}`).toBe(404);
     }
+    expect((await request(app).post('/api/v1/products').send({})).status).toBe(404);
+    expect((await request(app).post('/api/v1/suppliers').send({})).status).toBe(404);
+    expect((await request(app).get('/api/v1/suppliers/not-a-uuid/purchases')).status).toBe(404);
+    const adminToken = jwt.sign({ userId: '11111111-1111-4111-8111-111111111111', role: 'ADMIN' }, process.env.JWT_SECRET!);
+    expect((await request(app).get('/api/v1/customers').set('Authorization', `Bearer ${adminToken}`)).status).toBe(404);
   });
+
+  it('leaves allowed mobile routes unmounted without a bearer token', async () => {
+    // No JWT: the gateway never forwards, so the routes do not exist on the LAN.
+    expect((await request(app).get('/api/v1/products')).status).toBe(404);
+    expect((await request(app).get('/api/v1/suppliers')).status).toBe(404);
+    expect((await request(app).get('/api/v1/supplier-ledger')).status).toBe(404);
+    expect((await request(app).post('/api/v1/suppliers/11111111-1111-4111-8111-111111111111/purchases').send({})).status).toBe(404);
+    // A scanner pairing token cannot authorize this surface.
+    const scannerToken = await pairPhone();
+    expect((await request(app).get('/api/v1/suppliers').set('x-scanner-session', scannerToken)).status).toBe(404);
+  }, 20_000);
+
+  it('forwards a bad bearer token to the desktop, which rejects it', async () => {
+    expect((await request(app).get('/api/v1/suppliers').set('Authorization', 'Bearer not-a-jwt')).status).toBe(401);
+  }, 20_000);
+
+  it('accepts account login without exposing a refresh cookie on the LAN', async () => {
+    const loginMock = vi.spyOn(AuthService, 'login').mockResolvedValue({
+      user: { id: '11111111-1111-4111-8111-111111111111', username: 'admin', fullName: 'Admin', role: 'ADMIN' },
+      accessToken: 'access', refreshToken: 'refresh',
+    } as never);
+    try {
+      const response = await request(app).post('/api/v1/auth/login').send({ username: 'admin', password: 'secret' });
+      expect(response.status).toBe(200);
+      expect(response.body.data.accessToken).toBe('access');
+      expect(response.headers['set-cookie']).toBeUndefined();
+    } finally {
+      loginMock.mockRestore();
+    }
+  }, 20_000);
+
+  it('forwards authenticated barcode lookups to the main product handler', async () => {
+    const token = jwt.sign({ userId: '11111111-1111-4111-8111-111111111111', role: 'EMPLOYEE' }, process.env.JWT_SECRET!);
+    const response = await request(app).get('/api/v1/products/scan?code=HC-000001').set('Authorization', `Bearer ${token}`);
+    expect(response.status).toBe(200);
+    expect(response.body.data).toEqual(foundResult);
+    expect(productsMock.scanLookup).toHaveBeenCalledWith({ code: 'HC-000001' });
+  }, 20_000);
 
   it('refuses an oversized body as a client error, not a server fault', async () => {
     const response = await request(app)

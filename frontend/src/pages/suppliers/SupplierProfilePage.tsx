@@ -14,6 +14,7 @@ import { useSupplier, useSupplierAudit, useSupplierTransactions } from '../../fe
 import { ProtectedActionInput, SupplierTransaction } from '../../features/suppliers/types/supplier.types';
 import { useAuth } from '../../hooks/useAuth';
 import { SupplierReceivingHistory } from '../../features/inventory/receiving/components/SupplierReceivingHistory';
+import { branchIdOf, useRecordBranch } from '../../features/branches/scope/branch-ui';
 
 type Action = { kind: 'archive'|'restore'|'delete' } | { kind: 'removeTransaction'|'restoreTransaction'; transaction: SupplierTransaction } | null;
 
@@ -25,6 +26,7 @@ export const SupplierProfilePage: React.FC = () => {
   const { user } = useAuth();
   const canMutate = user?.role === 'ADMIN';
   const supplier = useSupplier(id);
+  useRecordBranch(branchIdOf(supplier.data));
   const [page, setPage] = useState(1);
   const [includeRemoved, setIncludeRemoved] = useState(false);
   const transactions = useSupplierTransactions(id, includeRemoved, page);

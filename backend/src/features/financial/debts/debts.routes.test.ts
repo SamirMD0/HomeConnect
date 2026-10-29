@@ -17,13 +17,17 @@ const { debtsServiceMock } = vi.hoisted(() => ({
   },
 }));
 
+const { transactionMock } = vi.hoisted(() => ({ transactionMock: { activityLog: { create: vi.fn() } } }));
+
 vi.mock('./debts.service', () => ({
   DebtsService: debtsServiceMock,
 }));
 
-vi.mock('../../../lib/prisma', () => ({
+vi.mock('../../../lib/prisma', async () => ({
   prisma: {
+    ...(await import('../../../test/branch-scope-fixture.js')).singleBranchRouteModels(),
     $queryRaw: vi.fn().mockResolvedValue([{ result: 1 }]),
+    $transaction: vi.fn(async (callback: (tx: typeof transactionMock) => Promise<unknown>) => callback(transactionMock)),
   },
   transactionModel: {},
   activityLogModel: {},
@@ -37,6 +41,7 @@ const employeeToken = jwt.sign({ userId: '44444444-4444-4444-8444-444444444444',
 
 const debtResponse = {
   id: debtId,
+  branchId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
   kind: 'STANDARD',
   customer: {
     id: customerId,
@@ -155,6 +160,11 @@ describe('debt routes', () => {
     expect(response.body.success).toBe(true);
     expect(response.body.data.originalAmount).toBe('600.00');
     expect(debtsServiceMock.createDebt).toHaveBeenCalledTimes(1);
+    expect(debtsServiceMock.createDebt.mock.calls[0][3]).toBe(transactionMock);
+    expect(transactionMock.activityLog.create).toHaveBeenCalledWith({ data: {
+      userId: '11111111-1111-4111-8111-111111111111', branchId: debtResponse.branchId,
+      action: 'DEBT_CREATED', entityType: 'Debt', entityId: debtId, details: { customerId },
+    } });
 
     const invalidResponse = await request(app)
       .post(`/api/v1/customers/${customerId}/debts`)

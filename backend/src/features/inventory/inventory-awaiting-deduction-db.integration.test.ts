@@ -1,3 +1,4 @@
+import { branchFixtureRows } from "../../test/branch-fixture";
 import { PrismaClient, StockMovementType } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { describe, expect, it } from 'vitest';
@@ -53,7 +54,7 @@ describeDatabase('orders awaiting stock deduction database query', () => {
       });
 
       await prisma.salesOrder.createMany({
-        data: [
+        data: await branchFixtureRows(prisma, [
           { id: previousDayOrderId, orderNumber: `SO-AWAIT-PREV-${previousDayOrderId}`, orderDate: new Date('2026-08-12T00:00:00.000Z') },
           { id: openingDayOrderId, orderNumber: `SO-AWAIT-SAME-${openingDayOrderId}`, orderDate: new Date('2026-08-13T00:00:00.000Z') },
         ].map((order) => ({
@@ -68,7 +69,7 @@ describeDatabase('orders awaiting stock deduction database query', () => {
           basePaidAmount: '0.00',
           baseRemainingAmount: '1.00',
           createdById: userId,
-        })),
+        }))),
       });
       await prisma.salesOrderItem.createMany({
         data: [previousDayOrderId, openingDayOrderId].map((salesOrderId) => ({

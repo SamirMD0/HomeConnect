@@ -1,3 +1,4 @@
+import { branchFixture } from "../../../test/branch-fixture";
 import { Prisma, PrismaClient, StockMovementType } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { describe, expect, it } from 'vitest';
@@ -41,7 +42,7 @@ describeDatabase('sales-order stock fulfillment database contract', () => {
         },
       });
       await prisma.salesOrder.create({
-        data: {
+        data: { branchId: await branchFixture(prisma),
           id: orderId,
           orderNumber: `SO-FUL-${orderId}`,
           salesChannel: 'SHOP_DIRECT',

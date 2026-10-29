@@ -13,19 +13,19 @@ const contextFrom = (req: { headers: Request['headers']; ip?: string }) => ({
 
 export class ServiceJobsController {
   static async create(req: Request<unknown, unknown, CreateServiceJobInput>, res: Response, next: NextFunction) {
-    try { res.status(201).json({ success: true, data: await ServiceJobsService.create(req.body, req.user!, contextFrom(req)) }); }
+    try { res.status(201).json({ success: true, data: await ServiceJobsService.create(req.body, req.user!, contextFrom(req), req.branchScope!) }); }
     catch (error) { next(error); }
   }
   static async list(req: Request, res: Response, next: NextFunction) {
     try {
-      const result = await ServiceJobsService.list(req.query as unknown as ServiceJobListQueryInput);
+      const result = await ServiceJobsService.list(req.query as unknown as ServiceJobListQueryInput, req.branchScope!);
       res.json({ success: true, data: result.items, meta: { pagination: { page: result.page, pageSize: result.pageSize, totalItems: result.total, totalPages: Math.ceil(result.total / result.pageSize) } } });
     } catch (error) { next(error); }
   }
   static async listCustomer(req: Request<CustomerServiceJobsParamsInput>, res: Response, next: NextFunction) {
     try {
       const query = req.query as unknown as ServiceJobListQueryInput;
-      const result = await ServiceJobsService.list({ ...query, customerId: req.params.customerId });
+      const result = await ServiceJobsService.list({ ...query, customerId: req.params.customerId }, req.branchScope!);
       res.json({ success: true, data: result.items, meta: { pagination: { page: result.page, pageSize: result.pageSize, totalItems: result.total, totalPages: Math.ceil(result.total / result.pageSize) } } });
     } catch (error) { next(error); }
   }
@@ -34,7 +34,7 @@ export class ServiceJobsController {
     catch (error) { next(error); }
   }
   static async update(req: Request<ServiceJobParamsInput, unknown, UpdateServiceJobInput>, res: Response, next: NextFunction) {
-    try { res.json({ success: true, data: await ServiceJobsService.update(req.params.serviceJobId, req.body, req.user!, contextFrom(req)) }); }
+    try { res.json({ success: true, data: await ServiceJobsService.update(req.params.serviceJobId, req.body, req.user!, contextFrom(req), req.branchScope!) }); }
     catch (error) { next(error); }
   }
   static async status(req: Request<ServiceJobParamsInput, unknown, ChangeServiceStatusInput>, res: Response, next: NextFunction) {
@@ -53,8 +53,8 @@ export class ServiceJobsController {
     try { res.json({ success: true, data: await ServiceJobsService.audit(req.params.serviceJobId, req.query as unknown as ServiceAuditQueryInput) }); }
     catch (error) { next(error); }
   }
-  static async summary(_req: Request, res: Response, next: NextFunction) {
-    try { res.json({ success: true, data: await ServiceJobsService.summary() }); }
+  static async summary(req: Request, res: Response, next: NextFunction) {
+    try { res.json({ success: true, data: await ServiceJobsService.summary(req.branchScope!) }); }
     catch (error) { next(error); }
   }
 }

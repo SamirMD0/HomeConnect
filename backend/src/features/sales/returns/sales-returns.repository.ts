@@ -1,3 +1,4 @@
+import { salesOrderBranch } from '../../branches/parent-branch';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../../lib/prisma';
 
@@ -67,8 +68,8 @@ export class SalesReturnsRepository {
     return tx.user.findUnique({ where: { id }, select: { id: true, fullName: true, username: true } });
   }
 
-  static createHeader(data: Prisma.SalesReturnUncheckedCreateInput, tx: Prisma.TransactionClient) {
-    return tx.salesReturn.create({ data });
+  static async createHeader(data: Omit<Prisma.SalesReturnUncheckedCreateInput, 'branchId'>, tx: Prisma.TransactionClient) {
+    return tx.salesReturn.create({ data: { ...data, branchId: await salesOrderBranch(data.salesOrderId, tx) } });
   }
 
   static createItem(data: Prisma.SalesReturnItemUncheckedCreateInput, tx: Prisma.TransactionClient) {

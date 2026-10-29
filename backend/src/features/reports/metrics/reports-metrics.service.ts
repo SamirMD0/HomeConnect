@@ -1,3 +1,4 @@
+import { type BranchScope } from '../../branches/branch-scope';
 import { Decimal } from '@prisma/client/runtime/library';
 import { Currency } from '@prisma/client';
 import { divideMoney, moneyToApiString, sumMoney, subtractMoney, ZERO_MONEY } from '../../financial';
@@ -6,8 +7,8 @@ import type { ReportsCoreMetrics } from './reports-metrics.types';
 import type { ResolvedReportsPeriod } from '../shared/reports-period';
 
 export class ReportsMetricsService {
-  static async get(period: ResolvedReportsPeriod): Promise<ReportsCoreMetrics> {
-    return this.aggregate(await ReportsMetricsRepository.load(period));
+  static async get(period: ResolvedReportsPeriod, scope: BranchScope): Promise<ReportsCoreMetrics> {
+    return this.aggregate(await ReportsMetricsRepository.load(period, scope));
   }
 
   static aggregate(records: ReportsMetricRecords): ReportsCoreMetrics {

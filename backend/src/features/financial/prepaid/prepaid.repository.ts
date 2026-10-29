@@ -1,3 +1,4 @@
+import { scopeWhere, type BranchScope } from '../../branches/branch-scope';
 import { DebtKind, Prisma, PrepaidPurchaseStatus } from '@prisma/client';
 import { prisma } from '../../../lib/prisma';
 import { FinancialTransactionClient } from '../infrastructure/transaction';
@@ -193,8 +194,9 @@ export class PrepaidRepository {
     search?: string;
     dateFrom?: Date;
     dateTo?: Date;
-  }): Prisma.PrepaidPurchaseWhereInput {
+  }, scope: BranchScope): Prisma.PrepaidPurchaseWhereInput {
     const debtFilters: Prisma.DebtWhereInput = {
+      ...scopeWhere(scope),
       kind: DebtKind.PREPAID_PURCHASE,
       ...(filters.customerId ? { customerId: filters.customerId } : {}),
       ...(filters.search

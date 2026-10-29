@@ -33,6 +33,7 @@ export interface CustomerFinancialSnapshot {
 }
 
 export interface Customer {
+  branchId?: string;
   id: string;
   name: string;
   phone: string;
@@ -108,4 +109,37 @@ export const customersApi = {
     const response = await api.delete(`/customers/${id}`);
     return response.data;
   },
+
+  previewBranchTransfer: async (id: string, toBranchId: string) => {
+    const response = await api.get<{ data: CustomerBranchTransferPreview }>(`/customers/${id}/branch-transfer/preview`, {
+      params: { toBranchId },
+    });
+    return response.data.data;
+  },
+
+  transferBranch: async (id: string, data: { toBranchId: string; accountPassword: string }) => {
+    const response = await api.post<{ data: CustomerBranchTransferResult }>(`/customers/${id}/branch-transfer`, data);
+    return response.data.data;
+  },
 };
+
+export type CustomerBranchTransferCounts = Record<
+  'sales_orders' | 'sales_returns' | 'cash_refunds' | 'customer_credits' | 'payments' | 'debts' | 'installment_plans' | 'service_jobs',
+  number
+>;
+
+export interface CustomerBranchTransferPreview {
+  customer: { id: string; name: string; phone: string; branchId: string };
+  toBranch: { id: string; code: string; name: string };
+  counts: CustomerBranchTransferCounts;
+  importAccounts: Array<{ accountCode: string; sourceCustomerImportId: string }>;
+  blocker: { code: string; message: string } | null;
+}
+
+export interface CustomerBranchTransferResult {
+  customerId: string;
+  fromBranchId: string;
+  toBranchId: string;
+  moved: CustomerBranchTransferCounts;
+  detachedImportAccounts: Array<{ accountCode: string; sourceCustomerImportId: string }>;
+}

@@ -13,6 +13,7 @@ import { useSuppliers } from '../../features/suppliers/hooks/useSuppliers';
 import { ProtectedActionInput, SupplierLedgerFilters as FilterValues, SupplierTransaction } from '../../features/suppliers/types/supplier.types';
 import { defaultSupplierLedgerFilters, resetSupplierLedgerFilters } from '../../features/suppliers/utils/supplier-query';
 import { useAuth } from '../../hooks/useAuth';
+import { branchIdOf, useRecordBranch } from '../../features/branches/scope/branch-ui';
 
 type Action = { kind: 'remove'|'restore'; transaction: SupplierTransaction } | null;
 
@@ -26,6 +27,7 @@ export const SupplierLedgerPage: React.FC = () => {
   const [selectedSupplierId, setSelectedSupplierId] = useState('');
   const [form, setForm] = useState<{ open: boolean; transaction: SupplierTransaction | null }>({ open: false, transaction: null });
   const [action, setAction] = useState<Action>(null);
+  useRecordBranch(branchIdOf(form.transaction ?? action?.transaction));
   const activeSuppliers = suppliers.data?.items ?? [];
   const formSupplier = form.transaction?.supplier ?? activeSuppliers.find((supplier) => supplier.id === selectedSupplierId);
   const change = (changes: Partial<FilterValues>) => setFilters((current) => ({ ...current, ...changes }));

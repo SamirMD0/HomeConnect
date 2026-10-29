@@ -6,7 +6,7 @@ export class ReceivablesController {
   static async getReceivables(req: Request, res: Response, next: NextFunction) {
     try {
       const receivables = await ReceivablesService.getReceivables(
-        req.query as unknown as ReceivablesQueryInput
+        req.query as unknown as ReceivablesQueryInput, req.branchScope!
       );
 
       res.status(200).json({

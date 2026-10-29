@@ -26,6 +26,7 @@ export interface BackupRecord {
   postgresVersion: string | null;
   checksum: string | null;
   verified: boolean;
+  receiptSnapshot?: boolean;
   createdBy: string | null;
   durationMs: number | null;
   errorMessage: string | null;
@@ -57,6 +58,10 @@ export interface RestoreValidationResult {
   checksumMatches: boolean;
   archiveReadable: boolean;
   compatible: boolean;
+  /** Database updates the backup lacks; applied right after restoring. */
+  pendingMigrations: string[];
+  /** Updates recorded in the backup that this build does not ship (blocks restore). */
+  newerMigrations: string[];
   warnings: string[];
 }
 

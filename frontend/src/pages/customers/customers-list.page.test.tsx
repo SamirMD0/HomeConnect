@@ -144,14 +144,15 @@ describe('CustomersListPage customer table', () => {
     expect(markup.match(/Matched in notes/g)).toHaveLength(1);
   });
 
-  it('provides a wheel-scroll region and glowing-yellow row hover styling', () => {
+  it('provides a wheel-scroll region and the quiet light row hover of the reference design', () => {
     const markup = renderPage();
 
     expect(markup).toContain('data-testid="customer-scroll-table"');
     expect(markup).toContain('data-table-scroll');
     expect(markup).toContain('data-table-scroll-expanded');
-    expect(markup).toContain('group-hover:text-yellow-300');
-    expect(markup).toContain('text-shadow:0_0_8px');
+    expect(markup).toContain('group-hover:bg-slate-50');
+    expect(markup).not.toContain('yellow');
+    expect(markup).not.toContain('text-shadow:0_0_8px');
   });
 
   it('requests 25 customer rows by default on the desktop directory', () => {

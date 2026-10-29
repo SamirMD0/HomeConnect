@@ -1,3 +1,5 @@
+import { assertRecordInScope } from '../../branches/parent-branch';
+import { writeBranch, type BranchScope } from '../../branches/branch-scope';
 import {
   Currency,
   DebtStatus,
@@ -90,8 +92,9 @@ export class SalesReturnsService {
     salesOrderId: string,
     input: ReturnSalesOrderInput,
     user: SalesMutationUser,
-    context: SalesRequestContext = {}
+    context: SalesRequestContext = {}, scope: BranchScope
   ) {
+    writeBranch(scope);
     assertSalesAdmin(user);
     const idempotencyKey = normalizeIdempotencyKey(input.idempotencyKey);
     if (!idempotencyKey) throw new ValidationError('Idempotency key is required');
@@ -109,6 +112,7 @@ export class SalesReturnsService {
 
         const replay = await SalesReturnsRepository.findByIdempotencyKey(idempotencyKey, tx);
         if (replay) {
+          await assertRecordInScope('salesReturn', replay.id, scope, tx);
           assertIdempotentReplay({ existingFingerprint: replay.requestFingerprint, incomingFingerprint: fingerprint });
           return serializeSalesReturn(replay);
         }
@@ -119,6 +123,9 @@ export class SalesReturnsService {
           SalesReturnsRepository.findSettings(tx),
         ]);
         if (!order) throw new NotFoundError('Sales order not found');
+        await assertRecordInScope('salesOrder', order.id, scope, tx);
+        if (order.debtId) await assertRecordInScope('debt', order.debtId, scope, tx);
+        if (order.installmentPlanId) await assertRecordInScope('installmentPlan', order.installmentPlanId, scope, tx);
         if (!actor) throw new NotFoundError('User not found');
         if (!settings) throw new SalesConflictError('Business settings are missing; configure return policy before posting a return');
         if (!RETURNABLE_STATUSES.has(order.fulfillmentStatus)) {
@@ -306,6 +313,7 @@ export class SalesReturnsService {
         let settlementReference: string | null = null;
         if (input.refundMethod === SalesReturnRefundMethod.CASH_OUT) {
           const cashRefund = await tx.cashRefund.create({ data: {
+            branchId: header.branchId,
             salesReturnId: header.id,
             customerId: order.customerId,
             amount: settlement.refundable,
@@ -321,6 +329,7 @@ export class SalesReturnsService {
           settlementReference = cashRefund.id;
         } else if (input.refundMethod === SalesReturnRefundMethod.STORE_CREDIT) {
           const credit = await tx.customerCredit.create({ data: {
+            branchId: header.branchId,
             salesReturnId: header.id,
             customerId: order.customerId!,
             issuedAmount: settlement.refundable,
@@ -405,6 +414,7 @@ export class SalesReturnsService {
         return runFinancialTransaction(async (tx) => {
           const replay = await SalesReturnsRepository.findByIdempotencyKey(idempotencyKey, tx);
           if (!replay) throw error;
+          await assertRecordInScope('salesReturn', replay.id, scope, tx);
           assertIdempotentReplay({ existingFingerprint: replay.requestFingerprint, incomingFingerprint: fingerprint });
           return serializeSalesReturn(replay);
         });

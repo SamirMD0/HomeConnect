@@ -1,0 +1,27 @@
+R5 validation, 2026-10-27 — feature/multi-branch-phase-2.
+Database guard confirmed homeconnect_test_phase4_phase5_phase6 before each database command.
+
+npm run typecheck: PASS (frontend and backend; 0 errors).
+npm run lint: PASS (0 errors; 91 existing warnings; 0 added warning instances).
+Focused users/auth/branches unit run: PASS (9 files; 47 passed; 0 failed; 0 skipped).
+NODE_ENV=test npm run test:ci: PASS (395 files; 3030 passed; 0 failed; 0 skipped/todo).
+CI gate passed: 395 files, 3030 tests, 0 skipped files, 0 skipped tests.
+First CI attempt: 3029 passed, 1 failed, 0 skipped — unchanged feature-icon service test timed out at 5000ms.
+That test passed unchanged in isolation (1 passed, 0 failed/skipped; test 1.50s), then in the clean full rerun (1.45s).
+No timeout or assertion changes. Reconciliation and migration rehearsal were not rerun.
+Graphify update completed before this commit.
+
+Migration SHA-256 unchanged:
+776a8bb45e18c487cf8841c4f53416f7faba327c44e43e67e42327e98ca55ee5
+
+Added tests in backend/src/services/users-branch-access.service.test.ts:
+- ADMIN to EMPLOYEE grants the sole branch in the role-update transaction and invalidates only after commit
+- ADMIN to EMPLOYEE with scoping enabled changes the role without a grant
+- ADMIN to EMPLOYEE with no active branch commits the role without a grant or error
+- EMPLOYEE to ADMIN preserves existing grants without grant calls
+- a fullName update without a role change makes no grant calls
+- BRANCH_SELECTION_REQUIRED rolls back the role update and does not invalidate the session
+
+updateUser reads the prior role and updates the user with the same transaction client used by the sole-branch grant.
+Session invalidation occurs after commit. Promotion/reactivation preserve existing grants.
+Self-deactivation, password hashing, and last-admin protection are unchanged.

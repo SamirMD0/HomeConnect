@@ -1,0 +1,11 @@
+
+ RUN  v4.1.10 D:/User/Documents/HomeConnect-mb-phase3/Mobile Scanner
+
+ ✓ src/branches/branch-selection.test.ts (8 tests) 9ms
+
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+   Start at  12:42:38
+   Duration  294ms (transform 54ms, setup 0ms, import 85ms, tests 9ms, environment 0ms)
+
+JSON report written to D:/User/Documents/HomeConnect-mb-phase3/.claude/phase3d-mobile-retry-result.json

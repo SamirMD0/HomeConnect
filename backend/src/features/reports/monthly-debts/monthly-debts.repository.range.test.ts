@@ -31,7 +31,7 @@ describe('MonthlyDebtsRepository range cutoff', () => {
     const endDate = new Date('2026-08-03T00:00:00.000Z');
     const nextDayAfterEnd = new Date('2026-08-04T00:00:00.000Z');
 
-    await MonthlyDebtsRepository.loadActivityRecords({ startDate, endDate, nextDayAfterEnd });
+    await MonthlyDebtsRepository.loadActivityRecords({ startDate, endDate, nextDayAfterEnd }, phase3cScope);
 
     expect(prismaMock.payment.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({ paymentDate: { gte: startDate, lte: endDate } }),
@@ -48,7 +48,7 @@ describe('MonthlyDebtsRepository range cutoff', () => {
 
     await MonthlyDebtsRepository.loadActivityRecords({
       startDate, endDate, nextDayAfterEnd, startInstantUtc, endInstantExclusiveUtc,
-    });
+    }, phase3cScope);
 
     expect(prismaMock.debt.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({ createdAt: { gte: startInstantUtc, lt: endInstantExclusiveUtc } }),
@@ -75,7 +75,7 @@ describe('MonthlyDebtsRepository range cutoff', () => {
       endDate: new Date('2026-01-15T00:00:00.000Z'),
       nextDayAfterEnd: new Date('2026-01-16T00:00:00.000Z'),
       startInstantUtc, endInstantExclusiveUtc,
-    });
+    }, phase3cScope);
 
     expect(prismaMock.debt.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({ createdAt: { gte: startInstantUtc, lt: endInstantExclusiveUtc } }),
@@ -87,10 +87,17 @@ describe('MonthlyDebtsRepository range cutoff', () => {
     const endDate = new Date('2026-08-03T00:00:00.000Z');
     const nextDayAfterEnd = new Date('2026-08-04T00:00:00.000Z');
 
-    await MonthlyDebtsRepository.loadActivityRecords({ startDate, endDate, nextDayAfterEnd });
+    await MonthlyDebtsRepository.loadActivityRecords({ startDate, endDate, nextDayAfterEnd }, phase3cScope);
 
     expect(prismaMock.debt.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({ createdAt: { gte: startDate, lt: nextDayAfterEnd } }),
     }));
   });
 });
+
+const phase3cScope = { mode: 'all' as const, branchIds: ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'] };
+
+vi.mock('../../branches/branch-breakdown', async (importOriginal) => ({
+  ...await importOriginal<typeof import('../../branches/branch-breakdown')>(),
+  branchLabel: vi.fn().mockResolvedValue('Phase 3C A'),
+}));

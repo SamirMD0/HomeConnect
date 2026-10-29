@@ -8,6 +8,7 @@ import { useSupplierMutations } from '../../features/suppliers/hooks/useSupplier
 import { useSuppliers } from '../../features/suppliers/hooks/useSuppliers';
 import { Supplier, SupplierFilters } from '../../features/suppliers/types/supplier.types';
 import { useAuth } from '../../hooks/useAuth';
+import { branchIdOf, useCreateGuard, useRecordBranch } from '../../features/branches/scope/branch-ui';
 
 type SupplierAction = { kind: 'archive'|'restore'; supplier: Supplier } | null;
 
@@ -20,10 +21,12 @@ export const SuppliersPage: React.FC = () => {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Supplier | null>(null);
   const [action, setAction] = useState<SupplierAction>(null);
+  useRecordBranch(branchIdOf(editing ?? action?.supplier));
   const update = (changes: Partial<SupplierFilters>) => setFilters((current) => ({ ...current, ...changes }));
 
+  const createGuard = useCreateGuard();
   return <div className="space-y-5">
-    <header className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center"><div><h1 className="text-2xl font-bold text-slate-900">Suppliers / المورّدين</h1><p className="mt-1 text-sm text-slate-500">Manage supplier contacts and balances / إدارة بيانات وأرصدة المورّدين</p></div>{canMutate && <button onClick={() => { setEditing(null); setFormOpen(true); }} className="inline-flex items-center justify-center gap-2 rounded-md bg-emerald-600 px-4 py-2.5 font-semibold text-white hover:bg-emerald-700"><Plus className="h-4 w-4" />Add Supplier / إضافة مورّد</button>}</header>
+    <header className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center"><div><h1 className="text-2xl font-bold text-slate-900">Suppliers / المورّدين</h1><p className="mt-1 text-sm text-slate-500">Manage supplier contacts and balances / إدارة بيانات وأرصدة المورّدين</p></div>{canMutate && <button onClick={() => { setEditing(null); setFormOpen(true); }} disabled={createGuard.blocked} title={createGuard.reason} className="inline-flex items-center justify-center gap-2 rounded-md bg-emerald-600 px-4 py-2.5 font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"><Plus className="h-4 w-4" />Add Supplier / إضافة مورّد</button>}</header>
     <section className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 sm:grid-cols-[minmax(0,1fr)_180px_180px]">
       <label className="text-xs font-semibold text-slate-600">Search / بحث<input value={filters.search ?? ''} onChange={(event) => update({ search: event.target.value || undefined, page: 1 })} placeholder="Name, phone, company / الاسم، الهاتف، الشركة" className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-normal" /></label>
       <label className="text-xs font-semibold text-slate-600">Status / الحالة<select value={filters.isActive === undefined ? '' : String(filters.isActive)} onChange={(event) => update({ isActive: event.target.value === '' ? undefined : event.target.value === 'true', page: 1 })} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-normal"><option value="">All / الكل</option><option value="true">Active / نشط</option><option value="false">Archived / مؤرشف</option></select></label>

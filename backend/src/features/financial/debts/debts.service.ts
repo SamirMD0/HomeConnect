@@ -1,3 +1,5 @@
+import { writeBranch, type BranchScope } from '../../branches/branch-scope';
+import { assertRecordInScope } from '../../branches/parent-branch';
 import {
   Currency,
   DebtKind,
@@ -61,6 +63,7 @@ interface DebtListResult {
 }
 
 interface DebtView {
+  branchId: string;
   id: string;
   kind: DebtKind;
   customer: {
@@ -100,6 +103,7 @@ interface DebtView {
 }
 
 interface DebtPaymentView {
+  branchId: string;
   id: string;
   totalAmount: string;
   currency: Currency;
@@ -403,8 +407,9 @@ export class DebtsService {
   static async recordDebtPayment(
     debtId: string,
     input: CreateDebtPaymentInput,
-    user: AuthenticatedUser
+    user: AuthenticatedUser, scope: BranchScope
   ): Promise<DebtView> {
+    writeBranch(scope);
     const paymentCurrency = input.currency ?? Currency.USD;
     const paymentAmount = assertPositiveMoney(input.amount, paymentCurrency);
     const paymentMethod = input.paymentMethod ?? PaymentMethod.CASH;
@@ -416,6 +421,7 @@ export class DebtsService {
       if (!debt) {
         throw new NotFoundError('Debt not found');
       }
+      await assertRecordInScope('debt', debtId, scope, tx);
 
       const effectiveAt = businessDateToPrisma(paymentDate);
       const debtCurrency = debt.currency ?? Currency.USD;
@@ -433,6 +439,7 @@ export class DebtsService {
       if (idempotencyKey) {
         const existingPayment = await DebtsRepository.findPaymentByIdempotencyKey(tx, idempotencyKey);
         if (existingPayment) {
+          await assertRecordInScope('payment', existingPayment.id, scope, tx);
           const debtAllocation = existingPayment.allocations.find(
             (allocation) => allocation.debtId === debtId && allocation.installmentId === null
           );
@@ -573,6 +580,7 @@ export class DebtsService {
 
     return {
       id: debt.id,
+      branchId: debt.branchId,
       kind: debt.kind,
       customer: debt.customer,
       description: debt.description,
@@ -626,6 +634,7 @@ export class DebtsService {
       if (!paymentsById.has(payment.id)) {
         paymentsById.set(payment.id, {
           id: payment.id,
+          branchId: payment.branchId,
           totalAmount: moneyToApiString(payment.totalAmount, payment.currency ?? Currency.USD),
           currency: payment.currency ?? Currency.USD,
           exchangeRate: (payment.exchangeRate ?? new Decimal(1)).toFixed(6),

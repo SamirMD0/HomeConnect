@@ -41,6 +41,7 @@ export interface FinancialLedgerCorrectionView {
 }
 
 export interface FinancialLedgerDebtItem {
+  branchId: string;
   type: 'DEBT';
   kind: DebtKind;
   id: string;
@@ -66,6 +67,7 @@ export interface FinancialLedgerDebtItem {
 }
 
 export interface FinancialLedgerPlanItem {
+  branchId: string;
   type: 'INSTALLMENT_PLAN';
   id: string;
   customer: FinancialLedgerCustomerView;
@@ -112,6 +114,7 @@ export interface FinancialLedgerPlanItem {
 }
 
 export interface FinancialLedgerPaymentItem {
+  branchId: string;
   currency?: 'USD' | 'LBP';
   exchangeRate?: string;
   baseAmount?: string;

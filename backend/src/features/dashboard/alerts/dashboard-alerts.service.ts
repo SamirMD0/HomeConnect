@@ -1,3 +1,4 @@
+import { type BranchScope } from '../../branches/branch-scope';
 import { ServiceJobStatus } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { moneyToApiString, prismaDateToBusinessDate, sumMoney, todayInBusinessTimezone } from '../../financial';
@@ -15,16 +16,16 @@ import type { DashboardAlert, DashboardAlertsData } from './dashboard-alerts.typ
 export class DashboardAlertsService {
   static async get(
     range: ResolvedDashboardRange,
-    options: { includeArchived: boolean; includeAdminData: boolean; businessDate?: string }
+    options: { includeArchived: boolean; includeAdminData: boolean; businessDate?: string }, scope: BranchScope
   ): Promise<DashboardAlertsData> {
     const businessDate = options.businessDate ?? todayInBusinessTimezone();
     const [customer, supplier, service, productRecords, serviceJobs, payables] = await Promise.all([
-      CustomerAnalyticsService.get(range, { ...options, businessDate }),
-      SupplierAnalyticsService.get(range, options.includeArchived, businessDate),
-      ServiceAnalyticsService.get(range, businessDate),
+      CustomerAnalyticsService.get(range, { ...options, businessDate }, scope),
+      SupplierAnalyticsService.get(range, options.includeArchived, businessDate, scope),
+      ServiceAnalyticsService.get(range, businessDate, scope),
       ProductAnalyticsRepository.load(),
-      ServiceAnalyticsRepository.load(),
-      options.includeAdminData ? SupplierPayablesService.get(businessDate) : Promise.resolve(null),
+      ServiceAnalyticsRepository.load(scope),
+      options.includeAdminData ? SupplierPayablesService.get(businessDate, scope) : Promise.resolve(null),
     ]);
     const alerts: DashboardAlert[] = [];
     const overdueAmount = sumMoney(
@@ -82,7 +83,7 @@ export class DashboardAlertsService {
     pushProduct(alerts, 'products-missing-pricing', 'Products missing pricing', 'منتجات دون تسعير', activeProducts.filter((p) => !p.useCustomPricing && !p.pricingPresetId), '/products?pricing=missing');
     pushProduct(alerts, 'products-missing-cost', 'Products missing cost price', 'منتجات دون سعر تكلفة', activeProducts.filter((p) => !p.costPrice), '/products?cost=missing');
 
-    return { alerts: alerts.sort((a, b) => severityRank(b.severity) - severityRank(a.severity) || Number(b.amount ?? 0) - Number(a.amount ?? 0) || b.count - a.count), total: alerts.reduce((sum, alert) => sum + alert.count, 0) };
+    return { inventoryScope: 'all-branches' as const, alerts: alerts.sort((a, b) => severityRank(b.severity) - severityRank(a.severity) || Number(b.amount ?? 0) - Number(a.amount ?? 0) || b.count - a.count), total: alerts.reduce((sum, alert) => sum + alert.count, 0) };
   }
 }
 

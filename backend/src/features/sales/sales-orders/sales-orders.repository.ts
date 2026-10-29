@@ -1,3 +1,5 @@
+import { customerBranch } from '../../branches/parent-branch';
+import { assertInScope, scopeWhere, writeBranch, type BranchScope } from '../../branches/branch-scope';
 import {
   Prisma,
   SalesChannel,
@@ -119,8 +121,11 @@ export class SalesOrdersRepository {
     return nextSalesOrderNumber(year, latest?.orderNumber);
   }
 
-  static create(data: Prisma.SalesOrderUncheckedCreateInput, tx: Prisma.TransactionClient) {
-    return tx.salesOrder.create({ data, include: salesOrderInclude });
+  static async create(data: Omit<Prisma.SalesOrderUncheckedCreateInput, 'branchId'>, tx: Prisma.TransactionClient, scope: BranchScope) {
+    const selected = writeBranch(scope);
+    const branchId = data.customerId ? await customerBranch(data.customerId, tx) : selected;
+    assertInScope(branchId, scope, 'Customer not found');
+    return tx.salesOrder.create({ data: { ...data, branchId }, include: salesOrderInclude });
   }
 
   static update(id: string, data: Prisma.SalesOrderUncheckedUpdateInput, tx: Prisma.TransactionClient) {
@@ -139,11 +144,11 @@ export class SalesOrdersRepository {
     return tx.salesOrderItem.delete({ where: { id } });
   }
 
-  static async list(query: SalesOrderListQueryInput) {
+  static async list(query: SalesOrderListQueryInput, scope: BranchScope) {
     const awaitingOrderIds = query.awaitingStockDeduction
       ? await InventoryRepository.salesOrderIdsAwaitingStockDeduction()
       : undefined;
-    const where = buildWhere(query, awaitingOrderIds);
+    const where = { ...buildWhere(query, awaitingOrderIds), ...scopeWhere(scope) };
     const [items, total] = await Promise.all([
       prisma.salesOrder.findMany({
         where,
@@ -157,7 +162,7 @@ export class SalesOrdersRepository {
     return { items, total };
   }
 
-  static async summary(today: Date, tomorrow: Date) {
+  static async summary(today: Date, tomorrow: Date, scope: BranchScope) {
     const counted = {
       notIn: [
         SalesOrderFulfillmentStatus.DRAFT,
@@ -166,16 +171,16 @@ export class SalesOrdersRepository {
     };
     const [todayAggregate, returnsAggregate, pendingDelivery, unpaidOrders, partialPayments] = await Promise.all([
       prisma.salesOrder.aggregate({
-        where: { orderDate: { gte: today, lt: tomorrow }, fulfillmentStatus: counted },
+        where: { ...scopeWhere(scope), orderDate: { gte: today, lt: tomorrow }, fulfillmentStatus: counted },
         _sum: { baseTotalAmount: true },
         _count: { _all: true },
       }),
       prisma.salesReturn.aggregate({
-        where: { returnDate: { gte: today, lt: tomorrow } },
+        where: { ...scopeWhere(scope), returnDate: { gte: today, lt: tomorrow } },
         _sum: { baseTotalIncVat: true },
       }),
       prisma.salesOrder.count({
-        where: {
+        where: { ...scopeWhere(scope),
           salesChannel: { in: [SalesChannel.SHOP_DELIVERY, SalesChannel.PHONE_ORDER] },
           fulfillmentStatus: {
             in: [
@@ -188,10 +193,10 @@ export class SalesOrdersRepository {
         },
       }),
       prisma.salesOrder.count({
-        where: { paymentStatus: SalesOrderPaymentStatus.UNPAID, fulfillmentStatus: counted },
+        where: { ...scopeWhere(scope), paymentStatus: SalesOrderPaymentStatus.UNPAID, fulfillmentStatus: counted },
       }),
       prisma.salesOrder.count({
-        where: { paymentStatus: SalesOrderPaymentStatus.PARTIALLY_PAID, fulfillmentStatus: counted },
+        where: { ...scopeWhere(scope), paymentStatus: SalesOrderPaymentStatus.PARTIALLY_PAID, fulfillmentStatus: counted },
       }),
     ]);
     return { todayAggregate, returnsAggregate, pendingDelivery, unpaidOrders, partialPayments };

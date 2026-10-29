@@ -1,0 +1,27 @@
+[
+  {
+    "path": "Mobile Scanner/App.tsx",
+    "added": 2,
+    "removed": 2
+  },
+  {
+    "path": "Mobile Scanner/src/api/hc-client.ts",
+    "added": 5,
+    "removed": 1
+  },
+  {
+    "path": "Mobile Scanner/src/storage/secure-storage.ts",
+    "added": 2,
+    "removed": 1
+  },
+  {
+    "path": "backend/src/features/scanner/lan-listener.ts",
+    "added": 5,
+    "removed": 4
+  },
+  {
+    "path": "frontend/src/features/documents/components/__snapshots__/MultiBranchDocuments.test.tsx.snap",
+    "added": 9,
+    "removed": 0
+  }
+]

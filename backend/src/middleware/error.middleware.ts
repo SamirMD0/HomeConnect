@@ -28,6 +28,13 @@ export const errorHandler = (
   res: Response,
   _next: NextFunction
 ) => {
+  if ((err as Error & { type?: string }).type === 'entity.too.large') {
+    return res.status(413).json({
+      success: false,
+      error: { code: 'TOO_LARGE', message: 'Request body is too large.' },
+      meta: { timestamp: new Date().toISOString() },
+    });
+  }
   if (err instanceof AppError) {
     const safeDetails = redactSensitiveData(err.details);
     logger.warn(`[${err.code}] ${err.message}`, { details: safeDetails, path: req.path });

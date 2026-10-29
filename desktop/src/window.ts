@@ -39,13 +39,13 @@ export function resolveProductionFrontendPath() {
   return path.join(__dirname, '../../../../frontend/dist/index.html');
 }
 
-export const createWindow = (startUrl?: string) => {
+export const createWindow = (startUrl?: string, deferShow = false) => {
   mainWindow = new BrowserWindow(createBrowserWindowOptions());
 
   mainWindow.setMenuBarVisibility(false);
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   mainWindow.once('ready-to-show', () => {
-    mainWindow?.show();
+    if (!deferShow) mainWindow?.show();
   });
 
   const isDev = process.env.NODE_ENV === 'development';

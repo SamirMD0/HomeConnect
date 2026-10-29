@@ -5,7 +5,7 @@ import { BilingualLabel } from '../../components/ui/BilingualLabel';
 import { useAuth } from '../../hooks/useAuth';
 import { useUpdater } from './useUpdater';
 
-const chipClass = 'mx-2 mb-2 flex w-[calc(100%-1rem)] items-center gap-2 rounded-md border border-emerald-400/20 bg-emerald-500/10 px-2.5 py-2 text-left text-xs font-medium text-emerald-200';
+const chipClass = 'mx-2 mb-2 flex w-[calc(100%-1rem)] items-center gap-2 rounded-lg border border-brand-600/20 bg-brand-50 px-2.5 py-2 text-left text-xs font-medium text-brand-800';
 
 export function UpdateChip() {
   const { user } = useAuth();

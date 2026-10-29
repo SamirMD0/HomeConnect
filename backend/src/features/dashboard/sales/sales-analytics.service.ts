@@ -1,3 +1,4 @@
+import { type BranchScope } from '../../branches/branch-scope';
 import { SalesOrderFulfillmentStatus } from '@prisma/client';
 import { moneyToApiString, prismaDateToBusinessDate } from '../../financial';
 import type { ResolvedDashboardRange } from '../dashboard.types';
@@ -12,8 +13,8 @@ const PIPELINE = [
 ] as const;
 
 export class SalesAnalyticsService {
-  static async get(range: ResolvedDashboardRange, businessDate: string): Promise<SalesAnalyticsData> {
-    return this.aggregate(await SalesAnalyticsRepository.load(range, businessDate));
+  static async get(range: ResolvedDashboardRange, businessDate: string, scope: BranchScope): Promise<SalesAnalyticsData> {
+    return this.aggregate(await SalesAnalyticsRepository.load(range, businessDate, scope));
   }
 
   static aggregate(records: SalesAnalyticsRecords): SalesAnalyticsData {

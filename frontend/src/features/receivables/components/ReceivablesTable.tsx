@@ -7,6 +7,7 @@ import {
 } from '../types/receivables.types';
 import { ReceivableMobileCard } from './ReceivableMobileCard';
 import { ReceivableRow } from './ReceivableRow';
+import { BRANCH_COLUMN_LABEL, useShowBranchColumn } from '../../branches/scope/branch-ui';
 
 interface ReceivablesTableProps {
   items: ReceivableItem[];
@@ -62,6 +63,10 @@ export const ReceivablesTable: React.FC<ReceivablesTableProps> = ({
   onRecordPayment,
 }) => {
   const [openMenuKey, setOpenMenuKey] = useState<string | null>(null);
+  const showBranch = useShowBranchColumn();
+  const visibleColumns = showBranch
+    ? [...columns.slice(0, 2), { key: 'branch', header: BRANCH_COLUMN_LABEL, className: 'px-3' } as ColumnDefinition, ...columns.slice(2)]
+    : columns;
 
   return (
     <>
@@ -72,7 +77,7 @@ export const ReceivablesTable: React.FC<ReceivablesTableProps> = ({
           </caption>
           <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wider text-slate-600">
             <tr>
-              {columns.map((column) => (
+              {visibleColumns.map((column) => (
                 <th
                   key={column.key}
                   scope="col"

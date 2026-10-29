@@ -40,6 +40,7 @@ import {
   FinancialLedgerPlanItem,
 } from '../features/financial-ledger/types/financial-ledger.types';
 import { businessLabels } from '../shared/labels/business-labels';
+import { branchIdOf, useRecordBranch } from '../features/branches/scope/branch-ui';
 
 type DebtMutationTarget = DebtPaymentTarget & { customer: { id: string } };
 type PlanMutationTarget = PlanPaymentTarget & { customer: { id: string } };
@@ -69,6 +70,7 @@ export const LedgerPage: React.FC = () => {
   const [planForEdit, setPlanForEdit] = useState<InstallmentPlanDetail | null>(null);
   const [planForCancellation, setPlanForCancellation] = useState<PlanMutationTarget | null>(null);
   const [paymentForVoid, setPaymentForVoid] = useState<FinancialLedgerPaymentItem | null>(null);
+  useRecordBranch(branchIdOf(debtForPayment ?? debtForEdit ?? debtForCancellation ?? planForPayment ?? planForEdit ?? planForCancellation ?? paymentForVoid));
 
   const { data, isLoading, isError, refetch } = useFinancialLedger(filters);
 

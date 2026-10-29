@@ -1,0 +1,25 @@
+Re-extracting code files in . (no LLM needed)...
+[graphify watch] 69 file(s) not classified (no supported extension or shebang), skipped: .easignore, .env.electron-hosted.example, .env.example, .env.hosted.example, .git, .gitattributes (+63 more)
+  AST extraction: 100/1494 uncached files (6%) [8 workers]
+  AST extraction: 200/1494 uncached files (13%) [8 workers]
+  AST extraction: 300/1494 uncached files (20%) [8 workers]
+  AST extraction: 400/1494 uncached files (26%) [8 workers]
+  AST extraction: 500/1494 uncached files (33%) [8 workers]
+  AST extraction: 600/1494 uncached files (40%) [8 workers]
+  AST extraction: 700/1494 uncached files (46%) [8 workers]
+  AST extraction: 800/1494 uncached files (53%) [8 workers]
+  AST extraction: 900/1494 uncached files (60%) [8 workers]
+  AST extraction: 1000/1494 uncached files (66%) [8 workers]
+  AST extraction: 1100/1494 uncached files (73%) [8 workers]
+  AST extraction: 1200/1494 uncached files (80%) [8 workers]
+  AST extraction: 1300/1494 uncached files (87%) [8 workers]
+  AST extraction: 1400/1494 uncached files (93%) [8 workers]
+  AST extraction: 1494/1494 uncached files (100%) [8 workers]
+  warning: 180 code file(s) yielded no symbols (0.47 MB) — a data file, or source this extractor models no symbols for: .eslintrc.cjs, Mobile Scanner/eslint.config.mjs, Mobile Scanner/index.ts, Mobile Scanner/src/api/suppliers-api.test.ts, Mobile Scanner/src/state/session-flow.test.ts (+175 more)
+Graph has 13730 nodes (above 5000 limit). Building aggregated community view...
+graph.html written (aggregated: 521 community nodes, 2350 cross-community edges)
+Tip: run with --obsidian for full node-level detail.
+[graphify watch] Rebuilt: 13730 nodes, 37035 edges, 521 communities
+[graphify watch] graph.json, graph.html and GRAPH_REPORT.md updated in graphify-out
+Code graph updated. For doc/paper/image changes run /graphify --update in your AI assistant.
+Tip: set GEMINI_API_KEY or GOOGLE_API_KEY to use Gemini for semantic extraction.

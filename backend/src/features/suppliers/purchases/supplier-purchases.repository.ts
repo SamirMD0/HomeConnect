@@ -1,3 +1,4 @@
+import { scopeWhere, type BranchScope } from '../../branches/branch-scope';
 import { Prisma, SupplierAuditAction, SupplierTransactionStatus, SupplierTransactionType } from '@prisma/client';
 import { prisma } from '../../../lib/prisma';
 
@@ -58,8 +59,9 @@ export class SupplierPurchasesRepository {
    * Purchases are supplier debts that carry lines. A plain debt typed straight
    * into the ledger has none, and is intentionally absent from this list.
    */
-  static async listForSupplier(supplierId: string, page: number, pageSize: number) {
+  static async listForSupplier(supplierId: string, page: number, pageSize: number, scope: BranchScope) {
     const where: Prisma.SupplierTransactionWhereInput = {
+      ...scopeWhere(scope),
       supplierId,
       type: SupplierTransactionType.SUPPLIER_DEBT,
       purchaseLines: { some: {} },
@@ -79,14 +81,15 @@ export class SupplierPurchasesRepository {
    * Warning support, not a uniqueness check: suppliers reuse receipt numbers, so
    * this reports what already exists and lets the user decide.
    */
-  static findReceiptMatches(supplierId: string, receiptNumber: string) {
+  static findReceiptMatches(supplierId: string, receiptNumber: string, scope: BranchScope) {
     return prisma.supplierTransaction.findMany({
       where: {
+        ...scopeWhere(scope),
         supplierId,
         status: SupplierTransactionStatus.ACTIVE,
         receiptNumber: { equals: receiptNumber, mode: 'insensitive' },
       },
-      select: { id: true, receiptNumber: true, amount: true, currency: true, transactionDate: true, description: true },
+      select: { branchId: true, id: true, receiptNumber: true, amount: true, currency: true, transactionDate: true, description: true },
       orderBy: [{ transactionDate: 'desc' }, { createdAt: 'desc' }],
       take: 5,
     });

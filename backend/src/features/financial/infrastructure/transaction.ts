@@ -4,6 +4,8 @@ import { prisma } from '../../../lib/prisma';
 export type FinancialTransactionClient = Prisma.TransactionClient;
 
 export interface TransactionRetryOptions {
+  /** Optional for bounded batch operations; existing callers keep Prisma defaults. */
+  timeoutMs?: number;
   maxRetries?: number;
   isRetryable?: (error: unknown) => boolean;
   retryDelayMs?: (attempt: number) => number;
@@ -39,6 +41,7 @@ export async function runFinancialTransaction<T>(
     () =>
       prisma.$transaction(operation, {
         isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        ...(options.timeoutMs === undefined ? {} : { timeout: options.timeoutMs }),
       }),
     options
   );

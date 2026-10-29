@@ -9,6 +9,12 @@ import {
 } from './receivables.repository';
 import { ReceivablesService } from './receivables.service';
 import { ReceivablesQueryInput } from './receivables.validator';
+const phase3bScope = { mode: 'all' as const, branchIds: ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'] };
+vi.mock('../../branches/parent-branch', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../branches/parent-branch')>()),
+  assertRecordInScope: vi.fn().mockResolvedValue('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
+}));
+
 
 const { repositoryMock } = vi.hoisted(() => ({
   repositoryMock: {
@@ -41,7 +47,7 @@ function makeCustomer(
   phone: string,
   isActive = true
 ): ReceivableCustomerRecord {
-  return { id, name, phone, isActive };
+  return { branchId: phase3bScope.branchIds[0], id, name, phone, isActive };
 }
 
 function businessDate(value: string): Date {
@@ -191,16 +197,17 @@ describe('ReceivablesService.computeReceivableProjections', () => {
       payments: [],
     });
 
-    await ReceivablesService.computeReceivableProjections({ customerIds: [alice.id] });
+    await ReceivablesService.computeReceivableProjections({ scope: phase3cScope,  customerIds: [alice.id] });
 
     expect(repositoryMock.loadReceivableRecords).toHaveBeenCalledWith({
+      scope: phase3cScope,
       includeInactive: true,
       customerIds: [alice.id],
     });
   });
 
   it('does not touch the database for an empty id list', async () => {
-    const projections = await ReceivablesService.computeReceivableProjections({ customerIds: [] });
+    const projections = await ReceivablesService.computeReceivableProjections({ scope: phase3cScope,  customerIds: [] });
 
     expect(projections.size).toBe(0);
     expect(repositoryMock.loadReceivableRecords).not.toHaveBeenCalled();
@@ -214,7 +221,7 @@ describe('ReceivablesService.computeReceivableProjections', () => {
       payments: [],
     });
 
-    const projections = await ReceivablesService.computeReceivableProjections({
+    const projections = await ReceivablesService.computeReceivableProjections({ scope: phase3cScope,
       customerIds: [carla.id],
     });
 
@@ -234,11 +241,11 @@ describe('ReceivablesService.computeReceivableProjections', () => {
   it('reports the same figures the receivables page reports for the same records', async () => {
     repositoryMock.loadReceivableRecords.mockResolvedValue(recordSet());
     const receivables = await ReceivablesService.getReceivables(
-      query({ sortBy: 'name', sortOrder: 'asc' })
+      query({ sortBy: 'name', sortOrder: 'asc' }), phase3bScope
     );
 
     repositoryMock.loadReceivableRecords.mockResolvedValue(recordSet());
-    const projections = await ReceivablesService.computeReceivableProjections({
+    const projections = await ReceivablesService.computeReceivableProjections({ scope: phase3cScope,
       customerIds: [alice.id, bilal.id],
     });
 
@@ -268,7 +275,7 @@ describe('ReceivablesService.computeReceivableProjections', () => {
   it('returns money as fixed-2 strings, never numbers', async () => {
     repositoryMock.loadReceivableRecords.mockResolvedValue(recordSet());
 
-    const projections = await ReceivablesService.computeReceivableProjections({
+    const projections = await ReceivablesService.computeReceivableProjections({ scope: phase3cScope,
       customerIds: [alice.id, bilal.id],
     });
     const projection = projections.get(alice.id)!;
@@ -278,3 +285,10 @@ describe('ReceivablesService.computeReceivableProjections', () => {
     expect(typeof projection.overdueAmount).toBe('string');
   });
 });
+
+const phase3cScope = { mode: 'all' as const, branchIds: ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'] };
+
+vi.mock('../../branches/branch-breakdown', async (importOriginal) => ({
+  ...await importOriginal<typeof import('../../branches/branch-breakdown')>(),
+  branchLabel: vi.fn().mockResolvedValue('Phase 3C A'),
+}));

@@ -1,3 +1,4 @@
+const scope = { mode: 'all' as const, branchIds: ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'] };
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const tx = { id: 'tx', user: { findUnique: vi.fn() } };
@@ -30,6 +31,7 @@ const context = { requestId: null, ipAddress: null };
 const supplierId = '22222222-2222-4222-8222-222222222222';
 
 const supplier = {
+  branchId: scope.branchIds[0],
   id: supplierId,
   name: 'Al-Nour Trading',
   phone: '70123456',
@@ -57,7 +59,7 @@ describe('SuppliersService.delete', () => {
   it('refuses to hard delete a supplier that has stock receivings', async () => {
     repository.receivingCount.mockResolvedValue(1);
 
-    await expect(SuppliersService.delete(supplierId, deleteInput, admin, context)).rejects.toMatchObject({
+    await expect(SuppliersService.delete(supplierId, deleteInput, admin, context, scope)).rejects.toMatchObject({
       statusCode: 409,
       code: 'SUPPLIER_HAS_RECEIVINGS',
     });
@@ -70,7 +72,7 @@ describe('SuppliersService.delete', () => {
   it('refuses to hard delete a supplier that has transactions', async () => {
     repository.transactionCount.mockResolvedValue(3);
 
-    await expect(SuppliersService.delete(supplierId, deleteInput, admin, context)).rejects.toMatchObject({
+    await expect(SuppliersService.delete(supplierId, deleteInput, admin, context, scope)).rejects.toMatchObject({
       statusCode: 409,
       code: 'SUPPLIER_HAS_TRANSACTIONS',
     });
@@ -82,7 +84,7 @@ describe('SuppliersService.delete', () => {
   it('hard deletes a supplier with no transactions and keeps a DELETE audit', async () => {
     repository.transactionCount.mockResolvedValue(0);
 
-    await expect(SuppliersService.delete(supplierId, deleteInput, admin, context)).resolves.toEqual({
+    await expect(SuppliersService.delete(supplierId, deleteInput, admin, context, scope)).resolves.toEqual({
       id: supplierId,
       deleted: true,
     });
@@ -102,7 +104,7 @@ describe('SuppliersService.delete', () => {
     repository.transactionCount.mockResolvedValue(0);
     verifyAdminPasswordMock.mockRejectedValue(new Error('Account password is required'));
 
-    await expect(SuppliersService.delete(supplierId, deleteInput, admin, context)).rejects.toThrow();
+    await expect(SuppliersService.delete(supplierId, deleteInput, admin, context, scope)).rejects.toThrow();
 
     expect(repository.delete).not.toHaveBeenCalled();
   });
@@ -111,7 +113,7 @@ describe('SuppliersService.delete', () => {
     repository.transactionCount.mockResolvedValue(0);
 
     await expect(
-      SuppliersService.delete(supplierId, deleteInput, { ...admin, role: 'EMPLOYEE' }, context)
+      SuppliersService.delete(supplierId, deleteInput, { ...admin, role: 'EMPLOYEE' }, context, scope)
     ).rejects.toThrow();
 
     expect(repository.delete).not.toHaveBeenCalled();

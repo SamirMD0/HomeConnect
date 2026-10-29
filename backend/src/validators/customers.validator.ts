@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { userTextSchema } from './user-text';
+import { databaseUuidSchema } from './database-uuid';
 
 const creditLimitSchema = z.string().trim().regex(/^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/, 'Credit limit must be non-negative USD with at most two decimal places').refine((value) => Number(value) <= 9999999999.99, 'Credit limit is too large').nullable().optional();
 
@@ -41,3 +42,12 @@ export const customerSuggestionsQuerySchema = z.object({
 export type CreateCustomerInput = z.infer<typeof createCustomerSchema>;
 export type UpdateCustomerInput = z.infer<typeof updateCustomerSchema>;
 export type CustomerQueryInput = z.infer<typeof customerQuerySchema>;
+
+export const customerBranchTransferPreviewSchema = z.object({
+  toBranchId: databaseUuidSchema('Choose a destination branch'),
+});
+
+export const customerBranchTransferSchema = z.object({
+  toBranchId: databaseUuidSchema('Choose a destination branch'),
+  accountPassword: z.string().min(1, 'Account password is required'),
+});

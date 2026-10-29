@@ -1,3 +1,6 @@
+import { branchFields } from '../branches/branch-breakdown';
+import { withBranchBreakdown, } from '../branches/branch-breakdown';
+import { type BranchScope } from '../branches/branch-scope';
 import { Currency, DebtKind, DebtStatus, InstallmentPlanStatus, InstallmentStatus } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import {
@@ -53,8 +56,12 @@ interface PlanComputation {
 }
 
 export class DashboardFinancialService {
-  static async getFinancialSummary(): Promise<DashboardFinancialSummaryView> {
-    const records = await DashboardFinancialRepository.loadFinancialRecords();
+  static async getFinancialSummary(scope: BranchScope) {
+    return withBranchBreakdown(scope, scope => this.calculateGetFinancialSummary(scope));
+  }
+
+  static async calculateGetFinancialSummary(scope: BranchScope): Promise<DashboardFinancialSummaryView> {
+    const records = await DashboardFinancialRepository.loadFinancialRecords(scope);
     const businessDate = todayInBusinessTimezone();
     const monthStart = `${businessDate.slice(0, 7)}-01`;
     const debtComputations = records.debts.map((debt) => this.computeDebt(debt, businessDate));
@@ -264,7 +271,7 @@ export class DashboardFinancialService {
         type: 'DEBT',
         id: debt.record.id,
         parentId: null,
-        customer: debt.record.customer,
+        ...branchFields(debt.record), customer: debt.record.customer,
         description: debt.record.description,
         dueDate: debt.dueDate,
         remainingAmount: moneyToApiString(debt.remainingBalance),
@@ -282,7 +289,7 @@ export class DashboardFinancialService {
           type: 'INSTALLMENT' as const,
           id: installment.installment.id,
           parentId: plan.record.id,
-          customer: plan.record.customer,
+          ...branchFields(plan.record), customer: plan.record.customer,
           description: plan.record.description,
           dueDate: installment.dueDate,
           remainingAmount: moneyToApiString(installment.remainingBalance),
@@ -332,7 +339,7 @@ export class DashboardFinancialService {
       }
     }
 
-    return Array.from(byCustomer.values())
+    return Array.from(byCustomer.values()).map(row => ({...row, ...branchFields(debts.find(item => item.record.customerId === row.customer.id)?.record ?? plans.find(item => item.record.customerId === row.customer.id)?.record ?? {})}))
       .sort((left, right) => {
         const amountComparison = new Decimal(right.totalOverdue).comparedTo(new Decimal(left.totalOverdue));
         return amountComparison === 0 ? left.customer.name.localeCompare(right.customer.name) : amountComparison;
@@ -343,7 +350,7 @@ export class DashboardFinancialService {
   private static recentPayments(payments: DashboardPaymentRecord[]): DashboardRecentPayment[] {
     return payments.slice(0, 5).map((payment) => ({
       id: payment.id,
-      customer: payment.customer,
+      ...branchFields(payment), customer: payment.customer,
       amount: moneyToApiString(payment.baseAmount ?? payment.totalAmount),
       paymentDate: prismaDateToBusinessDate(payment.paymentDate),
       paymentMethod: payment.paymentMethod,

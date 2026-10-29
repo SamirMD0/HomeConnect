@@ -9,7 +9,7 @@ import { CustomerActivityService } from './customer-activity.service';
 export class CustomerFinancialSummaryController {
   static async getCustomerActivity(req: Request, res: Response, next: NextFunction) {
     try {
-      const items = await CustomerActivityService.list(req.params.customerId as string, Number(req.query.limit) || 50);
+      const items = await CustomerActivityService.list(req.params.customerId as string, Number(req.query.limit) || 50, req.branchScope!);
       res.status(200).json({ success: true, data: { items } });
     } catch (error) { next(error); }
   }

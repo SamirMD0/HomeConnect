@@ -2,6 +2,12 @@ import jwt from 'jsonwebtoken';
 import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { app } from '../../../app';
+const phase3bScope = { mode: 'all' as const, branchIds: ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'] };
+vi.mock('../../branches/parent-branch', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../branches/parent-branch')>()),
+  assertRecordInScope: vi.fn().mockResolvedValue('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
+}));
+
 
 const { ledgerServiceMock } = vi.hoisted(() => ({
   ledgerServiceMock: {
@@ -13,8 +19,9 @@ vi.mock('./financial-ledger.service', () => ({
   FinancialLedgerService: ledgerServiceMock,
 }));
 
-vi.mock('../../../lib/prisma', () => ({
+vi.mock('../../../lib/prisma', async () => ({
   prisma: {
+...(await import('../../../test/branch-scope-fixture.js')).singleBranchRouteModels(),
     $queryRaw: vi.fn().mockResolvedValue([{ result: 1 }]),
   },
   transactionModel: {},
@@ -95,7 +102,7 @@ describe('financial ledger routes', () => {
       limit: 10,
       sortBy: 'customer',
       sortOrder: 'desc',
-    });
+    }, phase3bScope);
   });
 
   it('rejects invalid query parameters', async () => {

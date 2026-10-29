@@ -32,6 +32,7 @@ import {
 } from '../../features/service/utils/service-labels';
 import { useAuth } from '../../hooks/useAuth';
 import { businessLabels } from '../../shared/labels/business-labels';
+import { branchIdOf, useRecordBranch } from '../../features/branches/scope/branch-ui';
 
 const activeStatuses = Object.keys(STATUS_LABELS).filter(
   (status) => !FINAL_SERVICE_STATUSES.includes(status as ServiceJobStatus)
@@ -42,6 +43,7 @@ export const ServiceJobDetailsPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const jobQuery = useServiceJob(id);
+  useRecordBranch(branchIdOf(jobQuery.data));
   const [dialog, setDialog] = useState<'edit' | 'status' | 'cancel' | 'reopen' | null>(null);
   if (jobQuery.isLoading)
     return <div className="p-12 text-center text-slate-500">Loading service job...</div>;

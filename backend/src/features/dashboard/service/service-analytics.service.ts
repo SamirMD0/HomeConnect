@@ -1,3 +1,4 @@
+import { type BranchScope } from '../../branches/branch-scope';
 import { ServiceJobStatus } from '@prisma/client';
 import { prismaDateToBusinessDate, todayInBusinessTimezone } from '../../financial';
 import { DASHBOARD_ALERT_THRESHOLDS, DASHBOARD_TOP_RECORD_LIMIT } from '../dashboard.config';
@@ -16,9 +17,9 @@ const TERMINAL_STATUSES = new Set<ServiceJobStatus>([
 export class ServiceAnalyticsService {
   static async get(
     range: ResolvedDashboardRange,
-    businessDate = todayInBusinessTimezone()
+    businessDate = todayInBusinessTimezone(), scope: BranchScope
   ): Promise<ServiceAnalyticsData> {
-    return this.aggregate(await ServiceAnalyticsRepository.load(), range, businessDate);
+    return this.aggregate(await ServiceAnalyticsRepository.load(scope), range, businessDate);
   }
 
   static aggregate(

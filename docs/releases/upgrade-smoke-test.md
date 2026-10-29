@@ -46,7 +46,7 @@ Confirm one `PASS` line for the admin, customers, products, sales orders, paymen
 ## 5. Watch first-launch migrations
 
 - Open Home Connect and watch the startup monitor for `Running pre-migration guard...` and `Startup complete. Opening app...`.
-- If migrations ran, record the `Applied N migration(s). Backup at <path>` message. Confirm the named backup exists and is larger than 1 MB.
+- If migrations ran, record the `Applied N migration(s). Backup at <path>` message. Confirm the named backup exists and is larger than 1 MB. Confirm a matching `.receipts` folder exists beside it with `manifest.json`; if the fixture has supplier receipt photos, confirm they are present there.
 - If no migrations were pending, record that outcome instead.
 - If the migration-failed screen appears, stop. Record its failure code, follow `docs/incident-runbooks/migration-failure.md`, and do not publish the release.
 
@@ -79,6 +79,146 @@ Confirm one `PASS` line for the admin, customers, products, sales orders, paymen
 
 GREEN requires successful fixture seeding, successful first launch (and a backup larger than 1 MB if migrations ran), five matching dashboard values, both matching spot-checks, three successful write operations, and the expected update/About results.
 
+For a release that includes mobile supplier workflows, GREEN also requires the installable APK to pass the real-phone supplier workflow checklist in `Mobile Scanner/README.md`. A passing desktop smoke test alone is not sufficient.
+
 If GREEN, copy the notes from `docs/releases/<version>.md` into the drafted GitHub Release body, clear **This is a pre-release** if applicable, and publish the release.
 
 If NOT GREEN, do not publish. File an issue with the failing step, migration-failure diagnostics if applicable, and the pre-migration backup path.
+
+
+## Multi-branch Phase 2: baseline and migration proof
+
+Phase 0 evidence gates release, not implementation. The owner/reviewer performs
+this drill on a restored copy; builders use synthetic scratch data only.
+Keep the app closed throughout both snapshots. Never point these commands at
+`homeconnect`. Restore the latest verified backup into `homeconnect_reconcile`,
+using the backup/restore procedure. Retain the original archive and checksum.
+
+In a clean reviewer checkout, before installing a build containing the ownership
+migration, check out the
+first Phase 2 commit (`52d5fd4`, `feat(branches): add pre-migration reconciliation tool`).
+Install its locked dependencies and generate its Prisma client. Set
+`DATABASE_URL` to the restored `homeconnect_reconcile` database and confirm the
+resolved name. Do not run migrations yet. Choose a historical month containing
+returns and LBP activity; use that identical month and as-of date for both runs.
+
+```powershell
+git switch --detach 52d5fd4
+npm ci
+npx prisma generate --schema backend/prisma/schema.prisma
+function Confirm-ReconciliationDatabase {
+  if (([uri]$env:DATABASE_URL).AbsolutePath -ne '/homeconnect_reconcile') {
+    throw 'DATABASE_URL must resolve to homeconnect_reconcile'
+  }
+  Write-Host 'Confirmed database: homeconnect_reconcile'
+}
+# Enter only the restored-copy URL. Input is masked and is never printed.
+$restoreUrl = Read-Host 'Restored homeconnect_reconcile connection URL' -AsSecureString
+$env:DATABASE_URL = [Net.NetworkCredential]::new('', $restoreUrl).Password
+$branchEvidence = Join-Path $env:USERPROFILE 'Documents/HomeConnect-Phase0-Evidence'
+New-Item -ItemType Directory -Force -Path $branchEvidence | Out-Null
+$before = Join-Path $branchEvidence 'phase0-before.json'
+$after = Join-Path $branchEvidence 'phase2-after.json'
+Confirm-ReconciliationDatabase
+npx tsx scripts/branch-reconciliation.ts snapshot --out $before --period 2026-08 --as-of 2026-10-27
+Confirm-ReconciliationDatabase
+npx tsx scripts/branch-reconciliation.ts compare --before $before --after $before
+```
+
+The baseline comparison reports `pre-branch schema: closure checks not applicable`.
+Archive this evidence before checking out/installing the completed Phase 2 build.
+Confirm DATABASE_URL still names homeconnect_reconcile, then switch to the reviewed
+Phase 2 branch/build. Keep both snapshot files outside the checkout so switching
+builds does not lose the baseline. The example filenames below use that directory.
+
+```powershell
+git switch --detach feature/multi-branch-phase-2
+npm ci
+npx prisma generate --schema backend/prisma/schema.prisma
+Confirm-ReconciliationDatabase
+npx tsx scripts/apply-bundled-migrations.ts
+Confirm-ReconciliationDatabase
+npx tsx scripts/branch-reconciliation.ts snapshot --out $after --period 2026-08 --as-of 2026-10-27
+Confirm-ReconciliationDatabase
+npx tsx scripts/branch-reconciliation.ts compare --before $before --after $after
+```
+
+Release requires COMPARE PASS, zero snapshot differences, every closure count zero,
+and clean customer/supplier integrity rows. Snapshot uses existing report services
+for analysis, monthly review and aging; independent SQL mirrors the integrity
+reports. It excludes generation clocks and additive branch ownership metadata.
+Changing any amount, date, status or row count still fails comparison. Partial
+ownership schemas are rejected. The tool refuses business database names.
+
+The builder's synthetic proof is reproducible with `npx tsx scripts/branch-reconciliation-proof.ts`
+from a worktree configured for `homeconnect_test_phase4_phase5_phase6`. It creates
+a separate `homeconnect_test_mb_proof_*` database, seeds both currencies, captures
+both snapshots, executes `scripts/apply-bundled-migrations.ts` for the upgrade,
+prints historical employee/admin grant counts, compares all financial evidence and
+34 closure checks, then drops its database. It seeds the existing allowlisted
+category-migration checksum and verifies that the desktop runner accepts and
+preserves that recorded checksum. No checksum bypass or new allowlist entry is used.
+The checked-in sample evidence is in `docs/releases/evidence/multi-branch-phase2/`.
+Run CI with `NODE_ENV=test` and the required RUN_* flags via `npm run test:ci`;
+a copied development .env otherwise changes unrelated environment-sensitive tests.
+
+If the migration guard reports an inactive conflicting MAIN code/name, the owner
+must activate the branch holding history or rename that inactive conflict before
+retrying. The migration never guesses which inactive branch holds history.
+
+
+### Hosted (Render) Phase 0 drill
+
+The owner takes a fresh dump of the hosted Render database using the verified
+backup procedure, and restores it into the disposable **homeconnect_reconcile_hosted**
+database. Keep the application closed for this drill. The builder never connects
+to the hosted/business database. Preserve that dump and the snapshots outside the
+checkout. Render deploys with Prisma, so this drill deliberately uses Prisma rather
+than the desktop runner. Its existing checksum behavior remains unchanged; stop on
+any migration error instead of resolving or changing a checksum.
+
+In the same clean reviewer checkout, capture the baseline before installing the
+Phase 2 build (use a month with returns and LBP activity):
+
+```powershell
+git switch --detach 52d5fd4
+npm ci
+npx prisma generate --schema backend/prisma/schema.prisma
+$hostedRestoreUrl = Read-Host 'Restored homeconnect_reconcile_hosted URL' -AsSecureString
+$env:DATABASE_URL = [Net.NetworkCredential]::new('', $hostedRestoreUrl).Password
+function Confirm-HostedReconciliationDatabase {
+  if (([uri]$env:DATABASE_URL).AbsolutePath -ne '/homeconnect_reconcile_hosted') {
+    throw 'DATABASE_URL must resolve to homeconnect_reconcile_hosted'
+  }
+  Write-Host 'Confirmed database: homeconnect_reconcile_hosted'
+}
+$hostedEvidence = Join-Path $env:USERPROFILE 'Documents/HomeConnect-Phase0-Hosted-Evidence'
+New-Item -ItemType Directory -Force -Path $hostedEvidence | Out-Null
+$hostedBefore = Join-Path $hostedEvidence 'before.json'
+$hostedAfter = Join-Path $hostedEvidence 'after.json'
+Confirm-HostedReconciliationDatabase
+npx tsx scripts/branch-reconciliation.ts snapshot --out $hostedBefore --period 2026-08 --as-of 2026-10-27
+
+git switch --detach feature/multi-branch-phase-2
+npm ci
+npx prisma generate --schema backend/prisma/schema.prisma
+Confirm-HostedReconciliationDatabase
+npx prisma migrate deploy --schema backend/prisma/schema.prisma
+Confirm-HostedReconciliationDatabase
+npx tsx scripts/branch-reconciliation.ts snapshot --out $hostedAfter --period 2026-08 --as-of 2026-10-27
+Confirm-HostedReconciliationDatabase
+npx tsx scripts/branch-reconciliation.ts compare --before $hostedBefore --after $hostedAfter
+```
+
+Release requires the same zero-difference, zero-closure-mismatch evidence as the
+desktop drill. Rollback restores the fresh pre-upgrade dump and compatible build.
+
+
+## Branch scoping smoke test
+
+Keep `MULTI_BRANCH_SCOPING_ENABLED` OFF in production until Phase 4's desktop branch selector ships. Exercise scoping only on a restored throwaway copy.
+
+1. With one active branch and no scope header, customer/supplier lists, financial actions and reports behave as before. Print an invoice, payment receipt, sales return and customer statement: the existing shop header is unchanged and no branch line appears.
+2. Sign in as an employee without a branch grant. Branch-owned lists are empty; creation gives the clear `NO_BRANCH_AVAILABLE` error. Grant a branch, repeat the request, then revoke it and verify the next request reflects the change.
+3. On a multi-branch test copy, select a branch in mobile after login. Its name stays visible; supplier actions carry `X-Branch-Scope`. A revoked selection returns to branch selection; zero accessible branches shows “No branch assigned — ask an administrator”.
+4. With two active branches, print each document and confirm its record's branch name/address/phone appears below the shop header. A statement uses the customer's branch. An out-of-scope document ID returns 404.

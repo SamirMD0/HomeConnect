@@ -1,3 +1,4 @@
+import type { BranchScope } from '../../branches/branch-scope';
 import {
   DebtKind,
   DebtStatus,
@@ -58,7 +59,7 @@ const DEFAULT_DELIVERY_REASON = 'Item delivered to customer';
 
 export class PrepaidService {
   static async listPrepaidPurchases(
-    query: PrepaidListQueryInput
+    query: PrepaidListQueryInput, scope: BranchScope
   ): Promise<PrepaidPurchaseListResult> {
     const where = PrepaidRepository.buildWhere({
       status: query.status,
@@ -66,7 +67,7 @@ export class PrepaidService {
       search: query.search,
       dateFrom: query.dateFrom ? businessDateToPrisma(parseBusinessDate(query.dateFrom)) : undefined,
       dateTo: query.dateTo ? businessDateToPrisma(parseBusinessDate(query.dateTo)) : undefined,
-    });
+    }, scope);
 
     // Totals are computed over every matching row, never over the page slice.
     const summaryRows = await PrepaidRepository.findAllForSummary(where);
@@ -389,6 +390,7 @@ export class PrepaidService {
 
     return {
       id: prepaid.id,
+      branchId: prepaid.debt.branchId,
       debtId: prepaid.debtId,
       customer: prepaid.debt.customer,
       itemName: prepaid.debt.description,

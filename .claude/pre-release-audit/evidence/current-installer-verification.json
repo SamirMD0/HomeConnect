@@ -1,35 +1,35 @@
 {
-  "version": "2.0.2",
-  "installer": "release/2.0.2/HomeConnect-Setup-2.0.2.exe",
-  "bytes": 113457815,
-  "sha256": "08505c829c9aaefcb1446916ab38b819a092985407aaeaf7577624e1b86a2e4b",
+  "version": "2.0.8",
+  "installer": "release/2.0.8/HomeConnect-Setup-2.0.8.exe",
+  "bytes": 133632782,
+  "sha256": "1fb045e5971aa9e158da80ba8753ac3238ecd211547628a5c15a115d45bad3e0",
   "latestVersionMatches": true,
   "latestFileHashMatches": true,
   "latestFileSizeMatches": true,
   "asarVersionMatches": true,
   "asarMainMatches": true,
   "electron": {
-    "expected": 19,
+    "expected": 25,
     "missing": [],
     "changed": []
   },
   "frontend": {
-    "expected": 188,
-    "actual": 188,
+    "expected": 190,
+    "actual": 190,
     "missing": [],
     "extra": [],
     "changed": []
   },
   "backend": {
-    "expected": 787,
-    "actual": 787,
+    "expected": 803,
+    "actual": 803,
     "missing": [],
     "extra": [],
     "changed": []
   },
   "migrations": {
-    "expected": 67,
-    "actual": 67,
+    "expected": 69,
+    "actual": 69,
     "missing": [],
     "extra": [],
     "changed": []
@@ -47,5 +47,6 @@
     "undici": "7.30.0"
   },
   "clientHasAuditUrl": false,
-  "forbiddenResources": []
+  "forbiddenResources": [],
+  "packagedMigrationEngineWorks": true
 }

@@ -11,6 +11,7 @@ export interface CustomerMonthlyPoint {
 }
 
 export interface CustomerTopDebtor {
+  branchId?:string; branchName?:string;
   customerId: string;
   customerName: string;
   phone: string;

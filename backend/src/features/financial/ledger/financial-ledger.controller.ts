@@ -6,7 +6,7 @@ export class FinancialLedgerController {
   static async getFinancialLedger(req: Request, res: Response, next: NextFunction) {
     try {
       const ledger = await FinancialLedgerService.getFinancialLedger(
-        req.query as unknown as FinancialLedgerQueryInput
+        req.query as unknown as FinancialLedgerQueryInput, req.branchScope!
       );
 
       res.status(200).json({

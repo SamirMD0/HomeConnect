@@ -1,3 +1,5 @@
+import { customerBranch } from '../../branches/parent-branch';
+import { runFinancialTransaction } from '../infrastructure/transaction';
 import { Currency, DebtKind, DebtStatus, PaymentMethod, Prisma } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { prisma } from '../../../lib/prisma';
@@ -75,6 +77,7 @@ export interface ListDebtsParams {
 }
 
 export interface CreateDebtData {
+  sourceCustomerImportId?: string;
   customerId: string;
   description: string;
   kind?: DebtKind;
@@ -126,10 +129,12 @@ export class DebtsRepository {
   }
 
   static async createDebt(data: CreateDebtData, tx?: FinancialTransactionClient): Promise<DebtWithDetails> {
-    const client = tx ?? prisma;
+    if (!tx) return runFinancialTransaction(client => this.createDebt(data, client));
+    const client = tx;
     return client.debt.create({
       data: {
         ...data,
+        branchId: await customerBranch(data.customerId, client),
         baseOriginalAmount: data.baseOriginalAmount ?? data.originalAmount,
       },
       include: debtInclude,
@@ -175,6 +180,7 @@ export class DebtsRepository {
     return tx.payment.create({
       data: {
         ...data,
+        branchId: await customerBranch(data.customerId, tx),
         baseAmount: data.baseAmount ?? data.totalAmount,
       },
       include: {

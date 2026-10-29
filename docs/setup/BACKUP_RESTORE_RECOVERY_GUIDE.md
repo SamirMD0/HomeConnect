@@ -37,6 +37,8 @@ homeconnect-2026-07-25-151500-pre-restore.backup
 
 Do not rename backup files unless instructed by technical support.
 
+Each new backup has a matching folder with the same name ending in `.receipts` instead of `.backup`. It contains supplier receipt photos and `manifest.json`. Keep the database file and this folder together when copying backups to USB or another PC. A `.backup` file alone does not contain receipt photos. Older backups may not have a snapshot and cannot recover photos that were stored outside PostgreSQL.
+
 Do not delete:
 
 - the newest successful manual backup
@@ -66,6 +68,7 @@ If the app was closed at the scheduled time, it checks on startup and creates a 
 6. Click Create backup now.
 7. Wait for the completed status.
 8. Confirm the file appears in the backup list.
+9. Confirm its matching `.receipts` folder exists, including `manifest.json` (the folder can have no photos if none were captured).
 
 ## Restore A Backup
 
@@ -74,7 +77,7 @@ If the app was closed at the scheduled time, it checks on startup and creates a 
 3. Select a completed backup.
 4. Click Restore.
 5. Click Validate backup.
-6. Confirm archive readable, checksum matches, and compatible version.
+6. Confirm archive readable, checksum matches, and compatible version. Check for any warning about a missing receipt-photo snapshot; if supplier photos are needed, stop and locate the matching folder before restoring.
 7. Read the warning.
 8. Type:
 
@@ -87,11 +90,12 @@ RESTORE
 11. Reload or restart the app if requested.
 
 The system creates a pre-restore safety backup before replacing data.
+Restoring a backup verifies and copies its receipt photos before replacing the database. Newer photos already on disk are not deleted. A conflicting photo filename with different contents stops the restore.
 
 ## If The App Cannot Open
 
 1. Do not delete the backup folder.
-2. Locate the newest known-good `.backup` file.
+2. Locate the newest known-good `.backup` file and its matching `.receipts` folder.
 3. Locate PostgreSQL tools:
 
 ```text
@@ -104,7 +108,7 @@ Important tools:
 - `pg_dump.exe`
 - `psql.exe`
 
-4. Ask technical support to restore the `.backup` file using PostgreSQL tools.
+4. Ask technical support to restore the `.backup` file using PostgreSQL tools and recover the matching receipt photos. Do not copy the photo folder into the app data directory without verifying its manifest and target path.
 5. Keep the original backup folder untouched until the restored app is verified.
 
 ## What Not To Do

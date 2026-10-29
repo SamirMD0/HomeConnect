@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import fs from 'fs/promises';
+import os from 'os';
 import path from 'path';
 import { prisma } from '../../lib/prisma';
 import { logger } from '../../lib/logger';
@@ -16,7 +17,11 @@ import {
 import { BackupSettingsStore } from './backup-settings.store';
 import { verifyAdminPasswordForCorrection } from '../financial/authorization/account-password';
 import { PostgresToolDiscovery } from './postgres-tools';
-import { parsePostgresConnectionString } from './postgres-url';
+import { parsePostgresConnectionString, type PostgresConnectionInfo } from './postgres-url';
+import { compareMigrationLevel, parseBackupMigrationHistory } from './backup-migration-level';
+import { MigrationExecutor, type MigrationClient } from '../maintenance/migration-executor';
+import { MigrationRunner } from '../maintenance/migration-runner';
+import { receiptSnapshotPath, restoreReceiptSnapshot, snapshotReceipts, verifyReceiptSnapshot } from './receipt-snapshot';
 import {
   BackupListQuery,
   BackupListResult,
@@ -30,6 +35,8 @@ import {
 const APPLICATION_VERSION = process.env.npm_package_version || '1.0.0';
 const MIN_BACKUP_SIZE_BYTES = 1;
 const AUTO_BACKUP_CATCHUP_HOURS = 24;
+/** Replaying a full shop database through psql can outlast the 5-minute default. */
+const RESTORE_TIMEOUT_MS = 30 * 60 * 1000;
 
 export class BackupService {
   static async getStatus() {
@@ -142,6 +149,25 @@ export class BackupService {
       await fs.copyFile(sourceAbsolutePath, destinationPath);
     }
 
+    const sourceReceiptPath = receiptSnapshotPath(sourceAbsolutePath);
+    const destinationReceiptPath = receiptSnapshotPath(destinationPath);
+    let importedReceiptSnapshot = false;
+    try {
+      if (await verifyReceiptSnapshot(sourceAbsolutePath)) {
+        importedReceiptSnapshot = true;
+        if (copiedFile) {
+          await fs.cp(sourceReceiptPath, destinationReceiptPath, { recursive: true, errorOnExist: true, force: false });
+          await verifyReceiptSnapshot(destinationPath);
+        }
+      }
+    } catch (error) {
+      if (copiedFile) {
+        await BackupCommandRunner.removeIncompleteFile(destinationPath);
+        await fs.rm(destinationReceiptPath, { recursive: true, force: true }).catch(() => undefined);
+      }
+      throw error;
+    }
+
     const connection = parsePostgresConnectionString();
     const record = BackupMetadataStore.createRecord({
       filename: path.basename(destinationPath),
@@ -161,6 +187,7 @@ export class BackupService {
         sizeBytes: verified.sizeBytes,
         checksum: verified.checksum,
         verified: verified.verified,
+        receiptSnapshot: importedReceiptSnapshot,
         durationMs: null,
       };
       await BackupMetadataStore.upsert(settings.backupDirectory, completedRecord);
@@ -169,6 +196,7 @@ export class BackupService {
     } catch (error) {
       if (copiedFile) {
         await BackupCommandRunner.removeIncompleteFile(destinationPath);
+        await fs.rm(destinationReceiptPath, { recursive: true, force: true }).catch(() => undefined);
       }
       throw error;
     }
@@ -189,16 +217,31 @@ export class BackupService {
     const record = await this.findBackupRecord(settings.backupDirectory, backupId);
     const validation = await this.verifyBackupFile(settings, record);
     const checksumMatches = record.checksum ? validation.checksum === record.checksum : true;
-    const compatible = record.applicationVersion === APPLICATION_VERSION;
+    // Schema level, not version string: same-version installs can differ by
+    // several migrations. Older backups are upgraded after restoring.
+    const level = await this.readMigrationLevel(settings, record.absolutePath);
+    const receiptSnapshot = await verifyReceiptSnapshot(record.absolutePath);
+    if (record.receiptSnapshot && !receiptSnapshot) throw new BackupInvalidError('Receipt-photo snapshot is missing');
 
     return {
       backup: this.toPublicRecord({ ...record, checksum: validation.checksum, verified: validation.verified }),
       checksumMatches,
       archiveReadable: validation.verified,
-      compatible,
+      compatible: level.compatible,
+      pendingMigrations: level.pendingAfterRestore,
+      newerMigrations: level.newerThanApp,
       warnings: [
         ...(checksumMatches ? [] : ['Backup checksum does not match stored metadata']),
-        ...(compatible ? [] : ['Backup was created by a different application version']),
+        ...(level.compatible
+          ? []
+          : [`Backup was made by a newer version (${level.newerThanApp.length} unknown database updates); update this app first`]),
+        ...(level.pendingAfterRestore.length && level.compatible
+          ? [`Backup is ${level.pendingAfterRestore.length} database updates older; they will be applied after restoring`]
+          : []),
+        ...(record.applicationVersion === APPLICATION_VERSION
+          ? []
+          : [`Backup was created by version ${record.applicationVersion ?? 'unknown'}`]),
+        ...(receiptSnapshot ? [] : ['Backup has no receipt-photo snapshot; receipt images may need separate recovery']),
       ],
     };
   }
@@ -232,22 +275,36 @@ export class BackupService {
         if (!validation.archiveReadable || !validation.checksumMatches || !validation.compatible) {
           throw new BackupInvalidError('Backup is not safe to restore', validation);
         }
+        await verifyReceiptSnapshot(record.absolutePath);
 
         logger.warn('pre_restore_backup_started', { backupId, actor: createdBy });
         const safetyBackup = await this.createBackupInternal('PRE_RESTORE', createdBy, false);
         logger.warn('restore_started', { backupId, safetyBackupId: safetyBackup.id, actor: createdBy });
 
         const tools = this.requireTools(settings);
+        if (!tools.psqlPath) {
+          throw new BackupValidationError('PostgreSQL psql tool was not found; it is required to restore safely', tools);
+        }
         const connection = parsePostgresConnectionString();
+        // Copy first: a missing/corrupt photo must not be discovered only after
+        // PostgreSQL has already been replaced. UUID filenames are immutable;
+        // newer orphan files remain untouched if the DB restore later fails.
+        await restoreReceiptSnapshot(record.absolutePath);
         await prisma.$disconnect();
-        const result = await BackupCommandRunner.runCommand(
-          tools.pgRestorePath,
-          BackupCommandRunner.pgRestoreArgs(connection, record.absolutePath),
-          connection
-        );
+        await this.replaceDatabaseAtomically(tools.pgRestorePath, tools.psqlPath, connection, record.absolutePath);
 
-        if (result.exitCode !== 0) {
-          throw new BackupCommandError('pg_restore failed', this.safeCommandDetails(result.stderr));
+        // An older backup restores at its own schema level; bring it up to this
+        // build with the normal migration executor before anything queries it.
+        if (validation.pendingMigrations.length) {
+          const outcomes = await MigrationExecutor.applyPending(prisma as unknown as MigrationClient);
+          const failed = outcomes.find((outcome) => !outcome.applied);
+          if (failed) {
+            throw new BackupCommandError(
+              'Backup restored, but applying database updates failed; the restored data is intact at its original level',
+              { migration: failed.name, error: failed.error ?? 'unknown error' }
+            );
+          }
+          logger.warn('restore_migrations_applied', { backupId, applied: outcomes.map((outcome) => outcome.name) });
         }
 
         await this.verifyRestoredDatabase();
@@ -294,7 +351,10 @@ export class BackupService {
     for (const record of deletable) {
       try {
         assertPathInsideDirectory(settings.backupDirectory, record.absolutePath);
-        await fs.unlink(record.absolutePath);
+        await fs.unlink(record.absolutePath).catch((error: NodeJS.ErrnoException) => {
+          if (error.code !== 'ENOENT') throw error;
+        });
+        await fs.rm(receiptSnapshotPath(record.absolutePath), { recursive: true, force: true });
         await BackupMetadataStore.updateStatus(settings.backupDirectory, record.id, 'DELETED', {
           errorMessage: null,
         });
@@ -345,12 +405,14 @@ export class BackupService {
         }
 
         const verified = await this.verifyBackupFile(settings, { ...record, absolutePath });
+        await snapshotReceipts(absolutePath);
         const completedRecord: BackupRecord = {
           ...record,
           status: 'COMPLETED',
           sizeBytes: verified.sizeBytes,
           checksum: verified.checksum,
           verified: verified.verified,
+          receiptSnapshot: true,
           durationMs: Date.now() - startedAt,
         };
         await BackupMetadataStore.upsert(settings.backupDirectory, completedRecord);
@@ -364,6 +426,7 @@ export class BackupService {
         return completedRecord;
       } catch (error) {
         await BackupCommandRunner.removeIncompleteFile(absolutePath);
+        await fs.rm(receiptSnapshotPath(absolutePath), { recursive: true, force: true }).catch(() => undefined);
         const failedRecord: BackupRecord = {
           ...record,
           status: 'FAILED',
@@ -461,6 +524,55 @@ export class BackupService {
       pgRestorePath: tools.pgRestorePath,
       psqlPath: tools.psqlPath,
     };
+  }
+
+  private static async readMigrationLevel(settings: BackupSettings, backupPath: string) {
+    const tools = this.requireTools(settings);
+    const result = await BackupCommandRunner.runCommand(
+      tools.pgRestorePath,
+      BackupCommandRunner.pgRestoreMigrationHistoryArgs(backupPath),
+      parsePostgresConnectionString()
+    );
+    if (result.exitCode !== 0) {
+      throw new BackupInvalidError('pg_restore could not read the backup migration history', this.safeCommandDetails(result.stderr));
+    }
+    const bundled = MigrationRunner.readBundled().map((migration) => migration.name);
+    return compareMigrationLevel(parseBackupMigrationHistory(result.stdout), bundled);
+  }
+
+  /** Empty the schema and replay the backup in one transaction; any error leaves the database untouched. */
+  private static async replaceDatabaseAtomically(
+    pgRestorePath: string,
+    psqlPath: string,
+    connection: PostgresConnectionInfo,
+    backupPath: string
+  ) {
+    const workDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'homeconnect-restore-'));
+    const sqlFile = path.join(workDirectory, 'restore.sql');
+    try {
+      const script = await BackupCommandRunner.runCommand(
+        pgRestorePath,
+        BackupCommandRunner.pgRestoreToSqlArgs(backupPath, sqlFile),
+        connection
+      );
+      if (script.exitCode !== 0) {
+        throw new BackupCommandError('pg_restore could not convert the backup', this.safeCommandDetails(script.stderr));
+      }
+      const result = await BackupCommandRunner.runCommand(
+        psqlPath,
+        BackupCommandRunner.psqlAtomicRestoreArgs(connection, sqlFile),
+        connection,
+        RESTORE_TIMEOUT_MS
+      );
+      if (result.exitCode !== 0) {
+        throw new BackupCommandError(
+          'Restore failed and was rolled back; the database was not changed',
+          this.safeCommandDetails(result.stderr)
+        );
+      }
+    } finally {
+      await fs.rm(workDirectory, { recursive: true, force: true });
+    }
   }
 
   private static async verifyRestoredDatabase() {

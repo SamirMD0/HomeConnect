@@ -9,7 +9,7 @@ import { CreditLimitService } from './credit-limit.service';
 describe('derived customer credit-limit enforcement', () => {
   const user = { userId: '11111111-1111-4111-8111-111111111111', role: 'ADMIN' };
   const customer = { id: '22222222-2222-4222-8222-222222222222', creditLimit: new Decimal('100') };
-  const tx = { activityLog: { create: vi.fn() } } as never;
+  const tx = { customer: { findUnique: vi.fn().mockResolvedValue({ branchId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' }) }, activityLog: { create: vi.fn() } } as never;
   beforeEach(() => { vi.clearAllMocks(); summary.mockResolvedValue({ summary: { totalOutstanding: '70.00' } }); verify.mockResolvedValue(undefined); });
 
   it('leaves null limits unrestricted without loading financial records', async () => {
@@ -43,7 +43,7 @@ describe('derived customer credit-limit enforcement', () => {
     await CreditLimitService.audit(tx, customer.id, 'debt-id', decision, user);
     expect(verify).toHaveBeenCalledWith(user.userId, 'secret', expect.objectContaining({ action: 'OVERRIDE_CUSTOMER_CREDIT_LIMIT' }), tx);
     expect((tx as unknown as { activityLog: { create: ReturnType<typeof vi.fn> } }).activityLog.create).toHaveBeenCalledWith({ data: expect.objectContaining({
-      action: 'CREDIT_LIMIT_OVERRIDE', entityType: 'Debt', entityId: 'debt-id', userId: user.userId,
+      branchId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', action: 'CREDIT_LIMIT_OVERRIDE', entityType: 'Debt', entityId: 'debt-id', userId: user.userId,
       details: expect.objectContaining({ customerId: customer.id, reason: 'Approved exception', currentOutstanding: '70.00', projectedOutstanding: '101.00', overage: '1.00' }),
     }) });
     expect(JSON.stringify(decision)).not.toContain('secret');

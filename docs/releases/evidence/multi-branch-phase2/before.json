@@ -1,0 +1,1792 @@
+{
+  "businessDate": "2026-10-27",
+  "counts": {
+    "cash_refunds": 2,
+    "customer_credits": 2,
+    "customers": 2,
+    "debts": 2,
+    "installment_plans": 2,
+    "payments": 2,
+    "sales_orders": 4,
+    "sales_returns": 4,
+    "service_jobs": 2,
+    "supplier_receivings": 4,
+    "supplier_transactions": 2,
+    "suppliers": 2
+  },
+  "customersIntegrity": {
+    "operationalSnapshot": true,
+    "rows": [
+      {
+        "allocationCount": 4,
+        "allocationTotal": "22.00",
+        "customer": {
+          "id": "1d4e7e5f-ebc7-4de2-822d-41cb9af8bd5f",
+          "name": "customers-name-1d4e7e5f-ebc7-4de2-822d-41cb9af8bd5f",
+          "phone": "customers-phone-1d4e7e5f-ebc7-4de2-822d-41cb9af8bd5f"
+        },
+        "difference": "0.00",
+        "independentOutstanding": "178.00",
+        "issues": [],
+        "obligationCount": 2,
+        "obligationTotal": "200.00",
+        "reportedOutstanding": "178.00",
+        "status": "OK"
+      },
+      {
+        "allocationCount": 4,
+        "allocationTotal": "22.00",
+        "customer": {
+          "id": "a4ea63a9-ddc8-45b6-8408-fcbad8dabf0d",
+          "name": "customers-name-a4ea63a9-ddc8-45b6-8408-fcbad8dabf0d",
+          "phone": "customers-phone-a4ea63a9-ddc8-45b6-8408-fcbad8dabf0d"
+        },
+        "difference": "0.00",
+        "independentOutstanding": "178.00",
+        "issues": [],
+        "obligationCount": 2,
+        "obligationTotal": "200.00",
+        "reportedOutstanding": "178.00",
+        "status": "OK"
+      }
+    ],
+    "summary": {
+      "count": 2,
+      "difference": "0.00",
+      "independentTotal": "356.00",
+      "mismatches": 0,
+      "ok": 2,
+      "reportedTotal": "356.00"
+    }
+  },
+  "independentCustomers": [
+    {
+      "allocationCount": 4,
+      "allocationTotal": "22.00",
+      "customerId": "a4ea63a9-ddc8-45b6-8408-fcbad8dabf0d",
+      "customerName": "customers-name-a4ea63a9-ddc8-45b6-8408-fcbad8dabf0d",
+      "customerPhone": "customers-phone-a4ea63a9-ddc8-45b6-8408-fcbad8dabf0d",
+      "obligationCount": 2,
+      "obligationTotal": "200.00",
+      "outstanding": "178.00"
+    },
+    {
+      "allocationCount": 4,
+      "allocationTotal": "22.0000000000000000",
+      "customerId": "1d4e7e5f-ebc7-4de2-822d-41cb9af8bd5f",
+      "customerName": "customers-name-1d4e7e5f-ebc7-4de2-822d-41cb9af8bd5f",
+      "customerPhone": "customers-phone-1d4e7e5f-ebc7-4de2-822d-41cb9af8bd5f",
+      "obligationCount": 2,
+      "obligationTotal": "200.00",
+      "outstanding": "178.0000000000000000"
+    }
+  ],
+  "independentSuppliers": [
+    {
+      "decreaseTotal": "0",
+      "increaseTotal": "100.00",
+      "owed": "100.00",
+      "supplierId": "6cb67dd1-9a86-47e8-a811-70a661680cb5",
+      "supplierName": "suppliers-name-6cb67dd1-9a86-47e8-a811-70a661680cb5",
+      "supplierPhone": "suppliers-phone-6cb67dd1-9a86-47e8-a811-70a661680cb5",
+      "transactionCount": 1
+    },
+    {
+      "decreaseTotal": "0",
+      "increaseTotal": "100.00",
+      "owed": "100.00",
+      "supplierId": "f379612e-b75e-4b25-8335-83b2718c6c62",
+      "supplierName": "suppliers-name-f379612e-b75e-4b25-8335-83b2718c6c62",
+      "supplierPhone": "suppliers-phone-f379612e-b75e-4b25-8335-83b2718c6c62",
+      "transactionCount": 1
+    }
+  ],
+  "period": "2026-08",
+  "reports": [
+    {
+      "analysis": {
+        "cashflow": {
+          "collections": "0.00",
+          "collectionShortfall": false,
+          "customerDebtGrowth": "0.00",
+          "netCollectionPosition": "0.00",
+          "supplierAmountOwed": "9000100.00",
+          "supplierDebtGrowth": "0.00",
+          "supplierDebtOutrunningCollections": false,
+          "supplierPayments": "0.00",
+          "unpaidCustomerAmount": "0.00"
+        },
+        "findings": [],
+        "health": {
+          "customerCollected": {
+            "change": "-40.00",
+            "changePercent": -100,
+            "current": "0.00",
+            "previous": "40.00"
+          },
+          "customerDebtAdded": {
+            "change": "0.00",
+            "changePercent": null,
+            "current": "0.00",
+            "previous": "0.00"
+          },
+          "customerReceivables": {
+            "change": "0.00",
+            "changePercent": null,
+            "current": "0.00",
+            "previous": "0.00"
+          },
+          "inventoryReceivedUnits": {
+            "change": 0,
+            "current": 0,
+            "previous": 0
+          },
+          "inventorySoldUnits": {
+            "change": 0,
+            "current": 0,
+            "previous": 0
+          },
+          "orderCount": {
+            "change": -4,
+            "current": 0,
+            "previous": 4
+          },
+          "salesTotal": {
+            "change": "-220.00",
+            "changePercent": -100,
+            "current": "0.00",
+            "previous": "220.00"
+          },
+          "supplierDebtAdded": {
+            "change": "-9000100.00",
+            "changePercent": -100,
+            "current": "0.00",
+            "previous": "9000100.00"
+          },
+          "supplierPaid": {
+            "change": "0.00",
+            "changePercent": null,
+            "current": "0.00",
+            "previous": "0.00"
+          },
+          "supplierPayables": {
+            "change": "0.00",
+            "changePercent": 0,
+            "current": "9000100.00",
+            "previous": "9000100.00"
+          }
+        },
+        "inventoryPosition": {
+          "lowStockProducts": 0,
+          "ordersAwaitingStockDeduction": 0,
+          "outOfStockProducts": 0,
+          "receivedLines": 0,
+          "receivedNotSoldProducts": 0,
+          "receivedUnits": 0,
+          "soldUnits": 0
+        },
+        "salesVsDebt": {
+          "orderCount": 0,
+          "paidAmount": "0.00",
+          "topDebtors": [
+            {
+              "customerId": "1d4e7e5f-ebc7-4de2-822d-41cb9af8bd5f",
+              "customerName": "customers-name-1d4e7e5f-ebc7-4de2-822d-41cb9af8bd5f",
+              "outstanding": "178.00"
+            },
+            {
+              "customerId": "a4ea63a9-ddc8-45b6-8408-fcbad8dabf0d",
+              "customerName": "customers-name-a4ea63a9-ddc8-45b6-8408-fcbad8dabf0d",
+              "outstanding": "178.00"
+            }
+          ],
+          "unpaidAmount": "0.00",
+          "unpaidPercentOfSales": null
+        },
+        "supplierPosition": {
+          "owed": "9000100.00",
+          "paidInPeriod": "0.00",
+          "receivingWithoutLinkedDebt": 0,
+          "suppliersWithBalance": 2,
+          "topBalances": [
+            {
+              "balance": "100.00",
+              "supplierId": "f379612e-b75e-4b25-8335-83b2718c6c62",
+              "supplierName": "suppliers-name-f379612e-b75e-4b25-8335-83b2718c6c62"
+            },
+            {
+              "balance": "9000000.00",
+              "supplierId": "6cb67dd1-9a86-47e8-a811-70a661680cb5",
+              "supplierName": "suppliers-name-6cb67dd1-9a86-47e8-a811-70a661680cb5"
+            }
+          ]
+        }
+      },
+      "monthlyReview": {
+        "customers": {
+          "activeCustomers": 2,
+          "didNotPay": [
+            {
+              "id": "1d4e7e5f-ebc7-4de2-822d-41cb9af8bd5f",
+              "name": "customers-name-1d4e7e5f-ebc7-4de2-822d-41cb9af8bd5f",
+              "phone": "customers-phone-1d4e7e5f-ebc7-4de2-822d-41cb9af8bd5f"
+            },
+            {
+              "id": "a4ea63a9-ddc8-45b6-8408-fcbad8dabf0d",
+              "name": "customers-name-a4ea63a9-ddc8-45b6-8408-fcbad8dabf0d",
+              "phone": "customers-phone-a4ea63a9-ddc8-45b6-8408-fcbad8dabf0d"
+            }
+          ],
+          "didNotPayCount": 2,
+          "movement": {
+            "adjustments": "0.00",
+            "closing": "0.00",
+            "collected": "0.00",
+            "fullyPaid": 2,
+            "newAmount": "0.00",
+            "opening": "0.00",
+            "overdue": 0,
+            "reconciled": true,
+            "withDebt": 0
+          },
+          "newCustomers": 0,
+          "operationalSnapshot": {
+            "ageDistribution": [
+              {
+                "amount": "0.00",
+                "count": 0,
+                "key": "CURRENT",
+                "label": "Current"
+              },
+              {
+                "amount": "0.00",
+                "count": 0,
+                "key": "DAYS_1_30",
+                "label": "1–30 days"
+              },
+              {
+                "amount": "0.00",
+                "count": 0,
+                "key": "DAYS_31_60",
+                "label": "31–60 days"
+              },
+              {
+                "amount": "0.00",
+                "count": 0,
+                "key": "DAYS_90_PLUS",
+                "label": "90+ days"
+              },
+              {
+                "amount": "356.00",
+                "count": 4,
+                "key": "DAYS_61_90",
+                "label": "61–90 days"
+              }
+            ],
+            "topDebtors": [
+              {
+                "customerId": "1d4e7e5f-ebc7-4de2-822d-41cb9af8bd5f",
+                "customerName": "customers-name-1d4e7e5f-ebc7-4de2-822d-41cb9af8bd5f",
+                "outstanding": "178.00",
+                "phone": "customers-phone-1d4e7e5f-ebc7-4de2-822d-41cb9af8bd5f"
+              },
+              {
+                "customerId": "a4ea63a9-ddc8-45b6-8408-fcbad8dabf0d",
+                "customerName": "customers-name-a4ea63a9-ddc8-45b6-8408-fcbad8dabf0d",
+                "outstanding": "178.00",
+                "phone": "customers-phone-a4ea63a9-ddc8-45b6-8408-fcbad8dabf0d"
+              }
+            ]
+          },
+          "paidCount": 0
+        },
+        "inventory": {
+          "operationalSnapshot": {
+            "summary": {
+              "lowStockProducts": 0,
+              "movementsToday": 0,
+              "ordersAwaitingStockDeduction": 0,
+              "outOfStockProducts": 0,
+              "recentMovements": [],
+              "totalUnits": 0,
+              "trackedProducts": 0
+            }
+          }
+        },
+        "risk": {
+          "alerts": [
+            {
+              "amount": "356.00",
+              "count": 2,
+              "key": "overdue-customer-debts",
+              "label": {
+                "ar": "ديون الزبائن المتأخرة",
+                "en": "Overdue customer debts"
+              },
+              "offenders": [
+                {
+                  "amount": "178.00",
+                  "id": "1d4e7e5f-ebc7-4de2-822d-41cb9af8bd5f",
+                  "label": "customers-name-1d4e7e5f-ebc7-4de2-822d-41cb9af8bd5f",
+                  "route": "/customers/1d4e7e5f-ebc7-4de2-822d-41cb9af8bd5f"
+                },
+                {
+                  "amount": "178.00",
+                  "id": "a4ea63a9-ddc8-45b6-8408-fcbad8dabf0d",
+                  "label": "customers-name-a4ea63a9-ddc8-45b6-8408-fcbad8dabf0d",
+                  "route": "/customers/a4ea63a9-ddc8-45b6-8408-fcbad8dabf0d"
+                }
+              ],
+              "route": "/receivables?standing=overdue",
+              "severity": "critical"
+            },
+            {
+              "amount": "9000100.00",
+              "count": 2,
+              "key": "supplier-balances",
+              "label": {
+                "ar": "مورّدون بانتظار الدفع",
+                "en": "Suppliers awaiting payment"
+              },
+              "offenders": [
+                {
+                  "amount": "100.00",
+                  "id": "f379612e-b75e-4b25-8335-83b2718c6c62",
+                  "label": "suppliers-name-f379612e-b75e-4b25-8335-83b2718c6c62",
+                  "route": "/suppliers/f379612e-b75e-4b25-8335-83b2718c6c62"
+                },
+                {
+                  "amount": "9000000.00",
+                  "id": "6cb67dd1-9a86-47e8-a811-70a661680cb5",
+                  "label": "suppliers-name-6cb67dd1-9a86-47e8-a811-70a661680cb5",
+                  "route": "/suppliers/6cb67dd1-9a86-47e8-a811-70a661680cb5"
+                }
+              ],
+              "route": "/supplier-ledger",
+              "severity": "warning"
+            },
+            {
+              "count": 2,
+              "key": "aging-service-jobs",
+              "label": {
+                "ar": "طلبات صيانة متأخرة",
+                "en": "Aging service jobs"
+              },
+              "offenders": [
+                {
+                  "id": "85be413f-f88a-43a6-bff9-5b199a8cb8fa",
+                  "label": "service_jobs-jobNumber-85be413f-f88a-43a6-bff9-5b199a8cb8fa · customers-name-a4ea63a9-ddc8-45b6-8408-fcbad8dabf0d",
+                  "route": "/service/85be413f-f88a-43a6-bff9-5b199a8cb8fa"
+                },
+                {
+                  "id": "ca3f9d10-a960-4f60-8383-a5a6ad5cdb62",
+                  "label": "service_jobs-jobNumber-ca3f9d10-a960-4f60-8383-a5a6ad5cdb62 · customers-name-1d4e7e5f-ebc7-4de2-822d-41cb9af8bd5f",
+                  "route": "/service/ca3f9d10-a960-4f60-8383-a5a6ad5cdb62"
+                }
+              ],
+              "route": "/service?aging=true",
+              "severity": "serious"
+            }
+          ],
+          "total": 6
+        },
+        "sales": {
+          "averageOrderValue": "0.00",
+          "cashRefunds": "0.00",
+          "fulfillmentStatusDistribution": [],
+          "netSalesAmount": "0.00",
+          "orderCount": 0,
+          "paidAmount": "0.00",
+          "paymentStatusDistribution": [],
+          "returnsAmount": "0.00",
+          "salesByDay": [],
+          "storeCreditIssued": "0.00",
+          "topProducts": [],
+          "totalAmount": "0.00",
+          "unpaidAmount": "0.00"
+        },
+        "suppliers": {
+          "movement": {
+            "adjustments": "0.00",
+            "closing": "9000100.00",
+            "collected": "0.00",
+            "newAmount": "0.00",
+            "opening": "9000100.00",
+            "reconciled": true,
+            "withBalance": 2
+          },
+          "operationalSnapshot": {
+            "owed": "9000100.00",
+            "suppliersWithBalance": 2,
+            "topBalances": [
+              {
+                "balance": "100.00",
+                "companyName": null,
+                "supplierId": "f379612e-b75e-4b25-8335-83b2718c6c62",
+                "supplierName": "suppliers-name-f379612e-b75e-4b25-8335-83b2718c6c62"
+              },
+              {
+                "balance": "9000000.00",
+                "companyName": null,
+                "supplierId": "6cb67dd1-9a86-47e8-a811-70a661680cb5",
+                "supplierName": "suppliers-name-6cb67dd1-9a86-47e8-a811-70a661680cb5"
+              }
+            ]
+          }
+        }
+      },
+      "payablesAging": {
+        "operationalSnapshot": true,
+        "rows": [
+          {
+            "bucket": "NO_DUE_DATE",
+            "currency": "LBP",
+            "daysOverdue": 0,
+            "description": "supplier_transactions-description-ccf23cd3-d068-4fb3-9583-eaf8035f262d",
+            "dueDate": null,
+            "fifoSettledAmount": "0.00",
+            "id": "ccf23cd3-d068-4fb3-9583-eaf8035f262d",
+            "originalAmount": "100.00",
+            "receiptNumber": null,
+            "remainingAmount": "100.00",
+            "status": "UNSCHEDULED",
+            "supplier": {
+              "id": "6cb67dd1-9a86-47e8-a811-70a661680cb5",
+              "name": "suppliers-name-6cb67dd1-9a86-47e8-a811-70a661680cb5",
+              "phone": "suppliers-phone-6cb67dd1-9a86-47e8-a811-70a661680cb5"
+            },
+            "transactionAmount": "9000000",
+            "transactionDate": "2026-08-15"
+          },
+          {
+            "bucket": "NO_DUE_DATE",
+            "currency": "USD",
+            "daysOverdue": 0,
+            "description": "supplier_transactions-description-87482190-d2e8-4685-a6f8-c87097bbacb9",
+            "dueDate": null,
+            "fifoSettledAmount": "0.00",
+            "id": "87482190-d2e8-4685-a6f8-c87097bbacb9",
+            "originalAmount": "100.00",
+            "receiptNumber": null,
+            "remainingAmount": "100.00",
+            "status": "UNSCHEDULED",
+            "supplier": {
+              "id": "f379612e-b75e-4b25-8335-83b2718c6c62",
+              "name": "suppliers-name-f379612e-b75e-4b25-8335-83b2718c6c62",
+              "phone": "suppliers-phone-f379612e-b75e-4b25-8335-83b2718c6c62"
+            },
+            "transactionAmount": "100.00",
+            "transactionDate": "2026-08-15"
+          }
+        ],
+        "summary": {
+          "asOf": "2026-10-27",
+          "buckets": [
+            {
+              "amount": "0.00",
+              "count": 0,
+              "key": "CURRENT",
+              "label": "Current / Not Due / غير مستحق"
+            },
+            {
+              "amount": "0.00",
+              "count": 0,
+              "key": "DAYS_1_30",
+              "label": "1–30 days overdue / متأخر ١–٣٠ يوم"
+            },
+            {
+              "amount": "0.00",
+              "count": 0,
+              "key": "DAYS_31_60",
+              "label": "31–60 days overdue / متأخر ٣١–٦٠ يوم"
+            },
+            {
+              "amount": "0.00",
+              "count": 0,
+              "key": "DAYS_61_90",
+              "label": "61–90 days overdue / متأخر ٦١–٩٠ يوم"
+            },
+            {
+              "amount": "0.00",
+              "count": 0,
+              "key": "DAYS_90_PLUS",
+              "label": "90+ days overdue / متأخر أكثر من ٩٠ يوم"
+            },
+            {
+              "amount": "200.00",
+              "count": 2,
+              "key": "NO_DUE_DATE",
+              "label": "Unscheduled / No Due Date / بدون تاريخ استحقاق"
+            }
+          ],
+          "calculationBasis": "REPORT_ONLY_FIFO_STORED_BASE_USD",
+          "count": 2,
+          "dueSoonAmount": "0.00",
+          "dueSoonCount": 0,
+          "dueSoonDays": 7,
+          "futureAmount": "0.00",
+          "ledgerBalance": "200.00",
+          "noDueDate": "200.00",
+          "oldestOverdue": null,
+          "overdueCount": 0,
+          "totalOverdue": "0.00",
+          "totalPayables": "200.00",
+          "unappliedCredit": "0.00"
+        },
+        "suppliers": [
+          {
+            "difference": "0.00",
+            "independentlyComputedLedgerBalance": "100.00",
+            "ledgerBalance": "100.00",
+            "supplier": {
+              "id": "6cb67dd1-9a86-47e8-a811-70a661680cb5",
+              "name": "suppliers-name-6cb67dd1-9a86-47e8-a811-70a661680cb5",
+              "phone": "suppliers-phone-6cb67dd1-9a86-47e8-a811-70a661680cb5"
+            },
+            "totalPayables": "100.00",
+            "unappliedCredit": "0.00"
+          },
+          {
+            "difference": "0.00",
+            "independentlyComputedLedgerBalance": "100.00",
+            "ledgerBalance": "100.00",
+            "supplier": {
+              "id": "f379612e-b75e-4b25-8335-83b2718c6c62",
+              "name": "suppliers-name-f379612e-b75e-4b25-8335-83b2718c6c62",
+              "phone": "suppliers-phone-f379612e-b75e-4b25-8335-83b2718c6c62"
+            },
+            "totalPayables": "100.00",
+            "unappliedCredit": "0.00"
+          }
+        ]
+      },
+      "query": {
+        "period": "lastMonth"
+      },
+      "receivablesAging": {
+        "rows": [],
+        "summary": {
+          "asOf": "2026-09-30",
+          "buckets": [
+            {
+              "amount": "0.00",
+              "count": 0,
+              "key": "DAYS_0_7",
+              "label": "0–7 days / ٠–٧ أيام"
+            },
+            {
+              "amount": "0.00",
+              "count": 0,
+              "key": "DAYS_15_30",
+              "label": "15–30 days / ١٥–٣٠ يوم"
+            },
+            {
+              "amount": "0.00",
+              "count": 0,
+              "key": "DAYS_31_60",
+              "label": "31–60 days / ٣١–٦٠ يوم"
+            },
+            {
+              "amount": "0.00",
+              "count": 0,
+              "key": "DAYS_61_90",
+              "label": "61–90 days / ٦١–٩٠ يوم"
+            },
+            {
+              "amount": "0.00",
+              "count": 0,
+              "key": "DAYS_8_14",
+              "label": "8–14 days / ٨–١٤ يوم"
+            },
+            {
+              "amount": "0.00",
+              "count": 0,
+              "key": "DAYS_90_PLUS",
+              "label": "90+ days / أكثر من ٩٠ يوم"
+            }
+          ],
+          "count": 0,
+          "customersOwing": 0,
+          "largestCustomer": null,
+          "oldestDebt": null,
+          "over30": "0.00",
+          "over60": "0.00",
+          "over90": "0.00",
+          "scope": "STANDARD_DEBTS_ONLY",
+          "totalOverdue": "0.00",
+          "totalReceivables": "0.00"
+        }
+      }
+    },
+    {
+      "analysis": {
+        "cashflow": {
+          "collections": "0.00",
+          "collectionShortfall": true,
+          "customerDebtGrowth": "356.00",
+          "netCollectionPosition": "0.00",
+          "supplierAmountOwed": "9000100.00",
+          "supplierDebtGrowth": "0.00",
+          "supplierDebtOutrunningCollections": false,
+          "supplierPayments": "0.00",
+          "unpaidCustomerAmount": "0.00"
+        },
+        "findings": [
+          {
+            "detail": {
+              "ar": "customers-name-1d4e7e5f-ebc7-4de2-822d-41cb9af8bd5f مدين بمبلغ 178.00، أي 50% من إجمالي الذمم.",
+              "en": "customers-name-1d4e7e5f-ebc7-4de2-822d-41cb9af8bd5f owes 178.00, 50% of all receivables."
+            },
+            "key": "RECEIVABLE_CONCENTRATION",
+            "label": {
+              "ar": "زبون واحد يملك معظم الذمم",
+              "en": "One customer holds most of the receivable"
+            },
+            "severity": "warning"
+          },
+          {
+            "detail": {
+              "ar": "تم تحصيل 0.00 مقابل 400.00 دين جديد.",
+              "en": "Collected 0.00 against 400.00 of new debt."
+            },
+            "key": "COLLECTION_SHORTFALL",
+            "label": {
+              "ar": "التحصيل أقل من الدين الجديد",
+              "en": "Collected less than newly owed"
+            },
+            "severity": "warning"
+          }
+        ],
+        "health": {
+          "customerCollected": {
+            "change": "0.00",
+            "changePercent": null,
+            "current": "0.00",
+            "previous": "0.00"
+          },
+          "customerDebtAdded": {
+            "change": "400.00",
+            "changePercent": null,
+            "current": "400.00",
+            "previous": "0.00"
+          },
+          "customerReceivables": {
+            "change": "356.00",
+            "changePercent": null,
+            "current": "356.00",
+            "previous": "0.00"
+          },
+          "inventoryReceivedUnits": {
+            "change": 0,
+            "current": 0,
+            "previous": 0
+          },
+          "inventorySoldUnits": {
+            "change": 0,
+            "current": 0,
+            "previous": 0
+          },
+          "orderCount": {
+            "change": 0,
+            "current": 0,
+            "previous": 0
+          },
+          "salesTotal": {
+            "change": "0.00",
+            "changePercent": null,
+            "current": "0.00",
+            "previous": "0.00"
+          },
+          "supplierDebtAdded": {
+            "change": "0.00",
+            "changePercent": null,
+            "current": "0.00",
+            "previous": "0.00"
+          },
+          "supplierPaid": {
+            "change": "0.00",
+            "changePercent": null,
+            "current": "0.00",
+            "previous": "0.00"
+          },
+          "supplierPayables": {
+            "change": "0.00",
+            "changePercent": 0,
+            "current": "9000100.00",
+            "previous": "9000100.00"
+          }
+        },
+        "inventoryPosition": {
+          "lowStockProducts": 0,
+          "ordersAwaitingStockDeduction": 0,
+          "outOfStockProducts": 0,
+          "receivedLines": 0,
+          "receivedNotSoldProducts": 0,
+          "receivedUnits": 0,
+          "soldUnits": 0
+        },
+        "salesVsDebt": {
+          "orderCount": 0,
+          "paidAmount": "0.00",
+          "topDebtors": [
+            {
+              "customerId": "1d4e7e5f-ebc7-4de2-822d-41cb9af8bd5f",
+              "customerName": "customers-name-1d4e7e5f-ebc7-4de2-822d-41cb9af8bd5f",
+              "outstanding": "178.00"
+            },
+            {
+              "customerId": "a4ea63a9-ddc8-45b6-8408-fcbad8dabf0d",
+              "customerName": "customers-name-a4ea63a9-ddc8-45b6-8408-fcbad8dabf0d",
+              "outstanding": "178.00"
+            }
+          ],
+          "unpaidAmount": "0.00",
+          "unpaidPercentOfSales": null
+        },
+        "supplierPosition": {
+          "owed": "9000100.00",
+          "paidInPeriod": "0.00",
+          "receivingWithoutLinkedDebt": 0,
+          "suppliersWithBalance": 2,
+          "topBalances": [
+            {
+              "balance": "100.00",
+              "supplierId": "f379612e-b75e-4b25-8335-83b2718c6c62",
+              "supplierName": "suppliers-name-f379612e-b75e-4b25-8335-83b2718c6c62"
+            },
+            {
+              "balance": "9000000.00",
+              "supplierId": "6cb67dd1-9a86-47e8-a811-70a661680cb5",
+              "supplierName": "suppliers-name-6cb67dd1-9a86-47e8-a811-70a661680cb5"
+            }
+          ]
+        }
+      },
+      "monthlyReview": {
+        "customers": {
+          "activeCustomers": 2,
+          "didNotPay": [
+            {
+              "id": "1d4e7e5f-ebc7-4de2-822d-41cb9af8bd5f",
+              "name": "customers-name-1d4e7e5f-ebc7-4de2-822d-41cb9af8bd5f",
+              "phone": "customers-phone-1d4e7e5f-ebc7-4de2-822d-41cb9af8bd5f"
+            },
+            {
+              "id": "a4ea63a9-ddc8-45b6-8408-fcbad8dabf0d",
+              "name": "customers-name-a4ea63a9-ddc8-45b6-8408-fcbad8dabf0d",
+              "phone": "customers-phone-a4ea63a9-ddc8-45b6-8408-fcbad8dabf0d"
+            }
+          ],
+          "didNotPayCount": 2,
+          "movement": {
+            "adjustments": "-44.00",
+            "closing": "356.00",
+            "collected": "0.00",
+            "fullyPaid": 0,
+            "newAmount": "400.00",
+            "opening": "0.00",
+            "overdue": 2,
+            "reconciled": true,
+            "withDebt": 0
+          },
+          "newCustomers": 2,
+          "operationalSnapshot": {
+            "ageDistribution": [
+              {
+                "amount": "0.00",
+                "count": 0,
+                "key": "CURRENT",
+                "label": "Current"
+              },
+              {
+                "amount": "0.00",
+                "count": 0,
+                "key": "DAYS_1_30",
+                "label": "1–30 days"
+              },
+              {
+                "amount": "0.00",
+                "count": 0,
+                "key": "DAYS_31_60",
+                "label": "31–60 days"
+              },
+              {
+                "amount": "0.00",
+                "count": 0,
+                "key": "DAYS_90_PLUS",
+                "label": "90+ days"
+              },
+              {
+                "amount": "356.00",
+                "count": 4,
+                "key": "DAYS_61_90",
+                "label": "61–90 days"
+              }
+            ],
+            "topDebtors": [
+              {
+                "customerId": "1d4e7e5f-ebc7-4de2-822d-41cb9af8bd5f",
+                "customerName": "customers-name-1d4e7e5f-ebc7-4de2-822d-41cb9af8bd5f",
+                "outstanding": "178.00",
+                "phone": "customers-phone-1d4e7e5f-ebc7-4de2-822d-41cb9af8bd5f"
+              },
+              {
+                "customerId": "a4ea63a9-ddc8-45b6-8408-fcbad8dabf0d",
+                "customerName": "customers-name-a4ea63a9-ddc8-45b6-8408-fcbad8dabf0d",
+                "outstanding": "178.00",
+                "phone": "customers-phone-a4ea63a9-ddc8-45b6-8408-fcbad8dabf0d"
+              }
+            ]
+          },
+          "paidCount": 0
+        },
+        "inventory": {
+          "operationalSnapshot": {
+            "summary": {
+              "lowStockProducts": 0,
+              "movementsToday": 0,
+              "ordersAwaitingStockDeduction": 0,
+              "outOfStockProducts": 0,
+              "recentMovements": [],
+              "totalUnits": 0,
+              "trackedProducts": 0
+            }
+          }
+        },
+        "risk": {
+          "alerts": [
+            {
+              "amount": "356.00",
+              "count": 2,
+              "key": "overdue-customer-debts",
+              "label": {
+                "ar": "ديون الزبائن المتأخرة",
+                "en": "Overdue customer debts"
+              },
+              "offenders": [
+                {
+                  "amount": "178.00",
+                  "id": "1d4e7e5f-ebc7-4de2-822d-41cb9af8bd5f",
+                  "label": "customers-name-1d4e7e5f-ebc7-4de2-822d-41cb9af8bd5f",
+                  "route": "/customers/1d4e7e5f-ebc7-4de2-822d-41cb9af8bd5f"
+                },
+                {
+                  "amount": "178.00",
+                  "id": "a4ea63a9-ddc8-45b6-8408-fcbad8dabf0d",
+                  "label": "customers-name-a4ea63a9-ddc8-45b6-8408-fcbad8dabf0d",
+                  "route": "/customers/a4ea63a9-ddc8-45b6-8408-fcbad8dabf0d"
+                }
+              ],
+              "route": "/receivables?standing=overdue",
+              "severity": "critical"
+            },
+            {
+              "amount": "9000100.00",
+              "count": 2,
+              "key": "supplier-balances",
+              "label": {
+                "ar": "مورّدون بانتظار الدفع",
+                "en": "Suppliers awaiting payment"
+              },
+              "offenders": [
+                {
+                  "amount": "100.00",
+                  "id": "f379612e-b75e-4b25-8335-83b2718c6c62",
+                  "label": "suppliers-name-f379612e-b75e-4b25-8335-83b2718c6c62",
+                  "route": "/suppliers/f379612e-b75e-4b25-8335-83b2718c6c62"
+                },
+                {
+                  "amount": "9000000.00",
+                  "id": "6cb67dd1-9a86-47e8-a811-70a661680cb5",
+                  "label": "suppliers-name-6cb67dd1-9a86-47e8-a811-70a661680cb5",
+                  "route": "/suppliers/6cb67dd1-9a86-47e8-a811-70a661680cb5"
+                }
+              ],
+              "route": "/supplier-ledger",
+              "severity": "warning"
+            },
+            {
+              "count": 2,
+              "key": "aging-service-jobs",
+              "label": {
+                "ar": "طلبات صيانة متأخرة",
+                "en": "Aging service jobs"
+              },
+              "offenders": [
+                {
+                  "id": "85be413f-f88a-43a6-bff9-5b199a8cb8fa",
+                  "label": "service_jobs-jobNumber-85be413f-f88a-43a6-bff9-5b199a8cb8fa · customers-name-a4ea63a9-ddc8-45b6-8408-fcbad8dabf0d",
+                  "route": "/service/85be413f-f88a-43a6-bff9-5b199a8cb8fa"
+                },
+                {
+                  "id": "ca3f9d10-a960-4f60-8383-a5a6ad5cdb62",
+                  "label": "service_jobs-jobNumber-ca3f9d10-a960-4f60-8383-a5a6ad5cdb62 · customers-name-1d4e7e5f-ebc7-4de2-822d-41cb9af8bd5f",
+                  "route": "/service/ca3f9d10-a960-4f60-8383-a5a6ad5cdb62"
+                }
+              ],
+              "route": "/service?aging=true",
+              "severity": "serious"
+            }
+          ],
+          "total": 6
+        },
+        "sales": {
+          "averageOrderValue": "0.00",
+          "cashRefunds": "0.00",
+          "fulfillmentStatusDistribution": [],
+          "netSalesAmount": "0.00",
+          "orderCount": 0,
+          "paidAmount": "0.00",
+          "paymentStatusDistribution": [],
+          "returnsAmount": "0.00",
+          "salesByDay": [],
+          "storeCreditIssued": "0.00",
+          "topProducts": [],
+          "totalAmount": "0.00",
+          "unpaidAmount": "0.00"
+        },
+        "suppliers": {
+          "movement": {
+            "adjustments": "0.00",
+            "closing": "9000100.00",
+            "collected": "0.00",
+            "newAmount": "0.00",
+            "opening": "9000100.00",
+            "reconciled": true,
+            "withBalance": 2
+          },
+          "operationalSnapshot": {
+            "owed": "9000100.00",
+            "suppliersWithBalance": 2,
+            "topBalances": [
+              {
+                "balance": "100.00",
+                "companyName": null,
+                "supplierId": "f379612e-b75e-4b25-8335-83b2718c6c62",
+                "supplierName": "suppliers-name-f379612e-b75e-4b25-8335-83b2718c6c62"
+              },
+              {
+                "balance": "9000000.00",
+                "companyName": null,
+                "supplierId": "6cb67dd1-9a86-47e8-a811-70a661680cb5",
+                "supplierName": "suppliers-name-6cb67dd1-9a86-47e8-a811-70a661680cb5"
+              }
+            ]
+          }
+        }
+      },
+      "payablesAging": {
+        "operationalSnapshot": true,
+        "rows": [
+          {
+            "bucket": "NO_DUE_DATE",
+            "currency": "LBP",
+            "daysOverdue": 0,
+            "description": "supplier_transactions-description-ccf23cd3-d068-4fb3-9583-eaf8035f262d",
+            "dueDate": null,
+            "fifoSettledAmount": "0.00",
+            "id": "ccf23cd3-d068-4fb3-9583-eaf8035f262d",
+            "originalAmount": "100.00",
+            "receiptNumber": null,
+            "remainingAmount": "100.00",
+            "status": "UNSCHEDULED",
+            "supplier": {
+              "id": "6cb67dd1-9a86-47e8-a811-70a661680cb5",
+              "name": "suppliers-name-6cb67dd1-9a86-47e8-a811-70a661680cb5",
+              "phone": "suppliers-phone-6cb67dd1-9a86-47e8-a811-70a661680cb5"
+            },
+            "transactionAmount": "9000000",
+            "transactionDate": "2026-08-15"
+          },
+          {
+            "bucket": "NO_DUE_DATE",
+            "currency": "USD",
+            "daysOverdue": 0,
+            "description": "supplier_transactions-description-87482190-d2e8-4685-a6f8-c87097bbacb9",
+            "dueDate": null,
+            "fifoSettledAmount": "0.00",
+            "id": "87482190-d2e8-4685-a6f8-c87097bbacb9",
+            "originalAmount": "100.00",
+            "receiptNumber": null,
+            "remainingAmount": "100.00",
+            "status": "UNSCHEDULED",
+            "supplier": {
+              "id": "f379612e-b75e-4b25-8335-83b2718c6c62",
+              "name": "suppliers-name-f379612e-b75e-4b25-8335-83b2718c6c62",
+              "phone": "suppliers-phone-f379612e-b75e-4b25-8335-83b2718c6c62"
+            },
+            "transactionAmount": "100.00",
+            "transactionDate": "2026-08-15"
+          }
+        ],
+        "summary": {
+          "asOf": "2026-10-27",
+          "buckets": [
+            {
+              "amount": "0.00",
+              "count": 0,
+              "key": "CURRENT",
+              "label": "Current / Not Due / غير مستحق"
+            },
+            {
+              "amount": "0.00",
+              "count": 0,
+              "key": "DAYS_1_30",
+              "label": "1–30 days overdue / متأخر ١–٣٠ يوم"
+            },
+            {
+              "amount": "0.00",
+              "count": 0,
+              "key": "DAYS_31_60",
+              "label": "31–60 days overdue / متأخر ٣١–٦٠ يوم"
+            },
+            {
+              "amount": "0.00",
+              "count": 0,
+              "key": "DAYS_61_90",
+              "label": "61–90 days overdue / متأخر ٦١–٩٠ يوم"
+            },
+            {
+              "amount": "0.00",
+              "count": 0,
+              "key": "DAYS_90_PLUS",
+              "label": "90+ days overdue / متأخر أكثر من ٩٠ يوم"
+            },
+            {
+              "amount": "200.00",
+              "count": 2,
+              "key": "NO_DUE_DATE",
+              "label": "Unscheduled / No Due Date / بدون تاريخ استحقاق"
+            }
+          ],
+          "calculationBasis": "REPORT_ONLY_FIFO_STORED_BASE_USD",
+          "count": 2,
+          "dueSoonAmount": "0.00",
+          "dueSoonCount": 0,
+          "dueSoonDays": 7,
+          "futureAmount": "0.00",
+          "ledgerBalance": "200.00",
+          "noDueDate": "200.00",
+          "oldestOverdue": null,
+          "overdueCount": 0,
+          "totalOverdue": "0.00",
+          "totalPayables": "200.00",
+          "unappliedCredit": "0.00"
+        },
+        "suppliers": [
+          {
+            "difference": "0.00",
+            "independentlyComputedLedgerBalance": "100.00",
+            "ledgerBalance": "100.00",
+            "supplier": {
+              "id": "6cb67dd1-9a86-47e8-a811-70a661680cb5",
+              "name": "suppliers-name-6cb67dd1-9a86-47e8-a811-70a661680cb5",
+              "phone": "suppliers-phone-6cb67dd1-9a86-47e8-a811-70a661680cb5"
+            },
+            "totalPayables": "100.00",
+            "unappliedCredit": "0.00"
+          },
+          {
+            "difference": "0.00",
+            "independentlyComputedLedgerBalance": "100.00",
+            "ledgerBalance": "100.00",
+            "supplier": {
+              "id": "f379612e-b75e-4b25-8335-83b2718c6c62",
+              "name": "suppliers-name-f379612e-b75e-4b25-8335-83b2718c6c62",
+              "phone": "suppliers-phone-f379612e-b75e-4b25-8335-83b2718c6c62"
+            },
+            "totalPayables": "100.00",
+            "unappliedCredit": "0.00"
+          }
+        ]
+      },
+      "query": {
+        "period": "thisMonth"
+      },
+      "receivablesAging": {
+        "rows": [
+          {
+            "bucket": "DAYS_0_7",
+            "createdOn": "2026-10-27",
+            "customer": {
+              "id": "1d4e7e5f-ebc7-4de2-822d-41cb9af8bd5f",
+              "name": "customers-name-1d4e7e5f-ebc7-4de2-822d-41cb9af8bd5f",
+              "phone": "customers-phone-1d4e7e5f-ebc7-4de2-822d-41cb9af8bd5f"
+            },
+            "daysUnpaid": 0,
+            "debtId": "437f64f8-2eec-4b28-b15f-7e630fa3200a",
+            "description": "debts-description-437f64f8-2eec-4b28-b15f-7e630fa3200a",
+            "dueDate": "2026-08-15",
+            "lastPaymentDate": "2026-08-15",
+            "originalAmount": "100.00",
+            "paidAmount": "10.00",
+            "reference": null,
+            "remainingAmount": "88.00",
+            "salesOrderId": null,
+            "status": "OVERDUE"
+          },
+          {
+            "bucket": "DAYS_0_7",
+            "createdOn": "2026-10-27",
+            "customer": {
+              "id": "a4ea63a9-ddc8-45b6-8408-fcbad8dabf0d",
+              "name": "customers-name-a4ea63a9-ddc8-45b6-8408-fcbad8dabf0d",
+              "phone": "customers-phone-a4ea63a9-ddc8-45b6-8408-fcbad8dabf0d"
+            },
+            "daysUnpaid": 0,
+            "debtId": "1779f7af-cfe9-448b-9fd8-69cbfc249c68",
+            "description": "debts-description-1779f7af-cfe9-448b-9fd8-69cbfc249c68",
+            "dueDate": "2026-08-15",
+            "lastPaymentDate": "2026-08-15",
+            "originalAmount": "100.00",
+            "paidAmount": "10.00",
+            "reference": null,
+            "remainingAmount": "88.00",
+            "salesOrderId": null,
+            "status": "OVERDUE"
+          }
+        ],
+        "summary": {
+          "asOf": "2026-10-27",
+          "buckets": [
+            {
+              "amount": "0.00",
+              "count": 0,
+              "key": "DAYS_15_30",
+              "label": "15–30 days / ١٥–٣٠ يوم"
+            },
+            {
+              "amount": "0.00",
+              "count": 0,
+              "key": "DAYS_31_60",
+              "label": "31–60 days / ٣١–٦٠ يوم"
+            },
+            {
+              "amount": "0.00",
+              "count": 0,
+              "key": "DAYS_61_90",
+              "label": "61–90 days / ٦١–٩٠ يوم"
+            },
+            {
+              "amount": "0.00",
+              "count": 0,
+              "key": "DAYS_8_14",
+              "label": "8–14 days / ٨–١٤ يوم"
+            },
+            {
+              "amount": "0.00",
+              "count": 0,
+              "key": "DAYS_90_PLUS",
+              "label": "90+ days / أكثر من ٩٠ يوم"
+            },
+            {
+              "amount": "176.00",
+              "count": 2,
+              "key": "DAYS_0_7",
+              "label": "0–7 days / ٠–٧ أيام"
+            }
+          ],
+          "count": 2,
+          "customersOwing": 2,
+          "largestCustomer": {
+            "customerId": "1d4e7e5f-ebc7-4de2-822d-41cb9af8bd5f",
+            "customerName": "customers-name-1d4e7e5f-ebc7-4de2-822d-41cb9af8bd5f",
+            "remainingAmount": "88.00"
+          },
+          "oldestDebt": {
+            "customerName": "customers-name-1d4e7e5f-ebc7-4de2-822d-41cb9af8bd5f",
+            "daysUnpaid": 0,
+            "debtId": "437f64f8-2eec-4b28-b15f-7e630fa3200a",
+            "remainingAmount": "88.00"
+          },
+          "over30": "0.00",
+          "over60": "0.00",
+          "over90": "0.00",
+          "scope": "STANDARD_DEBTS_ONLY",
+          "totalOverdue": "176.00",
+          "totalReceivables": "176.00"
+        }
+      }
+    },
+    {
+      "analysis": {
+        "cashflow": {
+          "collections": "40.00",
+          "collectionShortfall": false,
+          "customerDebtGrowth": "0.00",
+          "netCollectionPosition": "40.00",
+          "supplierAmountOwed": "9000100.00",
+          "supplierDebtGrowth": "9000100.00",
+          "supplierDebtOutrunningCollections": true,
+          "supplierPayments": "0.00",
+          "unpaidCustomerAmount": "220.00"
+        },
+        "findings": [
+          {
+            "detail": {
+              "ar": "ارتفع دين الموردين بمقدار 9000100.00 بينما بلغ التحصيل 40.00. قد يسبب ضغطًا نقديًا.",
+              "en": "Supplier debt rose by 9000100.00 while collections were 40.00. This may create cash pressure."
+            },
+            "key": "SUPPLIER_DEBT_OUTRUNNING_COLLECTIONS",
+            "label": {
+              "ar": "ديون الموردين نمت أسرع من التحصيل",
+              "en": "Supplier debt grew faster than collections"
+            },
+            "severity": "serious"
+          }
+        ],
+        "health": {
+          "customerCollected": {
+            "change": "40.00",
+            "changePercent": null,
+            "current": "40.00",
+            "previous": "0.00"
+          },
+          "customerDebtAdded": {
+            "change": "0.00",
+            "changePercent": null,
+            "current": "0.00",
+            "previous": "0.00"
+          },
+          "customerReceivables": {
+            "change": "0.00",
+            "changePercent": null,
+            "current": "0.00",
+            "previous": "0.00"
+          },
+          "inventoryReceivedUnits": {
+            "change": 0,
+            "current": 0,
+            "previous": 0
+          },
+          "inventorySoldUnits": {
+            "change": 0,
+            "current": 0,
+            "previous": 0
+          },
+          "orderCount": {
+            "change": 4,
+            "current": 4,
+            "previous": 0
+          },
+          "salesTotal": {
+            "change": "220.00",
+            "changePercent": null,
+            "current": "220.00",
+            "previous": "0.00"
+          },
+          "supplierDebtAdded": {
+            "change": "9000100.00",
+            "changePercent": null,
+            "current": "9000100.00",
+            "previous": "0.00"
+          },
+          "supplierPaid": {
+            "change": "0.00",
+            "changePercent": null,
+            "current": "0.00",
+            "previous": "0.00"
+          },
+          "supplierPayables": {
+            "change": "9000100.00",
+            "changePercent": null,
+            "current": "9000100.00",
+            "previous": "0.00"
+          }
+        },
+        "inventoryPosition": {
+          "lowStockProducts": 0,
+          "ordersAwaitingStockDeduction": 0,
+          "outOfStockProducts": 0,
+          "receivedLines": 0,
+          "receivedNotSoldProducts": 0,
+          "receivedUnits": 0,
+          "soldUnits": 0
+        },
+        "salesVsDebt": {
+          "orderCount": 4,
+          "paidAmount": "20.00",
+          "topDebtors": [
+            {
+              "customerId": "1d4e7e5f-ebc7-4de2-822d-41cb9af8bd5f",
+              "customerName": "customers-name-1d4e7e5f-ebc7-4de2-822d-41cb9af8bd5f",
+              "outstanding": "178.00"
+            },
+            {
+              "customerId": "a4ea63a9-ddc8-45b6-8408-fcbad8dabf0d",
+              "customerName": "customers-name-a4ea63a9-ddc8-45b6-8408-fcbad8dabf0d",
+              "outstanding": "178.00"
+            }
+          ],
+          "unpaidAmount": "220.00",
+          "unpaidPercentOfSales": 100
+        },
+        "supplierPosition": {
+          "owed": "9000100.00",
+          "paidInPeriod": "0.00",
+          "receivingWithoutLinkedDebt": 0,
+          "suppliersWithBalance": 2,
+          "topBalances": [
+            {
+              "balance": "100.00",
+              "supplierId": "f379612e-b75e-4b25-8335-83b2718c6c62",
+              "supplierName": "suppliers-name-f379612e-b75e-4b25-8335-83b2718c6c62"
+            },
+            {
+              "balance": "9000000.00",
+              "supplierId": "6cb67dd1-9a86-47e8-a811-70a661680cb5",
+              "supplierName": "suppliers-name-6cb67dd1-9a86-47e8-a811-70a661680cb5"
+            }
+          ]
+        }
+      },
+      "monthlyReview": {
+        "customers": {
+          "activeCustomers": 2,
+          "didNotPay": [],
+          "didNotPayCount": 0,
+          "movement": {
+            "adjustments": "44.00",
+            "closing": "0.00",
+            "collected": "40.00",
+            "fullyPaid": 2,
+            "newAmount": "0.00",
+            "opening": "0.00",
+            "overdue": 0,
+            "reconciled": true,
+            "returnCredits": "4.00",
+            "withDebt": 0
+          },
+          "newCustomers": 0,
+          "operationalSnapshot": {
+            "ageDistribution": [
+              {
+                "amount": "0.00",
+                "count": 0,
+                "key": "CURRENT",
+                "label": "Current"
+              },
+              {
+                "amount": "0.00",
+                "count": 0,
+                "key": "DAYS_1_30",
+                "label": "1–30 days"
+              },
+              {
+                "amount": "0.00",
+                "count": 0,
+                "key": "DAYS_31_60",
+                "label": "31–60 days"
+              },
+              {
+                "amount": "0.00",
+                "count": 0,
+                "key": "DAYS_90_PLUS",
+                "label": "90+ days"
+              },
+              {
+                "amount": "356.00",
+                "count": 4,
+                "key": "DAYS_61_90",
+                "label": "61–90 days"
+              }
+            ],
+            "topDebtors": [
+              {
+                "customerId": "1d4e7e5f-ebc7-4de2-822d-41cb9af8bd5f",
+                "customerName": "customers-name-1d4e7e5f-ebc7-4de2-822d-41cb9af8bd5f",
+                "outstanding": "178.00",
+                "phone": "customers-phone-1d4e7e5f-ebc7-4de2-822d-41cb9af8bd5f"
+              },
+              {
+                "customerId": "a4ea63a9-ddc8-45b6-8408-fcbad8dabf0d",
+                "customerName": "customers-name-a4ea63a9-ddc8-45b6-8408-fcbad8dabf0d",
+                "outstanding": "178.00",
+                "phone": "customers-phone-a4ea63a9-ddc8-45b6-8408-fcbad8dabf0d"
+              }
+            ]
+          },
+          "paidCount": 2
+        },
+        "inventory": {
+          "operationalSnapshot": {
+            "summary": {
+              "lowStockProducts": 0,
+              "movementsToday": 0,
+              "ordersAwaitingStockDeduction": 0,
+              "outOfStockProducts": 0,
+              "recentMovements": [],
+              "totalUnits": 0,
+              "trackedProducts": 0
+            }
+          }
+        },
+        "risk": {
+          "alerts": [
+            {
+              "amount": "356.00",
+              "count": 2,
+              "key": "overdue-customer-debts",
+              "label": {
+                "ar": "ديون الزبائن المتأخرة",
+                "en": "Overdue customer debts"
+              },
+              "offenders": [
+                {
+                  "amount": "178.00",
+                  "id": "1d4e7e5f-ebc7-4de2-822d-41cb9af8bd5f",
+                  "label": "customers-name-1d4e7e5f-ebc7-4de2-822d-41cb9af8bd5f",
+                  "route": "/customers/1d4e7e5f-ebc7-4de2-822d-41cb9af8bd5f"
+                },
+                {
+                  "amount": "178.00",
+                  "id": "a4ea63a9-ddc8-45b6-8408-fcbad8dabf0d",
+                  "label": "customers-name-a4ea63a9-ddc8-45b6-8408-fcbad8dabf0d",
+                  "route": "/customers/a4ea63a9-ddc8-45b6-8408-fcbad8dabf0d"
+                }
+              ],
+              "route": "/receivables?standing=overdue",
+              "severity": "critical"
+            },
+            {
+              "amount": "9000100.00",
+              "count": 2,
+              "key": "supplier-balances",
+              "label": {
+                "ar": "مورّدون بانتظار الدفع",
+                "en": "Suppliers awaiting payment"
+              },
+              "offenders": [
+                {
+                  "amount": "100.00",
+                  "id": "f379612e-b75e-4b25-8335-83b2718c6c62",
+                  "label": "suppliers-name-f379612e-b75e-4b25-8335-83b2718c6c62",
+                  "route": "/suppliers/f379612e-b75e-4b25-8335-83b2718c6c62"
+                },
+                {
+                  "amount": "9000000.00",
+                  "id": "6cb67dd1-9a86-47e8-a811-70a661680cb5",
+                  "label": "suppliers-name-6cb67dd1-9a86-47e8-a811-70a661680cb5",
+                  "route": "/suppliers/6cb67dd1-9a86-47e8-a811-70a661680cb5"
+                }
+              ],
+              "route": "/supplier-ledger",
+              "severity": "warning"
+            },
+            {
+              "count": 2,
+              "key": "aging-service-jobs",
+              "label": {
+                "ar": "طلبات صيانة متأخرة",
+                "en": "Aging service jobs"
+              },
+              "offenders": [
+                {
+                  "id": "85be413f-f88a-43a6-bff9-5b199a8cb8fa",
+                  "label": "service_jobs-jobNumber-85be413f-f88a-43a6-bff9-5b199a8cb8fa · customers-name-a4ea63a9-ddc8-45b6-8408-fcbad8dabf0d",
+                  "route": "/service/85be413f-f88a-43a6-bff9-5b199a8cb8fa"
+                },
+                {
+                  "id": "ca3f9d10-a960-4f60-8383-a5a6ad5cdb62",
+                  "label": "service_jobs-jobNumber-ca3f9d10-a960-4f60-8383-a5a6ad5cdb62 · customers-name-1d4e7e5f-ebc7-4de2-822d-41cb9af8bd5f",
+                  "route": "/service/ca3f9d10-a960-4f60-8383-a5a6ad5cdb62"
+                }
+              ],
+              "route": "/service?aging=true",
+              "severity": "serious"
+            }
+          ],
+          "total": 6
+        },
+        "sales": {
+          "averageOrderValue": "55.00",
+          "cashRefunds": "38.00",
+          "fulfillmentStatusDistribution": [
+            {
+              "count": 4,
+              "status": "CONFIRMED"
+            }
+          ],
+          "netSalesAmount": "140.00",
+          "orderCount": 4,
+          "paidAmount": "20.00",
+          "paymentStatusDistribution": [
+            {
+              "count": 4,
+              "status": "UNPAID"
+            }
+          ],
+          "returnsAmount": "80.00",
+          "salesByDay": [
+            {
+              "amount": "220.00",
+              "date": "2026-08-15",
+              "orderCount": 4
+            }
+          ],
+          "storeCreditIssued": "38.00",
+          "topProducts": [],
+          "totalAmount": "220.00",
+          "unpaidAmount": "220.00"
+        },
+        "suppliers": {
+          "movement": {
+            "adjustments": "0.00",
+            "closing": "9000100.00",
+            "collected": "0.00",
+            "newAmount": "9000100.00",
+            "opening": "0.00",
+            "reconciled": true,
+            "withBalance": 2
+          },
+          "operationalSnapshot": {
+            "owed": "9000100.00",
+            "suppliersWithBalance": 2,
+            "topBalances": [
+              {
+                "balance": "100.00",
+                "companyName": null,
+                "supplierId": "f379612e-b75e-4b25-8335-83b2718c6c62",
+                "supplierName": "suppliers-name-f379612e-b75e-4b25-8335-83b2718c6c62"
+              },
+              {
+                "balance": "9000000.00",
+                "companyName": null,
+                "supplierId": "6cb67dd1-9a86-47e8-a811-70a661680cb5",
+                "supplierName": "suppliers-name-6cb67dd1-9a86-47e8-a811-70a661680cb5"
+              }
+            ]
+          }
+        }
+      },
+      "payablesAging": {
+        "operationalSnapshot": true,
+        "rows": [
+          {
+            "bucket": "NO_DUE_DATE",
+            "currency": "LBP",
+            "daysOverdue": 0,
+            "description": "supplier_transactions-description-ccf23cd3-d068-4fb3-9583-eaf8035f262d",
+            "dueDate": null,
+            "fifoSettledAmount": "0.00",
+            "id": "ccf23cd3-d068-4fb3-9583-eaf8035f262d",
+            "originalAmount": "100.00",
+            "receiptNumber": null,
+            "remainingAmount": "100.00",
+            "status": "UNSCHEDULED",
+            "supplier": {
+              "id": "6cb67dd1-9a86-47e8-a811-70a661680cb5",
+              "name": "suppliers-name-6cb67dd1-9a86-47e8-a811-70a661680cb5",
+              "phone": "suppliers-phone-6cb67dd1-9a86-47e8-a811-70a661680cb5"
+            },
+            "transactionAmount": "9000000",
+            "transactionDate": "2026-08-15"
+          },
+          {
+            "bucket": "NO_DUE_DATE",
+            "currency": "USD",
+            "daysOverdue": 0,
+            "description": "supplier_transactions-description-87482190-d2e8-4685-a6f8-c87097bbacb9",
+            "dueDate": null,
+            "fifoSettledAmount": "0.00",
+            "id": "87482190-d2e8-4685-a6f8-c87097bbacb9",
+            "originalAmount": "100.00",
+            "receiptNumber": null,
+            "remainingAmount": "100.00",
+            "status": "UNSCHEDULED",
+            "supplier": {
+              "id": "f379612e-b75e-4b25-8335-83b2718c6c62",
+              "name": "suppliers-name-f379612e-b75e-4b25-8335-83b2718c6c62",
+              "phone": "suppliers-phone-f379612e-b75e-4b25-8335-83b2718c6c62"
+            },
+            "transactionAmount": "100.00",
+            "transactionDate": "2026-08-15"
+          }
+        ],
+        "summary": {
+          "asOf": "2026-10-27",
+          "buckets": [
+            {
+              "amount": "0.00",
+              "count": 0,
+              "key": "CURRENT",
+              "label": "Current / Not Due / غير مستحق"
+            },
+            {
+              "amount": "0.00",
+              "count": 0,
+              "key": "DAYS_1_30",
+              "label": "1–30 days overdue / متأخر ١–٣٠ يوم"
+            },
+            {
+              "amount": "0.00",
+              "count": 0,
+              "key": "DAYS_31_60",
+              "label": "31–60 days overdue / متأخر ٣١–٦٠ يوم"
+            },
+            {
+              "amount": "0.00",
+              "count": 0,
+              "key": "DAYS_61_90",
+              "label": "61–90 days overdue / متأخر ٦١–٩٠ يوم"
+            },
+            {
+              "amount": "0.00",
+              "count": 0,
+              "key": "DAYS_90_PLUS",
+              "label": "90+ days overdue / متأخر أكثر من ٩٠ يوم"
+            },
+            {
+              "amount": "200.00",
+              "count": 2,
+              "key": "NO_DUE_DATE",
+              "label": "Unscheduled / No Due Date / بدون تاريخ استحقاق"
+            }
+          ],
+          "calculationBasis": "REPORT_ONLY_FIFO_STORED_BASE_USD",
+          "count": 2,
+          "dueSoonAmount": "0.00",
+          "dueSoonCount": 0,
+          "dueSoonDays": 7,
+          "futureAmount": "0.00",
+          "ledgerBalance": "200.00",
+          "noDueDate": "200.00",
+          "oldestOverdue": null,
+          "overdueCount": 0,
+          "totalOverdue": "0.00",
+          "totalPayables": "200.00",
+          "unappliedCredit": "0.00"
+        },
+        "suppliers": [
+          {
+            "difference": "0.00",
+            "independentlyComputedLedgerBalance": "100.00",
+            "ledgerBalance": "100.00",
+            "supplier": {
+              "id": "6cb67dd1-9a86-47e8-a811-70a661680cb5",
+              "name": "suppliers-name-6cb67dd1-9a86-47e8-a811-70a661680cb5",
+              "phone": "suppliers-phone-6cb67dd1-9a86-47e8-a811-70a661680cb5"
+            },
+            "totalPayables": "100.00",
+            "unappliedCredit": "0.00"
+          },
+          {
+            "difference": "0.00",
+            "independentlyComputedLedgerBalance": "100.00",
+            "ledgerBalance": "100.00",
+            "supplier": {
+              "id": "f379612e-b75e-4b25-8335-83b2718c6c62",
+              "name": "suppliers-name-f379612e-b75e-4b25-8335-83b2718c6c62",
+              "phone": "suppliers-phone-f379612e-b75e-4b25-8335-83b2718c6c62"
+            },
+            "totalPayables": "100.00",
+            "unappliedCredit": "0.00"
+          }
+        ]
+      },
+      "query": {
+        "from": "2026-08-01",
+        "period": "custom",
+        "to": "2026-08-31"
+      },
+      "receivablesAging": {
+        "rows": [],
+        "summary": {
+          "asOf": "2026-08-31",
+          "buckets": [
+            {
+              "amount": "0.00",
+              "count": 0,
+              "key": "DAYS_0_7",
+              "label": "0–7 days / ٠–٧ أيام"
+            },
+            {
+              "amount": "0.00",
+              "count": 0,
+              "key": "DAYS_15_30",
+              "label": "15–30 days / ١٥–٣٠ يوم"
+            },
+            {
+              "amount": "0.00",
+              "count": 0,
+              "key": "DAYS_31_60",
+              "label": "31–60 days / ٣١–٦٠ يوم"
+            },
+            {
+              "amount": "0.00",
+              "count": 0,
+              "key": "DAYS_61_90",
+              "label": "61–90 days / ٦١–٩٠ يوم"
+            },
+            {
+              "amount": "0.00",
+              "count": 0,
+              "key": "DAYS_8_14",
+              "label": "8–14 days / ٨–١٤ يوم"
+            },
+            {
+              "amount": "0.00",
+              "count": 0,
+              "key": "DAYS_90_PLUS",
+              "label": "90+ days / أكثر من ٩٠ يوم"
+            }
+          ],
+          "count": 0,
+          "customersOwing": 0,
+          "largestCustomer": null,
+          "oldestDebt": null,
+          "over30": "0.00",
+          "over60": "0.00",
+          "over90": "0.00",
+          "scope": "STANDARD_DEBTS_ONLY",
+          "totalOverdue": "0.00",
+          "totalReceivables": "0.00"
+        }
+      }
+    }
+  ],
+  "suppliersIntegrity": {
+    "operationalSnapshot": true,
+    "rows": [
+      {
+        "decreaseTotal": "0.00",
+        "difference": "0.00",
+        "increaseTotal": "100.00",
+        "independentBalance": "100.00",
+        "issues": [],
+        "reportedBalance": "100.00",
+        "status": "OK",
+        "supplier": {
+          "id": "6cb67dd1-9a86-47e8-a811-70a661680cb5",
+          "name": "suppliers-name-6cb67dd1-9a86-47e8-a811-70a661680cb5",
+          "phone": "suppliers-phone-6cb67dd1-9a86-47e8-a811-70a661680cb5"
+        },
+        "transactionCount": 1
+      },
+      {
+        "decreaseTotal": "0.00",
+        "difference": "0.00",
+        "increaseTotal": "100.00",
+        "independentBalance": "100.00",
+        "issues": [],
+        "reportedBalance": "100.00",
+        "status": "OK",
+        "supplier": {
+          "id": "f379612e-b75e-4b25-8335-83b2718c6c62",
+          "name": "suppliers-name-f379612e-b75e-4b25-8335-83b2718c6c62",
+          "phone": "suppliers-phone-f379612e-b75e-4b25-8335-83b2718c6c62"
+        },
+        "transactionCount": 1
+      }
+    ],
+    "summary": {
+      "count": 2,
+      "difference": "0.00",
+      "independentTotal": "200.00",
+      "mismatches": 0,
+      "ok": 2,
+      "reportedTotal": "200.00"
+    }
+  },
+  "version": 1
+}

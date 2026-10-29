@@ -29,6 +29,26 @@
   --color-warning: #fab219;
   --color-danger: #d03b3b;
   --color-info: #2a78d6;
+
+  /* shadcn/ui semantic names (components in components/shadcn). Each one is an
+     alias of an existing token above or of the slate scale — never a new
+     colour — so shadcn components and the existing primitives stay in step. */
+  --color-background: var(--color-slate-50);
+  --color-foreground: var(--color-slate-900);
+  --color-card: #ffffff;
+  --color-card-foreground: var(--color-slate-900);
+  --color-popover: #ffffff;
+  --color-popover-foreground: var(--color-slate-900);
+  --color-primary: var(--color-brand-600);
+  --color-primary-foreground: #ffffff;
+  --color-muted: var(--color-slate-100);
+  --color-muted-foreground: var(--color-slate-500);
+  --color-accent: var(--color-slate-100);
+  --color-accent-foreground: var(--color-slate-900);
+  --color-destructive: var(--color-danger);
+  --color-border: var(--color-slate-200);
+  --color-input: var(--color-slate-300);
+  --color-ring: var(--color-brand-500);
 }
 
 @layer base {

@@ -28,6 +28,7 @@ export interface PrepaidPaymentView {
 }
 
 export interface PrepaidPurchaseView {
+  branchId: string;
   id: string;
   debtId: string;
   customer: {

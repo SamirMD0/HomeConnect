@@ -1,3 +1,4 @@
+import { scopeWhere, type BranchScope } from '../../branches/branch-scope';
 import { Prisma, SupplierTransactionDirection, SupplierTransactionStatus } from '@prisma/client';
 import { prisma } from '../../../lib/prisma';
 import { findSearchMatchIds } from '../../../lib/search-query';
@@ -11,9 +12,10 @@ export class SuppliersRepository {
   static findById(id: string, tx?: Prisma.TransactionClient) {
     return (tx ?? prisma).supplier.findUnique({ where: { id }, include: supplierInclude });
   }
-  static async list(params: { search?: string; isActive?: boolean; sortBy: 'name'|'createdAt'|'balance'; sortOrder: 'asc'|'desc'; skip: number; take: number }) {
-    const matchedIds = await findSearchMatchIds('supplier', params.search);
+  static async list(params: { search?: string; isActive?: boolean; sortBy: 'name'|'createdAt'|'balance'; sortOrder: 'asc'|'desc'; skip: number; take: number }, scope: BranchScope) {
+    const matchedIds = await findSearchMatchIds('supplier', params.search, undefined, scope);
     const where: Prisma.SupplierWhereInput = {
+      ...scopeWhere(scope),
       ...(params.isActive === undefined ? {} : { isActive: params.isActive }),
       ...(matchedIds ? { id: { in: matchedIds } } : {}),
     };
@@ -24,15 +26,16 @@ export class SuppliersRepository {
     ]);
     return { items, total };
   }
-  static async listAllForBalance(params: { search?: string; isActive?: boolean }) {
-    const matchedIds = await findSearchMatchIds('supplier', params.search);
+  static async listAllForBalance(params: { search?: string; isActive?: boolean }, scope: BranchScope) {
+    const matchedIds = await findSearchMatchIds('supplier', params.search, undefined, scope);
     const where: Prisma.SupplierWhereInput = {
+      ...scopeWhere(scope),
       ...(params.isActive === undefined ? {} : { isActive: params.isActive }),
       ...(matchedIds ? { id: { in: matchedIds } } : {}),
     };
     return prisma.supplier.findMany({ where, include: supplierInclude, orderBy: [{ name: 'asc' }, { id: 'asc' }] });
   }
-  static create(data: Prisma.SupplierUncheckedCreateInput, tx: Prisma.TransactionClient) { return tx.supplier.create({ data, include: supplierInclude }); }
+  static async create(data: Prisma.SupplierUncheckedCreateInput, tx: Prisma.TransactionClient) { return tx.supplier.create({ data, include: supplierInclude }); }
   static update(id: string, data: Prisma.SupplierUncheckedUpdateInput, tx: Prisma.TransactionClient) { return tx.supplier.update({ where: { id }, data, include: supplierInclude }); }
   static transactionCount(id: string, tx: Prisma.TransactionClient) { return tx.supplierTransaction.count({ where: { supplierId: id } }); }
   static receivingCount(id: string, tx: Prisma.TransactionClient) { return tx.supplierReceiving.count({ where: { supplierId: id } }); }

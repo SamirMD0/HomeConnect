@@ -43,12 +43,12 @@ describe('ReportRowsService', () => {
       { id: 'm2', productId: 'p2', product: { id: 'p2', name: 'Fan', sku: 'SKU2' }, createdAt: new Date('2026-08-04'), movementType: 'SALE_FULFILLMENT', quantityChange: -2 },
     ]);
     repository.productCategories.mockResolvedValue([{ id: 'p1', categoryId: 'leaf', category: { name: 'Cookers', parent: { name: 'Kitchen', parent: { name: 'Home Appliances' } } } }, { id: 'p2', categoryId: null, category: null }]);
-    const report = await ReportRowsService.get('inventory-movements', { period: 'thisMonth' }, options);
+    const report = await ReportRowsService.get('inventory-movements', { period: 'thisMonth' }, options, phase3cScope);
     expect(report.data.rows).toHaveLength(2);
     expect(report.data.rows[0]).toMatchObject({ categoryId: 'leaf', categoryPath: 'Home Appliances → Kitchen → Cookers' });
     expect(report.data.rows[1]).toMatchObject({ categoryId: null, categoryPath: null });
     expect(report.data.summary).toMatchObject({ count: 2, movementsByType: { SALE_FULFILLMENT: { count: 2, quantityChange: -3 } } });
-    const csv = await ReportRowsService.exportCsv('inventory-movements', { period: 'thisMonth' }, options);
+    const csv = await ReportRowsService.exportCsv('inventory-movements', { period: 'thisMonth' }, options, phase3cScope);
     expect(csv.csv).toContain('Category (current catalogue)'); expect(csv.csv).toContain('Home Appliances → Kitchen → Cookers'); expect(csv.csv).toContain('Uncategorized');
   });
 
@@ -58,7 +58,7 @@ describe('ReportRowsService', () => {
       { id: 'p2', totalAmount: new Decimal('10.00'), paymentDate: new Date('2026-08-04T00:00:00Z'), paymentMethod: 'CARD', reference: null, notes: null, customer: { id: 'c2', name: 'Maya', phone: '2' }, createdBy: { fullName: 'Admin', username: 'admin' } },
     ]);
 
-    const report = await ReportRowsService.get('customers-payments', { period: 'thisMonth' }, options);
+    const report = await ReportRowsService.get('customers-payments', { period: 'thisMonth' }, options, phase3cScope);
 
     expect(report.meta.to).toBe('2026-08-17');
     expect(report.data.summary).toEqual({ count: 2, totalAmount: '133.45' });
@@ -68,19 +68,19 @@ describe('ReportRowsService', () => {
   it('reuses the point-in-time customer debt service for an exact custom range', async () => {
     debts.getDebtReportForRange.mockResolvedValue({ summary: { totalOutstanding: '90.00' }, rows: [{ customer: { name: 'Ali' }, totalOutstanding: '90.00' }] });
 
-    const report = await ReportRowsService.get('customers-debts', { period: 'custom', from: '2026-07-10', to: '2026-07-20' }, options);
+    const report = await ReportRowsService.get('customers-debts', { period: 'custom', from: '2026-07-10', to: '2026-07-20' }, options, phase3cScope);
 
-    expect(debts.getDebtReportForRange).toHaveBeenCalledWith(expect.objectContaining({ month: '2026-07', limit: 10000 }), '2026-07-10', '2026-07-20');
+    expect(debts.getDebtReportForRange).toHaveBeenCalledWith(expect.objectContaining({ month: '2026-07', limit: 10000 }), '2026-07-10', '2026-07-20', phase3cScope);
     expect(report.data.summary).toEqual({ totalOutstanding: '90.00' });
   });
 
   it('keeps supplier receiving separate from supplier money transactions', async () => {
     repository.supplierTransactions.mockResolvedValue([
-      { id: 't1', type: 'SUPPLIER_DEBT', direction: 'INCREASE_OWED', amount: new Decimal('500.00'), transactionDate: new Date('2026-08-02T00:00:00Z'), description: 'Invoice', reference: null, receiptNumber: '1', supplierReceivingId: null, supplier: { id: 's1', name: 'Supplier', companyName: null } },
-      { id: 't2', type: 'SUPPLIER_PAYMENT', direction: 'DECREASE_OWED', amount: new Decimal('120.00'), transactionDate: new Date('2026-08-03T00:00:00Z'), description: 'Paid', reference: null, receiptNumber: null, supplierReceivingId: null, supplier: { id: 's1', name: 'Supplier', companyName: null } },
+      { baseAmount: new Decimal('500.00'),  id: 't1', type: 'SUPPLIER_DEBT', direction: 'INCREASE_OWED', amount: new Decimal('500.00'), transactionDate: new Date('2026-08-02T00:00:00Z'), description: 'Invoice', reference: null, receiptNumber: '1', supplierReceivingId: null, supplier: { id: 's1', name: 'Supplier', companyName: null } },
+      { baseAmount: new Decimal('120.00'),  id: 't2', type: 'SUPPLIER_PAYMENT', direction: 'DECREASE_OWED', amount: new Decimal('120.00'), transactionDate: new Date('2026-08-03T00:00:00Z'), description: 'Paid', reference: null, receiptNumber: null, supplierReceivingId: null, supplier: { id: 's1', name: 'Supplier', companyName: null } },
     ]);
 
-    const report = await ReportRowsService.get('suppliers-debts', { period: 'thisMonth' }, options);
+    const report = await ReportRowsService.get('suppliers-debts', { period: 'thisMonth' }, options, phase3cScope);
 
     expect(report.data.summary).toEqual({ count: 2, increased: '500.00', decreased: '120.00', netChange: '380.00' });
     expect(repository.supplierReceivings).not.toHaveBeenCalled();
@@ -90,16 +90,16 @@ describe('ReportRowsService', () => {
     repository.salesOrders.mockResolvedValue([]);
     metrics.get.mockResolvedValue({ sales: { orderCount: 7, totalAmount: '999.99', paidAmount: '600.00', unpaidAmount: '399.99', averageOrderValue: '142.86' } });
 
-    const report = await ReportRowsService.get('sales-orders', { period: 'lastMonth' }, options);
+    const report = await ReportRowsService.get('sales-orders', { period: 'lastMonth' }, options, phase3cScope);
 
     expect(report.data.summary).toEqual(expect.objectContaining({ totalAmount: '999.99', orderCount: 7 }));
-    expect(metrics.get).toHaveBeenCalledWith(expect.objectContaining({ preset: 'lastMonth' }));
+    expect(metrics.get).toHaveBeenCalledWith(expect.objectContaining({ preset: 'lastMonth' }), phase3cScope);
   });
 
   it('flags a receiving item whose PURCHASE_RECEIPT relation is inconsistent', async () => {
     repository.receivingReconciliation.mockResolvedValue([receivingRecord({ quantityChange: 4 })]);
 
-    const report = await ReportRowsService.get('inventory-reconciliation', { period: 'thisMonth' }, options);
+    const report = await ReportRowsService.get('inventory-reconciliation', { period: 'thisMonth' }, options, phase3cScope);
 
     expect(report.data.summary).toEqual({ count: 1, ok: 0, mismatches: 1 });
     expect(report.data.rows[0]).toMatchObject({ status: 'MISMATCH' });
@@ -109,7 +109,7 @@ describe('ReportRowsService', () => {
   it('accepts matching posted receiving movement relations', async () => {
     repository.receivingReconciliation.mockResolvedValue([receivingRecord({ quantityChange: 5 })]);
 
-    const report = await ReportRowsService.get('inventory-reconciliation', { period: 'thisMonth' }, options);
+    const report = await ReportRowsService.get('inventory-reconciliation', { period: 'thisMonth' }, options, phase3cScope);
 
     expect(report.data.summary).toEqual({ count: 1, ok: 1, mismatches: 0 });
     expect(report.data.rows[0]).toMatchObject({ status: 'OK', issues: [] });
@@ -125,7 +125,7 @@ describe('ReportRowsService', () => {
     };
     repository.receivingReconciliation.mockResolvedValue([record]);
 
-    const report = await ReportRowsService.get('inventory-reconciliation', { period: 'thisMonth' }, options);
+    const report = await ReportRowsService.get('inventory-reconciliation', { period: 'thisMonth' }, options, phase3cScope);
 
     expect(report.data.summary).toEqual({ count: 1, ok: 1, mismatches: 0 });
   });
@@ -137,7 +137,7 @@ describe('ReportRowsService', () => {
     }]);
     receivables.computeReceivableProjections.mockResolvedValue(new Map([['c1', { outstanding: '110.00' }]]));
 
-    const report = await ReportRowsService.get('customers-financial-integrity', { period: 'thisMonth' }, options);
+    const report = await ReportRowsService.get('customers-financial-integrity', { period: 'thisMonth' }, options, phase3cScope);
 
     expect(report.data.summary).toEqual({ count: 1, ok: 1, mismatches: 0, reportedTotal: '110.00', independentTotal: '110.00', difference: '0.00' });
     expect(report.data.rows[0]).toMatchObject({ status: 'OK', independentOutstanding: '110.00', issues: [] });
@@ -150,7 +150,7 @@ describe('ReportRowsService', () => {
     }]);
     receivables.computeReceivableProjections.mockResolvedValue(new Map([['c1', { outstanding: '109.00' }]]));
 
-    const report = await ReportRowsService.get('customers-financial-integrity', { period: 'thisMonth' }, options);
+    const report = await ReportRowsService.get('customers-financial-integrity', { period: 'thisMonth' }, options, phase3cScope);
 
     expect(report.data.summary).toMatchObject({ ok: 0, mismatches: 1, difference: '-1.00' });
     expect(report.data.rows[0]).toMatchObject({ status: 'MISMATCH', reportedOutstanding: '109.00', independentOutstanding: '110.00' });
@@ -164,7 +164,7 @@ describe('ReportRowsService', () => {
     }]);
     suppliers.balances.mockResolvedValue(new Map([['s1', { increase: '500.00', decrease: '120.00' }]]));
 
-    const report = await ReportRowsService.get('suppliers-financial-integrity', { period: 'thisMonth' }, options);
+    const report = await ReportRowsService.get('suppliers-financial-integrity', { period: 'thisMonth' }, options, phase3cScope);
 
     expect(report.data.summary).toEqual({ count: 1, ok: 1, mismatches: 0, reportedTotal: '380.00', independentTotal: '380.00', difference: '0.00' });
     expect(report.data.rows[0]).toMatchObject({ status: 'OK', independentBalance: '380.00', issues: [] });
@@ -181,7 +181,7 @@ describe('ReportRowsService', () => {
       changedByName: 'Owner', changedByUsername: 'owner', reason: 'Supplier purchase',
     }]);
 
-    const report = await ReportRowsService.get('products-cost-changes', { period: 'thisMonth' }, options);
+    const report = await ReportRowsService.get('products-cost-changes', { period: 'thisMonth' }, options, phase3cScope);
 
     expect(report.data.summary).toEqual({ count: 1, increases: 1, decreases: 0, fromPurchases: 1 });
     expect(report.data.rows[0]).toMatchObject({
@@ -198,7 +198,7 @@ describe('ReportRowsService', () => {
     }]);
     suppliers.balances.mockResolvedValue(new Map());
 
-    const report = await ReportRowsService.get('suppliers-financial-integrity', { period: 'thisMonth' });
+    const report = await ReportRowsService.get('suppliers-financial-integrity', { period: 'thisMonth' }, undefined, phase3cScope);
 
     expect(report.data.summary).toMatchObject({ count: 1, ok: 1, mismatches: 0 });
     expect(report.data.rows[0]).toMatchObject({ status: 'OK', reportedBalance: '0.00', independentBalance: '0.00', issues: [] });
@@ -211,7 +211,7 @@ describe('ReportRowsService', () => {
     }]);
     suppliers.balances.mockResolvedValue(new Map([['s1', { increase: '500.00', decrease: '121.00' }]]));
 
-    const report = await ReportRowsService.get('suppliers-financial-integrity', { period: 'thisMonth' }, options);
+    const report = await ReportRowsService.get('suppliers-financial-integrity', { period: 'thisMonth' }, options, phase3cScope);
 
     expect(report.data.summary).toMatchObject({ ok: 0, mismatches: 1, difference: '-1.00' });
     expect(report.data.rows[0]).toMatchObject({ status: 'MISMATCH', reportedBalance: '379.00', independentBalance: '380.00' });
@@ -221,7 +221,7 @@ describe('ReportRowsService', () => {
   it('exports Arabic and quoted values through the shared BOM CSV builder', async () => {
     repository.newCustomers.mockResolvedValue([{ id: 'c1', name: 'علي, "الحداد"', phone: '1', isActive: true, createdAt: new Date('2026-08-02T10:00:00Z') }]);
 
-    const result = await ReportRowsService.exportCsv('customers-new', { period: 'thisMonth' }, options);
+    const result = await ReportRowsService.exportCsv('customers-new', { period: 'thisMonth' }, options, phase3cScope);
 
     expect(result.csv.startsWith('\uFEFF')).toBe(true);
     expect(result.csv).toContain('"علي, ""الحداد"""');
@@ -254,7 +254,7 @@ describe('ReportRowsService customer movement reports', () => {
   });
 
   it('lists only customers with no payment in the period, with full movement columns', async () => {
-    const report = await ReportRowsService.get('customers-not-paid', { period: 'thisMonth' }, options);
+    const report = await ReportRowsService.get('customers-not-paid', { period: 'thisMonth' }, options, phase3cScope);
 
     expect(report.data.rows).toHaveLength(1);
     expect(report.data.rows[0]).toMatchObject({
@@ -267,7 +267,7 @@ describe('ReportRowsService customer movement reports', () => {
   });
 
   it('labels the risk on a customer who did not pay and whose debt grew', async () => {
-    const report = await ReportRowsService.get('customers-not-paid', { period: 'thisMonth' }, options);
+    const report = await ReportRowsService.get('customers-not-paid', { period: 'thisMonth' }, options, phase3cScope);
     const labels = (report.data.rows[0] as { riskLabels: string[] }).riskLabels;
 
     expect(labels).toContain('NO_PAYMENT_THIS_PERIOD');
@@ -277,7 +277,7 @@ describe('ReportRowsService customer movement reports', () => {
   });
 
   it('lists only customers who did pay, and counts their payments', async () => {
-    const report = await ReportRowsService.get('customers-paid', { period: 'thisMonth' }, options);
+    const report = await ReportRowsService.get('customers-paid', { period: 'thisMonth' }, options, phase3cScope);
 
     expect(report.data.rows).toHaveLength(1);
     expect(report.data.rows[0]).toMatchObject({
@@ -288,7 +288,7 @@ describe('ReportRowsService customer movement reports', () => {
 
   /** Opening and closing must come from the debt snapshot service, not a second calculation. */
   it('reads opening and closing balances from the point-in-time debt service', async () => {
-    await ReportRowsService.get('customers-not-paid', { period: 'thisMonth' }, options);
+    await ReportRowsService.get('customers-not-paid', { period: 'thisMonth' }, options, phase3cScope);
 
     expect(debts.getDebtReportForRange).toHaveBeenCalledTimes(2);
     const [openingCall, closingCall] = debts.getDebtReportForRange.mock.calls;
@@ -311,7 +311,7 @@ describe('ReportRowsService products bought', () => {
   });
 
   it('reports received quantities and never claims a purchase value', async () => {
-    const report = await ReportRowsService.get('products-bought', { period: 'thisMonth' }, options);
+    const report = await ReportRowsService.get('products-bought', { period: 'thisMonth' }, options, phase3cScope);
     const summary = report.data.summary as Record<string, unknown>;
 
     expect(summary.totalUnits).toBe(10);
@@ -320,7 +320,7 @@ describe('ReportRowsService products bought', () => {
   });
 
   it('keeps a reversed line visible but excludes it from the totals', async () => {
-    const report = await ReportRowsService.get('products-bought', { period: 'thisMonth' }, options);
+    const report = await ReportRowsService.get('products-bought', { period: 'thisMonth' }, options, phase3cScope);
     const summary = report.data.summary as Record<string, unknown>;
 
     expect(report.data.rows).toHaveLength(2);
@@ -331,14 +331,14 @@ describe('ReportRowsService products bought', () => {
 
   it('flags an active product received but not sold in the period', async () => {
     repository.soldQuantityByProduct.mockResolvedValue(new Map());
-    const report = await ReportRowsService.get('products-bought', { period: 'thisMonth' }, options);
+    const report = await ReportRowsService.get('products-bought', { period: 'thisMonth' }, options, phase3cScope);
 
     expect((report.data.summary as Record<string, unknown>).receivedNotSold).toBe(1);
     expect(report.data.rows[0]).toMatchObject({ soldInPeriod: 0 });
   });
 
   it('carries the linked supplier debt when one exists', async () => {
-    const report = await ReportRowsService.get('products-bought', { period: 'thisMonth' }, options);
+    const report = await ReportRowsService.get('products-bought', { period: 'thisMonth' }, options, phase3cScope);
 
     expect(report.data.rows[0]).toMatchObject({ linkedDebt: { id: 't1', amount: '99.00' } });
   });
@@ -370,3 +370,10 @@ function receivingRecord({ quantityChange }: { quantityChange: number }) {
     }],
   };
 }
+
+const phase3cScope = { mode: 'all' as const, branchIds: ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'] };
+
+vi.mock('../../branches/branch-breakdown', async (importOriginal) => ({
+  ...await importOriginal<typeof import('../../branches/branch-breakdown')>(),
+  branchLabel: vi.fn().mockResolvedValue('Phase 3C A'),
+}));

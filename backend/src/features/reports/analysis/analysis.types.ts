@@ -57,6 +57,7 @@ export interface AnalysisData {
     receivingWithoutLinkedDebt: number;
   };
   inventoryPosition: {
+    inventoryScope?: 'all-branches';
     receivedUnits: number;
     receivedLines: number;
     soldUnits: number;

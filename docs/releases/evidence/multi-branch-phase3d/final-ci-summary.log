@@ -1,0 +1,22 @@
+Confirmed command database: homeconnect_test_phase4_phase5_phase6
+
+> home-connect@2.0.5 test:ci
+> node scripts/assert-test-database.mjs && cross-env RUN_FINANCIAL_DB_TESTS=1 RUN_INVENTORY_DB_TESTS=1 RUN_SALES_FULFILLMENT_DB_TESTS=1 RUN_SALES_RETURN_DB_TESTS=1 RUN_SUPPLIER_PURCHASE_DB_TESTS=1 RUN_SUPPLIER_RECEIVING_DB_TESTS=1 RUN_PHASE4_DEBT_DB_TESTS=1 RUN_PHASE5_INSTALLMENT_DB_TESTS=1 RUN_PHASE6_CUSTOMER_SUMMARY_DB_TESTS=1 vitest run --no-file-parallelism --reporter=default --reporter=json --outputFile.json=node_modules/.cache/home-connect/vitest-report.json && node scripts/assert-zero-skips.mjs
+
+Database integration suites enabled against "homeconnect_test_phase4_phase5_phase6".
+
+ RUN  v4.1.10 D:/User/Documents/HomeConnect-mb-phase3
+
+ ✓ backend/src/features/reports/shared/reports-envelope.test.ts (1 test) 4ms
+ ✓ backend/src/features/brand-logo/brand-key.test.ts (2 tests) 3ms
+ ✓ backend/src/features/reports/shared/reports-risk.config.test.ts (1 test) 4ms
+ ✓ backend/src/features/service/domain/job-number.test.ts (1 test) 3ms
+ ✓ backend/src/features/financial/receivables/receivables-scope-contract.test.ts (1 test) 3ms
+
+ Test Files  409 passed (409)
+      Tests  3315 passed (3315)
+   Start at  12:45:28
+   Duration  405.45s (transform 13.73s, setup 6.59s, import 212.56s, tests 94.85s, environment 7.57s)
+
+JSON report written to D:/User/Documents/HomeConnect-mb-phase3/node_modules/.cache/home-connect/vitest-report.json
+CI gate passed: 409 files, 3315 tests, 0 skipped files, 0 skipped tests.

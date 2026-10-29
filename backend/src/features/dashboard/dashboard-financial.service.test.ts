@@ -202,7 +202,7 @@ describe('DashboardFinancialService', () => {
       ],
     });
 
-    const summary = await DashboardFinancialService.getFinancialSummary();
+    const summary = await DashboardFinancialService.getFinancialSummary(phase3cScope);
 
     expect(summary.businessDate).toBe('2026-07-27');
     expect(summary.monthStart).toBe('2026-07-01');
@@ -248,9 +248,16 @@ describe('DashboardFinancialService', () => {
       payments: [],
     });
 
-    const summary = await DashboardFinancialService.getFinancialSummary();
+    const summary = await DashboardFinancialService.getFinancialSummary(phase3cScope);
     expect(summary.counts.customersWithOutstanding).toBe(0);
     expect(summary.money.totalOutstanding).toBe('0.00');
     expect(summary.money.obligationsCreatedThisMonth).toBe('0.00');
   });
 });
+
+const phase3cScope = { mode: 'all' as const, branchIds: ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'] };
+
+vi.mock('../branches/branch-breakdown', async (importOriginal) => ({
+  ...await importOriginal<typeof import('../branches/branch-breakdown')>(),
+  branchLabel: vi.fn().mockResolvedValue('Phase 3C A'),
+}));

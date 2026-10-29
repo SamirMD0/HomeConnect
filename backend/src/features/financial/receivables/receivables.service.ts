@@ -1,3 +1,4 @@
+import type { BranchScope } from '../../branches/branch-scope';
 import { Currency, DebtKind, DebtStatus, InstallmentPlanStatus, InstallmentStatus } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import {
@@ -74,11 +75,12 @@ function isWithinRange(businessDate: string, range: MonthRange | null): boolean 
 }
 
 export class ReceivablesService {
-  static async getReceivables(query: ReceivablesQueryInput): Promise<ReceivablesResponseView> {
-    const matchedIds = await findSearchMatchIds('customer', query.search);
+  static async getReceivables(query: ReceivablesQueryInput, scope: BranchScope): Promise<ReceivablesResponseView> {
+    const matchedIds = await findSearchMatchIds('customer', query.search, undefined, scope);
     const matchedCustomerIds = matchedIds === null ? null : new Set(matchedIds);
     const records = await ReceivablesRepository.loadReceivableRecords({
       includeInactive: query.includeInactive,
+      scope,
     });
     const businessDate = todayInBusinessTimezone();
     const monthRange = query.month ? monthToRange(query.month) : null;
@@ -149,6 +151,7 @@ export class ReceivablesService {
    */
   static async computeReceivableProjections(params: {
     customerIds: string[];
+    scope: BranchScope;
   }): Promise<Map<string, ReceivableCustomerProjection>> {
     const projections = new Map<string, ReceivableCustomerProjection>();
     if (params.customerIds.length === 0) return projections;
@@ -156,6 +159,7 @@ export class ReceivablesService {
     const records = await ReceivablesRepository.loadReceivableRecords({
       includeInactive: true,
       customerIds: params.customerIds,
+      scope: params.scope,
     });
     const businessDate = todayInBusinessTimezone();
 
@@ -386,6 +390,7 @@ export class ReceivablesService {
       outstanding,
       overdueAmount,
       item: {
+        branchId: customer.branchId,
         customer: {
           id: customer.id,
           name: customer.name,

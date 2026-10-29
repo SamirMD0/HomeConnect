@@ -1,3 +1,4 @@
+import { scopeWhere, type BranchScope } from '../../branches/branch-scope';
 import { SalesOrderFulfillmentStatus } from '@prisma/client';
 import { prisma } from '../../../lib/prisma';
 import { businessDateToPrisma } from '../../financial';
@@ -10,22 +11,22 @@ const EXCLUDED_SALES_STATUSES = [
 ];
 
 export class ReportsMetricsRepository {
-  static async load(period: ResolvedReportsPeriod) {
+  static async load(period: ResolvedReportsPeriod, scope: BranchScope) {
     const from = businessDateToPrisma(period.from);
     const toExclusive = businessDateToPrisma(addDays(period.to, 1));
     const activeCustomerWhere = { deletedAt: null, isActive: true } as const;
 
     const [newCustomers, activeCustomers, payers, salesByPaymentStatus, returns] = await Promise.all([
       prisma.customer.count({
-        where: { deletedAt: null, createdAt: { gte: from, lt: toExclusive } },
+        where: { ...scopeWhere(scope),  deletedAt: null, createdAt: { gte: from, lt: toExclusive } },
       }),
       prisma.customer.findMany({
-        where: activeCustomerWhere,
+        where: { ...scopeWhere(scope), ...activeCustomerWhere },
         select: { id: true, name: true, phone: true },
         orderBy: [{ name: 'asc' }, { id: 'asc' }],
       }),
       prisma.payment.findMany({
-        where: {
+        where: { ...scopeWhere(scope),
           customer: activeCustomerWhere,
           paymentDate: { gte: from, lt: toExclusive },
           // A payment voided after the cutoff was still valid inside the report period.
@@ -36,7 +37,7 @@ export class ReportsMetricsRepository {
       }),
       prisma.salesOrder.groupBy({
         by: ['paymentStatus'],
-        where: {
+        where: { ...scopeWhere(scope),
           fulfillmentStatus: { notIn: EXCLUDED_SALES_STATUSES },
           orderDate: { gte: from, lt: toExclusive },
         },
@@ -45,7 +46,7 @@ export class ReportsMetricsRepository {
         orderBy: { paymentStatus: 'asc' },
       }),
       prisma.salesReturn.findMany({
-        where: { returnDate: { gte: from, lt: toExclusive } },
+        where: { ...scopeWhere(scope),  returnDate: { gte: from, lt: toExclusive } },
         select: { baseTotalIncVat: true, baseReceivableReliefAmount: true, baseRefundableAmount: true, refundMethod: true },
       }),
     ]);

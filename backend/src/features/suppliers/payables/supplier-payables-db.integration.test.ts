@@ -1,3 +1,4 @@
+import { branchFixture } from "../../../test/branch-fixture";
 import { isIsolatedTestDatabase } from '../../../test/database';
 import { PrismaClient } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
@@ -5,6 +6,8 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { SupplierPayablesService } from './supplier-payables.service';
 import { SupplierPurchasesService } from '../purchases/supplier-purchases.service';
 import { businessDateToPrisma, todayInBusinessTimezone } from '../../financial/domain/business-date';
+const phase3bScope = async () => ({ mode: 'all' as const, branchIds: [await branchFixture(db)] });
+
 
 
 const describeDb = process.env.RUN_SUPPLIER_PURCHASE_DB_TESTS === '1' && isIsolatedTestDatabase(process.env.DATABASE_URL) ? describe : describe.skip;
@@ -16,24 +19,24 @@ describeDb('supplier payable database invariants', () => {
     const userId = randomUUID();
     const supplierId = randomUUID();
     await db.user.create({ data: { id: userId, username: `aging-${userId}`, fullName: 'Aging Admin', role: 'ADMIN', password: 'unused-test-password-hash' } });
-    await db.supplier.create({ data: { id: supplierId, name: 'Aging Test Supplier', phone: `aging-${supplierId}`, createdById: userId } });
+    await db.supplier.create({ data: { branchId: await branchFixture(db), id: supplierId, name: 'Aging Test Supplier', phone: `aging-${supplierId}`, createdById: userId } });
     try {
       for (const [amount, dueDate, type, direction] of [
         ['100', '2026-08-01', 'SUPPLIER_DEBT', 'INCREASE_OWED'], ['100', '2026-09-20', 'SUPPLIER_DEBT', 'INCREASE_OWED'],
         ['40', null, 'SUPPLIER_DEBT', 'INCREASE_OWED'], ['60', null, 'SUPPLIER_PAYMENT', 'DECREASE_OWED'],
         ['70', null, 'SUPPLIER_CREDIT', 'DECREASE_OWED'],
-      ] as const) await db.supplierTransaction.create({ data: { supplierId, amount, baseAmount: amount, type, direction,
+      ] as const) await db.supplierTransaction.create({ data: { branchId: await branchFixture(db), supplierId, amount, baseAmount: amount, type, direction,
         transactionDate: businessDateToPrisma('2026-08-01'), dueDate: dueDate ? businessDateToPrisma(dueDate) : null,
         description: 'FIFO fixture', createdById: userId,
       } });
       const before = await db.supplierTransaction.findMany({ where: { supplierId }, orderBy: { id: 'asc' } });
-      const report = await SupplierPayablesService.get('2026-09-14');
+      const report = await SupplierPayablesService.get('2026-09-14', await phase3bScope());
       const position = report.suppliers.find((s) => s.supplier.id === supplierId);
       expect(position).toMatchObject({ totalPayables: '110.00', ledgerBalance: '110.00', independentlyComputedLedgerBalance: '110.00', difference: '0.00' });
       expect(report.rows.filter((r) => r.supplier.id === supplierId).map((r) => [r.status, r.remainingAmount])).toEqual([['DUE_SOON', '70.00'], ['UNSCHEDULED', '40.00']]);
       expect(await db.supplierTransaction.findMany({ where: { supplierId }, orderBy: { id: 'asc' } })).toEqual(before);
       await db.supplierTransaction.update({ where: { id: before.find((r) => r.type === 'SUPPLIER_CREDIT')!.id }, data: { status: 'REMOVED', removedAt: new Date(), removedById: userId, removedReason: 'Test removal' } });
-      expect((await SupplierPayablesService.get('2026-09-14')).suppliers.find((s) => s.supplier.id === supplierId)?.ledgerBalance).toBe('180.00');
+      expect((await SupplierPayablesService.get('2026-09-14', await phase3bScope())).suppliers.find((s) => s.supplier.id === supplierId)?.ledgerBalance).toBe('180.00');
     } finally {
       await db.supplierTransaction.deleteMany({ where: { supplierId } });
       await db.supplier.delete({ where: { id: supplierId } });
@@ -47,7 +50,7 @@ describeDb('supplier payable database invariants', () => {
     const taxRateId = randomUUID();
     const taxProfileId = randomUUID();
     await db.user.create({ data: { id: userId, username: `due-${userId}`, fullName: 'Due Admin', role: 'ADMIN', password: 'unused-test-password-hash' } });
-    await db.supplier.create({ data: { id: supplierId, name: 'Due Test Supplier', phone: `due-${supplierId}`, createdById: userId } });
+    await db.supplier.create({ data: { branchId: await branchFixture(db), id: supplierId, name: 'Due Test Supplier', phone: `due-${supplierId}`, createdById: userId } });
     try {
       await db.taxRate.create({ data: { id: taxRateId, code: `DUE_ZERO_${taxRateId}`, name: 'Due date test zero rate', nameAr: 'اختبار', ratePercent: '0.000', effectiveFrom: new Date('2020-01-01T00:00:00.000Z'), createdById: userId } });
       await db.taxProfile.create({ data: { id: taxProfileId, code: `DUE_ZERO_${taxProfileId}`, name: 'Due date test zero profile', nameAr: 'اختبار', taxRateId } });
@@ -55,11 +58,11 @@ describeDb('supplier payable database invariants', () => {
         description: 'Scheduled supplier purchase', receiveStock: false, paidAmount: '50.00',
         lines: [{ kind: 'MANUAL' as const, description: 'Supplier service', amount: '100.00', taxProfileId }],
       };
-      const first = await SupplierPurchasesService.create(supplierId, input, { userId, role: 'ADMIN' }, {});
+      const first = await SupplierPurchasesService.create(supplierId, input, { userId, role: 'ADMIN' }, {}, await phase3bScope());
       expect(first.dueDate).toBe('2030-01-01');
-      const replay = await SupplierPurchasesService.create(supplierId, input, { userId, role: 'ADMIN' }, {});
+      const replay = await SupplierPurchasesService.create(supplierId, input, { userId, role: 'ADMIN' }, {}, await phase3bScope());
       expect(replay.id).toBe(first.id);
-      await expect(SupplierPurchasesService.create(supplierId, { ...input, dueDate: '2030-01-02' }, { userId, role: 'ADMIN' }, {})).rejects.toThrow();
+      await expect(SupplierPurchasesService.create(supplierId, { ...input, dueDate: '2030-01-02' }, { userId, role: 'ADMIN' }, {}, await phase3bScope())).rejects.toThrow();
       const payment = await db.supplierTransaction.findFirstOrThrow({ where: { supplierId, type: 'SUPPLIER_PAYMENT' } });
       expect(payment.amount.toFixed(2)).toBe('50.00');
       expect(payment.dueDate).toBeNull();

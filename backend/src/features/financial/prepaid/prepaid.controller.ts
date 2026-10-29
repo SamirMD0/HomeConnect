@@ -16,7 +16,7 @@ export class PrepaidController {
   static async listPrepaidPurchases(req: Request, res: Response, next: NextFunction) {
     try {
       const result = await PrepaidService.listPrepaidPurchases(
-        req.query as unknown as PrepaidListQueryInput
+        req.query as unknown as PrepaidListQueryInput, req.branchScope!
       );
       res.json({
         success: true,

@@ -1,3 +1,4 @@
+import { type BranchScope } from '../../branches/branch-scope';
 import {
   Currency,
   PricingPreset,
@@ -832,12 +833,13 @@ export class ProductsService {
     };
   }
 
-  static async serviceJobs(id: string, query: ProductServiceJobsQueryInput) {
+  static async serviceJobs(id: string, query: ProductServiceJobsQueryInput, scope: BranchScope) {
     await this.get(id);
     const result = await ProductsRepository.serviceJobs(
       id,
       (query.page - 1) * query.pageSize,
-      query.pageSize
+      query.pageSize,
+      scope
     );
     return {
       items: result.items.map(serializeServiceJob),

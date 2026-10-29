@@ -1,3 +1,4 @@
+import { type BranchScope } from '../../branches/branch-scope';
 import type { ResolvedDashboardRange } from '../dashboard.types';
 import { CustomerAnalyticsService } from '../customer/customer-analytics.service';
 import { ProductAnalyticsService } from '../product/product-analytics.service';
@@ -8,19 +9,19 @@ import type { DashboardOverviewData } from './dashboard-overview.types';
 export class DashboardOverviewService {
   static async get(
     range: ResolvedDashboardRange,
-    options: { includeArchived: boolean; businessDate: string }
+    options: { includeArchived: boolean; businessDate: string }, scope: BranchScope
   ): Promise<DashboardOverviewData> {
     const [customer, supplier, service, product] = await Promise.all([
-      CustomerAnalyticsService.get(range, { includeArchived: options.includeArchived, includeAdminData: false, businessDate: options.businessDate }),
-      SupplierAnalyticsService.get(range, options.includeArchived, options.businessDate),
-      ServiceAnalyticsService.get(range, options.businessDate),
+      CustomerAnalyticsService.get(range, { includeArchived: options.includeArchived, includeAdminData: false, businessDate: options.businessDate }, scope),
+      SupplierAnalyticsService.get(range, options.includeArchived, options.businessDate, scope),
+      ServiceAnalyticsService.get(range, options.businessDate, scope),
       ProductAnalyticsService.get(),
     ]);
     const paymentSparkline = customer.trend.map((point) => ({ bucket: point.bucket, value: point.collected }));
     const debtSparkline = customer.trend.map((point) => ({ bucket: point.bucket, value: point.newDebt }));
     const supplierSparkline = supplier.trend.map((point) => ({ bucket: point.bucket, value: point.paid }));
     const emptySparkline: Array<{ bucket: string; value: number }> = [];
-    return {
+    return { inventoryScope: 'all-branches' as const,
       kpis: [
         { key: 'collectedToday', value: customer.today.collected, valueKind: 'money', goodDirection: 'up', route: '/ledger?view=payments&range=today', sparkline: paymentSparkline },
         { key: 'customersPaidToday', value: customer.today.distinctPayers, valueKind: 'count', goodDirection: 'up', route: '/ledger?view=payments&range=today', sparkline: paymentSparkline.map((point) => ({ ...point, value: 0 })) },

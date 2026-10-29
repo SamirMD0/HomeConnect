@@ -1,0 +1,13 @@
+{
+  "version": "2.0.6",
+  "databaseName": "homeconnect_test_update_recovery_1791467856389",
+  "baselineMigrations": 66,
+  "pendingMigrationsApplied": 2,
+  "backupCreated": true,
+  "dataHashRestored": true,
+  "newObjectsRemoved": true,
+  "previousAppRestored": true,
+  "relaunched": true,
+  "failedRestoreLeftDatabaseIntact": true,
+  "timestamp": "2026-10-08T13:58:11.843Z"
+}

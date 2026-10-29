@@ -36,6 +36,7 @@ export interface SupplierReceivingAuditEntry {
 }
 
 export interface SupplierReceiving {
+  branchId?: string;
   id: string;
   supplierId: string | null;
   supplier: ReceivingSupplier | null;

@@ -1,3 +1,5 @@
+import { supplierBranch } from '../../branches/parent-branch';
+import { assertInScope, scopeWhere, writeBranch, type BranchScope } from '../../branches/branch-scope';
 import { Prisma, ServiceAuditAction, ServiceAuditRecordType, SupplierReceivingItemStatus, SupplierReceivingStatus } from '@prisma/client';
 import { prisma } from '../../../lib/prisma';
 
@@ -39,8 +41,11 @@ export class SupplierReceivingsRepository {
   static findSupplier(id: string, tx: Prisma.TransactionClient) {
     return tx.supplier.findUnique({ where: { id }, select: { id: true, name: true, isActive: true } });
   }
-  static create(data: Prisma.SupplierReceivingUncheckedCreateInput, tx: Prisma.TransactionClient) {
-    return tx.supplierReceiving.create({ data });
+  static async create(data: Omit<Prisma.SupplierReceivingUncheckedCreateInput, 'branchId'>, tx: Prisma.TransactionClient, scope: BranchScope) {
+    const selected = writeBranch(scope);
+    const branchId = data.supplierId ? await supplierBranch(data.supplierId, tx) : selected;
+    assertInScope(branchId, scope, 'Supplier not found / المورد غير موجود');
+    return tx.supplierReceiving.create({ data: { ...data, branchId } });
   }
   static createItem(data: Prisma.SupplierReceivingItemUncheckedCreateInput, tx: Prisma.TransactionClient) {
     return tx.supplierReceivingItem.create({ data });
@@ -105,15 +110,16 @@ export class SupplierReceivingsRepository {
   static findActor(userId: string, tx: Prisma.TransactionClient) {
     return tx.user.findUnique({ where: { id: userId }, select: { fullName: true, username: true } });
   }
-  static findDuplicate(supplierId: string, referenceNumber: string) {
+  static findDuplicate(supplierId: string, referenceNumber: string, scope: BranchScope) {
     return prisma.supplierReceiving.findFirst({
-      where: { supplierId, referenceNumber: { equals: referenceNumber, mode: 'insensitive' } },
+      where: { ...scopeWhere(scope), supplierId, referenceNumber: { equals: referenceNumber, mode: 'insensitive' } },
       include: listInclude,
       orderBy: [{ receivedOn: 'desc' }, { createdAt: 'desc' }],
     });
   }
-  static async list(input: { page: number; pageSize: number; supplierId?: string; referenceNumber?: string }) {
+  static async list(input: { page: number; pageSize: number; supplierId?: string; referenceNumber?: string }, scope: BranchScope) {
     const where: Prisma.SupplierReceivingWhereInput = {
+      ...scopeWhere(scope),
       ...(input.supplierId ? { supplierId: input.supplierId } : {}),
       ...(input.referenceNumber ? { referenceNumber: { contains: input.referenceNumber, mode: 'insensitive' } } : {}),
     };

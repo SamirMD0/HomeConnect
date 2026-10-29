@@ -11,3 +11,4 @@
 # Pin them to LF on every platform.
 *.sql text eol=lf
 backend/prisma/repair/manifest.json text eol=lf
+graphify-out/graph.json merge=graphify

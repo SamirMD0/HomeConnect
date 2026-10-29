@@ -1,3 +1,4 @@
+import type { DocumentBranchData } from '../../documents/types/document.types';
 import type { CreditLimitOverride } from '../../customer-financial/components/CreditLimitWarning';
 export type SalesChannel = 'SHOP_DIRECT' | 'SHOP_DELIVERY' | 'PHONE_ORDER';
 export type SalesOrderFulfillmentStatus = 'DRAFT' | 'CONFIRMED' | 'PREPARING' | 'READY_FOR_DELIVERY' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'PARTIALLY_RETURNED' | 'CANCELLED' | 'RETURNED';
@@ -42,7 +43,8 @@ export interface SalesOrderItem {
   returnedQuantity?: number; remainingReturnableQuantity?: number;
   inventory: { state: SalesOrderInventoryState; activeFulfillmentId: string | null };
 }
-export interface SalesOrder {
+export interface SalesOrder extends DocumentBranchData {
+  branchId?: string;
   id: string; orderNumber: string; customerId: string | null; customer: SalesOrderCustomer | null;
   salesChannel: SalesChannel; orderDate: string; deliveryDate: string | null; deliveredAt: string | null;
   fulfillmentStatus: SalesOrderFulfillmentStatus; paymentStatus: SalesOrderPaymentStatus; settlement: SalesOrderSettlement;
@@ -82,7 +84,7 @@ export interface ReturnSalesOrderInput {
   accountPassword: string;
 }
 
-export interface SalesReturn {
+export interface SalesReturn extends DocumentBranchData {
   id: string; returnNumber: string; salesOrderId: string; customerId: string | null;
   salesOrder: { id: string; orderNumber: string; orderDate: string };
   customer: { id: string; name: string; phone: string; address: string | null } | null;

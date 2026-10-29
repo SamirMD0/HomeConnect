@@ -2,8 +2,8 @@ import { prisma } from '../lib/prisma';
 import { Prisma } from '@prisma/client';
 
 export class UsersRepository {
-  static async findById(id: string) {
-    return prisma.user.findUnique({
+  static async findById(id: string, tx?: Prisma.TransactionClient) {
+    return (tx ?? prisma).user.findUnique({
       where: { id },
       select: {
         id: true,
@@ -14,7 +14,6 @@ export class UsersRepository {
         createdAt: true,
         updatedAt: true,
         deletedAt: true,
-        branchId: true,
       }
     });
   }
@@ -38,14 +37,13 @@ export class UsersRepository {
         isActive: true,
         createdAt: true,
         updatedAt: true,
-        branchId: true,
       },
       orderBy: { createdAt: 'desc' }
     });
   }
 
-  static async create(data: Prisma.UserCreateInput) {
-    return prisma.user.create({
+  static async create(data: Prisma.UserCreateInput, tx?: Prisma.TransactionClient) {
+    return (tx ?? prisma).user.create({
       data,
       select: {
         id: true,
@@ -57,8 +55,8 @@ export class UsersRepository {
     });
   }
 
-  static async update(id: string, data: Prisma.UserUpdateInput) {
-    return prisma.user.update({
+  static async update(id: string, data: Prisma.UserUpdateInput, tx?: Prisma.TransactionClient) {
+    return (tx ?? prisma).user.update({
       where: { id },
       data,
       select: {

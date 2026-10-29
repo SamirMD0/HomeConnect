@@ -1,0 +1,53 @@
+Worktree: D:\User\Documents\HomeConnect-mb-phase3
+Baseline: 50cb896
+
+graphify query documentBranch
+graphify update .
+
+npm run typecheck
+node node_modules/eslint/bin/eslint.js backend/src/app-branch-scope-meta.test.ts backend/src/features/financial/customer-statement/customer-statement.controller.ts backend/src/features/financial/payments/payments.controller.ts backend/src/features/sales/returns/sales-returns.routes.ts backend/src/features/sales/sales-orders/sales-orders.controller.ts backend/src/features/scanner/lan-listener.ts backend/src/features/scanner/mobile-api-gateway.test.ts backend/src/features/scanner/mobile-api-gateway.ts backend/src/features/service/products/products.controller.ts backend/src/features/service/products/products.repository.ts backend/src/features/service/products/products.routes.test.ts backend/src/features/service/products/products.routes.ts backend/src/features/service/products/products.service.ts backend/src/test/branch-scope-fixture.ts frontend/src/features/documents/components/CustomerStatementDocument.tsx frontend/src/features/documents/components/PaymentReceiptDocument.tsx frontend/src/features/documents/components/SalesInvoiceDocument.tsx frontend/src/features/documents/components/SalesReturnDocument.tsx frontend/src/features/documents/types/document.types.ts frontend/src/features/sales-orders/types/sales-orders.types.ts backend/src/features/documents/document-branch.routes.test.ts backend/src/features/documents/document-branch.ts backend/src/features/service/products/product-service-jobs-scope.test.ts backend/src/test/branch-global-routes.ts frontend/src/features/documents/components/DocumentBranchLine.tsx frontend/src/features/documents/components/MultiBranchDocuments.test.tsx frontend/src/features/documents/components/branch-document.test-fixtures.ts --format json --output-file .claude/phase3d-eslint.json
+
+node docs/releases/evidence/multi-branch-phase3d/run-targeted-tests.cjs
+Expanded child command (exact database and nine DB suite flags supplied in child env):
+npx vitest run --no-file-parallelism --reporter=default --reporter=json --outputFile.json=node_modules/.cache/home-connect/phase3d-targeted.json backend/src/app-branch-scope-meta.test.ts backend/src/features/documents/business-settings.routes.test.ts backend/src/features/documents/document-branch.routes.test.ts backend/src/features/financial/customer-statement/customer-statement.routes.test.ts backend/src/features/financial/payments/payments.routes.test.ts backend/src/features/sales/sales-orders/sales-orders.routes.test.ts backend/src/features/scanner/lan-address.test.ts backend/src/features/scanner/lan-listener.lifecycle.test.ts backend/src/features/scanner/mobile-api-gateway.test.ts backend/src/features/scanner/mobile-scanner.page.test.ts backend/src/features/scanner/scanner-hardening.test.ts backend/src/features/scanner/scanner-rate-limit.test.ts backend/src/features/scanner/scanner-session.middleware.test.ts backend/src/features/scanner/scanner.lan.routes.test.ts backend/src/features/scanner/scanner.routes.test.ts backend/src/features/scanner/scanner.service.test.ts backend/src/features/service/products/product-service-jobs-scope.test.ts backend/src/features/service/products/products.routes.test.ts frontend/src/features/documents/api/customer-statements.api.test.ts frontend/src/features/documents/components/CustomerStatementDocument.test.tsx frontend/src/features/documents/components/MultiBranchDocuments.test.tsx frontend/src/features/documents/components/PaymentReceiptDocument.test.tsx frontend/src/features/documents/components/SalesInvoiceDocument.test.tsx frontend/src/features/documents/components/SalesReturnDocument.test.tsx
+
+Mobile Scanner cwd:
+npm ci --cache ../.claude/npm-mobile-cache --ignore-scripts --no-audit --no-fund
+npm run typecheck
+npm test -- --reporter=default --reporter=json --outputFile=../.claude/phase3d-mobile-result.json src/branches src/api
+The npm wrapper executed: vitest run src/branches src/api (21 tests, exit 0; stdout preserved in mobile-tests.log; reporter args did not reach Vitest).
+Changed mobile file lint, using node node_modules/eslint/bin/eslint.js (11 files) and the added storage test (1 file); results in lint-results.json.
+
+Root cwd, initial full run:
+node docs/releases/evidence/multi-branch-phase3d/run-final-gates.cjs ci
+Expanded child: npm run test:ci
+DATABASE_URL explicitly populated from the ignored worktree backend/.env into the child environment; the helper refuses any database except homeconnect_test_phase4_phase5_phase6. Credentials never printed or passed in argv. test:ci enables all nine DB suites and asserts zero skips.
+
+node docs/releases/evidence/multi-branch-phase3d/run-final-gates.cjs rehearsal homeconnect_test_mb_phase3d_20261028_1012
+Expanded child: npm run rehearse:migrations -- --confirm-scratch
+REHEARSAL_DB=homeconnect_test_mb_phase3d_20261028_1012 in child env; script printed created scratch database.
+node .claude/phase3d-cleanup.cjs
+Identical cleanup source preserved as cleanup-rehearsal.cjs; exact owned scratch target was dropped.
+
+Failure-only reruns (the same exact DB guard and all nine suite flags):
+node docs/releases/evidence/multi-branch-phase3d/run-targeted-tests.cjs backend/src/features/financial/debts/debts.routes.test.ts backend/src/features/pricing-card/feature-icon/feature-icon.seed.test.ts
+node docs/releases/evidence/multi-branch-phase3d/run-targeted-tests.cjs backend/src/features/pricing-card/feature-icon/feature-icon.seed.test.ts
+node docs/releases/evidence/multi-branch-phase3d/run-targeted-tests.cjs desktop/src/content-security-policy.test.ts backend/src/features/financial/credit-limits/credit-limit.service.test.ts
+
+Final full run after all four failed files passed individually:
+node docs/releases/evidence/multi-branch-phase3d/run-final-gates.cjs ci
+The CI helper now explicitly sets NODE_ENV=test so the developer environment cannot select development CSP. It continues to explicitly set DATABASE_URL to the guarded test URL; production CSP code and tests are unchanged.
+
+Additional changed-file lint after gate fixes:
+node node_modules/eslint/bin/eslint.js backend/src/features/financial/debts/debts.routes.test.ts --format json --output-file .claude/phase3d-debt-eslint.json
+node node_modules/eslint/bin/eslint.js backend/src/features/pricing-card/feature-icon/feature-icon.seed.test.ts --format json --output-file .claude/phase3d-seed-eslint.json
+node node_modules/eslint/bin/eslint.js backend/src/features/financial/credit-limits/credit-limit.service.test.ts --format json --output-file .claude/phase3d-credit-eslint.json
+
+Owner explicitly approved one additional final full test:ci after the second run exposed another cold jsdom startup timeout.
+node docs/releases/evidence/multi-branch-phase3d/run-final-gates.cjs ci
+
+Final mobile denial-flow update:
+Mobile Scanner cwd: node node_modules/vitest/vitest.mjs run --config vitest.config.mts --reporter=default --reporter=json --outputFile=../.claude/phase3d-mobile-retry-result.json src/branches/branch-selection.test.ts
+Mobile Scanner cwd: npm run typecheck
+Mobile Scanner cwd: node node_modules/eslint/bin/eslint.js src/branches/branch-selection.ts src/branches/branch-selection.test.ts src/branches/BranchScannerScreen.tsx --format json --output-file ../.claude/phase3d-mobile-selection-eslint.json
+Root: node node_modules/eslint/bin/eslint.js backend/src/features/pricing-card/feature-icon/feature-icon.service.test.ts backend/src/features/pricing-card/feature-icon/sanitize-svg.test.ts --format json --output-file .claude/phase3d-sanitizer-eslint.json

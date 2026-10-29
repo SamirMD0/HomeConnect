@@ -7,7 +7,7 @@ import { HcApiError } from './src/api/hc-client';
 import { StatusBanner } from './src/components/StatusBanner';
 import { ConnectionSetupScreen } from './src/screens/ConnectionSetupScreen';
 import { LoginScreen } from './src/screens/LoginScreen';
-import { ScannerScreen } from './src/screens/ScannerScreen';
+import { BranchScannerScreen } from './src/branches/BranchScannerScreen';
 import { sessionFlowReducer } from './src/state/session-flow';
 import {
   clearAllAuth,
@@ -57,7 +57,7 @@ export default function App() {
         try {
           const me = await fetchMe(storedConnection, storedToken);
           if (!active) return;
-          const freshUser = { id: me.id, email: me.email, fullName: me.fullName, role: me.role };
+          const freshUser = { id: me.id, username: me.username, fullName: me.fullName, role: me.role };
           setAuthUser(freshUser);
           await saveAuthUser(freshUser);
           dispatch({ type: 'SESSION_VALID' });
@@ -149,10 +149,10 @@ export default function App() {
     }
     if (phase === 'SCANNING' && connection && token && authUser) {
       return (
-        <ScannerScreen
+        <BranchScannerScreen
           connection={connection}
           token={token}
-          userDisplayName={authUser.fullName || authUser.email}
+          userDisplayName={authUser.fullName || authUser.username}
           startupMessage={startupMessage}
           onSessionInvalid={invalidateSession}
           onChangeConnection={changeConnection}

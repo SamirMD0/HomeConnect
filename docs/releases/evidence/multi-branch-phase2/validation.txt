@@ -1,0 +1,15 @@
+Review R1–R4 validation, 2026-10-27. Only authorized synthetic throwaway databases used.
+npm run typecheck: PASS (frontend and backend; 0 errors)
+npm run lint: PASS (0 errors; 91 warnings, down from 92)
+Changed files: 0 added warning instances; supplemental scripts/migration-test lint and typecheck pass.
+NODE_ENV=test npm run test:ci: PASS (395 files; 3024 passed; 0 failed; 0 skipped/todo)
+npm run rehearse:migrations -- --confirm-scratch: PASS (70 migrations, both verification phases)
+REHEARSAL_DB=homeconnect_test_mb_rehearsal_1793101348234; removed after completion.
+Synthetic proof: snapshot -> apply-bundled-migrations.ts -> snapshot -> compare: COMPARE PASS.
+34 closure counts zero; no snapshot differences; USD/LBP history unchanged.
+Existing category checksum allowlist triple accepted and recorded checksum preserved; no new allowlist entries/bypasses.
+Grant counts: {"employeesGranted":2,"employeeGrantRows":2,"adminsGranted":0,"deletedUsersGranted":0,"employeesWithoutGrant":0}
+Raw migration SHA-256: 776a8bb45e18c487cf8841c4f53416f7faba327c44e43e67e42327e98ca55ee5
+SQL-scanner DO-statement SHA-256: 101304fae6cad84c593947ad92d270cb4c4cdc33227b8f16253809c0bd8d8e8f
+Graphify local update passed before the final validation/evidence commit.
+The first full run had one unchanged SVG seed cold-load timeout (5 seconds); it passed unchanged in isolation and in the final full run.

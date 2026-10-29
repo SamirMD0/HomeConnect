@@ -56,12 +56,16 @@ export class AuthController {
       const validatedData = loginSchema.parse(req.body);
       const result = await AuthService.login(validatedData.username, validatedData.password);
 
-      res.cookie('refreshToken', result.refreshToken, {
-        httpOnly: true,
-        secure: process.env.COOKIE_SECURE === 'true',
-        sameSite: process.env.COOKIE_SECURE === 'true' ? 'none' : 'lax',
-        maxAge: 7 * 24 * 60 * 60 * 1000
-      });
+      // The native phone uses only the short-lived access token. Do not send a
+      // long-lived refresh cookie over the shop LAN's plain HTTP listener.
+      if (res.locals?.mobileLan !== true) {
+        res.cookie('refreshToken', result.refreshToken, {
+          httpOnly: true,
+          secure: process.env.COOKIE_SECURE === 'true',
+          sameSite: process.env.COOKIE_SECURE === 'true' ? 'none' : 'lax',
+          maxAge: 7 * 24 * 60 * 60 * 1000
+        });
+      }
 
       res.status(200).json({
         success: true,
@@ -123,7 +127,7 @@ export class AuthController {
       const userId = req.user?.userId;
       const user = await prisma.user.findUnique({
         where: { id: userId },
-        select: { id: true, username: true, fullName: true, role: true, isActive: true, branchId: true }
+        select: { id: true, username: true, fullName: true, role: true, isActive: true }
       });
 
       if (!user) {

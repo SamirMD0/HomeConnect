@@ -17,6 +17,8 @@ import { ServiceAnalytics } from '../components/sections/ServiceAnalytics';
 import { SalesAnalytics } from '../components/sections/SalesAnalytics';
 import { SupplierAnalytics } from '../components/sections/SupplierAnalytics';
 import { MonthEndSnapshot } from '../components/sections/MonthEndSnapshot';
+import { BranchesOverview } from '../components/sections/BranchesOverview';
+import { useShowBranchColumn } from '../../branches/scope/branch-ui';
 import {
   useCustomerAnalytics,
   useDashboardActivity,
@@ -37,6 +39,7 @@ import { InventoryDashboardCards } from '../../inventory/components/InventoryDas
  * `DashboardAnchorNav`. Extracted so the two sides can't drift.
  */
 const anchorIds = {
+  branches: 'dashboard-branches',
   alerts: 'dashboard-alerts',
   inventory: 'dashboard-inventory',
   customers: 'dashboard-customers',
@@ -50,6 +53,7 @@ const anchorIds = {
 
 export function DashboardPage() {
   const { user } = useAuth();
+  const showBranches = useShowBranchColumn();
   const [query, setQuery] = useState<DashboardQueryParams>({ range: 'month', includeArchived: false });
   const [selectedMonth, setSelectedMonth] = useState('');
   const effectiveQuery = useMemo(
@@ -77,6 +81,7 @@ export function DashboardPage() {
 
   const anchors: DashboardAnchor[] = useMemo(() => {
     const list: DashboardAnchor[] = [
+      ...(showBranches ? [{ id: anchorIds.branches, label: 'Branches' }] : []),
       { id: anchorIds.alerts, label: 'Alerts' },
       { id: anchorIds.inventory, label: 'Inventory' },
       { id: anchorIds.customers, label: 'Customers' },
@@ -88,7 +93,7 @@ export function DashboardPage() {
     if (user?.role === 'ADMIN') list.push({ id: anchorIds.monthEnd, label: 'Month-End' });
     list.push({ id: anchorIds.activity, label: 'Activity' });
     return list;
-  }, [user?.role]);
+  }, [user?.role, showBranches]);
 
   return (
     <div className="dashboard-shell">
@@ -111,6 +116,7 @@ export function DashboardPage() {
         />
       </DashboardSectionBoundary>
 
+
       <DashboardAnchorNav anchors={anchors} />
 
       <DashboardSectionBoundary>
@@ -118,6 +124,20 @@ export function DashboardPage() {
           <QuickActions />
         </DashboardSection>
       </DashboardSectionBoundary>
+
+      {showBranches && (
+        <div id={anchorIds.branches} className="scroll-mt-24">
+          <DashboardSectionBoundary>
+            <BranchesOverview
+              customer={customer.data?.data}
+              supplier={supplier.data?.data}
+              isLoading={customer.isLoading}
+              isError={customer.isError}
+              onRetry={() => { void customer.refetch(); void supplier.refetch(); }}
+            />
+          </DashboardSectionBoundary>
+        </div>
+      )}
 
       <div id={anchorIds.alerts} className="scroll-mt-24">
         <DashboardSectionBoundary>

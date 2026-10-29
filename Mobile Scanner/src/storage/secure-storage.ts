@@ -1,4 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
+import { clearSelectedBranch } from '../branches/branch-storage';
 import { ConnectionSettings } from '../types/scanner.types';
 import { parseConnection } from '../utils/scanner-url';
 
@@ -47,7 +48,7 @@ export const clearSessionToken = () => SecureStore.deleteItemAsync(SESSION_TOKEN
 
 export interface StoredAuthUser {
   id: string;
-  email: string;
+  username: string;
   fullName: string;
   role: 'ADMIN' | 'EMPLOYEE';
 }
@@ -62,7 +63,7 @@ export async function loadAuthUser(): Promise<StoredAuthUser | null> {
   if (!stored) return null;
   try {
     const parsed = JSON.parse(stored) as StoredAuthUser;
-    if (parsed && parsed.id && parsed.email && parsed.fullName && parsed.role) return parsed;
+    if (parsed && parsed.id && parsed.username && parsed.fullName && parsed.role) return parsed;
   } catch {
     // Corrupt — fall through and drop it.
   }
@@ -75,5 +76,5 @@ export const saveAuthUser = (user: StoredAuthUser) =>
 export const clearAuthUser = () => SecureStore.deleteItemAsync(AUTH_USER_KEY, secureOptions);
 
 export async function clearAllAuth(): Promise<void> {
-  await Promise.all([clearAuthToken(), clearAuthUser()]);
+  await Promise.all([clearAuthToken(), clearAuthUser(), clearSelectedBranch()]);
 }

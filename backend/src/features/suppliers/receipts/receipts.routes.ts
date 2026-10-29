@@ -23,7 +23,7 @@ supplierReceiptsRoutes.get(
   async (req, res, next) => {
     try {
       const { supplierReceivingId } = req.params as { supplierReceivingId: string };
-      const data = await listReceiptsForReceiving(supplierReceivingId);
+      const data = await listReceiptsForReceiving(supplierReceivingId, req.branchScope!);
       res.json({
         success: true,
         data,
@@ -64,12 +64,13 @@ supplierReceiptsRoutes.post(
         capturedById,
         mime: mime ?? '',
         bytes,
-      });
+      }, req.branchScope!);
 
       res.status(201).json({
         success: true,
         data: {
           id: created.id,
+          branchId: created.branchId,
           supplierReceivingId: created.supplierReceivingId,
           filename: created.filename,
           mime: created.mime,

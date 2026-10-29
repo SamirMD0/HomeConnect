@@ -314,6 +314,7 @@
         BACKUP_TOOL_NOT_FOUND: 'The PostgreSQL client tools were not found on this PC.',
         BACKUP_FAILED_COMMAND: 'The pre-update backup did not complete.',
         BACKUP_FAILED_EMPTY: 'The pre-update backup file was too small to trust.',
+        RECEIPT_BACKUP_FAILED: 'The receipt photos could not be backed up. The database update was not started.',
         MIGRATION_FAILED: 'The database update did not complete.',
         MIGRATION_TIMEOUT: 'The database update took too long and was stopped.',
       };
@@ -325,6 +326,7 @@
         `Failure code: ${failure.code || 'unknown'}`,
         `Timestamp: ${new Date().toISOString()}`,
         `Backup path: ${backupPath || 'none'}`,
+        `Error: ${failure.error || 'unavailable'}`,
       ].join('\n');
       document.querySelector('.title').textContent = 'Home Connect could not update';
       document.getElementById('checklist').style.display = 'none';

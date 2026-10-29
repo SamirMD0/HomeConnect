@@ -1,7 +1,16 @@
+import http from 'node:http';
+import type { Express } from 'express';
 import jwt from 'jsonwebtoken';
 import request from 'supertest';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { app } from '../../app';
+import { buildLanApp } from '../scanner/lan-listener';
+const phase3bScope = { mode: 'all' as const, branchIds: ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'] };
+vi.mock('../branches/parent-branch', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../branches/parent-branch')>()),
+  assertRecordInScope: vi.fn().mockResolvedValue('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
+}));
+
 
 const { suppliersService, transactionsService } = vi.hoisted(() => ({
   suppliersService: { create: vi.fn(), list: vi.fn(), get: vi.fn(), summary: vi.fn(), update: vi.fn(), archive: vi.fn(), restore: vi.fn(), delete: vi.fn(), audit: vi.fn() },
@@ -9,13 +18,27 @@ const { suppliersService, transactionsService } = vi.hoisted(() => ({
 }));
 vi.mock('./suppliers/suppliers.service', () => ({ SuppliersService: suppliersService }));
 vi.mock('./transactions/supplier-transactions.service', () => ({ SupplierTransactionsService: transactionsService }));
-vi.mock('../../lib/prisma', () => ({ prisma: { $queryRaw: vi.fn().mockResolvedValue([{ result: 1 }]) }, transactionModel: {}, activityLogModel: {} }));
+vi.mock('../../lib/prisma', async () => ({ prisma: {
+    ...(await import('../../test/branch-scope-fixture.js')).singleBranchRouteModels(), $queryRaw: vi.fn().mockResolvedValue([{ result: 1 }]) }, transactionModel: {}, activityLogModel: {} }));
 
 const secret = process.env.JWT_SECRET!;
 const admin = jwt.sign({ userId: '11111111-1111-4111-8111-111111111111', role: 'ADMIN' }, secret);
 const employee = jwt.sign({ userId: '22222222-2222-4222-8222-222222222222', role: 'EMPLOYEE' }, secret);
 const supplierId = '33333333-3333-4333-8333-333333333333';
 const transactionId = '44444444-4444-4444-8444-444444444444';
+// The LAN gateway forwards over HTTP to the desktop API on 127.0.0.1:PORT,
+// so run the real main app on a free port behind it.
+let lanApp: Express;
+let desktop: http.Server;
+beforeAll(async () => {
+  desktop = http.createServer(app);
+  await new Promise<void>((resolve) => desktop.listen(0, '127.0.0.1', resolve));
+  process.env.PORT = String((desktop.address() as { port: number }).port);
+  lanApp = buildLanApp();
+});
+afterAll(async () => {
+  await new Promise<void>((resolve) => desktop.close(() => resolve()));
+});
 
 describe('supplier routes', () => {
   beforeEach(() => {
@@ -26,6 +49,7 @@ describe('supplier routes', () => {
     suppliersService.archive.mockResolvedValue({ id: supplierId, isActive: false });
     transactionsService.listForSupplier.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 25 });
     transactionsService.list.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 25 });
+    transactionsService.create.mockResolvedValue({ id: transactionId });
     transactionsService.create.mockResolvedValue({ id: transactionId });
     transactionsService.ledger.mockResolvedValue({ summary: {}, items: [], pagination: { page: 1, pageSize: 25, total: 0, totalPages: 0 } });
   });
@@ -48,7 +72,7 @@ describe('supplier routes', () => {
   it('registers supplier transaction subresources before the supplier id route', async () => {
     const response = await request(app).get(`/api/v1/suppliers/${supplierId}/transactions`).set('Authorization', `Bearer ${employee}`);
     expect(response.status).toBe(200);
-    expect(transactionsService.listForSupplier).toHaveBeenCalledWith(supplierId, expect.objectContaining({ includeRemoved: false }));
+    expect(transactionsService.listForSupplier).toHaveBeenCalledWith(supplierId, expect.objectContaining({ includeRemoved: false }), phase3bScope);
     expect(suppliersService.get).not.toHaveBeenCalled();
   });
 
@@ -63,5 +87,13 @@ describe('supplier routes', () => {
     const payload = { type: 'SUPPLIER_ADJUSTMENT', amount: '25.00', transactionDate: '2026-07-29', description: 'Opening correction' };
     expect((await request(app).post(`/api/v1/suppliers/${supplierId}/transactions`).set('Authorization', `Bearer ${employee}`).send(payload)).status).toBe(403);
     expect((await request(app).post(`/api/v1/suppliers/${supplierId}/transactions`).set('Authorization', `Bearer ${admin}`).send(payload)).status).toBe(400);
+  });
+
+  it('preserves supplier-admin permissions through the mobile LAN gateway', async () => {
+    const url = `/api/v1/suppliers/${supplierId}/transactions`;
+    const payload = { type: 'SUPPLIER_PAYMENT', amount: '25.00', currency: 'USD', paymentMethod: 'CASH_USD', transactionDate: '2026-10-03', description: 'Shop payment' };
+    expect((await request(lanApp).post(url).set('Authorization', `Bearer ${employee}`).send(payload)).status).toBe(403);
+    expect((await request(lanApp).post(url).set('Authorization', `Bearer ${admin}`).send(payload)).status).toBe(201);
+    expect(transactionsService.create).toHaveBeenCalled();
   });
 });

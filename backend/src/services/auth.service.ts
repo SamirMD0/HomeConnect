@@ -1,3 +1,5 @@
+import { grantSoleBranchToEmployee } from '../features/branches/employee-branch-access';
+import { runFinancialTransaction } from '../features/financial/infrastructure/transaction';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../lib/prisma';
@@ -151,13 +153,17 @@ export class AuthService {
     }
 
     const hashedPassword = await bcrypt.hash(data.passwordString, 12);
-    const newUser = await prisma.user.create({
-      data: {
-        username: data.username,
-        password: hashedPassword,
-        fullName: data.fullName,
-        role: data.role ?? Role.EMPLOYEE,
-      },
+    const newUser = await runFinancialTransaction(async tx => {
+      const user = await tx.user.create({
+        data: {
+          username: data.username,
+          password: hashedPassword,
+          fullName: data.fullName,
+          role: data.role ?? Role.EMPLOYEE,
+        },
+      });
+      await grantSoleBranchToEmployee(user, tx);
+      return user;
     });
 
     return {
@@ -184,13 +190,20 @@ export class AuthService {
 
     const hashedPassword = await bcrypt.hash(passwordString, 12);
 
-    const newAdmin = await prisma.user.create({
-      data: {
-        username,
-        password: hashedPassword,
-        fullName,
-        role: Role.ADMIN,
+    const newAdmin = await prisma.$transaction(async tx => {
+      const admin = await tx.user.create({
+        data: {
+          username,
+          password: hashedPassword,
+          fullName,
+          role: Role.ADMIN,
+        },
+      });
+
+      if (!(await tx.branch.findFirst({select:{id:true}}))) {
+        await tx.branch.create({data:{code:'MAIN',name:'Main branch',createdById:admin.id}});
       }
+      return admin;
     });
 
     const tokens = this.generateTokens(newAdmin.id, newAdmin.role);

@@ -190,6 +190,10 @@ const THERMAL_TEMPLATE_REFINEMENT_VALUES = [
  */
 const REVIEWED_THERMAL_RECONCILE_DO_SHA256 = '663b614e7cd4863d965d64ccf55012bac5e43517215e2552ceb84dcb2c6dab07';
 
+// Ownership changes only verified-empty scaffolding and new ownership metadata.
+// Pin the entire guarded, atomic statement: edits to any guard or write invalidate it.
+const BRANCH_OWNERSHIP_DO_SHA256 = '101304fae6cad84c593947ad92d270cb4c4cdc33227b8f16253809c0bd8d8e8f';
+
 export function scanSqlForUnsafeStatements(sql: string): SqlSafetyResult {
   return scanStatements(sql, false);
 }
@@ -205,8 +209,10 @@ function scanStatements(sql: string, insideDoBlock: boolean): SqlSafetyResult {
     const body = doBlockBody(statement);
     if (body) {
       const reviewedThermalReconcile = createHash('sha256').update(statement).digest('hex') === REVIEWED_THERMAL_RECONCILE_DO_SHA256;
+      const branchOwnership = createHash('sha256').update(statement.replaceAll('\r\n', '\n')).digest('hex') === BRANCH_OWNERSHIP_DO_SHA256;
       for (const inner of scanStatements(body, true).violations) {
         if (reviewedThermalReconcile && inner.code === 'UPDATE_STATEMENT') continue;
+        if (branchOwnership && (inner.code === 'UPDATE_STATEMENT' || inner.code === 'DROP_COLUMN')) continue;
         violations.push({ ...inner, statementIndex: statementNumber, excerpt: excerptOf(statement) });
       }
       return;

@@ -1,3 +1,5 @@
+import { branchFields } from '../../branches/branch-breakdown';
+import { type BranchScope } from '../../branches/branch-scope';
 import {
   SupplierTransactionDirection,
   SupplierTransactionStatus,
@@ -25,9 +27,9 @@ export class SupplierAnalyticsService {
   static async get(
     range: ResolvedDashboardRange,
     includeArchived: boolean,
-    businessDate = todayInBusinessTimezone()
+    businessDate = todayInBusinessTimezone(), scope: BranchScope
   ): Promise<SupplierAnalyticsData> {
-    return this.aggregate(await SupplierAnalyticsRepository.load(includeArchived), range, businessDate, includeArchived);
+    return this.aggregate(await SupplierAnalyticsRepository.load(includeArchived, scope), range, businessDate, includeArchived);
   }
 
   static aggregate(
@@ -61,6 +63,7 @@ export class SupplierAnalyticsService {
     }
     const balanceRows = [...balances.entries()].map(([supplierId, value]) => ({
       supplierId,
+      ...branchFields(records.find(record => record.supplierId === supplierId) ?? {}),
       supplierName: value.supplier.name,
       companyName: value.supplier.companyName,
       amount: subtractMoney(sumMoney(value.increases), sumMoney(value.decreases)),
