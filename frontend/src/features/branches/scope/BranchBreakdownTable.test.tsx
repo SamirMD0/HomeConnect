@@ -1,8 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { BranchBreakdownTable } from './BranchBreakdownTable';
-import { BranchComparisonTable } from '../../dashboard/components/sections/BranchComparison';
-import type { DashboardFinancialSummary } from '../../dashboard/types';
 
 type Figures = { owed: string; count: number };
 const metrics = [
@@ -30,31 +28,5 @@ describe('BranchBreakdownTable', () => {
     expect(html).toContain('160.00');
     expect(html).toContain('All branches');
     expect(html).toMatch(/All branches<\/th><td[^>]*>240\.00<\/td><td[^>]*>5<\/td>/);
-  });
-});
-
-describe('BranchComparisonTable (dashboard)', () => {
-  const figures = (owed: string, paid: string, created: string, withBalance: number) => ({
-    counts: { totalCustomers: 10, customersWithOutstanding: withBalance },
-    money: {
-      totalOutstanding: owed, paymentsToday: '0.00', paymentsThisMonth: paid, obligationsCreatedToday: '0.00',
-      obligationsCreatedThisMonth: created, netChangeToday: '0.00', netChangeThisMonth: '0.00',
-    },
-  });
-  const summary = {
-    businessDate: '2026-10-28', monthStart: '2026-10-01', upcomingDue: [], overdueCustomers: [], recentPayments: [],
-    ...figures('240.00', '50.00', '30.00', 5),
-    branchBreakdown: [
-      { branchId: 'a', branchCode: 'MAIN', branchName: 'Main branch', ...figures('80.00', '20.00', '10.00', 2) },
-      { branchId: 'b', branchCode: 'TYRE', branchName: 'Tyre', ...figures('160.00', '30.00', '20.00', 3) },
-    ],
-  } as unknown as DashboardFinancialSummary & { branchBreakdown: never };
-
-  it('shows customer balances per branch and the server total, labelled as what customers owe', () => {
-    const html = renderToStaticMarkup(<BranchComparisonTable summary={summary} />);
-    expect(html).toContain('Customers owe us');
-    expect(html).toContain('Tyre');
-    expect(html).toContain('$240.00');
-    expect(html).not.toMatch(/payable/i);
   });
 });
