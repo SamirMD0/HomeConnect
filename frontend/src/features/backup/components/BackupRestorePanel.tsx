@@ -380,7 +380,10 @@ const RestoreBackupDialog: React.FC<{
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
               <p>Archive readable: {validation.archiveReadable ? 'Yes' : 'No'}</p>
               <p>Checksum matches: {validation.checksumMatches ? 'Yes' : 'No'}</p>
-              <p>Compatible version: {validation.compatible ? 'Yes' : 'No'}</p>
+              <p>Compatible database: {validation.compatible ? 'Yes' : 'No'}</p>
+              {validation.compatible && (validation.pendingMigrations?.length ?? 0) > 0 && (
+                <p>Database updates applied after restoring: {validation.pendingMigrations?.length}</p>
+              )}
               {validation.warnings.map((warning) => (
                 <p key={warning} className="text-amber-700">{warning}</p>
               ))}
