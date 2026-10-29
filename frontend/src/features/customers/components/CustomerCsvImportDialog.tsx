@@ -26,6 +26,7 @@ export const customerImportSteps = [
 const labels = {
   name: 'Name',
   phone: 'Phone',
+  accountCode: 'Account number',
   address: 'Address',
   notes: 'Notes',
   creditLimit: 'Credit limit USD',
@@ -58,14 +59,24 @@ interface WizardProps {
 }
 export function importNeedsResolution(preview: CustomerImportPreview): boolean {
   const keys = new Set<string>();
+  const phones = new Set<string>();
+  const targets = new Set<string>();
   return preview.rows.some((row) => {
     const d = row.decision;
     if (d.action === 'SKIP') return false;
-    const key = row.phoneKey;
-    if (keys.has(key)) return true;
+    const key = row.identityKey ?? row.phoneKey;
+    if (
+      keys.has(key) ||
+      (row.phoneKey && phones.has(row.phoneKey)) ||
+      (d.targetCustomerId && targets.has(d.targetCustomerId))
+    )
+      return true;
     keys.add(key);
+    if (row.phoneKey) phones.add(row.phoneKey);
+    if (d.targetCustomerId) targets.add(d.targetCustomerId);
     return (
       row.status === 'INVALID' ||
+      row.conflicts.some((conflict) => conflict.kind === 'IDENTITY_MISMATCH') ||
       (d.action === 'CREATE' && row.matches.length > 0) ||
       (d.action === 'UPDATE' &&
         (row.matches.length !== 1 ||
@@ -102,7 +113,9 @@ export function CustomerImportWizard(props: WizardProps) {
     props.busy ||
     (step === 0 && !props.branchId) ||
     (step === 1 && !props.hasFile) ||
-    (step === 2 && (props.mapping.name == null || props.mapping.phone == null)) ||
+    (step === 2 &&
+      (props.mapping.name == null ||
+        (props.mapping.phone == null && props.mapping.accountCode == null))) ||
     (step === 4 && unresolved) ||
     (needsPassword && !props.password);
   return (
@@ -167,10 +180,16 @@ export function CustomerImportWizard(props: WizardProps) {
       )}
       {step === 2 && (
         <div className="grid gap-3 sm:grid-cols-2">
+          <p className="text-sm text-slate-600 sm:col-span-2">
+            {preview?.format === 'TRIAL_BALANCE' &&
+              'Trial-balance account table detected. Balance Debit supplies the opening debt. '}
+            Map Name and either Account number or Phone. Phone is optional when an account number is
+            supplied.
+          </p>
           {importFields.map((field) => (
             <label key={field} className="text-sm">
               {labels[field]}
-              {['name', 'phone'].includes(field) && ' *'}
+              {field === 'name' && ' *'}
               <select
                 className={control + ' block w-full'}
                 value={props.mapping[field] ?? ''}
@@ -221,7 +240,13 @@ export function CustomerImportWizard(props: WizardProps) {
                     <td className="p-2">
                       <span dir="auto">{row.name}</span>
                       <br />
-                      <span dir="auto">{row.phone}</span>
+                      {row.accountCode && (
+                        <span>
+                          Account: {row.accountCode}
+                          <br />
+                        </span>
+                      )}
+                      <span dir="auto">{row.phone || 'No phone supplied'}</span>
                       <br />
                       {row.openingBalance} {row.currency}
                     </td>
@@ -318,7 +343,8 @@ export function CustomerImportWizard(props: WizardProps) {
           </div>
           {step === 4 && unresolved && (
             <p role="alert" className="text-sm text-amber-700">
-              Skip invalid rows, choose one row per phone, and skip amounts already imported.
+              Skip invalid rows, choose one row per account or phone, and skip amounts already
+              imported.
             </p>
           )}
         </>

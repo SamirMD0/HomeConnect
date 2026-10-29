@@ -183,3 +183,33 @@ describe('customer CSV import dialog', () => {
     ).toContain('$19.55');
   });
 });
+
+describe('account-based customer import controls', () => {
+  it('allows account mapping without phone and explains trial-balance detection in English', () => {
+    const html = render(2, {
+      mapping: { name: 1, accountCode: 0 },
+      preview: { ...preview, format: 'TRIAL_BALANCE', headers: ['Account', 'Name'] },
+    });
+    expect(html).not.toMatch(/<button[^>]*disabled=""[^>]*>Continue/);
+    expect(html).toContain('Balance Debit supplies the opening debt');
+    expect(html).toContain('Phone is optional');
+    expect(html).toContain('Account number');
+  });
+  it('distinguishes missing phones using accounts and blocks duplicate account selections', () => {
+    const row = {
+      ...preview.rows[0],
+      phone: '',
+      phoneKey: '',
+      accountCode: '00123',
+      identityKey: 'ACCOUNT:00123',
+    };
+    expect(
+      importNeedsResolution({
+        ...preview,
+        rows: [row, { ...row, rowNumber: 3, accountCode: '00124', identityKey: 'ACCOUNT:00124' }],
+      })
+    ).toBe(false);
+    expect(importNeedsResolution({ ...preview, rows: [row, { ...row, rowNumber: 3 }] })).toBe(true);
+    expect(render(3, { preview: { ...preview, rows: [row] } })).toContain('00123');
+  });
+});

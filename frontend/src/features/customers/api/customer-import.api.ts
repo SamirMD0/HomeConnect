@@ -2,6 +2,7 @@ import { api } from '../../../services/api';
 export const importFields = [
   'name',
   'phone',
+  'accountCode',
   'address',
   'notes',
   'creditLimit',
@@ -35,6 +36,7 @@ export interface CustomerImportPreview {
   fileName: string;
   status: 'DRAFT' | 'COMMITTED';
   headers: string[];
+  format?: 'TRIAL_BALANCE';
   columnMapping: ImportMapping;
   previousCommittedImport: { id: string; fileName: string } | null;
   summary: { total: number; ready: number; conflicts: number; invalid: number };
@@ -42,6 +44,8 @@ export interface CustomerImportPreview {
   rows: Array<{
     rowNumber: number;
     phoneKey: string;
+    accountCode?: string;
+    identityKey?: string;
     name: string;
     phone: string;
     address?: string;

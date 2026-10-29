@@ -10,6 +10,7 @@ export const MAX_CUSTOMER_IMPORT_ROWS = 2_000;
 export const customerImportFields = [
   'name',
   'phone',
+  'accountCode',
   'address',
   'notes',
   'creditLimit',
@@ -23,16 +24,18 @@ export type ColumnMapping = Partial<Record<CustomerImportField, number | null>>;
 export interface CsvDocument {
   headers: string[];
   records: string[][];
+  format?: 'TRIAL_BALANCE';
   snapshot?: Record<number, string>;
 }
 const aliases: Record<CustomerImportField, string[]> = {
   name: ['name', 'customer name', 'الاسم'],
   phone: ['phone', 'phone number', 'الهاتف'],
+  accountCode: ['account', 'account number', 'account code', 'رقم الحساب'],
   address: ['address', 'العنوان'],
   notes: ['notes', 'ملاحظات'],
   creditLimit: ['credit limit', 'سقف الدين'],
-  openingBalance: ['opening balance', 'opening balance amount', 'رصيد افتتاحي'],
-  currency: ['currency', 'opening balance currency', 'العملة'],
+  openingBalance: ['opening balance', 'opening balance amount', 'balance debit', 'رصيد افتتاحي'],
+  currency: ['currency', 'curr', 'opening balance currency', 'العملة'],
   dueDate: ['due date', 'opening balance due date', 'تاريخ الاستحقاق'],
   isActive: ['active', 'نشط'],
 };
@@ -49,18 +52,72 @@ export function detectColumnMapping(headers: string[]): ColumnMapping {
 export function parseCustomerCsv(csvText: string): CsvDocument {
   if (Buffer.byteLength(csvText, 'utf8') > MAX_CUSTOMER_IMPORT_BYTES)
     throw new ValidationError('CSV file cannot exceed 750 KB');
-  const [headers, ...records] = parseCsvRecords(csvText.replace(/^\uFEFF/, ''));
+  const raw = parseCsvRecords(csvText.replace(/^\uFEFF/, ''));
+  const reportHeaders = [
+    'Account',
+    'Name',
+    'Curr',
+    'Total Debit',
+    'Total Credit',
+    'Balance Debit',
+    'Balance Credit',
+  ];
+  const normalized = (value: string) => value.trim().toLowerCase();
+  const headerAt = (cells: string[]) =>
+    cells.findIndex((_, i) =>
+      reportHeaders.every((header, j) => normalized(cells[i + j] ?? '') === normalized(header))
+    );
+  const isReport = raw.some((cells) => headerAt(cells) >= 0);
+  let headers: string[] | undefined;
+  let records: string[][] = [];
+  if (isReport) {
+    headers = reportHeaders;
+    records = [];
+    let inTable = false;
+    for (const cells of raw) {
+      const offset = headerAt(cells);
+      if (offset >= 0) inTable = true;
+      if (!inTable) continue;
+      let values = offset >= 0 ? cells.slice(offset + reportHeaders.length) : cells;
+      while (values.length && !values[0].trim()) values = values.slice(1);
+      // The export appends summary captions after the last account. Never turn
+      // debit/credit totals or report metadata into customers.
+      while (values.length) {
+        const caption = normalized(values[0]).replace(/\s*:\s*$/, '');
+        if (['debit', 'credit', 'balance', 'totals', 'total', 'trial balance'].includes(caption)) {
+          inTable = false;
+          break;
+        }
+        const row = values.slice(0, reportHeaders.length);
+        records.push(row);
+        values = values.slice(reportHeaders.length);
+        while (values.length && !values[0].trim()) values = values.slice(1);
+      }
+    }
+  } else {
+    [headers, ...records] = raw;
+  }
   if (!headers || !records.length)
     throw new ValidationError('No customer rows were found in the CSV');
   if (records.length > MAX_CUSTOMER_IMPORT_ROWS)
     throw new ValidationError('A customer import cannot exceed 2000 rows');
-  return { headers, records };
+  return {
+    headers,
+    records,
+    ...(isReport ? { format: 'TRIAL_BALANCE' as const } : {}),
+  };
+}
+// Accept grouping only when unambiguous; malformed monetary input stays invalid.
+function reportMoney(value: string) {
+  return /^-?\d{1,3}(?:,\d{3})+(?:\.\d+)?$/.test(value) ? value.replaceAll(',', '') : value;
 }
 export function mapCustomerRows(document: CsvDocument, mapping: ColumnMapping) {
   const indices = Object.values(mapping).filter((index): index is number => index != null);
   if (
     new Set(indices).size !== indices.length ||
-    indices.some((index) => index >= document.headers.length)
+    indices.some(
+      (index) => !Number.isInteger(index) || index < 0 || index >= document.headers.length
+    )
   )
     throw new ValidationError('Each mapped CSV column must exist and may be used only once');
   return document.records.map((cells, index) => {
@@ -77,13 +134,39 @@ export function mapCustomerRows(document: CsvDocument, mapping: ColumnMapping) {
     for (const field of ['address', 'notes'] as const)
       if (mapping[field] != null) data[field] = cell(field);
     if (cell('creditLimit')) data.creditLimit = cell('creditLimit');
-    const validated = createCustomerSchema.safeParse(data);
+    const accountCode = cell('accountCode');
+    if (accountCode && !/^\d{1,80}$/.test(accountCode))
+      issues.push('Account number must contain 1 to 80 digits');
+    const validated =
+      accountCode && !data.phone
+        ? createCustomerSchema.omit({ phone: true }).safeParse(data)
+        : createCustomerSchema.safeParse(data);
     if (!validated.success) issues.push(...validated.error.issues.map((issue) => issue.message));
     const phoneKey = normalizePhoneTerm(data.phone);
-    if (!phoneKey) issues.push('Phone must contain digits');
+    if ((!accountCode || data.phone) && !phoneKey)
+      issues.push('Phone must contain digits, or supply an account number');
     const currency = cell('currency').toUpperCase() || 'USD';
     if (currency !== 'USD' && currency !== 'LBP') issues.push('Currency must be USD or LBP');
-    const openingBalance = cell('openingBalance') || '0';
+    const openingBalance = reportMoney(cell('openingBalance')) || '0';
+    if (document.format === 'TRIAL_BALANCE') {
+      if (!cells[0]?.trim()) issues.push('Trial-balance account number is missing');
+      if (!cells[2]?.trim()) issues.push('Trial-balance currency is required');
+      if (!cells[5]?.trim() || !cells[6]?.trim())
+        issues.push('Trial-balance debit and credit balances are required');
+      try {
+        const credit = parseMoney(
+          reportMoney((cells[6] ?? '').trim()) || '0',
+          currency === 'LBP' ? 'LBP' : 'USD'
+        );
+        if (!credit.isZero())
+          issues.push(
+            'Credit balances cannot be imported as opening debts; review this account separately'
+          );
+        if (cells.length < 7) issues.push('Incomplete trial-balance account row');
+      } catch {
+        issues.push('Invalid balance credit');
+      }
+    }
     try {
       if (parseMoney(openingBalance, currency === 'LBP' ? 'LBP' : 'USD').isNegative())
         issues.push('Opening balance cannot be negative');
@@ -106,6 +189,8 @@ export function mapCustomerRows(document: CsvDocument, mapping: ColumnMapping) {
       rowNumber: index + 2,
       ...data,
       ...(validated.success ? validated.data : {}),
+      accountCode,
+      identityKey: accountCode ? 'ACCOUNT:' + accountCode : 'PHONE:' + phoneKey,
       phoneKey,
       currency: currency as 'USD' | 'LBP',
       openingBalance,
