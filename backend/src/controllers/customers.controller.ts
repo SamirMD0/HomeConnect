@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { CustomersService } from '../services/customers.service';
 import { CustomerSuggestionsService } from '../features/customers/customer-suggestions.service';
+import { CustomerBranchTransferService } from '../features/customers/customer-branch-transfer.service';
 
 export class CustomersController {
   static async createCustomer(req: Request, res: Response, next: NextFunction) {
@@ -72,6 +73,30 @@ export class CustomersController {
         data: customer,
         meta: { timestamp: new Date().toISOString() }
       });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async previewBranchTransfer(req: Request, res: Response, next: NextFunction) {
+    try {
+      const preview = await CustomerBranchTransferService.preview(req.params.id as string, req.query.toBranchId as string);
+      res.status(200).json({ success: true, data: preview, meta: { timestamp: new Date().toISOString() } });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async transferBranch(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await CustomerBranchTransferService.transfer({
+        customerId: req.params.id as string,
+        toBranchId: req.body.toBranchId,
+        accountPassword: req.body.accountPassword,
+        actor: { userId: req.user!.userId, role: req.user!.role },
+        ipAddress: req.ip ?? null,
+      });
+      res.status(200).json({ success: true, data: result, meta: { timestamp: new Date().toISOString() } });
     } catch (error) {
       next(error);
     }

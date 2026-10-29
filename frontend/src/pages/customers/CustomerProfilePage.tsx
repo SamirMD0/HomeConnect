@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useContext, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Calendar, Copy, Edit2, MapPin, MessageCircle, Phone, Trash2, User as UserIcon, WalletCards } from 'lucide-react';
+import { ArrowLeft, ArrowRightLeft, Calendar, Copy, Edit2, MapPin, MessageCircle, Phone, Trash2, User as UserIcon, WalletCards } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Modal } from '../../components/ui/Modal';
 import { CustomerDeleteModal } from '../../features/customers/components/CustomerDeleteModal';
@@ -16,6 +16,8 @@ import { AddFinancialObligationDialog } from '../../features/customer-financial/
 import { GlobalReceivePaymentDialog } from '../../features/financial-ledger/components/GlobalReceivePaymentDialog';
 import { CustomerCommunicationSection } from '../../features/customer-communication/components/CustomerCommunicationSection';
 import { useRecordBranch } from '../../features/branches/scope/branch-ui';
+import { BranchScopeContext } from '../../features/branches/scope/BranchScopeProvider';
+import { CustomerBranchTransferDialog } from '../../features/customers/components/CustomerBranchTransferDialog';
 
 interface CustomerFormData {
   name: string;
@@ -31,6 +33,8 @@ export const CustomerProfilePage: React.FC = () => {
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isTransferOpen, setIsTransferOpen] = useState(false);
+  const branchScope = useContext(BranchScopeContext);
   const [financialAction, setFinancialAction] = useState<'add' | 'payment' | null>(null);
   // The header WhatsApp button expands this section preset to a debt reminder;
   // it never opens WhatsApp directly, because that would skip review. The key
@@ -156,6 +160,16 @@ export const CustomerProfilePage: React.FC = () => {
               {businessLabels.common.edit}
             </button>
             <button type="button" onClick={() => setSearchParams({ tab: 'details' })} className="rounded-lg border border-violet-200 bg-violet-50 px-4 py-2 text-sm font-medium text-violet-700 transition-colors hover:border-violet-600 hover:bg-violet-600 hover:text-white">Details &amp; Notes</button>
+            {user?.role === 'ADMIN' && (branchScope?.branches ?? []).some((branch) => branch.isActive && branch.id !== customer.branchId) && (
+              <button
+                type="button"
+                onClick={() => setIsTransferOpen(true)}
+                className="inline-flex flex-1 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 font-medium text-slate-700 transition-colors hover:bg-slate-50"
+              >
+                <ArrowRightLeft className="mr-2 h-4 w-4" aria-hidden="true" />
+                Change branch / تغيير الفرع
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setIsDeleteModalOpen(true)}
@@ -261,6 +275,8 @@ export const CustomerProfilePage: React.FC = () => {
           isSubmitting={updateCustomer.isPending}
         />
       </Modal>
+
+      <CustomerBranchTransferDialog isOpen={isTransferOpen} onClose={() => setIsTransferOpen(false)} customer={customer} />
 
       <CustomerDeleteModal
         isOpen={isDeleteModalOpen}
