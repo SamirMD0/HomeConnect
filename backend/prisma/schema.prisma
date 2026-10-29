@@ -459,6 +459,7 @@ model User {
   cashRefundsProcessed           CashRefund[]                 @relation("CashRefundProcessedBy")
   customerCreditsIssued          CustomerCredit[]             @relation("CustomerCreditIssuedBy")
   customerCreditApplications     CustomerCreditApplication[]  @relation("CustomerCreditApplicationAppliedBy")
+  customerImportAccounts         CustomerImportAccount[]
   customerImportsCreated         CustomerImport[]             @relation("CustomerImportCreatedBy")
   customerImportsCommitted       CustomerImport[]             @relation("CustomerImportCommittedBy")
   branchesCreated                Branch[]                     @relation("BranchCreatedBy")
@@ -485,21 +486,22 @@ model Branch {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  customerImports      CustomerImport[]
-  userAccess           UserBranchAccess[]
-  customers            Customer[]
-  suppliers            Supplier[]
-  salesOrders          SalesOrder[]
-  debts                Debt[]
-  installmentPlans     InstallmentPlan[]
-  payments             Payment[]
-  salesReturns         SalesReturn[]
-  cashRefunds          CashRefund[]
-  customerCredits      CustomerCredit[]
-  supplierTransactions SupplierTransaction[]
-  supplierReceivings   SupplierReceiving[]
-  serviceJobs          ServiceJob[]
-  activityLogs         ActivityLog[]
+  customerImportAccounts CustomerImportAccount[]
+  customerImports        CustomerImport[]
+  userAccess             UserBranchAccess[]
+  customers              Customer[]
+  suppliers              Supplier[]
+  salesOrders            SalesOrder[]
+  debts                  Debt[]
+  installmentPlans       InstallmentPlan[]
+  payments               Payment[]
+  salesReturns           SalesReturn[]
+  cashRefunds            CashRefund[]
+  customerCredits        CustomerCredit[]
+  supplierTransactions   SupplierTransaction[]
+  supplierReceivings     SupplierReceiving[]
+  serviceJobs            ServiceJob[]
+  activityLogs           ActivityLog[]
 
   @@index([isActive])
   @@map("branches")
@@ -563,27 +565,48 @@ enum CustomerImportStatus {
 }
 
 model CustomerImport {
-  id            String               @id @default(uuid()) @db.Uuid
-  branchId      String               @db.Uuid
-  branch        Branch               @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  id            String                  @id @default(uuid()) @db.Uuid
+  branchId      String                  @db.Uuid
+  branch        Branch                  @relation(fields: [branchId], references: [id], onDelete: Restrict)
   fileName      String
   fileHash      String
-  status        CustomerImportStatus @default(DRAFT)
+  status        CustomerImportStatus    @default(DRAFT)
   columnMapping Json
   rows          Json
   decisions     Json?
   result        Json?
-  createdById   String               @db.Uuid
-  createdBy     User                 @relation("CustomerImportCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
-  committedById String?              @db.Uuid
-  committedBy   User?                @relation("CustomerImportCommittedBy", fields: [committedById], references: [id], onDelete: Restrict)
-  createdAt     DateTime             @default(now())
-  updatedAt     DateTime             @updatedAt
+  createdById   String                  @db.Uuid
+  createdBy     User                    @relation("CustomerImportCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  committedById String?                 @db.Uuid
+  committedBy   User?                   @relation("CustomerImportCommittedBy", fields: [committedById], references: [id], onDelete: Restrict)
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
   committedAt   DateTime?
+  accounts      CustomerImportAccount[]
   openingDebts  Debt[]
 
+  @@unique([id, branchId])
   @@index([branchId, fileHash, status])
   @@map("customer_imports")
+}
+
+/// Stable accounting identifiers are scoped to the destination branch. Empty
+/// imported phone strings are allowed only when this identity is supplied.
+model CustomerImportAccount {
+  branchId               String         @db.Uuid
+  branch                 Branch         @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  accountCode            String         @db.VarChar(80)
+  customerId             String         @db.Uuid
+  customer               Customer       @relation(fields: [customerId, branchId], references: [id, branchId], onDelete: Restrict)
+  sourceCustomerImportId String         @db.Uuid
+  sourceCustomerImport   CustomerImport @relation(fields: [sourceCustomerImportId, branchId], references: [id, branchId], onDelete: Restrict, map: "customer_import_accounts_sourceCustomerImportId_fkey")
+  createdById            String         @db.Uuid
+  createdBy              User           @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt              DateTime       @default(now())
+
+  @@id([branchId, accountCode])
+  @@index([customerId, branchId])
+  @@map("customer_import_accounts")
 }
 
 model Customer {
@@ -612,6 +635,7 @@ model Customer {
   cashRefunds          CashRefund[]
   customerCredits      CustomerCredit[]
   creditApplications   CustomerCreditApplication[]
+  importAccounts       CustomerImportAccount[]
 
   @@unique([id, branchId])
   @@index([name])

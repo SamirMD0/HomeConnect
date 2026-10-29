@@ -99,8 +99,21 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
   const parsed = mapCustomerRows(document, mapping);
   // Matching targets are ALWAYS restricted to the immutable destination.
   const customers = await tx.customer.findMany({
-    where: { branchId: draft.branchId, deletedAt: null },
-    include: { debts: { where: { sourceCustomerImportId: { not: null } }, select: { id: true } } },
+    where: {
+      branchId: draft.branchId,
+      OR: [
+        { deletedAt: null },
+        {
+          importAccounts: {
+            some: { accountCode: { in: parsed.map((row) => row.accountCode).filter(Boolean) } },
+          },
+        },
+      ],
+    },
+    include: {
+      importAccounts: true,
+      debts: { where: { sourceCustomerImportId: { not: null } }, select: { id: true } },
+    },
   });
   const previousCommittedImport = await tx.customerImport.findFirst({
     where: {
@@ -126,11 +139,15 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
       branchId: { in: accessible.map((branch) => branch.id).filter((id) => id !== draft.branchId) },
       deletedAt: null,
     },
-    select: { phone: true, branch: { select: { id: true, name: true } } },
+    select: { phone: true, importAccounts: true, branch: { select: { id: true, name: true } } },
   });
   const counts = new Map<string, number>();
   for (const row of parsed)
     if (row.phoneKey) counts.set(row.phoneKey, (counts.get(row.phoneKey) ?? 0) + 1);
+  const accountCounts = new Map<string, number>();
+  for (const row of parsed)
+    if (row.accountCode)
+      accountCounts.set(row.accountCode, (accountCounts.get(row.accountCode) ?? 0) + 1);
   const supplied = new Map(
     ((draft.decisions ?? []) as unknown as CustomerImportDecision[]).map((decision) => [
       decision.rowNumber,
@@ -138,21 +155,57 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
     ])
   );
   const rows = parsed.map((row) => {
-    const matches = customers
-      .filter((customer) => normalizePhoneTerm(customer.phone) === row.phoneKey && row.phoneKey)
-      .map((customer) => ({
-        id: customer.id,
-        name: customer.name,
-        phone: customer.phone,
-        isActive: customer.isActive,
-        hasImportedOpeningDebt: customer.debts.length > 0,
-      }));
-    const conflicts: Array<{
-      kind:
-        'FILE_PHONE' | 'EXISTING_PHONE' | 'OTHER_BRANCH_PHONE' | 'NAME_SIMILAR' | 'OPENING_DEBT';
-      message: string;
-      blocking: boolean;
-    }> = [];
+    const accountMatches = row.accountCode
+      ? customers.filter((customer) =>
+          (customer.importAccounts ?? []).some((account) => account.accountCode === row.accountCode)
+        )
+      : [];
+    if (accountMatches.some((customer) => customer.deletedAt))
+      row.issues.push(
+        'Account number belongs to an archived customer; restore that customer before importing'
+      );
+    const phoneMatches = row.phoneKey
+      ? customers.filter(
+          (customer) => !customer.deletedAt && normalizePhoneTerm(customer.phone) === row.phoneKey
+        )
+      : [];
+    // A known account cannot be rebound to a different phone-matched customer.
+    const identityMismatch =
+      accountMatches.length > 0 &&
+      phoneMatches.some((customer) => !accountMatches.some((match) => match.id === customer.id));
+    const matches = (
+      identityMismatch
+        ? [
+            ...new Map(
+              [...accountMatches, ...phoneMatches].map((customer) => [customer.id, customer])
+            ).values(),
+          ]
+        : accountMatches.length
+          ? accountMatches
+          : phoneMatches
+    ).map((customer) => ({
+      id: customer.id,
+      name: customer.name,
+      phone: customer.phone,
+      isActive: customer.isActive,
+      accountCodes: (customer.importAccounts ?? []).map((account) => account.accountCode).sort(),
+      hasImportedOpeningDebt: customer.debts.length > 0,
+    }));
+    const conflicts: Array<{ kind: string; message: string; blocking: boolean }> = [];
+    if ((accountCounts.get(row.accountCode) ?? 0) > 1)
+      conflicts.push({
+        kind: 'FILE_ACCOUNT',
+        message:
+          'Account number occurs more than once in this file; select one row and skip the others',
+        blocking: true,
+      });
+    if (identityMismatch)
+      conflicts.push({
+        kind: 'IDENTITY_MISMATCH',
+        message:
+          'Account number and phone identify different customers; skip this row and resolve the records manually',
+        blocking: true,
+      });
     if ((counts.get(row.phoneKey) ?? 0) > 1)
       conflicts.push({
         kind: 'FILE_PHONE',
@@ -161,10 +214,12 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
       });
     if (matches.length)
       conflicts.push({
-        kind: 'EXISTING_PHONE',
+        kind: accountMatches.length ? 'EXISTING_ACCOUNT' : 'EXISTING_PHONE',
         message:
           matches.length === 1
-            ? 'Phone already exists in this branch: update selected fields or skip'
+            ? accountMatches.length
+              ? 'Account number already exists in this branch: update selected fields or skip'
+              : 'Phone already exists in this branch: update selected fields or skip'
             : 'Multiple existing customers share this phone key; skip this row and resolve the duplicate manually',
         blocking: true,
       });
@@ -178,16 +233,30 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
         message: 'Also exists in branch: ' + branch.name,
         blocking: false,
       });
+    for (const branch of new Map(
+      others
+        .filter(
+          (other) =>
+            row.accountCode &&
+            (other.importAccounts ?? []).some((account) => account.accountCode === row.accountCode)
+        )
+        .map((other) => [other.branch.id, other.branch])
+    ).values())
+      conflicts.push({
+        kind: 'OTHER_BRANCH_ACCOUNT',
+        message: 'Account number also exists in branch: ' + branch.name,
+        blocking: false,
+      });
     if (
       customers.some(
         (customer) =>
           normalizeSearchTerm(customer.name).trim() === normalizeSearchTerm(row.name).trim() &&
-          normalizePhoneTerm(customer.phone) !== row.phoneKey
+          !matches.some((match) => match.id === customer.id)
       )
     )
       conflicts.push({
         kind: 'NAME_SIMILAR',
-        message: 'Similar name with another phone in this branch',
+        message: 'Similar name on another customer in this branch',
         blocking: false,
       });
     if (matches.some((match) => match.hasImportedOpeningDebt) && Number(row.openingBalance) > 0)
@@ -211,7 +280,14 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
             }
           : { rowNumber: row.rowNumber, action: 'CREATE' };
     const fingerprint = JSON.stringify(
-      matches.map((match) => [match.id, match.hasImportedOpeningDebt, match.isActive]).sort()
+      matches
+        .map((match) => [
+          match.id,
+          match.hasImportedOpeningDebt,
+          match.isActive,
+          match.accountCodes,
+        ])
+        .sort()
     );
     return {
       ...row,
@@ -271,6 +347,7 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
     fileName: draft.fileName,
     status: draft.status,
     headers: document.headers,
+    format: document.format,
     columnMapping: mapping,
     rows,
     summary,
@@ -377,6 +454,8 @@ export class CustomerImportService {
         }));
         const snapshot = (draft.rows as unknown as CsvDocument).snapshot ?? {};
         const chosenKeys = new Set<string>();
+        const chosenPhones = new Set<string>();
+        const chosenCustomers = new Set<string>();
         for (const row of rows) {
           const decision = row.decision;
           if (decision.action === 'SKIP') continue;
@@ -388,11 +467,19 @@ export class CustomerImportService {
             throw stale(
               'Matching customers or imported opening debts changed for row ' + row.rowNumber + '.'
             );
-          if (chosenKeys.has(row.phoneKey))
-            throw unresolved('Choose one row for duplicate phone ' + row.phone);
-          chosenKeys.add(row.phoneKey);
+          if (chosenKeys.has(row.identityKey) || (row.phoneKey && chosenPhones.has(row.phoneKey)))
+            throw unresolved('Choose one row for each duplicate account or phone');
+          chosenKeys.add(row.identityKey);
+          if (row.phoneKey) chosenPhones.add(row.phoneKey);
+          if (row.conflicts.some((conflict) => conflict.kind === 'IDENTITY_MISMATCH'))
+            throw unresolved('Account number and phone identify different customers');
+          if (decision.targetCustomerId) {
+            if (chosenCustomers.has(decision.targetCustomerId))
+              throw unresolved('Choose one row per matching customer');
+            chosenCustomers.add(decision.targetCustomerId);
+          }
           if (decision.action === 'CREATE' && row.matches.length)
-            throw unresolved('Existing phone must be updated or skipped');
+            throw unresolved('Existing account or phone must be updated or skipped');
           if (
             decision.action === 'UPDATE' &&
             (row.matches.length !== 1 || row.matches[0].id !== decision.targetCustomerId)
@@ -489,6 +576,25 @@ export class CustomerImportService {
               });
             summary.updated++;
           }
+          if (row.accountCode) {
+            const binding = await tx.customerImportAccount.findUnique({
+              where: {
+                branchId_accountCode: { branchId: draft.branchId, accountCode: row.accountCode },
+              },
+            });
+            if (binding && binding.customerId !== customerId)
+              throw stale('Account number was assigned to another customer.');
+            if (!binding)
+              await tx.customerImportAccount.create({
+                data: {
+                  branchId: draft.branchId,
+                  accountCode: row.accountCode,
+                  customerId,
+                  sourceCustomerImportId: id,
+                  createdById: actor.userId,
+                },
+              });
+          }
           await tx.activityLog.create({
             data: {
               branchId: draft.branchId,
@@ -499,6 +605,7 @@ export class CustomerImportService {
               details: {
                 customerImportId: id,
                 rowNumber: row.rowNumber,
+                accountCode: row.accountCode || null,
                 updateFields: decision.updateFields ?? [],
               },
               ipAddress: context.ipAddress,

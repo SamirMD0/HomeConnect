@@ -203,3 +203,59 @@ describe('customer import preview conflict kinds', () => {
     });
   });
 });
+
+const trialHeaders = 'Account,Name,Curr,Total Debit,Total Credit,Balance Debit,Balance Credit';
+describe('trial-balance customer reports', () => {
+  const mapped = (csv: string) => {
+    const document = parseCustomerCsv(csv);
+    return { document, rows: mapCustomerRows(document, detectColumnMapping(document.headers)) };
+  };
+  it('extracts the flat report table and Balance Debit, preserving Arabic names and account strings', () => {
+    const { document, rows } = mapped(
+      '"Trial Balance","By Date",10/28/2026,,,"Account Currency",,,"From :","01/01/2026","From Account : 411","To :","31/12/2026","Till Account : 411",,,' +
+        trialHeaders +
+        ',"0411000099","زبون تجريبي",USD,865.00,420.00,445.00,0.00,Debit,Credit,Balance,Totals :,"214,289.24","142,842.83","71,446.41",1'
+    );
+    expect(document.headers).toEqual(trialHeaders.split(','));
+    expect(document.format).toBe('TRIAL_BALANCE');
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      accountCode: '0411000099',
+      identityKey: 'ACCOUNT:0411000099',
+      name: 'زبون تجريبي',
+      phone: '',
+      openingBalance: '445.00',
+      currency: 'USD',
+      issues: [],
+    });
+  });
+  it('accepts preambles, repeated report rows and multiple accounts, without summary customers', () => {
+    const { rows } = mapped(
+      'Trial Balance,By Date\nFrom :,01/01/2026\n' +
+        trialHeaders +
+        '\n41101,First,USD,100,0,100,0\n41102,Second,USD,200,200,0,0\nTotals :,300,200,100\nTrial Balance,By Date,' +
+        trialHeaders +
+        ',41103,Third,USD,300,0,300,0,Debit,Credit,Balance,Totals :,300,0,300'
+    );
+    expect(rows.map((row) => row.accountCode)).toEqual(['41101', '41102', '41103']);
+    expect(rows.every((row) => !row.issues.length)).toBe(true);
+  });
+  it('handles strictly grouped amounts while rejecting credit balances and incomplete accounts', () => {
+    const { rows } = mapped(
+      trialHeaders +
+        '\n41101,First,USD,2000,0,"1,234.56",0\n41102,Second,USD,0,10,0,10\n41103,Third,LBP,0,0,"1,000.50",0\n41104,Fourth,USD\n41105,Fifth,,0,0,10,0'
+    );
+    expect(rows[0]).toMatchObject({ openingBalance: '1234.56', issues: [] });
+    expect(rows[1].issues.join()).toMatch(/Credit balances/);
+    expect(rows[2].issues.length).toBeGreaterThan(0);
+    expect(rows[3].issues).toContain('Incomplete trial-balance account row');
+    expect(rows[4].issues).toContain('Trial-balance currency is required');
+  });
+  it('allows absent phones only with a valid account and still validates supplied phones', () => {
+    const { rows } = mapped(
+      'Name,Account,Phone\nFirst,000123,\nSecond,,\nThird,not-an-account,\nFourth,1234,abcde'
+    );
+    expect(rows[0].issues).toEqual([]);
+    expect(rows.slice(1).every((row) => row.issues.length)).toBe(true);
+  });
+});

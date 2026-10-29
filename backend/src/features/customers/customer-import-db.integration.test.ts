@@ -89,6 +89,7 @@ const http = (method: 'get' | 'patch' | 'post', path: string, body?: object) => 
     await db.activityLog.deleteMany({ where: { userId: owner } });
     await db.adminVerificationLog.deleteMany({ where: { userId: owner } });
     await db.debt.deleteMany({ where: { branchId: { in: branchIds } } });
+    await db.customerImportAccount.deleteMany({ where: { branchId: { in: branchIds } } });
     await db.customerImport.deleteMany({ where: { branchId: { in: branchIds } } });
     await db.customer.deleteMany({ where: { branchId: { in: branchIds } } });
     await db.userBranchAccess.deleteMany({ where: { userId: owner } });
@@ -350,6 +351,129 @@ const http = (method: 'get' | 'patch' | 'post', path: string, body?: object) => 
     expect(await commit(draft.id)).toMatchObject({ created: 2000, openingDebts: 0 });
     expect(await db.customer.count({ where: { branchId: a } })).toBe(2000);
   }, 180000);
+
+  it('imports trial-balance accounts without fake phones, with exact Balance Debit and durable repeat protection', async () => {
+    const report =
+      'Trial Balance,By Date,Account,Name,Curr,Total Debit,Total Credit,Balance Debit,Balance Credit,0411000099,زبون تجريبي,USD,865,420,445,0,0411000100,Second Customer,USD,0,0,0,0,Debit,Credit,Balance,Totals :,865,420,445';
+    const draft = await create(report);
+    expect(draft.rows).toHaveLength(2);
+    expect(draft.rows.every((row) => row.status === 'READY')).toBe(true);
+    await expect(commit(draft.id)).rejects.toMatchObject({ statusCode: 400 });
+    expect(await db.customerImportAccount.count({ where: { branchId: a } })).toBe(0);
+    expect(await commit(draft.id, [], password)).toMatchObject({
+      created: 2,
+      openingDebts: 1,
+      openingDebtTotalUsd: '445.00',
+    });
+    const accounts = await db.customerImportAccount.findMany({
+      where: { branchId: a },
+      include: { customer: true },
+      orderBy: { accountCode: 'asc' },
+    });
+    expect(accounts).toHaveLength(2);
+    expect(accounts.every((account) => account.customer.phone === '')).toBe(true);
+    const debt = await db.debt.findFirstOrThrow({ where: { branchId: a } });
+    expect(debt.originalAmount.toFixed(2)).toBe('445.00');
+    expect(debt.customerId).toBe(accounts[0].customerId);
+    const repeat = await create(report.replace('865,420,445,0', '900,455,445,0'));
+    expect(repeat.rows[0].matches[0].id).toBe(accounts[0].customerId);
+    await expect(commit(repeat.id, [], password)).rejects.toMatchObject({
+      code: 'CUSTOMER_IMPORT_UNRESOLVED',
+    });
+    await commit(
+      repeat.id,
+      repeat.rows.map((row) => ({ ...row.decision, skipOpeningBalance: true }))
+    );
+    expect(await db.customer.count({ where: { branchId: a } })).toBe(2);
+    expect(await db.debt.count({ where: { branchId: a } })).toBe(1);
+    const other = await create(report, b);
+    expect(other.rows[0].matches).toEqual([]);
+    expect(other.rows[0].conflicts.some((c) => c.kind === 'OTHER_BRANCH_ACCOUNT')).toBe(true);
+    await commit(other.id, [], password);
+    expect(await db.customerImportAccount.count({ where: { branchId: b } })).toBe(2);
+    // A mapping cannot point to a customer in another branch, even through raw ORM writes.
+    await expect(
+      db.customerImportAccount.create({
+        data: {
+          branchId: b,
+          accountCode: '9999',
+          customerId: accounts[0].customerId,
+          sourceCustomerImportId: other.id,
+          createdById: owner,
+        },
+      })
+    ).rejects.toMatchObject({ code: 'P2003' });
+  });
+
+  it('blocks duplicate accounts, ambiguous identities, and concurrently assigned accounts atomically', async () => {
+    const duplicates = await create('Name,Account\nFirst,1234\nSecond,1234');
+    expect(duplicates.rows[0].conflicts[0].kind).toBe('FILE_ACCOUNT');
+    await expect(commit(duplicates.id)).rejects.toMatchObject({
+      code: 'CUSTOMER_IMPORT_UNRESOLVED',
+    });
+    const first = await create('Name,Account,Phone\nFirst,1234,03123456');
+    const concurrent = await create('Name,Account\nSecond,1234');
+    await commit(first.id);
+    await expect(commit(concurrent.id)).rejects.toMatchObject({ code: 'CUSTOMER_IMPORT_STALE' });
+    const second = await customer('Phone Owner', '70123456');
+    const mismatch = await create('Name,Account,Phone\nMismatch,1234,70123456');
+    expect(mismatch.rows[0].matches).toHaveLength(2);
+    expect(mismatch.rows[0].decision.action).toBe('SKIP');
+    await expect(
+      commit(mismatch.id, [{ rowNumber: 2, action: 'UPDATE', targetCustomerId: second.id }])
+    ).rejects.toMatchObject({ code: 'CUSTOMER_IMPORT_UNRESOLVED' });
+    expect(await db.customer.count({ where: { branchId: a } })).toBe(2);
+  });
+
+  it('binds a new account to its sole phone match without replacing contact information', async () => {
+    const existing = await customer('Phone Owner', '03 123 456');
+    const draft = await create('Name,Account,Phone\nImported Name,000123,03123456');
+    expect(draft.rows[0].decision.action).toBe('UPDATE');
+    await commit(draft.id);
+    expect(
+      await db.customerImportAccount.findUniqueOrThrow({
+        where: { branchId_accountCode: { branchId: a, accountCode: '000123' } },
+      })
+    ).toMatchObject({ customerId: existing.id });
+    expect(await db.customer.findUniqueOrThrow({ where: { id: existing.id } })).toMatchObject({
+      phone: '03 123 456',
+    });
+    const accountOnly = await create('Name,Account\nUpdated Name,000123');
+    expect(accountOnly.rows[0].matches[0].id).toBe(existing.id);
+  });
+
+  it('concurrent account commits produce one customer and archived accounts cannot be recreated', async () => {
+    const first = await create('Name,Account\nFirst,000777');
+    const second = await create('Name,Account\nSecond,000777');
+    const results = await Promise.allSettled([commit(first.id), commit(second.id)]);
+    expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+    expect(await db.customer.count({ where: { branchId: a } })).toBe(1);
+    const binding = await db.customerImportAccount.findUniqueOrThrow({
+      where: { branchId_accountCode: { branchId: a, accountCode: '000777' } },
+    });
+    await db.customer.update({
+      where: { id: binding.customerId },
+      data: { deletedAt: new Date() },
+    });
+    const archived = await create('Name,Account\nThird,000777');
+    expect(archived.rows[0].status).toBe('INVALID');
+    expect(archived.rows[0].issues.join()).toContain('archived customer');
+    await expect(commit(archived.id, [{ rowNumber: 2, action: 'CREATE' }])).rejects.toMatchObject({
+      code: 'CUSTOMER_IMPORT_UNRESOLVED',
+    });
+    const wrongBranchSource = await create('Name,Account\nOther,12345', b);
+    await expect(
+      db.customerImportAccount.create({
+        data: {
+          branchId: a,
+          accountCode: '8888',
+          customerId: binding.customerId,
+          sourceCustomerImportId: wrongBranchSource.id,
+          createdById: owner,
+        },
+      })
+    ).rejects.toMatchObject({ code: 'P2003' });
+  });
 
   it('all endpoints are ADMIN-only even when the employee has branch access; unknown decision rows are rejected', async () => {
     const draft = await create('Name,Phone\nAli,03123456');
