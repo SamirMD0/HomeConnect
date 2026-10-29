@@ -152,12 +152,12 @@ export const CustomersListPage: React.FC = () => {
               className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium"
               title={
                 createGuard.blocked
-                  ? 'Choose the destination branch in the import dialog / اختر الفرع في نافذة الاستيراد'
+                  ? 'Choose the destination branch in the import dialog'
                   : undefined
               }
               onClick={() => setIsImportOpen(true)}
             >
-              Import CSV / استيراد CSV
+              Import CSV
             </button>
           )}
           <button

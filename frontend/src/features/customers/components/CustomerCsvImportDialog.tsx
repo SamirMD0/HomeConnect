@@ -15,24 +15,24 @@ import {
 } from '../api/customer-import.api';
 
 export const customerImportSteps = [
-  'Destination / الفرع',
-  'Upload / رفع الملف',
-  'Map columns / ربط الأعمدة',
-  'Preview / معاينة',
-  'Resolve / حل التعارضات',
-  'Confirm / تأكيد',
-  'Result / النتيجة',
+  'Destination',
+  'Upload',
+  'Map columns',
+  'Preview',
+  'Resolve',
+  'Confirm',
+  'Result',
 ] as const;
 const labels = {
-  name: 'Name / الاسم',
-  phone: 'Phone / الهاتف',
-  address: 'Address / العنوان',
-  notes: 'Notes / ملاحظات',
-  creditLimit: 'Credit limit USD / سقف الدين',
-  openingBalance: 'Opening balance / رصيد افتتاحي',
-  currency: 'Currency / العملة',
-  dueDate: 'Due date / تاريخ الاستحقاق',
-  isActive: 'Active / نشط',
+  name: 'Name',
+  phone: 'Phone',
+  address: 'Address',
+  notes: 'Notes',
+  creditLimit: 'Credit limit USD',
+  openingBalance: 'Opening balance',
+  currency: 'Currency',
+  dueDate: 'Due date',
+  isActive: 'Active',
 };
 const control = 'rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm';
 interface WizardProps {
@@ -80,11 +80,11 @@ export function CustomerImportSummary({ result }: { result: CustomerImportResult
   return (
     <dl className="grid grid-cols-2 gap-3 rounded-lg bg-slate-50 p-4 text-sm">
       {[
-        ['Created / جديد', result.created],
-        ['Updated / محدّث', result.updated],
-        ['Skipped / مستبعد', result.skipped],
-        ['Opening debts / ديون افتتاحية', result.openingDebts],
-        ['Opening debts total USD / مجموع الديون بالدولار', '$' + result.openingDebtTotalUsd],
+        ['Created', result.created],
+        ['Updated', result.updated],
+        ['Skipped', result.skipped],
+        ['Opening debts', result.openingDebts],
+        ['Opening debts total USD', '$' + result.openingDebtTotalUsd],
       ].map(([label, value]) => (
         <div key={label}>
           <dt>{label}</dt>
@@ -108,10 +108,9 @@ export function CustomerImportWizard(props: WizardProps) {
   return (
     <div className="space-y-4">
       <p className="rounded-lg border border-brand-200 bg-brand-50 p-3 font-semibold" role="status">
-        Importing into: / الاستيراد إلى:{' '}
-        <span dir="auto">{props.branchName || 'Select a branch / اختر الفرع'}</span>
+        Importing into: <span dir="auto">{props.branchName || 'Select a branch'}</span>
       </p>
-      <ol className="flex flex-wrap gap-2 text-xs" aria-label="Import steps / خطوات الاستيراد">
+      <ol className="flex flex-wrap gap-2 text-xs" aria-label="Import steps">
         {customerImportSteps.map((label, index) => (
           <li
             key={label}
@@ -132,20 +131,20 @@ export function CustomerImportWizard(props: WizardProps) {
             onClick={props.onRefresh}
             disabled={props.busy || !preview}
           >
-            Refresh preview / تحديث المعاينة
+            Refresh preview
           </button>
         </div>
       )}
       {step === 0 && (
         <label className="block text-sm">
-          Destination branch / الفرع المستهدف
+          Destination branch
           <select
-            aria-label="Destination branch / الفرع المستهدف"
+            aria-label="Destination branch"
             className={control + ' mt-2 block w-full'}
             value={props.branchId}
             onChange={(event) => props.onBranch(event.target.value)}
           >
-            <option value="">Select a branch / اختر الفرع</option>
+            <option value="">Select a branch</option>
             {props.branches.map((branch) => (
               <option key={branch.id} value={branch.id} dir="auto">
                 {branch.name}
@@ -156,9 +155,9 @@ export function CustomerImportWizard(props: WizardProps) {
       )}
       {step === 1 && (
         <label className="block text-sm">
-          CSV file (750 KB, 2,000 rows) / ملف CSV
+          CSV file (750 KB, 2,000 rows)
           <input
-            aria-label="CSV file / ملف CSV"
+            aria-label="CSV file"
             className="mt-2 block"
             type="file"
             accept=".csv,text/csv"
@@ -182,7 +181,7 @@ export function CustomerImportWizard(props: WizardProps) {
                   })
                 }
               >
-                <option value="">Ignore / تجاهل</option>
+                <option value="">Ignore</option>
                 {preview?.headers.map((header, index) => (
                   <option key={index} value={index} dir="auto">
                     {header}
@@ -197,23 +196,22 @@ export function CustomerImportWizard(props: WizardProps) {
         <>
           {preview.previousCommittedImport && (
             <p role="alert" className="rounded-lg bg-amber-50 p-3 text-sm">
-              This file was already imported into this branch. Matching rows default to SKIP. / تم
-              استيراد هذا الملف إلى هذا الفرع سابقاً.
+              This file was already imported into this branch. Matching rows default to SKIP.
             </p>
           )}
           <p className="text-sm">
-            Ready / جاهز: {preview.summary.ready} · Conflicts / تعارض: {preview.summary.conflicts} ·
-            Invalid / غير صالح: {preview.summary.invalid}
+            Ready: {preview.summary.ready} · Conflicts: {preview.summary.conflicts} · Invalid:{' '}
+            {preview.summary.invalid}
           </p>
           <div className="max-h-[45vh] overflow-auto">
             <table className="w-full text-left text-xs">
               <thead>
                 <tr>
-                  <th>Row / السطر</th>
-                  <th>Customer / الزبون</th>
-                  <th>Status / الحالة</th>
-                  <th>Issues / ملاحظات</th>
-                  {step === 4 && <th>Decision / القرار</th>}
+                  <th>Row</th>
+                  <th>Customer</th>
+                  <th>Status</th>
+                  <th>Issues</th>
+                  {step === 4 && <th>Decision</th>}
                 </tr>
               </thead>
               <tbody>
@@ -263,12 +261,12 @@ export function CustomerImportWizard(props: WizardProps) {
                             });
                           }}
                         >
-                          <option value="SKIP">SKIP / استبعاد</option>
+                          <option value="SKIP">SKIP</option>
                           {row.status !== 'INVALID' && !row.matches.length && (
-                            <option value="CREATE">CREATE / إنشاء</option>
+                            <option value="CREATE">CREATE</option>
                           )}
                           {row.status !== 'INVALID' && row.matches.length === 1 && (
-                            <option value="UPDATE">UPDATE / تحديث</option>
+                            <option value="UPDATE">UPDATE</option>
                           )}
                         </select>
                         {row.decision.action === 'UPDATE' &&
@@ -308,7 +306,7 @@ export function CustomerImportWizard(props: WizardProps) {
                                 })
                               }
                             />{' '}
-                            Skip opening amount / تجاهل الرصيد الافتتاحي
+                            Skip opening amount
                           </label>
                         )}
                       </td>
@@ -320,8 +318,7 @@ export function CustomerImportWizard(props: WizardProps) {
           </div>
           {step === 4 && unresolved && (
             <p role="alert" className="text-sm text-amber-700">
-              Skip invalid rows, choose one row per phone, and skip amounts already imported. / يرجى
-              حل التعارضات قبل المتابعة.
+              Skip invalid rows, choose one row per phone, and skip amounts already imported.
             </p>
           )}
         </>
@@ -330,14 +327,13 @@ export function CustomerImportWizard(props: WizardProps) {
         <>
           <CustomerImportSummary result={preview.planned} />
           <p className="text-xs text-slate-500">
-            LBP amounts use the current exchange rate at commit. / تُحوّل الليرة بسعر الصرف عند
-            التأكيد.
+            LBP amounts use the current exchange rate at commit.
           </p>
           {needsPassword && (
             <label className="block text-sm">
-              Account password / كلمة مرور الحساب
+              Account password
               <input
-                aria-label="Account password / كلمة مرور الحساب"
+                aria-label="Account password"
                 className={control + ' mt-2 block w-full'}
                 type="password"
                 autoComplete="current-password"
@@ -359,7 +355,7 @@ export function CustomerImportWizard(props: WizardProps) {
               encodeURIComponent('\uFEFF' + (props.result.reportCsv ?? ''))
             }
           >
-            Download skipped and invalid rows / تنزيل الصفوف المستبعدة وغير الصالحة
+            Download skipped and invalid rows
           </a>
         </>
       )}
@@ -367,11 +363,11 @@ export function CustomerImportWizard(props: WizardProps) {
         <div className="flex justify-end gap-2">
           {(step === 1 || step > 2) && (
             <Button variant="secondary" onClick={props.onBack} disabled={props.busy}>
-              Back / رجوع
+              Back
             </Button>
           )}
           <Button onClick={props.onNext} disabled={disabled} isLoading={props.busy}>
-            {step === 5 ? 'Commit import / تأكيد الاستيراد' : 'Continue / متابعة'}
+            {step === 5 ? 'Commit import' : 'Continue'}
           </Button>
         </div>
       )}
@@ -400,9 +396,7 @@ function CustomerImportSession({ onClose }: { onClose: () => void }) {
     } catch (caught) {
       const message = (caught as { response?: { data?: { error?: { message?: string } } } })
         .response?.data?.error?.message;
-      setError(
-        message ?? (caught instanceof Error ? caught.message : 'Import failed / فشل الاستيراد')
-      );
+      setError(message ?? (caught instanceof Error ? caught.message : 'Import failed'));
     } finally {
       setBusy(false);
     }
@@ -411,8 +405,7 @@ function CustomerImportSession({ onClose }: { onClose: () => void }) {
     void perform(async () => {
       if (step === 1) {
         if (!file || !branchId) return;
-        if (file.size > 750_000)
-          throw new Error('CSV file cannot exceed 750 KB / حجم الملف يتجاوز الحد');
+        if (file.size > 750_000) throw new Error('CSV file cannot exceed 750 KB');
         const draft = await customerImportsApi.create(branchId, file.name, await file.text());
         setPreview(draft);
         setMapping(draft.columnMapping);
@@ -446,7 +439,7 @@ function CustomerImportSession({ onClose }: { onClose: () => void }) {
       onClose={() => {
         if (!busy) onClose();
       }}
-      title="Import customers from CSV / استيراد الزبائن"
+      title="Import customers from CSV"
       size="xl"
     >
       <CustomerImportWizard
