@@ -91,4 +91,3 @@ function parseReportRecord(record: string[], rowNumber: number): ParsedProductIm
 function findCell(record: string[], value: string, after = 0): number {
   return record.findIndex((cell, index) => index >= after && cell.trim().toLocaleLowerCase('en-US') === value.toLocaleLowerCase('en-US'));
 }
-
