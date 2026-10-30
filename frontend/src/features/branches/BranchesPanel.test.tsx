@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { BranchesPanel } from './BranchesPanel';
+import { BranchesPanel, confirmMultipleActiveBranches } from './BranchesPanel';
 import type { Branch, StaffBranchAccess } from './branches';
 
 const render = (branches: Branch[], staff: StaffBranchAccess[] = []) => {
@@ -19,10 +19,11 @@ const main: Branch = { id: 'b1', code: 'MAIN', name: 'Main shop', address: 'Beir
 const old: Branch = { id: 'b2', code: 'OLD', name: 'Old shop', address: null, phone: null, isActive: false, assignedUserCount: 0 };
 
 describe('BranchesPanel', () => {
-  it('explains branch separation and the single-active-branch rule', () => {
+  it('explains branch separation and that a second active branch turns on the selector', () => {
     const html = render([]);
     expect(html).toContain('keeps its own customers, suppliers, sales and balances');
-    expect(html).toContain('only one branch can be active');
+    expect(html).toContain('Activating a second branch turns on the branch selector');
+    expect(html).not.toContain('Until multi-branch is switched on');
     expect(html).not.toContain('not separated by branch yet');
     expect(html).toContain('No branches have been set up.');
     expect(html).not.toContain('Staff branch access');
@@ -40,5 +41,17 @@ describe('BranchesPanel', () => {
     expect(html).toContain('aria-label="Sara works in Main shop"');
     expect(html).not.toContain('Sara works in Old shop');
     expect(html).toMatch(/aria-label="Sara works in Main shop"[^>]*checked/);
+  });
+});
+
+describe('confirmMultipleActiveBranches', () => {
+  it('names the branch and explains what changes before a second branch goes active', () => {
+    const asked: string[] = [];
+    expect(confirmMultipleActiveBranches('Tyre', (message) => { asked.push(message); return false; })).toBe(false);
+    expect(asked[0]).toContain('"Tyre"');
+    expect(asked[0]).toContain('branch selector appears in the header');
+    expect(asked[0]).toContain('existing records stay in their current branch');
+    expect(asked[0]).toContain('Employees see only the branches you give them');
+    expect(confirmMultipleActiveBranches('Tyre', () => true)).toBe(true);
   });
 });

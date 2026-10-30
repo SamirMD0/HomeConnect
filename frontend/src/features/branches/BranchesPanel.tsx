@@ -12,12 +12,26 @@ import {
 const emptyForm = { code: '', name: '', address: '', phone: '' };
 const inputClass = 'mt-1 block w-full rounded-md border border-slate-300 px-3 py-2';
 
+/** Shown before a change leaves two or more branches active: it turns on branch separation. */
+export function confirmMultipleActiveBranches(branchName: string, confirm: (message: string) => boolean = window.confirm) {
+  return confirm(
+    [
+      `Activate "${branchName}" as an additional branch?`,
+      '',
+      '• A branch selector appears in the header, and new records are created in the selected branch.',
+      '• Each branch keeps its own customers, suppliers, sales and balances; existing records stay in their current branch.',
+      '• Employees see only the branches you give them below. Check their access after activating.',
+    ].join('\n')
+  );
+}
+
 export const BranchesPanel: React.FC = () => {
   const branches = useBranches();
   const save = useBranchMutation();
   const [editing, setEditing] = useState<Branch | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState<string | null>(null);
+  const activeCount = branches.data?.filter((branch) => branch.isActive).length ?? 0;
 
   const startEdit = (branch: Branch) => {
     setEditing(branch);
@@ -38,6 +52,7 @@ export const BranchesPanel: React.FC = () => {
       address: form.address.trim() || null,
       phone: form.phone.trim() || null,
     };
+    if (!editing && activeCount >= 1 && !confirmMultipleActiveBranches(input.name)) return;
     try {
       await save.mutateAsync(editing ? { id: editing.id, input } : { input: { ...input, isActive: true } });
       reset();
@@ -47,6 +62,7 @@ export const BranchesPanel: React.FC = () => {
   };
   const toggleActive = async (branch: Branch) => {
     setError(null);
+    if (!branch.isActive && activeCount >= 1 && !confirmMultipleActiveBranches(branch.name)) return;
     try {
       await save.mutateAsync({ id: branch.id, input: { isActive: !branch.isActive } });
     } catch (cause) {
@@ -62,7 +78,7 @@ export const BranchesPanel: React.FC = () => {
           Set up shop branches and choose which branches each employee works in. Administrators always have access to every branch.
         </p>
         <p className="mt-3 rounded-lg border border-border bg-slate-50 px-3 py-2 text-sm text-slate-700">
-          Each branch keeps its own customers, suppliers, sales and balances, and employees see only the branches assigned to them. Until multi-branch is switched on, only one branch can be active.
+          Each branch keeps its own customers, suppliers, sales and balances, and employees see only the branches assigned to them. Activating a second branch turns on the branch selector in the header.
         </p>
       </div>
 

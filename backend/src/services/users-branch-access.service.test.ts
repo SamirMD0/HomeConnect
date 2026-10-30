@@ -40,10 +40,18 @@ describe('new employee default branch access', () => {
       skipDuplicates: true,
     });
   });
-  it('createUser grants nothing when branch scoping is enabled', async () => {
+  it('createUser still grants the single active branch with multi-branch on, so a one-branch shop never has an employee who sees nothing', async () => {
     vi.stubEnv('MULTI_BRANCH_SCOPING_ENABLED', 'true');
     await UsersService.createUser(input);
-    expect(tx.branch.findMany).not.toHaveBeenCalled();
+    expect(tx.userBranchAccess.createMany).toHaveBeenCalledWith({
+      data: [{ userId: employee.id, branchId: 'main', grantedById: 'owner' }],
+      skipDuplicates: true,
+    });
+  });
+  it('createUser leaves branch choice to the admin when two branches are active and multi-branch is on', async () => {
+    vi.stubEnv('MULTI_BRANCH_SCOPING_ENABLED', 'true');
+    tx.branch.findMany.mockResolvedValue([{ id: 'main', createdById: 'owner' }, { id: 'tyre', createdById: 'owner' }]);
+    await expect(UsersService.createUser(input)).resolves.toBeDefined();
     expect(tx.userBranchAccess.createMany).not.toHaveBeenCalled();
   });
   it('createUser does not grant administrators', async () => {
@@ -148,11 +156,11 @@ describe('employee access on role changes', () => {
     ]);
     expect(invalidate).toHaveBeenCalledExactlyOnceWith(user.id);
   });
-  it('ADMIN to EMPLOYEE with scoping enabled changes the role without a grant', async () => {
+  it('ADMIN to EMPLOYEE with multi-branch on and two active branches changes the role without a grant', async () => {
     vi.stubEnv('MULTI_BRANCH_SCOPING_ENABLED', 'true');
+    tx.branch.findMany.mockResolvedValue([{ id: 'main', createdById: 'owner' }, { id: 'tyre', createdById: 'owner' }]);
     await UsersService.updateUser(persisted.id, { role: 'EMPLOYEE' }, 'owner');
     expect(persisted.role).toBe('EMPLOYEE');
-    expect(tx.branch.findMany).not.toHaveBeenCalled();
     expect(tx.userBranchAccess.createMany).not.toHaveBeenCalled();
   });
   it('ADMIN to EMPLOYEE with no active branch commits the role without a grant or error', async () => {
