@@ -3,7 +3,8 @@ import { CalendarClock } from 'lucide-react';
 import { NextDueSummary } from '../types/customer-financial.types';
 import { formatBusinessDate, formatMoney } from '../utils/financial-format';
 import { itemTypeLabels } from '../utils/financial-labels';
-import { FinancialEmptyState } from './FinancialEmptyState';
+import { FinancialEmptyState } from './FinancialEmptyState';
+import { englishLabel } from '../../../shared/labels/business-labels';
 
 interface NextDueCardProps {
   nextDue: NextDueSummary | null;
@@ -45,7 +46,7 @@ export const NextDueCard: React.FC<NextDueCardProps> = ({ nextDue, onOpenDebt, o
             <li key={`${item.type}-${item.id}`} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  {itemTypeLabels[item.type]}
+                  {englishLabel(itemTypeLabels[item.type])}
                 </span>
                 <p className="user-text mt-1 font-medium text-slate-900" dir="auto">{item.description}</p>
               </div>

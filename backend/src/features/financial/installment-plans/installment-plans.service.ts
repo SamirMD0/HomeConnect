@@ -483,165 +483,173 @@ export class InstallmentPlansService {
     user: AuthenticatedUser, scope: BranchScope
   ): Promise<InstallmentPlanView> {
     writeBranch(scope);
+    return runFinancialTransaction((tx) => this.recordPlanPaymentInTransaction(tx, planId, input, user, scope));
+  }
+
+  /** Runs inside a caller transaction, for batches that must commit or fail together. */
+  static async recordPlanPaymentInTransaction(
+    tx: FinancialTransactionClient,
+    planId: string,
+    input: CreateInstallmentPlanPaymentInput,
+    user: AuthenticatedUser, scope: BranchScope
+  ): Promise<InstallmentPlanView> {
     const paymentCurrency = input.currency ?? Currency.USD;
     const paymentAmount = assertPositiveMoney(input.amount, paymentCurrency);
     const paymentMethod = input.paymentMethod ?? PaymentMethod.CASH;
     const paymentDate = parseBusinessDate(input.paymentDate);
     const idempotencyKey = normalizeIdempotencyKey(input.idempotencyKey);
 
-    return runFinancialTransaction(async (tx) => {
-      const plan = await InstallmentPlansRepository.findPlanById(planId, tx);
-      if (!plan) {
-        throw new NotFoundError('Installment plan not found');
+    const plan = await InstallmentPlansRepository.findPlanById(planId, tx);
+    if (!plan) {
+      throw new NotFoundError('Installment plan not found');
+    }
+    await assertRecordInScope('installmentPlan', planId, scope, tx);
+    const planCurrency = plan.currency ?? Currency.USD;
+    const effectiveAt = businessDateToPrisma(paymentDate);
+    const paymentExchangeRate = await ExchangeRatesService.snapshotFor(paymentCurrency, effectiveAt, tx);
+    const allocationExchangeRate = planCurrency === paymentCurrency
+      ? new Decimal(1)
+      : await ExchangeRatesService.snapshotFor(Currency.LBP, effectiveAt, tx);
+    const convertedPayment = convertPaymentAllocation({
+      paymentAmount,
+      paymentCurrency,
+      obligationCurrency: planCurrency,
+      exchangeRate: allocationExchangeRate,
+    });
+
+    if (idempotencyKey) {
+      const existingPayment = await InstallmentPlansRepository.findPaymentByIdempotencyKey(tx, idempotencyKey);
+      if (existingPayment) {
+        await assertRecordInScope('payment', existingPayment.id, scope, tx);
+        const planInstallmentIds = new Set(plan.installments.map((installment) => installment.id));
+        const belongsToPlan = existingPayment.allocations.every(
+          (allocation) =>
+            allocation.debtId === null &&
+            allocation.installmentId !== null &&
+            planInstallmentIds.has(allocation.installmentId)
+        );
+        const existingFingerprint = createIdempotencyFingerprint({
+          planId: belongsToPlan ? planId : null,
+          amount: moneyToApiString(existingPayment.totalAmount, existingPayment.currency ?? Currency.USD),
+          currency: existingPayment.currency ?? Currency.USD,
+          paymentDate: prismaDateToBusinessDate(existingPayment.paymentDate),
+          paymentMethod: existingPayment.paymentMethod,
+          idempotencyKey: existingPayment.idempotencyKey,
+          createdById: existingPayment.createdById,
+        });
+        const incomingFingerprint = createIdempotencyFingerprint({
+          planId,
+          amount: moneyToApiString(paymentAmount, paymentCurrency),
+          currency: paymentCurrency,
+          paymentDate,
+          paymentMethod,
+          idempotencyKey,
+          createdById: user.userId,
+        });
+
+        assertIdempotentReplay({ existingFingerprint, incomingFingerprint });
+        const refreshedPlan = await InstallmentPlansRepository.findPlanById(planId, tx);
+        if (!refreshedPlan) {
+          throw new NotFoundError('Installment plan not found');
+        }
+        return this.toPlanView(refreshedPlan);
       }
-      await assertRecordInScope('installmentPlan', planId, scope, tx);
-      const planCurrency = plan.currency ?? Currency.USD;
-      const effectiveAt = businessDateToPrisma(paymentDate);
-      const paymentExchangeRate = await ExchangeRatesService.snapshotFor(paymentCurrency, effectiveAt, tx);
-      const allocationExchangeRate = planCurrency === paymentCurrency
-        ? new Decimal(1)
-        : await ExchangeRatesService.snapshotFor(Currency.LBP, effectiveAt, tx);
-      const convertedPayment = convertPaymentAllocation({
+    }
+
+    if (plan.status === InstallmentPlanStatus.CANCELLED || plan.cancelledAt) {
+      throw new FinancialRecordCancelledError('Cannot record payment against a cancelled installment plan');
+    }
+
+    const calculatedStatus = this.calculatePlanStatus(plan);
+    if (calculatedStatus === InstallmentPlanStatus.COMPLETED) {
+      throw new FinancialRecordAlreadyPaidError('Installment plan is already completed');
+    }
+
+    const allocationPlan = planInstallmentPaymentAllocations({
+      paymentAmount: convertedPayment.amount,
+      installments: plan.installments.map((installment) => {
+        const balance = this.calculateInstallmentBalanceForPlan(installment);
+        return {
+          id: installment.id,
+          dueDate: prismaDateToBusinessDate(installment.dueDate),
+          installmentNumber: installment.installmentNumber,
+          amountDue: installment.amountDue,
+          amountPaid: balance.totalPaid,
+          status: installment.status,
+        };
+      }),
+    });
+    const paymentSideAmounts = splitPaymentAmounts({
+      obligationAmounts: allocationPlan.map((allocation) => allocation.amount),
+      totalPaymentAmount: paymentAmount,
+      paymentCurrency,
+      obligationCurrency: planCurrency,
+      exchangeRate: allocationExchangeRate,
+    });
+
+    const payment = await InstallmentPlansRepository.createPayment(tx, {
+      customerId: plan.customerId,
+      totalAmount: paymentAmount,
+      currency: paymentCurrency,
+      exchangeRate: paymentExchangeRate,
+      baseAmount: toBaseAmount(
         paymentAmount,
         paymentCurrency,
-        obligationCurrency: planCurrency,
-        exchangeRate: allocationExchangeRate,
-      });
-
-      if (idempotencyKey) {
-        const existingPayment = await InstallmentPlansRepository.findPaymentByIdempotencyKey(tx, idempotencyKey);
-        if (existingPayment) {
-          await assertRecordInScope('payment', existingPayment.id, scope, tx);
-          const planInstallmentIds = new Set(plan.installments.map((installment) => installment.id));
-          const belongsToPlan = existingPayment.allocations.every(
-            (allocation) =>
-              allocation.debtId === null &&
-              allocation.installmentId !== null &&
-              planInstallmentIds.has(allocation.installmentId)
-          );
-          const existingFingerprint = createIdempotencyFingerprint({
-            planId: belongsToPlan ? planId : null,
-            amount: moneyToApiString(existingPayment.totalAmount, existingPayment.currency ?? Currency.USD),
-            currency: existingPayment.currency ?? Currency.USD,
-            paymentDate: prismaDateToBusinessDate(existingPayment.paymentDate),
-            paymentMethod: existingPayment.paymentMethod,
-            idempotencyKey: existingPayment.idempotencyKey,
-            createdById: existingPayment.createdById,
-          });
-          const incomingFingerprint = createIdempotencyFingerprint({
-            planId,
-            amount: moneyToApiString(paymentAmount, paymentCurrency),
-            currency: paymentCurrency,
-            paymentDate,
-            paymentMethod,
-            idempotencyKey,
-            createdById: user.userId,
-          });
-
-          assertIdempotentReplay({ existingFingerprint, incomingFingerprint });
-          const refreshedPlan = await InstallmentPlansRepository.findPlanById(planId, tx);
-          if (!refreshedPlan) {
-            throw new NotFoundError('Installment plan not found');
-          }
-          return this.toPlanView(refreshedPlan);
-        }
-      }
-
-      if (plan.status === InstallmentPlanStatus.CANCELLED || plan.cancelledAt) {
-        throw new FinancialRecordCancelledError('Cannot record payment against a cancelled installment plan');
-      }
-
-      const calculatedStatus = this.calculatePlanStatus(plan);
-      if (calculatedStatus === InstallmentPlanStatus.COMPLETED) {
-        throw new FinancialRecordAlreadyPaidError('Installment plan is already completed');
-      }
-
-      const allocationPlan = planInstallmentPaymentAllocations({
-        paymentAmount: convertedPayment.amount,
-        installments: plan.installments.map((installment) => {
-          const balance = this.calculateInstallmentBalanceForPlan(installment);
-          return {
-            id: installment.id,
-            dueDate: prismaDateToBusinessDate(installment.dueDate),
-            installmentNumber: installment.installmentNumber,
-            amountDue: installment.amountDue,
-            amountPaid: balance.totalPaid,
-            status: installment.status,
-          };
-        }),
-      });
-      const paymentSideAmounts = splitPaymentAmounts({
-        obligationAmounts: allocationPlan.map((allocation) => allocation.amount),
-        totalPaymentAmount: paymentAmount,
-        paymentCurrency,
-        obligationCurrency: planCurrency,
-        exchangeRate: allocationExchangeRate,
-      });
-
-      const payment = await InstallmentPlansRepository.createPayment(tx, {
-        customerId: plan.customerId,
-        totalAmount: paymentAmount,
-        currency: paymentCurrency,
-        exchangeRate: paymentExchangeRate,
-        baseAmount: toBaseAmount(
-          paymentAmount,
-          paymentCurrency,
-          paymentExchangeRate,
-          Decimal.ROUND_HALF_UP
-        ),
-        paymentDate: businessDateToPrisma(paymentDate),
-        paymentMethod,
-        reference: input.reference ?? null,
-        notes: input.notes ?? null,
-        idempotencyKey,
-        createdById: user.userId,
-      });
-
-      await InstallmentPlansRepository.createPaymentAllocations(
-        tx,
-        allocationPlan.map((allocation, index) => ({
-          paymentId: payment.id,
-          installmentId: allocation.installmentId,
-          amount: allocation.amount,
-          paymentAmount: paymentSideAmounts[index],
-          exchangeRate: allocationExchangeRate,
-        }))
-      );
-
-      const refreshedPlan = await InstallmentPlansRepository.findPlanById(planId, tx);
-      if (!refreshedPlan) {
-        throw new NotFoundError('Installment plan not found');
-      }
-
-      const businessDate = todayInBusinessTimezone();
-      for (const installment of refreshedPlan.installments) {
-        if (installment.status === InstallmentStatus.CANCELLED) continue;
-
-        const balance = this.calculateInstallmentBalanceForPlan(installment);
-        const status = determineInstallmentStatus({
-          isCancelled: false,
-          dueDate: prismaDateToBusinessDate(installment.dueDate),
-          businessDate,
-          balance,
-        });
-
-        await InstallmentPlansRepository.updateInstallmentStatus(tx, installment.id, {
-          status,
-          paidDate:
-            status === InstallmentStatus.PAID
-              ? installment.paidDate ?? businessDateToPrisma(paymentDate)
-              : null,
-        });
-      }
-
-      const statusRefreshedPlan = await InstallmentPlansRepository.findPlanById(planId, tx);
-      if (!statusRefreshedPlan) {
-        throw new NotFoundError('Installment plan not found');
-      }
-      const planStatus = this.calculatePlanStatus(statusRefreshedPlan);
-      const updatedPlan = await InstallmentPlansRepository.updatePlanStatus(tx, planId, planStatus);
-      return this.toPlanView(updatedPlan);
+        paymentExchangeRate,
+        Decimal.ROUND_HALF_UP
+      ),
+      paymentDate: businessDateToPrisma(paymentDate),
+      paymentMethod,
+      reference: input.reference ?? null,
+      notes: input.notes ?? null,
+      idempotencyKey,
+      createdById: user.userId,
     });
+
+    await InstallmentPlansRepository.createPaymentAllocations(
+      tx,
+      allocationPlan.map((allocation, index) => ({
+        paymentId: payment.id,
+        installmentId: allocation.installmentId,
+        amount: allocation.amount,
+        paymentAmount: paymentSideAmounts[index],
+        exchangeRate: allocationExchangeRate,
+      }))
+    );
+
+    const refreshedPlan = await InstallmentPlansRepository.findPlanById(planId, tx);
+    if (!refreshedPlan) {
+      throw new NotFoundError('Installment plan not found');
+    }
+
+    const businessDate = todayInBusinessTimezone();
+    for (const installment of refreshedPlan.installments) {
+      if (installment.status === InstallmentStatus.CANCELLED) continue;
+
+      const balance = this.calculateInstallmentBalanceForPlan(installment);
+      const status = determineInstallmentStatus({
+        isCancelled: false,
+        dueDate: prismaDateToBusinessDate(installment.dueDate),
+        businessDate,
+        balance,
+      });
+
+      await InstallmentPlansRepository.updateInstallmentStatus(tx, installment.id, {
+        status,
+        paidDate:
+          status === InstallmentStatus.PAID
+            ? installment.paidDate ?? businessDateToPrisma(paymentDate)
+            : null,
+      });
+    }
+
+    const statusRefreshedPlan = await InstallmentPlansRepository.findPlanById(planId, tx);
+    if (!statusRefreshedPlan) {
+      throw new NotFoundError('Installment plan not found');
+    }
+    const planStatus = this.calculatePlanStatus(statusRefreshedPlan);
+    const updatedPlan = await InstallmentPlansRepository.updatePlanStatus(tx, planId, planStatus);
+    return this.toPlanView(updatedPlan);
   }
 
   static async cancelPlan(

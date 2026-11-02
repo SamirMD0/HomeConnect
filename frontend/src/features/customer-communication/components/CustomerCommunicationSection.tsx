@@ -1,7 +1,7 @@
 import React from 'react';
 import { ChevronDown, ChevronUp, Copy, MessageCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { businessLabels } from '../../../shared/labels/business-labels';
+import { businessLabels, englishLabel } from '../../../shared/labels/business-labels';
 import { formatCustomerPhone } from '../../customers/utils/format-customer-phone';
 import { MessageType } from '../types/communication.types';
 import { useWhatsAppMessage } from '../hooks/useWhatsAppMessage';
@@ -39,7 +39,7 @@ export const CustomerCommunicationSection: React.FC<CustomerCommunicationSection
           </div>
           <div>
             <h2 id="customer-communication-title" className="font-semibold text-slate-900">
-              {businessLabels.communication.section}
+              {englishLabel(businessLabels.communication.section)}
             </h2>
             <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-600">
               <span className="user-text" dir="auto">
@@ -48,10 +48,10 @@ export const CustomerCommunicationSection: React.FC<CustomerCommunicationSection
               <span dir="ltr">{formatCustomerPhone(customer.phone)}</span>
               <button
                 type="button"
-                aria-label={businessLabels.customer.copyPhone}
+                aria-label={englishLabel(businessLabels.customer.copyPhone)}
                 onClick={() => {
                   void navigator.clipboard?.writeText(customer.phone);
-                  toast.success('Phone copied / تم نسخ الهاتف');
+                  toast.success('Phone copied');
                 }}
                 className="rounded-md bg-emerald-50 p-1 text-emerald-600 transition-colors hover:bg-emerald-600 hover:text-white"
               >
@@ -59,7 +59,7 @@ export const CustomerCommunicationSection: React.FC<CustomerCommunicationSection
               </button>
             </p>
             <p className="mt-0.5 text-xs text-slate-500">
-              {businessLabels.communication.subtitle}
+              {englishLabel(businessLabels.communication.subtitle)}
             </p>
           </div>
         </div>
@@ -71,7 +71,7 @@ export const CustomerCommunicationSection: React.FC<CustomerCommunicationSection
           aria-controls="customer-communication-body"
           className="inline-flex items-center gap-2 self-start rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
         >
-          {isExpanded ? 'Hide / إخفاء' : 'Open / فتح'}
+          {isExpanded ? 'Hide' : 'Open'}
           {isExpanded ? (
             <ChevronUp className="h-4 w-4" aria-hidden="true" />
           ) : (

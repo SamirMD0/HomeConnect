@@ -3,7 +3,8 @@ import { ReceiptText } from 'lucide-react';
 import { RecentFinancialPayment } from '../types/customer-financial.types';
 import { formatBusinessDate, formatDateTime, formatMoney } from '../utils/financial-format';
 import { allocationTargetLabels, paymentMethodLabels } from '../utils/financial-labels';
-import { FinancialEmptyState } from './FinancialEmptyState';
+import { FinancialEmptyState } from './FinancialEmptyState';
+import { englishLabel } from '../../../shared/labels/business-labels';
 
 interface RecentPaymentsListProps {
   payments: RecentFinancialPayment[];
@@ -46,7 +47,7 @@ export const RecentPaymentsList: React.FC<RecentPaymentsListProps> = ({
                   )}
                 </div>
                 <p className="mt-1 text-sm text-slate-500">
-                  {formatBusinessDate(payment.paymentDate)} · {paymentMethodLabels[payment.paymentMethod]} · Created by {payment.createdBy.name}
+                  {formatBusinessDate(payment.paymentDate)} · {englishLabel(paymentMethodLabels[payment.paymentMethod])} · Created by {payment.createdBy.name}
                 </p>
                 <p className="mt-1 text-xs text-slate-500">{formatDateTime(payment.createdAt)}</p>
                 {payment.reference && <p className="user-text mt-2 text-sm text-slate-600" dir="auto">Reference: {payment.reference}</p>}
@@ -58,8 +59,7 @@ export const RecentPaymentsList: React.FC<RecentPaymentsListProps> = ({
                   href={`#/payments/${payment.id}/receipt`}
                   className="inline-flex items-center gap-2 rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
                 >
-                  <ReceiptText className="h-4 w-4" /> Receipt / إيصال
-                </a>
+                  <ReceiptText className="h-4 w-4" /> Receipt</a>
                 {canMutate && !payment.sourceSalesOrderId && !payment.voidedAt && <>
                   {onReallocatePayment && isInstallmentPayment(payment) && (
                     <button
@@ -95,7 +95,7 @@ export const RecentPaymentsList: React.FC<RecentPaymentsListProps> = ({
                   >
                     <div>
                       <span className="font-medium text-slate-800">
-                        {allocationTargetLabels[allocation.targetType]}
+                        {englishLabel(allocationTargetLabels[allocation.targetType])}
                       </span>
                       <span className="user-text text-slate-500" dir="auto"> · {allocation.description || 'No description'}</span>
                     </div>

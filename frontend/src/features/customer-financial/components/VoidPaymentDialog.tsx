@@ -10,7 +10,8 @@ import {
 import { normalizeFinancialError } from '../utils/financial-form-errors';
 import { formatBusinessDate, formatMoney } from '../utils/financial-format';
 import { paymentMethodLabels } from '../utils/financial-labels';
-import { inputClass, SubmitButton, TextField } from './CreateDebtForm';
+import { inputClass, SubmitButton, TextField } from './CreateDebtForm';
+import { englishLabel } from '../../../shared/labels/business-labels';
 
 interface VoidPaymentDialogProps {
   customerId: string;
@@ -70,7 +71,7 @@ export const VoidPaymentDialog: React.FC<VoidPaymentDialogProps> = ({
         <p className="font-semibold">This will void the payment and remove its allocations from balances.</p>
         <p className="user-text mt-1" dir="auto">
           {formatMoney(payment.totalAmount)} · {formatBusinessDate(payment.paymentDate)} ·{' '}
-          {paymentMethodLabels[payment.paymentMethod]}
+          {englishLabel(paymentMethodLabels[payment.paymentMethod])}
           {payment.reference ? ` · ${payment.reference}` : ''}
         </p>
       </div>

@@ -26,7 +26,7 @@ function renderWithQueryClient(node: ReactNode): string {
 }
 
 describe('business workflow Arabic labels', () => {
-  it('renders bilingual debt and installment-plan form labels', () => {
+  it('renders English debt and installment-plan form labels', () => {
     const debtHtml = renderWithQueryClient(
       <CreateDebtForm customer={customer} onBack={() => undefined} onSuccess={() => undefined} />
     );
@@ -34,14 +34,14 @@ describe('business workflow Arabic labels', () => {
       <CreateInstallmentPlanForm customer={customer} onBack={() => undefined} onSuccess={() => undefined} />
     );
 
-    expect(debtHtml).toContain('Amount / المبلغ');
-    expect(debtHtml).toContain('Due Date / تاريخ الاستحقاق');
-    expect(debtHtml).toContain('Create Debt / إضافة دين');
-    expect(planHtml).toContain('Number of Installments / عدد الأقساط');
-    expect(planHtml).toContain('Create Installment Plan / إنشاء خطة تقسيط');
+    expect(debtHtml).toContain('Amount');
+    expect(debtHtml).toContain('Due Date');
+    expect(debtHtml).toContain('Create Debt');
+    expect(planHtml).toContain('Number of Installments');
+    expect(planHtml).toContain('Create Installment Plan');
   });
 
-  it('renders bilingual debt and installment payment labels', () => {
+  it('renders English debt and installment payment labels', () => {
     const debtHtml = renderWithQueryClient(
       <RecordDebtPaymentDialog
         customerId="customer-1"
@@ -74,9 +74,9 @@ describe('business workflow Arabic labels', () => {
     );
 
     for (const html of [debtHtml, planHtml]) {
-      expect(html).toContain('Payment Date / تاريخ الدفعة');
-      expect(html).toContain('Payment Method / طريقة الدفع');
-      expect(html).toContain('Record Payment / تسجيل دفعة');
+      expect(html).toContain('Payment Date');
+      expect(html).toContain('Payment Method');
+      expect(html).toContain('Record Payment');
       expect(html).toContain('dir="auto"');
     }
   });

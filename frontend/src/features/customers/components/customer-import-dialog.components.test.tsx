@@ -7,7 +7,9 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   CustomerImportSummary,
   CustomerImportWizard,
+  balanceChangeText,
   importNeedsResolution,
+  rowsChangedFirst,
   customerImportSteps,
 } from './CustomerCsvImportDialog';
 import type { CustomerImportPreview } from '../api/customer-import.api';
@@ -20,9 +22,24 @@ const preview: CustomerImportPreview = {
   status: 'DRAFT',
   headers: ['Name', 'Phone'],
   columnMapping: { name: 0, phone: 1 },
+  branches: [
+    { id: 'a', code: 'A', name: 'فرع بيروت' },
+    { id: 'b', code: 'B', name: 'Branch B' },
+  ],
   previousCommittedImport: null,
   summary: { total: 1, ready: 1, conflicts: 0, invalid: 0 },
-  planned: { created: 1, updated: 0, skipped: 0, openingDebts: 1, openingDebtTotalUsd: '10.00' },
+  planned: {
+    created: 1,
+    updated: 0,
+    skipped: 0,
+    openingDebts: 1,
+    openingDebtTotalUsd: '10.00',
+    balanceIncreases: 0,
+    balanceIncreaseTotalUsd: '0.00',
+    balancePayments: 0,
+    balancePaymentTotalUsd: '0.00',
+    dueDateRequired: true,
+  },
   rows: [
     {
       rowNumber: 2,
@@ -31,6 +48,9 @@ const preview: CustomerImportPreview = {
       phoneKey: '03123456',
       openingBalance: '10',
       currency: 'USD',
+      branchId: 'a',
+      branchName: 'فرع بيروت',
+      balance: { kind: 'NEW', current: '0.00', file: '10.00', difference: '10.00' },
       status: 'READY',
       issues: [],
       conflicts: [],
@@ -57,6 +77,7 @@ function render(
       mapping={preview.columnMapping}
       result={{ ...preview.planned, reportCsv: 'Row,Reason' }}
       password=""
+      dueDate=""
       busy={false}
       error=""
       hasFile
@@ -65,6 +86,8 @@ function render(
       onMapping={vi.fn()}
       onDecision={vi.fn()}
       onPassword={vi.fn()}
+      onDueDate={vi.fn()}
+      onRowBranches={vi.fn()}
       onNext={vi.fn()}
       onBack={vi.fn()}
       onRefresh={vi.fn()}
@@ -96,14 +119,14 @@ describe('customer CSV import dialog', () => {
       );
     expect(session(true)).toMatch(/<button[^>]*disabled=""[^>]*>Continue/);
     expect(session(false)).not.toMatch(/<button[^>]*disabled=""[^>]*>Continue/);
-    expect(session(false)).toContain('Importing into:');
+    expect(session(false)).toContain('Default branch:');
   });
 
   it.each(customerImportSteps.map((label, index) => [label, index] as const))(
     'renders step %s with its destination banner',
     (_label, step) => {
       const html = render(step);
-      expect(html).toContain('Importing into:');
+      expect(html).toContain('Default branch:');
       expect(html).toContain('فرع بيروت');
       expect(html).toContain('dir="auto"');
       expect(html).toContain('aria-current="step"');
@@ -124,16 +147,90 @@ describe('customer CSV import dialog', () => {
     expect(html).toContain('type="password"');
     expect(html).toContain('$10.00');
     expect(html).toMatch(/<button[^>]*disabled=""[^>]*>Commit import/);
-    expect(render(5, { password: 'synthetic-password' })).not.toMatch(
+    expect(render(5, { password: 'synthetic-password', dueDate: '2027-01-15' })).not.toMatch(
       /<button[^>]*disabled=""[^>]*>Commit import/
     );
     const noDebt = {
       ...preview,
-      planned: { ...preview.planned, openingDebts: 0, openingDebtTotalUsd: '0.00' },
+      planned: {
+        ...preview.planned,
+        openingDebts: 0,
+        openingDebtTotalUsd: '0.00',
+        dueDateRequired: false,
+      },
     };
     expect(render(5, { preview: noDebt })).not.toContain('type="password"');
+    expect(render(5, { preview: noDebt })).not.toContain('Due date for new debts');
   });
-  it('prevents unresolved duplicates and already-imported opening amounts from proceeding', () => {
+  it('requires a due date before committing new debts, and a password for any money change', () => {
+    expect(render(5)).toContain('Due date for new debts');
+    expect(render(5, { password: 'synthetic-password' })).toMatch(
+      /<button[^>]*disabled=""[^>]*>Commit import/
+    );
+    const paymentsOnly = {
+      ...preview,
+      planned: {
+        ...preview.planned,
+        openingDebts: 0,
+        balancePayments: 1,
+        dueDateRequired: false,
+      },
+    };
+    const html = render(5, { preview: paymentsOnly });
+    expect(html).toContain('type="password"');
+    expect(html).not.toContain('Due date for new debts');
+  });
+  it('states each balance change plainly and lists changed rows first', () => {
+    expect(
+      balanceChangeText(
+        { kind: 'DECREASE', current: '200.00', file: '100.00', difference: '-100.00' },
+        'USD'
+      )
+    ).toBe('Owes $200.00 now, file says $100.00, change −$100.00');
+    expect(
+      balanceChangeText(
+        { kind: 'INCREASE', current: '200.00', file: '260.00', difference: '60.00' },
+        'USD'
+      )
+    ).toBe('Owes $200.00 now, file says $260.00, change +$60.00');
+    expect(
+      balanceChangeText({ kind: 'NONE', current: '1.00', file: '1.00', difference: '0.00' }, 'USD')
+    ).toBeNull();
+    const same = { kind: 'NONE', current: '1.00', file: '1.00', difference: '0.00' } as const;
+    const lower = { kind: 'DECREASE', current: '2.00', file: '1.00', difference: '-1.00' } as const;
+    expect(
+      rowsChangedFirst([
+        { rowNumber: 2, balance: same },
+        { rowNumber: 3, balance: lower },
+        { rowNumber: 4, balance: same },
+      ]).map((row) => row.rowNumber)
+    ).toEqual([3, 2, 4]);
+  });
+  it('offers a branch per row and for all rows, and shows the balance change in the table', () => {
+    const row = {
+      ...preview.rows[0],
+      balance: {
+        kind: 'DECREASE' as const,
+        current: '200.00',
+        file: '100.00',
+        difference: '-100.00',
+      },
+      matches: [{ id: 'customer', name: 'علي' }],
+      decision: { rowNumber: 2, action: 'UPDATE' as const, targetCustomerId: 'customer' },
+    };
+    const html = render(4, { preview: { ...preview, rows: [row] } });
+    expect(html).toContain('Branch for row 2');
+    expect(html).toContain('Set all rows to');
+    expect(html).toContain('Branch B');
+    expect(html).toContain('Owes $200.00 now');
+    expect(html).toContain('Apply this change');
+  });
+  it('shows the branch as text when there is only one to choose', () => {
+    const html = render(4, { preview: { ...preview, branches: [preview.branches[0]] } });
+    expect(html).not.toContain('Branch for row 2');
+    expect(html).not.toContain('Set all rows to');
+  });
+  it('prevents unresolved duplicates and undecided branches from proceeding', () => {
     expect(importNeedsResolution(preview)).toBe(false);
     expect(
       importNeedsResolution({
@@ -141,18 +238,29 @@ describe('customer CSV import dialog', () => {
         rows: [preview.rows[0], { ...preview.rows[0], rowNumber: 3 }],
       })
     ).toBe(true);
-    const update = {
-      ...preview.rows[0],
-      matches: [{ id: 'customer', name: 'علي', hasImportedOpeningDebt: true }],
-      decision: { rowNumber: 2, action: 'UPDATE' as const, targetCustomerId: 'customer' },
-    };
-    expect(importNeedsResolution({ ...preview, rows: [update] })).toBe(true);
     expect(
       importNeedsResolution({
         ...preview,
-        rows: [{ ...update, decision: { ...update.decision, skipOpeningBalance: true } }],
+        rows: [preview.rows[0], { ...preview.rows[0], rowNumber: 3, branchId: 'b' }],
       })
     ).toBe(false);
+    const update = {
+      ...preview.rows[0],
+      matches: [{ id: 'customer', name: 'علي' }],
+      decision: { rowNumber: 2, action: 'UPDATE' as const, targetCustomerId: 'customer' },
+    };
+    expect(importNeedsResolution({ ...preview, rows: [update] })).toBe(false);
+    expect(
+      importNeedsResolution({
+        ...preview,
+        rows: [
+          {
+            ...preview.rows[0],
+            conflicts: [{ kind: 'BRANCH_AMBIGUOUS', message: 'Choose', blocking: true }],
+          },
+        ],
+      })
+    ).toBe(true);
   });
   it('shows the repeat-import warning, contact-field decisions and downloadable results', () => {
     expect(
@@ -165,7 +273,7 @@ describe('customer CSV import dialog', () => {
     ).toContain('already imported into this branch');
     expect(render(4)).toContain('Action for row 2');
     const html = render(6);
-    expect(html).toContain('download="customer-import-skipped.csv"');
+    expect(html).toContain('download="customer-import-report.csv"');
     expect(html).toContain('data:text/csv');
     expect(html).toContain('$10.00');
     expect(
@@ -177,6 +285,10 @@ describe('customer CSV import dialog', () => {
             skipped: 4,
             openingDebts: 1,
             openingDebtTotalUsd: '19.55',
+            balanceIncreases: 0,
+            balanceIncreaseTotalUsd: '0.00',
+            balancePayments: 0,
+            balancePaymentTotalUsd: '0.00',
           }}
         />
       )

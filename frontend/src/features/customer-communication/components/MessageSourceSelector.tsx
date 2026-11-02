@@ -1,6 +1,6 @@
 import React from 'react';
 import { Info } from 'lucide-react';
-import { businessLabels } from '../../../shared/labels/business-labels';
+import { businessLabels, englishLabel } from '../../../shared/labels/business-labels';
 import {
   DebtSummaryItem,
   InstallmentPlanSummaryItem,
@@ -18,10 +18,10 @@ interface MessageSourceSelectorProps {
 }
 
 const optionLabels: Record<MessageSourceKind, string> = {
-  TOTAL: businessLabels.communication.totalOutstanding,
-  DEBT: businessLabels.communication.specificDebt,
-  INSTALLMENT: businessLabels.communication.specificInstallment,
-  MANUAL: businessLabels.communication.manualAmount,
+  TOTAL: englishLabel(businessLabels.communication.totalOutstanding),
+  DEBT: englishLabel(businessLabels.communication.specificDebt),
+  INSTALLMENT: englishLabel(businessLabels.communication.specificInstallment),
+  MANUAL: englishLabel(businessLabels.communication.manualAmount),
 };
 
 export const MessageSourceSelector: React.FC<MessageSourceSelectorProps> = ({
@@ -49,7 +49,7 @@ export const MessageSourceSelector: React.FC<MessageSourceSelectorProps> = ({
   return (
     <fieldset className="rounded-xl border border-slate-200 p-3">
       <legend className="px-1 text-sm font-medium text-slate-700">
-        {businessLabels.communication.dataSource}
+        {englishLabel(businessLabels.communication.dataSource)}
       </legend>
 
       <div className="space-y-3">
@@ -61,13 +61,13 @@ export const MessageSourceSelector: React.FC<MessageSourceSelectorProps> = ({
         <div className="flex flex-wrap items-center gap-3">
           {radio('DEBT', debts[0]?.id ?? null)}
           <select
-            aria-label={businessLabels.communication.specificDebt}
+            aria-label={englishLabel(businessLabels.communication.specificDebt)}
             value={source.kind === 'DEBT' ? source.id ?? '' : ''}
             disabled={source.kind !== 'DEBT' || debts.length === 0}
             onChange={(event) => onChange({ kind: 'DEBT', id: event.target.value })}
             className="min-w-0 flex-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm disabled:bg-slate-50 disabled:text-slate-400"
           >
-            {debts.length === 0 && <option value="">No debts / لا يوجد ديون</option>}
+            {debts.length === 0 && <option value="">No debts</option>}
             {debts.map((debt) => (
               <option key={debt.id} value={debt.id}>
                 {debt.description} — {formatMoney(debt.remainingBalance)}
@@ -79,13 +79,13 @@ export const MessageSourceSelector: React.FC<MessageSourceSelectorProps> = ({
         <div className="flex flex-wrap items-center gap-3">
           {radio('INSTALLMENT', plans[0]?.id ?? null)}
           <select
-            aria-label={businessLabels.communication.specificInstallment}
+            aria-label={englishLabel(businessLabels.communication.specificInstallment)}
             value={source.kind === 'INSTALLMENT' ? source.id ?? '' : ''}
             disabled={source.kind !== 'INSTALLMENT' || plans.length === 0}
             onChange={(event) => onChange({ kind: 'INSTALLMENT', id: event.target.value })}
             className="min-w-0 flex-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm disabled:bg-slate-50 disabled:text-slate-400"
           >
-            {plans.length === 0 && <option value="">No plans / لا يوجد خطط</option>}
+            {plans.length === 0 && <option value="">No plans</option>}
             {plans.map((plan) => (
               <option key={plan.id} value={plan.id}>
                 {plan.description} — {formatMoney(plan.remainingBalance)}

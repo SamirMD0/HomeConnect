@@ -683,9 +683,9 @@ describe('customer financial profile components', () => {
     expect(html).toContain('Single debt');
     expect(html).toContain('Installment Plan');
     expect(html).toContain('Prepaid Purchase');
-    expect(html).toContain('دين مفرد');
-    expect(html).toContain('خطة تقسيط');
-    expect(html).toContain('شراء بالدفع المسبق');
+    expect(html).toContain('Single debt');
+    expect(html).toContain('Installment Plan');
+    expect(html).toContain('Prepaid Purchase');
     expect(html).toContain('dir="auto"');
     expect(html).not.toContain('customerName');
   });

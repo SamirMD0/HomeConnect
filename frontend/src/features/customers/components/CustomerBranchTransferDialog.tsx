@@ -8,14 +8,14 @@ import { inputClass, SubmitButton, TextField } from '../../customer-financial/co
 import { customersApi, type CustomerBranchTransferCounts } from '../api/customers.api';
 
 const COUNT_LABELS: Record<keyof CustomerBranchTransferCounts, string> = {
-  sales_orders: 'Sales orders / طلبات البيع',
-  sales_returns: 'Returns / المرتجعات',
-  cash_refunds: 'Cash refunds / المبالغ المستردة',
-  customer_credits: 'Store credits / الرصيد',
-  payments: 'Payments / الدفعات',
-  debts: 'Debts / الديون',
-  installment_plans: 'Installment plans / خطط التقسيط',
-  service_jobs: 'Service jobs / طلبات الصيانة',
+  sales_orders: 'Sales orders',
+  sales_returns: 'Returns',
+  cash_refunds: 'Cash refunds',
+  customer_credits: 'Store credits',
+  payments: 'Payments',
+  debts: 'Debts',
+  installment_plans: 'Installment plans',
+  service_jobs: 'Service jobs',
 };
 
 function apiErrorMessage(error: unknown): string {
@@ -51,7 +51,7 @@ export const CustomerBranchTransferDialog: React.FC<CustomerBranchTransferDialog
     mutationFn: () => customersApi.transferBranch(customer.id, { toBranchId, accountPassword }),
     onSuccess: (result) => {
       const destination = scope?.branches.find((branch) => branch.id === result.toBranchId);
-      toast.success(`Moved to ${destination?.name ?? 'the new branch'} / تم النقل`);
+      toast.success(`Moved to ${destination?.name ?? 'the new branch'}`);
       // Keep the customer visible: a single-branch view of the old branch would no longer include them.
       if (scope?.selection?.kind === 'branch' && scope.selection.branchId !== result.toBranchId) {
         scope.select({ kind: 'branch', branchId: result.toBranchId });
@@ -74,7 +74,7 @@ export const CustomerBranchTransferDialog: React.FC<CustomerBranchTransferDialog
   const canSubmit = Boolean(toBranchId && accountPassword && preview.data && !blocker && !transfer.isPending);
 
   return (
-    <Modal isOpen={isOpen} onClose={() => !transfer.isPending && close()} title="Change branch / تغيير الفرع">
+    <Modal isOpen={isOpen} onClose={() => !transfer.isPending && close()} title="Change branch">
       <form
         className="space-y-4"
         onSubmit={(event) => {
@@ -88,7 +88,7 @@ export const CustomerBranchTransferDialog: React.FC<CustomerBranchTransferDialog
           their history. Balances do not change.
         </p>
 
-        <TextField label="Destination branch / الفرع الجديد">
+        <TextField label="Destination branch">
           <select
             value={toBranchId}
             onChange={(event) => setToBranchId(event.target.value)}
@@ -138,7 +138,7 @@ export const CustomerBranchTransferDialog: React.FC<CustomerBranchTransferDialog
 
         {blocker && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{blocker.message}</p>}
 
-        <TextField label="Account password / كلمة المرور">
+        <TextField label="Account password">
           <input
             type="password"
             autoComplete="current-password"
@@ -152,10 +152,9 @@ export const CustomerBranchTransferDialog: React.FC<CustomerBranchTransferDialog
 
         <div className="flex items-center justify-end gap-2">
           <button type="button" onClick={close} disabled={transfer.isPending} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
-            Cancel / إلغاء
-          </button>
+            Cancel</button>
           <span className={canSubmit ? '' : 'pointer-events-none opacity-50'}>
-            <SubmitButton isPending={transfer.isPending} label="Move customer / نقل" pendingLabel="Moving… / جارٍ النقل" />
+            <SubmitButton isPending={transfer.isPending} label="Move customer" pendingLabel="Moving…" />
           </span>
         </div>
         <p className="flex items-center gap-1 text-xs text-slate-500">

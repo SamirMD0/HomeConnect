@@ -96,29 +96,29 @@ beforeEach(() => {
 describe('ScannerQuickOrderDialog', () => {
   it('renders the scanned product identity, stock status, and selling price', () => {
     const html = renderDialog();
-    expect(html).toContain('Scanner Quick Order / طلب سريع من السكانر');
+    expect(html).toContain('Scanner Quick Order');
     expect(html).toContain('Coffee grinder');
     expect(html).toContain('CG-8 · Home');
     expect(html).toContain('HC-000001');
     expect(html).toContain('1234567890123');
-    expect(html).toContain('In stock / متوفر');
+    expect(html).toContain('In stock');
     expect(html).toContain('$35.00');
   });
 
   it('renders one line, three payment choices, the customer picker, notes, totals, and submit', () => {
     const html = renderDialog();
     for (const text of [
-      'Quantity / الكمية',
-      'Unit price / سعر الوحدة',
-      'Paid in full / مدفوع بالكامل',
-      'Partial / دفعة جزئية',
-      'Debt / دين',
-      'Search customer / البحث عن زبون',
-      'Quick create / إضافة سريعة',
-      'Order note (optional) / ملاحظة الطلب (اختياري)',
-      'Total / الإجمالي',
-      'Remaining / المتبقي',
-      'Create Sales Order / إنشاء طلب بيع',
+      'Quantity',
+      'Unit price',
+      'Paid in full',
+      'Partial',
+      'Debt',
+      'Search customer',
+      'Quick create',
+      'Order note (optional)',
+      'Total',
+      'Remaining',
+      'Create Sales Order',
     ]) expect(html).toContain(text);
   });
 
@@ -140,7 +140,7 @@ describe('ScannerQuickOrderDialog', () => {
     productState.data = { ...baseProduct, isActive: false };
     const archived = renderDialog();
     expect(archived).toContain('Archived product');
-    expect(archived).not.toContain('Create Sales Order / إنشاء طلب بيع');
+    expect(archived).not.toContain('Create Sales Order');
 
     productState.data = undefined;
     productState.isLoading = true;
@@ -149,7 +149,7 @@ describe('ScannerQuickOrderDialog', () => {
     productState.isError = true;
     const failed = renderDialog();
     expect(failed).toContain('Unable to load product details');
-    expect(failed).toContain('Retry / إعادة المحاولة');
+    expect(failed).toContain('Retry');
   });
 
   it('passes an empty id to the product hook while closed', () => {
@@ -170,8 +170,8 @@ describe('ScannerQuickOrderDialog', () => {
       onScanNext={() => undefined}
     />);
     expect(html).toContain('SO-000123');
-    expect(html).toContain('Open order / فتح الطلب');
-    expect(html).toContain('Scan next / مسح التالي');
+    expect(html).toContain('Open order');
+    expect(html).toContain('Scan next');
   });
 
   it('issues no write on render and never calls a stock mutation URL', () => {

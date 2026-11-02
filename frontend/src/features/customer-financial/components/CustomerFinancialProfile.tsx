@@ -32,7 +32,7 @@ import { RecordDebtPaymentDialog } from './RecordDebtPaymentDialog';
 import { RecordPlanPaymentDialog } from './RecordPlanPaymentDialog';
 import { VoidPaymentDialog } from './VoidPaymentDialog';
 import { CustomerPrepaidPanel } from '../../prepaid/components/CustomerPrepaidPanel';
-import { businessLabels } from '../../../shared/labels/business-labels';
+import { businessLabels, englishLabel } from '../../../shared/labels/business-labels';
 import { useCustomerActivity } from '../../customers/hooks/useCustomers';
 import { CustomerActivityTimeline } from '../../../pages/customers/components/CustomerActivityTimeline';
 import { CustomerAttentionPanel } from '../../../pages/customers/components/CustomerAttentionPanel';
@@ -49,11 +49,11 @@ interface CustomerFinancialProfileProps {
 const tabs: Array<{ id: FinancialProfileTab; label: string }> = [
   { id: 'overview', label: 'Overview' },
   { id: 'debts', label: 'Debts' },
-  { id: 'prepaid', label: businessLabels.prepaid.navTitle },
+  { id: 'prepaid', label: englishLabel(businessLabels.prepaid.navTitle) },
   { id: 'plans', label: 'Installment Plans' },
   { id: 'payments', label: 'Payments' },
   { id: 'overdue', label: 'Overdue' },
-  { id: 'activity', label: 'Activity / النشاط' },
+  { id: 'activity', label: 'Activity' },
 ];
 
 export const CustomerFinancialProfile: React.FC<CustomerFinancialProfileProps> = ({
@@ -132,8 +132,7 @@ export const CustomerFinancialProfile: React.FC<CustomerFinancialProfileProps> =
               to={`/customers/${customerId}/statement?from=${data.businessDate.slice(0, 4)}-01-01&to=${data.businessDate}`}
               className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
             >
-              Print statement / طباعة كشف الحساب
-            </Link>
+              Print statement</Link>
           )}
           {canMutateFinancialRecords && (
             <button

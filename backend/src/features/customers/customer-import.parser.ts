@@ -18,6 +18,7 @@ export const customerImportFields = [
   'currency',
   'dueDate',
   'isActive',
+  'branch',
 ] as const;
 export type CustomerImportField = (typeof customerImportFields)[number];
 export type ColumnMapping = Partial<Record<CustomerImportField, number | null>>;
@@ -26,6 +27,8 @@ export interface CsvDocument {
   records: string[][];
   format?: 'TRIAL_BALANCE';
   snapshot?: Record<number, string>;
+  /** Branches chosen in the preview, by row number. Commit reads these, never client input. */
+  rowBranches?: Record<number, string>;
 }
 const aliases: Record<CustomerImportField, string[]> = {
   name: ['name', 'customer name', 'الاسم'],
@@ -38,6 +41,7 @@ const aliases: Record<CustomerImportField, string[]> = {
   currency: ['currency', 'curr', 'opening balance currency', 'العملة'],
   dueDate: ['due date', 'opening balance due date', 'تاريخ الاستحقاق'],
   isActive: ['active', 'نشط'],
+  branch: ['branch', 'branch code', 'branch name', 'الفرع', 'فرع'],
 };
 export function detectColumnMapping(headers: string[]): ColumnMapping {
   return Object.fromEntries(
@@ -194,6 +198,8 @@ export function mapCustomerRows(document: CsvDocument, mapping: ColumnMapping) {
       phoneKey,
       currency: currency as 'USD' | 'LBP',
       openingBalance,
+      hasBalance: cell('openingBalance') !== '',
+      branchValue: cell('branch'),
       dueDate,
       isActive: !no.includes(active),
       issues,

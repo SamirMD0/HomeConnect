@@ -9,7 +9,7 @@ import { CreateDebtFormValues, createDebtSchema } from '../schemas/financial-mut
 import { FinancialSummaryCustomer } from '../types/customer-financial.types';
 import { normalizeFinancialError } from '../utils/financial-form-errors';
 import { canonicalMoneyInput } from '../utils/money-input';
-import { businessLabels } from '../../../shared/labels/business-labels';
+import { businessLabels, englishLabel } from '../../../shared/labels/business-labels';
 
 interface CreateDebtFormProps {
   customer: FinancialSummaryCustomer;
@@ -67,8 +67,7 @@ export const CreateDebtForm: React.FC<CreateDebtFormProps> = ({ customer, onBack
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
       <button type="button" onClick={onBack} className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900">
         <ArrowLeft className="h-4 w-4" />
-        Back / رجوع
-      </button>
+        Back</button>
 
       <CustomerContext customer={customer} />
 
@@ -80,7 +79,7 @@ export const CreateDebtForm: React.FC<CreateDebtFormProps> = ({ customer, onBack
 
       <CreditLimitWarning {...credit} isAdmin={user?.role === 'ADMIN'} />
 
-      <TextField label={businessLabels.financial.amount} error={errors.amount?.message}>
+      <TextField label={englishLabel(businessLabels.financial.amount)} error={errors.amount?.message}>
         <input
           {...register('amount')}
           inputMode="decimal"
@@ -90,15 +89,15 @@ export const CreateDebtForm: React.FC<CreateDebtFormProps> = ({ customer, onBack
         />
       </TextField>
 
-      <TextField label={businessLabels.financial.description} error={errors.description?.message}>
+      <TextField label={englishLabel(businessLabels.financial.description)} error={errors.description?.message}>
         <input {...register('description')} dir="auto" className={inputClass(Boolean(errors.description))} placeholder="Refrigerator" />
       </TextField>
 
-      <TextField label={businessLabels.financial.dueDate} error={errors.dueDate?.message}>
+      <TextField label={englishLabel(businessLabels.financial.dueDate)} error={errors.dueDate?.message}>
         <input {...register('dueDate')} type="date" className={inputClass(Boolean(errors.dueDate))} />
       </TextField>
 
-      <TextField label={businessLabels.common.notes} error={errors.notes?.message}>
+      <TextField label={englishLabel(businessLabels.common.notes)} error={errors.notes?.message}>
         <textarea {...register('notes')} dir="auto" rows={3} className={inputClass(Boolean(errors.notes))} placeholder="Optional" />
       </TextField>
 
@@ -106,14 +105,14 @@ export const CreateDebtForm: React.FC<CreateDebtFormProps> = ({ customer, onBack
         Review: {description.trim() || 'No description'} for {amount || '0.00'} due {dueDate || 'not set'}.
       </div>
 
-      <SubmitButton isPending={createDebt.isPending} label="Create Debt / إضافة دين" pendingLabel="Creating debt... / جارٍ إضافة الدين..." />
+      <SubmitButton isPending={createDebt.isPending} label="Create Debt" pendingLabel="Creating debt..." />
     </form>
   );
 };
 
 export const CustomerContext: React.FC<{ customer: FinancialSummaryCustomer }> = ({ customer }) => (
   <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{businessLabels.common.customer}</p>
+    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{englishLabel(businessLabels.common.customer)}</p>
     <p className="user-text mt-1 font-semibold text-slate-900" dir="auto">{customer.name}</p>
     <p className="text-sm text-slate-600">{customer.phone}</p>
   </div>

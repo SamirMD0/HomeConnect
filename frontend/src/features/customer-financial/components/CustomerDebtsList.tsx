@@ -32,8 +32,7 @@ export const CustomerDebtsList: React.FC<CustomerDebtsListProps> = ({
   return (
     <section aria-labelledby="customer-debts-heading">
       <h2 id="customer-debts-heading" className="mb-4 text-lg font-semibold text-slate-900">
-        Debts & prepaid purchases / الديون والمشتريات المسبقة
-      </h2>
+        Debts & prepaid purchases</h2>
       <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
         <table className="min-w-full divide-y divide-slate-200 text-sm">
           <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
@@ -55,8 +54,7 @@ export const CustomerDebtsList: React.FC<CustomerDebtsListProps> = ({
                   <p className="user-text font-medium text-slate-900" dir="auto">{debt.description}</p>
                   {debt.kind === 'PREPAID_PURCHASE' && (
                     <span className="mt-1 inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-600/20">
-                      Prepaid / مدفوع مسبقاً
-                    </span>
+                      Prepaid</span>
                   )}
                   {debt.cancellation && (
                     <p className="user-text mt-1 text-xs text-slate-500" dir="auto">Cancelled: {debt.cancellation.reason || 'No reason recorded'}</p>
@@ -67,7 +65,7 @@ export const CustomerDebtsList: React.FC<CustomerDebtsListProps> = ({
                 <td className={`px-4 py-3 text-right font-semibold ${debt.kind === 'PREPAID_PURCHASE' ? 'text-red-700' : 'text-slate-900'}`}>
                   {formatMoney(debt.kind === 'PREPAID_PURCHASE' ? debt.adminDebt : debt.remainingBalance)}
                 </td>
-                <td className="px-4 py-3 text-slate-600">{debt.kind === 'PREPAID_PURCHASE' ? 'Reserved / محجوز' : formatBusinessDate(debt.dueDate)}</td>
+                <td className="px-4 py-3 text-slate-600">{debt.kind === 'PREPAID_PURCHASE' ? 'Reserved' : formatBusinessDate(debt.dueDate)}</td>
                 <td className="px-4 py-3">
                   <FinancialStatusBadge type="debt" status={debt.calculatedStatus} />
                 </td>

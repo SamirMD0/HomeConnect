@@ -10,6 +10,7 @@ export const importFields = [
   'currency',
   'dueDate',
   'isActive',
+  'branch',
 ] as const;
 export type ImportField = (typeof importFields)[number];
 export type ImportMapping = Partial<Record<ImportField, number | null>>;
@@ -18,7 +19,25 @@ export interface CustomerImportDecision {
   action: 'CREATE' | 'UPDATE' | 'SKIP';
   targetCustomerId?: string;
   updateFields?: Array<'name' | 'address' | 'notes' | 'creditLimit'>;
+  /** Make no money change on this row. */
   skipOpeningBalance?: boolean;
+}
+export interface RowBranch {
+  rowNumber: number;
+  branchId: string;
+}
+export type BalanceChangeKind =
+  | 'NEW'
+  | 'NONE'
+  | 'NO_INFO'
+  | 'INCREASE'
+  | 'DECREASE'
+  | 'CURRENCY_MISMATCH';
+export interface BalanceChange {
+  kind: BalanceChangeKind;
+  current: string;
+  file: string | null;
+  difference: string;
 }
 export interface CustomerImportResult {
   created: number;
@@ -27,6 +46,11 @@ export interface CustomerImportResult {
   invalid?: number;
   openingDebts: number;
   openingDebtTotalUsd: string;
+  balanceIncreases: number;
+  balanceIncreaseTotalUsd: string;
+  balancePayments: number;
+  balancePaymentTotalUsd: string;
+  dueDateRequired?: boolean;
   reportCsv?: string;
 }
 export interface CustomerImportPreview {
@@ -38,6 +62,7 @@ export interface CustomerImportPreview {
   headers: string[];
   format?: 'TRIAL_BALANCE';
   columnMapping: ImportMapping;
+  branches: Array<{ id: string; code: string; name: string }>;
   previousCommittedImport: { id: string; fileName: string } | null;
   summary: { total: number; ready: number; conflicts: number; invalid: number };
   planned: CustomerImportResult;
@@ -53,10 +78,14 @@ export interface CustomerImportPreview {
     creditLimit?: string | null;
     openingBalance: string;
     currency: 'USD' | 'LBP';
+    dueDate?: string | null;
+    branchId: string;
+    branchName: string;
+    balance: BalanceChange;
     status: 'READY' | 'CONFLICT' | 'INVALID';
     issues: string[];
     conflicts: Array<{ kind: string; message: string; blocking: boolean }>;
-    matches: Array<{ id: string; name: string; hasImportedOpeningDebt: boolean }>;
+    matches: Array<{ id: string; name: string }>;
     decision: CustomerImportDecision;
   }>;
   result: CustomerImportResult | null;
@@ -68,13 +97,23 @@ export const customerImportsApi = {
       .data,
   update: async (
     id: string,
-    data: { columnMapping?: ImportMapping; decisions?: CustomerImportDecision[] }
+    data: {
+      columnMapping?: ImportMapping;
+      decisions?: CustomerImportDecision[];
+      rowBranches?: RowBranch[];
+    }
   ) => (await api.patch<{ data: CustomerImportPreview }>(base + '/' + id, data)).data.data,
-  commit: async (id: string, decisions: CustomerImportDecision[], accountPassword?: string) =>
+  commit: async (
+    id: string,
+    decisions: CustomerImportDecision[],
+    accountPassword?: string,
+    dueDate?: string
+  ) =>
     (
       await api.post<{ data: CustomerImportResult }>(base + '/' + id + '/commit', {
         decisions,
         ...(accountPassword ? { accountPassword } : {}),
+        ...(dueDate ? { dueDate } : {}),
       })
     ).data.data,
 };

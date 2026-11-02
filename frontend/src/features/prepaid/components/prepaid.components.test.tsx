@@ -218,7 +218,7 @@ describe('PrepaidBillHistory', () => {
     );
 
     expect(markup).toContain('RCPT-42');
-    expect(markup).toContain('رقم الإيصال');
+    expect(markup).toContain('Receipt / Bill No.');
     expect(markup).toContain('Cash');
     expect(markup).toContain('Admin User');
   });
@@ -230,12 +230,12 @@ describe('PrepaidBillHistory', () => {
 
     expect(markup).toContain('$50.00');
     expect(markup).toContain('line-through');
-    expect(markup).toContain('ملغاة');
+    expect(markup).toContain('Voided');
   });
 
-  it('renders a bilingual empty message when no bill exists yet', () => {
+  it('renders an English empty message when no bill exists yet', () => {
     const markup = renderToStaticMarkup(<PrepaidBillHistory payments={[]} />);
-    expect(markup).toContain('لم تسجل أي فاتورة بعد');
+    expect(markup).toContain('No bills recorded yet');
   });
 });
 
@@ -300,8 +300,8 @@ describe('CustomerPrepaidHistory', () => {
     );
 
     expect(markup).toContain('-$175.00');
-    expect(markup).toContain('الرصيد المسبق');
-    expect(markup).toContain('سجل المدفوعات المسبقة');
+    expect(markup).toContain('Prepaid Balance');
+    expect(markup).toContain('Prepaid History');
   });
 
   it('offers to add another bill to an unpaid purchase only when allowed', () => {
@@ -332,7 +332,7 @@ describe('CustomerPrepaidHistory', () => {
     expect(markup).not.toContain('Record Payment');
   });
 
-  it('renders a bilingual empty state for a customer with no prepaid history', () => {
+  it('renders an English empty state for a customer with no prepaid history', () => {
     const markup = renderToStaticMarkup(
       <CustomerPrepaidHistory
         items={[]}
@@ -340,7 +340,7 @@ describe('CustomerPrepaidHistory', () => {
       />
     );
 
-    expect(markup).toContain('لا توجد مشتريات مسبقة لهذا الزبون');
+    expect(markup).toContain('No prepaid purchases for this customer');
   });
 });
 

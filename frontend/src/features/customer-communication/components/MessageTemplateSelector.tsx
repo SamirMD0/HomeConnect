@@ -1,5 +1,5 @@
 import React from 'react';
-import { businessLabels } from '../../../shared/labels/business-labels';
+import { businessLabels, englishLabel } from '../../../shared/labels/business-labels';
 import { MessageLanguage, MessageTone, MessageType } from '../types/communication.types';
 import {
   MESSAGE_TONES,
@@ -9,7 +9,7 @@ import {
 } from '../utils/message-templates';
 
 const languageOptions: Array<{ value: MessageLanguage; label: string }> = [
-  { value: 'AR', label: 'AR / عربي' },
+  { value: 'AR', label: 'AR' },
   { value: 'EN', label: 'EN' },
   { value: 'AR_EN', label: 'AR + EN' },
 ];
@@ -33,7 +33,7 @@ export const MessageTemplateSelector: React.FC<MessageTemplateSelectorProps> = (
 }) => (
   <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
     <label className="block text-sm">
-      <span className="font-medium text-slate-700">{businessLabels.communication.messageType}</span>
+      <span className="font-medium text-slate-700">{englishLabel(businessLabels.communication.messageType)}</span>
       <select
         value={type}
         onChange={(event) => onTypeChange(event.target.value as MessageType)}
@@ -48,7 +48,7 @@ export const MessageTemplateSelector: React.FC<MessageTemplateSelectorProps> = (
     </label>
 
     <div className="text-sm">
-      <span className="font-medium text-slate-700">{businessLabels.communication.language}</span>
+      <span className="font-medium text-slate-700">{englishLabel(businessLabels.communication.language)}</span>
       <div className="mt-1 flex rounded-lg border border-slate-300 p-0.5" role="group">
         {languageOptions.map((option) => (
           <button
@@ -69,7 +69,7 @@ export const MessageTemplateSelector: React.FC<MessageTemplateSelectorProps> = (
     </div>
 
     <label className="block text-sm">
-      <span className="font-medium text-slate-700">{businessLabels.communication.tone}</span>
+      <span className="font-medium text-slate-700">{englishLabel(businessLabels.communication.tone)}</span>
       <select
         value={tone}
         onChange={(event) => onToneChange(event.target.value as MessageTone)}

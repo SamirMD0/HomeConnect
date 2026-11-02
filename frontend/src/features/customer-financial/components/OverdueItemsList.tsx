@@ -3,7 +3,8 @@ import { AlertTriangle } from 'lucide-react';
 import { OverdueFinancialItem } from '../types/customer-financial.types';
 import { formatBusinessDate, formatMoney } from '../utils/financial-format';
 import { itemTypeLabels } from '../utils/financial-labels';
-import { FinancialEmptyState } from './FinancialEmptyState';
+import { FinancialEmptyState } from './FinancialEmptyState';
+import { englishLabel } from '../../../shared/labels/business-labels';
 
 interface OverdueItemsListProps {
   items: OverdueFinancialItem[];
@@ -44,7 +45,7 @@ export const OverdueItemsList: React.FC<OverdueItemsListProps> = ({ items, onOpe
           <tbody className="divide-y divide-slate-100">
             {items.map((item) => (
               <tr key={`${item.type}-${item.obligationId}`} className="align-top">
-                <td className="px-4 py-3 font-medium text-red-700">{itemTypeLabels[item.type]}</td>
+                <td className="px-4 py-3 font-medium text-red-700">{englishLabel(itemTypeLabels[item.type])}</td>
                 <td className="user-text px-4 py-3 text-slate-900" dir="auto">{item.description}</td>
                 <td className="px-4 py-3 text-slate-600">{formatBusinessDate(item.dueDate)}</td>
                 <td className="px-4 py-3 text-right font-semibold text-slate-900">

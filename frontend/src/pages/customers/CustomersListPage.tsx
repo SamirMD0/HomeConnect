@@ -14,7 +14,7 @@ import { Modal } from '../../components/ui/Modal';
 import { CustomerForm } from '../../features/customers/components/CustomerForm';
 import { formatBusinessDate } from '../../features/customer-financial/utils/financial-format';
 import { formatDaysAgo } from '../../features/receivables/utils/receivables-tier';
-import { businessLabels } from '../../shared/labels/business-labels';
+import { businessLabels, englishLabel } from '../../shared/labels/business-labels';
 import {
   BRANCH_COLUMN_LABEL,
   BranchBadge,
@@ -142,7 +142,7 @@ export const CustomersListPage: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">{businessLabels.customer.title}</h1>
+          <h1 className="text-2xl font-bold text-slate-800">{englishLabel(businessLabels.customer.title)}</h1>
           <p className="text-slate-500 mt-1">Manage your customers and their accounts.</p>
         </div>
         <div className="flex gap-2">
@@ -275,7 +275,7 @@ export const CustomersListPage: React.FC = () => {
             </div>
           ) : (
             <EmptyState
-              title={businessLabels.customer.notFound}
+              title={englishLabel(businessLabels.customer.notFound)}
               description={
                 customerSearch.debouncedQuery
                   ? `No customers matching "${customerSearch.debouncedQuery}"`
@@ -336,7 +336,7 @@ export const CustomersListPage: React.FC = () => {
       <Modal
         isOpen={isAddModalOpen}
         onClose={() => !createCustomer.isPending && setIsAddModalOpen(false)}
-        title="Add New Customer / إضافة زبون جديد"
+        title="Add New Customer"
       >
         <CustomerForm
           canManageCreditLimit={user?.role === 'ADMIN'}

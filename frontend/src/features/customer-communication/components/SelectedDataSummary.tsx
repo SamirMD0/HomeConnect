@@ -11,20 +11,20 @@ import { MessageDefaults, MessageSourceKind } from '../types/communication.types
  */
 
 const titles: Record<MessageSourceKind, string> = {
-  TOTAL: 'Total outstanding / إجمالي الرصيد',
-  DEBT: 'Selected debt / الدين المحدد',
-  INSTALLMENT: 'Selected installment / القسط المحدد',
-  MANUAL: 'Manual amount / مبلغ يدوي',
+  TOTAL: 'Total outstanding',
+  DEBT: 'Selected debt',
+  INSTALLMENT: 'Selected installment',
+  MANUAL: 'Manual amount',
 };
 
 const rows: Array<{ key: keyof MessageDefaults; label: string }> = [
-  { key: 'amount', label: 'Amount / المبلغ' },
-  { key: 'remainingAmount', label: 'Remaining / المتبقي' },
-  { key: 'dateAdded', label: 'Added / تاريخ الإضافة' },
-  { key: 'dueDate', label: 'Due / الاستحقاق' },
-  { key: 'daysLate', label: 'Days late / أيام التأخير' },
-  { key: 'lastPaymentDate', label: 'Last payment / آخر دفعة' },
-  { key: 'paymentDate', label: 'Payment date / تاريخ الدفع' },
+  { key: 'amount', label: 'Amount' },
+  { key: 'remainingAmount', label: 'Remaining' },
+  { key: 'dateAdded', label: 'Added' },
+  { key: 'dueDate', label: 'Due' },
+  { key: 'daysLate', label: 'Days late' },
+  { key: 'lastPaymentDate', label: 'Last payment' },
+  { key: 'paymentDate', label: 'Payment date' },
 ];
 
 interface SelectedDataSummaryProps {
@@ -42,7 +42,7 @@ export const SelectedDataSummary: React.FC<SelectedDataSummaryProps> = ({
 
   return (
     <section
-      aria-label="Selected data summary / ملخص البيانات المحددة"
+      aria-label="Selected data summary"
       className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3"
     >
       <h4 className="flex items-center gap-2 text-sm font-semibold text-emerald-900">
@@ -51,15 +51,13 @@ export const SelectedDataSummary: React.FC<SelectedDataSummaryProps> = ({
       </h4>
 
       {isLoading ? (
-        <p className="mt-2 text-sm text-slate-500">Loading… / جاري التحميل…</p>
+        <p className="mt-2 text-sm text-slate-500">Loading…</p>
       ) : sourceKind === 'MANUAL' ? (
         <p className="mt-2 text-sm text-slate-600">
-          Enter the values yourself below / أدخل القيم بنفسك في الأسفل
-        </p>
+          Enter the values yourself below</p>
       ) : present.length === 0 ? (
         <p className="mt-2 text-sm text-slate-600">
-          Nothing outstanding on this selection / لا يوجد مستحقات على هذا الاختيار
-        </p>
+          Nothing outstanding on this selection</p>
       ) : (
         <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1.5 sm:grid-cols-3">
           {present.map(({ key, label }) => (
@@ -74,8 +72,7 @@ export const SelectedDataSummary: React.FC<SelectedDataSummaryProps> = ({
       )}
 
       <p className="mt-2 text-xs text-slate-500">
-        Loaded automatically from this customer&apos;s record / تُحمّل تلقائياً من سجل الزبون
-      </p>
+        Loaded automatically from this customer&apos;s record</p>
     </section>
   );
 };

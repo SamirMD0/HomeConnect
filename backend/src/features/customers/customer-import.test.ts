@@ -143,7 +143,7 @@ describe('customer import decisions', () => {
   });
 });
 describe('customer import preview conflict kinds', () => {
-  it('distinguishes file duplicates, destination matches, other-branch hints, name warnings and opening-debt blocks', async () => {
+  it('distinguishes file duplicates, destination matches, other-branch hints and name warnings', async () => {
     const document = parseCustomerCsv(
       'Name,Phone,Opening balance\nAli,03 123 456,10\nAli,03123456,0\nSame Name,70111111,0\nNew Name,70222222,0'
     );
@@ -158,45 +158,39 @@ describe('customer import preview conflict kinds', () => {
     } as unknown as Parameters<typeof buildCustomerImportPreview>[0];
     const tx = {
       user: { findUniqueOrThrow: vi.fn().mockResolvedValue({ role: 'ADMIN' }) },
-      branch: { findMany: vi.fn().mockResolvedValue([{ id: 'a' }, { id: 'b' }]) },
-      customerImport: { findFirst: vi.fn().mockResolvedValue(null) },
+      branch: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: 'a', code: 'A', name: 'Branch A' },
+          { id: 'b', code: 'B', name: 'Branch B' },
+        ]),
+      },
+      customerImport: { findMany: vi.fn().mockResolvedValue([]) },
+      debt: { findMany: vi.fn().mockResolvedValue([]) },
+      installmentPlan: { findMany: vi.fn().mockResolvedValue([]) },
+      payment: { findMany: vi.fn().mockResolvedValue([]) },
+      customerImportAccount: { findMany: vi.fn().mockResolvedValue([]) },
       customer: {
-        findMany: vi.fn().mockImplementation(({ where }) =>
-          Promise.resolve(
-            where.branchId === 'a'
-              ? [
-                  {
-                    id: 'existing',
-                    name: 'Ali',
-                    phone: '03123456',
-                    isActive: true,
-                    debts: [{ id: 'old-debt' }],
-                  },
-                  {
-                    id: 'same-name',
-                    name: 'Same Name',
-                    phone: '70333333',
-                    isActive: true,
-                    debts: [],
-                  },
-                ]
-              : [{ phone: '70 222 222', branch: { id: 'b', name: 'Branch B' } }]
-          )
-        ),
+        findMany: vi.fn().mockResolvedValue([
+          { id: 'existing', branchId: 'a', name: 'Ali', phone: '03123456', isActive: true },
+          { id: 'same-name', branchId: 'a', name: 'Same Name', phone: '70333333', isActive: true },
+          { id: 'elsewhere', branchId: 'b', name: 'Elsewhere', phone: '70 222 222', isActive: true },
+        ]),
       },
     } as unknown as Prisma.TransactionClient;
-    const preview = await buildCustomerImportPreview(draft, tx);
+    const document2 = { ...document, rowBranches: { 5: 'a' } };
+    const preview = await buildCustomerImportPreview({ ...draft, rows: document2 } as typeof draft, tx);
     expect(preview.rows[0].conflicts.map((conflict) => conflict.kind)).toEqual([
       'FILE_PHONE',
       'EXISTING_PHONE',
-      'OPENING_DEBT',
     ]);
+    expect(preview.rows[0].balance.kind).toBe('NEW');
     expect(preview.rows[2]).toMatchObject({
       status: 'READY',
       conflicts: [{ kind: 'NAME_SIMILAR', blocking: false }],
     });
     expect(preview.rows[3]).toMatchObject({
       status: 'READY',
+      branchId: 'a',
       matches: [],
       decision: { action: 'CREATE' },
       conflicts: [{ kind: 'OTHER_BRANCH_PHONE', blocking: false }],

@@ -55,14 +55,39 @@ export const customerImportParamsSchema = z.object({
   importId: databaseUuidSchema('Invalid customer import ID'),
 });
 export const updateCustomerImportSchema = z
-  .object({ columnMapping: columnMappingSchema.optional(), decisions: decisionsSchema.optional() })
+  .object({
+    columnMapping: columnMappingSchema.optional(),
+    decisions: decisionsSchema.optional(),
+    rowBranches: z
+      .array(
+        z
+          .object({
+            rowNumber: z.number().int().min(2),
+            branchId: databaseUuidSchema('Invalid branch ID'),
+          })
+          .strict()
+      )
+      .min(1)
+      .max(MAX_CUSTOMER_IMPORT_ROWS)
+      .optional(),
+  })
   .strict()
   .refine(
-    (value) => value.columnMapping !== undefined || value.decisions !== undefined,
-    'Supply mapping or decisions'
+    (value) =>
+      value.columnMapping !== undefined ||
+      value.decisions !== undefined ||
+      value.rowBranches !== undefined,
+    'Supply mapping, decisions or branches'
   );
 export const commitCustomerImportSchema = z
-  .object({ decisions: decisionsSchema, accountPassword: z.string().min(1).optional() })
+  .object({
+    decisions: decisionsSchema,
+    accountPassword: z.string().min(1).optional(),
+    dueDate: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, 'Due date must use YYYY-MM-DD format')
+      .optional(),
+  })
   .strict();
 export type CustomerImportDecision = z.infer<typeof customerImportDecisionSchema>;
 export type CreateCustomerImportInput = z.infer<typeof createCustomerImportSchema>;

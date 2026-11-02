@@ -1,6 +1,6 @@
 import React from 'react';
 import { CalendarDays, HandCoins, ReceiptText } from 'lucide-react';
-import { businessLabels } from '../../../shared/labels/business-labels';
+import { businessLabels, englishLabel } from '../../../shared/labels/business-labels';
 
 export type FinancialObligationType = 'debt' | 'installment-plan' | 'prepaid-purchase';
 
@@ -26,8 +26,8 @@ export const FinancialObligationTypeStep: React.FC<FinancialObligationTypeStepPr
       }`}
     >
       <ReceiptText className="mb-3 h-5 w-5 text-emerald-600" />
-      <p className="font-semibold text-slate-900">{businessLabels.financial.singleDebt}</p>
-      <p className="mt-1 text-sm text-slate-500">One amount with an exact due date / مبلغ واحد بتاريخ استحقاق محدد.</p>
+      <p className="font-semibold text-slate-900">{englishLabel(businessLabels.financial.singleDebt)}</p>
+      <p className="mt-1 text-sm text-slate-500">One amount with an exact due date</p>
     </button>
     <button
       type="button"
@@ -41,8 +41,8 @@ export const FinancialObligationTypeStep: React.FC<FinancialObligationTypeStepPr
       }`}
     >
       <HandCoins className="mb-3 h-5 w-5 text-emerald-600" />
-      <p className="font-semibold text-slate-900">{businessLabels.financial.prepaidPurchase}</p>
-      <p className="mt-1 text-sm text-slate-500">Reserve an item and collect an initial payment / حجز سلعة وتسجيل دفعة أولى.</p>
+      <p className="font-semibold text-slate-900">{englishLabel(businessLabels.financial.prepaidPurchase)}</p>
+      <p className="mt-1 text-sm text-slate-500">Reserve an item and collect an initial payment</p>
     </button>
     <button
       type="button"
@@ -56,8 +56,8 @@ export const FinancialObligationTypeStep: React.FC<FinancialObligationTypeStepPr
       }`}
     >
       <CalendarDays className="mb-3 h-5 w-5 text-emerald-600" />
-      <p className="font-semibold text-slate-900">{businessLabels.financial.installmentPlan}</p>
-      <p className="mt-1 text-sm text-slate-500">Monthly payment schedule / جدول دفعات شهرية.</p>
+      <p className="font-semibold text-slate-900">{englishLabel(businessLabels.financial.installmentPlan)}</p>
+      <p className="mt-1 text-sm text-slate-500">Monthly payment schedule</p>
     </button>
   </div>
 );

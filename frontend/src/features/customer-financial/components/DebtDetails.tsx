@@ -46,7 +46,7 @@ export const DebtDetails: React.FC<DebtDetailsProps> = ({
       <div>
         <div className="mb-2 flex flex-wrap items-center gap-3">
           <h3 className="user-text text-lg font-semibold text-slate-900" dir="auto">{debt.description}</h3>
-          {debt.kind === 'PREPAID_PURCHASE' && <span className="inline-flex rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-600/20">Prepaid purchase / شراء بالدفع المسبق</span>}
+          {debt.kind === 'PREPAID_PURCHASE' && <span className="inline-flex rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-600/20">Prepaid purchase</span>}
           <FinancialStatusBadge type="debt" status={debt.calculatedStatus} />
         </div>
         <p className="text-sm text-slate-500">Created {formatDateTime(debt.createdAt)} by {debt.createdBy.name}</p>
@@ -95,11 +95,11 @@ export const DebtDetails: React.FC<DebtDetailsProps> = ({
         <DetailTerm label="Original amount" value={formatMoney(debt.originalAmount)} />
         <DetailTerm label="Total paid" value={formatMoney(debt.totalPaid)} />
         <DetailTerm
-          label={debt.kind === 'PREPAID_PURCHASE' ? 'Admin debt / دين على الإدارة' : 'Remaining balance'}
+          label={debt.kind === 'PREPAID_PURCHASE' ? 'Admin debt' : 'Remaining balance'}
           value={formatMoney(debt.kind === 'PREPAID_PURCHASE' ? debt.adminDebt : debt.remainingBalance)}
           tone={debt.kind === 'PREPAID_PURCHASE' ? 'liability' : 'default'}
         />
-        <DetailTerm label={debt.kind === 'PREPAID_PURCHASE' ? 'Item state' : 'Due date'} value={debt.kind === 'PREPAID_PURCHASE' ? 'Reserved / محجوز' : formatBusinessDate(debt.dueDate)} />
+        <DetailTerm label={debt.kind === 'PREPAID_PURCHASE' ? 'Item state' : 'Due date'} value={debt.kind === 'PREPAID_PURCHASE' ? 'Reserved' : formatBusinessDate(debt.dueDate)} />
       </dl>
 
       {debt.notes && (

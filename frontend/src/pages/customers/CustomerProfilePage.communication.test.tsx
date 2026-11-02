@@ -43,20 +43,20 @@ describe('customer profile — communication section placement', () => {
   it('mounts the collapsed communication section between financial actions and the tabs', () => {
     const html = renderProfile();
 
-    const financialActions = html.indexOf('Financial Actions / الإجراءات المالية');
-    const communication = html.indexOf('Customer Communication / تواصل الزبون');
+    const financialActions = html.indexOf('Financial Actions');
+    const communication = html.indexOf('Customer Communication');
 
     expect(financialActions).toBeGreaterThan(-1);
     expect(communication).toBeGreaterThan(financialActions);
     expect(html).toContain('aria-expanded="false"');
     // Collapsed: the composer is not rendered.
-    expect(html).not.toContain('Message type / نوع الرسالة');
+    expect(html).not.toContain('Message type');
   });
 
   it('offers a WhatsApp shortcut in the header that cannot open WhatsApp directly', () => {
     const html = renderProfile();
 
-    expect(html).toContain('aria-label="Prepare WhatsApp message / تحضير رسالة واتساب"');
+    expect(html).toContain('aria-label="Prepare WhatsApp message"');
     // No link, no target=_blank, no deep link anywhere on the page: the shortcut
     // only expands the section so the employee reviews the message first.
     expect(html).not.toContain('wa.me');
@@ -67,8 +67,8 @@ describe('customer profile — communication section placement', () => {
   it('keeps the existing financial profile and customer sections rendering', () => {
     const html = renderProfile();
 
-    expect(html).toContain('Customer Profile / ملف الزبون');
-    expect(html).toContain('Copy phone / نسخ الهاتف');
-    expect(html).toContain('Service Jobs / طلبات الصيانة');
+    expect(html).toContain('Customer Profile');
+    expect(html).toContain('Copy phone');
+    expect(html).toContain('Service Jobs');
   });
 });

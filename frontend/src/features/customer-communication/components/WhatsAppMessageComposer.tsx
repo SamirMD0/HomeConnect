@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { businessLabels } from '../../../shared/labels/business-labels';
+import { businessLabels, englishLabel } from '../../../shared/labels/business-labels';
 import { WhatsAppMessageActions, WhatsAppMessageState } from '../hooks/useWhatsAppMessage';
 import { CommunicationPreview } from './CommunicationPreview';
 import { MessageOverridesPanel } from './MessageOverridesPanel';
@@ -25,7 +25,7 @@ export const WhatsAppMessageComposer: React.FC<WhatsAppMessageComposerProps> = (
 
   return (
     <div className="space-y-5">
-      <section aria-label={businessLabels.communication.messageSetup} className="space-y-4">
+      <section aria-label={englishLabel(businessLabels.communication.messageSetup)} className="space-y-4">
         <MessageTemplateSelector
           type={draft.type}
           language={draft.language}
@@ -40,7 +40,7 @@ export const WhatsAppMessageComposer: React.FC<WhatsAppMessageComposerProps> = (
           debts={state.debts}
           plans={state.plans}
           totalOutstanding={
-            state.isLoadingSummary ? 'Loading… / جاري التحميل…' : state.totalOutstanding
+            state.isLoadingSummary ? 'Loading…' : state.totalOutstanding
           }
           notice={state.sourceNotice}
           onChange={actions.setSource}

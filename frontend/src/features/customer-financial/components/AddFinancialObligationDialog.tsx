@@ -7,7 +7,7 @@ import {
   FinancialObligationType,
   FinancialObligationTypeStep,
 } from './FinancialObligationTypeStep';
-import { businessLabels } from '../../../shared/labels/business-labels';
+import { businessLabels, englishLabel } from '../../../shared/labels/business-labels';
 
 interface AddFinancialObligationDialogProps {
   customer: FinancialSummaryCustomer;
@@ -53,7 +53,7 @@ export const AddFinancialObligationDialog: React.FC<AddFinancialObligationDialog
   return (
     <div className="space-y-5">
       <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{businessLabels.common.customer}</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{englishLabel(businessLabels.common.customer)}</p>
         <p className="user-text mt-1 font-semibold text-slate-900" dir="auto">{customer.name}</p>
         <p className="text-sm text-slate-600">{customer.phone}</p>
       </div>

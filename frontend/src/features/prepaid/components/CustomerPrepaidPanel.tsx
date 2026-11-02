@@ -10,7 +10,7 @@ import { CreatePrepaidPurchaseForm } from '../../customer-financial/components/C
 import { RecordDebtPaymentDialog } from '../../customer-financial/components/RecordDebtPaymentDialog';
 import { FinancialSummaryCustomer } from '../../customer-financial/types/customer-financial.types';
 import { toPrepaidPaymentTarget } from '../utils/prepaid-payment-target';
-import { businessLabels } from '../../../shared/labels/business-labels';
+import { businessLabels, englishLabel } from '../../../shared/labels/business-labels';
 
 interface CustomerPrepaidPanelProps {
   customer: FinancialSummaryCustomer;
@@ -43,9 +43,7 @@ export const CustomerPrepaidPanel: React.FC<CustomerPrepaidPanelProps> = ({
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-slate-500">
-          Money received in advance for items not yet handed over / مبالغ مقبوضة مقدماً عن سلع لم
-          تُسلّم بعد.
-        </p>
+          Money received in advance for items not yet handed over</p>
         {canMutate && (
           <button
             type="button"
@@ -53,7 +51,7 @@ export const CustomerPrepaidPanel: React.FC<CustomerPrepaidPanelProps> = ({
             className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
           >
             <Plus className="h-4 w-4" aria-hidden="true" />
-            {businessLabels.prepaid.addBill}
+            {englishLabel(businessLabels.prepaid.addBill)}
           </button>
         )}
       </div>
@@ -73,7 +71,7 @@ export const CustomerPrepaidPanel: React.FC<CustomerPrepaidPanelProps> = ({
       <Modal
         isOpen={isAddOpen}
         onClose={() => setIsAddOpen(false)}
-        title={businessLabels.prepaid.addBill}
+        title={englishLabel(businessLabels.prepaid.addBill)}
         maxWidth="max-w-2xl"
       >
         <CreatePrepaidPurchaseForm
@@ -89,7 +87,7 @@ export const CustomerPrepaidPanel: React.FC<CustomerPrepaidPanelProps> = ({
       <Modal
         isOpen={Boolean(detailsTarget)}
         onClose={() => setDetailsTarget(null)}
-        title={businessLabels.prepaid.viewDetails}
+        title={englishLabel(businessLabels.prepaid.viewDetails)}
         maxWidth="max-w-lg"
       >
         {detailsTarget && (
@@ -106,7 +104,7 @@ export const CustomerPrepaidPanel: React.FC<CustomerPrepaidPanelProps> = ({
       <Modal
         isOpen={Boolean(paymentTarget)}
         onClose={() => setPaymentTarget(null)}
-        title={businessLabels.prepaid.recordPayment}
+        title={englishLabel(businessLabels.prepaid.recordPayment)}
         maxWidth="max-w-2xl"
       >
         {paymentTarget && (
