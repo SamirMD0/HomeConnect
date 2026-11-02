@@ -63,7 +63,8 @@ export const updateCustomerImportSchema = z
         z
           .object({
             rowNumber: z.number().int().min(2),
-            branchId: databaseUuidSchema('Invalid branch ID'),
+            // null returns the row to the customer's own branch.
+            branchId: databaseUuidSchema('Invalid branch ID').nullable(),
           })
           .strict()
       )

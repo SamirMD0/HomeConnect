@@ -1,4 +1,5 @@
 import { customerImportRoutes } from './features/customers/customer-import.routes';
+import { customerMergeRoutes } from './features/customers/customer-merge.routes';
 import { branchScopeMiddleware } from './middleware/branch-scope.middleware';
 import { customerParentGuard, supplierParentGuard, recordScopeGuard } from './middleware/branch-parent.middleware';
 import express from 'express';
@@ -104,6 +105,7 @@ app.use('/api/v1/users', requireAuth, usersRoutes);
 app.use('/api/v1/branches', requireAuth, branchesRoutes);
 // Resolve scope once, before every router sharing these prefixes.
 app.use('/api/v1/customers/imports', requireAuth, customerImportRoutes);
+app.use('/api/v1/customers/merges', requireAuth, branchScopeMiddleware, customerMergeRoutes);
 app.use('/api/v1/customers', requireAuth, branchScopeMiddleware, customerParentGuard);
 app.use('/api/v1/suppliers', requireAuth, branchScopeMiddleware, supplierParentGuard);
 app.use('/api/v1/customers', requireAuth, customerDebtsRoutes);

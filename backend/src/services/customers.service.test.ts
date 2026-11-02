@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const { repositoryMock, receivablesMock, searchQueryMock } = vi.hoisted(() => ({
   repositoryMock: {
     findAll: vi.fn(),
+    findLiveNames: vi.fn(),
     findById: vi.fn(),
     findByPhone: vi.fn(),
     create: vi.fn(),
@@ -64,6 +65,42 @@ describe('CustomersService.listCustomers', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     searchQueryMock.findSearchMatchIds.mockResolvedValue(null);
+    repositoryMock.findLiveNames.mockResolvedValue([{ name: alice.name }, { name: bilal.name }]);
+  });
+
+  it('counts customers sharing a name in the viewer scope, ignoring case and spacing', async () => {
+    repositoryMock.findAll.mockResolvedValue({ customers: [alice, bilal], total: 2 });
+    repositoryMock.findLiveNames.mockResolvedValue([
+      { name: alice.name },
+      { name: ' ' + alice.name + ' ' },
+      { name: bilal.name },
+      { name: 'Someone Else' },
+    ]);
+
+    const { customers } = await CustomersService.listCustomers({ skip: 0, take: 10 }, scope);
+
+    expect(customers.map((customer) => customer.sameNameCount)).toEqual([2, 1]);
+    expect(repositoryMock.findLiveNames).toHaveBeenCalledWith(scope);
+  });
+
+  it('filters to customers sharing a name, grouped together and paged after filtering', async () => {
+    const zed = { id: '44444444-4444-4444-8444-444444444444', name: 'Zed', phone: '70333333' };
+    const aliceElsewhere = { ...alice, id: '55555555-5555-4555-8555-555555555555', phone: '' };
+    repositoryMock.findAll.mockResolvedValue({ customers: [zed, alice, bilal, aliceElsewhere], total: 4 });
+    repositoryMock.findLiveNames.mockResolvedValue([
+      { name: zed.name },
+      { name: zed.name },
+      { name: alice.name },
+      { name: alice.name },
+      { name: bilal.name },
+    ]);
+    receivablesMock.computeReceivableProjections.mockResolvedValue(new Map());
+
+    const page = await CustomersService.listCustomers({ skip: 1, take: 2, filter: 'sameName' }, scope);
+
+    expect(repositoryMock.findAll.mock.calls[0][0]).toMatchObject({ skip: undefined, take: undefined });
+    expect(page.total).toBe(3);
+    expect(page.customers.map((customer) => customer.id)).toEqual([alice.id, aliceElsewhere.id]);
   });
 
   it('leaves the payload lean when financial figures were not requested', async () => {
@@ -71,7 +108,10 @@ describe('CustomersService.listCustomers', () => {
 
     const result = await CustomersService.listCustomers({ skip: 0, take: 10 }, scope);
 
-    expect(result.customers).toEqual([alice, bilal]);
+    expect(result.customers).toEqual([
+      { ...alice, sameNameCount: 1 },
+      { ...bilal, sameNameCount: 1 },
+    ]);
     expect(receivablesMock.computeReceivableProjections).not.toHaveBeenCalled();
   });
 

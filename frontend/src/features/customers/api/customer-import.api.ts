@@ -24,7 +24,8 @@ export interface CustomerImportDecision {
 }
 export interface RowBranch {
   rowNumber: number;
-  branchId: string;
+  /** null returns the row to the customer's own branch. */
+  branchId: string | null;
 }
 export type BalanceChangeKind =
   | 'NEW'
@@ -44,6 +45,7 @@ export interface CustomerImportResult {
   updated: number;
   skipped: number;
   invalid?: number;
+  moved: number;
   openingDebts: number;
   openingDebtTotalUsd: string;
   balanceIncreases: number;
@@ -81,6 +83,10 @@ export interface CustomerImportPreview {
     dueDate?: string | null;
     branchId: string;
     branchName: string;
+    chosenBranch: boolean;
+    matchedBy: 'ACCOUNT' | 'PHONE' | 'NAME' | 'MOVE' | null;
+    moveFrom: { branchId: string; branchName: string } | null;
+    existingBranches: Array<{ id: string; name: string }>;
     balance: BalanceChange;
     status: 'READY' | 'CONFLICT' | 'INVALID';
     issues: string[];

@@ -143,7 +143,7 @@ describe('customer import decisions', () => {
   });
 });
 describe('customer import preview conflict kinds', () => {
-  it('distinguishes file duplicates, destination matches, other-branch hints and name warnings', async () => {
+  it('distinguishes file duplicates, destination matches, moves and name warnings', async () => {
     const document = parseCustomerCsv(
       'Name,Phone,Opening balance\nAli,03 123 456,10\nAli,03123456,0\nSame Name,70111111,0\nNew Name,70222222,0'
     );
@@ -191,9 +191,10 @@ describe('customer import preview conflict kinds', () => {
     expect(preview.rows[3]).toMatchObject({
       status: 'READY',
       branchId: 'a',
-      matches: [],
-      decision: { action: 'CREATE' },
-      conflicts: [{ kind: 'OTHER_BRANCH_PHONE', blocking: false }],
+      matchedBy: 'MOVE',
+      moveFrom: { branchId: 'b', branchName: 'Branch B' },
+      decision: { action: 'UPDATE', targetCustomerId: 'elsewhere' },
+      conflicts: [{ kind: 'CUSTOMER_MOVE', blocking: false }],
     });
   });
 });

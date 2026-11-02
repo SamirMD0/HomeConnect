@@ -32,7 +32,7 @@ const commit = (
     { decisions, accountPassword, dueDate: dueDate ?? undefined },
     actor
   );
-const moveRows = (id: string, rowBranches: Array<{ rowNumber: number; branchId: string }>) =>
+const moveRows = (id: string, rowBranches: Array<{ rowNumber: number; branchId: string | null }>) =>
   CustomerImportService.updateDraft(id, { rowBranches }, actor);
 const outstanding = async (customerId: string) =>
   (
@@ -149,7 +149,7 @@ const http = (method: 'get' | 'patch' | 'post', path: string, body?: object) => 
       phone: '03123456',
     });
   });
-  it('§5.3 a customer found only in another branch goes there by default; moved back, that phone is only a hint and B stays unchanged', async () => {
+  it('§5.3 a customer found only in another branch stays there by default; choosing this branch moves them, with no duplicate', async () => {
     const other = await customer('Other branch', '03123456', b);
     await db.debt.create({
       data: {
@@ -162,29 +162,36 @@ const http = (method: 'get' | 'patch' | 'post', path: string, body?: object) => 
         createdById: owner,
       },
     });
-    const before = await checksumB();
-    const found = await create('Name,Phone,Opening balance\nAli,03 123 456,10');
-    expect(found.rows[0]).toMatchObject({ branchId: b, matches: [{ id: other.id }] });
+    const found = await create('Name,Phone,Opening balance\nAli,03 123 456,90');
+    expect(found.rows[0]).toMatchObject({
+      branchId: b,
+      matchedBy: 'PHONE',
+      moveFrom: null,
+      matches: [{ id: other.id }],
+      balance: { kind: 'NONE' },
+    });
     const draft = await moveRows(found.id, [{ rowNumber: 2, branchId: a }]);
     expect(draft.rows[0]).toMatchObject({
       branchId: a,
-      decision: { action: 'CREATE' },
-      status: 'READY',
-      matches: [],
-      conflicts: [{ kind: 'OTHER_BRANCH_PHONE', blocking: false }],
+      matchedBy: 'MOVE',
+      moveFrom: { branchId: b },
+      decision: { action: 'UPDATE', targetCustomerId: other.id },
+      conflicts: [{ kind: 'CUSTOMER_MOVE', blocking: false }],
     });
-    await expect(
-      commit(
-        draft.id,
-        [{ rowNumber: 2, action: 'UPDATE', targetCustomerId: other.id, updateFields: ['name'] }],
-        password
-      )
-    ).rejects.toMatchObject({ statusCode: 409 });
-    await commit(draft.id, [], password);
-    expect(await checksumB()).toBe(before);
-    expect(await db.customer.findFirstOrThrow({ where: { branchId: a } })).toMatchObject({
-      phone: '03 123 456',
+    // A move needs no password; only money changes ask for one.
+    expect(await commit(draft.id)).toMatchObject({ created: 0, updated: 1, moved: 1 });
+    expect(await db.customer.count({ where: { branchId: b } })).toBe(0);
+    expect(await db.customer.findUniqueOrThrow({ where: { id: other.id } })).toMatchObject({
+      branchId: a,
     });
+    expect(await db.debt.findFirstOrThrow({ where: { customerId: other.id } })).toMatchObject({
+      branchId: a,
+    });
+    expect(
+      await db.activityLog.count({
+        where: { entityId: other.id, action: 'CUSTOMER_BRANCH_TRANSFERRED' },
+      })
+    ).toBe(1);
   });
   it('§5.3 stale matching conflict at commit returns 409 CUSTOMER_IMPORT_STALE and rolls back every row', async () => {
     const draft = await create('Name,Phone\nFirst,70111111\nSecond,70222222');
@@ -239,25 +246,14 @@ const http = (method: 'get' | 'patch' | 'post', path: string, body?: object) => 
       phone: '03123456',
     });
   });
-  it('§5.4 the same file into a different branch creates per-branch customers and shows OTHER_BRANCH_PHONE', async () => {
+  it('§5.4 the same file into a different branch finds the same customers and creates no duplicates', async () => {
     const first = await create(rowsCsv);
     await commit(first.id, [], password);
-    const draft = await create(rowsCsv, b);
-    const second = await moveRows(draft.id, [
-      { rowNumber: 2, branchId: b },
-      { rowNumber: 3, branchId: b },
-    ]);
-    expect(second.previousCommittedImport).toBeNull();
-    expect(
-      second.rows.every(
-        (row) =>
-          row.matches.length === 0 &&
-          row.conflicts.some((item) => item.kind === 'OTHER_BRANCH_PHONE')
-      )
-    ).toBe(true);
-    expect(await commit(second.id, [], password)).toMatchObject({ created: 2, openingDebts: 2 });
+    const second = await create(rowsCsv, b);
+    expect(second.rows.map((row) => row.branchId)).toEqual([a, a]);
+    expect(await commit(second.id)).toMatchObject({ created: 0, openingDebts: 0 });
     expect(await db.customer.count({ where: { branchId: a } })).toBe(2);
-    expect(await db.customer.count({ where: { branchId: b } })).toBe(2);
+    expect(await db.customer.count({ where: { branchId: b } })).toBe(0);
   });
   it('§5.4 access revoked between preview and get/patch/commit returns 404 and writes nothing', async () => {
     const draft = await create('Name,Phone,Opening balance\nAli,03123456,10');
@@ -407,21 +403,23 @@ const http = (method: 'get' | 'patch' | 'post', path: string, body?: object) => 
     expect(await db.customer.count({ where: { branchId: a } })).toBe(2);
     expect(await db.debt.count({ where: { branchId: a } })).toBe(1);
     const otherDraft = await create(report, b);
+    expect(otherDraft.rows.map((row) => row.branchId)).toEqual([a, a]);
     const other = await moveRows(otherDraft.id, [
       { rowNumber: 2, branchId: b },
       { rowNumber: 3, branchId: b },
     ]);
-    expect(other.rows[0].matches).toEqual([]);
-    expect(other.rows[0].conflicts.some((c) => c.kind === 'OTHER_BRANCH_ACCOUNT')).toBe(true);
-    await commit(other.id, [], password);
+    expect(other.rows[0]).toMatchObject({ matchedBy: 'MOVE', moveFrom: { branchId: a } });
+    expect(await commit(other.id)).toMatchObject({ created: 0, moved: 2 });
     expect(await db.customerImportAccount.count({ where: { branchId: b } })).toBe(2);
+    expect(await db.customerImportAccount.count({ where: { branchId: a } })).toBe(0);
     // A mapping cannot point to a customer in another branch, even through raw ORM writes.
+    const inA = await customer('Still in A', '70999999', a);
     await expect(
       db.customerImportAccount.create({
         data: {
           branchId: b,
           accountCode: '9999',
-          customerId: accounts[0].customerId,
+          customerId: inA.id,
           sourceCustomerImportId: other.id,
           createdById: owner,
         },
@@ -537,6 +535,14 @@ const http = (method: 'get' | 'patch' | 'post', path: string, body?: object) => 
       });
       expect(payment.totalAmount.toFixed(2)).toBe('100.00');
       expect(payment.idempotencyKey).toContain('customer-import:' + draft.id);
+      // The opening debt stays as imported; the drop exists only as a printable receipt.
+      const opening = await db.debt.findFirstOrThrow({ where: { customerId: id } });
+      expect(opening.originalAmount.toFixed(2)).toBe('200.00');
+      expect(await db.debt.count({ where: { customerId: id } })).toBe(1);
+      const receipt = await request(app)
+        .get('/api/v1/payments/' + payment.id + '/receipt')
+        .set('Authorization', 'Bearer ' + token);
+      expect(receipt.status).toBe(200);
       expect(
         await db.activityLog.count({
           where: { entityId: id, action: 'CUSTOMER_IMPORT_BALANCE_PAYMENT' },
@@ -749,14 +755,67 @@ const http = (method: 'get' | 'patch' | 'post', path: string, body?: object) => 
       expect(await db.customer.count({ where: { branchId: a } })).toBe(0);
       expect(await db.customer.count({ where: { branchId: b } })).toBe(2);
     });
-    it('moving a row drops its saved decision, so a customer from the old branch is never targeted', async () => {
+    it('choosing another branch moves the customer, and a null choice returns the row to their own branch', async () => {
       const here = await customer('Ali', '03123456');
       const draft = await create('Name,Phone\nAli,03123456');
       expect(draft.rows[0].decision).toMatchObject({ action: 'UPDATE', targetCustomerId: here.id });
       const moved = await moveRows(draft.id, [{ rowNumber: 2, branchId: b }]);
-      expect(moved.rows[0].decision).toEqual({ rowNumber: 2, action: 'CREATE' });
-      await commit(moved.id);
+      expect(moved.rows[0]).toMatchObject({ chosenBranch: true, moveFrom: { branchId: a } });
+      expect(moved.planned.moved).toBe(1);
+      const back = await moveRows(draft.id, [{ rowNumber: 2, branchId: null }]);
+      expect(back.rows[0]).toMatchObject({ branchId: a, chosenBranch: false, moveFrom: null });
+      await moveRows(draft.id, [{ rowNumber: 2, branchId: b }]);
+      expect(await commit(draft.id)).toMatchObject({ created: 0, moved: 1 });
+      expect(await db.customer.count({ where: { branchId: a } })).toBe(0);
       expect(await db.customer.count({ where: { branchId: b } })).toBe(1);
+    });
+    it('a same-name customer with no phone or account in the file is found in their own branch, never duplicated', async () => {
+      const main = await customer('Najla Khatib', '71194334', a);
+      const draft = await create('Name,Account,Opening balance\n  najla khatib ,41100,250', b);
+      expect(draft.rows[0]).toMatchObject({
+        branchId: a,
+        matchedBy: 'NAME',
+        matches: [{ id: main.id }],
+        decision: { action: 'UPDATE', targetCustomerId: main.id },
+      });
+      expect(await commit(draft.id, [], password)).toMatchObject({ created: 0, updated: 1 });
+      expect(await db.customer.findUniqueOrThrow({ where: { id: main.id } })).toMatchObject({
+        name: 'Najla Khatib',
+      });
+      expect(await db.customer.count({ where: { branchId: { in: [a, b] } } })).toBe(1);
+      expect(
+        await db.customerImportAccount.findFirstOrThrow({ where: { accountCode: '41100' } })
+      ).toMatchObject({ branchId: a, customerId: main.id });
+      expect(await db.debt.findFirstOrThrow({ where: { customerId: main.id } })).toMatchObject({
+        branchId: a,
+      });
+    });
+    it('a same name with a different phone or its own account is a different person; adding as new is allowed', async () => {
+      const main = await customer('Najla Khatib', '71194334', a);
+      const otherPhone = await create('Name,Phone\nNajla Khatib,70111222');
+      expect(otherPhone.rows[0].matches).toEqual([]);
+      expect(otherPhone.rows[0].conflicts.map((item) => item.kind)).toContain('NAME_SIMILAR');
+      const same = await create('Name,Account\nNajla Khatib,41100');
+      expect(same.rows[0].matchedBy).toBe('NAME');
+      expect(await commit(same.id, [{ rowNumber: 2, action: 'CREATE' }])).toMatchObject({
+        created: 1,
+      });
+      expect(await db.customer.count({ where: { name: 'Najla Khatib' } })).toBe(2);
+      const third = await create('Name,Account\nNajla Khatib,41101');
+      expect(third.rows[0].matches.map((item) => item.id)).toEqual([main.id]);
+    });
+    it('a same name already in several branches is a choice, not a new customer', async () => {
+      await customer('Najla Khatib', '', a);
+      await customer('Najla Khatib', '', b);
+      const third = randomUUID();
+      await db.branch.create({
+        data: { id: third, code: 'CSV-C-' + third, name: 'CSV C ' + third, createdById: owner },
+      });
+      const draft = await create('Name,Account\nNajla Khatib,41100', third);
+      expect(draft.rows[0].conflicts.map((item) => item.kind)).toContain('BRANCH_AMBIGUOUS');
+      expect(draft.rows[0].decision.action).toBe('SKIP');
+      await db.customerImport.delete({ where: { id: draft.id } });
+      await db.branch.delete({ where: { id: third } });
     });
     it('a customer found in several branches, none the default, must get a chosen branch', async () => {
       await customer('Ali A', '03123456', a);

@@ -1,4 +1,5 @@
 import { CustomerCsvImportDialog } from '../../features/customers/components/CustomerCsvImportDialog';
+import { CustomerMergeDialog } from '../../features/customers/components/CustomerMergeDialog';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
@@ -32,6 +33,7 @@ export const CustomersListPage: React.FC = () => {
   const [sortBy, setSortBy] = useState('createdAt');
   const [filter, setFilter] = useState<CustomerListFilter | undefined>();
   const [isImportOpen, setIsImportOpen] = useState(false);
+  const [mergeCustomerId, setMergeCustomerId] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const customerSearch = useCustomerSearch({
     page,
@@ -45,6 +47,10 @@ export const CustomersListPage: React.FC = () => {
 
   const createCustomer = useCreateCustomer();
   const showBranch = useShowBranchColumn();
+  // The filter is offered only in All branches; leaving that view must not hide customers.
+  useEffect(() => {
+    if (!showBranch && filter === 'sameName') setFilter(undefined);
+  }, [showBranch, filter]);
   const createGuard = useCreateGuard();
 
   const handleCreateCustomer = (formData: any) => {
@@ -60,11 +66,37 @@ export const CustomersListPage: React.FC = () => {
       header: 'Customer',
       accessor: (customer: Customer) => (
         <div className="flex flex-col">
-          <span
-            className="user-text font-medium text-slate-900 transition-colors group-hover:text-brand-700"
-            dir="auto"
-          >
-            {customer.name}
+          <span className="inline-flex items-center gap-1.5">
+            <span
+              className="user-text font-medium text-slate-900 transition-colors group-hover:text-brand-700"
+              dir="auto"
+            >
+              {customer.name}
+            </span>
+            {(customer.sameNameCount ?? 1) > 1 &&
+              (user?.role === 'ADMIN' ? (
+                <button
+                  type="button"
+                  aria-label={customer.sameNameCount + ' customers share this name. Review or merge'}
+                  title={customer.sameNameCount + ' customers share this name. Click to review or merge'}
+                  className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-amber-100 text-[11px] font-bold text-amber-800 hover:bg-amber-200 focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setMergeCustomerId(customer.id);
+                  }}
+                >
+                  !
+                </button>
+              ) : (
+                <span
+                  role="img"
+                  aria-label={customer.sameNameCount + ' customers share this name'}
+                  title={customer.sameNameCount + ' customers share this name'}
+                  className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-amber-100 text-[11px] font-bold text-amber-800"
+                >
+                  !
+                </span>
+              ))}
           </span>
           {customer.matchedInNotesOnly && (
             <span className="text-[11px] text-slate-400 transition-colors ">Matched in notes</span>
@@ -139,6 +171,9 @@ export const CustomersListPage: React.FC = () => {
   return (
     <div className="space-y-6">
       <CustomerCsvImportDialog open={isImportOpen} onClose={() => setIsImportOpen(false)} />
+      {mergeCustomerId && (
+        <CustomerMergeDialog customerId={mergeCustomerId} onClose={() => setMergeCustomerId(null)} />
+      )}
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -214,6 +249,7 @@ export const CustomersListPage: React.FC = () => {
             ['Overdue', 'overdue'],
             ['No debt', 'noDebt'],
             ['Inactive', 'inactive'],
+            ...(showBranch ? ([['Same name', 'sameName']] as const) : []),
           ] as const
         ).map(([label, value]) => (
           <button

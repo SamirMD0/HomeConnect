@@ -3,6 +3,7 @@ import { useContext, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Modal } from '../../../components/ui/Modal';
 import { Button } from '../../../components/ui/Button';
+import { ConfirmPopup } from '../../../components/ui/ConfirmPopup';
 import { BranchScopeContext } from '../../branches/scope/BranchScopeProvider';
 import { useCreateGuard, useRecordBranch } from '../../branches/scope/branch-ui';
 import {
@@ -57,7 +58,7 @@ interface WizardProps {
   onDecision: (decision: CustomerImportDecision) => void;
   onPassword: (password: string) => void;
   onDueDate: (dueDate: string) => void;
-  onRowBranches: (rowNumbers: number[], branchId: string) => void;
+  onRowBranches: (rowNumbers: number[], branchId: string | null) => void;
   onNext: () => void;
   onBack: () => void;
   onRefresh: () => void;
@@ -87,6 +88,42 @@ export function rowsChangedFirst<T extends { balance: BalanceChange; rowNumber: 
   const rank = (row: T) => (CHANGED_FIRST.includes(row.balance.kind) ? 0 : 1);
   return [...rows].sort((a, b) => rank(a) - rank(b) || a.rowNumber - b.rowNumber);
 }
+/** The popup text when a branch choice would move existing customers; null when none move. */
+export function branchMoveMessage(
+  rows: CustomerImportPreview['rows'],
+  branchId: string,
+  branchName: string
+): string | null {
+  const moving = rows.filter(
+    (row) =>
+      row.existingBranches.length > 0 &&
+      !row.existingBranches.some((branch) => branch.id === branchId)
+  );
+  if (!moving.length) return null;
+  const who =
+    moving.length === 1
+      ? '"' +
+        moving[0].name +
+        '" from ' +
+        moving[0].existingBranches.map((branch) => branch.name).join(', ')
+      : moving.length + ' customers who are already in another branch';
+  return (
+    'Move ' +
+    who +
+    ' to ' +
+    branchName +
+    '?\n\nTheir debts, payments and history move with them. No duplicate is created.'
+  );
+}
+/** Rows per branch, so a branch change is visible without scrolling the whole table. */
+export function rowsPerBranch(preview: CustomerImportPreview) {
+  const counts = new Map<string, { name: string; rows: number }>();
+  for (const row of preview.rows) {
+    const entry = counts.get(row.branchId) ?? { name: row.branchName, rows: 0 };
+    counts.set(row.branchId, { ...entry, rows: entry.rows + 1 });
+  }
+  return [...counts].map(([id, entry]) => ({ id, ...entry }));
+}
 export function importChangesMoney(result: CustomerImportResult): boolean {
   return Boolean(result.openingDebts || result.balanceIncreases || result.balancePayments);
 }
@@ -113,7 +150,7 @@ export function importNeedsResolution(preview: CustomerImportPreview): boolean {
       row.conflicts.some(
         (conflict) => conflict.kind === 'IDENTITY_MISMATCH' || conflict.kind === 'BRANCH_AMBIGUOUS'
       ) ||
-      (d.action === 'CREATE' && row.matches.length > 0) ||
+      (d.action === 'CREATE' && row.matches.length > 0 && row.matchedBy !== 'NAME') ||
       (d.action === 'UPDATE' &&
         (row.matches.length !== 1 || d.targetCustomerId !== row.matches[0].id))
     );
@@ -126,6 +163,7 @@ export function CustomerImportSummary({ result }: { result: CustomerImportResult
         ['Created', result.created],
         ['Updated', result.updated],
         ['Skipped', result.skipped],
+        ['Moved to another branch', result.moved],
         ['Opening debts', result.openingDebts],
         ['Opening debts total USD', '$' + result.openingDebtTotalUsd],
         ['Balance increases', result.balanceIncreases],
@@ -266,29 +304,59 @@ export function CustomerImportWizard(props: WizardProps) {
             {preview.summary.invalid}
           </p>
           {choosableBranches.length > 1 && (
-            <label className="block text-sm">
-              Set all rows to
-              <select
-                aria-label="Set all rows to branch"
-                className={control + ' ml-2'}
-                value=""
-                disabled={props.busy}
-                onChange={(event) => {
-                  if (event.target.value)
-                    props.onRowBranches(
-                      preview.rows.map((row) => row.rowNumber),
-                      event.target.value
-                    );
-                }}
-              >
-                <option value="">Choose a branch</option>
-                {choosableBranches.map((branch) => (
-                  <option key={branch.id} value={branch.id} dir="auto">
-                    {branch.name}
+            <div className="space-y-1">
+              <label className="block text-sm">
+                Set all rows to
+                <select
+                  aria-label="Set all rows to branch"
+                  className={control + ' ml-2'}
+                  value={rowsPerBranch(preview).length === 1 ? rowsPerBranch(preview)[0].id : ''}
+                  disabled={props.busy}
+                  onChange={(event) => {
+                    if (event.target.value)
+                      props.onRowBranches(
+                        preview.rows.map((row) => row.rowNumber),
+                        event.target.value
+                      );
+                  }}
+                >
+                  <option value="">
+                    {rowsPerBranch(preview).length > 1 ? 'Mixed branches' : 'Choose a branch'}
                   </option>
-                ))}
-              </select>
-            </label>
+                  {choosableBranches.map((branch) => (
+                    <option key={branch.id} value={branch.id} dir="auto">
+                      {branch.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <p role="status" className="text-sm text-slate-600">
+                {props.busy
+                  ? 'Updating branches…'
+                  : rowsPerBranch(preview).map((item, index) => (
+                      <span key={item.id}>
+                        {index > 0 && ' · '}
+                        <span dir="auto">{item.name}</span>: {item.rows}{' '}
+                        {item.rows === 1 ? 'row' : 'rows'}
+                      </span>
+                    ))}
+              </p>
+              {preview.rows.some((row) => row.chosenBranch) && (
+                <button
+                  type="button"
+                  className="text-sm font-medium text-brand-700 underline"
+                  disabled={props.busy}
+                  onClick={() =>
+                    props.onRowBranches(
+                      preview.rows.filter((row) => row.chosenBranch).map((row) => row.rowNumber),
+                      null
+                    )
+                  }
+                >
+                  Keep every customer in their own branch
+                </button>
+              )}
+            </div>
           )}
           <div className="max-h-[45vh] overflow-auto">
             <table className="w-full text-left text-xs">
@@ -382,9 +450,12 @@ export function CustomerImportWizard(props: WizardProps) {
                           }}
                         >
                           <option value="SKIP">SKIP</option>
-                          {row.status !== 'INVALID' && !row.matches.length && (
-                            <option value="CREATE">CREATE</option>
-                          )}
+                          {row.status !== 'INVALID' &&
+                            (!row.matches.length || row.matchedBy === 'NAME') && (
+                              <option value="CREATE">
+                                {row.matches.length ? 'ADD AS NEW' : 'CREATE'}
+                              </option>
+                            )}
                           {row.status !== 'INVALID' && row.matches.length === 1 && (
                             <option value="UPDATE">UPDATE</option>
                           )}
@@ -427,7 +498,9 @@ export function CustomerImportWizard(props: WizardProps) {
                                   })
                                 }
                               />{' '}
-                              {row.balance.kind === 'NEW' ? 'Add opening amount' : 'Apply this change'}
+                              {row.balance.kind === 'NEW'
+                                ? 'Add opening amount'
+                                : 'Apply this change'}
                             </label>
                           )}
                       </td>
@@ -524,6 +597,11 @@ function CustomerImportSession({ onClose }: { onClose: () => void }) {
   const [result, setResult] = useState<CustomerImportResult | null>(null);
   const [password, setPassword] = useState('');
   const [dueDate, setDueDate] = useState('');
+  const [pendingMove, setPendingMove] = useState<{
+    rowNumbers: number[];
+    branchId: string;
+    message: string;
+  } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   useRecordBranch(preview?.branchId);
@@ -539,6 +617,17 @@ function CustomerImportSession({ onClose }: { onClose: () => void }) {
     } finally {
       setBusy(false);
     }
+  };
+  const applyRowBranches = (rowNumbers: number[], branchId: string | null) => {
+    if (preview)
+      void perform(async () =>
+        setPreview(
+          await customerImportsApi.update(preview.id, {
+            decisions: preview.rows.map((row) => row.decision),
+            rowBranches: rowNumbers.map((rowNumber) => ({ rowNumber, branchId })),
+          })
+        )
+      );
   };
   const next = () =>
     void perform(async () => {
@@ -574,77 +663,91 @@ function CustomerImportSession({ onClose }: { onClose: () => void }) {
       setStep((value) => value + 1);
     });
   return (
-    <Modal
-      isOpen
-      onClose={() => {
-        if (!busy) onClose();
-      }}
-      title="Import customers from CSV"
-      size="xl"
-    >
-      <CustomerImportWizard
-        step={step}
-        branchId={branchId}
-        branchName={
-          preview?.branch.name ??
-          scope?.branches.find((branch) => branch.id === branchId)?.name ??
-          ''
-        }
-        branches={scope?.branches ?? []}
-        preview={preview}
-        mapping={mapping}
-        result={result}
-        password={password}
-        dueDate={dueDate}
-        busy={busy}
-        error={error}
-        hasFile={Boolean(file)}
-        onBranch={setBranchId}
-        onFile={setFile}
-        onMapping={setMapping}
-        onPassword={setPassword}
-        onDueDate={setDueDate}
-        onRowBranches={(rowNumbers, chosenBranchId) => {
-          if (preview)
-            void perform(async () =>
-              setPreview(
-                await customerImportsApi.update(preview.id, {
-                  decisions: preview.rows.map((row) => row.decision),
-                  rowBranches: rowNumbers.map((rowNumber) => ({
-                    rowNumber,
-                    branchId: chosenBranchId,
-                  })),
-                })
-              )
-            );
+    <>
+      <Modal
+        isOpen
+        onClose={() => {
+          if (!busy) onClose();
         }}
-        onDecision={(decision) =>
-          setPreview((current) =>
-            current
-              ? {
-                  ...current,
-                  rows: current.rows.map((row) =>
-                    row.rowNumber === decision.rowNumber ? { ...row, decision } : row
-                  ),
-                }
-              : current
-          )
-        }
-        onNext={next}
-        onBack={() => setStep((value) => Math.max(preview ? 2 : 0, value - 1))}
-        onRefresh={() => {
-          if (preview)
-            void perform(async () => {
-              const updated = await customerImportsApi.update(preview.id, {
-                columnMapping: preview.columnMapping,
+        title="Import customers from CSV"
+        size="xl"
+      >
+        <CustomerImportWizard
+          step={step}
+          branchId={branchId}
+          branchName={
+            preview?.branch.name ??
+            scope?.branches.find((branch) => branch.id === branchId)?.name ??
+            ''
+          }
+          branches={scope?.branches ?? []}
+          preview={preview}
+          mapping={mapping}
+          result={result}
+          password={password}
+          dueDate={dueDate}
+          busy={busy}
+          error={error}
+          hasFile={Boolean(file)}
+          onBranch={setBranchId}
+          onFile={setFile}
+          onMapping={setMapping}
+          onPassword={setPassword}
+          onDueDate={setDueDate}
+          onRowBranches={(rowNumbers, chosenBranchId) => {
+            if (!preview) return;
+            if (chosenBranchId) {
+              const message = branchMoveMessage(
+                preview.rows.filter((row) => rowNumbers.includes(row.rowNumber)),
+                chosenBranchId,
+                preview.branches.find((branch) => branch.id === chosenBranchId)?.name ?? ''
+              );
+              if (message) {
+                setPendingMove({ rowNumbers, branchId: chosenBranchId, message });
+                return;
+              }
+            }
+            applyRowBranches(rowNumbers, chosenBranchId);
+          }}
+          onDecision={(decision) =>
+            setPreview((current) =>
+              current
+                ? {
+                    ...current,
+                    rows: current.rows.map((row) =>
+                      row.rowNumber === decision.rowNumber ? { ...row, decision } : row
+                    ),
+                  }
+                : current
+            )
+          }
+          onNext={next}
+          onBack={() => setStep((value) => Math.max(preview ? 2 : 0, value - 1))}
+          onRefresh={() => {
+            if (preview)
+              void perform(async () => {
+                const updated = await customerImportsApi.update(preview.id, {
+                  columnMapping: preview.columnMapping,
+                });
+                setPreview(updated);
+                setMapping(updated.columnMapping);
+                setStep(3);
               });
-              setPreview(updated);
-              setMapping(updated.columnMapping);
-              setStep(3);
-            });
-        }}
-      />
-    </Modal>
+          }}
+        />
+      </Modal>
+      {pendingMove && (
+        <ConfirmPopup
+          title="Change branch?"
+          message={pendingMove.message}
+          onCancel={() => setPendingMove(null)}
+          onConfirm={() => {
+            applyRowBranches(pendingMove.rowNumbers, pendingMove.branchId);
+            setPendingMove(null);
+          }}
+        />
+      )}
+    </>
   );
 }
 export function CustomerCsvImportDialog({ open, onClose }: { open: boolean; onClose: () => void }) {

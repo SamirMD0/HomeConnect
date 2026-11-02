@@ -8,6 +8,7 @@ import {
   CustomerImportSummary,
   CustomerImportWizard,
   balanceChangeText,
+  branchMoveMessage,
   importNeedsResolution,
   rowsChangedFirst,
   customerImportSteps,
@@ -32,6 +33,7 @@ const preview: CustomerImportPreview = {
     created: 1,
     updated: 0,
     skipped: 0,
+    moved: 0,
     openingDebts: 1,
     openingDebtTotalUsd: '10.00',
     balanceIncreases: 0,
@@ -50,6 +52,10 @@ const preview: CustomerImportPreview = {
       currency: 'USD',
       branchId: 'a',
       branchName: 'فرع بيروت',
+      chosenBranch: false,
+      matchedBy: null,
+      moveFrom: null,
+      existingBranches: [],
       balance: { kind: 'NEW', current: '0.00', file: '10.00', difference: '10.00' },
       status: 'READY',
       issues: [],
@@ -225,6 +231,45 @@ describe('customer CSV import dialog', () => {
     expect(html).toContain('Owes $200.00 now');
     expect(html).toContain('Apply this change');
   });
+  it('keeps the bulk branch choice visible and counts the rows in each branch', () => {
+    const inB = { ...preview.rows[0], rowNumber: 3, branchId: 'b', branchName: 'Branch B' };
+    const moved = { ...preview, rows: [{ ...inB, rowNumber: 2 }, inB] };
+    expect(render(3, { preview: moved })).toMatch(
+      /aria-label="Set all rows to branch"(?:(?!<\/select>)[\s\S])*<option[^>]*selected=""[^>]*>Branch B/
+    );
+    expect(render(3, { preview: moved })).toContain('2 rows');
+    const mixed = render(3, { preview: { ...preview, rows: [preview.rows[0], inB] } });
+    expect(mixed).toContain('Mixed branches');
+    expect(mixed).toContain('Branch B</span>: 1 row');
+    expect(render(3, { busy: true })).toContain('Updating branches');
+  });
+  it('asks before a branch choice moves existing customers, and only then', () => {
+    const known = {
+      ...preview.rows[0],
+      name: 'Ali',
+      existingBranches: [{ id: 'a', name: 'Main' }],
+    };
+    expect(branchMoveMessage([preview.rows[0]], 'b', 'Barja')).toBeNull();
+    expect(branchMoveMessage([known], 'a', 'Main')).toBeNull();
+    expect(branchMoveMessage([known], 'b', 'Barja')).toContain('Move "Ali" from Main to Barja?');
+    expect(branchMoveMessage([known, { ...known, rowNumber: 3 }], 'b', 'Barja')).toContain(
+      'Move 2 customers who are already in another branch to Barja?'
+    );
+  });
+  it('offers to return chosen rows to their own branch, and allows adding a same-name customer as new', () => {
+    const named = {
+      ...preview.rows[0],
+      chosenBranch: true,
+      matchedBy: 'NAME' as const,
+      matches: [{ id: 'customer', name: 'علي' }],
+      decision: { rowNumber: 2, action: 'CREATE' as const },
+    };
+    const html = render(4, { preview: { ...preview, rows: [named] } });
+    expect(html).toContain('Keep every customer in their own branch');
+    expect(html).toContain('ADD AS NEW');
+    expect(importNeedsResolution({ ...preview, rows: [named] })).toBe(false);
+    expect(render(4)).not.toContain('Keep every customer in their own branch');
+  });
   it('shows the branch as text when there is only one to choose', () => {
     const html = render(4, { preview: { ...preview, branches: [preview.branches[0]] } });
     expect(html).not.toContain('Branch for row 2');
@@ -283,6 +328,7 @@ describe('customer CSV import dialog', () => {
             created: 2,
             updated: 3,
             skipped: 4,
+            moved: 0,
             openingDebts: 1,
             openingDebtTotalUsd: '19.55',
             balanceIncreases: 0,
