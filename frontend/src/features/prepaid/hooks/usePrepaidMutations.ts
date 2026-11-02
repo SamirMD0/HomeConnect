@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { prepaidApi } from '../api/prepaid.api';
-import { DeliverPrepaidPayload, RevertPrepaidDeliveryPayload } from '../types/prepaid.types';
+import { ConvertPrepaidPayload, DeliverPrepaidPayload, RevertPrepaidDeliveryPayload } from '../types/prepaid.types';
 import { prepaidQueryKeyPrefix } from './usePrepaidPurchases';
 import { financialLedgerQueryKeyPrefix } from '../../financial-ledger/hooks/useFinancialLedger';
 import { receivablesQueryKeyPrefix } from '../../receivables/hooks/useReceivables';
@@ -33,6 +33,19 @@ export const useDeliverPrepaidPurchase = (id: string) => {
     onSuccess: async () => {
       await invalidate();
       toast.success('Marked as delivered');
+    },
+    onError: (error) => toast.error(normalizeFinancialError(error).message),
+  });
+};
+
+export const useConvertPrepaidPurchase = (id: string) => {
+  const invalidate = useInvalidatePrepaidCaches();
+
+  return useMutation({
+    mutationFn: (payload: ConvertPrepaidPayload) => prepaidApi.convert(id, payload),
+    onSuccess: async (_data, payload) => {
+      await invalidate();
+      toast.success(payload.mode === 'DEBT' ? 'Converted to a debt' : 'Converted to an installment plan');
     },
     onError: (error) => toast.error(normalizeFinancialError(error).message),
   });

@@ -30,10 +30,13 @@ import {
   ZERO_MONEY,
 } from '../index';
 import { DebtsRepository } from '../debts/debts.repository';
+import { InstallmentPlansService } from '../installment-plans/installment-plans.service';
+import type { FinancialTransactionClient } from '../infrastructure/transaction';
 import { verifyAdminPasswordForCorrection } from '../authorization/account-password';
 import { writeFinancialCorrectionAudit } from '../corrections/correction-audit';
 import { PrepaidRepository, PrepaidPurchaseWithDetails } from './prepaid.repository';
 import {
+  ConvertPrepaidInput,
   DeliverPrepaidInput,
   PrepaidListQueryInput,
   RevertPrepaidDeliveryInput,
@@ -56,6 +59,10 @@ export interface PrepaidRequestContext {
 }
 
 const DEFAULT_DELIVERY_REASON = 'Item delivered to customer';
+const CONVERSION_REASONS: Record<ConvertPrepaidInput['mode'], string> = {
+  DEBT: 'Item handed over; remainder converted to a debt',
+  INSTALLMENT: 'Item handed over; remainder converted to an installment plan',
+};
 
 export class PrepaidService {
   static async listPrepaidPurchases(
@@ -139,20 +146,7 @@ export class PrepaidService {
     const businessDate = todayInBusinessTimezone();
 
     return runFinancialTransaction(async (tx) => {
-      const prepaid = await PrepaidRepository.findById(id, tx);
-      if (!prepaid) {
-        throw new NotFoundError('Prepaid purchase not found');
-      }
-      if (prepaid.status !== PrepaidPurchaseStatus.PENDING) {
-        throw new PrepaidNotPendingError(
-          prepaid.status === PrepaidPurchaseStatus.DELIVERED
-            ? 'Prepaid purchase is already delivered'
-            : 'Prepaid purchase is cancelled'
-        );
-      }
-      if (prepaid.debt.cancelledAt || prepaid.debt.status === DebtStatus.CANCELLED) {
-        throw new PrepaidNotPendingError('Prepaid purchase is cancelled');
-      }
+      const prepaid = await this.findPendingForHandover(id, tx);
 
       const balance = this.balanceOf(prepaid);
       const remaining = calculatePrepaidRemainingToCollect({
@@ -173,32 +167,14 @@ export class PrepaidService {
             'A due date is required for the remaining balance because this item is not fully paid'
           );
         }
-        const remainderDueDate = parseBusinessDate(input.remainderDueDate);
-        const remainderAmount = assertPositiveMoney(remaining);
-
-        const remainderDebt = await DebtsRepository.createDebt(
-          {
-            customerId: prepaid.debt.customerId,
-            description: `Balance for ${prepaid.debt.description}`,
-            kind: DebtKind.STANDARD,
-            originalAmount: remainderAmount,
-            dueDate: businessDateToPrisma(remainderDueDate),
-            status: determineDebtStatus({
-              isCancelled: false,
-              dueDate: remainderDueDate,
-              businessDate,
-              balance: calculateDebtBalance({
-                originalAmount: remainderAmount,
-                allocations: [],
-              }),
-              overdueEligible: true,
-            }),
-            notes: null,
-            createdById: user.userId,
-          },
+        remainderDebtId = await this.createRemainderDebt(
+          prepaid,
+          remaining,
+          input.remainderDueDate,
+          businessDate,
+          user,
           tx
         );
-        remainderDebtId = remainderDebt.id;
       }
 
       const delivered = await PrepaidRepository.markDelivered(tx, id, {
@@ -225,6 +201,100 @@ export class PrepaidService {
             adminDebtAfter: moneyToApiString(ZERO_MONEY),
             remainderDebtAmount: moneyToApiString(remaining),
             remainderDebtId,
+          },
+          sourceScreen: FinancialCorrectionSourceScreen.PREPAID,
+          requestId: context.requestId ?? null,
+          ipAddress: context.ipAddress ?? null,
+        },
+        tx
+      );
+
+      return this.toView(delivered);
+    });
+  }
+
+  /**
+   * Hands the item over and turns the unpaid remainder into a debt or an
+   * installment plan. What the customer already paid stays on the prepaid
+   * record; only the remainder is newly owed.
+   */
+  static async convert(
+    id: string,
+    input: ConvertPrepaidInput,
+    user: AuthenticatedUser,
+    context: PrepaidRequestContext = {}
+  ): Promise<PrepaidPurchaseView> {
+    const actor = await DebtsRepository.findUserIdentity(user.userId);
+    if (!actor) {
+      throw new NotFoundError('Acting user not found');
+    }
+    const businessDate = todayInBusinessTimezone();
+
+    return runFinancialTransaction(async (tx) => {
+      const prepaid = await this.findPendingForHandover(id, tx);
+      const balance = this.balanceOf(prepaid);
+      const remaining = calculatePrepaidRemainingToCollect({
+        fullAmount: prepaid.debt.originalAmount,
+        totalPaid: balance.totalPaid,
+      });
+      if (!remaining.greaterThan(ZERO_MONEY)) {
+        throw new ValidationError('This item is fully paid, so there is nothing to convert. Mark it as delivered instead.');
+      }
+      const adminDebtBefore = calculatePrepaidAdminDebt({
+        kind: prepaid.debt.kind,
+        prepaidStatus: prepaid.status,
+        isCancelled: false,
+        totalPaid: balance.totalPaid,
+      });
+
+      let remainderDebtId: string | null = null;
+      let remainderInstallmentPlanId: string | null = null;
+      if (input.mode === 'DEBT') {
+        remainderDebtId = await this.createRemainderDebt(prepaid, remaining, input.dueDate, businessDate, user, tx);
+      } else {
+        const plan = await InstallmentPlansService.createPlan(
+          prepaid.debt.customerId,
+          {
+            description: `Balance for ${prepaid.debt.description}`,
+            totalAmount: moneyToApiString(remaining),
+            startDate: input.startDate,
+            installmentCount: input.installmentCount,
+            frequency: input.frequency,
+            notes: null,
+          },
+          user,
+          tx
+        );
+        remainderInstallmentPlanId = plan.id;
+      }
+
+      const delivered = await PrepaidRepository.markDelivered(tx, id, {
+        deliveredAt: businessDateToPrisma(businessDate),
+        deliveredById: user.userId,
+        deliveryNotes: null,
+        remainderDebtId,
+        remainderInstallmentPlanId,
+      });
+
+      await writeFinancialCorrectionAudit(
+        {
+          recordType: FinancialCorrectionRecordType.PREPAID_PURCHASE,
+          recordId: prepaid.id,
+          customerId: prepaid.debt.customerId,
+          action: FinancialCorrectionAction.DELIVER_PREPAID,
+          correctedById: actor.id,
+          correctedByName: actor.fullName,
+          correctedByUsername: actor.username,
+          reason: CONVERSION_REASONS[input.mode],
+          beforeValues: this.toAuditValues(prepaid),
+          afterValues: this.toAuditValues(delivered),
+          affectedTotals: {
+            convertedTo: input.mode,
+            adminDebtBefore: moneyToApiString(adminDebtBefore),
+            adminDebtAfter: moneyToApiString(ZERO_MONEY),
+            remainderAmount: moneyToApiString(remaining),
+            remainderDebtId,
+            remainderInstallmentPlanId,
           },
           sourceScreen: FinancialCorrectionSourceScreen.PREPAID,
           requestId: context.requestId ?? null,
@@ -287,6 +357,13 @@ export class PrepaidService {
         }
       }
 
+      if (prepaid.remainderInstallmentPlanId) {
+        await InstallmentPlansService.cancelUnpaidPlanInTransaction(tx, prepaid.remainderInstallmentPlanId, {
+          cancelledById: user.userId,
+          reason: `Delivery reverted: ${input.reason}`,
+        });
+      }
+
       const reverted = await PrepaidRepository.revertDelivery(tx, id);
       const balance = this.balanceOf(reverted);
       const adminDebtAfter = calculatePrepaidAdminDebt({
@@ -312,6 +389,7 @@ export class PrepaidService {
             adminDebtBefore: moneyToApiString(ZERO_MONEY),
             adminDebtAfter: moneyToApiString(adminDebtAfter),
             cancelledRemainderDebtId: prepaid.remainderDebtId,
+            cancelledRemainderPlanId: prepaid.remainderInstallmentPlanId,
           },
           sourceScreen: FinancialCorrectionSourceScreen.PREPAID,
           requestId: context.requestId ?? null,
@@ -322,6 +400,59 @@ export class PrepaidService {
 
       return this.toView(reverted);
     });
+  }
+
+  private static async findPendingForHandover(id: string, tx: FinancialTransactionClient) {
+    const prepaid = await PrepaidRepository.findById(id, tx);
+    if (!prepaid) {
+      throw new NotFoundError('Prepaid purchase not found');
+    }
+    if (prepaid.status !== PrepaidPurchaseStatus.PENDING) {
+      throw new PrepaidNotPendingError(
+        prepaid.status === PrepaidPurchaseStatus.DELIVERED
+          ? 'Prepaid purchase is already delivered'
+          : 'Prepaid purchase is cancelled'
+      );
+    }
+    if (prepaid.debt.cancelledAt || prepaid.debt.status === DebtStatus.CANCELLED) {
+      throw new PrepaidNotPendingError('Prepaid purchase is cancelled');
+    }
+    return prepaid;
+  }
+
+  private static async createRemainderDebt(
+    prepaid: PrepaidPurchaseWithDetails,
+    remaining: ReturnType<typeof calculatePrepaidRemainingToCollect>,
+    dueDate: string,
+    businessDate: string,
+    user: AuthenticatedUser,
+    tx: FinancialTransactionClient
+  ): Promise<string> {
+    const remainderDueDate = parseBusinessDate(dueDate);
+    const remainderAmount = assertPositiveMoney(remaining);
+    const remainderDebt = await DebtsRepository.createDebt(
+      {
+        customerId: prepaid.debt.customerId,
+        description: `Balance for ${prepaid.debt.description}`,
+        kind: DebtKind.STANDARD,
+        originalAmount: remainderAmount,
+        dueDate: businessDateToPrisma(remainderDueDate),
+        status: determineDebtStatus({
+          isCancelled: false,
+          dueDate: remainderDueDate,
+          businessDate,
+          balance: calculateDebtBalance({
+            originalAmount: remainderAmount,
+            allocations: [],
+          }),
+          overdueEligible: true,
+        }),
+        notes: null,
+        createdById: user.userId,
+      },
+      tx
+    );
+    return remainderDebt.id;
   }
 
   private static balanceOf(prepaid: PrepaidPurchaseWithDetails) {
@@ -412,6 +543,7 @@ export class PrepaidService {
           }
         : null,
       remainderDebtId: prepaid.remainderDebtId,
+      remainderInstallmentPlanId: prepaid.remainderInstallmentPlanId,
       createdBy: prepaid.debt.createdBy
         ? {
             id: prepaid.debt.createdBy.id,
@@ -479,6 +611,7 @@ export class PrepaidService {
       deliveredAt: prepaid.deliveredAt ? prismaDateToBusinessDate(prepaid.deliveredAt) : null,
       deliveryNotes: prepaid.deliveryNotes,
       remainderDebtId: prepaid.remainderDebtId,
+      remainderInstallmentPlanId: prepaid.remainderInstallmentPlanId,
       itemName: prepaid.debt.description,
       fullAmount: moneyToApiString(prepaid.debt.originalAmount),
       amountPaid: moneyToApiString(balance.totalPaid),

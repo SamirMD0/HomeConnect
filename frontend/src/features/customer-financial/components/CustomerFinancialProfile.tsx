@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { CustomerStatementPanel } from '../../documents/components/CustomerStatementPanel';
 import { Modal } from '../../../components/ui/Modal';
 import { useAuth } from '../../../hooks/useAuth';
 import { useCustomerFinancialSummary } from '../hooks/useCustomerFinancialSummary';
@@ -38,7 +39,7 @@ import { CustomerActivityTimeline } from '../../../pages/customers/components/Cu
 import { CustomerAttentionPanel } from '../../../pages/customers/components/CustomerAttentionPanel';
 import { CustomerMonthStatusCard } from '../../../pages/customers/components/CustomerMonthStatusCard';
 
-export type FinancialProfileTab = 'overview' | 'debts' | 'prepaid' | 'plans' | 'payments' | 'overdue' | 'activity';
+export type FinancialProfileTab = 'overview' | 'debts' | 'prepaid' | 'plans' | 'payments' | 'overdue' | 'statement' | 'activity';
 
 interface CustomerFinancialProfileProps {
   customerId: string;
@@ -53,6 +54,7 @@ const tabs: Array<{ id: FinancialProfileTab; label: string }> = [
   { id: 'plans', label: 'Installment Plans' },
   { id: 'payments', label: 'Payments' },
   { id: 'overdue', label: 'Overdue' },
+  { id: 'statement', label: 'Statement' },
   { id: 'activity', label: 'Activity' },
 ];
 
@@ -395,6 +397,7 @@ const FinancialTabPanel: React.FC<FinancialTabPanelProps> = ({
   customerId,
 }) => {
   if (activeTab === 'activity') return <CustomerActivityPanel customerId={customerId} />;
+  if (activeTab === 'statement') return <CustomerStatementPanel customerId={customerId} />;
   if (activeTab === 'debts') {
     return (
       <CustomerDebtsList

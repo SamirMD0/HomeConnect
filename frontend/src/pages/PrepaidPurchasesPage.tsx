@@ -17,6 +17,7 @@ import { PrepaidDetailsDialog } from '../features/prepaid/components/PrepaidDeta
 import { EditPrepaidPurchaseDialog } from '../features/prepaid/components/EditPrepaidPurchaseDialog';
 import { RecordDebtPaymentDialog } from '../features/customer-financial/components/RecordDebtPaymentDialog';
 import { CancelDebtDialog } from '../features/customer-financial/components/CancelDebtDialog';
+import { ConvertPrepaidDialog } from '../features/prepaid/components/ConvertPrepaidDialog';
 import { usePrepaidPurchases } from '../features/prepaid/hooks/usePrepaidPurchases';
 import {
   PrepaidFilters as PrepaidFiltersType,
@@ -34,11 +35,12 @@ export const PrepaidPurchasesPage: React.FC = () => {
   const [filters, setFilters] = useState<PrepaidFiltersType>({ ...defaultPrepaidFilters });
   const [openMenuKey, setOpenMenuKey] = useState<string | null>(null);
   const [deliverTarget, setDeliverTarget] = useState<PrepaidPurchase | null>(null);
+  const [convertTarget, setConvertTarget] = useState<PrepaidPurchase | null>(null);
   const [revertTarget, setRevertTarget] = useState<PrepaidPurchase | null>(null);
   const [detailsTarget, setDetailsTarget] = useState<PrepaidPurchase | null>(null);
   const [editTarget, setEditTarget] = useState<PrepaidPurchase | null>(null);
   const [paymentTarget, setPaymentTarget] = useState<PrepaidPurchase | null>(null);
-  useRecordBranch(branchIdOf(deliverTarget ?? revertTarget ?? editTarget ?? paymentTarget ?? detailsTarget));
+  useRecordBranch(branchIdOf(deliverTarget ?? convertTarget ?? revertTarget ?? editTarget ?? paymentTarget ?? detailsTarget));
   const [cancelTarget, setCancelTarget] = useState<PrepaidPurchase | null>(null);
 
   const { data, isLoading, isError, refetch } = usePrepaidPurchases(filters);
@@ -47,6 +49,7 @@ export const PrepaidPurchasesPage: React.FC = () => {
 
   const closeDialogs = () => {
     setDeliverTarget(null);
+    setConvertTarget(null);
     setRevertTarget(null);
     setDetailsTarget(null);
     setEditTarget(null);
@@ -101,6 +104,7 @@ export const PrepaidPurchasesPage: React.FC = () => {
               openMenuKey={openMenuKey}
               onOpenMenuChange={setOpenMenuKey}
               onDeliver={setDeliverTarget}
+              onConvert={setConvertTarget}
               onRevertDelivery={setRevertTarget}
               onViewDetails={setDetailsTarget}
               onEdit={setEditTarget}
@@ -148,6 +152,17 @@ export const PrepaidPurchasesPage: React.FC = () => {
       >
         {deliverTarget && (
           <DeliverPrepaidDialog item={deliverTarget} onSuccess={closeDialogs} />
+        )}
+      </Modal>
+
+      <Modal
+        isOpen={Boolean(convertTarget)}
+        onClose={closeDialogs}
+        title={businessLabels.prepaid.convert}
+        maxWidth="max-w-lg"
+      >
+        {convertTarget && (
+          <ConvertPrepaidDialog item={convertTarget} onSuccess={closeDialogs} />
         )}
       </Modal>
 

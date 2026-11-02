@@ -71,6 +71,31 @@ export interface PaymentReceipt extends DocumentBranchData {
   voidedBy: PaymentReceiptUser | null;
 }
 
+export interface SupplierStatement extends DocumentBranchData {
+  businessDate: string;
+  currency: 'USD';
+  supplier: { id: string; name: string; phone: string; companyName: string | null };
+  range: { from: string; to: string };
+  openingBalance: string;
+  entries: Array<{
+    id: string;
+    type: 'SUPPLIER_DEBT' | 'SUPPLIER_PAYMENT' | 'SUPPLIER_CREDIT' | 'SUPPLIER_ADJUSTMENT';
+    date: string;
+    description: string;
+    reference: string | null;
+    originalAmount: string;
+    currency: 'USD' | 'LBP';
+    exchangeRate: string;
+    baseAmount: string;
+    balanceEffect: string;
+    runningBalance: string;
+    status: 'POSTED' | 'REMOVED';
+    dueDate: string | null;
+    reason: string | null;
+  }>;
+  closingBalance: string;
+}
+
 export type CustomerStatementEntryStatus = 'POSTED' | 'VOIDED' | 'CANCELLED';
 
 export interface CustomerStatement extends DocumentBranchData {

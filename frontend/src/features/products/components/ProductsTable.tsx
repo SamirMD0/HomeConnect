@@ -33,13 +33,13 @@ export const ProductsTable: React.FC<ProductsTableProps> = ({
             <th scope="col" className="w-11 px-3 py-2.5">
               <SelectAllCheckbox products={products} selectedIds={selectedIds} onSelectAll={onSelectAll} />
             </th>
-            <th scope="col" className="w-full max-w-0 px-4 py-2.5"><ColumnHeading english="Product" arabic="المنتج" /></th>
-            {canAdmin && <th scope="col" className="whitespace-nowrap px-4 py-2.5"><ColumnHeading english="Cost" arabic="التكلفة" align="right" /></th>}
-            <th scope="col" className="whitespace-nowrap px-4 py-2.5"><ColumnHeading english="Cash Price" arabic="السعر النقدي" align="right" /></th>
-            <th scope="col" className="whitespace-nowrap px-4 py-2.5"><ColumnHeading english="Installment" arabic="التقسيط" align="right" /></th>
-            <th scope="col" className="whitespace-nowrap px-4 py-2.5"><ColumnHeading english="Status" arabic="الحالة" /></th>
-            <th scope="col" className="whitespace-nowrap px-4 py-2.5"><ColumnHeading english="Stock" arabic="المخزون" /></th>
-            <th scope="col" className="sticky right-0 whitespace-nowrap bg-slate-50 px-4 py-2.5"><ColumnHeading english="Actions" arabic="الإجراءات" align="right" /></th>
+            <th scope="col" className="w-full max-w-0 px-4 py-2.5"><ColumnHeading english="Product" /></th>
+            {canAdmin && <th scope="col" className="whitespace-nowrap px-4 py-2.5"><ColumnHeading english="Cost" align="right" /></th>}
+            <th scope="col" className="whitespace-nowrap px-4 py-2.5"><ColumnHeading english="Cash Price" align="right" /></th>
+            <th scope="col" className="whitespace-nowrap px-4 py-2.5"><ColumnHeading english="Installment" align="right" /></th>
+            <th scope="col" className="whitespace-nowrap px-4 py-2.5"><ColumnHeading english="Status" /></th>
+            <th scope="col" className="whitespace-nowrap px-4 py-2.5"><ColumnHeading english="Stock" /></th>
+            <th scope="col" className="sticky right-0 whitespace-nowrap bg-slate-50 px-4 py-2.5"><ColumnHeading english="Actions" align="right" /></th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
@@ -63,7 +63,7 @@ export const ProductsTable: React.FC<ProductsTableProps> = ({
 
                 <td className="w-full max-w-0 px-4 py-3 align-top">
                   <div className="flex min-w-0 items-start gap-3">
-                    <button type="button" onClick={() => onView(product)} aria-label={`Open ${product.name} details / فتح تفاصيل المنتج`} title={`Open ${product.name} details`} className="h-10 w-10 shrink-0 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-500"><ProductImageView productId={product.id} image={product.image} alt={product.name} className="h-10 w-10 rounded-md border border-slate-200" /></button>
+                    <button type="button" onClick={() => onView(product)} aria-label={`Open ${product.name} details`} title={`Open ${product.name} details`} className="h-10 w-10 shrink-0 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-500"><ProductImageView productId={product.id} image={product.image} alt={product.name} className="h-10 w-10 rounded-md border border-slate-200" /></button>
                     <ProductIdentity product={product} onView={() => onView(product)} />
                   </div>
                 </td>
@@ -92,9 +92,9 @@ export const ProductsTable: React.FC<ProductsTableProps> = ({
 
                 <td className={`sticky right-0 whitespace-nowrap px-4 py-3 align-top ${rowBg}`}>
                   <div className="flex items-center justify-end gap-1.5">
-                    <IconButton label="View details / عرض التفاصيل" onClick={() => onView(product)} primary><Eye className="h-4 w-4" /></IconButton>
-                    <IconButton label="Edit product / تعديل المنتج" onClick={() => onEdit(product)}><Edit3 className="h-4 w-4" /></IconButton>
-                    <IconButton label="Inventory / المخزون" onClick={() => onInventory(product)}><Warehouse className="h-4 w-4" /></IconButton>
+                    <IconButton label="View details" onClick={() => onView(product)} primary><Eye className="h-4 w-4" /></IconButton>
+                    <IconButton label="Edit product" onClick={() => onEdit(product)}><Edit3 className="h-4 w-4" /></IconButton>
+                    <IconButton label="Inventory" onClick={() => onInventory(product)}><Warehouse className="h-4 w-4" /></IconButton>
                     <ProductOverflowMenu product={product} canAdmin={canAdmin} onArchive={() => onArchive(product)} onRestore={() => onRestore(product)} />
                   </div>
                 </td>
@@ -163,11 +163,11 @@ const PricingFormulaCaption: React.FC<{ product: Product }> = ({ product }) => {
   if (mode === 'NONE') return null;
   return (
     <span className="mt-1 flex items-center justify-end gap-1.5">
-      {mode === 'CUSTOM' && <Chip tone="blue">Custom / مخصص</Chip>}
-      {mode === 'MANUAL' && <Chip tone="amber">Manual / يدوي</Chip>}
-      {mode === 'PRESET' && <Chip>{pricing?.presetName ?? 'Preset / صيغة جاهزة'}</Chip>}
+      {mode === 'CUSTOM' && <Chip tone="blue">Custom</Chip>}
+      {mode === 'MANUAL' && <Chip tone="amber">Manual</Chip>}
+      {mode === 'PRESET' && <Chip>{pricing?.presetName ?? 'Preset'}</Chip>}
       {archivedPreset && (
-        <TriangleAlert className="h-3.5 w-3.5 shrink-0 text-amber-500" aria-label="Archived preset / صيغة مؤرشفة" />
+        <TriangleAlert className="h-3.5 w-3.5 shrink-0 text-amber-500" aria-label="Archived preset" />
       )}
     </span>
   );
@@ -182,7 +182,7 @@ const CashPriceCell: React.FC<{ product: Product }> = ({ product }) => {
       <>
         <Money value={pricing.cashPrice} className="text-[15px] font-bold text-brand-700" />
         {manualDiffers && (
-          <span className="mt-0.5 block text-[11px] text-amber-600" title="Manual price differs from calculated price / السعر اليدوي يختلف عن المحسوب">
+          <span className="mt-0.5 block text-[11px] text-amber-600" title="Manual price differs from calculated price">
             manual <span dir="ltr" className="tabular-nums">{formatMoney(product.price as string)}</span>
           </span>
         )}
@@ -200,13 +200,13 @@ const CashPriceCell: React.FC<{ product: Product }> = ({ product }) => {
     );
   }
 
-  return <Empty title="No pricing configured / لا يوجد تسعير" />;
+  return <Empty title="No pricing configured" />;
 };
 
 const InstallmentCell: React.FC<{ product: Product }> = ({ product }) => {
   const pricing = product.pricing;
   if (!pricing?.pricingAvailable || !pricing.installmentPrice) {
-    return <Empty title="No installment preview / لا توجد معاينة تقسيط" />;
+    return <Empty title="No installment preview" />;
   }
 
   return (
@@ -216,7 +216,7 @@ const InstallmentCell: React.FC<{ product: Product }> = ({ product }) => {
         <span
           dir="ltr"
           className="mt-0.5 block text-[11px] tabular-nums text-slate-500"
-          title="Down payment + monthly installments / الدفعة الأولى + الأقساط الشهرية"
+          title="Down payment + monthly installments"
         >
           {formatMoney(pricing.downPayment)}
           {pricing.installmentMonths ? ` + ${pricing.installmentMonths} × ${formatMoney(pricing.monthlyPayment)}` : ''}
@@ -263,9 +263,6 @@ const IconButton: React.FC<{ label: string; onClick: () => void; children: React
   </button>
 );
 
-const ColumnHeading: React.FC<{ english: string; arabic: string; align?: 'left' | 'right' }> = ({ english, arabic, align = 'left' }) => (
-  <span className={`block ${align === 'right' ? 'text-right' : 'text-left'}`}>
-    <span className="block text-[11px] font-semibold uppercase tracking-wide text-slate-600">{english}</span>
-    <span lang="ar" dir="rtl" className={`mt-0.5 block text-[11px] font-medium text-slate-400 ${align === 'right' ? 'text-right' : 'text-left'}`}>{arabic}</span>
-  </span>
+const ColumnHeading: React.FC<{ english: string; align?: 'left' | 'right' }> = ({ english, align = 'left' }) => (
+  <span className={`block text-xs font-semibold text-slate-700 ${align === 'right' ? 'text-right' : 'text-left'}`}>{english}</span>
 );

@@ -55,6 +55,7 @@ import { verifyAccountPassword, verifyAdminPasswordForCorrection } from '../auth
 import { writeFinancialCorrectionAudit } from '../corrections/correction-audit';
 import { convertPaymentAllocation, splitPaymentAmounts } from '../domain/currency-allocation';
 import { ExchangeRatesService } from '../exchange-rates/exchange-rates.service';
+import { PrepaidRemainderHasPaymentsError } from '../domain/financial-errors';
 
 interface AuthenticatedUser {
   userId: string;
@@ -686,6 +687,31 @@ export class InstallmentPlansService {
       }
 
       return this.toPlanView(cancelledPlan);
+    });
+  }
+
+  /**
+   * Cancels a plan that nothing has been paid on, inside the caller's
+   * transaction. For undoing the action that created the plan: the caller has
+   * already checked permission and the password.
+   */
+  static async cancelUnpaidPlanInTransaction(
+    tx: FinancialTransactionClient,
+    planId: string,
+    input: { cancelledById: string; reason: string }
+  ): Promise<void> {
+    const plan = await InstallmentPlansRepository.findPlanById(planId, tx);
+    if (!plan || plan.status === InstallmentPlanStatus.CANCELLED) return;
+    const hasReturnCredit = plan.installments.some((installment) => (installment.returnAllocations?.length ?? 0) > 0);
+    if (hasReturnCredit || this.calculatePlanSummary(plan).totalPaid.greaterThan(new Decimal('0.00'))) {
+      throw new PrepaidRemainderHasPaymentsError(
+        'The installment plan already has payments. Correct those payments before reverting the delivery.'
+      );
+    }
+    await InstallmentPlansRepository.cancelPlan(tx, planId, {
+      cancelledAt: new Date(),
+      cancelledById: input.cancelledById,
+      cancelReason: input.reason,
     });
   }
 

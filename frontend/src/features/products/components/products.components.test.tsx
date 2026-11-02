@@ -160,7 +160,7 @@ describe('product management frontend', () => {
     const image = controls.find((element) => element.type === 'button' && String(element.props['aria-label']).startsWith('Open '));
     const name = controls.find((element) => element.type === 'button' && textOf(element.props.children) === product.name);
     const checkbox = controls.find((element) => element.type === 'input' && element.props['aria-label'] === `Select ${product.name}`);
-    const inventory = controls.find((element) => element.props.label === 'Inventory / المخزون');
+    const inventory = controls.find((element) => element.props.label === 'Inventory');
     image?.props.onClick?.();
     expect(onView).toHaveBeenCalledTimes(1);
     expect(onSelect).not.toHaveBeenCalled();
@@ -197,28 +197,30 @@ describe('product management frontend', () => {
     const menu = renderToStaticMarkup(<QueryClientProvider client={queryClient}><MemoryRouter><ProductOverflowMenu product={product} canAdmin onArchive={() => undefined} onRestore={() => undefined} defaultOpen /></MemoryRouter></QueryClientProvider>);
     expect(menu).toContain('aria-haspopup="menu"');
     expect(menu).toContain('aria-expanded="true"');
-    expect(menu).toContain('role="menu"');
-    expect(menu).toContain('role="menuitem"');
-    // Print label + Pricing card + Make Order + Archive/Restore = 4 items in BOTH mode.
-    expect(menu.match(/role="menuitem"/g)).toHaveLength(4);
-    expect(menu).not.toContain('<div role="menuitem"');
-    expect(menu).toContain(`/sales-orders?action=add&amp;productId=${product.id}`);
-    expect(menu).toContain('Print label / طباعة الملصق');
-    expect(menu).toContain('Pricing card / بطاقة السعر');
-    expect(menu).toContain('Make Order / إنشاء طلب');
+    // The open menu itself renders in a portal, so its items are checked through the list below.
 
     // ProductOverflowMenuItems is now a component (it uses useRolloutMode),
     // so exercise it through renderToStaticMarkup + a click-shaped assertion
     // rather than by calling it as a plain function.
     const archive = vi.fn();
     const activeMenu = renderToStaticMarkup(<QueryClientProvider client={queryClient}><MemoryRouter><ProductOverflowMenuItems product={product} canAdmin onArchive={archive} onRestore={vi.fn()} /></MemoryRouter></QueryClientProvider>);
-    expect(activeMenu).toContain('Archive / أرشفة');
-    expect(activeMenu).not.toContain('Restore / استعادة');
+    expect(activeMenu).toContain('role="menu"');
+    // Print label + Pricing card + Make Order + Archive/Restore = 4 items in BOTH mode.
+    expect(activeMenu.match(/role="menuitem"/g)).toHaveLength(4);
+    expect(activeMenu).not.toContain('<div role="menuitem"');
+    expect(activeMenu).toContain(`/sales-orders?action=add&amp;productId=${product.id}`);
+    expect(activeMenu).toContain('Print label');
+    expect(activeMenu).toContain('Pricing card');
+    expect(activeMenu).toContain('Make Order');
+    expect(activeMenu).toContain('Archive');
+    expect(activeMenu).not.toContain('Restore');
+    expect(activeMenu).not.toContain('أرشفة');
+    expect(activeMenu).not.toContain('طباعة');
 
     const restore = vi.fn();
     const inactiveMenu = renderToStaticMarkup(<QueryClientProvider client={queryClient}><MemoryRouter><ProductOverflowMenuItems product={{ ...product, isActive: false }} canAdmin onArchive={vi.fn()} onRestore={restore} /></MemoryRouter></QueryClientProvider>);
-    expect(inactiveMenu).toContain('Restore / استعادة');
-    expect(inactiveMenu).not.toContain('Archive / أرشفة');
+    expect(inactiveMenu).toContain('Restore');
+    expect(inactiveMenu).not.toContain('Archive');
     // Bind the callbacks so vi.fn identities are used at least once, keeping the linter happy.
     void archive; void restore;
   });
@@ -235,7 +237,7 @@ describe('product management frontend', () => {
       user: { id: 'admin-1', username: 'admin', fullName: 'Admin', role: 'ADMIN' }, accessToken: 'token', isAuthenticated: true, isLoading: false,
       login: () => undefined, logout: async () => undefined, updateUser: () => undefined,
     }}><QueryClientProvider client={queryClient}><MemoryRouter><ProductDetailsDrawer productId={product.id} initialSection="stock" onClose={() => undefined} onEdit={() => undefined} onArchive={() => undefined} onRestore={() => undefined} /></MemoryRouter></QueryClientProvider></AuthContext.Provider>);
-    expect(html).toContain('In stock / متوفر');
+    expect(html).toContain('In stock');
     expect(html).toContain('4 units / وحدة');
     expect(html).toContain('Product sections / أقسام المنتج');
     expect(html).toContain('href="#product-stock"');
@@ -259,12 +261,12 @@ describe('product management frontend', () => {
     const html = renderToStaticMarkup(<MemoryRouter><ProductsTable products={[product]} selectedIds={new Set()} canAdmin onSelect={() => undefined} onSelectAll={() => undefined} onView={() => undefined} onEdit={() => undefined} onArchive={() => undefined} onRestore={() => undefined} /></MemoryRouter>);
     expect(html).toContain('مروحة سقف');
     expect(html).toContain('dir="auto"');
-    expect(html).toContain('Active / نشط');
+    expect(html).toContain('Active');
     expect(html).toContain('$450.00');
     expect(html).toContain('Standard AC');
     expect(html).toContain('$453.38');
-    expect(html).toContain('View details / عرض التفاصيل');
-    expect(html).toContain('Inventory / المخزون');
+    expect(html).toContain('View details');
+    expect(html).toContain('Inventory');
     expect(html).toContain('More actions for مروحة سقف');
     expect(html).not.toContain('Archive product');
   });
@@ -302,9 +304,9 @@ describe('product management frontend', () => {
     };
     const html = renderToStaticMarkup(<MemoryRouter><ProductsTable products={[cachedProduct]} selectedIds={new Set()} canAdmin onSelect={() => undefined} onSelectAll={() => undefined} onView={() => undefined} onEdit={() => undefined} onArchive={() => undefined} onRestore={() => undefined} /></MemoryRouter>);
     expect(html).toContain('$377.82');
-    expect(html).toContain('No installment preview / لا توجد معاينة تقسيط');
+    expect(html).toContain('No installment preview');
     expect(html).not.toContain('$453.38');
-    expect(html).toContain('View details / عرض التفاصيل');
+    expect(html).toContain('View details');
   });
 
   it('renders an external product image URL directly in the table', () => {

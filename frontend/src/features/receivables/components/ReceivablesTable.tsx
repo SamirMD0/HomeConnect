@@ -75,7 +75,7 @@ export const ReceivablesTable: React.FC<ReceivablesTableProps> = ({
           <caption className="sr-only">
             Customer accounts receivable standing, sorted by {sortBy}
           </caption>
-          <thead className="border-b border-slate-200 bg-slate-100 text-xs r text-slate-700 font-semibold">
+          <thead className="border-b border-slate-200 bg-slate-100 text-xs text-slate-700 font-semibold">
             <tr>
               {visibleColumns.map((column) => (
                 <th
@@ -96,7 +96,7 @@ export const ReceivablesTable: React.FC<ReceivablesTableProps> = ({
                     <button
                       type="button"
                       onClick={() => onSort(column.sortKey as ReceivableSortBy)}
-                      className={`inline-flex items-center gap-1 uppercase tracking-wider hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/30 ${
+                      className={`inline-flex items-center gap-1 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/30 ${
                         column.headerClassName === 'text-right' ? 'flex-row-reverse' : ''
                       }`}
                     >

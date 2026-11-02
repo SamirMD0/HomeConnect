@@ -72,7 +72,7 @@ export const LedgerPaymentRow: React.FC<LedgerPaymentRowProps> = ({
             ? [{ label: 'Void payment', onClick: () => onVoidPayment(item), tone: 'cancel' }]
             : []
         }
-        immutableHint="Immutable"
+        immutableHint="Nothing can be changed on this payment."
         onOpenChange={onOpenMenuChange}
       />
     </td>

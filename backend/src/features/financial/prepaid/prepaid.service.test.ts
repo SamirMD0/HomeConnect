@@ -23,7 +23,9 @@ const {
   prepaidRepositoryMock,
   debtsRepositoryMock,
   verifyAdminPasswordMock,
+  plansServiceMock,
 } = vi.hoisted(() => ({
+  plansServiceMock: { createPlan: vi.fn(), cancelUnpaidPlanInTransaction: vi.fn() },
   correctionAuditMock: vi.fn(),
   prepaidRepositoryMock: {
     createForDebt: vi.fn(),
@@ -42,6 +44,10 @@ const {
     cancelDebt: vi.fn(),
   },
   verifyAdminPasswordMock: vi.fn(),
+}));
+
+vi.mock('../installment-plans/installment-plans.service', () => ({
+  InstallmentPlansService: plansServiceMock,
 }));
 
 vi.mock('./prepaid.repository', () => ({
@@ -116,6 +122,7 @@ interface MakePrepaidOptions {
   allocations?: ReturnType<typeof makeAllocation>[];
   debtCancelled?: boolean;
   remainderDebtId?: string | null;
+  remainderInstallmentPlanId?: string | null;
 }
 
 function makePrepaid(overrides: MakePrepaidOptions = {}): PrepaidPurchaseWithDetails {
@@ -127,6 +134,7 @@ function makePrepaid(overrides: MakePrepaidOptions = {}): PrepaidPurchaseWithDet
     allocations = [makeAllocation('200.00')],
     debtCancelled = false,
     remainderDebtId = null,
+    remainderInstallmentPlanId = null,
   } = overrides;
 
   return {
@@ -137,6 +145,7 @@ function makePrepaid(overrides: MakePrepaidOptions = {}): PrepaidPurchaseWithDet
     deliveredById: null,
     deliveryNotes: null,
     remainderDebtId,
+    remainderInstallmentPlanId,
     productId: null,
     createdAt: new Date('2026-07-30T10:00:00.000Z'),
     updatedAt: new Date('2026-07-30T10:00:00.000Z'),
@@ -537,6 +546,153 @@ describe('PrepaidService', () => {
         adminDebtAfter: '0.00',
       });
       expect(JSON.stringify(auditArg)).not.toContain('accountPassword');
+    });
+  });
+
+  describe('convert', () => {
+    const id = '33333333-3333-4333-8333-333333333333';
+
+    it('hands the item over and makes a debt for only the unpaid remainder', async () => {
+      prepaidRepositoryMock.findById.mockResolvedValue(makePrepaid());
+      debtsRepositoryMock.createDebt.mockResolvedValue({ id: 'remainder-debt-1' });
+      prepaidRepositoryMock.markDelivered.mockResolvedValue(
+        makePrepaid({ status: PrepaidPurchaseStatus.DELIVERED, remainderDebtId: 'remainder-debt-1' })
+      );
+
+      const view = await PrepaidService.convert(id, { mode: 'DEBT', dueDate: '2026-08-30' }, adminUser);
+
+      expect(debtsRepositoryMock.createDebt.mock.calls[0][0].originalAmount.toFixed(2)).toBe('200.00');
+      expect(debtsRepositoryMock.createDebt.mock.calls[0][0].kind).toBe(DebtKind.STANDARD);
+      expect(plansServiceMock.createPlan).not.toHaveBeenCalled();
+      expect(prepaidRepositoryMock.markDelivered).toHaveBeenCalledWith(tx, id, expect.objectContaining({
+        remainderDebtId: 'remainder-debt-1',
+        remainderInstallmentPlanId: null,
+        deliveryNotes: null,
+      }));
+      expect(view.status).toBe(PrepaidPurchaseStatus.DELIVERED);
+      expect(view.adminDebt).toBe('0.00');
+    });
+
+    it('makes an installment plan for only the unpaid remainder, in the same transaction', async () => {
+      prepaidRepositoryMock.findById.mockResolvedValue(makePrepaid());
+      plansServiceMock.createPlan.mockResolvedValue({ id: 'plan-1' });
+      prepaidRepositoryMock.markDelivered.mockResolvedValue(
+        makePrepaid({ status: PrepaidPurchaseStatus.DELIVERED, remainderInstallmentPlanId: 'plan-1' })
+      );
+
+      const view = await PrepaidService.convert(
+        id,
+        { mode: 'INSTALLMENT', startDate: '2026-08-30', installmentCount: 4, frequency: 'MONTHLY' },
+        adminUser
+      );
+
+      expect(plansServiceMock.createPlan).toHaveBeenCalledWith(
+        customer.id,
+        expect.objectContaining({ totalAmount: '200.00', startDate: '2026-08-30', installmentCount: 4, frequency: 'MONTHLY' }),
+        adminUser,
+        tx
+      );
+      expect(debtsRepositoryMock.createDebt).not.toHaveBeenCalled();
+      expect(prepaidRepositoryMock.markDelivered).toHaveBeenCalledWith(tx, id, expect.objectContaining({
+        remainderDebtId: null,
+        remainderInstallmentPlanId: 'plan-1',
+      }));
+      expect(view.remainderInstallmentPlanId).toBe('plan-1');
+    });
+
+    it('records the conversion in the audit log with what it became and the amount', async () => {
+      prepaidRepositoryMock.findById.mockResolvedValue(makePrepaid());
+      plansServiceMock.createPlan.mockResolvedValue({ id: 'plan-1' });
+      prepaidRepositoryMock.markDelivered.mockResolvedValue(
+        makePrepaid({ status: PrepaidPurchaseStatus.DELIVERED, remainderInstallmentPlanId: 'plan-1' })
+      );
+
+      await PrepaidService.convert(
+        id,
+        { mode: 'INSTALLMENT', startDate: '2026-08-30', installmentCount: 4, frequency: 'MONTHLY' },
+        adminUser
+      );
+
+      expect(correctionAuditMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          reason: 'Item handed over; remainder converted to an installment plan',
+          affectedTotals: expect.objectContaining({
+            convertedTo: 'INSTALLMENT',
+            remainderAmount: '200.00',
+            remainderInstallmentPlanId: 'plan-1',
+          }),
+        }),
+        tx
+      );
+    });
+
+    it('refuses a fully paid item, which has nothing to convert', async () => {
+      prepaidRepositoryMock.findById.mockResolvedValue(makePrepaid({ allocations: [makeAllocation('400.00')] }));
+
+      await expect(
+        PrepaidService.convert(id, { mode: 'DEBT', dueDate: '2026-08-30' }, adminUser)
+      ).rejects.toBeInstanceOf(ValidationError);
+      expect(debtsRepositoryMock.createDebt).not.toHaveBeenCalled();
+      expect(prepaidRepositoryMock.markDelivered).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['delivered', { status: PrepaidPurchaseStatus.DELIVERED }],
+      ['cancelled', { status: PrepaidPurchaseStatus.CANCELLED }],
+      ['backed by a cancelled debt', { debtCancelled: true }],
+    ])('refuses an item that is %s', async (_label, overrides) => {
+      prepaidRepositoryMock.findById.mockResolvedValue(makePrepaid(overrides));
+
+      await expect(
+        PrepaidService.convert(id, { mode: 'DEBT', dueDate: '2026-08-30' }, adminUser)
+      ).rejects.toBeInstanceOf(PrepaidNotPendingError);
+      expect(prepaidRepositoryMock.markDelivered).not.toHaveBeenCalled();
+    });
+
+    it('ignores a voided bill when working out the remainder', async () => {
+      prepaidRepositoryMock.findById.mockResolvedValue(
+        makePrepaid({ allocations: [makeAllocation('200.00'), makeAllocation('100.00', true)] })
+      );
+      debtsRepositoryMock.createDebt.mockResolvedValue({ id: 'remainder-debt-1' });
+      prepaidRepositoryMock.markDelivered.mockResolvedValue(makePrepaid({ status: PrepaidPurchaseStatus.DELIVERED }));
+
+      await PrepaidService.convert(id, { mode: 'DEBT', dueDate: '2026-08-30' }, adminUser);
+
+      expect(debtsRepositoryMock.createDebt.mock.calls[0][0].originalAmount.toFixed(2)).toBe('200.00');
+    });
+  });
+
+  describe('revertDelivery of a conversion', () => {
+    const id = '33333333-3333-4333-8333-333333333333';
+    const revertInput = { reason: 'Converted by mistake', accountPassword: 'secret' };
+
+    it('cancels the unpaid installment plan it created', async () => {
+      prepaidRepositoryMock.findById.mockResolvedValue(
+        makePrepaid({ status: PrepaidPurchaseStatus.DELIVERED, remainderInstallmentPlanId: 'plan-1' })
+      );
+      prepaidRepositoryMock.revertDelivery.mockResolvedValue(makePrepaid());
+
+      const view = await PrepaidService.revertDelivery(id, revertInput, adminUser);
+
+      expect(verifyAdminPasswordMock).toHaveBeenCalled();
+      expect(plansServiceMock.cancelUnpaidPlanInTransaction).toHaveBeenCalledWith(
+        tx,
+        'plan-1',
+        expect.objectContaining({ cancelledById: adminUser.userId })
+      );
+      expect(view.status).toBe(PrepaidPurchaseStatus.PENDING);
+    });
+
+    it('refuses once the plan has payments, and leaves the item delivered', async () => {
+      prepaidRepositoryMock.findById.mockResolvedValue(
+        makePrepaid({ status: PrepaidPurchaseStatus.DELIVERED, remainderInstallmentPlanId: 'plan-1' })
+      );
+      plansServiceMock.cancelUnpaidPlanInTransaction.mockRejectedValueOnce(new PrepaidRemainderHasPaymentsError());
+
+      await expect(PrepaidService.revertDelivery(id, revertInput, adminUser)).rejects.toBeInstanceOf(
+        PrepaidRemainderHasPaymentsError
+      );
+      expect(prepaidRepositoryMock.revertDelivery).not.toHaveBeenCalled();
     });
   });
 

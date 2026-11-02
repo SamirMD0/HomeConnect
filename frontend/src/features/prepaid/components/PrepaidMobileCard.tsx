@@ -3,7 +3,6 @@ import { PrepaidPurchase } from '../types/prepaid.types';
 import { PrepaidStatusBadge } from './PrepaidStatusBadge';
 import { PrepaidRowActions } from './PrepaidRowActions';
 import { formatMoney } from '../../customer-financial/utils/financial-format';
-import { businessLabels } from '../../../shared/labels/business-labels';
 
 interface PrepaidMobileCardProps {
   item: PrepaidPurchase;
@@ -11,6 +10,7 @@ interface PrepaidMobileCardProps {
   openMenuKey: string | null;
   onOpenMenuChange: (key: string | null) => void;
   onDeliver: (item: PrepaidPurchase) => void;
+  onConvert?: (item: PrepaidPurchase) => void;
   onRevertDelivery: (item: PrepaidPurchase) => void;
   onViewDetails: (item: PrepaidPurchase) => void;
   onEdit: (item: PrepaidPurchase) => void;
@@ -24,6 +24,7 @@ export const PrepaidMobileCard: React.FC<PrepaidMobileCardProps> = ({
   openMenuKey,
   onOpenMenuChange,
   onDeliver,
+  onConvert,
   onRevertDelivery,
   onViewDetails,
   onEdit,
@@ -50,6 +51,7 @@ export const PrepaidMobileCard: React.FC<PrepaidMobileCardProps> = ({
           openMenuKey={openMenuKey}
           onOpenChange={onOpenMenuChange}
           onDeliver={onDeliver}
+          onConvert={onConvert}
           onRevertDelivery={onRevertDelivery}
           onViewDetails={onViewDetails}
           onEdit={onEdit}
@@ -66,20 +68,20 @@ export const PrepaidMobileCard: React.FC<PrepaidMobileCardProps> = ({
         {formatMoney(item.adminDebt)}
       </p>
       <p className="text-xs uppercase tracking-wide text-slate-500">
-        {businessLabels.prepaid.adminDebt}
+        We owe
       </p>
 
       <dl className="mt-3 grid grid-cols-3 gap-2 text-xs">
         <div>
-          <dt className="text-slate-500">{businessLabels.prepaid.fullPrice}</dt>
+          <dt className="text-slate-500">Full price</dt>
           <dd className="tabular-nums text-slate-700">{formatMoney(item.fullAmount)}</dd>
         </div>
         <div>
-          <dt className="text-slate-500">{businessLabels.prepaid.paid}</dt>
+          <dt className="text-slate-500">Paid</dt>
           <dd className="tabular-nums text-slate-700">{formatMoney(item.amountPaid)}</dd>
         </div>
         <div>
-          <dt className="text-slate-500">{businessLabels.prepaid.remaining}</dt>
+          <dt className="text-slate-500">Remaining</dt>
           <dd className="tabular-nums text-slate-700">
             {item.status === 'PENDING' ? formatMoney(item.remainingToCollect) : '—'}
           </dd>

@@ -1,5 +1,6 @@
-import React, { useEffect, useRef } from 'react';
-import { MoreVertical } from 'lucide-react';
+import React from 'react';
+import { Ban, Eye, FileClock, HandCoins, PackageCheck, Pencil, Undo2 } from 'lucide-react';
+import { RowMenu, type RowMenuItem } from '../../../components/ui/RowMenu';
 import { PrepaidPurchase } from '../types/prepaid.types';
 import { businessLabels } from '../../../shared/labels/business-labels';
 
@@ -10,6 +11,7 @@ interface PrepaidRowActionsProps {
   openMenuKey: string | null;
   onOpenChange: (key: string | null) => void;
   onDeliver: (item: PrepaidPurchase) => void;
+  onConvert?: (item: PrepaidPurchase) => void;
   onRevertDelivery: (item: PrepaidPurchase) => void;
   onViewDetails: (item: PrepaidPurchase) => void;
   onEdit: (item: PrepaidPurchase) => void;
@@ -17,100 +19,59 @@ interface PrepaidRowActionsProps {
   onCancel: (item: PrepaidPurchase) => void;
 }
 
-export const PrepaidRowActions: React.FC<PrepaidRowActionsProps> = ({
+export function buildPrepaidMenuItems({
   item,
   canMutate,
-  menuKey,
-  openMenuKey,
-  onOpenChange,
   onDeliver,
+  onConvert,
   onRevertDelivery,
   onViewDetails,
   onEdit,
   onRecordPayment,
   onCancel,
-}) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const isOpen = openMenuKey === menuKey;
-
-  useEffect(() => {
-    if (!isOpen) return undefined;
-    const handlePointerDown = (event: PointerEvent) => {
-      if (!containerRef.current?.contains(event.target as Node)) onOpenChange(null);
-    };
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onOpenChange(null);
-    };
-    document.addEventListener('pointerdown', handlePointerDown);
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('pointerdown', handlePointerDown);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isOpen, onOpenChange]);
-
-  const actions: Array<{ label: string; onClick: () => void; tone?: 'danger' }> = [
-    { label: businessLabels.prepaid.viewDetails, onClick: () => onViewDetails(item) },
+}: Omit<PrepaidRowActionsProps, 'menuKey' | 'openMenuKey' | 'onOpenChange'>): RowMenuItem[] {
+  const actions: RowMenuItem[] = [
+    { label: businessLabels.prepaid.viewDetails, icon: Eye, onSelect: () => onViewDetails(item) },
   ];
 
   if (canMutate && item.status === 'PENDING') {
-    actions.push({ label: businessLabels.prepaid.editPurchase, onClick: () => onEdit(item) });
+    actions.push({ label: businessLabels.prepaid.editPurchase, icon: Pencil, onSelect: () => onEdit(item) });
     if (!item.isFullyPaid) {
       actions.push({
         label: businessLabels.prepaid.recordPayment,
-        onClick: () => onRecordPayment(item),
+        icon: HandCoins,
+        tone: 'primary',
+        onSelect: () => onRecordPayment(item),
       });
     }
-    actions.push({ label: businessLabels.prepaid.markDelivered, onClick: () => onDeliver(item) });
+    actions.push({ label: businessLabels.prepaid.markDelivered, icon: PackageCheck, onSelect: () => onDeliver(item) });
+    if (onConvert && !item.isFullyPaid) {
+      actions.push({ label: businessLabels.prepaid.convert, icon: FileClock, onSelect: () => onConvert(item) });
+    }
     actions.push({
       label: businessLabels.prepaid.cancelPurchase,
-      onClick: () => onCancel(item),
+      icon: Ban,
       tone: 'danger',
+      onSelect: () => onCancel(item),
     });
   }
   if (canMutate && item.status === 'DELIVERED') {
     actions.push({
       label: businessLabels.prepaid.revertDelivery,
-      onClick: () => onRevertDelivery(item),
+      icon: Undo2,
       tone: 'danger',
+      onSelect: () => onRevertDelivery(item),
     });
   }
 
-  return (
-    <div ref={containerRef} className="relative inline-block text-left">
-      <button
-        type="button"
-        aria-haspopup="menu"
-        aria-expanded={isOpen}
-        aria-label={businessLabels.common.actions}
-        onClick={() => onOpenChange(isOpen ? null : menuKey)}
-        className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700"
-      >
-        <MoreVertical className="h-4 w-4" aria-hidden="true" />
-      </button>
-      {isOpen && (
-        <div
-          role="menu"
-          className="absolute right-0 z-20 mt-1 w-56 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
-        >
-          {actions.map((action) => (
-            <button
-              key={action.label}
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                onOpenChange(null);
-                action.onClick();
-              }}
-              className={`block w-full px-3 py-2 text-left text-sm hover:bg-slate-50 ${
-                action.tone === 'danger' ? 'text-red-600' : 'text-slate-700'
-              }`}
-            >
-              {action.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
+  return actions;
+}
+
+export const PrepaidRowActions: React.FC<PrepaidRowActionsProps> = ({ menuKey, openMenuKey, onOpenChange, ...props }) => (
+  <RowMenu
+    open={openMenuKey === menuKey}
+    onOpenChange={(open) => onOpenChange(open ? menuKey : null)}
+    label={`Actions for ${props.item.itemName}`}
+    items={buildPrepaidMenuItems(props)}
+  />
+);

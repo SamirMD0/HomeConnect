@@ -52,6 +52,7 @@ export interface PrepaidPurchase {
   deliveryNotes: string | null;
   deliveredBy: PrepaidUser | null;
   remainderDebtId: string | null;
+  remainderInstallmentPlanId: string | null;
   createdBy: PrepaidUser | null;
   /** Every bill paid towards this item, oldest first. */
   payments: PrepaidPayment[];
@@ -112,6 +113,10 @@ export interface DeliverPrepaidPayload {
   remainderDueDate?: string | null;
   deliveryNotes?: string | null;
 }
+
+export type ConvertPrepaidPayload =
+  | { mode: 'DEBT'; dueDate: string }
+  | { mode: 'INSTALLMENT'; startDate: string; installmentCount: number; frequency: 'MONTHLY' | 'WEEKLY' };
 
 export interface RevertPrepaidDeliveryPayload {
   reason: string;

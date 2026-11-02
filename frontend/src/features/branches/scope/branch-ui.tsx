@@ -8,7 +8,7 @@ import { pushRecordBranch } from './branch-scope-store';
  * isolated previews), so adopting them never breaks an existing screen.
  */
 
-export const BRANCH_COLUMN_LABEL = 'Branch / الفرع';
+export const BRANCH_COLUMN_LABEL = 'Branch';
 export const CREATE_NEEDS_BRANCH = 'Select a branch in the header to create records.';
 
 function useScopeContext() {

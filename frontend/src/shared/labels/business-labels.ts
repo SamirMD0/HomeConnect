@@ -89,6 +89,7 @@ export const businessLabels = {
     statusDelivered: 'Delivered / تم التسليم',
     statusCancelled: 'Cancelled / ملغى',
     markDelivered: 'Mark Delivered / تسجيل التسليم',
+    convert: 'Convert to Debt or Installments',
     revertDelivery: 'Revert Delivery / إلغاء التسليم',
     remainderDueDate: 'Due Date for Remaining / تاريخ استحقاق المتبقي',
     deliveryNotes: 'Delivery Notes / ملاحظات التسليم',

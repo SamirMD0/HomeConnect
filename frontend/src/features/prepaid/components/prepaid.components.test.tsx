@@ -1,5 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
+import { buildPrepaidMenuItems } from './PrepaidRowActions';
 import { PrepaidTable } from './PrepaidTable';
 import { PrepaidSummaryCards } from './PrepaidSummaryCards';
 import { PrepaidStatusBadge } from './PrepaidStatusBadge';
@@ -55,6 +56,7 @@ const pendingItem: PrepaidPurchase = {
   deliveryNotes: null,
   deliveredBy: null,
   remainderDebtId: null,
+  remainderInstallmentPlanId: null,
   createdBy: admin,
   payments: [
     makeBill({ amount: '150.00', paymentDate: '2026-07-10', reference: 'R-1' }),
@@ -129,24 +131,57 @@ describe('PrepaidTable', () => {
     expect(markup).toContain('user-text');
   });
 
-  it('renders bilingual status labels', () => {
+  it('renders status labels in English', () => {
     const markup = renderTable([pendingItem, deliveredItem]);
-    expect(markup).toContain('مدفوع مسبقاً');
-    expect(markup).toContain('تم التسليم');
+    expect(markup).toContain('Prepaid');
+    expect(markup).toContain('Delivered');
   });
 
-  it('renders bilingual column headers', () => {
+  it('renders column headers in English', () => {
     const markup = renderTable([pendingItem]);
-    expect(markup).toContain('علينا');
-    expect(markup).toContain('المتبقي');
+    expect(markup).toContain('We owe');
+    expect(markup).toContain('Remaining');
   });
+
+  const menuLabels = (canMutate: boolean, item = pendingItem) =>
+    buildPrepaidMenuItems({
+      item,
+      canMutate,
+      onDeliver: noop,
+      onConvert: noop,
+      onRevertDelivery: noop,
+      onViewDetails: noop,
+      onEdit: noop,
+      onRecordPayment: noop,
+      onCancel: noop,
+    }).map((action) => action.label).join(' | ');
 
   it('offers every pending prepaid mutation to financial admins', () => {
+    const labels = menuLabels(true);
+    expect(labels).toContain('Edit Purchase');
+    expect(labels).toContain('Record Payment');
+    expect(labels).toContain('Convert to Debt or Installments');
+    expect(labels).toContain('Cancel Purchase');
+  });
+
+  it('does not expose prepaid mutations to non-admin users', () => {
+    const labels = menuLabels(false);
+    expect(labels).not.toContain('Edit Purchase');
+    expect(labels).not.toContain('Record Payment');
+    expect(labels).not.toContain('Convert');
+    expect(labels).not.toContain('Cancel Purchase');
+  });
+
+  it('does not offer to convert a fully paid item', () => {
+    expect(menuLabels(true, { ...pendingItem, isFullyPaid: true })).not.toContain('Convert');
+  });
+
+  it('keeps the actions menu at the end of the row, and the table in English', () => {
     const markup = renderToStaticMarkup(
       <PrepaidTable
         items={[pendingItem]}
         canMutate
-        openMenuKey="p1"
+        openMenuKey={null}
         onOpenMenuChange={noop}
         onDeliver={noop}
         onRevertDelivery={noop}
@@ -156,31 +191,12 @@ describe('PrepaidTable', () => {
         onCancel={noop}
       />
     );
-
-    expect(markup).toContain('Edit Purchase');
-    expect(markup).toContain('Record Payment');
-    expect(markup).toContain('Cancel Purchase');
-  });
-
-  it('does not expose prepaid mutations to non-admin users', () => {
-    const markup = renderToStaticMarkup(
-      <PrepaidTable
-        items={[pendingItem]}
-        canMutate={false}
-        openMenuKey="p1"
-        onOpenMenuChange={noop}
-        onDeliver={noop}
-        onRevertDelivery={noop}
-        onViewDetails={noop}
-        onEdit={noop}
-        onRecordPayment={noop}
-        onCancel={noop}
-      />
-    );
-
-    expect(markup).not.toContain('Edit Purchase');
-    expect(markup).not.toContain('Record Payment');
-    expect(markup).not.toContain('Cancel Purchase');
+    const row = markup.slice(markup.indexOf('<tbody'));
+    expect(row.indexOf('aria-haspopup="menu"')).toBeGreaterThan(row.indexOf(pendingItem.customer.name));
+    const headings = markup.slice(markup.indexOf('<thead'), markup.indexOf('</thead>'));
+    expect(headings).not.toMatch(/[\u0600-\u06FF]/);
+    expect(row).toContain('Prepaid');
+    expect(row).not.toContain('مدفوع مسبقاً');
   });
 });
 
@@ -345,10 +361,10 @@ describe('CustomerPrepaidHistory', () => {
 });
 
 describe('PrepaidStatusBadge', () => {
-  it('renders each status with its bilingual label', () => {
-    expect(renderToStaticMarkup(<PrepaidStatusBadge status="PENDING" />)).toContain('مدفوع مسبقاً');
-    expect(renderToStaticMarkup(<PrepaidStatusBadge status="DELIVERED" />)).toContain('تم التسليم');
-    expect(renderToStaticMarkup(<PrepaidStatusBadge status="CANCELLED" />)).toContain('ملغى');
+  it('renders each status in English', () => {
+    expect(renderToStaticMarkup(<PrepaidStatusBadge status="PENDING" />)).toContain('Prepaid');
+    expect(renderToStaticMarkup(<PrepaidStatusBadge status="DELIVERED" />)).toContain('Delivered');
+    expect(renderToStaticMarkup(<PrepaidStatusBadge status="CANCELLED" />)).toContain('Cancelled');
   });
 });
 

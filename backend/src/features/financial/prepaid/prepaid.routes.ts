@@ -3,6 +3,7 @@ import { validate } from '../../../middleware/validate.middleware';
 import { requireFinancialAdmin } from '../authorization/financial-policy';
 import { PrepaidController } from './prepaid.controller';
 import {
+  convertPrepaidSchema,
   deliverPrepaidSchema,
   prepaidListQuerySchema,
   prepaidParamsSchema,
@@ -29,6 +30,14 @@ prepaidRoutes.post(
   requireFinancialAdmin,
   validate(deliverPrepaidSchema),
   PrepaidController.deliver
+);
+
+prepaidRoutes.post(
+  '/:id/convert',
+  validate(prepaidParamsSchema, 'params'),
+  requireFinancialAdmin,
+  validate(convertPrepaidSchema),
+  PrepaidController.convert
 );
 
 prepaidRoutes.post(
