@@ -166,7 +166,7 @@ export const ReceivableExpandedPanel: React.FC<ReceivableExpandedPanelProps> = (
 
         <Link
           to={`/customers/${customerId}`}
-          className="mt-3 inline-flex items-center gap-1 font-semibold text-emerald-700 hover:text-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30"
+          className="mt-3 inline-flex items-center gap-1 font-semibold text-brand-700 hover:text-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/30"
         >
           Open full profile
           <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />

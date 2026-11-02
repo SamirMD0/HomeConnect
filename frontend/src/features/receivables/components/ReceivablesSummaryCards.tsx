@@ -13,7 +13,7 @@ export const ReceivablesSummaryCards: React.FC<ReceivablesSummaryCardsProps> = (
       label: 'Total Outstanding',
       value: formatMoney(summary.totalOutstanding),
       icon: WalletCards,
-      tone: 'text-emerald-600',
+      tone: 'text-brand-600',
     },
     {
       label: 'Total Overdue',

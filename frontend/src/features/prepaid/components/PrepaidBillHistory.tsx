@@ -72,7 +72,7 @@ export const PrepaidBillHistory: React.FC<PrepaidBillHistoryProps> = ({
             </div>
             <span
               className={`shrink-0 text-sm font-semibold tabular-nums ${
-                payment.isVoided ? 'text-slate-400 line-through' : 'text-emerald-700'
+                payment.isVoided ? 'text-slate-400 line-through' : 'text-brand-700'
               }`}
             >
               {formatMoney(payment.amount)}

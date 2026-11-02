@@ -60,7 +60,7 @@ export const PrepaidSummaryCards: React.FC<PrepaidSummaryCardsProps> = ({ summar
                 <p className="mt-1 text-[11px] leading-tight text-slate-400">Current filters</p>
               )}
             </div>
-            <card.icon className="mt-1 h-4 w-4 flex-shrink-0 text-emerald-600" aria-hidden="true" />
+            <card.icon className="mt-1 h-4 w-4 flex-shrink-0 text-brand-600" aria-hidden="true" />
           </div>
         </div>
       ))}

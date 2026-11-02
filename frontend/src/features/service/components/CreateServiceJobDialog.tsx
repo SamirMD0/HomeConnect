@@ -40,7 +40,7 @@ export const CreateServiceJobDialog: React.FC<{ isOpen: boolean; onClose: () => 
       <label className="text-sm font-medium text-slate-700">Estimated Price<input inputMode="decimal" value={form.estimatedPrice} onChange={(e) => update('estimatedPrice', e.target.value)} placeholder="0.00" className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5" /></label>
       <label className="sm:col-span-2 text-sm font-medium text-slate-700">{englishLabel(businessLabels.common.notes)}<textarea dir="auto" value={form.notes} onChange={(e) => update('notes', e.target.value)} className="user-text-input mt-1 min-h-20 w-full rounded-lg border border-slate-300 px-3 py-2" /></label>
     </div>
-    <div className="flex justify-end gap-3"><button type="button" onClick={onClose} className="rounded-lg border border-slate-300 px-4 py-2">{englishLabel(businessLabels.common.cancel)}</button><button disabled={create.isPending} className="rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-white disabled:opacity-50">{create.isPending ? 'Saving...' : 'Create Service Job'}</button></div>
+    <div className="flex justify-end gap-3"><button type="button" onClick={onClose} className="rounded-lg border border-slate-300 px-4 py-2">{englishLabel(businessLabels.common.cancel)}</button><button disabled={create.isPending} className="rounded-lg bg-brand-600 px-4 py-2 font-semibold text-white disabled:opacity-50">{create.isPending ? 'Saving...' : 'Create Service Job'}</button></div>
   </form></Modal>;
 };
 

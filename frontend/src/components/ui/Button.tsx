@@ -8,8 +8,8 @@ export type ButtonSize = 'sm' | 'md' | 'lg';
 const VARIANTS: Record<ButtonVariant, string> = {
   primary: 'bg-brand-600 text-white shadow-sm hover:bg-brand-700 focus-visible:ring-brand-500/50',
   secondary:
-    'bg-white text-slate-700 border border-slate-300 shadow-sm hover:bg-slate-50 focus-visible:ring-brand-500/40',
-  ghost: 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus-visible:ring-slate-400/40',
+    'bg-white text-slate-800 border border-slate-300 shadow-sm hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 focus-visible:ring-brand-500/40',
+  ghost: 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus-visible:ring-brand-500/40',
   danger: 'bg-red-600 text-white shadow-sm hover:bg-red-700 focus-visible:ring-red-500/50',
   link: 'text-brand-700 underline-offset-4 hover:underline hover:text-brand-800 focus-visible:ring-brand-500/40',
 };
@@ -27,7 +27,7 @@ const ICON_SIZES: Record<ButtonSize, string> = {
 };
 
 const BASE =
-  'inline-flex shrink-0 items-center justify-center rounded-lg font-medium transition-colors ' +
+  'inline-flex shrink-0 items-center justify-center rounded-lg font-semibold transition-colors ' +
   'focus-visible:outline-none focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50';
 
 /**

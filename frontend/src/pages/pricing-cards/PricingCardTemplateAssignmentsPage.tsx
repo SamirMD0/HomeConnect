@@ -69,7 +69,7 @@ export function PricingCardTemplateAssignmentsPage() {
 
       {categories.length > 0 && <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
-          <thead className="bg-slate-50 text-xs uppercase text-slate-600"><tr><th className="px-4 py-3">Product type</th><th className="px-4 py-3">Default template</th></tr></thead>
+          <thead className="bg-slate-100 text-xs text-slate-700 font-semibold"><tr><th className="px-4 py-3">Product type</th><th className="px-4 py-3">Default template</th></tr></thead>
           <tbody className="divide-y divide-slate-100">
             {categories.map((category) => <tr key={category}>
               <td dir="auto" className="px-4 py-3 font-medium text-slate-900">{category}</td>

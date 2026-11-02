@@ -117,7 +117,7 @@ export const BranchesPanel: React.FC = () => {
       {branches.data && (
         <div className="mt-5 overflow-x-auto">
           <table className="min-w-full text-left text-sm">
-            <thead className="border-b text-slate-500">
+            <thead className="border-b text-slate-700 font-semibold">
               <tr><th className="py-2 pr-4">Code</th><th className="py-2 pr-4">Name</th><th className="py-2 pr-4">Address</th><th className="py-2 pr-4">Phone</th><th className="py-2 pr-4">Employees</th><th className="py-2 pr-4">Status</th><th className="py-2" /></tr>
             </thead>
             <tbody>
@@ -160,7 +160,7 @@ const StaffAccessTable: React.FC<{ branches: Branch[] }> = ({ branches }) => {
       {staff.data && (
         <div className="mt-3 overflow-x-auto">
           <table className="min-w-full text-left text-sm">
-            <thead className="border-b text-slate-500">
+            <thead className="border-b text-slate-700 font-semibold">
               <tr>
                 <th className="py-2 pr-4">User</th>
                 {branches.map((branch) => <th key={branch.id} className="py-2 pr-4">{branch.name}</th>)}

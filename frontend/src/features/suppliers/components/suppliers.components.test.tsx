@@ -28,8 +28,8 @@ describe('supplier components', () => {
     expect(ledger).toContain('data-testid="supplier-ledger-scroll-table"');
     expect(ledger).toContain('data-table-scroll');
     expect(ledger).toContain('data-table-scroll-expanded');
-    expect(ledger).toContain('group-hover:bg-gray-600');
-    expect(ledger).toContain('group-hover:text-yellow-300');
+    expect(ledger).toContain('group-hover:bg-brand-50');
+    expect(ledger).toContain('group-hover:text-slate-900');
   });
 
   it('renders authoritative summary amounts and removed-record filter', () => {

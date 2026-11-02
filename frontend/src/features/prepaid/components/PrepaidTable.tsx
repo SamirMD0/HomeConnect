@@ -65,7 +65,7 @@ export const PrepaidTable: React.FC<PrepaidTableProps> = ({
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-slate-200 text-sm">
           <caption className="sr-only">{businessLabels.prepaid.title}</caption>
-          <thead className="sticky top-0 bg-slate-50">
+          <thead className="sticky top-0 bg-slate-100 font-semibold">
             <tr className="text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
               <th scope="col" className="px-4 py-3">{businessLabels.common.customer}</th>
               <th scope="col" className="px-4 py-3">{businessLabels.prepaid.item}</th>

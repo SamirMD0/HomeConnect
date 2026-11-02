@@ -128,7 +128,7 @@ export function AnalysisPortal({ period }: { period: MonthlyReviewQuery }) {
 
 function FindingsSection({ findings }: { findings: AnalysisFinding[] }) {
   if (findings.length === 0) {
-    return <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5 text-sm text-emerald-900">
+    return <div className="rounded-xl border border-brand-200 bg-brand-50 p-5 text-sm text-brand-900">
       <strong>No risks detected for this period.</strong> / لم يُرصد أي خطر لهذه الفترة.
     </div>;
   }
@@ -192,7 +192,7 @@ function CountCompare({ label, value }: { label: string; value: AnalysisCountCom
   return <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
     <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
     <strong className="mt-2 block text-xl text-slate-900">{value.current}</strong>
-    <p className={`mt-1 text-xs font-semibold ${value.change === 0 ? 'text-slate-500' : value.change > 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+    <p className={`mt-1 text-xs font-semibold ${value.change === 0 ? 'text-slate-500' : value.change > 0 ? 'text-brand-700' : 'text-red-700'}`}>
       {value.change > 0 ? '+' : ''}{value.change}
       <span className="font-normal text-slate-400"> vs {value.previous}</span>
     </p>
@@ -205,7 +205,7 @@ function RankedList({ title, items }: { title: string; items: Array<{ id: string
     <p className="border-b border-slate-100 px-4 py-3 text-sm font-bold text-slate-700">{title}</p>
     <ul className="divide-y divide-slate-100">
       {items.map((item) => <li key={item.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
-        <Link to={item.to} className="user-text font-semibold text-emerald-700 hover:underline" dir="auto">{item.name}</Link>
+        <Link to={item.to} className="user-text font-semibold text-brand-700 hover:underline" dir="auto">{item.name}</Link>
         <strong className="tabular-nums">{item.value}</strong>
       </li>)}
     </ul>

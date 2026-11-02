@@ -65,7 +65,7 @@ export const ExchangeRatePanel: React.FC = () => {
       {rates.data && (
         <div className="mt-5 overflow-x-auto">
           <table className="min-w-full text-left text-sm">
-            <thead className="border-b text-slate-500"><tr><th className="py-2 pr-4">Rate</th><th className="py-2 pr-4">Effective</th><th className="py-2 pr-4">Entered by</th><th className="py-2">Note</th></tr></thead>
+            <thead className="border-b text-slate-700 font-semibold"><tr><th className="py-2 pr-4">Rate</th><th className="py-2 pr-4">Effective</th><th className="py-2 pr-4">Entered by</th><th className="py-2">Note</th></tr></thead>
             <tbody>
               {rates.data.map((entry) => (
                 <tr key={entry.id} className="border-b border-slate-100">

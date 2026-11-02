@@ -58,7 +58,7 @@ export const MessageTemplateSelector: React.FC<MessageTemplateSelectorProps> = (
             aria-pressed={language === option.value}
             className={`flex-1 rounded-md px-2 py-1.5 text-xs font-semibold transition-colors ${
               language === option.value
-                ? 'bg-emerald-600 text-white'
+                ? 'bg-brand-600 text-white'
                 : 'text-slate-600 hover:bg-slate-100'
             }`}
           >

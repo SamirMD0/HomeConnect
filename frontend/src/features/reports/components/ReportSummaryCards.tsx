@@ -29,7 +29,7 @@ export const MonthlyDebtSummaryCards: React.FC<{ summary: MonthlyDebtReportSumma
               <p className="text-sm font-medium text-slate-500">{card.label}</p>
               <p className="mt-2 text-xl font-semibold text-slate-900">{card.value}</p>
             </div>
-            <card.icon className="h-5 w-5 text-emerald-600" aria-hidden="true" />
+            <card.icon className="h-5 w-5 text-brand-600" aria-hidden="true" />
           </div>
         </div>
       ))}
@@ -57,7 +57,7 @@ export const MonthlyActivitySummaryCards: React.FC<{ summary: MonthlyFinancialAc
               <p className="text-sm font-medium text-slate-500">{card.label}</p>
               <p className="mt-2 text-xl font-semibold text-slate-900">{card.value}</p>
             </div>
-            <card.icon className="h-5 w-5 text-emerald-600" aria-hidden="true" />
+            <card.icon className="h-5 w-5 text-brand-600" aria-hidden="true" />
           </div>
         </div>
       ))}

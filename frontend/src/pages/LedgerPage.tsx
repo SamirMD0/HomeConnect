@@ -145,7 +145,7 @@ export const LedgerPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setIsAddDialogOpen(true)}
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md bg-emerald-600 px-3.5 text-sm font-semibold text-white hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md bg-brand-600 px-3.5 text-sm font-semibold text-white hover:bg-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
             >
               <Plus className="h-4 w-4" />
               Add Obligation / إضافة التزام مالي
@@ -153,7 +153,7 @@ export const LedgerPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setIsReceivePaymentDialogOpen(true)}
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-emerald-200 bg-white px-3.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-brand-200 bg-white px-3.5 text-sm font-semibold text-brand-700 hover:bg-brand-50 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
             >
               <WalletCards className="h-4 w-4" />
               {businessLabels.financial.receivePayment}

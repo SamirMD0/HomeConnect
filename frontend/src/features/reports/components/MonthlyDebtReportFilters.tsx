@@ -36,7 +36,7 @@ export const MonthlyDebtReportFilters: React.FC<MonthlyDebtReportFiltersProps> =
             type="month"
             value={filters.month}
             onChange={(event) => setFilter({ month: event.target.value })}
-            className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+            className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
           />
         </label>
         <label className="block text-sm font-medium text-slate-700">
@@ -45,7 +45,7 @@ export const MonthlyDebtReportFilters: React.FC<MonthlyDebtReportFiltersProps> =
             type="search"
             value={filters.search ?? ''}
             onChange={(event) => setFilter({ search: event.target.value || undefined })}
-            className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+            className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
             placeholder="Name or phone"
           />
         </label>
@@ -54,7 +54,7 @@ export const MonthlyDebtReportFilters: React.FC<MonthlyDebtReportFiltersProps> =
           <select
             value={filters.sortBy ?? 'OUTSTANDING'}
             onChange={(event) => setFilter({ sortBy: event.target.value as MonthlyDebtSortBy })}
-            className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+            className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
           >
             {sortOptions.map((option) => (
               <option key={option.value} value={option.value}>
@@ -68,7 +68,7 @@ export const MonthlyDebtReportFilters: React.FC<MonthlyDebtReportFiltersProps> =
           <select
             value={filters.sortOrder ?? 'DESC'}
             onChange={(event) => setFilter({ sortOrder: event.target.value as MonthlyDebtSortOrder })}
-            className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+            className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
           >
             <option value="DESC">Descending</option>
             <option value="ASC">Ascending</option>
@@ -89,7 +89,7 @@ export const MonthlyDebtReportFilters: React.FC<MonthlyDebtReportFiltersProps> =
             type="checkbox"
             checked={filters.overdueOnly ?? false}
             onChange={(event) => setFilter({ overdueOnly: event.target.checked })}
-            className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+            className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
           />
           Show only overdue
         </label>
@@ -98,7 +98,7 @@ export const MonthlyDebtReportFilters: React.FC<MonthlyDebtReportFiltersProps> =
             type="checkbox"
             checked={filters.includeCancelled ?? false}
             onChange={(event) => setFilter({ includeCancelled: event.target.checked })}
-            className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+            className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
           />
           Include cancelled
         </label>
@@ -107,7 +107,7 @@ export const MonthlyDebtReportFilters: React.FC<MonthlyDebtReportFiltersProps> =
             type="checkbox"
             checked={filters.includeZero ?? false}
             onChange={(event) => setFilter({ includeZero: event.target.checked })}
-            className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+            className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
           />
           Include zero balances
         </label>

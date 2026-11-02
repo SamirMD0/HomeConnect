@@ -12,7 +12,7 @@ export const BrandsPage: React.FC = () => {
   return <div className="space-y-5">
     <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        <div className="flex items-center gap-3"><Tags className="h-7 w-7 text-emerald-600" /><h1 className="text-2xl font-bold text-slate-900">Brands / الماركات</h1></div>
+        <div className="flex items-center gap-3"><Tags className="h-7 w-7 text-brand-600" /><h1 className="text-2xl font-bold text-slate-900">Brands / الماركات</h1></div>
         <p className="mt-1 text-sm text-slate-500">Review and standardize brand spellings used by products / مراجعة وتوحيد تهجئات الماركات المستخدمة في المنتجات.</p>
       </div>
       <Link to="/products" className="inline-flex items-center gap-2 self-start rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700"><ArrowLeft className="h-4 w-4" />Products / المنتجات</Link>
@@ -23,12 +23,12 @@ export const BrandsPage: React.FC = () => {
     {brands.data && <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
-          <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+          <thead className="bg-slate-100 text-xs text-slate-700 font-semibold">
             <tr><th className="px-4 py-3">Canonical brand / الماركة</th><th className="px-4 py-3">Products / المنتجات</th><th className="px-4 py-3">Spellings / التهجئات</th><th className="px-4 py-3">Variants / الأشكال</th><th className="px-4 py-3"><span className="sr-only">Actions / الإجراءات</span></th></tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {brands.data.map((brand) => <tr key={brand.canonical} className={brand.spellings.length > 1 ? 'bg-amber-50/50' : ''}>
-              <td className="px-4 py-3 font-semibold"><Link dir="auto" className="text-emerald-700 hover:underline" to={`/products?brand=${encodeURIComponent(brand.canonical)}`}>{brand.canonical}</Link></td>
+              <td className="px-4 py-3 font-semibold"><Link dir="auto" className="text-brand-700 hover:underline" to={`/products?brand=${encodeURIComponent(brand.canonical)}`}>{brand.canonical}</Link></td>
               <td className="px-4 py-3 tabular-nums text-slate-700">{brand.productCount}</td>
               <td className="px-4 py-3"><span className={brand.spellings.length > 1 ? 'rounded-full bg-amber-100 px-2 py-1 font-semibold text-amber-800' : 'text-slate-600'}>{brand.spellings.length} {brand.spellings.length === 1 ? 'spelling' : 'spellings'}</span></td>
               <td className="px-4 py-3 text-slate-600">{brand.spellings.length > 1 ? <span dir="auto">{brand.spellings.join(' · ')}</span> : <span className="text-slate-400">—</span>}</td>

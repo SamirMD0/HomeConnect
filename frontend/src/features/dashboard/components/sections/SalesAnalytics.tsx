@@ -3,7 +3,6 @@ import { formatMoney } from '../../../customer-financial/utils/financial-format'
 import { dashboardLabels } from '../../config/dashboard-labels';
 import type { SalesAnalyticsData } from '../../types';
 import { DeliveryPipelineChart } from '../charts/DeliveryPipelineChart';
-import { SalesByDayChart } from '../charts/SalesByDayChart';
 import { SalesFulfillmentStatusDonut } from '../charts/SalesFulfillmentStatusDonut';
 import { SalesPaymentStatusDonut } from '../charts/SalesPaymentStatusDonut';
 import { TopProductsSoldChart } from '../charts/TopProductsSoldChart';
@@ -11,11 +10,12 @@ import { DashboardSection } from '../layout/DashboardSection';
 import { InlineMetric } from '../layout/InlineMetric';
 import { SectionState } from './SectionState';
 
+/** Sales by Day sits at the top of the page, so this chapter starts from the breakdowns. */
 export function SalesAnalytics({ data, isLoading, isError, onRetry }: { data?: SalesAnalyticsData; isLoading: boolean; isError: boolean; onRetry: () => void }) {
   return (
     <DashboardSection title={dashboardLabels.salesAnalytics} icon={ShoppingCart}>
       <SectionState isLoading={isLoading} isError={isError} onRetry={onRetry} emptyText="No sales activity / لا توجد حركة مبيعات">
-        <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
+        <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
           <InlineMetric tone="brand" label="Sales today / مبيعات اليوم" value={formatMoney(data?.totals.salesToday ?? '0.00')} />
           <InlineMetric tone="brand" label="Orders today / طلبات اليوم" value={String(data?.totals.ordersToday ?? 0)} />
           <InlineMetric tone="info" label="Pending delivery / بانتظار التوصيل" value={String(data?.totals.pendingDelivery ?? 0)} />
@@ -23,8 +23,7 @@ export function SalesAnalytics({ data, isLoading, isError, onRetry }: { data?: S
           <InlineMetric tone="warning" label="Partial / جزئية" value={String(data?.totals.partialPayments ?? 0)} />
           <InlineMetric tone="neutral" label="Installments / تقسيط" value={String(data?.totals.installmentOrders ?? 0)} />
         </div>
-        <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
-          <SalesByDayChart data={data?.salesByDay ?? []} />
+        <div className="grid grid-cols-1 gap-x-10 gap-y-8 xl:grid-cols-2">
           <SalesPaymentStatusDonut data={data?.paymentStatusDistribution ?? []} />
           <SalesFulfillmentStatusDonut data={data?.fulfillmentStatusDistribution ?? []} />
           <DeliveryPipelineChart data={data?.deliveryPipeline ?? []} />

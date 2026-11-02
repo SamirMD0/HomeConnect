@@ -207,8 +207,7 @@ describe('financial ledger components', () => {
     expect(html).toContain('href="/customers/customer-1"');
     expect(html).toContain('data-table-scroll');
     expect(html).toContain('data-table-scroll-expanded');
-    expect(html).toContain('group-hover:text-yellow-300');
-    expect(html).toContain('text-shadow:0_0_8px');
+    expect(html).toContain('group-hover:text-slate-900');
     expect(html).toContain('$400.00');
     expect(html).toContain('$450.00');
     expect(html).not.toContain('Correct record');

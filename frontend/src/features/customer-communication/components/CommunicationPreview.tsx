@@ -73,7 +73,7 @@ export const CommunicationPreview: React.FC<CommunicationPreviewProps> = ({
       <button
         type="button"
         onClick={onGenerate}
-        className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
+        className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
       >
         <RefreshCw className="h-4 w-4" aria-hidden="true" />
         {englishLabel(businessLabels.communication.generate)}
@@ -166,7 +166,7 @@ export const CommunicationPreview: React.FC<CommunicationPreviewProps> = ({
         type="button"
         onClick={onCopy}
         disabled={!gate.canCopy}
-        className="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 transition-colors hover:border-emerald-600 hover:bg-emerald-600 hover:text-white disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-50 disabled:text-slate-400"
+        className="inline-flex items-center gap-2 rounded-lg border border-brand-200 bg-white px-4 py-2 text-sm font-semibold text-brand-700 transition-colors hover:border-brand-600 hover:bg-brand-600 hover:text-white disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-50 disabled:text-slate-400"
       >
         <Copy className="h-4 w-4" aria-hidden="true" />
         {englishLabel(businessLabels.communication.copyMessage)}
@@ -175,7 +175,7 @@ export const CommunicationPreview: React.FC<CommunicationPreviewProps> = ({
         type="button"
         onClick={onOpenWhatsApp}
         disabled={!gate.canOpenWhatsApp}
-        className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+        className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
       >
         <MessageCircle className="h-4 w-4" aria-hidden="true" />
         {englishLabel(businessLabels.communication.openWhatsApp)}

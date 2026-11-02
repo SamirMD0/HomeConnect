@@ -59,9 +59,9 @@ export const ScanFeedback: React.FC<ScanFeedbackProps> = ({ result, isLooking, i
   if (!product) return null;
 
   return (
-    <div role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+    <div role="status" className="rounded-lg border border-brand-200 bg-brand-50 p-3">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <span className="inline-flex items-center gap-2 text-sm font-semibold text-emerald-900">
+        <span className="inline-flex items-center gap-2 text-sm font-semibold text-brand-900">
           <CheckCircle2 className="h-4 w-4" /> {labels.productFound}
         </span>
         <span className="text-sm font-medium text-slate-800" dir="auto">{product.name}</span>
@@ -74,7 +74,7 @@ export const ScanFeedback: React.FC<ScanFeedbackProps> = ({ result, isLooking, i
           </span>
         )}
         {onOpenProduct && (
-          <button type="button" onClick={() => onOpenProduct(product.id)} className="ml-auto rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white">
+          <button type="button" onClick={() => onOpenProduct(product.id)} className="ml-auto rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white">
             {labels.openProduct}
           </button>
         )}

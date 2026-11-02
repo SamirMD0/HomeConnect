@@ -54,10 +54,10 @@ export function UpdateSettingsPanel() {
         </>}
       </dl>
       {admin && <div className="mt-5 flex flex-wrap gap-3">
-        <button type="button" onClick={() => void checkNow()} disabled={!supported || status.state === 'checking'} className="rounded-md border border-emerald-600 px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50">
+        <button type="button" onClick={() => void checkNow()} disabled={!supported || status.state === 'checking'} className="rounded-md border border-brand-600 px-3 py-2 text-sm font-medium text-brand-700 hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50">
           <BilingualLabel compact label={status.state === 'checking' ? { en: 'Checking…', ar: 'جارٍ الفحص…' } : { en: 'Check now', ar: 'فحص الآن' }} />
         </button>
-        {status.state === 'ready' && <button type="button" onClick={() => void handleInstall()} className="rounded-md bg-emerald-700 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-800">
+        {status.state === 'ready' && <button type="button" onClick={() => void handleInstall()} className="rounded-md bg-brand-700 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-800">
           <BilingualLabel compact label={{ en: 'Install & Restart', ar: 'تثبيت وإعادة التشغيل' }} />
         </button>}
       </div>}

@@ -43,9 +43,9 @@ export const SelectedDataSummary: React.FC<SelectedDataSummaryProps> = ({
   return (
     <section
       aria-label="Selected data summary"
-      className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3"
+      className="rounded-xl border border-brand-200 bg-brand-50/60 p-3"
     >
-      <h4 className="flex items-center gap-2 text-sm font-semibold text-emerald-900">
+      <h4 className="flex items-center gap-2 text-sm font-semibold text-brand-900">
         <Database className="h-4 w-4" aria-hidden="true" />
         {titles[sourceKind]}
       </h4>

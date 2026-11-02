@@ -68,7 +68,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSubmi
           {...register('name')}
           dir="auto"
           className={`user-text-input w-full px-4 py-2 border rounded-lg focus:ring-2 focus:outline-none transition-all ${
-            errors.name ? 'border-red-500 focus:ring-red-200' : 'border-slate-300 focus:ring-emerald-500/20 focus:border-emerald-500'
+            errors.name ? 'border-red-500 focus:ring-red-200' : 'border-slate-300 focus:ring-brand-500/20 focus:border-brand-500'
           }`}
           placeholder="e.g. Mohamad Ahmad"
         />
@@ -83,7 +83,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSubmi
           type="text"
           {...register('phone')}
           className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:outline-none transition-all ${
-            errors.phone ? 'border-red-500 focus:ring-red-200' : 'border-slate-300 focus:ring-emerald-500/20 focus:border-emerald-500'
+            errors.phone ? 'border-red-500 focus:ring-red-200' : 'border-slate-300 focus:ring-brand-500/20 focus:border-brand-500'
           }`}
           placeholder="e.g. 555-123-4567"
         />
@@ -99,7 +99,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSubmi
           {...register('address')}
           dir="auto"
           className={`user-text-input w-full px-4 py-2 border rounded-lg focus:ring-2 focus:outline-none transition-all ${
-            errors.address ? 'border-red-500 focus:ring-red-200' : 'border-slate-300 focus:ring-emerald-500/20 focus:border-emerald-500'
+            errors.address ? 'border-red-500 focus:ring-red-200' : 'border-slate-300 focus:ring-brand-500/20 focus:border-brand-500'
           }`}
           placeholder="e.g. Hamra Street, Beirut"
         />
@@ -115,7 +115,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSubmi
           rows={3}
           dir="auto"
           className={`user-text-input w-full px-4 py-2 border rounded-lg focus:ring-2 focus:outline-none transition-all ${
-            errors.notes ? 'border-red-500 focus:ring-red-200' : 'border-slate-300 focus:ring-emerald-500/20 focus:border-emerald-500'
+            errors.notes ? 'border-red-500 focus:ring-red-200' : 'border-slate-300 focus:ring-brand-500/20 focus:border-brand-500'
           }`}
           placeholder="Any additional notes..."
         />
@@ -139,7 +139,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSubmi
         <button
           type="submit"
           disabled={isSubmitting}
-          className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 focus:ring-4 focus:ring-emerald-500/20 transition-all disabled:opacity-50 flex items-center"
+          className="px-4 py-2 text-sm font-medium text-white bg-brand-600 rounded-lg hover:bg-brand-700 focus:ring-4 focus:ring-brand-500/20 transition-all disabled:opacity-50 flex items-center"
         >
           {isSubmitting ? (
             <>

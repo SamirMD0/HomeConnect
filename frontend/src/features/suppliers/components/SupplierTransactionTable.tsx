@@ -19,7 +19,7 @@ interface Props {
 }
 
 const cellHover =
-  'bg-white transition-all duration-200 group-hover:bg-gray-600 group-hover:text-yellow-300 group-hover:[text-shadow:0_0_8px_rgba(250,204,21,0.8)]';
+  'bg-white transition-all duration-200 group-hover:bg-brand-50 group-hover:text-slate-900';
 
 export const SupplierTransactionTable: React.FC<Props> = ({
   items,
@@ -44,7 +44,7 @@ export const SupplierTransactionTable: React.FC<Props> = ({
       data-testid="supplier-ledger-scroll-table"
     >
       <table className="min-w-full border-separate border-spacing-y-1.5 text-xs text-slate-600">
-        <thead className="sticky top-0 z-10 bg-slate-100 text-left text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600">
+        <thead className="sticky top-0 z-10 bg-slate-100 text-left text-xs font-semibold text-slate-700">
           <tr>
             <Header>Date</Header>
             {showSupplier && <Header>Supplier</Header>}
@@ -67,10 +67,10 @@ export const SupplierTransactionTable: React.FC<Props> = ({
               </td>
               {showSupplier && (
                 <td className={`px-4 py-2 ${cellHover}`}>
-                  <p className="user-text font-semibold text-slate-900 transition-colors group-hover:text-yellow-300" dir="auto">
+                  <p className="user-text font-semibold text-slate-900 transition-colors group-hover:text-slate-900" dir="auto">
                     {transaction.supplier.name}
                   </p>
-                  <p className="text-[11px] text-slate-500 transition-colors group-hover:text-yellow-200">
+                  <p className="text-[11px] text-slate-500 transition-colors group-hover:text-slate-900">
                     {transaction.supplier.phone}
                   </p>
                   <BranchRowLabel branchId={transaction.branchId} />
@@ -84,7 +84,7 @@ export const SupplierTransactionTable: React.FC<Props> = ({
                   {transaction.description}
                 </p>
                 {transaction.reference && (
-                  <p className="user-text text-[11px] text-slate-500 transition-colors group-hover:text-yellow-200" dir="auto">
+                  <p className="user-text text-[11px] text-slate-500 transition-colors group-hover:text-slate-900" dir="auto">
                     Ref: {transaction.reference}
                   </p>
                 )}
@@ -93,7 +93,7 @@ export const SupplierTransactionTable: React.FC<Props> = ({
               <td className={`px-4 py-2 text-right font-semibold tabular-nums ${cellHover}`}>
                 {formatMoney(transaction.amount)}
               </td>
-              <td className={`px-4 py-2 font-medium ${cellHover} ${transaction.direction === 'INCREASE_OWED' ? 'text-red-700' : 'text-emerald-700'}`}>
+              <td className={`px-4 py-2 font-medium ${cellHover} ${transaction.direction === 'INCREASE_OWED' ? 'text-red-700' : 'text-brand-700'}`}>
                 {transaction.direction === 'INCREASE_OWED' ? '+ Owed' : '- Owed'}
               </td>
               <td className={`px-4 py-2 ${cellHover}`}>
@@ -123,42 +123,42 @@ const TransactionCard: React.FC<Omit<Props, 'items'> & { transaction: SupplierTr
   onRestore,
 }) => (
   <article
-    className={`group rounded-lg border p-3 shadow-sm transition-all duration-200 hover:border-yellow-300 hover:bg-gray-600 hover:shadow-[0_0_14px_rgba(250,204,21,0.3)] ${transaction.status === 'REMOVED' ? 'bg-slate-50 opacity-70' : 'bg-white'}`}
+    className={`group rounded-lg border p-3 shadow-sm transition-all duration-200 hover:border-brand-300 hover:bg-brand-50 hover:shadow-md ${transaction.status === 'REMOVED' ? 'bg-slate-50 opacity-70' : 'bg-white'}`}
   >
     <div className="flex items-start justify-between gap-3">
       <div>
         {showSupplier && (
           <>
-            <p className="user-text font-semibold text-slate-900 transition-colors group-hover:text-yellow-300" dir="auto">
+            <p className="user-text font-semibold text-slate-900 transition-colors group-hover:text-slate-900" dir="auto">
               {transaction.supplier.name}
             </p>
-            <p className="text-xs text-slate-500 transition-colors group-hover:text-yellow-200">
+            <p className="text-xs text-slate-500 transition-colors group-hover:text-slate-900">
               {transaction.supplier.phone}
             </p>
           </>
         )}
-        <p className="mt-1 text-xs text-slate-500 transition-colors group-hover:text-yellow-200">
+        <p className="mt-1 text-xs text-slate-500 transition-colors group-hover:text-slate-900">
           {formatBusinessDate(transaction.transactionDate)}
         </p>
       </div>
-      <p className="font-bold tabular-nums text-slate-900 transition-colors group-hover:text-yellow-300">
+      <p className="font-bold tabular-nums text-slate-900 transition-colors group-hover:text-slate-900">
         {formatMoney(transaction.amount)}
       </p>
     </div>
-    <p className="mt-2 text-sm font-semibold text-slate-800 transition-colors group-hover:text-yellow-300">
+    <p className="mt-2 text-sm font-semibold text-slate-800 transition-colors group-hover:text-slate-900">
       {englishLabel(supplierTransactionTypeLabels[transaction.type])}
     </p>
     {/* whitespace-pre-line keeps a purchase's English and Arabic halves on
         their own lines. The compact table row above stays truncated on purpose. */}
-    <p className="user-text mt-1 whitespace-pre-line text-sm text-slate-600 transition-colors group-hover:text-yellow-200" dir="auto">
+    <p className="user-text mt-1 whitespace-pre-line text-sm text-slate-600 transition-colors group-hover:text-slate-900" dir="auto">
       {transaction.description}
     </p>
     {transaction.supplierReceiving && <ReceivingLink transaction={transaction} />}
-    <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-2 text-xs transition-colors group-hover:border-gray-500">
-      <span className="transition-colors group-hover:text-yellow-200">
+    <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-2 text-xs transition-colors group-hover:border-slate-500">
+      <span className="transition-colors group-hover:text-slate-900">
         {englishLabel(supplierDirectionLabels[transaction.direction])}
       </span>
-      <span className="transition-colors group-hover:text-yellow-200">
+      <span className="transition-colors group-hover:text-slate-900">
         {englishLabel(supplierTransactionStatusLabels[transaction.status])}
       </span>
       <Actions {...{ transaction, canMutate, onEdit, onRemove, onRestore }} />
@@ -176,7 +176,7 @@ const Actions: React.FC<Omit<Props, 'items' | 'showSupplier'> & { transaction: S
   if (!canMutate) return null;
 
   const buttonClass =
-    'rounded border bg-white px-2.5 py-1.5 text-xs font-semibold transition-all hover:border-yellow-300 hover:bg-gray-600 hover:text-yellow-300 hover:shadow-[0_0_12px_rgba(250,204,21,0.4)] focus:outline-none focus:ring-2 focus:ring-yellow-300/50';
+    'rounded border bg-white px-2.5 py-1.5 text-xs font-semibold transition-all hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-brand-500/50';
 
   return (
     <div className="inline-flex gap-2">
@@ -190,7 +190,7 @@ const Actions: React.FC<Omit<Props, 'items' | 'showSupplier'> & { transaction: S
           </button>
         </>
       ) : (
-        <button type="button" onClick={() => onRestore(transaction)} className={`${buttonClass} border-emerald-200 text-emerald-700`}>
+        <button type="button" onClick={() => onRestore(transaction)} className={`${buttonClass} border-brand-200 text-brand-700`}>
           Restore
         </button>
       )}
@@ -206,5 +206,5 @@ const ReceivingLink: React.FC<{ transaction: SupplierTransaction }> = ({ transac
   const receiving = transaction.supplierReceiving;
   if (!receiving) return null;
   const products = receiving.items.map((item) => `${item.product.name} ×${item.quantity}`).join(', ');
-  return <Link title={products} to={`/inventory/receiving/${receiving.id}`} className="mt-1 block max-w-xs truncate text-[11px] font-semibold text-emerald-700 hover:underline group-hover:text-yellow-200">Receiving: {receiving.referenceNumber || receiving.receivedOn} · {products} / عرض مستند الإدخال</Link>;
+  return <Link title={products} to={`/inventory/receiving/${receiving.id}`} className="mt-1 block max-w-xs truncate text-[11px] font-semibold text-emerald-700 hover:underline group-hover:text-slate-900">Receiving: {receiving.referenceNumber || receiving.receivedOn} · {products} / عرض مستند الإدخال</Link>;
 };

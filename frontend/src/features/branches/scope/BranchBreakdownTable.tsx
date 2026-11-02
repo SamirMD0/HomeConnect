@@ -49,7 +49,7 @@ export function BranchBreakdownTable<T>({ title, description, total, rows, metri
       </header>
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm">
-          <thead className="bg-slate-50 text-xs font-medium text-slate-500">
+          <thead className="bg-slate-100 text-xs font-medium text-slate-700">
             <tr>
               <th scope="col" className="px-5 py-2.5 font-medium">Branch / الفرع</th>
               {metrics.map((metric) => (

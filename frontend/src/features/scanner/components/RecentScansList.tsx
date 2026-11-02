@@ -14,7 +14,7 @@ interface RecentScansListProps {
 const labels = businessLabels.scanner;
 
 const statusStyles: Record<RecentScan['status'], string> = {
-  FOUND: 'bg-emerald-100 text-emerald-800',
+  FOUND: 'bg-brand-100 text-brand-800',
   NOT_FOUND: 'bg-amber-100 text-amber-900',
   INVALID_CODE: 'bg-slate-200 text-slate-700',
 };
@@ -53,7 +53,7 @@ export const RecentScansList: React.FC<RecentScansListProps> = ({ scans, onPrevi
               {new Date(scan.scannedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
             </time>
             {scan.productId && onPreview && (
-              <button type="button" onClick={() => onPreview(scan.productId!)} className="rounded-lg border border-emerald-600 px-2 py-1 text-xs font-semibold text-emerald-700">
+              <button type="button" onClick={() => onPreview(scan.productId!)} className="rounded-lg border border-brand-600 px-2 py-1 text-xs font-semibold text-brand-700">
                 Preview / معاينة
               </button>
             )}

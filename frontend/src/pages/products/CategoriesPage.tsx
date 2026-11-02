@@ -50,7 +50,7 @@ export function CategoriesPage() {
           </p>
         </div>
         <div className="flex gap-3">
-          <Link to="/products" className="self-center text-emerald-700">
+          <Link to="/products" className="self-center text-brand-700">
             Products
           </Link>
           {admin && (
@@ -77,7 +77,7 @@ export function CategoriesPage() {
       {query.data && (
         <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
           <table className="min-w-full text-left text-sm">
-            <thead className="bg-slate-50">
+            <thead className="bg-slate-100 font-semibold">
               <tr>
                 <th className="p-3">Category path</th>
                 <th className="p-3">Products (direct)</th>
@@ -90,7 +90,7 @@ export function CategoriesPage() {
                 <tr key={row.id} className="border-t border-slate-100">
                   <td className="p-3">
                     <Link
-                      className="text-emerald-700 hover:underline"
+                      className="text-brand-700 hover:underline"
                       to={`/products?categoryId=${encodeURIComponent(row.id)}`}
                     >
                       {row.path}

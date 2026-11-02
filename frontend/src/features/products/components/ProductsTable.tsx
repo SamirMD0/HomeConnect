@@ -28,7 +28,7 @@ export const ProductsTable: React.FC<ProductsTableProps> = ({
   <>
     <div className="hidden overflow-x-auto rounded-lg border border-slate-200 bg-white lg:block">
       <table className="w-full min-w-225 text-left text-sm text-slate-700">
-        <thead className="border-b border-slate-200 bg-slate-50 text-slate-600">
+        <thead className="border-b border-slate-200 bg-slate-100 text-slate-700 font-semibold">
           <tr>
             <th scope="col" className="w-11 px-3 py-2.5">
               <SelectAllCheckbox products={products} selectedIds={selectedIds} onSelectAll={onSelectAll} />

@@ -1,33 +1,22 @@
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it } from 'vitest';
-import { Bell } from 'lucide-react';
-import { LockedAction, TopBarActions, UserAvatar } from './TopBarActions';
+import { MemoryRouter } from 'react-router-dom';
+import { describe, expect, it, vi } from 'vitest';
+import { PageJump } from './PageJump';
+import { UserAvatar } from './TopBarActions';
 
-describe('TopBarActions', () => {
-  it('renders three locked actions: search, notifications, messages', () => {
-    const html = renderToStaticMarkup(<TopBarActions />);
-    expect(html).toContain('aria-label="Global search"');
-    expect(html).toContain('aria-label="Notifications"');
-    expect(html).toContain('aria-label="Messages"');
-  });
+vi.mock('../hooks/useAuth', () => ({
+  useAuth: () => ({ user: { id: 'user-1', role: 'ADMIN', fullName: 'Sam Owner' } }),
+}));
 
-  it('every locked action is disabled and carries a "coming soon" tooltip', () => {
-    const html = renderToStaticMarkup(<TopBarActions />);
-    const disabledCount = (html.match(/disabled=""/g) ?? []).length;
-    const comingSoonCount = (html.match(/coming soon/g) ?? []).length;
-    expect(disabledCount).toBeGreaterThanOrEqual(3);
-    expect(comingSoonCount).toBeGreaterThanOrEqual(3);
-  });
-});
-
-describe('LockedAction', () => {
-  it('is disabled and carries the supplied label and hint', () => {
+describe('PageJump', () => {
+  it('renders a working, labelled search trigger', () => {
     const html = renderToStaticMarkup(
-      <LockedAction label="Future thing" hint="Future thing is coming soon" icon={<Bell />} />,
+      <MemoryRouter>
+        <PageJump />
+      </MemoryRouter>,
     );
-    expect(html).toContain('aria-label="Future thing"');
-    expect(html).toContain('title="Future thing is coming soon"');
-    expect(html).toContain('disabled=""');
+    expect(html).toContain('aria-label="Jump to a page"');
+    expect(html).not.toContain('disabled=""');
   });
 });
 

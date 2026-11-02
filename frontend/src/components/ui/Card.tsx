@@ -5,7 +5,7 @@ export type CardVariant = 'default' | 'interactive' | 'flush';
 
 const VARIANTS: Record<CardVariant, string> = {
   default: 'p-6',
-  interactive: 'p-6 transition-shadow hover:border-brand-300 hover:shadow-md',
+  interactive: 'p-6 transition-[box-shadow,border-color] hover:border-brand-300 hover:shadow-md',
   /** No padding — for tables and other content that owns its own edges. */
   flush: 'overflow-hidden',
 };
@@ -60,7 +60,7 @@ export const CardHeader: React.FC<CardHeaderProps> = ({
         </span>
       )}
       <div className="min-w-0">
-        <h3 className="text-base font-semibold text-slate-900">{title}</h3>
+        <h3 className="text-base font-bold text-slate-900">{title}</h3>
         {description && <p className="mt-0.5 text-sm text-slate-500">{description}</p>}
       </div>
     </div>

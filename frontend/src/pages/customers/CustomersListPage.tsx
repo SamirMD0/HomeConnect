@@ -199,7 +199,7 @@ export const CustomersListPage: React.FC = () => {
             onClick={() => setIsAddModalOpen(true)}
             disabled={createGuard.blocked}
             title={createGuard.reason}
-            className="inline-flex items-center justify-center px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors focus:ring-4 focus:ring-emerald-500/20 font-medium disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center justify-center px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition-colors focus:ring-4 focus:ring-brand-500/20 font-medium disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Plus className="w-5 h-5 mr-2" />
             Add Customer
@@ -256,7 +256,7 @@ export const CustomersListPage: React.FC = () => {
             type="button"
             key={label}
             onClick={() => setFilter(value)}
-            className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${filter === value ? 'border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700' : 'border-slate-200 bg-slate-100 text-slate-700 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800'}`}
+            className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${filter === value ? 'border-brand-600 bg-brand-600 text-white hover:bg-brand-700' : 'border-slate-200 bg-slate-100 text-slate-700 hover:border-brand-300 hover:bg-brand-50 hover:text-brand-800'}`}
           >
             {label}
           </button>
@@ -266,7 +266,7 @@ export const CustomersListPage: React.FC = () => {
       {/* Content */}
       {isLoading && !data ? (
         <div className="flex justify-center p-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600"></div>
         </div>
       ) : isError ? (
         <div className="p-4 bg-red-50 text-red-700 rounded-lg border border-red-200">
@@ -280,7 +280,7 @@ export const CustomersListPage: React.FC = () => {
               data-testid="customer-scroll-table"
             >
               <table className="w-full border-separate border-spacing-y-1.5 text-left text-xs text-slate-600">
-                <thead className="sticky top-0 z-10 bg-slate-100 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600">
+                <thead className="sticky top-0 z-10 bg-slate-100 text-xs font-semibold text-slate-700">
                   <tr>
                     {columns.map((column) => (
                       <th key={column.header} className="whitespace-nowrap px-4 py-2.5">
@@ -324,7 +324,7 @@ export const CustomersListPage: React.FC = () => {
                     onClick={() => setIsAddModalOpen(true)}
                     disabled={createGuard.blocked}
                     title={createGuard.reason}
-                    className="mt-2 inline-flex items-center disabled:cursor-not-allowed disabled:opacity-50 px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+                    className="mt-2 inline-flex items-center disabled:cursor-not-allowed disabled:opacity-50 px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-brand-600 hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500"
                   >
                     <Plus className="w-5 h-5 mr-2 -ml-1" aria-hidden="true" />
                     Add Customer
@@ -339,7 +339,7 @@ export const CustomersListPage: React.FC = () => {
                 type="button"
                 key={customer.id}
                 onClick={() => navigate(`/customers/${customer.id}`)}
-                className="group rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-left shadow-sm transition-all duration-200 hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 hover:shadow-[0_0_14px_rgba(250,204,21,0.3)]"
+                className="group rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-left shadow-sm transition-all duration-200 hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 hover:shadow-md"
               >
                 <div className="flex items-center justify-between gap-3">
                   <span

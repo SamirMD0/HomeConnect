@@ -34,7 +34,7 @@ export const CustomerCommunicationSection: React.FC<CustomerCommunicationSection
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-100 text-brand-700">
             <MessageCircle className="h-5 w-5" aria-hidden="true" />
           </div>
           <div>
@@ -53,7 +53,7 @@ export const CustomerCommunicationSection: React.FC<CustomerCommunicationSection
                   void navigator.clipboard?.writeText(customer.phone);
                   toast.success('Phone copied');
                 }}
-                className="rounded-md bg-emerald-50 p-1 text-emerald-600 transition-colors hover:bg-emerald-600 hover:text-white"
+                className="rounded-md bg-brand-50 p-1 text-brand-600 transition-colors hover:bg-brand-600 hover:text-white"
               >
                 <Copy className="h-3.5 w-3.5" aria-hidden="true" />
               </button>

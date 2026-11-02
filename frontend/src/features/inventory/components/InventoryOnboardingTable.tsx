@@ -21,7 +21,7 @@ export const InventoryOnboardingTable: React.FC<Props> = ({
   if (!items.length) return <p className="p-10 text-center text-sm text-slate-500">No products awaiting onboarding / لا توجد منتجات بانتظار الإدراج</p>;
 
   return <div className="overflow-x-auto"><table className="min-w-full divide-y divide-slate-200 text-sm">
-    <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500"><tr>
+    <thead className="bg-slate-100 text-left text-xs font-semibold text-slate-700"><tr>
       <th className="px-3 py-3">Select / تحديد</th><th className="px-3 py-3">Name / الاسم</th>
       <th className="px-3 py-3">Model / Brand</th><th className="px-3 py-3">SKU / Barcode</th>
       <th className="px-3 py-3">Status / الحالة</th><th className="min-w-56 px-3 py-3">Opening count / الجرد الافتتاحي</th>
@@ -29,8 +29,8 @@ export const InventoryOnboardingTable: React.FC<Props> = ({
     <tbody className="divide-y divide-slate-100 bg-white">{items.map((item) => {
       const selected = selection.get(item.productId);
       const invalid = invalidProductIds.has(item.productId);
-      return <tr key={item.productId} className={selected ? 'bg-emerald-50/40' : undefined}>
-        <td className="px-3 py-3 align-top"><input aria-label={`Select ${item.name}`} type="checkbox" checked={Boolean(selected)} onChange={(event) => onToggle(item, event.target.checked)} className="h-4 w-4 rounded border-slate-300 text-emerald-600" /></td>
+      return <tr key={item.productId} className={selected ? 'bg-brand-50/40' : undefined}>
+        <td className="px-3 py-3 align-top"><input aria-label={`Select ${item.name}`} type="checkbox" checked={Boolean(selected)} onChange={(event) => onToggle(item, event.target.checked)} className="h-4 w-4 rounded border-slate-300 text-brand-600" /></td>
         <td className="px-3 py-3 align-top"><strong className="user-text block max-w-64" dir="auto">{item.name}</strong></td>
         <td className="px-3 py-3 align-top text-slate-600"><span dir="auto" className="user-text block">{item.model}</span><span dir="auto" className="user-text text-xs text-slate-400">{item.brand || '—'}</span></td>
         <td className="px-3 py-3 align-top font-mono text-xs text-slate-600"><span className="block">{item.sku}</span><span className="text-slate-400">{item.barcode || '—'}</span></td>

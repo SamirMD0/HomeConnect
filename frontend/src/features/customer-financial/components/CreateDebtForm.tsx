@@ -138,7 +138,7 @@ export const SubmitButton: React.FC<{ isPending: boolean; label: string; pending
   <button
     type="submit"
     disabled={isPending}
-    className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
+    className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-500 disabled:cursor-not-allowed disabled:opacity-60"
   >
     {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
     {isPending ? pendingLabel : label}
@@ -149,7 +149,7 @@ export function inputClass(hasError: boolean): string {
   return `user-text-input block w-full rounded-lg border px-3 py-2 text-sm text-slate-900 shadow-sm focus:outline-none focus:ring-2 ${
     hasError
       ? 'border-red-300 focus:border-red-500 focus:ring-red-500/20'
-      : 'border-slate-300 focus:border-emerald-500 focus:ring-emerald-500/20'
+      : 'border-slate-300 focus:border-brand-500 focus:ring-brand-500/20'
   }`;
 }
 

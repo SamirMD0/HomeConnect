@@ -11,15 +11,15 @@ interface RecentActivityProps {
 export const RecentActivity: React.FC<RecentActivityProps> = ({ logs, isLoading }) => {
   if (isLoading) {
     return (
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 h-full">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
+      <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6 h-full">
+        <h3 className="text-lg font-semibold text-slate-900 mb-4">Recent Activity</h3>
         <div className="space-y-4 animate-pulse">
           {[1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="flex gap-4">
-              <div className="w-10 h-10 bg-gray-200 rounded-full" />
+              <div className="w-10 h-10 bg-slate-200 rounded-full" />
               <div className="flex-1 space-y-2 py-1">
-                <div className="h-4 bg-gray-200 rounded w-3/4" />
-                <div className="h-3 bg-gray-200 rounded w-1/4" />
+                <div className="h-4 bg-slate-200 rounded w-3/4" />
+                <div className="h-3 bg-slate-200 rounded w-1/4" />
               </div>
             </div>
           ))}
@@ -30,14 +30,14 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({ logs, isLoading 
 
   const formatAction = (log: ActivityLog) => {
     const { action, details, user } = log;
-    const author = <span className="font-medium text-gray-900">{user.fullName}</span>;
+    const author = <span className="font-medium text-slate-900">{user.fullName}</span>;
 
     if (action === 'TRANSACTION_CREATED') {
       const type = activityType(details.type);
       return (
         <>
           {author} recorded {type} of{' '}
-          <span className="font-medium text-gray-900">{formatMoney(activityAmount(details.amount))}</span>
+          <span className="font-medium text-slate-900">{formatMoney(activityAmount(details.amount))}</span>
         </>
       );
     }
@@ -80,21 +80,21 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({ logs, isLoading 
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 h-full flex flex-col">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
+    <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6 h-full flex flex-col">
+      <h3 className="text-lg font-semibold text-slate-900 mb-4">Recent Activity</h3>
       <div className="flex-1 overflow-y-auto pr-2 -mr-2 space-y-6">
         {logs.length === 0 ? (
-          <p className="text-sm text-gray-500 text-center py-4">No recent activity.</p>
+          <p className="text-sm text-slate-500 text-center py-4">No recent activity.</p>
         ) : (
-          <div className="relative border-l border-gray-200 ml-4 space-y-6">
+          <div className="relative border-l border-slate-200 ml-4 space-y-6">
             {logs.map((log) => (
               <div key={log.id} className="relative pl-6">
                 <div className="absolute -left-4 top-0">
                   {getActionIcon(log.action, log.details)}
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">{formatAction(log)}</p>
-                  <p className="text-xs text-gray-400 mt-1">
+                  <p className="text-sm text-slate-600">{formatAction(log)}</p>
+                  <p className="text-xs text-slate-400 mt-1">
                     {format(new Date(log.createdAt), 'MMM d, yyyy h:mm a')}
                   </p>
                 </div>

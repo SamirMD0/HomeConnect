@@ -113,7 +113,7 @@ export const PrepaidDetailsDialog: React.FC<PrepaidDetailsDialogProps> = ({
           <button
             type="button"
             onClick={onRecordPayment}
-            className="inline-flex items-center gap-2 rounded-md border border-emerald-300 px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50"
+            className="inline-flex items-center gap-2 rounded-md border border-brand-300 px-3 py-2 text-sm font-medium text-brand-700 hover:bg-brand-50"
           >
             <Banknote className="h-4 w-4" aria-hidden="true" />
             {englishLabel(businessLabels.prepaid.recordPayment)}

@@ -23,16 +23,16 @@ export const StatCard: React.FC<StatCardProps> = ({
     primary: 'bg-brand-50 text-brand-600',
     success: 'bg-green-50 text-green-600',
     danger: 'bg-red-50 text-red-600',
-    warning: 'bg-yellow-50 text-yellow-600',
+    warning: 'bg-amber-50 text-amber-700',
     info: 'bg-blue-50 text-blue-600',
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 transition-all hover:shadow-md">
+    <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6 transition-all hover:shadow-md">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium text-gray-500 mb-1">{title}</p>
-          <h3 className="text-2xl font-bold text-gray-900">{value}</h3>
+          <p className="text-sm font-medium text-slate-500 mb-1">{title}</p>
+          <h3 className="text-2xl font-bold text-slate-900">{value}</h3>
         </div>
         <div className={`p-3 rounded-lg ${colorClasses[color]}`}>
           {icon}
@@ -48,7 +48,7 @@ export const StatCard: React.FC<StatCardProps> = ({
           >
             {trend.isPositive ? '+' : '-'}{Math.abs(trend.value)}%
           </span>
-          <span className="text-gray-500 ml-2">{trend.label}</span>
+          <span className="text-slate-500 ml-2">{trend.label}</span>
         </div>
       )}
     </div>

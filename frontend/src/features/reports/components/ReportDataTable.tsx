@@ -33,7 +33,7 @@ export function ReportDataTable({ slice, rows }: { slice: ReportSlice; rows: Rep
     <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm">
-          <thead className="sticky top-0 z-10 bg-slate-50 text-xs uppercase tracking-wide text-slate-600">
+          <thead className="sticky top-0 z-10 bg-slate-100 text-xs text-slate-700 font-semibold">
             <tr>
               {columns.map((column) => (
                 <th key={column.label} scope="col" className={`whitespace-nowrap px-4 py-3.5 font-semibold ${alignment(column)}`}>

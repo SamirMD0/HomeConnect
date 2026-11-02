@@ -43,7 +43,7 @@ export const FinancialSummaryCards: React.FC<FinancialSummaryCardsProps> = ({ su
       value: formatMoney(summary.totalPaid),
       detail: 'Valid non-voided payments',
       icon: CreditCard,
-      tone: 'text-emerald-600 bg-emerald-50',
+      tone: 'text-brand-600 bg-brand-50',
     },
     {
       label: 'Total Debt Created',
@@ -71,7 +71,7 @@ export const FinancialSummaryCards: React.FC<FinancialSummaryCardsProps> = ({ su
       value: summary.lastPaymentDate ? formatBusinessDate(summary.lastPaymentDate) : '—',
       detail: summary.daysSinceLastPayment == null ? 'No payments' : `${summary.daysSinceLastPayment} days ago`,
       icon: CreditCard,
-      tone: 'text-emerald-600 bg-emerald-50',
+      tone: 'text-brand-600 bg-brand-50',
     },
   ];
 

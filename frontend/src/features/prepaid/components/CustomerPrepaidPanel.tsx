@@ -48,7 +48,7 @@ export const CustomerPrepaidPanel: React.FC<CustomerPrepaidPanelProps> = ({
           <button
             type="button"
             onClick={() => setIsAddOpen(true)}
-            className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+            className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
           >
             <Plus className="h-4 w-4" aria-hidden="true" />
             {englishLabel(businessLabels.prepaid.addBill)}

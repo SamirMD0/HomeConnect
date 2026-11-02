@@ -1,4 +1,6 @@
 @import "../features/pricing-card/components/PricingCard.css";
+@import "@fontsource-variable/plus-jakarta-sans";
+@import "@fontsource-variable/noto-sans-arabic";
 @import "tailwindcss" source("..");
 
 /*
@@ -6,34 +8,139 @@
  * auto-load tailwind.config.js, so any custom colour must be declared here or
  * it silently resolves to nothing.
  *
- * The app is light-only by design: fixed shop-floor desktops gain nothing from
- * a dark theme, and every token, chart colour and print rule would need a
- * second validated variant. Do not add a dark scheme here.
+ * The neutral and status scales below deliberately replace Tailwind's defaults:
+ * every existing slate-*, red-*, amber-* class picks up the same cool
+ * blue-grey family, so no screen can drift from the system by naming a colour.
+ *
+ * What each colour means:
+ *   brand (logo blue)  navigation, primary actions, links, focus
+ *   green / emerald    money in, paid, in stock, done
+ *   amber              needs attention soon: partial, low stock, due
+ *   orange             serious, a step before critical
+ *   red                overdue, debt, destructive, failed
+ *   sky                informational, in progress
+ *
+ * Light-only for now. Everything is a token so a dark theme can be added later
+ * by redefining them; printed documents stay black on white regardless.
  */
 @theme {
-  /* Brand accent — the emerald already established across the app. */
-  --color-brand-50: #ecfdf5;
-  --color-brand-100: #d1fae5;
-  --color-brand-200: #a7f3d0;
-  --color-brand-300: #6ee7b7;
-  --color-brand-400: #34d399;
-  --color-brand-500: #10b981;
-  --color-brand-600: #059669;
-  --color-brand-700: #047857;
-  --color-brand-800: #065f46;
-  --color-brand-900: #064e3b;
+  --font-sans: "Plus Jakarta Sans Variable", "Noto Sans Arabic Variable", "Segoe UI", Tahoma, sans-serif;
+
+  /* Neutrals: cool blue-grey, never pure grey. */
+  --color-slate-50: #F7FAFC;
+  --color-slate-100: #EBF2F5;
+  --color-slate-200: #DCE7EC;
+  --color-slate-300: #C3D3DB;
+  --color-slate-400: #8FA3AD;
+  --color-slate-500: #66777F;
+  --color-slate-600: #4D595E;
+  --color-slate-700: #3B464B;
+  --color-slate-800: #2A3338;
+  --color-slate-900: #1B2124;
+  --color-slate-950: #11161A;
+
+  /* Brand accent, taken from the logo. */
+  --color-brand-50: #EEF5FD;
+  --color-brand-100: #D9E9FB;
+  --color-brand-200: #B5D4F6;
+  --color-brand-300: #85B8EF;
+  --color-brand-400: #539AE6;
+  --color-brand-500: #2B86E0;
+  --color-brand-600: #1A6FC9;
+  --color-brand-700: #155AA3;
+  --color-brand-800: #134A85;
+  --color-brand-900: #123E6E;
+  --color-brand-950: #0B2747;
+  --color-blue-50: #EEF5FD;
+  --color-blue-100: #D9E9FB;
+  --color-blue-200: #B5D4F6;
+  --color-blue-300: #85B8EF;
+  --color-blue-400: #539AE6;
+  --color-blue-500: #2B86E0;
+  --color-blue-600: #1A6FC9;
+  --color-blue-700: #155AA3;
+  --color-blue-800: #134A85;
+  --color-blue-900: #123E6E;
+  --color-blue-950: #0B2747;
+
+  --color-emerald-50: #E8F7F1;
+  --color-emerald-100: #CDEEE1;
+  --color-emerald-200: #9FDFC7;
+  --color-emerald-300: #66CCA7;
+  --color-emerald-400: #2FB686;
+  --color-emerald-500: #099F69;
+  --color-emerald-600: #078558;
+  --color-emerald-700: #066F49;
+  --color-emerald-800: #05583B;
+  --color-emerald-900: #04472F;
+  --color-emerald-950: #022A1C;
+  --color-green-50: #E8F7F1;
+  --color-green-100: #CDEEE1;
+  --color-green-200: #9FDFC7;
+  --color-green-300: #66CCA7;
+  --color-green-400: #2FB686;
+  --color-green-500: #099F69;
+  --color-green-600: #078558;
+  --color-green-700: #066F49;
+  --color-green-800: #05583B;
+  --color-green-900: #04472F;
+  --color-green-950: #022A1C;
+  --color-amber-50: #FEF4EA;
+  --color-amber-100: #FDE6CF;
+  --color-amber-200: #FBCE9F;
+  --color-amber-300: #F9B26D;
+  --color-amber-400: #F89E47;
+  --color-amber-500: #F68D2A;
+  --color-amber-600: #D87318;
+  --color-amber-700: #A65A14;
+  --color-amber-800: #874C15;
+  --color-amber-900: #6C3D12;
+  --color-amber-950: #40240A;
+  --color-orange-50: #FEF0E9;
+  --color-orange-100: #FCDCCB;
+  --color-orange-200: #F9BBA0;
+  --color-orange-300: #F59873;
+  --color-orange-400: #EE7B4B;
+  --color-orange-500: #E8622A;
+  --color-orange-600: #CC4F1D;
+  --color-orange-700: #A8421A;
+  --color-orange-800: #863517;
+  --color-orange-900: #6C2C14;
+  --color-orange-950: #3F180A;
+  --color-red-50: #FDEEF1;
+  --color-red-100: #FAD9DF;
+  --color-red-200: #F4B3BF;
+  --color-red-300: #EB8799;
+  --color-red-400: #E05570;
+  --color-red-500: #D02241;
+  --color-red-600: #B81B38;
+  --color-red-700: #98162E;
+  --color-red-800: #7A1225;
+  --color-red-900: #620F1E;
+  --color-red-950: #3C0811;
+  --color-sky-50: #E8F7FC;
+  --color-sky-100: #CCEEF8;
+  --color-sky-200: #9BDEF1;
+  --color-sky-300: #66CBE8;
+  --color-sky-400: #33B8DF;
+  --color-sky-500: #0DA6D6;
+  --color-sky-600: #0A8AB3;
+  --color-sky-700: #096F90;
+  --color-sky-800: #085A75;
+  --color-sky-900: #074A60;
+  --color-sky-950: #042E3D;
 
   /* Semantic status. Reserved for state — never used as decoration, and
      always paired with an icon or text label so colour is never the only cue. */
-  --color-success: #0ca30c;
-  --color-warning: #fab219;
-  --color-danger: #d03b3b;
-  --color-info: #2a78d6;
+  --color-success: #099F69;
+  --color-warning: #F68D2A;
+  --color-danger: #D02241;
+  --color-info: #0DA6D6;
 
   /* shadcn/ui semantic names (components in components/shadcn). Each one is an
      alias of an existing token above or of the slate scale — never a new
      colour — so shadcn components and the existing primitives stay in step. */
-  --color-background: var(--color-slate-50);
+  --color-background: var(--color-slate-100);
   --color-foreground: var(--color-slate-900);
   --color-card: #ffffff;
   --color-card-foreground: var(--color-slate-900);
@@ -43,17 +150,51 @@
   --color-primary-foreground: #ffffff;
   --color-muted: var(--color-slate-100);
   --color-muted-foreground: var(--color-slate-500);
-  --color-accent: var(--color-slate-100);
-  --color-accent-foreground: var(--color-slate-900);
+  --color-accent: var(--color-brand-50);
+  --color-accent-foreground: var(--color-brand-700);
   --color-destructive: var(--color-danger);
   --color-border: var(--color-slate-200);
   --color-input: var(--color-slate-300);
   --color-ring: var(--color-brand-500);
+
+  /* Softer corners and blue-tinted depth, so raised surfaces belong to the field. */
+  --radius-lg: 0.625rem;
+  --radius-xl: 0.875rem;
+  --radius-2xl: 1.25rem;
+  --shadow-sm: 0 1px 2px rgb(27 53 72 / 0.05);
+  --shadow-md: 0 6px 16px -4px rgb(27 53 72 / 0.10);
+  --shadow-lg: 0 12px 28px -8px rgb(27 53 72 / 0.14);
+  --shadow-xl: 0 24px 48px -12px rgb(27 53 72 / 0.22);
 }
 
 @layer base {
+  html {
+    scrollbar-color: var(--color-slate-300) transparent;
+    scrollbar-width: thin;
+  }
+
   body {
-    @apply antialiased text-slate-900 bg-slate-50;
+    @apply antialiased text-slate-900 bg-background;
+    font-feature-settings: "cv11", "ss01";
+  }
+
+  h1, h2, h3, h4 {
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+
+  ::selection {
+    background: var(--color-brand-200);
+    color: var(--color-brand-950);
+  }
+
+  :focus-visible {
+    outline-color: var(--color-brand-500);
+  }
+
+  input[type="checkbox"],
+  input[type="radio"] {
+    accent-color: var(--color-brand-600);
   }
 }
 
@@ -132,20 +273,23 @@
 
 @layer components {
   .control { @apply mt-1 block h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm; }
-  .dashboard-shell { @apply mx-auto max-w-[1600px] space-y-5 pb-8; }
-  .dashboard-section { @apply border-t border-slate-200 pt-5; }
-  .dashboard-filter-bar { @apply sticky top-0 z-20 flex flex-col justify-between gap-3 rounded-lg border border-slate-200 bg-white/95 p-3 shadow-sm backdrop-blur lg:flex-row lg:items-center; }
-  .dashboard-segmented { @apply inline-flex max-w-full overflow-x-auto rounded-md border border-slate-200 bg-slate-50 p-0.5; }
-  .dashboard-segmented button { @apply whitespace-nowrap rounded px-2.5 py-1.5 text-xs font-medium text-slate-600; }
-  .dashboard-segmented button[aria-pressed="true"] { @apply bg-white text-emerald-700 shadow-sm; }
-  .dashboard-date-input { @apply h-8 rounded-md border border-slate-300 bg-white px-2 text-xs text-slate-700; }
-  .dashboard-icon-button { @apply inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-600 hover:bg-slate-50; }
+  /* The dashboard is a full-bleed mosaic: it cancels <main>'s padding, and panels
+     are separated by hairlines and tint rather than by floating cards. */
+  .dashboard-shell { overflow-x: clip; @apply -m-4 min-h-[calc(100%+2rem)] bg-white lg:-m-8 lg:min-h-[calc(100%+4rem)]; }
+  .dashboard-chapter { @apply border-t border-slate-200 bg-white px-5 py-8 lg:px-8; }
+  .dashboard-chapters > :nth-child(even) .dashboard-chapter { @apply bg-slate-50; }
+  .dashboard-filter-bar { @apply sticky -top-4 z-20 lg:-top-8 flex flex-col justify-between gap-3 border-b border-slate-200 bg-white px-5 py-2.5 lg:flex-row lg:items-center lg:px-8; }
+  .dashboard-segmented { @apply inline-flex max-w-full overflow-x-auto rounded-full bg-slate-100 p-1; }
+  .dashboard-segmented button { @apply whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold text-slate-600 transition-colors hover:text-slate-900; }
+  .dashboard-segmented button[aria-pressed="true"] { @apply bg-white text-brand-700 shadow-sm; }
+  .dashboard-date-input { @apply h-8 rounded-lg border border-slate-300 bg-white px-2 text-xs text-slate-700; }
+  .dashboard-icon-button { @apply inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900; }
   .dashboard-kpi-grid { @apply grid grid-cols-2 gap-3 lg:grid-cols-4; }
-  .dashboard-kpi-card { @apply min-w-0 rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition hover:border-emerald-200 hover:shadow-md; }
+  .dashboard-kpi-card { @apply min-w-0 rounded-xl border border-slate-200 bg-white p-4 transition hover:border-brand-300 hover:shadow-md; }
   .dashboard-quick-actions { @apply grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5; }
-  .dashboard-action-button { @apply flex min-h-14 items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:border-emerald-300 hover:bg-emerald-50; }
-  .dashboard-state { @apply flex min-h-32 flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-5 text-center text-sm text-slate-500; }
-  .dashboard-state button { @apply rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700; }
+  .dashboard-action-button { @apply flex min-h-14 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:border-brand-300 hover:bg-brand-50; }
+  .dashboard-state { @apply flex min-h-32 flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5 text-center text-sm text-slate-600; }
+  .dashboard-state button { @apply rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700; }
 
   /* Long lists scroll inside their own pane so the sticky header and the page
      controls below it stay put. The cap is viewport-relative: a fixed one
@@ -155,7 +299,7 @@
      the max() keeps a usable pane on short screens, where the page itself
      scrolls instead. */
   .data-table-scroll {
-    @apply overflow-auto overscroll-contain rounded-lg bg-slate-100 px-3 pb-3;
+    @apply overflow-auto overscroll-contain rounded-lg bg-white;
     max-height: max(22rem, calc(100vh - var(--table-chrome, 26rem)));
   }
 
@@ -173,15 +317,34 @@
   }
 }
 
+/* Categorical chart series, in fixed order. Validated for colour-blind separation
+   against white; separate from the status colours so a series never impersonates
+   a state. The yellow is under 3:1 on white, which is why every chart has a table view. */
 .viz-root {
-  --viz-blue: #2a78d6;
-  --viz-orange: #eb6834;
-  --viz-aqua: #1baf7a;
-  --viz-aqua-soft: #d9f3ea;
-  --viz-yellow: #eda100;
-  --viz-magenta: #e87ba4;
-  --viz-grid: #e1e0d9;
+  --viz-blue: #1A6FC9;
+  --viz-orange: #E8622A;
+  --viz-aqua: #0A8AB3;
+  --viz-aqua-soft: #CCEEF8;
+  --viz-yellow: #D89A0E;
+  --viz-magenta: #B4478F;
+  --viz-grid: #DCE7EC;
 }
+
+/* Recessive axes and a tooltip that belongs to the app, for every Recharts chart. */
+.viz-root .recharts-cartesian-axis-tick-value { fill: #66777F; }
+.viz-root .recharts-cartesian-axis-line,
+.viz-root .recharts-cartesian-axis-tick-line { stroke: var(--viz-grid); }
+.viz-root .recharts-default-tooltip {
+  border: 1px solid #DCE7EC !important;
+  border-radius: 0.625rem;
+  box-shadow: 0 6px 16px -4px rgb(27 53 72 / 0.10);
+  font-size: 12px;
+}
+/* Arabic beside English inside a solid button: the label default is muted ink,
+   which disappears on a saturated fill. */
+.bg-brand-600 [dir="rtl"], .bg-brand-700 [dir="rtl"], .bg-red-600 [dir="rtl"] { color: rgb(255 255 255 / 0.85); }
+
+.viz-root .recharts-legend-item-text { color: #4D595E !important; font-size: 12px; }
 
 @media (max-width: 480px) {
   .dashboard-kpi-card { padding: 0.75rem; }

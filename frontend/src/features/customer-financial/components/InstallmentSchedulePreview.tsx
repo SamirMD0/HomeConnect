@@ -43,7 +43,7 @@ export const InstallmentSchedulePreview: React.FC<InstallmentSchedulePreviewProp
       )}
       <div className="max-h-64 overflow-y-auto rounded-lg border border-slate-200">
         <table className="min-w-full divide-y divide-slate-200 text-sm">
-          <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+          <thead className="bg-slate-100 text-left text-xs font-semibold text-slate-700">
             <tr>
               <th className="px-3 py-2">#</th>
               <th className="px-3 py-2">Due Date</th>

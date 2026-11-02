@@ -57,7 +57,7 @@ export const RecentPaymentsList: React.FC<RecentPaymentsListProps> = ({
               <div className="flex flex-wrap gap-2 sm:justify-end">
                 <a
                   href={`#/payments/${payment.id}/receipt`}
-                  className="inline-flex items-center gap-2 rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                  className="inline-flex items-center gap-2 rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
                 >
                   <ReceiptText className="h-4 w-4" /> Receipt</a>
                 {canMutate && !payment.sourceSalesOrderId && !payment.voidedAt && <>
@@ -65,7 +65,7 @@ export const RecentPaymentsList: React.FC<RecentPaymentsListProps> = ({
                     <button
                       type="button"
                       onClick={() => onReallocatePayment(payment)}
-                      className="rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                      className="rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
                     >
                       Reallocate
                     </button>

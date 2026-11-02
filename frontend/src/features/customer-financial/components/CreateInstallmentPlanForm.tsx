@@ -245,6 +245,6 @@ export const CreateInstallmentPlanForm: React.FC<CreateInstallmentPlanFormProps>
 
 function scheduleModeClass(active: boolean): string {
   return active
-    ? 'rounded-md bg-white px-3 py-1.5 text-sm font-semibold text-emerald-700 shadow-sm'
+    ? 'rounded-md bg-white px-3 py-1.5 text-sm font-semibold text-brand-700 shadow-sm'
     : 'rounded-md px-3 py-1.5 text-sm font-semibold text-slate-600 hover:text-slate-900';
 }

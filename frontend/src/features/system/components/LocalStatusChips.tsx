@@ -16,7 +16,7 @@ type Tone = 'good' | 'bad' | 'muted';
 const toneDot: Record<Tone, string> = {
   good: 'bg-emerald-500',
   bad: 'bg-red-500',
-  muted: 'bg-slate-300',
+  muted: 'bg-slate-400',
 };
 
 /**
@@ -25,7 +25,7 @@ const toneDot: Record<Tone, string> = {
  * abbreviation.
  */
 const Chip: React.FC<{ short: string; label: string; tone: Tone }> = ({ short, label, tone }) => (
-  <span title={label} className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
+  <span title={label} className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
     <span className={`h-1.5 w-1.5 rounded-full ${toneDot[tone]}`} aria-hidden="true" />
     <span aria-hidden="true">{short}</span>
     <span className="sr-only">{label}</span>

@@ -53,7 +53,7 @@ export const CustomerProfilePage: React.FC = () => {
   if (isLoading) {
     return (
       <div className="flex justify-center p-12" aria-live="polite" aria-busy="true">
-        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-emerald-600" />
+        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-brand-600" />
         <span className="sr-only">Loading customer profile</span>
       </div>
     );
@@ -95,7 +95,7 @@ export const CustomerProfilePage: React.FC = () => {
         <button
           type="button"
           onClick={() => navigate('/customers')}
-          className="rounded-full bg-slate-100 p-2 text-slate-600 transition-colors hover:bg-emerald-100 hover:text-emerald-700"
+          className="rounded-full bg-slate-100 p-2 text-slate-600 transition-colors hover:bg-brand-100 hover:text-brand-700"
           aria-label="Back to customers"
         >
           <ArrowLeft className="h-5 w-5" aria-hidden="true" />
@@ -106,7 +106,7 @@ export const CustomerProfilePage: React.FC = () => {
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:sticky lg:top-4 lg:z-10">
         <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
           <div className="flex items-center gap-5">
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-brand-100 text-brand-600">
               <UserIcon className="h-8 w-8" aria-hidden="true" />
             </div>
             <div>
@@ -115,7 +115,7 @@ export const CustomerProfilePage: React.FC = () => {
                 <span
                   className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
                     customer.isActive
-                      ? 'bg-emerald-100 text-emerald-800'
+                      ? 'bg-brand-100 text-brand-800'
                       : 'bg-slate-100 text-slate-800'
                   }`}
                 >
@@ -126,10 +126,10 @@ export const CustomerProfilePage: React.FC = () => {
                 <span className="flex items-center">
                   <Phone className="mr-1.5 h-4 w-4" aria-hidden="true" />
                   {customer.phone}
-                  <button type="button" className="ml-2 rounded-md bg-emerald-50 p-1.5 text-emerald-600 transition-colors hover:bg-emerald-600 hover:text-white" aria-label={englishLabel(businessLabels.customer.copyPhone)} onClick={() => { void navigator.clipboard?.writeText(customer.phone); toast.success('Phone copied'); }}><Copy className="h-4 w-4" /></button>
+                  <button type="button" className="ml-2 rounded-md bg-emerald-50 p-1.5 text-emerald-600 transition-colors hover:bg-brand-600 hover:text-white" aria-label={englishLabel(businessLabels.customer.copyPhone)} onClick={() => { void navigator.clipboard?.writeText(customer.phone); toast.success('Phone copied'); }}><Copy className="h-4 w-4" /></button>
                   <button
                     type="button"
-                    className="ml-1.5 rounded-md bg-emerald-50 p-1.5 text-emerald-600 transition-colors hover:bg-emerald-600 hover:text-white"
+                    className="ml-1.5 rounded-md bg-brand-50 p-1.5 text-brand-600 transition-colors hover:bg-brand-600 hover:text-white"
                     aria-label={englishLabel(businessLabels.communication.whatsAppShortcut)}
                     onClick={() => {
                       if (!isCommunicationOpen) setCommunicationKey((key) => key + 1);
@@ -182,11 +182,11 @@ export const CustomerProfilePage: React.FC = () => {
 
       <section
         aria-labelledby="customer-financial-actions-title"
-        className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4 shadow-sm sm:p-5"
+        className="rounded-2xl border border-brand-200 bg-brand-50/60 p-4 shadow-sm sm:p-5"
       >
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-100 text-brand-700">
               <WalletCards className="h-5 w-5" aria-hidden="true" />
             </div>
             <div>
@@ -200,8 +200,8 @@ export const CustomerProfilePage: React.FC = () => {
           <div className="flex flex-wrap items-center gap-2.5">
             {canMutateFinancial && (
               <>
-                <button type="button" onClick={() => setFinancialAction('add')} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700">{englishLabel(businessLabels.customer.addDebt)}</button>
-                <button type="button" onClick={() => setFinancialAction('payment')} className="rounded-lg border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 transition-colors hover:border-emerald-600 hover:bg-emerald-600 hover:text-white">{englishLabel(businessLabels.customer.recordPayment)}</button>
+                <button type="button" onClick={() => setFinancialAction('add')} className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-700">{englishLabel(businessLabels.customer.addDebt)}</button>
+                <button type="button" onClick={() => setFinancialAction('payment')} className="rounded-lg border border-brand-200 bg-white px-4 py-2 text-sm font-semibold text-brand-700 transition-colors hover:border-brand-600 hover:bg-brand-600 hover:text-white">{englishLabel(businessLabels.customer.recordPayment)}</button>
                 <button type="button" onClick={() => setFinancialAction('add')} className="rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 transition-colors hover:border-indigo-600 hover:bg-indigo-600 hover:text-white">{englishLabel(businessLabels.customer.addInstallmentPlan)}</button>
               </>
             )}

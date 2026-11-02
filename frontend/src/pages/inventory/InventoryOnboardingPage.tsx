@@ -126,7 +126,7 @@ export const InventoryOnboardingPage: React.FC = () => {
 
   const nameFor = (productId: string) => selection.get(productId)?.product.name ?? resultNames.get(productId) ?? productId;
   return <div className="space-y-5">
-    <header className="flex flex-wrap items-end justify-between gap-3"><div><Link to="/inventory" className="mb-2 inline-flex items-center gap-1 text-sm font-semibold text-emerald-700"><ArrowLeft className="h-4 w-4" />Inventory / المخزون</Link><div className="flex items-center gap-2"><ClipboardCheck className="h-7 w-7 text-emerald-700" /><h1 className="text-2xl font-bold">Inventory Onboarding / إدراج المنتجات في المخزون</h1></div><p className="mt-1 text-sm text-slate-500">Physically count each selected product before previewing / عدّ كل منتج محدد فعليًا قبل المعاينة</p></div></header>
+    <header className="flex flex-wrap items-end justify-between gap-3"><div><Link to="/inventory" className="mb-2 inline-flex items-center gap-1 text-sm font-semibold text-brand-700"><ArrowLeft className="h-4 w-4" />Inventory / المخزون</Link><div className="flex items-center gap-2"><ClipboardCheck className="h-7 w-7 text-brand-700" /><h1 className="text-2xl font-bold">Inventory Onboarding / إدراج المنتجات في المخزون</h1></div><p className="mt-1 text-sm text-slate-500">Physically count each selected product before previewing / عدّ كل منتج محدد فعليًا قبل المعاينة</p></div></header>
 
     {writeResult && <InventoryOnboardingOutcome result={writeResult} nameFor={nameFor} />}
 
@@ -146,7 +146,7 @@ export const InventoryOnboardingPage: React.FC = () => {
     {currentPreview && <InventoryOnboardingPreview result={currentPreview.result} nameFor={nameFor} />}
     {serverError && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700" dir="auto">{serverError}</p>}
 
-    {currentPreview && <form onSubmit={submitBatch} className="space-y-4 rounded-xl border border-emerald-200 bg-white p-4 shadow-sm"><div className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-emerald-700" /><h2 className="font-bold">Confirm batch / تأكيد الدفعة</h2></div><button disabled={writeMutation.isPending || currentPreview.result.valid.length === 0} className="rounded-lg bg-emerald-700 px-4 py-2.5 font-semibold text-white disabled:opacity-40">{writeMutation.isPending ? 'Submitting… / جارٍ الحفظ' : `Submit ${currentPreview.result.valid.length} products / حفظ ${currentPreview.result.valid.length} منتجات`}</button></form>}
+    {currentPreview && <form onSubmit={submitBatch} className="space-y-4 rounded-xl border border-emerald-200 bg-white p-4 shadow-sm"><div className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-emerald-700" /><h2 className="font-bold">Confirm batch / تأكيد الدفعة</h2></div><button disabled={writeMutation.isPending || currentPreview.result.valid.length === 0} className="rounded-lg bg-brand-700 px-4 py-2.5 font-semibold text-white disabled:opacity-40">{writeMutation.isPending ? 'Submitting… / جارٍ الحفظ' : `Submit ${currentPreview.result.valid.length} products / حفظ ${currentPreview.result.valid.length} منتجات`}</button></form>}
   </div>;
 };
 

@@ -1,63 +1,3 @@
-import { Bell, Lock, Mail, Search } from 'lucide-react';
-
-/**
- * Shell features inspired by the Dreams ERP top bar. Everything that is not
- * yet backed by Home Connect's data model carries a small lock badge and a
- * "coming soon" tooltip, so the operator sees the roadmap without being
- * confused by half-wired controls. All controls here are declarative — no
- * network calls, no routing.
- */
-
-interface LockedActionProps {
-  label: string;
-  hint: string;
-  icon: React.ReactNode;
-}
-
-/**
- * A square icon button with a small lock badge in the top-right corner and a
- * native tooltip. Rendered as a disabled button so keyboard navigation skips
- * past it predictably.
- */
-export function LockedAction({ label, hint, icon }: LockedActionProps) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      title={hint}
-      disabled
-      className="relative flex h-9 w-9 cursor-not-allowed items-center justify-center rounded-md text-slate-500 opacity-70 transition-colors hover:bg-slate-100 focus-visible:outline-none"
-    >
-      {icon}
-      <span
-        aria-hidden="true"
-        className="absolute -right-0.5 -top-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-slate-300 ring-2 ring-white"
-      >
-        <Lock className="h-2 w-2 text-slate-700" strokeWidth={3} />
-      </span>
-    </button>
-  );
-}
-
-/**
- * The three right-side locked actions: search, notifications, messages. Each
- * carries its own concise tooltip so the operator understands which part of
- * the roadmap they're looking at.
- */
-export function TopBarActions() {
-  return (
-    <div className="hidden items-center gap-1 sm:flex">
-      <LockedAction label="Global search" hint="Global search is coming soon" icon={<Search className="h-4 w-4" />} />
-      <LockedAction
-        label="Notifications"
-        hint="In-app notifications are coming soon"
-        icon={<Bell className="h-4 w-4" />}
-      />
-      <LockedAction label="Messages" hint="In-app messages are coming soon" icon={<Mail className="h-4 w-4" />} />
-    </div>
-  );
-}
-
 /**
  * User avatar chip. Not locked — the auth story is already wired and sign-out
  * remains available in the sidebar footer. This is a visual anchor on the
@@ -72,7 +12,7 @@ export function UserAvatar({ name }: { name?: string }) {
       type="button"
       aria-label={trimmed ? `Account: ${trimmed}` : 'Account'}
       title={trimmed || 'Account'}
-      className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500/15 text-sm font-bold text-emerald-700 ring-1 ring-inset ring-emerald-500/25 transition-colors hover:bg-emerald-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
+      className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-600 text-sm font-bold text-white ring-2 ring-brand-100 transition-colors hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-brand-300"
     >
       {initial}
     </button>

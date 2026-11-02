@@ -78,7 +78,7 @@ export const CustomerPrepaidHistory: React.FC<CustomerPrepaidHistoryProps> = ({
                   {card.value}
                 </p>
               </div>
-              <card.icon className="mt-1 h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" />
+              <card.icon className="mt-1 h-4 w-4 shrink-0 text-brand-600" aria-hidden="true" />
             </div>
           </div>
         ))}
@@ -116,7 +116,7 @@ export const CustomerPrepaidHistory: React.FC<CustomerPrepaidHistoryProps> = ({
                     <button
                       type="button"
                       onClick={() => onRecordBill(item)}
-                      className="rounded-md border border-emerald-200 px-3 py-1.5 text-sm font-medium text-emerald-700 hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                      className="rounded-md border border-brand-200 px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-50 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
                     >
                       {englishLabel(businessLabels.prepaid.recordPayment)}
                     </button>
@@ -125,7 +125,7 @@ export const CustomerPrepaidHistory: React.FC<CustomerPrepaidHistoryProps> = ({
                     <button
                       type="button"
                       onClick={() => onViewDetails(item)}
-                      className="rounded-md border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                      className="rounded-md border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
                     >
                       {englishLabel(businessLabels.prepaid.viewDetails)}
                     </button>

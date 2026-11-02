@@ -20,7 +20,7 @@ const METRICS: Record<Metric, string> = {
   net: 'Net (collected − new debt) / الصافي',
 };
 /** Distinguishable on white in both themes; cycles for more than six branches. */
-const LINE_COLORS = ['#059669', '#2563eb', '#d97706', '#7c3aed', '#dc2626', '#0891b2'];
+const LINE_COLORS = ['var(--viz-blue)', 'var(--viz-orange)', 'var(--viz-aqua)', 'var(--viz-yellow)', 'var(--viz-magenta)', '#6E5BB8'];
 
 export interface BranchesOverviewProps {
   customer: WithBranchBreakdown<CustomerAnalyticsData> | undefined;
@@ -81,7 +81,7 @@ function ReportLinks({ branchId }: { branchId: string }) {
           key={link.path}
           type="button"
           onClick={() => open(link.path)}
-          className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-slate-600 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800"
+          className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-slate-600 hover:border-brand-300 hover:bg-brand-50 hover:text-brand-800"
         >
           {link.label}
           <ExternalLink className="h-3 w-3" aria-hidden="true" />
@@ -94,7 +94,7 @@ function ReportLinks({ branchId }: { branchId: string }) {
 function BranchName({ row }: { row: BranchIdentity }) {
   return (
     <span className="inline-flex items-center gap-2">
-      <span className="rounded bg-emerald-600 px-1 text-[10px] font-bold uppercase text-white">{row.branchCode.slice(0, 4)}</span>
+      <span className="rounded bg-brand-600 px-1 text-[10px] font-bold uppercase text-white">{row.branchCode.slice(0, 4)}</span>
       <span className="user-text font-medium text-slate-800" dir="auto">{row.branchName}</span>
     </span>
   );
@@ -108,7 +108,7 @@ function CustomerDebtsTable({ total, rows }: { total: CustomerAnalyticsData; row
     <div className="overflow-x-auto rounded-lg border border-slate-200" data-testid="branches-customer-debts">
       <table className="w-full text-left text-sm">
         <caption className="px-4 py-2.5 text-left text-sm font-semibold text-slate-900">Customer debts / ديون الزبائن</caption>
-        <thead className="bg-slate-50 text-xs text-slate-500">
+        <thead className="bg-slate-100 text-xs text-slate-700 font-semibold">
           <tr>
             <th scope="col" className={th}>Branch / الفرع</th>
             <th scope="col" className={th + ' text-right'}>Outstanding</th>
@@ -176,7 +176,7 @@ function CashFlowChart({ total, rows }: { total: CustomerAnalyticsData; rows: Cu
             aria-pressed={metric === key}
             onClick={() => setMetric(key)}
             className={`rounded-full border px-3 py-1 text-xs font-medium ${
-              metric === key ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+              metric === key ? 'border-brand-600 bg-brand-600 text-white' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
             }`}
           >
             {METRICS[key]}
@@ -194,7 +194,7 @@ function CashFlowChart({ total, rows }: { total: CustomerAnalyticsData; rows: Cu
       >
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={series} margin={{ top: 8, right: 16, bottom: 4, left: 4 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--viz-grid)" />
             <XAxis dataKey="bucket" tick={{ fontSize: 11 }} />
             <YAxis tick={{ fontSize: 11 }} width={64} tickFormatter={(value: number) => formatMoney(String(value))} />
             <Tooltip formatter={(value) => formatMoney(String(value))} />
@@ -225,7 +225,7 @@ function SupplierTable({ total, rows }: { total: SupplierAnalyticsData; rows: Su
           <span className="font-semibold text-slate-900">Supplier balances / ذمم الموردين</span>
           <span className="ml-2 text-xs text-slate-500">What we owe suppliers, kept separate from what customers owe us.</span>
         </caption>
-        <thead className="bg-slate-50 text-xs text-slate-500">
+        <thead className="bg-slate-100 text-xs text-slate-700 font-semibold">
           <tr>
             <th scope="col" className={th}>Branch / الفرع</th>
             <th scope="col" className={th + ' text-right'}>We owe</th>

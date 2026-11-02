@@ -2,11 +2,11 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { motion } from 'framer-motion';
 import { useAuth } from '../hooks/useAuth';
 import { api } from '../services/api';
 import { Lock, User, Loader2, AlertCircle } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import { BrandArt } from '../components/ui/BrandArt';
 
 const loginSchema = z.object({
   username: z.string().min(1, 'Username is required'),
@@ -15,6 +15,9 @@ const loginSchema = z.object({
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
+
+const FIELD =
+  'w-full rounded-lg border border-slate-300 bg-white py-3 pl-11 pr-4 text-sm text-slate-900 shadow-sm transition-colors placeholder:text-slate-500 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/40';
 
 export const Login: React.FC = () => {
   const { login } = useAuth();
@@ -56,98 +59,53 @@ export const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen w-full bg-slate-950 flex items-center justify-center relative overflow-hidden font-sans">
-      {/* Background Orbs */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-blue-600/20 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-indigo-600/20 blur-[120px] pointer-events-none" />
+    <div className="grid min-h-screen w-full bg-white font-sans lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
+      <div className="flex flex-col justify-between gap-8 p-6 sm:p-10">
+        <img src="/homeconnects-logo.webp" alt="Home Connects" className="h-16 w-16 object-contain" />
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        className="w-full max-w-md p-8 relative z-10"
-      >
-        <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-3xl p-8 shadow-2xl">
-          <div className="flex flex-col items-center mb-8">
-            <img
-              src="/homeconnects-logo.webp"
-              alt="Home Connects"
-              className="mb-6 h-20 w-20 rounded-2xl bg-white object-contain p-2 shadow-lg shadow-blue-500/25"
-            />
-            <h1 className="text-3xl font-bold text-white tracking-tight">Home Connects</h1>
-            <p className="text-slate-400 mt-2 text-sm">Sign in to your dashboard</p>
-          </div>
+        <div className="mx-auto w-full max-w-sm">
+          <h1 className="text-[1.75rem] font-bold tracking-tight text-slate-900">Sign in</h1>
+          <p className="mt-1 text-sm text-slate-600">Welcome back to Home Connects.</p>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+          <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-5">
             {errorMsg && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 flex items-start gap-3"
-              >
-                <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
-                <p className="text-sm text-red-400 leading-relaxed">{errorMsg}</p>
-              </motion.div>
+              <div role="alert" className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-3">
+                <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" aria-hidden="true" />
+                <p className="text-sm leading-relaxed text-red-700">{errorMsg}</p>
+              </div>
             )}
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-300 ml-1">Username</label>
+            <div className="space-y-1.5">
+              <label htmlFor="login-username" className="text-sm font-semibold text-slate-800">Username</label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <User className="h-5 w-5 text-slate-500" />
-                </div>
-                <input
-                  {...register('username')}
-                  type="text"
-                  className="w-full bg-slate-950/50 border border-slate-800 text-white rounded-xl pl-11 pr-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all placeholder:text-slate-600"
-                  placeholder="Enter your username"
-                />
+                <User className="pointer-events-none absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-slate-500" aria-hidden="true" />
+                <input id="login-username" {...register('username')} type="text" autoComplete="username" className={FIELD} placeholder="Enter your username" />
               </div>
-              {errors.username && <p className="text-sm text-red-400 ml-1 mt-1">{errors.username.message}</p>}
+              {errors.username && <p className="text-sm text-red-700">{errors.username.message}</p>}
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-300 ml-1">Password</label>
+            <div className="space-y-1.5">
+              <label htmlFor="login-password" className="text-sm font-semibold text-slate-800">Password</label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-slate-500" />
-                </div>
-                <input
-                  {...register('password')}
-                  type="password"
-                  className="w-full bg-slate-950/50 border border-slate-800 text-white rounded-xl pl-11 pr-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all placeholder:text-slate-600"
-                  placeholder="••••••••"
-                />
+                <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-slate-500" aria-hidden="true" />
+                <input id="login-password" {...register('password')} type="password" autoComplete="current-password" className={FIELD} placeholder="••••••••" />
               </div>
-              {errors.password && <p className="text-sm text-red-400 ml-1 mt-1">{errors.password.message}</p>}
+              {errors.password && <p className="text-sm text-red-700">{errors.password.message}</p>}
             </div>
 
-            <div className="flex items-center justify-between pt-2">
-              <label className="flex items-center gap-2 cursor-pointer group">
-                <div className="relative flex items-center justify-center">
-                  <input
-                    {...register('rememberMe')}
-                    type="checkbox"
-                    className="peer sr-only"
-                  />
-                  <div className="w-5 h-5 border-2 border-slate-700 rounded bg-slate-950/50 peer-checked:bg-blue-500 peer-checked:border-blue-500 transition-all"></div>
-                  <svg className="absolute w-3 h-3 text-white opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-                <span className="text-sm text-slate-400 group-hover:text-slate-300 transition-colors">Remember me</span>
-              </label>
-              <a href="#" className="text-sm text-blue-400 hover:text-blue-300 transition-colors">Forgot password?</a>
-            </div>
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+              <input {...register('rememberMe')} type="checkbox" className="h-4 w-4 rounded" />
+              Remember me
+            </label>
 
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-medium py-3.5 rounded-xl transition-all shadow-lg shadow-blue-500/25 active:scale-[0.98] disabled:opacity-70 disabled:pointer-events-none flex items-center justify-center gap-2 mt-4"
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-70"
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
                   <span>Signing in...</span>
                 </>
               ) : (
@@ -156,18 +114,30 @@ export const Login: React.FC = () => {
             </button>
           </form>
 
-          <p className="mt-6 text-center text-sm text-slate-400">
+          <p className="mt-6 text-center text-sm text-slate-600">
             Need another account?{' '}
-            <Link to="/setup" className="font-medium text-blue-400 transition-colors hover:text-blue-300">
+            <Link to="/setup" className="font-semibold text-brand-700 hover:underline">
               Create account
             </Link>
           </p>
         </div>
-        
-        <p className="text-center text-slate-500 text-sm mt-8">
+
+        <p className="text-center text-sm text-slate-500">
           &copy; {new Date().getFullYear()} Home Connects. All rights reserved.
         </p>
-      </motion.div>
+      </div>
+
+      <div className="relative hidden flex-col justify-between overflow-hidden bg-gradient-to-br from-brand-700 via-brand-800 to-brand-950 p-12 text-white lg:flex">
+        <div className="max-w-md">
+          <p className="text-[2.25rem] font-bold leading-tight tracking-tight">
+            Your whole shop, connected.
+          </p>
+          <p className="mt-4 text-base leading-relaxed text-brand-100">
+            Sales, customer debts, suppliers, inventory and service jobs, all in one place.
+          </p>
+        </div>
+        <BrandArt className="w-full max-w-2xl self-end text-brand-200" />
+      </div>
     </div>
   );
 };

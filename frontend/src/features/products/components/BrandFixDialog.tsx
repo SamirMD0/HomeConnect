@@ -205,8 +205,8 @@ export const BrandFixDialog: React.FC<BrandFixDialogProps> = ({ brand, open, onC
       <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-200 pt-4">
         {!state.preview && <span className="mr-auto text-xs text-slate-500">Preview is required before Apply / المعاينة مطلوبة قبل التطبيق.</span>}
         <button type="button" onClick={onClose} className="rounded-lg border border-slate-300 px-4 py-2">Cancel / إلغاء</button>
-        <button type="button" onClick={preview} disabled={mutation.isPending} className="rounded-lg border border-emerald-600 px-4 py-2 font-semibold text-emerald-700 disabled:opacity-50">{mutation.isPending ? 'Working… / جارٍ التنفيذ…' : 'Preview / معاينة'}</button>
-        <button type="button" onClick={apply} disabled={!canApplyBrandFix(state, mutation.isPending)} className="rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40">Apply / تطبيق</button>
+        <button type="button" onClick={preview} disabled={mutation.isPending} className="rounded-lg border border-brand-600 px-4 py-2 font-semibold text-brand-700 disabled:opacity-50">{mutation.isPending ? 'Working… / جارٍ التنفيذ…' : 'Preview / معاينة'}</button>
+        <button type="button" onClick={apply} disabled={!canApplyBrandFix(state, mutation.isPending)} className="rounded-lg bg-brand-600 px-4 py-2 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40">Apply / تطبيق</button>
       </div>
     </div>
   </Modal>;

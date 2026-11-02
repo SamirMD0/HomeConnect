@@ -20,7 +20,7 @@ export const BillsPaidMeter: React.FC<BillsPaidMeterProps> = ({
 
   const ratio = Number(paidRatioPercent);
   const width = Number.isFinite(ratio) ? Math.min(Math.max(ratio, 0), 100) : 0;
-  const barClass = width >= 100 ? 'bg-emerald-500' : width >= 50 ? 'bg-blue-500' : 'bg-amber-500';
+  const barClass = width >= 100 ? 'bg-brand-500' : width >= 50 ? 'bg-blue-500' : 'bg-amber-500';
 
   return (
     <div className="min-w-[5.5rem]">

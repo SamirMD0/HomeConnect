@@ -40,7 +40,7 @@ export const MessageSourceSelector: React.FC<MessageSourceSelectorProps> = ({
         value={kind}
         checked={source.kind === kind}
         onChange={() => onChange({ kind, id })}
-        className="h-4 w-4 text-emerald-600"
+        className="h-4 w-4 text-brand-600"
       />
       <span>{optionLabels[kind]}</span>
     </label>

@@ -153,7 +153,7 @@ export const LedgerRowActions: React.FC<LedgerRowActionsProps> = ({
         aria-haspopup="menu"
         aria-expanded={isOpen}
         onClick={() => onOpenChange(isOpen ? null : menuKey)}
-        className="inline-flex min-h-8 min-w-8 items-center justify-center rounded-md border border-slate-200 bg-white p-1.5 text-slate-600 transition-all hover:border-yellow-300 hover:bg-gray-600 hover:text-yellow-300 hover:shadow-[0_0_12px_rgba(250,204,21,0.4)] focus:outline-none focus:ring-2 focus:ring-yellow-300/50"
+        className="inline-flex min-h-8 min-w-8 items-center justify-center rounded-md border border-slate-200 bg-white p-1.5 text-slate-600 transition-all hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-brand-500/50"
       >
         <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
         <span className="sr-only">Open row actions</span>
@@ -183,10 +183,10 @@ export function getLedgerMenuPosition(
 
 function actionClass(kind: 'pay' | 'cancel' | 'view') {
   if (kind === 'pay') {
-    return 'rounded px-3 py-2 text-left text-sm font-medium text-emerald-700 hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/30';
+    return 'rounded px-3 py-2 text-left text-sm font-medium text-brand-700 hover:bg-brand-50 focus:outline-none focus:ring-2 focus:ring-brand-500/30';
   }
   if (kind === 'cancel') {
     return 'rounded px-3 py-2 text-left text-sm font-medium text-amber-700 hover:bg-amber-50 focus:outline-none focus:ring-2 focus:ring-amber-500/30';
   }
-  return 'rounded px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/30';
+  return 'rounded px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-500/30';
 }

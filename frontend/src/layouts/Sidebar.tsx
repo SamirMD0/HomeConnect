@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ChevronsLeft, ChevronsRight, LogOut } from 'lucide-react';
+import { LogOut, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { cn } from '../lib/cn';
 import { useAuth } from '../hooks/useAuth';
 import { NAVIGATION, isItemVisible, isPathActive, type NavigationItem } from './navigation';
@@ -14,8 +14,8 @@ export interface SidebarProps {
 
 /**
  * Primary application navigation. Two states:
- *  - expanded (264px): section headings + icons + labels + role-gated items.
- *  - rail (64px): icons only, native tooltip via the `title` attribute.
+ *  - expanded (272px): section headings + icons + labels + role-gated items.
+ *  - rail (72px): icons only, native tooltip via the `title` attribute.
  * Width changes are a CSS transition on the shell; there's no framer-motion
  * animation of the layout, so the main content doesn't reflow every frame.
  */
@@ -23,6 +23,25 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onLogout 
   const { user } = useAuth();
   const location = useLocation();
   const role = user?.role;
+  const toggleLabel = collapsed ? 'Expand navigation' : 'Collapse navigation';
+  const ToggleIcon = collapsed ? PanelLeftOpen : PanelLeftClose;
+
+  const toggle = (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-label={toggleLabel}
+      aria-expanded={!collapsed}
+      title={toggleLabel}
+      className={cn(
+        'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-500',
+        'transition-colors hover:bg-slate-100 hover:text-slate-800',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60'
+      )}
+    >
+      <ToggleIcon className="h-[18px] w-[18px]" aria-hidden="true" />
+    </button>
+  );
 
   return (
     <aside
@@ -30,30 +49,29 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onLogout 
         'no-print relative z-20 flex shrink-0 flex-col overflow-hidden',
         'border-r border-border bg-white text-slate-700',
         'transition-[width] duration-150 ease-out motion-reduce:transition-none',
-        collapsed ? 'w-16' : 'w-64'
+        collapsed ? 'w-[4.5rem]' : 'w-[17rem] max-lg:absolute max-lg:inset-y-0 max-lg:left-0 max-lg:z-40 max-lg:shadow-xl'
       )}
     >
-      <SidebarBrand collapsed={collapsed} />
-
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
-        aria-expanded={!collapsed}
-        title={collapsed ? 'Expand navigation' : 'Collapse navigation'}
+      <div
         className={cn(
-          'absolute right-1 top-4 z-10 flex h-6 w-6 items-center justify-center rounded-full',
-          'border border-border bg-white text-slate-500 shadow-sm',
-          'hover:border-brand-300 hover:text-brand-700',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-2'
+          'flex h-[4.5rem] shrink-0 items-center gap-2.5 px-4',
+          collapsed && 'justify-center px-0'
         )}
       >
-        {collapsed ? <ChevronsRight className="h-3.5 w-3.5" /> : <ChevronsLeft className="h-3.5 w-3.5" />}
-      </button>
+        <img src="/homeconnects-logo.webp" alt="" className="h-11 w-11 shrink-0 object-contain" />
+        {!collapsed && (
+          <>
+            <p className="min-w-0 flex-1 truncate text-[17px] font-bold tracking-tight text-slate-900">Home Connect</p>
+            {toggle}
+          </>
+        )}
+      </div>
+
+      {collapsed && <div className="flex justify-center pb-2">{toggle}</div>}
 
       <nav
         aria-label="Primary navigation"
-        className="flex-1 space-y-4 overflow-y-auto overflow-x-hidden px-2 py-4 [scrollbar-color:theme(colors.slate.300)_transparent] [scrollbar-width:thin]"
+        className="flex-1 space-y-5 overflow-y-auto overflow-x-hidden px-3 pb-4 pt-2 [scrollbar-width:thin]"
       >
         {NAVIGATION.map((section) => {
           const items = section.items.filter((item) => isItemVisible(item, role));
@@ -61,11 +79,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onLogout 
           return (
             <div key={section.id}>
               {!collapsed && (
-                <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
                   {section.heading.en}
                 </p>
               )}
-              {collapsed && <div className="mx-3 mb-1 h-px bg-slate-100" aria-hidden="true" />}
+              {collapsed && <div className="mx-2 mb-2 h-px bg-slate-200" aria-hidden="true" />}
               <ul className="space-y-0.5">
                 {items.map((item) => (
                   <SidebarNavItem
@@ -87,27 +105,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onLogout 
   );
 };
 
-const SidebarBrand: React.FC<{ collapsed: boolean }> = ({ collapsed }) => (
-  <div
-    className={cn(
-      'flex h-16 shrink-0 items-center gap-3 border-b border-border px-3',
-      collapsed && 'justify-center px-0'
-    )}
-  >
-    <img
-      src="/homeconnects-logo.webp"
-      alt=""
-      className="h-9 w-9 shrink-0 rounded-lg bg-white object-contain p-1 ring-1 ring-border"
-    />
-    {!collapsed && (
-      <div className="min-w-0 leading-tight">
-        <p className="truncate text-sm font-bold uppercase tracking-[0.14em] text-slate-900">Home Connect</p>
-        <p className="truncate text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-600">ERP</p>
-      </div>
-    )}
-  </div>
-);
-
 interface SidebarNavItemProps {
   item: NavigationItem;
   active: boolean;
@@ -127,30 +124,23 @@ const SidebarNavItem: React.FC<SidebarNavItemProps> = ({ item, active, collapsed
         className={cn(
           'group relative flex items-center gap-3 rounded-lg text-sm outline-none',
           'transition-colors duration-150 motion-reduce:transition-none',
-          collapsed ? 'mx-1 justify-center px-0 py-2.5' : 'mx-1 px-2.5 py-2',
-          active
-            ? 'bg-brand-600 text-white shadow-sm'
-            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
-          'focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-1'
+          collapsed ? 'justify-center px-0 py-2.5' : 'px-3 py-2',
+          active ? 'bg-brand-500/15 text-brand-700' : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900',
+          'focus-visible:ring-2 focus-visible:ring-ring/60'
         )}
       >
         <Icon
           className={cn(
             'h-[18px] w-[18px] shrink-0',
-            active ? 'text-white' : 'text-slate-400 group-hover:text-slate-600'
+            active ? 'text-brand-600' : 'text-slate-500 group-hover:text-slate-700'
           )}
         />
         {!collapsed && (
-          <span className="min-w-0 flex-1 truncate">
-            <span className={cn('block truncate leading-tight', active ? 'font-semibold text-white' : 'font-medium')}>
-              {item.label.en}
-            </span>
+          <span className="flex min-w-0 flex-1 items-baseline justify-between gap-2">
+            <span className={cn('truncate', active ? 'font-semibold' : 'font-medium')}>{item.label.en}</span>
             <span
               dir="rtl"
-              className={cn(
-                'user-text block truncate text-[11px] font-normal leading-tight',
-                active ? 'text-brand-100' : 'text-slate-400'
-              )}
+              className={cn('shrink-0 text-[11px] font-normal', active ? 'text-brand-700/80' : 'text-slate-500')}
             >
               {item.label.ar}
             </span>
@@ -169,56 +159,37 @@ interface SidebarAccountRowProps {
 const SidebarAccountRow: React.FC<SidebarAccountRowProps> = ({ collapsed, onLogout }) => {
   const { user } = useAuth();
   const initial = user?.fullName?.charAt(0)?.toUpperCase() ?? '?';
+  const signOutClasses = cn(
+    'flex shrink-0 items-center justify-center rounded-lg text-slate-500',
+    'transition-colors duration-150 motion-reduce:transition-none',
+    'hover:bg-red-50 hover:text-red-600',
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400/60'
+  );
   return (
-    <div className="shrink-0 border-t border-border p-2">
-      <div
-        className={cn(
-          'flex items-center gap-2 rounded-md px-2 py-2',
-          collapsed && 'justify-center px-0'
-        )}
-      >
+    <div className="shrink-0 border-t border-border p-3">
+      <div className={cn('flex items-center gap-2.5', collapsed && 'justify-center')}>
         <div
           aria-hidden="true"
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-50 text-sm font-bold text-brand-700 ring-1 ring-inset ring-brand-600/20"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-500/15 text-sm font-bold text-brand-700"
         >
           {initial}
         </div>
         {!collapsed && (
           <div className="min-w-0 flex-1 leading-tight">
-            <p className="truncate text-sm font-medium text-slate-900">{user?.fullName}</p>
-            <p className="truncate text-[11px] capitalize text-slate-500">{user?.role?.toLowerCase()}</p>
+            <p className="truncate text-sm font-semibold text-slate-900">{user?.fullName}</p>
+            <p className="truncate text-xs capitalize text-slate-500">
+              {user?.role?.toLowerCase()} · v{__APP_VERSION__}
+            </p>
           </div>
         )}
         {!collapsed && (
-          <button
-            type="button"
-            onClick={onLogout}
-            aria-label="Sign out"
-            title="Sign out"
-            className={cn(
-              'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400',
-              'transition-colors duration-150 motion-reduce:transition-none',
-              'hover:bg-red-50 hover:text-red-600',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400/60 focus-visible:ring-offset-1'
-            )}
-          >
+          <button type="button" onClick={onLogout} aria-label="Sign out" title="Sign out" className={cn(signOutClasses, 'h-8 w-8')}>
             <LogOut className="h-4 w-4" />
           </button>
         )}
       </div>
       {collapsed && (
-        <button
-          type="button"
-          onClick={onLogout}
-          aria-label="Sign out"
-          title="Sign out"
-          className={cn(
-            'mt-1 flex h-9 w-full items-center justify-center rounded-lg text-slate-400',
-            'transition-colors duration-150 motion-reduce:transition-none',
-            'hover:bg-red-50 hover:text-red-600',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400/60 focus-visible:ring-offset-1'
-          )}
-        >
+        <button type="button" onClick={onLogout} aria-label="Sign out" title="Sign out" className={cn(signOutClasses, 'mt-2 h-9 w-full')}>
           <LogOut className="h-4 w-4" />
         </button>
       )}
