@@ -67,82 +67,94 @@ export class CustomerBranchTransferService {
       domainLabel: 'customer branch transfer',
     });
 
-    return runFinancialTransaction(async (tx) => {
-      // Lock the customer first so a concurrent sale or payment cannot slip in mid-move.
-      await tx.$queryRaw`SELECT "id" FROM "customers" WHERE "id" = ${input.customerId}::uuid FOR UPDATE`;
-      const plan = await inspect(tx, input.customerId, input.toBranchId);
-      if (plan.blocker) throw new AppError(plan.blocker.message, 409, plan.blocker.code);
+    return runFinancialTransaction((tx) => this.moveInTransaction(tx, input), { timeoutMs: 120_000 });
+  }
 
-      const fromBranchId = plan.customer.branchId;
-      const to = input.toBranchId;
-      await tx.$executeRawUnsafe(`SET LOCAL homeconnect.branch_transfer = 'on'`);
-      await tx.$executeRawUnsafe('SET CONSTRAINTS ALL DEFERRED');
+  /** The caller has authorized the move and owns the transaction. */
+  static async moveInTransaction(
+    tx: Prisma.TransactionClient,
+    input: {
+      customerId: string;
+      toBranchId: string;
+      actor: { userId: string; role: string };
+      ipAddress?: string | null;
+    }
+  ) {
+    // Lock the customer first so a concurrent sale or payment cannot slip in mid-move.
+    await tx.$queryRaw`SELECT "id" FROM "customers" WHERE "id" = ${input.customerId}::uuid FOR UPDATE`;
+    const plan = await inspect(tx, input.customerId, input.toBranchId);
+    if (plan.blocker) throw new AppError(plan.blocker.message, 409, plan.blocker.code);
 
-      // The import-account link cascades with the customer but must stay in its
-      // import's branch, so it cannot follow. Remove it and keep it in the audit.
-      await tx.$executeRaw`DELETE FROM "customer_import_accounts" WHERE "customerId" = ${input.customerId}::uuid`;
+    const fromBranchId = plan.customer.branchId;
+    const to = input.toBranchId;
+    await tx.$executeRawUnsafe(`SET LOCAL homeconnect.branch_transfer = 'on'`);
+    await tx.$executeRawUnsafe('SET CONSTRAINTS ALL DEFERRED');
 
-      // Children before parents: each row's own link check is deferred to
-      // COMMIT, and when a parent moves nothing references its old key any
-      // more, so the links' ON UPDATE RESTRICT is satisfied. Customer last.
-      const id = input.customerId;
-      const returnsOfCustomer = Prisma.sql`
-        SELECT "id" FROM "sales_returns"
-        WHERE "customerId" = ${id}::uuid OR "salesOrderId" IN (SELECT "id" FROM "sales_orders" WHERE "customerId" = ${id}::uuid)`;
-      const cashRefunds = await tx.$executeRaw`
-        UPDATE "cash_refunds" SET "branchId" = ${to}::uuid
-        WHERE "customerId" = ${id}::uuid OR "salesReturnId" IN (${returnsOfCustomer})`;
-      const customerCredits = await tx.$executeRaw`
-        UPDATE "customer_credits" SET "branchId" = ${to}::uuid
-        WHERE "customerId" = ${id}::uuid OR "salesReturnId" IN (${returnsOfCustomer})`;
-      const payments = await tx.$executeRaw`
-        UPDATE "payments" SET "branchId" = ${to}::uuid
-        WHERE "customerId" = ${id}::uuid
-           OR "salesOrderId" IN (SELECT "id" FROM "sales_orders" WHERE "customerId" = ${id}::uuid)`;
-      const salesReturns = await tx.$executeRaw`
-        UPDATE "sales_returns" SET "branchId" = ${to}::uuid
-        WHERE "customerId" = ${id}::uuid
-           OR "salesOrderId" IN (SELECT "id" FROM "sales_orders" WHERE "customerId" = ${id}::uuid)`;
-      const salesOrders = await tx.$executeRaw`
-        UPDATE "sales_orders" SET "branchId" = ${to}::uuid WHERE "customerId" = ${id}::uuid`;
-      const debts = await tx.$executeRaw`UPDATE "debts" SET "branchId" = ${to}::uuid WHERE "customerId" = ${id}::uuid`;
-      const installmentPlans = await tx.$executeRaw`
-        UPDATE "installment_plans" SET "branchId" = ${to}::uuid WHERE "customerId" = ${id}::uuid`;
-      const serviceJobs = await tx.$executeRaw`
-        UPDATE "service_jobs" SET "branchId" = ${to}::uuid WHERE "customerId" = ${id}::uuid`;
-      await tx.$executeRaw`UPDATE "customers" SET "branchId" = ${to}::uuid WHERE "id" = ${id}::uuid`;
-      const moved: MovedCounts = {
-        sales_orders: salesOrders,
-        sales_returns: salesReturns,
-        cash_refunds: cashRefunds,
-        customer_credits: customerCredits,
-        payments,
-        debts,
-        installment_plans: installmentPlans,
-        service_jobs: serviceJobs,
-      };
+    // The import-account link cascades with the customer but must stay in its
+    // import's branch, so it cannot follow. Remove it and keep it in the audit.
+    await tx.$executeRaw`DELETE FROM "customer_import_accounts" WHERE "customerId" = ${input.customerId}::uuid`;
 
-      await tx.activityLog.create({
-        data: {
-          branchId: to,
-          userId: input.actor.userId,
-          action: 'CUSTOMER_BRANCH_TRANSFERRED',
-          entityType: 'CUSTOMER',
-          entityId: id,
-          ipAddress: input.ipAddress ?? null,
-          details: {
-            fromBranchId,
-            toBranchId: to,
-            moved,
-            detachedImportAccounts: plan.importAccounts,
-          } as unknown as Prisma.InputJsonObject,
-        },
-      });
+    // Children before parents: each row's own link check is deferred to
+    // COMMIT, and when a parent moves nothing references its old key any
+    // more, so the links' ON UPDATE RESTRICT is satisfied. Customer last.
+    const id = input.customerId;
+    const returnsOfCustomer = Prisma.sql`
+      SELECT "id" FROM "sales_returns"
+      WHERE "customerId" = ${id}::uuid OR "salesOrderId" IN (SELECT "id" FROM "sales_orders" WHERE "customerId" = ${id}::uuid)`;
+    const cashRefunds = await tx.$executeRaw`
+      UPDATE "cash_refunds" SET "branchId" = ${to}::uuid
+      WHERE "customerId" = ${id}::uuid OR "salesReturnId" IN (${returnsOfCustomer})`;
+    const customerCredits = await tx.$executeRaw`
+      UPDATE "customer_credits" SET "branchId" = ${to}::uuid
+      WHERE "customerId" = ${id}::uuid OR "salesReturnId" IN (${returnsOfCustomer})`;
+    const payments = await tx.$executeRaw`
+      UPDATE "payments" SET "branchId" = ${to}::uuid
+      WHERE "customerId" = ${id}::uuid
+         OR "salesOrderId" IN (SELECT "id" FROM "sales_orders" WHERE "customerId" = ${id}::uuid)`;
+    const salesReturns = await tx.$executeRaw`
+      UPDATE "sales_returns" SET "branchId" = ${to}::uuid
+      WHERE "customerId" = ${id}::uuid
+         OR "salesOrderId" IN (SELECT "id" FROM "sales_orders" WHERE "customerId" = ${id}::uuid)`;
+    const salesOrders = await tx.$executeRaw`
+      UPDATE "sales_orders" SET "branchId" = ${to}::uuid WHERE "customerId" = ${id}::uuid`;
+    const debts = await tx.$executeRaw`UPDATE "debts" SET "branchId" = ${to}::uuid WHERE "customerId" = ${id}::uuid`;
+    const installmentPlans = await tx.$executeRaw`
+      UPDATE "installment_plans" SET "branchId" = ${to}::uuid WHERE "customerId" = ${id}::uuid`;
+    const serviceJobs = await tx.$executeRaw`
+      UPDATE "service_jobs" SET "branchId" = ${to}::uuid WHERE "customerId" = ${id}::uuid`;
+    await tx.$executeRaw`UPDATE "customers" SET "branchId" = ${to}::uuid WHERE "id" = ${id}::uuid`;
+    const moved: MovedCounts = {
+      sales_orders: salesOrders,
+      sales_returns: salesReturns,
+      cash_refunds: cashRefunds,
+      customer_credits: customerCredits,
+      payments,
+      debts,
+      installment_plans: installmentPlans,
+      service_jobs: serviceJobs,
+    };
 
-      // Surfaces any missed row as a clear error here instead of a COMMIT failure.
-      await tx.$executeRawUnsafe('SET CONSTRAINTS ALL IMMEDIATE');
-      return { customerId: id, fromBranchId, toBranchId: to, moved, detachedImportAccounts: plan.importAccounts };
-    }, { timeoutMs: 120_000 });
+    await tx.activityLog.create({
+      data: {
+        branchId: to,
+        userId: input.actor.userId,
+        action: 'CUSTOMER_BRANCH_TRANSFERRED',
+        entityType: 'CUSTOMER',
+        entityId: id,
+        ipAddress: input.ipAddress ?? null,
+        details: {
+          fromBranchId,
+          toBranchId: to,
+          moved,
+          detachedImportAccounts: plan.importAccounts,
+        } as unknown as Prisma.InputJsonObject,
+      },
+    });
+
+    // Surfaces any missed row as a clear error here instead of a COMMIT failure.
+    await tx.$executeRawUnsafe('SET CONSTRAINTS ALL IMMEDIATE');
+    await tx.$executeRawUnsafe(`SET LOCAL homeconnect.branch_transfer = 'off'`);
+    return { customerId: id, fromBranchId, toBranchId: to, moved, detachedImportAccounts: plan.importAccounts };
   }
 }
 
@@ -189,7 +201,7 @@ async function inspect(db: Db, customerId: string, toBranchId: string): Promise<
   };
 }
 
-async function countHistory(db: Db, id: string): Promise<MovedCounts> {
+export async function countHistory(db: Db, id: string): Promise<MovedCounts> {
   const [row] = await db.$queryRaw<Array<Record<MovedTable, number>>>`
     WITH orders AS (SELECT "id" FROM "sales_orders" WHERE "customerId" = ${id}::uuid),
          returns AS (SELECT "id" FROM "sales_returns" WHERE "customerId" = ${id}::uuid OR "salesOrderId" IN (SELECT "id" FROM orders))

@@ -12,7 +12,7 @@ import { createClientIdempotencyKey } from '../utils/idempotency-key';
 import { canonicalMoneyInput } from '../utils/money-input';
 import { inputClass, SubmitButton, TextField } from './CreateDebtForm';
 import { FinancialStatusBadge } from './FinancialStatusBadge';
-import { businessLabels } from '../../../shared/labels/business-labels';
+import { businessLabels, englishLabel } from '../../../shared/labels/business-labels';
 import { paymentMethodLabels } from '../utils/financial-labels';
 
 interface RecordDebtPaymentDialogProps {
@@ -94,7 +94,7 @@ export const RecordDebtPaymentDialog: React.FC<RecordDebtPaymentDialogProps> = (
           {serverError}
         </div>
       )}
-      <TextField label={businessLabels.financial.amount} error={errors.amount?.message}>
+      <TextField label={englishLabel(businessLabels.financial.amount)} error={errors.amount?.message}>
         <input
           {...register('amount')}
           inputMode="decimal"
@@ -103,24 +103,24 @@ export const RecordDebtPaymentDialog: React.FC<RecordDebtPaymentDialogProps> = (
           placeholder="200.00"
         />
       </TextField>
-      <TextField label={businessLabels.financial.paymentDate} error={errors.paymentDate?.message}>
+      <TextField label={englishLabel(businessLabels.financial.paymentDate)} error={errors.paymentDate?.message}>
         <input {...register('paymentDate')} type="date" className={inputClass(Boolean(errors.paymentDate))} />
       </TextField>
-      <TextField label={businessLabels.financial.paymentMethod} error={errors.paymentMethod?.message}>
+      <TextField label={englishLabel(businessLabels.financial.paymentMethod)} error={errors.paymentMethod?.message}>
         <select {...register('paymentMethod')} className={inputClass(Boolean(errors.paymentMethod))}>
           {Object.entries(paymentMethodLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
         </select>
       </TextField>
-      <TextField label={businessLabels.financial.reference} error={errors.reference?.message}>
+      <TextField label={englishLabel(businessLabels.financial.reference)} error={errors.reference?.message}>
         <input {...register('reference')} dir="auto" className={inputClass(Boolean(errors.reference))} placeholder="Optional" />
       </TextField>
-      <TextField label={businessLabels.common.notes} error={errors.notes?.message}>
+      <TextField label={englishLabel(businessLabels.common.notes)} error={errors.notes?.message}>
         <textarea {...register('notes')} dir="auto" rows={3} className={inputClass(Boolean(errors.notes))} placeholder="Optional" />
       </TextField>
       <SubmitButton
         isPending={recordPayment.isPending}
-        label={businessLabels.financial.recordPayment}
-        pendingLabel="Recording payment... / جارٍ تسجيل الدفعة..."
+        label={englishLabel(businessLabels.financial.recordPayment)}
+        pendingLabel="Recording payment..."
       />
     </form>
   );
@@ -137,13 +137,13 @@ const DebtPaymentContext: React.FC<{
     </div>
     <dl className={`grid grid-cols-2 gap-3 text-slate-600 ${variant === 'debt' ? 'sm:grid-cols-4' : 'sm:grid-cols-3'}`}>
       <ContextTerm
-        label={variant === 'prepaid' ? businessLabels.prepaid.fullPrice : 'Original / الأصلي'}
+        label={variant === 'prepaid' ? englishLabel(businessLabels.prepaid.fullPrice) : 'Original'}
         value={formatMoney(debt.originalAmount)}
       />
-      <ContextTerm label={businessLabels.financial.paid} value={formatMoney(debt.totalPaid)} />
-      <ContextTerm label={businessLabels.financial.remaining} value={formatMoney(debt.remainingBalance)} />
+      <ContextTerm label={englishLabel(businessLabels.financial.paid)} value={formatMoney(debt.totalPaid)} />
+      <ContextTerm label={englishLabel(businessLabels.financial.remaining)} value={formatMoney(debt.remainingBalance)} />
       {variant === 'debt' && (
-        <ContextTerm label={businessLabels.financial.dueDate} value={formatBusinessDate(debt.dueDate)} />
+        <ContextTerm label={englishLabel(businessLabels.financial.dueDate)} value={formatBusinessDate(debt.dueDate)} />
       )}
     </dl>
   </div>

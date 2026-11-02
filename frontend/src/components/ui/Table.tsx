@@ -21,27 +21,27 @@ export function Table<T>({ data, columns, keyExtractor, onRowClick, emptyState }
 
   return (
     <div className="w-full overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-      <table className="w-full text-left text-sm text-slate-600">
-        <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200 uppercase tracking-wider text-xs">
+      <table className="w-full text-left text-sm text-slate-700">
+        <thead className="border-b border-slate-200 bg-slate-100 text-xs font-semibold text-slate-700">
           <tr>
             {columns.map((col, idx) => (
-              <th key={idx} className={`px-6 py-4 whitespace-nowrap ${col.className || ''}`}>
+              <th key={idx} className={`px-6 py-3 whitespace-nowrap ${col.className || ''}`}>
                 {col.header}
               </th>
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-100 bg-white">
+        <tbody className="divide-y divide-slate-200/70 bg-white">
           {data.map((item) => (
-            <tr 
-              key={keyExtractor(item)} 
+            <tr
+              key={keyExtractor(item)}
               onClick={() => onRowClick && onRowClick(item)}
-              className={`group transition-colors ${onRowClick ? 'cursor-pointer hover:bg-slate-50/80' : ''}`}
+              className={`group transition-colors ${onRowClick ? 'cursor-pointer hover:bg-brand-50/60' : ''}`}
             >
               {columns.map((col, idx) => (
-                <td key={idx} className={`px-6 py-4 ${col.className || ''}`}>
-                  {typeof col.accessor === 'function' 
-                    ? col.accessor(item) 
+                <td key={idx} className={`px-6 py-3.5 ${col.className || ''}`}>
+                  {typeof col.accessor === 'function'
+                    ? col.accessor(item)
                     : (item[col.accessor] as React.ReactNode)}
                 </td>
               ))}

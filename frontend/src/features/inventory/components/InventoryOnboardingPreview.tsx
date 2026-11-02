@@ -27,8 +27,8 @@ export const InventoryOnboardingPreview: React.FC<Props> = ({ result, nameFor })
 export const InventoryOnboardingOutcome: React.FC<{
   result: BatchOnboardingWriteResult;
   nameFor: (productId: string) => string;
-}> = ({ result, nameFor }) => <section role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-  <h2 className="font-bold text-emerald-900">Batch recorded / تم تسجيل الدفعة</h2>
-  <p className="mt-1 text-sm text-emerald-800"><strong>{result.counts.written}</strong> written / تم حفظها · <strong>{result.counts.skipped}</strong> skipped / تم تخطيها</p>
+}> = ({ result, nameFor }) => <section role="status" className="rounded-xl border border-brand-200 bg-brand-50 p-4">
+  <h2 className="font-bold text-brand-900">Batch recorded / تم تسجيل الدفعة</h2>
+  <p className="mt-1 text-sm text-brand-800"><strong>{result.counts.written}</strong> written / تم حفظها · <strong>{result.counts.skipped}</strong> skipped / تم تخطيها</p>
   {result.skipped.length > 0 && <div className="mt-3 rounded-lg border border-amber-200 bg-white p-3"><p className="text-sm font-semibold text-amber-900">Skipped rows were not onboarded / الصفوف المتخطاة لم تُدرج</p><ul className="mt-2 space-y-1 text-sm">{result.skipped.map((item) => <li key={item.productId} dir="auto">{nameFor(item.productId)} — {item.reason}</li>)}</ul></div>}
 </section>;

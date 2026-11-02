@@ -54,7 +54,7 @@ export const ReportDetailPage: React.FC = () => {
   return (
     <div className="mx-auto max-w-[1600px] space-y-5 report-print-root">
       <style media="print">{'@page { size: A4 landscape; margin: 10mm; }'}</style>
-      <Link to="/reports" className="inline-flex items-center gap-1 text-sm font-semibold text-emerald-700 print:hidden">
+      <Link to="/reports" className="inline-flex items-center gap-1 text-sm font-semibold text-brand-700 print:hidden">
         <ArrowLeft className="h-4 w-4" />
         All reports / كل التقارير
       </Link>

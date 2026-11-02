@@ -97,7 +97,7 @@ export const ServiceJobDetailsPage: React.FC = () => {
           {!isFinal && (
             <button
               onClick={() => setDialog('status')}
-              className="rounded-lg bg-emerald-600 px-3 py-2 font-semibold text-white"
+              className="rounded-lg bg-brand-600 px-3 py-2 font-semibold text-white"
             >
               Change Status / تغيير الحالة
             </button>
@@ -125,7 +125,7 @@ export const ServiceJobDetailsPage: React.FC = () => {
           <DetailSection title="Customer">
             <Link
               to={`/customers/${job.customer.id}`}
-              className="user-text font-semibold text-emerald-700"
+              className="user-text font-semibold text-brand-700"
               dir="auto"
             >
               {job.customer.name}
@@ -141,7 +141,7 @@ export const ServiceJobDetailsPage: React.FC = () => {
                   job.productId ? (
                     <Link
                       to={`/products?focus=${job.productId}`}
-                      className="font-semibold text-emerald-700 hover:underline"
+                      className="font-semibold text-brand-700 hover:underline"
                     >
                       {product.name}
                     </Link>
@@ -413,7 +413,7 @@ const EditDialog: React.FC<{
           </button>
           <button
             disabled={mutation.isPending}
-            className="rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-white"
+            className="rounded-lg bg-brand-600 px-4 py-2 font-semibold text-white"
           >
             {businessLabels.common.saveChanges}
           </button>
@@ -483,7 +483,7 @@ const StatusDialog: React.FC<{
         {dateField && (
           <Field label={`${dateField} *`} type="date" value={date} onChange={setDate} />
         )}
-        <button className="w-full rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-white">
+        <button className="w-full rounded-lg bg-brand-600 px-4 py-2 font-semibold text-white">
           Update status
         </button>
       </form>

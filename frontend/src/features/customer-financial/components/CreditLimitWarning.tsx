@@ -33,17 +33,17 @@ export function CreditLimitWarning({ warning, isAdmin, value, onChange }: {
 }) {
   if (!warning) return null;
   return <div role="alert" className="my-4 space-y-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
-    <p className="font-semibold">Credit limit exceeded / تم تجاوز حد الائتمان</p>
+    <p className="font-semibold">Credit limit exceeded</p>
     <dl className="grid grid-cols-2 gap-2">
-      <dt>Current outstanding / الرصيد المستحق</dt><dd>{formatMoney(warning.currentOutstanding)}</dd>
-      <dt>Credit limit / حد الائتمان</dt><dd>{formatMoney(warning.creditLimit)}</dd>
-      <dt>Projected outstanding / الرصيد المتوقع</dt><dd>{formatMoney(warning.projectedOutstanding)}</dd>
-      <dt>Overage / مبلغ التجاوز</dt><dd>{formatMoney(warning.overage)}</dd>
+      <dt>Current outstanding</dt><dd>{formatMoney(warning.currentOutstanding)}</dd>
+      <dt>Credit limit</dt><dd>{formatMoney(warning.creditLimit)}</dd>
+      <dt>Projected outstanding</dt><dd>{formatMoney(warning.projectedOutstanding)}</dd>
+      <dt>Overage</dt><dd>{formatMoney(warning.overage)}</dd>
     </dl>
     {isAdmin ? <>
-      <label className="block"><input type="checkbox" checked={value.overrideCreditLimit ?? false} onChange={(e) => onChange({ ...value, overrideCreditLimit: e.target.checked })} /> Approve ADMIN override / الموافقة على تجاوز المسؤول</label>
-      <label className="block">Override reason / سبب التجاوز<textarea dir="auto" value={value.creditLimitOverrideReason ?? ''} minLength={5} maxLength={1000} onChange={(e) => onChange({ ...value, creditLimitOverrideReason: e.target.value })} className="mt-1 block w-full rounded border p-2" /></label>
-      <label className="block">ADMIN account password / كلمة مرور حساب المسؤول<input type="password" autoComplete="current-password" value={value.accountPassword ?? ''} onChange={(e) => onChange({ ...value, accountPassword: e.target.value })} className="mt-1 block w-full rounded border p-2" /></label>
-    </> : <p>ADMIN approval required / يلزم موافقة المسؤول</p>}
+      <label className="block"><input type="checkbox" checked={value.overrideCreditLimit ?? false} onChange={(e) => onChange({ ...value, overrideCreditLimit: e.target.checked })} /> Approve ADMIN override</label>
+      <label className="block">Override reason<textarea dir="auto" value={value.creditLimitOverrideReason ?? ''} minLength={5} maxLength={1000} onChange={(e) => onChange({ ...value, creditLimitOverrideReason: e.target.value })} className="mt-1 block w-full rounded border p-2" /></label>
+      <label className="block">ADMIN account password<input type="password" autoComplete="current-password" value={value.accountPassword ?? ''} onChange={(e) => onChange({ ...value, accountPassword: e.target.value })} className="mt-1 block w-full rounded border p-2" /></label>
+    </> : <p>ADMIN approval required</p>}
   </div>;
 }

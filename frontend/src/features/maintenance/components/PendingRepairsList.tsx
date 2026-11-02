@@ -9,7 +9,7 @@ import { PendingRepair } from '../types/maintenance.types';
 export const PendingRepairsList: React.FC<{ repairs: PendingRepair[] }> = ({ repairs }) => {
   if (!repairs.length) {
     return (
-      <p className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
+      <p className="flex items-center gap-2 rounded-lg border border-brand-200 bg-brand-50 p-3 text-sm text-brand-800">
         <CheckCircle2 className="h-4 w-4" /> The database is up to date / قاعدة البيانات محدثة.
       </p>
     );

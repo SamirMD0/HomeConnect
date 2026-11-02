@@ -54,6 +54,7 @@ export interface PrepaidPurchaseView {
   deliveryNotes: string | null;
   deliveredBy: PrepaidUserView | null;
   remainderDebtId: string | null;
+  remainderInstallmentPlanId: string | null;
   /** Who recorded the prepaid purchase. */
   createdBy: PrepaidUserView | null;
   /** Every bill paid towards this item, oldest first. Voided ones included. */

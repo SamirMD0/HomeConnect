@@ -18,7 +18,7 @@ import { businessLabels } from '../../shared/labels/business-labels';
 import { useCreateGuard } from '../../features/branches/scope/branch-ui';
 
 const filterControlClass =
-  'h-10 min-w-0 w-full rounded-md border border-slate-300 bg-white px-2.5 text-xs leading-5 text-slate-800 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100';
+  'h-10 min-w-0 w-full rounded-md border border-slate-300 bg-white px-2.5 text-xs leading-5 text-slate-800 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100';
 
 export const ServiceJobsPage: React.FC = () => {
   const [params, setParams] = useSearchParams();
@@ -56,7 +56,7 @@ export const ServiceJobsPage: React.FC = () => {
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <Wrench className="h-6 w-6 shrink-0 text-emerald-600" aria-hidden="true" />
+            <Wrench className="h-6 w-6 shrink-0 text-brand-600" aria-hidden="true" />
             <h1 className="text-xl font-bold leading-tight text-slate-900">
               {businessLabels.service.maintenance}
             </h1>
@@ -70,7 +70,7 @@ export const ServiceJobsPage: React.FC = () => {
           onClick={() => setCreateOpen(true)}
           disabled={createGuard.blocked}
           title={createGuard.reason}
-          className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-emerald-600 px-4 text-xs font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+          className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-brand-600 px-4 text-xs font-semibold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
         >
           <Plus className="h-4 w-4 shrink-0" aria-hidden="true" />
           <span>{businessLabels.service.newJob}</span>
@@ -152,7 +152,7 @@ export const ServiceJobsPage: React.FC = () => {
               onChange={(event) =>
                 update('includeDelivered', event.target.checked ? 'true' : '')
               }
-              className="h-3.5 w-3.5 accent-emerald-600"
+              className="h-3.5 w-3.5 accent-brand-600"
             />
             <span>Show delivered / إظهار المسلّمة</span>
           </label>

@@ -110,6 +110,9 @@ const SuppliersPage = lazy(() =>
 const SupplierProfilePage = lazy(() =>
   import('./pages/suppliers/SupplierProfilePage').then((m) => ({ default: m.SupplierProfilePage }))
 );
+const SupplierStatementPage = lazy(() =>
+  import('./pages/suppliers/SupplierStatementPage').then((m) => ({ default: m.SupplierStatementPage }))
+);
 const SupplierLedgerPage = lazy(() =>
   import('./pages/suppliers/SupplierLedgerPage').then((m) => ({ default: m.SupplierLedgerPage }))
 );
@@ -285,6 +288,7 @@ const App: React.FC = () => {
                   />
                   <Route path="suppliers" element={<SuppliersPage />} />
                   <Route path="suppliers/:id" element={<SupplierProfilePage />} />
+                  <Route path="suppliers/:id/statement" element={<SupplierStatementPage />} />
                   <Route path="supplier-ledger" element={<SupplierLedgerPage />} />
                   <Route path="reports" element={<ReportsPage />} />
                   <Route path="reports/:reportId" element={<ReportDetailPage />} />

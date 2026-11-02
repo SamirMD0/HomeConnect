@@ -153,7 +153,7 @@ export const ScannerHubPage: React.FC = () => {
   return <div className="space-y-5">
     <header>
       <div className="flex items-center gap-3">
-        <ScanLine className="h-7 w-7 text-emerald-600" />
+        <ScanLine className="h-7 w-7 text-brand-600" />
         <h1 className="text-2xl font-bold text-slate-900">{labels.hub}</h1>
       </div>
       <p className="mt-1 text-sm text-slate-500">{labels.hubSubtitle}</p>

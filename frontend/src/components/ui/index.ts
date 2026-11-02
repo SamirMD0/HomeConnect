@@ -42,6 +42,8 @@ export { Modal } from './Modal';
 export type { ModalSize } from './Modal';
 
 export { EmptyState } from './EmptyState';
+export { RowMenu, RowMenuList } from './RowMenu';
+export type { RowMenuItem, RowMenuProps } from './RowMenu';
 export { BalanceBadge } from './BalanceBadge';
 export { Pagination } from './Pagination';
 export { Table } from './Table';

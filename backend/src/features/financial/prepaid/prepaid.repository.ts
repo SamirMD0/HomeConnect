@@ -140,6 +140,7 @@ export class PrepaidRepository {
       deliveredById: string;
       deliveryNotes: string | null;
       remainderDebtId: string | null;
+      remainderInstallmentPlanId?: string | null;
     }
   ) {
     return tx.prepaidPurchase.update({
@@ -150,6 +151,7 @@ export class PrepaidRepository {
         deliveredById: data.deliveredById,
         deliveryNotes: data.deliveryNotes,
         remainderDebtId: data.remainderDebtId,
+        remainderInstallmentPlanId: data.remainderInstallmentPlanId ?? null,
       },
       include: prepaidInclude,
     });
@@ -164,6 +166,7 @@ export class PrepaidRepository {
         deliveredById: null,
         deliveryNotes: null,
         remainderDebtId: null,
+        remainderInstallmentPlanId: null,
       },
       include: prepaidInclude,
     });

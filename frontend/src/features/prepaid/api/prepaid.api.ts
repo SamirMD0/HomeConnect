@@ -1,5 +1,6 @@
 import { api } from '../../../services/api';
 import {
+  ConvertPrepaidPayload,
   DeliverPrepaidPayload,
   PrepaidDetailResponse,
   PrepaidFilters,
@@ -26,6 +27,14 @@ export const prepaidApi = {
   deliver: async (id: string, payload: DeliverPrepaidPayload): Promise<PrepaidPurchase> => {
     const response = await api.post<PrepaidDetailResponse>(
       `/prepaid-purchases/${id}/deliver`,
+      payload
+    );
+    return response.data.data;
+  },
+
+  convert: async (id: string, payload: ConvertPrepaidPayload): Promise<PrepaidPurchase> => {
+    const response = await api.post<PrepaidDetailResponse>(
+      `/prepaid-purchases/${id}/convert`,
       payload
     );
     return response.data.data;

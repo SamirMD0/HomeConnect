@@ -153,7 +153,7 @@ export const LedgerFilters: React.FC<LedgerFiltersProps> = ({ filters, onChange 
                   onClick={() => setFilter({ type })}
                   className={`rounded-md px-2.5 py-1.5 text-xs font-semibold transition-colors ${
                     (filters.type ?? 'ALL') === type
-                      ? 'bg-emerald-100 text-emerald-800'
+                      ? 'bg-brand-100 text-brand-800'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
                 >
@@ -169,7 +169,7 @@ export const LedgerFilters: React.FC<LedgerFiltersProps> = ({ filters, onChange 
               type="search"
               value={filters.search ?? ''}
               onChange={(event) => setFilter({ search: event.target.value || undefined })}
-              className="mt-1 block h-9 w-full rounded-md border border-slate-300 px-3 text-sm font-normal focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              className="mt-1 block h-9 w-full rounded-md border border-slate-300 px-3 text-sm font-normal focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
               placeholder="Name or phone / الاسم أو الهاتف"
             />
           </label>
@@ -180,7 +180,7 @@ export const LedgerFilters: React.FC<LedgerFiltersProps> = ({ filters, onChange 
                 type="checkbox"
                 checked={filters.includeCompleted ?? false}
                 onChange={(event) => setFilter({ includeCompleted: event.target.checked })}
-                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
               />
               <span>
                 {businessLabels.ledger.includeCompleted}
@@ -197,7 +197,7 @@ export const LedgerFilters: React.FC<LedgerFiltersProps> = ({ filters, onChange 
               onClick={() => setShowAdvancedFilters((value) => !value)}
               aria-expanded={showAdvancedFilters}
               aria-controls="ledger-advanced-filters"
-              className="rounded-md border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              className="rounded-md border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
             >
               More Filters{activeAdvancedFilterCount > 0 ? ` (${activeAdvancedFilterCount})` : ''}
             </button>
@@ -205,7 +205,7 @@ export const LedgerFilters: React.FC<LedgerFiltersProps> = ({ filters, onChange 
               <button
                 type="button"
                 onClick={() => onChange(resetLedgerFilters(filters))}
-                className="rounded-md px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                className="rounded-md px-3 py-2 text-xs font-semibold text-brand-700 hover:bg-brand-50 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
               >
                 Clear
               </button>
@@ -230,7 +230,7 @@ export const LedgerFilters: React.FC<LedgerFiltersProps> = ({ filters, onChange 
                     )
                   )
                 }
-                className="mt-1 block h-9 w-full rounded-md border border-slate-300 px-3 text-sm font-normal focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                className="mt-1 block h-9 w-full rounded-md border border-slate-300 px-3 text-sm font-normal focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
               >
                 <option value="">Any Status / أي حالة</option>
                 {statusFilters.map((status) => (
@@ -246,7 +246,7 @@ export const LedgerFilters: React.FC<LedgerFiltersProps> = ({ filters, onChange 
                 type="month"
                 value={selectedMonth}
                 onChange={(event) => onChange(applyLedgerMonthFilter(filters, event.target.value))}
-                className="mt-1 block h-9 w-full rounded-md border border-slate-300 px-3 text-sm font-normal focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                className="mt-1 block h-9 w-full rounded-md border border-slate-300 px-3 text-sm font-normal focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
               />
               <span className="mt-1 block text-[11px] font-normal leading-snug text-slate-500">
                 Applies to due dates and payment dates.
@@ -258,7 +258,7 @@ export const LedgerFilters: React.FC<LedgerFiltersProps> = ({ filters, onChange 
                   type="checkbox"
                   checked={filters.includeCancelled ?? false}
                   onChange={(event) => setFilter({ includeCancelled: event.target.checked })}
-                  className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                  className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
                 />
                 {businessLabels.ledger.includeCancelled}
               </label>
@@ -267,7 +267,7 @@ export const LedgerFilters: React.FC<LedgerFiltersProps> = ({ filters, onChange 
                   type="checkbox"
                   checked={filters.correctedOnly ?? false}
                   onChange={(event) => setFilter({ correctedOnly: event.target.checked })}
-                  className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                  className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
                 />
                 Corrected Records / السجلات المصححة
               </label>

@@ -75,7 +75,7 @@ export const ReceivablesTable: React.FC<ReceivablesTableProps> = ({
           <caption className="sr-only">
             Customer accounts receivable standing, sorted by {sortBy}
           </caption>
-          <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wider text-slate-600">
+          <thead className="border-b border-slate-200 bg-slate-100 text-xs text-slate-700 font-semibold">
             <tr>
               {visibleColumns.map((column) => (
                 <th
@@ -96,7 +96,7 @@ export const ReceivablesTable: React.FC<ReceivablesTableProps> = ({
                     <button
                       type="button"
                       onClick={() => onSort(column.sortKey as ReceivableSortBy)}
-                      className={`inline-flex items-center gap-1 uppercase tracking-wider hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30 ${
+                      className={`inline-flex items-center gap-1 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/30 ${
                         column.headerClassName === 'text-right' ? 'flex-row-reverse' : ''
                       }`}
                     >
@@ -154,8 +154,8 @@ const SortIcon: React.FC<{ active: boolean; sortOrder: ReceivableSortOrder }> = 
   }
 
   return sortOrder === 'asc' ? (
-    <ArrowUp className="h-3 w-3 text-emerald-600" aria-hidden="true" />
+    <ArrowUp className="h-3 w-3 text-brand-600" aria-hidden="true" />
   ) : (
-    <ArrowDown className="h-3 w-3 text-emerald-600" aria-hidden="true" />
+    <ArrowDown className="h-3 w-3 text-brand-600" aria-hidden="true" />
   );
 };

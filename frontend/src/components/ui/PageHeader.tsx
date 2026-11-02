@@ -31,14 +31,14 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
     <div className="flex min-w-0 items-start gap-3">
       {icon && (
         <span
-          className="mt-1 inline-flex shrink-0 rounded-lg bg-brand-50 p-2 text-brand-600 [&>svg]:h-5 [&>svg]:w-5"
+          className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-500/15 text-brand-700 [&>svg]:h-5 [&>svg]:w-5"
           aria-hidden="true"
         >
           {icon}
         </span>
       )}
       <div className="min-w-0">
-        <h1 className="text-2xl font-bold text-slate-900">
+        <h1 className="text-[1.625rem] font-bold leading-tight tracking-tight text-slate-900">
           {isBilingual(title) ? <BilingualLabel label={title} compact /> : title}
         </h1>
         {description && <p className="mt-1 text-sm text-slate-500">{description}</p>}

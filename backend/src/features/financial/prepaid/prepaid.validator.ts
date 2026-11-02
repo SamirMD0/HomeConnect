@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PrepaidPurchaseStatus } from '@prisma/client';
+import { InstallmentPlanFrequency, PrepaidPurchaseStatus } from '@prisma/client';
 import { userTextSchema } from '../../../validators/user-text';
 
 const uuidSchema = z.string().uuid('Invalid identifier');
@@ -34,6 +34,24 @@ export const deliverPrepaidSchema = z
   })
   .strict();
 
+/** Converting hands the item over; only the unpaid remainder changes form. */
+export const convertPrepaidSchema = z.discriminatedUnion('mode', [
+  z
+    .object({
+      mode: z.literal('DEBT'),
+      dueDate: businessDateSchema,
+    })
+    .strict(),
+  z
+    .object({
+      mode: z.literal('INSTALLMENT'),
+      startDate: businessDateSchema,
+      installmentCount: z.coerce.number().int().positive().max(120, 'Installment count is too large'),
+      frequency: z.nativeEnum(InstallmentPlanFrequency).default(InstallmentPlanFrequency.MONTHLY),
+    })
+    .strict(),
+]);
+
 export const revertPrepaidDeliverySchema = z
   .object({
     reason: userTextSchema({ field: 'Reason', min: 5, max: 1000 }),
@@ -44,6 +62,7 @@ export const revertPrepaidDeliverySchema = z
 export type PrepaidParamsInput = z.infer<typeof prepaidParamsSchema>;
 export type PrepaidListQueryInput = z.infer<typeof prepaidListQuerySchema>;
 export type DeliverPrepaidInput = z.infer<typeof deliverPrepaidSchema>;
+export type ConvertPrepaidInput = z.infer<typeof convertPrepaidSchema>;
 export type RevertPrepaidDeliveryInput = z.infer<typeof revertPrepaidDeliverySchema>;
 
 export const PREPAID_STATUS_VALUES = Object.values(PrepaidPurchaseStatus);

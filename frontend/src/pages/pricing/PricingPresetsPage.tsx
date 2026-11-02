@@ -40,8 +40,8 @@ export const PricingPresetsPage: React.FC = () => {
 
   return <div className="space-y-5">
     <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-      <div><div className="flex items-center gap-3"><Calculator className="h-7 w-7 text-emerald-600" /><h1 className="text-2xl font-bold">{pricingLabels.pricingPresets}</h1></div><p className="mt-1 text-sm text-slate-500">Reusable product pricing formulas / صيغ قابلة لإعادة الاستخدام لتسعير المنتجات</p></div>
-      {admin && <button onClick={() => setForm({ open: true, preset: null })} className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white"><Plus className="h-4 w-4" />{pricingLabels.createPreset}</button>}
+      <div><div className="flex items-center gap-3"><Calculator className="h-7 w-7 text-brand-600" /><h1 className="text-2xl font-bold">{pricingLabels.pricingPresets}</h1></div><p className="mt-1 text-sm text-slate-500">Reusable product pricing formulas / صيغ قابلة لإعادة الاستخدام لتسعير المنتجات</p></div>
+      {admin && <button onClick={() => setForm({ open: true, preset: null })} className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white"><Plus className="h-4 w-4" />{pricingLabels.createPreset}</button>}
     </header>
     {admin && <LabelSecretPricingSettings />}
     <section className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 sm:grid-cols-[minmax(0,1fr)_180px_180px]">

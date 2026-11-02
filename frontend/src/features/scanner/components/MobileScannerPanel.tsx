@@ -61,7 +61,7 @@ export const MobileScannerPanel: React.FC<MobileScannerPanelProps> = ({
     <section className="rounded-lg border border-slate-200 bg-white">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
         <h2 className="inline-flex items-center gap-2 text-sm font-semibold text-slate-800">
-          <Smartphone className="h-4 w-4 text-emerald-600" /> {labels.lanMode}
+          <Smartphone className="h-4 w-4 text-brand-600" /> {labels.lanMode}
         </h2>
         <div className="flex items-center gap-3">
           <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${toneClasses[mode.tone]}`}>{mode.label}</span>
@@ -70,7 +70,7 @@ export const MobileScannerPanel: React.FC<MobileScannerPanelProps> = ({
               {labels.disableLan}
             </button>
           ) : (
-            <button type="button" onClick={onEnable} disabled={isEnabling || isLoading} className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50">
+            <button type="button" onClick={onEnable} disabled={isEnabling || isLoading} className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50">
               {isEnabling && <Loader2 className="h-3 w-3 animate-spin" />}{labels.enableLan}
             </button>
           ))}
@@ -94,7 +94,7 @@ export const MobileScannerPanel: React.FC<MobileScannerPanelProps> = ({
                 <div className="flex flex-wrap items-center gap-2">
                   <code className="min-w-0 flex-1 truncate rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-800">{url}</code>
                   <button type="button" onClick={copy} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700">
-                    {copied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+                    {copied ? <Check className="h-3.5 w-3.5 text-brand-600" /> : <Copy className="h-3.5 w-3.5" />}
                     {copied ? labels.copied : labels.copyUrl}
                   </button>
                 </div>
@@ -113,7 +113,7 @@ export const MobileScannerPanel: React.FC<MobileScannerPanelProps> = ({
                 <ul className="mt-1 space-y-1">
                   {urls.map((candidate) => (
                     <li key={candidate}>
-                      <button type="button" onClick={() => setSelectedUrl(candidate)} className={`w-full truncate rounded px-2 py-1 text-left font-mono text-xs ${candidate === url ? 'bg-emerald-50 text-emerald-800' : 'text-slate-600 hover:bg-slate-50'}`}>
+                      <button type="button" onClick={() => setSelectedUrl(candidate)} className={`w-full truncate rounded px-2 py-1 text-left font-mono text-xs ${candidate === url ? 'bg-brand-50 text-brand-800' : 'text-slate-600 hover:bg-slate-50'}`}>
                         {candidate}
                       </button>
                     </li>

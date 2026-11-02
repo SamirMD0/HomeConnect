@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 import { PrepaidService, PrepaidRequestContext } from './prepaid.service';
 import {
+  ConvertPrepaidInput,
   DeliverPrepaidInput,
   PrepaidListQueryInput,
   PrepaidParamsInput,
@@ -52,6 +53,28 @@ export class PrepaidController {
   ) {
     try {
       const prepaid = await PrepaidService.deliver(
+        req.params.id,
+        req.body,
+        req.user!,
+        contextFrom(req)
+      );
+      res.json({
+        success: true,
+        data: prepaid,
+        meta: { timestamp: new Date().toISOString() },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async convert(
+    req: Request<PrepaidParamsInput, unknown, ConvertPrepaidInput>,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const prepaid = await PrepaidService.convert(
         req.params.id,
         req.body,
         req.user!,

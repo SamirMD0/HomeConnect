@@ -61,8 +61,8 @@ export const RevertPrepaidDeliveryDialog: React.FC<RevertPrepaidDeliveryDialogPr
           {item.itemName}
         </p>
         <p className="mt-1">
-          This reopens the prepaid purchase and cancels the debt created for the remaining balance.
-          It is blocked if any payment has already been collected against that debt.
+          This reopens the prepaid purchase and cancels the {item.remainderInstallmentPlanId ? 'installment plan' : 'debt'} created for the remaining balance.
+          It is blocked if any payment has already been collected against it.
         </p>
       </div>
 

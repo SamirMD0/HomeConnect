@@ -17,7 +17,7 @@ import { LedgerCustomerLink } from './LedgerCustomerLink';
 import { BranchRowLabel } from '../../branches/scope/branch-ui';
 
 const ledgerCellHover =
-  'bg-white transition-all duration-200 group-hover:bg-gray-600 group-hover:text-yellow-300 group-hover:[text-shadow:0_0_8px_rgba(250,204,21,0.8)]';
+  'bg-white transition-all duration-200 group-hover:bg-brand-50 group-hover:text-slate-900';
 
 interface LedgerObligationRowProps {
   item: FinancialLedgerDebtItem | FinancialLedgerPlanItem;
@@ -92,7 +92,7 @@ export const LedgerObligationRow: React.FC<LedgerObligationRowProps> = ({
           aria-expanded={isExpanded}
           aria-controls={childRegionId}
           onClick={onToggleExpanded}
-          className="inline-flex min-h-8 min-w-8 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-yellow-300 hover:text-slate-950 focus:outline-none focus:ring-2 focus:ring-yellow-300/50 group-hover:text-yellow-300"
+          className="inline-flex min-h-8 min-w-8 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-brand-50 hover:text-slate-950 focus:outline-none focus:ring-2 focus:ring-brand-500/50 group-hover:text-slate-900"
         >
           <ChevronRight
             className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
@@ -105,15 +105,15 @@ export const LedgerObligationRow: React.FC<LedgerObligationRowProps> = ({
       </td>
       <td className={`whitespace-nowrap px-4 py-2 ${ledgerCellHover} ${isOverdue ? 'font-medium text-red-700' : 'text-slate-600'}`}>
         <p>{formatBusinessDate(dueDate)}</p>
-        <p className="text-[11px] font-normal text-slate-400 transition-colors group-hover:text-yellow-200">Created {formatDateTime(item.createdAt)}</p>
+        <p className="text-[11px] font-normal text-slate-400 transition-colors group-hover:text-slate-900">Created {formatDateTime(item.createdAt)}</p>
       </td>
       <td className={`px-4 py-2 ${ledgerCellHover}`}>
         <LedgerCustomerLink customer={item.customer} className="font-medium" />
-        <p className="text-[11px] text-slate-500 transition-colors group-hover:text-yellow-200">{item.customer.phone}</p>
+        <p className="text-[11px] text-slate-500 transition-colors group-hover:text-slate-900">{item.customer.phone}</p>
         <BranchRowLabel branchId={item.branchId} />
       </td>
       <td className={`hidden px-4 py-2 lg:table-cell ${ledgerCellHover}`}>
-        <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700 transition-colors group-hover:bg-yellow-300 group-hover:text-slate-950">
+        <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700 transition-colors group-hover:bg-brand-500 group-hover:text-slate-950">
           {isDebt
             ? `Debt · ${debtProgressLabel(item)}`
             : periodSummary
@@ -127,7 +127,7 @@ export const LedgerObligationRow: React.FC<LedgerObligationRowProps> = ({
             {item.description}
           </p>
           {isDebt && saleDeposit && (
-            <p className="text-[11px] text-slate-500 transition-colors group-hover:text-yellow-200">
+            <p className="text-[11px] text-slate-500 transition-colors group-hover:text-slate-900">
               Deposit at sale: {formatMoney(saleDeposit)}
             </p>
           )}
@@ -157,7 +157,7 @@ export const LedgerObligationRow: React.FC<LedgerObligationRowProps> = ({
               event.stopPropagation();
               openEdit();
             }}
-            className="inline-flex min-h-8 items-center rounded-md border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-600 transition-all hover:border-yellow-300 hover:bg-gray-600 hover:text-yellow-300 hover:shadow-[0_0_12px_rgba(250,204,21,0.4)] focus:outline-none focus:ring-2 focus:ring-yellow-300/50"
+            className="inline-flex min-h-8 items-center rounded-md border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-600 transition-all hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-brand-500/50"
           >
             Edit
           </button>
@@ -249,7 +249,7 @@ export const MoneyCell: React.FC<{
 
   return (
     <td
-      className={`bg-white px-4 py-2 text-right tabular-nums transition-all duration-200 group-hover:bg-gray-600 group-hover:text-yellow-300 group-hover:[text-shadow:0_0_8px_rgba(250,204,21,0.8)] ${className} ${
+      className={`bg-white px-4 py-2 text-right tabular-nums transition-all duration-200 group-hover:bg-brand-50 group-hover:text-slate-900 ${className} ${
         isEmpty || isZero
           ? 'text-slate-400'
           : `${weightClass} ${tone === 'liability' ? 'text-red-700' : 'text-slate-900'}`

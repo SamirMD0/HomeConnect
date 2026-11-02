@@ -119,7 +119,7 @@ const EligibleObligationPicker: React.FC<EligibleObligationPickerProps> = ({
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Customer</p>
         <p className="user-text mt-1 font-semibold text-slate-900" dir="auto">{customer.name}</p>
         <p className="text-sm text-slate-600">{customer.phone}</p>
-        <button type="button" onClick={onChangeCustomer} className="mt-2 text-sm font-medium text-emerald-700">
+        <button type="button" onClick={onChangeCustomer} className="mt-2 text-sm font-medium text-brand-700">
           Change customer
         </button>
       </div>
@@ -135,7 +135,7 @@ const EligibleObligationPicker: React.FC<EligibleObligationPickerProps> = ({
               key={debt.id}
               type="button"
               onClick={() => onSelectDebt(debt)}
-              className="block w-full rounded-lg border border-slate-200 bg-white p-3 text-left hover:bg-emerald-50"
+              className="block w-full rounded-lg border border-slate-200 bg-white p-3 text-left hover:bg-brand-50"
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="user-text font-semibold text-slate-900" dir="auto">{debt.description}</span>
@@ -151,7 +151,7 @@ const EligibleObligationPicker: React.FC<EligibleObligationPickerProps> = ({
               key={plan.id}
               type="button"
               onClick={() => onSelectPlan(plan)}
-              className="block w-full rounded-lg border border-slate-200 bg-white p-3 text-left hover:bg-emerald-50"
+              className="block w-full rounded-lg border border-slate-200 bg-white p-3 text-left hover:bg-brand-50"
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="user-text font-semibold text-slate-900" dir="auto">{plan.description}</span>

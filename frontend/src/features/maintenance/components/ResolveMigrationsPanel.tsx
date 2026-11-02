@@ -73,7 +73,7 @@ export const ResolveMigrationsPanel: React.FC<{ migrations: PendingMigration[] }
                   checked={selected.has(entry.name)}
                   onChange={() => toggle(entry.name)}
                   aria-label={`Record ${entry.name} as already applied`}
-                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 disabled:opacity-40"
+                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-brand-600 focus:ring-brand-500 disabled:opacity-40"
                 />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-mono text-xs text-slate-800">{entry.name}</span>
@@ -98,7 +98,7 @@ export const ResolveMigrationsPanel: React.FC<{ migrations: PendingMigration[] }
           type="button"
           onClick={() => setSelected(new Set(alreadyPresent.map((entry) => entry.name)))}
           disabled={alreadyPresent.length === 0}
-          className="mt-3 text-xs font-semibold text-emerald-700 hover:underline disabled:text-slate-400 disabled:no-underline"
+          className="mt-3 text-xs font-semibold text-brand-700 hover:underline disabled:text-slate-400 disabled:no-underline"
         >
           Select the {alreadyPresent.length} already in the database
         </button>
@@ -127,7 +127,7 @@ export const ResolveMigrationsPanel: React.FC<{ migrations: PendingMigration[] }
           type="button"
           onClick={submit}
           disabled={!canSubmit}
-          className="inline-flex h-9 items-center gap-2 rounded-lg border border-emerald-300 bg-white px-4 text-sm font-semibold text-emerald-700 disabled:opacity-50"
+          className="inline-flex h-9 items-center gap-2 rounded-lg border border-brand-300 bg-white px-4 text-sm font-semibold text-brand-700 disabled:opacity-50"
         >
           {resolve.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
           Record as applied ({selected.size}) / تسجيل
@@ -139,7 +139,7 @@ export const ResolveMigrationsPanel: React.FC<{ migrations: PendingMigration[] }
 
 const VerdictBadge: React.FC<{ verdict: PresenceVerdict }> = ({ verdict }) => {
   const style = verdict === 'PRESENT'
-    ? { className: 'bg-emerald-50 text-emerald-700', icon: <CheckCircle2 className="h-3 w-3" />, label: 'In database' }
+    ? { className: 'bg-brand-50 text-brand-700', icon: <CheckCircle2 className="h-3 w-3" />, label: 'In database' }
     : verdict === 'MISSING'
       ? { className: 'bg-red-100 text-red-700', icon: <XCircle className="h-3 w-3" />, label: 'Not in database' }
       : { className: 'bg-slate-100 text-slate-600', icon: <HelpCircle className="h-3 w-3" />, label: 'Cannot check' };

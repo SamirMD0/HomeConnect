@@ -1,6 +1,6 @@
 import React from 'react';
 import { ChevronDown, ChevronUp, Info, RotateCcw } from 'lucide-react';
-import { businessLabels } from '../../../shared/labels/business-labels';
+import { businessLabels, englishLabel } from '../../../shared/labels/business-labels';
 import { ServiceJobStatus } from '../../service/types/service.types';
 import { MessageDefaults, MessageField, MessageOverrides } from '../types/communication.types';
 import {
@@ -18,14 +18,14 @@ import {
  */
 
 const overrideFields: Array<{ field: MessageField; label: string }> = [
-  { field: 'customerName', label: 'Name in message / الاسم في الرسالة' },
-  { field: 'phone', label: 'Phone / رقم الهاتف' },
-  { field: 'amount', label: 'Amount / المبلغ' },
-  { field: 'remainingAmount', label: 'Remaining amount / المبلغ المتبقي' },
-  { field: 'dateAdded', label: 'Date added / تاريخ الإضافة' },
-  { field: 'dueDate', label: 'Due date / تاريخ الاستحقاق' },
-  { field: 'daysLate', label: 'Days late / أيام التأخير' },
-  { field: 'paymentDate', label: 'Payment date / تاريخ الدفع' },
+  { field: 'customerName', label: 'Name in message' },
+  { field: 'phone', label: 'Phone' },
+  { field: 'amount', label: 'Amount' },
+  { field: 'remainingAmount', label: 'Remaining amount' },
+  { field: 'dateAdded', label: 'Date added' },
+  { field: 'dueDate', label: 'Due date' },
+  { field: 'daysLate', label: 'Days late' },
+  { field: 'paymentDate', label: 'Payment date' },
 ];
 
 const serviceStatuses = Object.keys(customerFacingServiceStatus) as ServiceJobStatus[];
@@ -70,7 +70,7 @@ export const MessageOverridesPanel: React.FC<MessageOverridesPanelProps> = ({
   const noteField = (
     <label className="block text-sm">
       <span className="font-medium text-slate-700">
-        {isCustomMessage ? 'Message text / نص الرسالة' : businessLabels.communication.customNote}
+        {isCustomMessage ? 'Message text' : englishLabel(businessLabels.communication.customNote)}
       </span>
       <textarea
         dir="auto"
@@ -79,16 +79,14 @@ export const MessageOverridesPanel: React.FC<MessageOverridesPanelProps> = ({
         onChange={(event) => onOverrideChange('customNote', event.target.value)}
         placeholder={
           isCustomMessage
-            ? 'Write your message. Placeholders like [amount] still work / اكتب رسالتك، ويمكنك استخدام [amount]'
-            : 'Optional extra sentence / جملة إضافية اختيارية'
+            ? 'Write your message. Placeholders like [amount] still work[amount]'
+            : 'Optional extra sentence'
         }
         className="user-text-pre mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900"
       />
       {needsServiceNote && (
         <span className="mt-1 block text-xs font-medium text-amber-800">
-          This status needs a written note before Generate / هذه الحالة تحتاج ملاحظة مكتوبة قبل
-          الإنشاء
-        </span>
+          This status needs a written note before Generate</span>
       )}
     </label>
   );
@@ -111,13 +109,13 @@ export const MessageOverridesPanel: React.FC<MessageOverridesPanelProps> = ({
             ) : (
               <ChevronDown className="h-4 w-4" aria-hidden="true" />
             )}
-            {businessLabels.communication.editMessageValues}
+            {englishLabel(businessLabels.communication.editMessageValues)}
           </button>
           {/* Visible whether the panel is open or shut, so "edit values" can
               never be mistaken for editing the customer's actual record. */}
           <span className="inline-flex items-center gap-1.5 rounded-lg bg-sky-50 px-2 py-1 text-xs text-sky-900">
             <Info className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-            {businessLabels.communication.messageOnlyNotice}
+            {englishLabel(businessLabels.communication.messageOnlyNotice)}
           </span>
         </div>
 
@@ -130,7 +128,7 @@ export const MessageOverridesPanel: React.FC<MessageOverridesPanelProps> = ({
                 className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50"
               >
                 <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
-                {businessLabels.communication.resetOverrides}
+                {englishLabel(businessLabels.communication.resetOverrides)}
               </button>
             </div>
 
@@ -147,7 +145,7 @@ export const MessageOverridesPanel: React.FC<MessageOverridesPanelProps> = ({
                     className="user-text mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900"
                   />
                   <span className="mt-0.5 block text-xs text-slate-400" dir="auto">
-                    {businessLabels.communication.defaultValue}: {defaults[field] || '—'}
+                    {englishLabel(businessLabels.communication.defaultValue)}: {defaults[field] || '—'}
                   </span>
                 </label>
               ))}
@@ -155,7 +153,7 @@ export const MessageOverridesPanel: React.FC<MessageOverridesPanelProps> = ({
               {showServiceStatus && (
                 <label className="block text-sm">
                   <span className="font-medium text-slate-700">
-                    {businessLabels.communication.serviceStatus}
+                    {englishLabel(businessLabels.communication.serviceStatus)}
                   </span>
                   <select
                     value={serviceStatus ?? ''}
@@ -173,7 +171,7 @@ export const MessageOverridesPanel: React.FC<MessageOverridesPanelProps> = ({
                     ))}
                   </select>
                   <span className="mt-0.5 block text-xs text-slate-400" dir="auto">
-                    {businessLabels.communication.defaultValue}: {resolvedServiceStatus || '—'}
+                    {englishLabel(businessLabels.communication.defaultValue)}: {resolvedServiceStatus || '—'}
                   </span>
                 </label>
               )}

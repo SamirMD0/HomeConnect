@@ -730,6 +730,10 @@ model PrepaidPurchase {
   remainderDebtId String? @unique @db.Uuid
   remainderDebt   Debt?   @relation("PrepaidRemainderDebt", fields: [remainderDebtId], references: [id], onDelete: Restrict)
 
+  /// Installment plan created for the unpaid remainder when converted that way.
+  remainderInstallmentPlanId String?          @unique @db.Uuid
+  remainderInstallmentPlan   InstallmentPlan? @relation("PrepaidRemainderPlan", fields: [remainderInstallmentPlanId], references: [id], onDelete: Restrict)
+
   /// Optional catalog reference. Carries no stock effect.
   productId String?  @db.Uuid
   product   Product? @relation(fields: [productId], references: [id], onDelete: Restrict)
@@ -772,6 +776,7 @@ model InstallmentPlan {
 
   installments Installment[]
   salesOrder   SalesOrder?   @relation("SalesOrderInstallmentPlan")
+  prepaidRemainderFor PrepaidPurchase? @relation("PrepaidRemainderPlan")
 
   @@index([customerId])
   @@index([status])

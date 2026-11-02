@@ -60,7 +60,7 @@ export const ReceivablesEmptyState: React.FC<{
       <button
         type="button"
         onClick={onClearFilters}
-        className="mt-4 rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30"
+        className="mt-4 rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/30"
       >
         Clear filters
       </button>

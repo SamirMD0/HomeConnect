@@ -270,7 +270,7 @@ export const SupplierPurchaseFormDialog: React.FC<Props> = ({ open, supplier, on
         <dl className="grid gap-2 border-t border-slate-100 pt-3 text-sm sm:grid-cols-3">
           <div><dt className="text-xs text-slate-500">Bill total / إجمالي الفاتورة</dt><dd className="tabular-nums font-semibold text-slate-900">{total}</dd></div>
           <div><dt className="text-xs text-slate-500">Paid now / المدفوع الآن</dt><dd className="tabular-nums font-semibold text-slate-900">{paidCents > 0n ? paidAmount : '0.00'}</dd></div>
-          <div><dt className="text-xs text-slate-500">Still owed / المتبقي</dt><dd className="tabular-nums font-semibold text-emerald-700">{remaining ?? '—'}</dd></div>
+          <div><dt className="text-xs text-slate-500">Still owed / المتبقي</dt><dd className="tabular-nums font-semibold text-brand-700">{remaining ?? '—'}</dd></div>
         </dl>
       </section>
 
@@ -281,7 +281,7 @@ export const SupplierPurchaseFormDialog: React.FC<Props> = ({ open, supplier, on
 
       {blocker && <p role="status" className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-900">{blocker}</p>}
 
-      <button type="submit" disabled={create.isPending || Boolean(blocker)} className="w-full rounded-md bg-emerald-600 px-4 py-2.5 font-semibold text-white disabled:opacity-50">
+      <button type="submit" disabled={create.isPending || Boolean(blocker)} className="w-full rounded-md bg-brand-600 px-4 py-2.5 font-semibold text-white disabled:opacity-50">
         {create.isPending ? 'Saving... / جارٍ الحفظ' : 'Save purchase / حفظ الفاتورة'}
       </button>
     </form>

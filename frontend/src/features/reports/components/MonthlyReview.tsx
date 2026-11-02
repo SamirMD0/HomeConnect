@@ -189,7 +189,7 @@ export function MonthlyReviewContent({
           <SnapshotRow label="Paid in period" value={String(data.customers.paidCount)} />
           <SnapshotRow label="Did not pay" value={String(data.customers.didNotPayCount)} />
           {data.customers.didNotPay.slice(0, 5).map((customer) => (
-            <Link key={customer.id} to={`/customers/${customer.id}`} className="user-text flex justify-between gap-2 border-t border-slate-100 py-2 text-xs hover:text-emerald-700" dir="auto">
+            <Link key={customer.id} to={`/customers/${customer.id}`} className="user-text flex justify-between gap-2 border-t border-slate-100 py-2 text-xs hover:text-brand-700" dir="auto">
               <span>{customer.name}</span><span>{customer.phone}</span>
             </Link>
           ))}
@@ -198,7 +198,7 @@ export function MonthlyReviewContent({
           <SnapshotRow label="Current amount owed" value={formatMoney(data.suppliers.operationalSnapshot.owed)} />
           <SnapshotRow label="Suppliers with balance" value={String(data.suppliers.operationalSnapshot.suppliersWithBalance)} />
           {data.suppliers.operationalSnapshot.topBalances.slice(0, 5).map((supplier) => (
-            <Link key={supplier.supplierId} to={`/suppliers/${supplier.supplierId}`} className="user-text flex justify-between gap-2 border-t border-slate-100 py-2 text-xs hover:text-emerald-700" dir="auto">
+            <Link key={supplier.supplierId} to={`/suppliers/${supplier.supplierId}`} className="user-text flex justify-between gap-2 border-t border-slate-100 py-2 text-xs hover:text-brand-700" dir="auto">
               <span>{supplier.supplierName}</span><strong>{formatMoney(supplier.balance)}</strong>
             </Link>
           ))}
@@ -244,7 +244,7 @@ function MovementComparison({ title, current, previous }: { title: string; curre
 }
 
 function SnapshotCard({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
-  return <article className="rounded-xl border border-slate-200 bg-white p-4"><div className="mb-3 flex items-center gap-2 text-slate-900"><span className="text-emerald-600">{icon}</span><h2 className="text-sm font-semibold">{title}</h2></div>{children}</article>;
+  return <article className="rounded-xl border border-slate-200 bg-white p-4"><div className="mb-3 flex items-center gap-2 text-slate-900"><span className="text-brand-600">{icon}</span><h2 className="text-sm font-semibold">{title}</h2></div>{children}</article>;
 }
 
 function SnapshotRow({ label, value }: { label: string; value: string }) {
@@ -256,7 +256,7 @@ function InventorySnapshot({ summary }: { summary: MonthlyReviewData['inventory'
 }
 
 function ActionLink({ to, icon, label }: { to: string; icon: React.ReactNode; label: string }) {
-  return <Link to={to} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:border-emerald-300 hover:bg-emerald-50">{icon}{label}</Link>;
+  return <Link to={to} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:border-brand-300 hover:bg-brand-50">{icon}{label}</Link>;
 }
 
 function isMonthlyReviewEmpty(data: MonthlyReviewData) {

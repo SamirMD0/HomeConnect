@@ -5,6 +5,7 @@ import { AuthorizationError, NotFoundError, ValidationError } from '../lib/error
 import { Prisma } from '@prisma/client';
 import { ReceivablesService } from '../features/financial/receivables/receivables.service';
 import { findSearchMatchIds } from '../lib/search-query';
+import { normalizeSearchTerm } from '../lib/search-normalize';
 
 export class CustomersService {
   static async createCustomer(data: { name: string; phone: string; address?: string | null; notes?: string | null; creditLimit?: string | null; createdBy: string }, scope: BranchScope, actor?: { role: string }) {
@@ -42,7 +43,7 @@ export class CustomersService {
     sortBy?: 'name' | 'createdAt' | 'updatedAt' | 'outstanding' | 'overdue' | 'lastPayment';
     sortOrder?: 'asc' | 'desc';
     includeFinancial?: boolean;
-    filter?: 'withBalance' | 'overdue' | 'noDebt' | 'inactive';
+    filter?: 'withBalance' | 'overdue' | 'noDebt' | 'inactive' | 'sameName';
   }, scope: BranchScope) {
     const { includeFinancial, filter, ...requestedListParams } = params;
     const financialSort = ['outstanding', 'overdue', 'lastPayment'].includes(params.sortBy ?? '');
@@ -57,10 +58,19 @@ export class CustomersService {
             : requestedListParams.sortBy as 'name' | 'createdAt' | 'updatedAt' | undefined,
         }
       : requestedListParams as Parameters<typeof CustomersRepository.findAll>[0];
-    const [{ customers, total }, namePhoneMatchedIds] = await Promise.all([
+    const [{ customers: found, total }, namePhoneMatchedIds, liveNames] = await Promise.all([
       CustomersRepository.findAll(listParams, scope),
       findSearchMatchIds('customerNamePhone', params.search, undefined, scope),
+      CustomersRepository.findLiveNames(scope),
     ]);
+    const nameKey = (name: string) => normalizeSearchTerm(name).trim();
+    const nameCounts = new Map<string, number>();
+    for (const { name } of liveNames)
+      nameCounts.set(nameKey(name), (nameCounts.get(nameKey(name)) ?? 0) + 1);
+    const customers = found.map((customer) => ({
+      ...customer,
+      sameNameCount: nameCounts.get(nameKey(customer.name)) ?? 1,
+    }));
 
     const namePhoneMatchSet = namePhoneMatchedIds === null
       ? null
@@ -90,6 +100,12 @@ export class CustomersService {
     if (filter === 'overdue') enriched = enriched.filter((row) => Number(row.financial?.overdueAmount ?? 0) > 0);
     if (filter === 'noDebt') enriched = enriched.filter((row) => (row.financial?.openDebtCount ?? 0) === 0 && (row.financial?.activePlanCount ?? 0) === 0);
     if (filter === 'inactive') enriched = enriched.filter((row) => !row.isActive);
+    if (filter === 'sameName') {
+      // Sorted by name so each group of same-name customers sits together.
+      enriched = enriched
+        .filter((row) => row.sameNameCount > 1)
+        .sort((left, right) => nameKey(left.name).localeCompare(nameKey(right.name)));
+    }
 
     if (financialSort) {
       const direction = params.sortOrder === 'asc' ? 1 : -1;

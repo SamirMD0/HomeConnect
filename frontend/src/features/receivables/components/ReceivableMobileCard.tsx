@@ -96,7 +96,7 @@ export const ReceivableMobileCard: React.FC<ReceivableMobileCardProps> = ({
           aria-expanded={isExpanded}
           aria-controls={panelId}
           onClick={() => onToggle(item.customer.id)}
-          className={`inline-flex items-center gap-1 rounded-md px-2 py-2 text-sm font-medium ${style.secondaryTextClass} hover:bg-white/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30`}
+          className={`inline-flex items-center gap-1 rounded-md px-2 py-2 text-sm font-medium ${style.secondaryTextClass} hover:bg-white/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/30`}
         >
           {isExpanded ? (
             <ChevronDown className="h-4 w-4" aria-hidden="true" />
@@ -109,7 +109,7 @@ export const ReceivableMobileCard: React.FC<ReceivableMobileCardProps> = ({
           <button
             type="button"
             onClick={() => onRecordPayment(item)}
-            className="rounded-md px-2 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30"
+            className="rounded-md px-2 py-2 text-sm font-medium text-brand-700 hover:bg-brand-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/30"
           >
             Record payment
           </button>

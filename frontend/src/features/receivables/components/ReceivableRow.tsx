@@ -52,7 +52,7 @@ export const ReceivableRow: React.FC<ReceivableRowProps> = ({
             aria-expanded={isExpanded}
             aria-controls={panelId}
             onClick={() => onToggle(item.customer.id)}
-            className={`inline-flex h-9 w-9 items-center justify-center rounded-md ${style.secondaryTextClass} hover:bg-white/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30`}
+            className={`inline-flex h-9 w-9 items-center justify-center rounded-md ${style.secondaryTextClass} hover:bg-white/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/30`}
           >
             {isExpanded ? (
               <ChevronDown className="h-4 w-4" aria-hidden="true" />
@@ -69,7 +69,7 @@ export const ReceivableRow: React.FC<ReceivableRowProps> = ({
           <Link
             to={`/customers/${item.customer.id}`}
             dir="auto"
-            className={`user-text font-medium ${style.primaryTextClass} hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30`}
+            className={`user-text font-medium ${style.primaryTextClass} hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/30`}
           >
             {item.customer.name}
           </Link>

@@ -497,8 +497,8 @@ export const ProductCsvImportDialog: React.FC<ProductCsvImportDialogProps> = ({
             )}
 
             {preview.counts.ready > 0 && (
-              <details className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-4">
-                <summary className="cursor-pointer font-semibold text-emerald-800">
+              <details className="rounded-xl border border-brand-200 bg-brand-50/40 p-4">
+                <summary className="cursor-pointer font-semibold text-brand-800">
                   {preview.counts.ready} products ready to create
                 </summary>
                 <div className="mt-3 space-y-2">
@@ -562,7 +562,7 @@ const RowShell: React.FC<{ row: ProductImportPreviewRow; children?: React.ReactN
         </p>
       </div>
       {row.status === 'READY' && (
-        <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700">
+        <span className="inline-flex items-center gap-1 text-xs font-semibold text-brand-700">
           <CheckCircle2 className="h-4 w-4" />
           Ready
         </span>

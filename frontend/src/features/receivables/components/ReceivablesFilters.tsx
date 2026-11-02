@@ -74,7 +74,7 @@ export const ReceivablesFilters: React.FC<ReceivablesFiltersProps> = ({
               value={searchDraft}
               onChange={(event) => setSearchDraft(event.target.value)}
               placeholder="Name or phone"
-              className="block w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              className="block w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
             />
           </span>
         </label>
@@ -85,7 +85,7 @@ export const ReceivablesFilters: React.FC<ReceivablesFiltersProps> = ({
             type="month"
             value={filters.month ?? ''}
             onChange={(event) => setFilter({ month: event.target.value || undefined })}
-            className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+            className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
           />
         </label>
 
@@ -95,7 +95,7 @@ export const ReceivablesFilters: React.FC<ReceivablesFiltersProps> = ({
               type="checkbox"
               checked={filters.onlyWithBalance ?? false}
               onChange={(event) => setFilter({ onlyWithBalance: event.target.checked })}
-              className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+              className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
             />
             Only customers with a balance
           </label>
@@ -104,7 +104,7 @@ export const ReceivablesFilters: React.FC<ReceivablesFiltersProps> = ({
               type="checkbox"
               checked={filters.includeInactive ?? false}
               onChange={(event) => setFilter({ includeInactive: event.target.checked })}
-              className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+              className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
             />
             Include inactive customers
           </label>
@@ -112,7 +112,7 @@ export const ReceivablesFilters: React.FC<ReceivablesFiltersProps> = ({
             <button
               type="button"
               onClick={() => onChange(resetReceivableFilters(filters))}
-              className="rounded-lg px-3 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/20"
+              className="rounded-lg px-3 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/20"
             >
               Clear filters
             </button>
@@ -127,9 +127,9 @@ export const ReceivablesFilters: React.FC<ReceivablesFiltersProps> = ({
             type="button"
             aria-pressed={activeTiers.length === 0}
             onClick={() => setFilter({ tier: [] })}
-            className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30 ${
+            className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/30 ${
               activeTiers.length === 0
-                ? 'bg-emerald-100 text-emerald-800'
+                ? 'bg-brand-100 text-brand-800'
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
             }`}
           >
@@ -145,7 +145,7 @@ export const ReceivablesFilters: React.FC<ReceivablesFiltersProps> = ({
                 type="button"
                 aria-pressed={isActive}
                 onClick={() => toggleTier(tier)}
-                className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30 ${
+                className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/30 ${
                   isActive
                     ? 'bg-slate-900 text-white'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'

@@ -27,6 +27,8 @@ interface CoveredRoute {
 // Phase 3 final boundary: every registered /api/v1 route must be classified.
 const scopedPrefixes: { prefix: string; parentGuard?: unknown }[] = [
   { prefix: '/api/v1/customers/imports', parentGuard: customerImportBranchGuard },
+  // A merge spans branches; its service re-checks access to both records.
+  { prefix: '/api/v1/customers/merges' },
   { prefix: '/api/v1/customers', parentGuard: customerParentGuard },
   { prefix: '/api/v1/suppliers', parentGuard: supplierParentGuard },
   { prefix: '/api/v1/debts' },
@@ -140,6 +142,7 @@ describe('branch-scope route coverage registry (Phase 3D)', () => {
     const routes = inventory(app);
     expect(scopedPrefixes.map((entry) => entry.prefix)).toEqual([
       '/api/v1/customers/imports',
+      '/api/v1/customers/merges',
       '/api/v1/customers',
       '/api/v1/suppliers',
       '/api/v1/debts',

@@ -2,52 +2,65 @@ import type { DashboardKpi } from '../../types';
 import { HeroKpiCard } from './HeroKpiCard';
 import { KpiCard } from './KpiCard';
 
+/** The balances that decide the week: what customers owe, and what is owed out. */
+const HEADLINE_KEYS: ReadonlyArray<DashboardKpi['key']> = ['outstandingDebt', 'owedToSuppliers'];
+
 /**
- * KPI area: one hero card (the primary metric) followed by up to 7 compact
- * supporting cards. Uses `collectedToday` as the hero when present because
- * money-in is the most-scanned metric on a shop-floor day; falls back to the
- * first KPI otherwise so a backend change to the KPI set can't break the
- * page.
+ * KPI area: the two running balances as large panels, then the remaining counts
+ * in one divided row. `exclude` holds the KPIs already shown in the today rail.
+ * Unknown keys fall through to the compact row, so a backend change to the KPI
+ * set can't break the page.
  */
 export function KpiStrip({
   kpis,
+  exclude = [],
   isLoading,
   isError,
   onRetry,
 }: {
   kpis?: DashboardKpi[];
+  exclude?: ReadonlyArray<DashboardKpi['key']>;
   isLoading: boolean;
   isError: boolean;
   onRetry: () => void;
 }) {
   if (isLoading) {
     return (
-      <div className="grid gap-3">
-        <div className="h-[120px] animate-pulse rounded-lg border border-emerald-100 bg-emerald-50/40" />
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          {Array.from({ length: 7 }, (_, index) => (
-            <div key={index} className="h-[128px] animate-pulse rounded-lg border border-slate-200 bg-slate-100" />
+      <div className="grid divide-y divide-slate-200 bg-white">
+        <div className="grid divide-y divide-slate-200 md:grid-cols-2 md:divide-x md:divide-y-0">
+          {HEADLINE_KEYS.map((key) => (
+            <div key={key} className="p-6 lg:p-8">
+              <div className="h-[106px] animate-pulse rounded-lg bg-slate-100" />
+            </div>
           ))}
         </div>
+        <div className="h-[92px] animate-pulse bg-slate-50" />
       </div>
     );
   }
   if (isError || !kpis || kpis.length === 0) {
     return (
-      <div className="dashboard-state">
-        <p>Unable to load headline metrics / تعذر تحميل المؤشرات</p>
-        <button type="button" onClick={onRetry}>
-          Retry
-        </button>
+      <div className="bg-white p-6">
+        <div className="dashboard-state">
+          <p>Unable to load headline metrics / تعذر تحميل المؤشرات</p>
+          <button type="button" onClick={onRetry}>
+            Retry
+          </button>
+        </div>
       </div>
     );
   }
-  const hero = kpis.find((kpi) => kpi.key === 'collectedToday') ?? kpis[0];
-  const supporting = kpis.filter((kpi) => kpi !== hero).slice(0, 7);
+  const visible = kpis.filter((kpi) => !exclude.includes(kpi.key));
+  const headline = visible.filter((kpi) => HEADLINE_KEYS.includes(kpi.key));
+  const supporting = visible.filter((kpi) => !HEADLINE_KEYS.includes(kpi.key));
   return (
-    <div className="grid gap-3">
-      <HeroKpiCard kpi={hero} />
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+    <div className="divide-y divide-slate-200 bg-white">
+      <div className="grid divide-y divide-slate-200 md:grid-cols-2 md:divide-x md:divide-y-0">
+        {headline.map((kpi) => (
+          <HeroKpiCard key={kpi.key} kpi={kpi} />
+        ))}
+      </div>
+      <div className="grid grid-cols-1 divide-y divide-slate-200 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
         {supporting.map((kpi) => (
           <KpiCard key={kpi.key} kpi={kpi} />
         ))}

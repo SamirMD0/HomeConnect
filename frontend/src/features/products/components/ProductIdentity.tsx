@@ -58,8 +58,8 @@ export const ProductNotInInventoryChip: React.FC<{ product: Product }> = ({ prod
 export const ProductPricingModeChip: React.FC<{ product: Product }> = ({ product }) => {
   const pricing = product.pricing;
   const mode = pricing?.mode ?? (pricing?.useCustomPricing ? 'CUSTOM' : pricing?.presetName ? 'PRESET' : product.price ? 'MANUAL' : 'NONE');
-  if (mode === 'CUSTOM') return <span className="rounded bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700">Custom / مخصص</span>;
-  if (mode === 'PRESET') return <span dir="auto" className="max-w-full truncate rounded bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">{pricing?.presetName ?? 'Preset / صيغة جاهزة'}</span>;
-  if (mode === 'MANUAL') return <span className="rounded bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">Manual / يدوي</span>;
-  return <span className="text-[11px] text-slate-400">No pricing / دون تسعير</span>;
+  if (mode === 'CUSTOM') return <span className="rounded bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700">Custom</span>;
+  if (mode === 'PRESET') return <span dir="auto" className="max-w-full truncate rounded bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">{pricing?.presetName ?? 'Preset'}</span>;
+  if (mode === 'MANUAL') return <span className="rounded bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">Manual</span>;
+  return <span className="text-[11px] text-slate-400">No pricing</span>;
 };

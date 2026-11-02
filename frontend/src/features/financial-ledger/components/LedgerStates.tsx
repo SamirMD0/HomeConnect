@@ -61,7 +61,7 @@ export const LedgerEmptyState: React.FC<{
       <button
         type="button"
         onClick={onIncludeCompleted}
-        className="mt-4 rounded-md border border-emerald-200 px-3 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+        className="mt-4 rounded-md border border-brand-200 px-3 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-50 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
       >
         Include completed
       </button>

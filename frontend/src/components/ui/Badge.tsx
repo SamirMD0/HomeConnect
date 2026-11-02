@@ -4,16 +4,17 @@ import { cn } from '../../lib/cn';
 export type BadgeTone = 'neutral' | 'brand' | 'success' | 'warning' | 'danger' | 'info';
 
 /**
- * Soft fill + inset ring. Every tone keeps text at 700 so contrast holds on the
- * white card surface the badges sit on.
+ * Soft pill: a translucent fill with a slightly stronger ring in the same hue,
+ * so a badge reads correctly on white and on tinted panels alike. Every tone
+ * keeps text at 700 so contrast holds on both.
  */
 const TONES: Record<BadgeTone, string> = {
-  neutral: 'bg-slate-50 text-slate-700 ring-slate-600/15',
-  brand: 'bg-brand-50 text-brand-700 ring-brand-600/20',
-  success: 'bg-green-50 text-green-700 ring-green-600/20',
-  warning: 'bg-amber-50 text-amber-700 ring-amber-600/20',
-  danger: 'bg-red-50 text-red-700 ring-red-600/20',
-  info: 'bg-blue-50 text-blue-700 ring-blue-700/15',
+  neutral: 'bg-slate-500/10 text-slate-700 ring-slate-500/20',
+  brand: 'bg-brand-500/15 text-brand-700 ring-brand-500/25',
+  success: 'bg-green-500/15 text-green-700 ring-green-500/25',
+  warning: 'bg-amber-500/15 text-amber-700 ring-amber-500/25',
+  danger: 'bg-red-500/15 text-red-700 ring-red-500/25',
+  info: 'bg-sky-500/15 text-sky-700 ring-sky-500/25',
 };
 
 export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
@@ -28,7 +29,7 @@ export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
 export const Badge: React.FC<BadgeProps> = ({ tone = 'neutral', icon, className, children, ...props }) => (
   <span
     className={cn(
-      'inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset',
+      'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset',
       TONES[tone],
       className
     )}

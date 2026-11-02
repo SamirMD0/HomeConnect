@@ -131,11 +131,11 @@ describe('CustomerCommunicationSection', () => {
       <CustomerCommunicationSection customer={customer} isExpanded={false} onToggle={() => undefined} />
     );
 
-    expect(html).toContain('Customer Communication / تواصل الزبون');
+    expect(html).toContain('Customer Communication');
     expect(html).toContain('محمد سالم عمار');
     expect(html).toContain('70-123-456');
     expect(html).toContain('aria-expanded="false"');
-    expect(html).not.toContain('Message type / نوع الرسالة');
+    expect(html).not.toContain('Message type');
     expect(html).not.toContain('Open WhatsApp');
   });
 
@@ -145,9 +145,9 @@ describe('CustomerCommunicationSection', () => {
     );
 
     expect(html).toContain('aria-expanded="true"');
-    expect(html).toContain('Message type / نوع الرسالة');
-    expect(html).toContain('Data source / مصدر البيانات');
-    expect(html).toContain('Edit message values / تعديل قيم الرسالة');
+    expect(html).toContain('Message type');
+    expect(html).toContain('Data source');
+    expect(html).toContain('Edit message values');
   });
 
   it('never renders a direct WhatsApp link — opening always goes through the button', () => {
@@ -164,19 +164,19 @@ describe('composer layout', () => {
   it('renders the message setup controls', () => {
     const html = renderComposer();
 
-    expect(html).toContain('Debt reminder / تذكير بالدين');
-    expect(html).toContain('Late payment reminder / تذكير بتأخير الدفع');
-    expect(html).toContain('Custom message / رسالة مخصصة');
+    expect(html).toContain('Debt reminder');
+    expect(html).toContain('Late payment reminder');
+    expect(html).toContain('Custom message');
     expect(html).toContain('AR + EN');
-    expect(html).toContain('Polite / مهذب');
-    expect(html).toContain('Total outstanding / إجمالي الرصيد');
-    expect(html).toContain('Manual amount / مبلغ يدوي');
+    expect(html).toContain('Polite');
+    expect(html).toContain('Total outstanding');
+    expect(html).toContain('Manual amount');
   });
 
   it('shows the selected data summary with the values loaded from the record', () => {
     const html = renderComposer();
 
-    expect(html).toContain('Total outstanding / إجمالي الرصيد');
+    expect(html).toContain('Total outstanding');
     expect(html).toContain('$1,250.00');
     expect(html).toContain('02/05/2026');
     expect(html).toContain('02/06/2026');
@@ -186,26 +186,26 @@ describe('composer layout', () => {
   it('keeps the override fields collapsed by default', () => {
     const html = renderComposer();
 
-    expect(html).toContain('Edit message values / تعديل قيم الرسالة');
+    expect(html).toContain('Edit message values');
     expect(html).toContain('aria-expanded="false"');
     // None of the override inputs are rendered while collapsed — the values are
     // visible read-only in the summary card instead.
-    expect(html).not.toContain('Name in message / الاسم في الرسالة');
-    expect(html).not.toContain('Reset overrides / إعادة تعيين القيم');
+    expect(html).not.toContain('Name in message');
+    expect(html).not.toContain('Reset overrides');
     expect(html).not.toContain('<input type="text"');
-    expect(html).toContain('Days late / أيام التأخير');
+    expect(html).toContain('Days late');
   });
 
   it('keeps the "message only" notice visible even while collapsed', () => {
-    expect(renderComposer()).toContain('This changes the message only / هذا يغيّر الرسالة فقط');
+    expect(renderComposer()).toContain('This changes the message only');
   });
 
   it('offers Generate, Copy and Open WhatsApp', () => {
     const html = renderComposer();
 
-    expect(html).toContain('Generate message / إنشاء الرسالة');
-    expect(html).toContain('Copy message / نسخ الرسالة');
-    expect(html).toContain('Open WhatsApp / فتح واتساب');
+    expect(html).toContain('Generate message');
+    expect(html).toContain('Copy message');
+    expect(html).toContain('Open WhatsApp');
   });
 
   it('says plainly that the employee sends the message', () => {
@@ -219,13 +219,13 @@ describe('SelectedDataSummary', () => {
       <SelectedDataSummary sourceKind="DEBT" defaults={defaults} isLoading={false} />
     );
 
-    expect(html).toContain('Selected debt / الدين المحدد');
-    expect(html).toContain('Amount / المبلغ');
+    expect(html).toContain('Selected debt');
+    expect(html).toContain('Amount');
     expect(html).toContain('$1,250.00');
-    expect(html).toContain('Days late / أيام التأخير');
+    expect(html).toContain('Days late');
     expect(html).toContain('71');
     // paymentDate is empty for this source, so it is not shown at all.
-    expect(html).not.toContain('Payment date / تاريخ الدفع');
+    expect(html).not.toContain('Payment date');
   });
 
   it('tells the employee that a manual amount is theirs to enter', () => {
@@ -237,8 +237,8 @@ describe('SelectedDataSummary', () => {
       />
     );
 
-    expect(html).toContain('Manual amount / مبلغ يدوي');
-    expect(html).toContain('Enter the values yourself below / أدخل القيم بنفسك في الأسفل');
+    expect(html).toContain('Manual amount');
+    expect(html).toContain('Enter the values yourself below');
   });
 });
 
@@ -263,8 +263,8 @@ describe('MessageOverridesPanel', () => {
   it('shows only the toggle and the notice when closed', () => {
     const html = panel(false);
 
-    expect(html).toContain('Edit message values / تعديل قيم الرسالة');
-    expect(html).toContain('This changes the message only / هذا يغيّر الرسالة فقط');
+    expect(html).toContain('Edit message values');
+    expect(html).toContain('This changes the message only');
     expect(html).not.toContain('<input');
   });
 
@@ -272,21 +272,21 @@ describe('MessageOverridesPanel', () => {
     const html = panel(true);
 
     expect(html).toContain('aria-expanded="true"');
-    expect(html).toContain('Name in message / الاسم في الرسالة');
-    expect(html).toContain('Phone / رقم الهاتف');
-    expect(html).toContain('Amount / المبلغ');
-    expect(html).toContain('Remaining amount / المبلغ المتبقي');
-    expect(html).toContain('Date added / تاريخ الإضافة');
-    expect(html).toContain('Due date / تاريخ الاستحقاق');
-    expect(html).toContain('Days late / أيام التأخير');
-    expect(html).toContain('Payment date / تاريخ الدفع');
-    expect(html).toContain('Custom note / ملاحظة مخصصة');
-    expect(html).toContain('Reset overrides / إعادة تعيين القيم');
+    expect(html).toContain('Name in message');
+    expect(html).toContain('Phone');
+    expect(html).toContain('Amount');
+    expect(html).toContain('Remaining amount');
+    expect(html).toContain('Date added');
+    expect(html).toContain('Due date');
+    expect(html).toContain('Days late');
+    expect(html).toContain('Payment date');
+    expect(html).toContain('Custom note');
+    expect(html).toContain('Reset overrides');
 
-    expect(html).toContain('Default / الافتراضي: محمد سالم عمار');
-    expect(html).toContain('Default / الافتراضي: $1,250.00');
-    expect(html).toContain('Default / الافتراضي: 02/06/2026');
-    expect(html).toContain('Default / الافتراضي: 71');
+    expect(html).toContain('Default: محمد سالم عمار');
+    expect(html).toContain('Default: $1,250.00');
+    expect(html).toContain('Default: 02/06/2026');
+    expect(html).toContain('Default: 71');
     // Inputs are empty until the employee types; the default shows as a hint.
     expect(html).not.toContain('readonly');
   });
@@ -308,7 +308,7 @@ describe('MessageOverridesPanel', () => {
       />
     );
 
-    expect(html).toContain('Custom note / ملاحظة مخصصة');
+    expect(html).toContain('Custom note');
     expect(html).toContain('This status needs a written note before Generate');
   });
 });
@@ -335,8 +335,8 @@ describe('AR / EN preview layout', () => {
     expect(tags).toHaveLength(2);
     expect(tags[0]).toContain('dir="rtl"');
     expect(tags[1]).toContain('dir="ltr"');
-    expect(html).toContain('Arabic message / الرسالة العربية');
-    expect(html).toContain('English message / الرسالة الإنجليزية');
+    expect(html).toContain('Arabic message');
+    expect(html).toContain('English message');
     expect(html).toContain('Both blocks are sent together, Arabic first');
   });
 
@@ -361,7 +361,7 @@ describe('WhatsApp phone safety', () => {
   it('shows the resolved phone number above the WhatsApp button', () => {
     const html = renderComposer();
 
-    expect(html).toContain('Sending to / سيتم الإرسال إلى');
+    expect(html).toContain('Sending to');
     expect(html).toContain('+961 70 123 456');
   });
 

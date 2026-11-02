@@ -3,7 +3,8 @@ import { AlertTriangle } from 'lucide-react';
 import { OverdueFinancialItem } from '../types/customer-financial.types';
 import { formatBusinessDate, formatMoney } from '../utils/financial-format';
 import { itemTypeLabels } from '../utils/financial-labels';
-import { FinancialEmptyState } from './FinancialEmptyState';
+import { FinancialEmptyState } from './FinancialEmptyState';
+import { englishLabel } from '../../../shared/labels/business-labels';
 
 interface OverdueItemsListProps {
   items: OverdueFinancialItem[];
@@ -31,7 +32,7 @@ export const OverdueItemsList: React.FC<OverdueItemsListProps> = ({ items, onOpe
       </div>
       <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
         <table className="min-w-full divide-y divide-slate-200 text-sm">
-          <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+          <thead className="bg-slate-100 text-left text-xs font-semibold text-slate-700">
             <tr>
               <th className="px-4 py-3">Type</th>
               <th className="px-4 py-3">Description</th>
@@ -44,7 +45,7 @@ export const OverdueItemsList: React.FC<OverdueItemsListProps> = ({ items, onOpe
           <tbody className="divide-y divide-slate-100">
             {items.map((item) => (
               <tr key={`${item.type}-${item.obligationId}`} className="align-top">
-                <td className="px-4 py-3 font-medium text-red-700">{itemTypeLabels[item.type]}</td>
+                <td className="px-4 py-3 font-medium text-red-700">{englishLabel(itemTypeLabels[item.type])}</td>
                 <td className="user-text px-4 py-3 text-slate-900" dir="auto">{item.description}</td>
                 <td className="px-4 py-3 text-slate-600">{formatBusinessDate(item.dueDate)}</td>
                 <td className="px-4 py-3 text-right font-semibold text-slate-900">
@@ -58,7 +59,7 @@ export const OverdueItemsList: React.FC<OverdueItemsListProps> = ({ items, onOpe
                     <button
                       type="button"
                       onClick={() => onOpenDebt?.(item.obligationId)}
-                      className="rounded-md border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                      className="rounded-md border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
                     >
                       View
                     </button>
@@ -67,7 +68,7 @@ export const OverdueItemsList: React.FC<OverdueItemsListProps> = ({ items, onOpe
                       type="button"
                       onClick={() => item.planId && onOpenPlan?.(item.planId)}
                       disabled={!item.planId}
-                      className="rounded-md border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="rounded-md border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-500/30 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       View plan
                     </button>

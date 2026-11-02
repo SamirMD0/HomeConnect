@@ -12,9 +12,9 @@ export const RecentPaymentsPanel: React.FC<RecentPaymentsPanelProps> = ({
   payments,
   isLoading = false,
 }) => (
-  <section className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
+  <section className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm">
     <div className="mb-4 flex items-center justify-between">
-      <h3 className="text-lg font-semibold text-gray-900">Recent Payments</h3>
+      <h3 className="text-lg font-semibold text-slate-900">Recent Payments</h3>
       <Link to="/ledger" className="text-sm font-medium text-brand-700 hover:text-brand-800">
         Ledger
       </Link>
@@ -22,25 +22,25 @@ export const RecentPaymentsPanel: React.FC<RecentPaymentsPanelProps> = ({
     {isLoading ? (
       <div className="space-y-3">
         {Array.from({ length: 3 }).map((_, index) => (
-          <div key={index} className="h-14 animate-pulse rounded-lg bg-gray-100" />
+          <div key={index} className="h-14 animate-pulse rounded-lg bg-slate-100" />
         ))}
       </div>
     ) : payments.length === 0 ? (
-      <p className="text-sm text-gray-500">No payments recorded yet.</p>
+      <p className="text-sm text-slate-500">No payments recorded yet.</p>
     ) : (
       <div className="space-y-3">
         {payments.map((payment) => (
           <Link
             key={payment.id}
             to={payment.customer ? `/customers/${payment.customer.id}` : '/ledger'}
-            className="block rounded-lg border border-gray-100 p-3 hover:bg-gray-50"
+            className="block rounded-lg border border-slate-100 p-3 hover:bg-slate-50"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="user-text truncate text-sm font-semibold text-gray-900" dir="auto">
+                <p className="user-text truncate text-sm font-semibold text-slate-900" dir="auto">
                   {payment.customer?.name ?? 'Walk-in / زبون عابر'}
                 </p>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-slate-500">
                   {formatBusinessDate(payment.paymentDate)} · {payment.paymentMethod}
                 </p>
               </div>

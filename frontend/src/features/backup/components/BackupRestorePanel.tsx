@@ -123,7 +123,7 @@ export const BackupRestorePanel: React.FC = () => {
               type="button"
               onClick={() => void handleCreateBackup()}
               disabled={createBackup.isPending}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-500 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <Download className="h-4 w-4" />
               {createBackup.isPending ? 'Creating backup' : 'Create backup now'}
@@ -213,7 +213,7 @@ const BackupSettingsForm: React.FC<{
             type="checkbox"
             checked={automaticBackupsEnabled}
             onChange={(event) => setAutomaticBackupsEnabled(event.target.checked)}
-            className="h-4 w-4 rounded border-slate-300 text-emerald-600"
+            className="h-4 w-4 rounded border-slate-300 text-brand-600"
           />
           Enabled
         </label>
@@ -254,7 +254,7 @@ export const BackupList: React.FC<{ backups: BackupRecord[]; onRestore: (backup:
   return <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
     <div className="overflow-x-auto">
       <table className="min-w-full divide-y divide-slate-200 text-sm">
-        <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+        <thead className="bg-slate-100 text-left text-xs font-semibold text-slate-700">
           <tr>
             <th className="px-4 py-3">Date</th>
             <th className="px-4 py-3">Filename</th>
@@ -282,7 +282,7 @@ export const BackupList: React.FC<{ backups: BackupRecord[]; onRestore: (backup:
                 <td className="px-4 py-3 text-slate-700">{backup.status}</td>
                 <td className="px-4 py-3">
                   {backup.verified ? (
-                    <CheckCircle2 className="h-5 w-5 text-emerald-600" aria-label="Verified" />
+                    <CheckCircle2 className="h-5 w-5 text-brand-600" aria-label="Verified" />
                   ) : (
                     <ShieldAlert className="h-5 w-5 text-amber-600" aria-label="Not verified" />
                   )}

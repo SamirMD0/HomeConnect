@@ -11,6 +11,7 @@ import {
   InstallmentPlanStatus,
   InstallmentStatus,
 } from '../types/customer-financial.types';
+import { englishLabel } from '../../../shared/labels/business-labels';
 
 interface FinancialStatusBadgeProps {
   status: DebtStatus | InstallmentPlanStatus | InstallmentStatus | null | undefined;
@@ -24,7 +25,7 @@ export const FinancialStatusBadge: React.FC<FinancialStatusBadgeProps> = ({ stat
     <span
       className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${getBadgeToneClass(config.tone)}`}
     >
-      {config.label}
+      {englishLabel(config.label)}
     </span>
   );
 };

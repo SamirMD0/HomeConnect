@@ -32,7 +32,7 @@ export const FinancialSummaryCards: React.FC<FinancialSummaryCardsProps> = ({ su
       tone: 'text-indigo-600 bg-indigo-50',
     },
     {
-      label: 'Admin Pre-paid Debt / دين مسبق على الإدارة',
+      label: 'Admin Pre-paid Debt',
       value: formatMoney(summary.totalPrepaidAdminDebt),
       detail: `${summary.activePrepaidCount} active pre-paid purchase${summary.activePrepaidCount === 1 ? '' : 's'}`,
       icon: HandCoins,
@@ -43,17 +43,17 @@ export const FinancialSummaryCards: React.FC<FinancialSummaryCardsProps> = ({ su
       value: formatMoney(summary.totalPaid),
       detail: 'Valid non-voided payments',
       icon: CreditCard,
-      tone: 'text-emerald-600 bg-emerald-50',
+      tone: 'text-brand-600 bg-brand-50',
     },
     {
-      label: 'Total Debt Created / إجمالي الديون',
+      label: 'Total Debt Created',
       value: formatMoney(summary.totalObligated ?? '0'),
       detail: 'Lifetime obligations',
       icon: ReceiptText,
       tone: 'text-slate-700 bg-slate-50',
     },
     {
-      label: 'Overdue / متأخر',
+      label: 'Overdue',
       value: formatMoney(summary.overdueAmount ?? '0'),
       detail: `${summary.overdueDebtCount} debts, ${summary.overdueInstallmentCount} installments`,
       icon: AlertTriangle,
@@ -67,11 +67,11 @@ export const FinancialSummaryCards: React.FC<FinancialSummaryCardsProps> = ({ su
       tone: 'text-amber-700 bg-amber-50',
     },
     {
-      label: 'Last Payment / آخر دفعة',
+      label: 'Last Payment',
       value: summary.lastPaymentDate ? formatBusinessDate(summary.lastPaymentDate) : '—',
       detail: summary.daysSinceLastPayment == null ? 'No payments' : `${summary.daysSinceLastPayment} days ago`,
       icon: CreditCard,
-      tone: 'text-emerald-600 bg-emerald-50',
+      tone: 'text-brand-600 bg-brand-50',
     },
   ];
 

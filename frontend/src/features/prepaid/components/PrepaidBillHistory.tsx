@@ -5,7 +5,7 @@ import {
   formatMoney,
 } from '../../customer-financial/utils/financial-format';
 import { paymentMethodLabels } from '../../customer-financial/utils/financial-labels';
-import { businessLabels } from '../../../shared/labels/business-labels';
+import { businessLabels, englishLabel } from '../../../shared/labels/business-labels';
 
 interface PrepaidBillHistoryProps {
   payments: PrepaidPayment[];
@@ -25,16 +25,16 @@ export const PrepaidBillHistory: React.FC<PrepaidBillHistoryProps> = ({
   if (payments.length === 0) {
     return (
       <div className="rounded-lg border border-dashed border-slate-200 px-3 py-4 text-center text-sm text-slate-500">
-        {businessLabels.prepaid.noBills}
+        {englishLabel(businessLabels.prepaid.noBills)}
       </div>
     );
   }
 
   return (
-    <section aria-label={businessLabels.prepaid.billHistory}>
+    <section aria-label={englishLabel(businessLabels.prepaid.billHistory)}>
       {showHeading && (
         <h4 className="mb-2 text-sm font-semibold text-slate-900">
-          {businessLabels.prepaid.billHistory}
+          {englishLabel(businessLabels.prepaid.billHistory)}
         </h4>
       )}
       <ol className="divide-y divide-slate-100 rounded-lg border border-slate-200">
@@ -46,22 +46,22 @@ export const PrepaidBillHistory: React.FC<PrepaidBillHistoryProps> = ({
                 {formatBusinessDate(payment.paymentDate)}
                 {payment.isVoided && (
                   <span className="ml-2 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600 ring-1 ring-slate-600/10">
-                    {businessLabels.prepaid.voidedBill}
+                    {englishLabel(businessLabels.prepaid.voidedBill)}
                   </span>
                 )}
               </p>
               <p className="mt-0.5 text-xs text-slate-500">
-                {paymentMethodLabels[payment.paymentMethod]}
+                {englishLabel(paymentMethodLabels[payment.paymentMethod])}
                 {payment.reference && (
                   <span className="user-text" dir="auto">
                     {' · '}
-                    {businessLabels.prepaid.receiptNumber}: {payment.reference}
+                    {englishLabel(businessLabels.prepaid.receiptNumber)}: {payment.reference}
                   </span>
                 )}
               </p>
               {payment.recordedBy && (
                 <p className="user-text mt-0.5 text-xs text-slate-500" dir="auto">
-                  {businessLabels.prepaid.recordedBy}: {payment.recordedBy.name}
+                  {englishLabel(businessLabels.prepaid.recordedBy)}: {payment.recordedBy.name}
                 </p>
               )}
               {payment.notes && (
@@ -72,7 +72,7 @@ export const PrepaidBillHistory: React.FC<PrepaidBillHistoryProps> = ({
             </div>
             <span
               className={`shrink-0 text-sm font-semibold tabular-nums ${
-                payment.isVoided ? 'text-slate-400 line-through' : 'text-emerald-700'
+                payment.isVoided ? 'text-slate-400 line-through' : 'text-brand-700'
               }`}
             >
               {formatMoney(payment.amount)}

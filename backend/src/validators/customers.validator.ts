@@ -31,7 +31,7 @@ export const customerQuerySchema = z.object({
   sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
   /** Opt-in financial figures per customer. Omitted keeps the lean payload. */
   include: z.enum(['financial']).optional(),
-  filter: z.enum(['withBalance', 'overdue', 'noDebt', 'inactive']).optional(),
+  filter: z.enum(['withBalance', 'overdue', 'noDebt', 'inactive', 'sameName']).optional(),
 });
 
 export const customerSuggestionsQuerySchema = z.object({
@@ -42,6 +42,14 @@ export const customerSuggestionsQuerySchema = z.object({
 export type CreateCustomerInput = z.infer<typeof createCustomerSchema>;
 export type UpdateCustomerInput = z.infer<typeof updateCustomerSchema>;
 export type CustomerQueryInput = z.infer<typeof customerQuerySchema>;
+
+export const customerMergeSchema = z
+  .object({
+    mergeCustomerId: databaseUuidSchema('Choose the customer to merge'),
+    balance: z.enum(['ADD_BOTH', 'KEEP_ONLY']),
+  })
+  .strict();
+export type CustomerMergeInput = z.infer<typeof customerMergeSchema>;
 
 export const customerBranchTransferPreviewSchema = z.object({
   toBranchId: databaseUuidSchema('Choose a destination branch'),

@@ -2,14 +2,14 @@ import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { businessLabels, businessValidationMessages } from '../../../shared/labels/business-labels';
+import { businessLabels, businessValidationMessages, englishLabel } from '../../../shared/labels/business-labels';
 
 export const customerSchema = z.object({
-  name: z.string().min(1, businessValidationMessages.customerNameRequired).min(2, 'Name must be at least 2 characters / يجب أن يتكون الاسم من حرفين على الأقل').max(100, 'Name is too long / الاسم طويل جداً'),
-  phone: z.string().min(1, businessValidationMessages.phoneRequired).min(5, 'Phone number is too short / رقم الهاتف قصير جداً').max(20, 'Phone is too long / رقم الهاتف طويل جداً'),
+  name: z.string().min(1, englishLabel(businessValidationMessages.customerNameRequired)).min(2, 'Name must be at least 2 characters').max(100, 'Name is too long'),
+  phone: z.string().min(1, englishLabel(businessValidationMessages.phoneRequired)).min(5, 'Phone number is too short').max(20, 'Phone is too long'),
   address: z.string().max(255, 'Address is too long').optional(),
   notes: z.string().optional(),
-  creditLimit: z.string().optional().refine((v) => !v || /^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/.test(v) && Number(v) <= 9999999999.99, 'Enter a non-negative USD limit / أدخل حدًا غير سالب بالدولار'),
+  creditLimit: z.string().optional().refine((v) => !v || /^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/.test(v) && Number(v) <= 9999999999.99, 'Enter a non-negative USD limit'),
 });
 
 type CustomerFormData = z.infer<typeof customerSchema>;
@@ -61,29 +61,29 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSubmi
     <form onSubmit={handleSubmit(({ creditLimit, ...data }) => onSubmit({ ...data, ...(canManageCreditLimit ? { creditLimit: creditLimit?.trim() || null } : {}) }))} className="space-y-4">
       <div>
         <label className="block text-sm font-medium text-slate-700 mb-1">
-          {businessLabels.customer.name} *
+          {englishLabel(businessLabels.customer.name)} *
         </label>
         <input
           type="text"
           {...register('name')}
           dir="auto"
           className={`user-text-input w-full px-4 py-2 border rounded-lg focus:ring-2 focus:outline-none transition-all ${
-            errors.name ? 'border-red-500 focus:ring-red-200' : 'border-slate-300 focus:ring-emerald-500/20 focus:border-emerald-500'
+            errors.name ? 'border-red-500 focus:ring-red-200' : 'border-slate-300 focus:ring-brand-500/20 focus:border-brand-500'
           }`}
-          placeholder="e.g. محمد أحمد"
+          placeholder="e.g. Mohamad Ahmad"
         />
         {errors.name && <p className="mt-1 text-sm text-red-500">{errors.name.message}</p>}
       </div>
 
       <div>
         <label className="block text-sm font-medium text-slate-700 mb-1">
-          {businessLabels.customer.phone} *
+          {englishLabel(businessLabels.customer.phone)} *
         </label>
         <input
           type="text"
           {...register('phone')}
           className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:outline-none transition-all ${
-            errors.phone ? 'border-red-500 focus:ring-red-200' : 'border-slate-300 focus:ring-emerald-500/20 focus:border-emerald-500'
+            errors.phone ? 'border-red-500 focus:ring-red-200' : 'border-slate-300 focus:ring-brand-500/20 focus:border-brand-500'
           }`}
           placeholder="e.g. 555-123-4567"
         />
@@ -92,39 +92,38 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSubmi
 
       <div>
         <label className="block text-sm font-medium text-slate-700 mb-1">
-          {businessLabels.customer.address} <span className="font-normal text-slate-500">(Optional / اختياري)</span>
+          {englishLabel(businessLabels.customer.address)} <span className="font-normal text-slate-500">(Optional)</span>
         </label>
         <input
           type="text"
           {...register('address')}
           dir="auto"
           className={`user-text-input w-full px-4 py-2 border rounded-lg focus:ring-2 focus:outline-none transition-all ${
-            errors.address ? 'border-red-500 focus:ring-red-200' : 'border-slate-300 focus:ring-emerald-500/20 focus:border-emerald-500'
+            errors.address ? 'border-red-500 focus:ring-red-200' : 'border-slate-300 focus:ring-brand-500/20 focus:border-brand-500'
           }`}
-          placeholder="e.g. بيروت، شارع الحمرا"
+          placeholder="e.g. Hamra Street, Beirut"
         />
         {errors.address && <p className="mt-1 text-sm text-red-500">{errors.address.message}</p>}
       </div>
 
       <div>
         <label className="block text-sm font-medium text-slate-700 mb-1">
-          {businessLabels.common.notes} <span className="font-normal text-slate-500">(Optional / اختياري)</span>
+          {englishLabel(businessLabels.common.notes)} <span className="font-normal text-slate-500">(Optional)</span>
         </label>
         <textarea
           {...register('notes')}
           rows={3}
           dir="auto"
           className={`user-text-input w-full px-4 py-2 border rounded-lg focus:ring-2 focus:outline-none transition-all ${
-            errors.notes ? 'border-red-500 focus:ring-red-200' : 'border-slate-300 focus:ring-emerald-500/20 focus:border-emerald-500'
+            errors.notes ? 'border-red-500 focus:ring-red-200' : 'border-slate-300 focus:ring-brand-500/20 focus:border-brand-500'
           }`}
-          placeholder="أي ملاحظات إضافية..."
+          placeholder="Any additional notes..."
         />
         {errors.notes && <p className="mt-1 text-sm text-red-500">{errors.notes.message}</p>}
       </div>
 
-      {canManageCreditLimit && <label className="block text-sm font-medium text-slate-700">Credit limit (USD) / حد الائتمان بالدولار
-        <input {...register('creditLimit')} inputMode="decimal" placeholder="No limit / بلا حد" className="mt-1 block w-full rounded-lg border border-slate-300 px-4 py-2" />
-        <span className="block text-xs text-slate-500">Blank means no limit. Zero means no new credit. / فارغ يعني بلا حد، وصفر يمنع الائتمان الجديد.</span>
+      {canManageCreditLimit && <label className="block text-sm font-medium text-slate-700">Credit limit (USD)<input {...register('creditLimit')} inputMode="decimal" placeholder="No limit" className="mt-1 block w-full rounded-lg border border-slate-300 px-4 py-2" />
+        <span className="block text-xs text-slate-500">Blank means no limit. Zero means no new credit.</span>
         {errors.creditLimit && <span className="text-red-500">{errors.creditLimit.message}</span>}
       </label>}
 
@@ -135,12 +134,12 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSubmi
           disabled={isSubmitting}
           className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50"
         >
-          {businessLabels.common.cancel}
+          {englishLabel(businessLabels.common.cancel)}
         </button>
         <button
           type="submit"
           disabled={isSubmitting}
-          className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 focus:ring-4 focus:ring-emerald-500/20 transition-all disabled:opacity-50 flex items-center"
+          className="px-4 py-2 text-sm font-medium text-white bg-brand-600 rounded-lg hover:bg-brand-700 focus:ring-4 focus:ring-brand-500/20 transition-all disabled:opacity-50 flex items-center"
         >
           {isSubmitting ? (
             <>
@@ -151,7 +150,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSubmi
               Saving...
             </>
           ) : (
-            'Save Customer / حفظ الزبون'
+            'Save Customer'
           )}
         </button>
       </div>

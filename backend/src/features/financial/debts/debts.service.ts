@@ -410,127 +410,135 @@ export class DebtsService {
     user: AuthenticatedUser, scope: BranchScope
   ): Promise<DebtView> {
     writeBranch(scope);
+    return runFinancialTransaction((tx) => this.recordDebtPaymentInTransaction(tx, debtId, input, user, scope));
+  }
+
+  /** Runs inside a caller transaction, for batches that must commit or fail together. */
+  static async recordDebtPaymentInTransaction(
+    tx: FinancialTransactionClient,
+    debtId: string,
+    input: CreateDebtPaymentInput,
+    user: AuthenticatedUser, scope: BranchScope
+  ): Promise<DebtView> {
     const paymentCurrency = input.currency ?? Currency.USD;
     const paymentAmount = assertPositiveMoney(input.amount, paymentCurrency);
     const paymentMethod = input.paymentMethod ?? PaymentMethod.CASH;
     const paymentDate = parseBusinessDate(input.paymentDate);
     const idempotencyKey = normalizeIdempotencyKey(input.idempotencyKey);
 
-    return runFinancialTransaction(async (tx) => {
-      const debt = await DebtsRepository.findDebtById(debtId, tx);
-      if (!debt) {
-        throw new NotFoundError('Debt not found');
-      }
-      await assertRecordInScope('debt', debtId, scope, tx);
+    const debt = await DebtsRepository.findDebtById(debtId, tx);
+    if (!debt) {
+      throw new NotFoundError('Debt not found');
+    }
+    await assertRecordInScope('debt', debtId, scope, tx);
 
-      const effectiveAt = businessDateToPrisma(paymentDate);
-      const debtCurrency = debt.currency ?? Currency.USD;
-      const paymentExchangeRate = await ExchangeRatesService.snapshotFor(paymentCurrency, effectiveAt, tx);
-      const allocationExchangeRate = debtCurrency === paymentCurrency
-        ? new Decimal(1)
-        : await ExchangeRatesService.snapshotFor(Currency.LBP, effectiveAt, tx);
-      const convertedAllocation = convertPaymentAllocation({
+    const effectiveAt = businessDateToPrisma(paymentDate);
+    const debtCurrency = debt.currency ?? Currency.USD;
+    const paymentExchangeRate = await ExchangeRatesService.snapshotFor(paymentCurrency, effectiveAt, tx);
+    const allocationExchangeRate = debtCurrency === paymentCurrency
+      ? new Decimal(1)
+      : await ExchangeRatesService.snapshotFor(Currency.LBP, effectiveAt, tx);
+    const convertedAllocation = convertPaymentAllocation({
+      paymentAmount,
+      paymentCurrency,
+      obligationCurrency: debtCurrency,
+      exchangeRate: allocationExchangeRate,
+    });
+
+    if (idempotencyKey) {
+      const existingPayment = await DebtsRepository.findPaymentByIdempotencyKey(tx, idempotencyKey);
+      if (existingPayment) {
+        await assertRecordInScope('payment', existingPayment.id, scope, tx);
+        const debtAllocation = existingPayment.allocations.find(
+          (allocation) => allocation.debtId === debtId && allocation.installmentId === null
+        );
+        const existingFingerprint = createIdempotencyFingerprint({
+          debtId: debtAllocation?.debtId ?? null,
+          amount: moneyToApiString(existingPayment.totalAmount, existingPayment.currency),
+          currency: existingPayment.currency ?? Currency.USD,
+          paymentDate: prismaDateToBusinessDate(existingPayment.paymentDate),
+          paymentMethod: existingPayment.paymentMethod,
+          idempotencyKey: existingPayment.idempotencyKey,
+          createdById: existingPayment.createdById,
+        });
+        const incomingFingerprint = createIdempotencyFingerprint({
+          debtId,
+          amount: moneyToApiString(paymentAmount, paymentCurrency),
+          currency: paymentCurrency,
+          paymentDate,
+          paymentMethod,
+          idempotencyKey,
+          createdById: user.userId,
+        });
+
+        assertIdempotentReplay({ existingFingerprint, incomingFingerprint });
+        const refreshedDebt = await DebtsRepository.findDebtById(debtId, tx);
+        if (!refreshedDebt) {
+          throw new NotFoundError('Debt not found');
+        }
+        return this.toDebtView(refreshedDebt);
+      }
+    }
+
+    if (debt.status === DebtStatus.CANCELLED || debt.cancelledAt) {
+      throw new FinancialRecordCancelledError('Cannot record payment against a cancelled debt');
+    }
+
+    const balance = this.calculateBalance(debt);
+    if (balance.isFullyPaid) {
+      throw new FinancialRecordAlreadyPaidError('Debt is already fully paid');
+    }
+
+    const allocationPlan = planDebtPaymentAllocation({
+      debtId,
+      paymentAmount: convertedAllocation.amount,
+      remainingBalance: balance.remainingBalance,
+      status: debt.status,
+    });
+
+    const payment = await DebtsRepository.createPayment(tx, {
+      customerId: debt.customerId,
+      totalAmount: paymentAmount,
+      currency: paymentCurrency,
+      exchangeRate: paymentExchangeRate,
+      baseAmount: toBaseAmount(
         paymentAmount,
         paymentCurrency,
-        obligationCurrency: debtCurrency,
-        exchangeRate: allocationExchangeRate,
-      });
-
-      if (idempotencyKey) {
-        const existingPayment = await DebtsRepository.findPaymentByIdempotencyKey(tx, idempotencyKey);
-        if (existingPayment) {
-          await assertRecordInScope('payment', existingPayment.id, scope, tx);
-          const debtAllocation = existingPayment.allocations.find(
-            (allocation) => allocation.debtId === debtId && allocation.installmentId === null
-          );
-          const existingFingerprint = createIdempotencyFingerprint({
-            debtId: debtAllocation?.debtId ?? null,
-            amount: moneyToApiString(existingPayment.totalAmount, existingPayment.currency),
-            currency: existingPayment.currency ?? Currency.USD,
-            paymentDate: prismaDateToBusinessDate(existingPayment.paymentDate),
-            paymentMethod: existingPayment.paymentMethod,
-            idempotencyKey: existingPayment.idempotencyKey,
-            createdById: existingPayment.createdById,
-          });
-          const incomingFingerprint = createIdempotencyFingerprint({
-            debtId,
-            amount: moneyToApiString(paymentAmount, paymentCurrency),
-            currency: paymentCurrency,
-            paymentDate,
-            paymentMethod,
-            idempotencyKey,
-            createdById: user.userId,
-          });
-
-          assertIdempotentReplay({ existingFingerprint, incomingFingerprint });
-          const refreshedDebt = await DebtsRepository.findDebtById(debtId, tx);
-          if (!refreshedDebt) {
-            throw new NotFoundError('Debt not found');
-          }
-          return this.toDebtView(refreshedDebt);
-        }
-      }
-
-      if (debt.status === DebtStatus.CANCELLED || debt.cancelledAt) {
-        throw new FinancialRecordCancelledError('Cannot record payment against a cancelled debt');
-      }
-
-      const balance = this.calculateBalance(debt);
-      if (balance.isFullyPaid) {
-        throw new FinancialRecordAlreadyPaidError('Debt is already fully paid');
-      }
-
-      const allocationPlan = planDebtPaymentAllocation({
-        debtId,
-        paymentAmount: convertedAllocation.amount,
-        remainingBalance: balance.remainingBalance,
-        status: debt.status,
-      });
-
-      const payment = await DebtsRepository.createPayment(tx, {
-        customerId: debt.customerId,
-        totalAmount: paymentAmount,
-        currency: paymentCurrency,
-        exchangeRate: paymentExchangeRate,
-        baseAmount: toBaseAmount(
-          paymentAmount,
-          paymentCurrency,
-          paymentExchangeRate,
-          Decimal.ROUND_HALF_UP
-        ),
-        paymentDate: businessDateToPrisma(paymentDate),
-        paymentMethod,
-        reference: input.reference ?? null,
-        notes: input.notes ?? null,
-        idempotencyKey,
-        createdById: user.userId,
-      });
-
-      await DebtsRepository.createDebtPaymentAllocation(tx, {
-        paymentId: payment.id,
-        debtId,
-        amount: allocationPlan.amount,
-        paymentAmount: convertedAllocation.paymentAmount,
-        exchangeRate: convertedAllocation.exchangeRate,
-      });
-
-      const refreshedDebt = await DebtsRepository.findDebtById(debtId, tx);
-      if (!refreshedDebt) {
-        throw new NotFoundError('Debt not found');
-      }
-
-      const refreshedBalance = this.calculateBalance(refreshedDebt);
-      const status = determineDebtStatus({
-        isCancelled: false,
-        dueDate: prismaDateToBusinessDate(refreshedDebt.dueDate),
-        businessDate: todayInBusinessTimezone(),
-        balance: refreshedBalance,
-        overdueEligible: refreshedDebt.kind !== DebtKind.PREPAID_PURCHASE,
-      });
-
-      const updatedDebt = await DebtsRepository.updateDebtStatus(tx, debtId, status);
-      return this.toDebtView(updatedDebt);
+        paymentExchangeRate,
+        Decimal.ROUND_HALF_UP
+      ),
+      paymentDate: businessDateToPrisma(paymentDate),
+      paymentMethod,
+      reference: input.reference ?? null,
+      notes: input.notes ?? null,
+      idempotencyKey,
+      createdById: user.userId,
     });
+
+    await DebtsRepository.createDebtPaymentAllocation(tx, {
+      paymentId: payment.id,
+      debtId,
+      amount: allocationPlan.amount,
+      paymentAmount: convertedAllocation.paymentAmount,
+      exchangeRate: convertedAllocation.exchangeRate,
+    });
+
+    const refreshedDebt = await DebtsRepository.findDebtById(debtId, tx);
+    if (!refreshedDebt) {
+      throw new NotFoundError('Debt not found');
+    }
+
+    const refreshedBalance = this.calculateBalance(refreshedDebt);
+    const status = determineDebtStatus({
+      isCancelled: false,
+      dueDate: prismaDateToBusinessDate(refreshedDebt.dueDate),
+      businessDate: todayInBusinessTimezone(),
+      balance: refreshedBalance,
+      overdueEligible: refreshedDebt.kind !== DebtKind.PREPAID_PURCHASE,
+    });
+
+    const updatedDebt = await DebtsRepository.updateDebtStatus(tx, debtId, status);
+    return this.toDebtView(updatedDebt);
   }
 
   static async cancelDebt(

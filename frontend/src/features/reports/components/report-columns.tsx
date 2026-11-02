@@ -211,7 +211,7 @@ export const AGING_BUCKET_LABELS: Record<string, string> = {
 /** Older money reads hotter, so the band carries its own colour and its own text. */
 function agingBucketColumn(): ReportColumn {
   const tone: Record<string, string> = {
-    DAYS_0_7: 'bg-emerald-50 text-emerald-700', DAYS_8_14: 'bg-emerald-50 text-emerald-700',
+    DAYS_0_7: 'bg-brand-50 text-brand-700', DAYS_8_14: 'bg-brand-50 text-brand-700',
     DAYS_15_30: 'bg-amber-50 text-amber-800', DAYS_31_60: 'bg-amber-50 text-amber-800',
     DAYS_61_90: 'bg-orange-50 text-orange-800', DAYS_90_PLUS: 'bg-red-50 text-red-700',
   };
@@ -279,7 +279,7 @@ function percentage(label: string, key: string): ReportColumn {
       const value = record(row)[key];
       if (value == null) return '—';
       const numeric = Number(value);
-      return <strong className={`tabular-nums ${numeric < 0 ? 'text-red-700' : 'text-emerald-700'}`}>{numeric > 0 ? '+' : ''}{String(value)}%</strong>;
+      return <strong className={`tabular-nums ${numeric < 0 ? 'text-red-700' : 'text-brand-700'}`}>{numeric > 0 ? '+' : ''}{String(value)}%</strong>;
     },
   };
 }
@@ -294,7 +294,7 @@ function signed(label: string, key: string): ReportColumn {
     numeric: true,
     render: (row) => {
       const value = Number(record(row)[key]);
-      return <strong className={`tabular-nums ${value < 0 ? 'text-red-700' : 'text-emerald-700'}`}>{value > 0 ? '+' : ''}{value}</strong>;
+      return <strong className={`tabular-nums ${value < 0 ? 'text-red-700' : 'text-brand-700'}`}>{value > 0 ? '+' : ''}{value}</strong>;
     },
   };
 }
@@ -330,7 +330,7 @@ function partyLink(label: string, key: string, base: string): ReportColumn {
     render: (row) => {
       const party = record(row)[key] as Record<string, unknown> | null;
       return party?.id
-        ? <Link to={`${base}${party.id}`} className="user-text font-semibold text-emerald-700 hover:underline" dir="auto">{display(party.name)}</Link>
+        ? <Link to={`${base}${party.id}`} className="user-text font-semibold text-brand-700 hover:underline" dir="auto">{display(party.name)}</Link>
         : key === 'customer' ? 'Walk-in / زبون عابر' : '—';
     },
   };
@@ -339,7 +339,7 @@ function partyLink(label: string, key: string, base: string): ReportColumn {
 function linked(label: string, textKey: string, base: string, idKey: string): ReportColumn {
   return {
     label,
-    render: (row) => <Link to={`${base}${record(row)[idKey]}`} className="font-semibold text-emerald-700 hover:underline">{display(record(row)[textKey])}</Link>,
+    render: (row) => <Link to={`${base}${record(row)[idKey]}`} className="font-semibold text-brand-700 hover:underline">{display(record(row)[textKey])}</Link>,
   };
 }
 
@@ -359,7 +359,7 @@ function booleanStatusBadge(label: string, key: string): ReportColumn {
     label,
     render: (row) => {
       const changed = record(row)[key] === true;
-      return <span className={`inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${changed ? 'bg-amber-50 text-amber-800' : 'bg-emerald-50 text-emerald-700'}`}>
+      return <span className={`inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${changed ? 'bg-amber-50 text-amber-800' : 'bg-brand-50 text-brand-700'}`}>
         {changed ? 'Changed / تغيّر' : 'Unchanged / لم يتغيّر'}
       </span>;
     },

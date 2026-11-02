@@ -13,7 +13,7 @@ import {
 } from './LedgerFilters';
 import { LedgerSummaryCards } from './LedgerSummaryCards';
 import { LedgerTable } from './LedgerTable';
-import { getLedgerMenuPosition } from './LedgerRowActions';
+import { getRowMenuPosition } from '../../../components/ui/RowMenu';
 import { buildPaymentChildView } from './LedgerPaymentChildRows';
 import { LedgerEmptyState, LedgerErrorState, LedgerLoadingState } from './LedgerStates';
 import { RecentFinancialPayment } from '../../customer-financial/types/customer-financial.types';
@@ -136,11 +136,11 @@ const items: FinancialLedgerItem[] = [
 describe('financial ledger components', () => {
   it('opens row action menus above bottom-edge rows and below rows with room', () => {
     expect(
-      getLedgerMenuPosition({ top: 700, right: 1000, bottom: 732 }, 128, { width: 1200, height: 800 })
-    ).toEqual({ top: 564, left: 808 });
+      getRowMenuPosition({ top: 700, left: 1000, bottom: 732 }, 128, { width: 1200, height: 800 })
+    ).toEqual({ top: 566, left: 936 });
     expect(
-      getLedgerMenuPosition({ top: 100, right: 1000, bottom: 132 }, 128, { width: 1200, height: 800 })
-    ).toEqual({ top: 140, left: 808 });
+      getRowMenuPosition({ top: 100, left: 300, bottom: 132 }, 128, { width: 1200, height: 800 })
+    ).toEqual({ top: 138, left: 300 });
   });
   it('renders global summary cards', () => {
     const html = renderToStaticMarkup(
@@ -195,7 +195,7 @@ describe('financial ledger components', () => {
     expect(html).toContain('Completed');
     expect(html).toContain('Amount');
     expect(html).toContain('Remaining');
-    expect(html).toContain('Financial Ledger / دفتر الحسابات');
+    expect(html).toContain('Financial Ledger');
     expect(html).toContain('aria-expanded="false"');
     expect(html).toContain('Show payments for Ali Ahmad - Television');
     expect(html).toContain('Payments');
@@ -207,8 +207,7 @@ describe('financial ledger components', () => {
     expect(html).toContain('href="/customers/customer-1"');
     expect(html).toContain('data-table-scroll');
     expect(html).toContain('data-table-scroll-expanded');
-    expect(html).toContain('group-hover:text-yellow-300');
-    expect(html).toContain('text-shadow:0_0_8px');
+    expect(html).toContain('group-hover:text-slate-900');
     expect(html).toContain('$400.00');
     expect(html).toContain('$450.00');
     expect(html).not.toContain('Correct record');

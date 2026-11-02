@@ -1,17 +1,22 @@
 import React from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { PanelLeft, PanelLeftClose } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { LocalStatusIndicator } from '../features/system/components/LocalStatusIndicator';
 import { Sidebar } from './Sidebar';
-import { TopBarActions, UserAvatar } from './TopBarActions';
-import { findActiveItem } from './navigation';
+import { PageJump } from './PageJump';
+import { UserAvatar } from './TopBarActions';
 import { BranchScopeProvider, useBranchScope } from '../features/branches/scope/BranchScopeProvider';
 import { BranchSelector } from '../features/branches/scope/BranchSelector';
 
 const COLLAPSED_STORAGE_KEY = 'homeconnect.sidebar.collapsed';
 
+/** Below this width the expanded sidebar covers the page instead of pushing it. */
+function isNarrowViewport(): boolean {
+  return window.innerWidth < 1024;
+}
+
 function readInitialCollapsed(): boolean {
+  if (isNarrowViewport()) return true;
   try {
     return window.localStorage.getItem(COLLAPSED_STORAGE_KEY) === '1';
   } catch {
@@ -30,9 +35,11 @@ const DashboardShell: React.FC = () => {
   const { ready: branchScopeReady } = useBranchScope();
   const navigate = useNavigate();
   const location = useLocation();
+  const mainRef = React.useRef<HTMLElement>(null);
   const [collapsed, setCollapsed] = React.useState<boolean>(readInitialCollapsed);
 
   React.useEffect(() => {
+    if (isNarrowViewport()) return;
     try {
       window.localStorage.setItem(COLLAPSED_STORAGE_KEY, collapsed ? '1' : '0');
     } catch {
@@ -40,65 +47,50 @@ const DashboardShell: React.FC = () => {
     }
   }, [collapsed]);
 
+  // <main> is the scroll container, so a new page must start from its top.
+  React.useEffect(() => {
+    mainRef.current?.scrollTo(0, 0);
+    if (isNarrowViewport()) setCollapsed(true);
+  }, [location.pathname]);
+
   const handleLogout = async () => {
     await logout();
     navigate('/login');
   };
 
-  const activeItem = findActiveItem(location.pathname, user?.role);
-  const pageTitle = activeItem?.label.en ?? 'Dashboard';
-
   return (
-    <div className="flex min-h-screen overflow-hidden bg-background font-sans text-foreground">
+    <div className="flex h-screen overflow-hidden bg-background print:h-auto print:overflow-visible font-sans text-foreground">
       <Sidebar
         collapsed={collapsed}
         onToggle={() => setCollapsed((prev) => !prev)}
         onLogout={handleLogout}
       />
 
-      <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="no-print z-10 flex h-16 shrink-0 items-center justify-between gap-3 border-b border-border bg-white px-4 lg:px-8">
+      <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden print:overflow-visible">
+        <header className="no-print z-30 flex h-[4.5rem] shrink-0 items-center justify-between gap-3 border-b border-border bg-white px-4 lg:px-8">
           <div className="flex min-w-0 items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setCollapsed((prev) => !prev)}
-              aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
-              aria-expanded={!collapsed}
-              className="-ml-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-            >
-              {collapsed ? <PanelLeft className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
-            </button>
-
+            <PageJump />
             <BranchSelector />
-
-            <span className="hidden h-5 w-px bg-border lg:block" aria-hidden="true" />
-
-            <h2 className="hidden truncate text-lg font-semibold text-slate-800 lg:block">{pageTitle}</h2>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="hidden items-center gap-3 lg:flex">
+          <div className="flex items-center gap-4">
+            <div className="hidden items-center gap-4 xl:flex">
               <LocalStatusIndicator />
-              <span className="text-sm font-medium text-slate-600">
+              <span className="whitespace-nowrap text-sm font-medium text-slate-600">
                 {new Date().toLocaleDateString('en-GB', {
-                  weekday: 'long',
+                  weekday: 'short',
                   day: 'numeric',
                   month: 'short',
                   year: 'numeric',
                 })}
               </span>
-              <span className="rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-slate-500">
-                v{__APP_VERSION__}
-              </span>
             </div>
-
-            <TopBarActions />
 
             <UserAvatar name={user?.fullName} />
           </div>
         </header>
 
-        <main className="relative flex-1 overflow-y-auto p-4 lg:p-8">
+        <main ref={mainRef} className="relative flex-1 overflow-y-auto p-4 lg:p-8">
           {branchScopeReady ? (
             <Outlet />
           ) : (

@@ -2,10 +2,12 @@ import { Router } from 'express';
 import { validate } from '../../../middleware/validate.middleware';
 import { requireSupplierAdmin } from '../authorization/supplier-policy';
 import { SupplierTransactionsController } from './supplier-transactions.controller';
+import { SupplierStatementController, supplierStatementQuerySchema } from '../statement/supplier-statement.controller';
 import { createSupplierTransactionSchema, supplierLedgerQuerySchema, supplierTransactionActionSchema, supplierTransactionListQuerySchema, supplierTransactionParamsSchema, supplierTransactionSupplierParamsSchema, updateSupplierTransactionSchema } from './supplier-transactions.validator';
 
 export const supplierTransactionsRoutes = Router();
 supplierTransactionsRoutes.get('/:supplierId/transactions', validate(supplierTransactionSupplierParamsSchema, 'params'), validate(supplierTransactionListQuerySchema, 'query'), SupplierTransactionsController.listForSupplier);
+supplierTransactionsRoutes.get('/:supplierId/statement', validate(supplierTransactionSupplierParamsSchema, 'params'), validate(supplierStatementQuerySchema, 'query'), SupplierStatementController.get);
 supplierTransactionsRoutes.post('/:supplierId/transactions', requireSupplierAdmin, validate(supplierTransactionSupplierParamsSchema, 'params'), validate(createSupplierTransactionSchema), SupplierTransactionsController.create);
 
 export const supplierTransactionsGlobalRoutes = Router();

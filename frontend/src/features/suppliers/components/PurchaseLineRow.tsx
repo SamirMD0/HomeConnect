@@ -59,7 +59,7 @@ export const PurchaseLineRow: React.FC<Props> = ({ line, index, takenProductIds,
 
     {line.mode === 'EXISTING_PRODUCT' && <div className="space-y-2">
       {line.productId
-        ? <div className="flex items-center justify-between gap-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2">
+        ? <div className="flex items-center justify-between gap-3 rounded-md border border-brand-200 bg-brand-50 px-3 py-2">
             <span>
               <span className="user-text block text-sm font-semibold" dir="auto">{line.productLabel}</span>
               {line.productStock !== null && <span className="text-xs text-slate-600">In stock: {line.productStock} / المتوفر: {line.productStock}</span>}

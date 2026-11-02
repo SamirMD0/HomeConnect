@@ -20,19 +20,24 @@ Defined in `frontend/src/styles/index.css` under `@theme`.
 
 | Role | Token | Notes |
 |---|---|---|
-| Neutral | `slate-*` | Tailwind built-in. **Do not use `gray-*`** — it is visibly different and both on screen at once looks like a bug. |
-| Accent | `brand-*` (`50`–`900`) | Emerald. Primary buttons, active nav, links, focus rings. |
-| Status | `success` `warning` `danger` `info` | Reserved for **state**. Never decoration, never a chart series. |
-| Chart series | `--viz-*` in `.viz-root` | Validated categorical palette. Separate from status so a series never impersonates a state. |
+| Neutral | `slate-*` | Redefined in `@theme` as a cool blue-grey. **Do not use `gray-*`** — it is visibly different and both on screen at once looks like a bug. |
+| Accent | `brand-*` (`50`–`950`) | The logo's blue. Primary buttons, active nav, links, focus rings. `blue-*` is the same scale. |
+| Status | `emerald`/`green` `amber` `orange` `red` `sky` | Reserved for **state**: money in or done, needs attention, serious, overdue or failed, informational. Never decoration, never a chart series. |
+| Chart series | `--viz-*` in `.viz-root` | Validated categorical palette, in fixed order. Separate from status so a series never impersonates a state. |
+| Surfaces | `slate-100` field, `white` panels, `brand-50` and `slate-50` tinted bands | No page is plain white: panels sit on a tinted field or alternate with tinted bands. |
 
 **Tailwind v4 does not read `tailwind.config.js`.** That file was deleted because it was dead — a token added there silently resolves to nothing, which is exactly the bug that left `bg-primary-50` rendering unstyled for two files. All tokens go in the `@theme` block.
 
-**The app is light-only.** Fixed shop-floor desktops gain nothing from a dark theme, and every token, chart colour, and print rule would need a second validated variant. Do not add `prefers-color-scheme` blocks.
+**The app is light-only for now.** Every colour is a token so a dark theme can be added later, but each chart colour and status tint would need its own validated dark value first. Do not add `prefers-color-scheme` blocks piecemeal. Printed documents stay black on white regardless.
+
+**Type is Plus Jakarta Sans, with Noto Sans Arabic for Arabic.** Both are bundled through `@fontsource-variable`, because the desktop app's CSP and offline use rule out a font CDN.
 
 ### Scale
 
 - Spacing: Tailwind's 4px scale. Section gap `gap-6`, card padding `p-6` (dense `p-4`), form gap `gap-4`.
-- Radius: `rounded-lg` (controls, badges), `rounded-xl` (cards), `rounded-2xl` (modals), `rounded-full` (avatars, icon buttons). **Four values, no more.**
+- Radius: `rounded-lg` (controls), `rounded-xl` (cards), `rounded-2xl` (modals, banners), `rounded-full` (badges, avatars, icon tiles). **Four values, no more.**
+- Icon tiles are soft circles: `rounded-full bg-<tone>-500/15 text-<tone>-700`, with the tone chosen by what the number means.
+- The dashboard is a mosaic: panels are separated by hairlines and tint, with no card inside a card.
 - Elevation: `shadow-sm` at rest, `shadow-md` on interactive hover, `shadow-xl` for modals. Nothing heavier.
 
 ---
@@ -118,7 +123,7 @@ The app is **LTR**. Arabic is label text, not a layout direction. Do not convert
 
 Raw CSS blocks with generated class names · hardcoded hex · arbitrary values (`w-[347px]`) · animated backgrounds, particles, spotlights · components with their own state or data fetching · anything from a paid tier (Tailwind UI, Flowbite Blocks/Pro, TailAdmin Pro) · heavy `backdrop-blur` on large surfaces · a second icon library.
 
-**Icons are `lucide-react`.** One library, one outline weight. No inline SVG paths.
+**Icons are `lucide-react`,** shadcn's icon library. One library, one outline weight. No inline SVG paths for icons; `BrandArt` is the one authored illustration.
 
 **Charts are `recharts`**, wrapped in `ChartFrame`. No dual-axis charts, ever — two measures of different scale become two charts or an indexed common base.
 

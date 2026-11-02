@@ -64,10 +64,10 @@ const ReportCard: React.FC<{ definition: ReportDefinition; data?: MonthlyReviewD
   return (
     <Link
       to={`/reports/${definition.id}`}
-      className="group flex h-full flex-col rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-colors hover:border-emerald-300 hover:bg-emerald-50/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
+      className="group flex h-full flex-col rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-colors hover:border-brand-300 hover:bg-brand-50/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50"
     >
       <div className="flex items-start gap-3">
-        <span className="rounded-lg bg-emerald-50 p-2 text-emerald-700">
+        <span className="rounded-lg bg-brand-50 p-2 text-brand-700">
           <Icon className="h-5 w-5" aria-hidden="true" />
         </span>
         <div className="min-w-0 flex-1">
@@ -87,7 +87,7 @@ const ReportCard: React.FC<{ definition: ReportDefinition; data?: MonthlyReviewD
         ) : (
           <span />
         )}
-        <span className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-emerald-700 group-hover:underline">
+        <span className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-brand-700 group-hover:underline">
           View report / عرض التقرير
           <ChevronRight className="h-4 w-4" aria-hidden="true" />
         </span>

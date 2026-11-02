@@ -7,7 +7,7 @@ import {
   formatBusinessDate,
   formatMoney,
 } from '../../customer-financial/utils/financial-format';
-import { businessLabels } from '../../../shared/labels/business-labels';
+import { businessLabels, englishLabel } from '../../../shared/labels/business-labels';
 
 interface CustomerPrepaidHistoryProps {
   items: PrepaidPurchase[];
@@ -31,23 +31,23 @@ export const CustomerPrepaidHistory: React.FC<CustomerPrepaidHistoryProps> = ({
 }) => {
   const cards = [
     {
-      label: businessLabels.prepaid.balance,
+      label: englishLabel(businessLabels.prepaid.balance),
       value: formatMoney(summary.totalAdminDebt),
       icon: HandCoins,
       emphasis: true,
     },
     {
-      label: businessLabels.prepaid.awaitingDelivery,
+      label: englishLabel(businessLabels.prepaid.awaitingDelivery),
       value: String(summary.pendingCount),
       icon: PackageCheck,
     },
     {
-      label: businessLabels.prepaid.remaining,
+      label: englishLabel(businessLabels.prepaid.remaining),
       value: formatMoney(summary.totalRemainingToCollect),
       icon: WalletCards,
     },
     {
-      label: businessLabels.prepaid.bills,
+      label: englishLabel(businessLabels.prepaid.bills),
       value: String(items.reduce((total, item) => total + (item.paymentCount ?? 0), 0)),
       icon: Receipt,
     },
@@ -56,7 +56,7 @@ export const CustomerPrepaidHistory: React.FC<CustomerPrepaidHistoryProps> = ({
   return (
     <section aria-labelledby="customer-prepaid-heading" className="space-y-4">
       <h3 id="customer-prepaid-heading" className="text-lg font-semibold text-slate-900">
-        {businessLabels.prepaid.history}
+        {englishLabel(businessLabels.prepaid.history)}
       </h3>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -78,7 +78,7 @@ export const CustomerPrepaidHistory: React.FC<CustomerPrepaidHistoryProps> = ({
                   {card.value}
                 </p>
               </div>
-              <card.icon className="mt-1 h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" />
+              <card.icon className="mt-1 h-4 w-4 shrink-0 text-brand-600" aria-hidden="true" />
             </div>
           </div>
         ))}
@@ -86,7 +86,7 @@ export const CustomerPrepaidHistory: React.FC<CustomerPrepaidHistoryProps> = ({
 
       {items.length === 0 ? (
         <div className="rounded-lg border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-500">
-          {businessLabels.prepaid.customerEmpty}
+          {englishLabel(businessLabels.prepaid.customerEmpty)}
         </div>
       ) : (
         <ol className="space-y-3">
@@ -101,11 +101,11 @@ export const CustomerPrepaidHistory: React.FC<CustomerPrepaidHistoryProps> = ({
                     {item.itemName}
                   </p>
                   <p className="mt-0.5 text-xs text-slate-500">
-                    {businessLabels.common.created}: {formatBusinessDate(item.createdAt.slice(0, 10))}
+                    {englishLabel(businessLabels.common.created)}: {formatBusinessDate(item.createdAt.slice(0, 10))}
                     {item.createdBy && (
                       <span className="user-text" dir="auto">
                         {' · '}
-                        {businessLabels.prepaid.createdBy}: {item.createdBy.name}
+                        {englishLabel(businessLabels.prepaid.createdBy)}: {item.createdBy.name}
                       </span>
                     )}
                   </p>
@@ -116,33 +116,33 @@ export const CustomerPrepaidHistory: React.FC<CustomerPrepaidHistoryProps> = ({
                     <button
                       type="button"
                       onClick={() => onRecordBill(item)}
-                      className="rounded-md border border-emerald-200 px-3 py-1.5 text-sm font-medium text-emerald-700 hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                      className="rounded-md border border-brand-200 px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-50 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
                     >
-                      {businessLabels.prepaid.recordPayment}
+                      {englishLabel(businessLabels.prepaid.recordPayment)}
                     </button>
                   )}
                   {onViewDetails && (
                     <button
                       type="button"
                       onClick={() => onViewDetails(item)}
-                      className="rounded-md border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                      className="rounded-md border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
                     >
-                      {businessLabels.prepaid.viewDetails}
+                      {englishLabel(businessLabels.prepaid.viewDetails)}
                     </button>
                   )}
                 </div>
               </div>
 
               <dl className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <Figure label={businessLabels.prepaid.fullPrice} value={formatMoney(item.fullAmount)} />
-                <Figure label={businessLabels.prepaid.paid} value={formatMoney(item.amountPaid)} />
+                <Figure label={englishLabel(businessLabels.prepaid.fullPrice)} value={formatMoney(item.fullAmount)} />
+                <Figure label={englishLabel(businessLabels.prepaid.paid)} value={formatMoney(item.amountPaid)} />
                 <Figure
-                  label={businessLabels.prepaid.adminDebt}
+                  label={englishLabel(businessLabels.prepaid.adminDebt)}
                   value={formatMoney(item.adminDebt)}
                   tone={Number(item.adminDebt) === 0 ? 'muted' : 'debt'}
                 />
                 <Figure
-                  label={businessLabels.prepaid.remaining}
+                  label={englishLabel(businessLabels.prepaid.remaining)}
                   value={formatMoney(item.remainingToCollect)}
                 />
               </dl>

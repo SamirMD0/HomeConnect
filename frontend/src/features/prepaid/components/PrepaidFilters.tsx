@@ -44,7 +44,7 @@ export const PrepaidFilters: React.FC<PrepaidFiltersProps> = ({ filters, onChang
                 onClick={() => update({ status: tab.value })}
                 className={`min-h-10 rounded-lg px-3 py-1.5 text-sm font-medium ${
                   isActive
-                    ? 'bg-emerald-600 text-white'
+                    ? 'bg-brand-600 text-white'
                     : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                 }`}
               >
@@ -66,7 +66,7 @@ export const PrepaidFilters: React.FC<PrepaidFiltersProps> = ({ filters, onChang
             onChange={(event) => update({ search: event.target.value })}
             placeholder={`${businessLabels.common.search} — ${businessLabels.common.customer} / ${businessLabels.prepaid.item}`}
             aria-label={businessLabels.common.search}
-            className="user-text-input block w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+            className="user-text-input block w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
           />
         </div>
 
@@ -75,7 +75,7 @@ export const PrepaidFilters: React.FC<PrepaidFiltersProps> = ({ filters, onChang
             type="checkbox"
             checked={Boolean(filters.fullyPaidOnly)}
             onChange={(event) => update({ fullyPaidOnly: event.target.checked })}
-            className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+            className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
           />
           {businessLabels.prepaid.fullyPaidOnly}
         </label>
@@ -109,7 +109,7 @@ export const PrepaidFilters: React.FC<PrepaidFiltersProps> = ({ filters, onChang
               type="date"
               value={filters.dateFrom ?? ''}
               onChange={(event) => update({ dateFrom: event.target.value || undefined })}
-              className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
             />
           </label>
           <label className="block text-sm font-medium text-slate-700">
@@ -118,7 +118,7 @@ export const PrepaidFilters: React.FC<PrepaidFiltersProps> = ({ filters, onChang
               type="date"
               value={filters.dateTo ?? ''}
               onChange={(event) => update({ dateTo: event.target.value || undefined })}
-              className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
             />
           </label>
           <label className="block text-sm font-medium text-slate-700">
@@ -128,7 +128,7 @@ export const PrepaidFilters: React.FC<PrepaidFiltersProps> = ({ filters, onChang
               onChange={(event) =>
                 update({ sortBy: event.target.value as PrepaidFiltersType['sortBy'] })
               }
-              className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
             >
               <option value="createdAt">{businessLabels.common.created}</option>
               <option value="customerName">{businessLabels.common.customer}</option>
@@ -142,7 +142,7 @@ export const PrepaidFilters: React.FC<PrepaidFiltersProps> = ({ filters, onChang
               onChange={(event) =>
                 update({ sortOrder: event.target.value as PrepaidFiltersType['sortOrder'] })
               }
-              className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
             >
               <option value="desc">Newest first</option>
               <option value="asc">Oldest first</option>

@@ -2,7 +2,7 @@ import React from 'react';
 import { RepairHistoryRow, RepairStatus } from '../types/maintenance.types';
 
 const TONE: Record<RepairStatus, string> = {
-  APPLIED: 'bg-emerald-100 text-emerald-800',
+  APPLIED: 'bg-brand-100 text-brand-800',
   SKIPPED_NOT_NEEDED: 'bg-slate-100 text-slate-600',
   FAILED: 'bg-red-100 text-red-800',
   BLOCKED_NO_BACKUP: 'bg-amber-100 text-amber-900',
@@ -26,7 +26,7 @@ export const RepairHistoryTable: React.FC<{ rows: RepairHistoryRow[] }> = ({ row
   return (
     <div className="overflow-x-auto rounded-lg border border-slate-200">
       <table className="w-full min-w-150 text-left text-sm">
-        <thead className="border-b border-slate-200 bg-slate-50 text-xs text-slate-600">
+        <thead className="border-b border-slate-200 bg-slate-100 text-xs text-slate-700 font-semibold">
           <tr>
             <th scope="col" className="px-3 py-2">When</th>
             <th scope="col" className="px-3 py-2">Repair</th>

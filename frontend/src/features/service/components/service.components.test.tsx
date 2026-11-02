@@ -11,7 +11,7 @@ describe('service frontend components', () => {
   it('renders readable status text and printable label values', () => {
     const status = renderToStaticMarkup(<ServiceJobStatusChip status="READY_FOR_PICKUP" />);
     const label = renderToStaticMarkup(<ProductLabel product={{ id: 'p1', name: 'براد', model: 'RT28', brand: 'Samsung', sku: 'HC-000001', barcodeValue: '8801643123456', barcodeSource: 'MANUFACTURER', internalPriceCode: null }} />);
-    expect(status).toContain('Ready for Pickup / جاهز للاستلام');
+    expect(status).toContain('Ready for Pickup');
     expect(label).toContain('براد'); expect(label).toContain('RT28'); expect(label).not.toContain('Price');
     expect(label).toContain('Model:');
     expect(label).not.toContain('dir=');
@@ -29,13 +29,13 @@ describe('service frontend components', () => {
       </QueryClientProvider>
     );
 
-    expect(html).toContain('Product / المنتج');
-    expect(html).toContain('Product Name / اسم المنتج');
-    expect(html).toContain('Model / الموديل');
+    expect(html).toContain('Product');
+    expect(html).toContain('Product Name');
+    expect(html).toContain('Model');
     expect(html.match(/dir="auto"/g)?.length).toBeGreaterThanOrEqual(4);
   });
 
-  it('renders bilingual labels in the service-job form', () => {
+  it('renders English labels in the service-job form', () => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     const html = renderToStaticMarkup(
       <QueryClientProvider client={queryClient}>
@@ -43,10 +43,10 @@ describe('service frontend components', () => {
       </QueryClientProvider>
     );
 
-    expect(html).toContain('New Service Job / طلب صيانة جديد');
-    expect(html).toContain('Request Type / نوع الطلب');
-    expect(html).toContain('Issue Description / وصف العطل');
-    expect(html).toContain('Warranty / الكفالة');
+    expect(html).toContain('New Service Job');
+    expect(html).toContain('Request Type');
+    expect(html).toContain('Issue Description');
+    expect(html).toContain('Warranty');
   });
 
   it('serializes multi-value filters without unstable array params', () => {
@@ -55,8 +55,8 @@ describe('service frontend components', () => {
   });
 
   it('keeps sent products distinct from company home maintenance and product exchange', () => {
-    expect(renderToStaticMarkup(<ServiceJobStatusChip status="SENT_TO_COMPANY" />)).toContain('Sent to Company / أرسل إلى الشركة');
-    expect(renderToStaticMarkup(<ServiceJobStatusChip status="COMPANY_HOME_MAINTENANCE" />)).toContain('Company Home Maintenance / صيانة منزلية من الشركة');
-    expect(renderToStaticMarkup(<ServiceJobStatusChip status="PRODUCT_EXCHANGE" />)).toContain('Product Exchange / استبدال المنتج');
+    expect(renderToStaticMarkup(<ServiceJobStatusChip status="SENT_TO_COMPANY" />)).toContain('Sent to Company');
+    expect(renderToStaticMarkup(<ServiceJobStatusChip status="COMPANY_HOME_MAINTENANCE" />)).toContain('Company Home Maintenance');
+    expect(renderToStaticMarkup(<ServiceJobStatusChip status="PRODUCT_EXCHANGE" />)).toContain('Product Exchange');
   });
 });

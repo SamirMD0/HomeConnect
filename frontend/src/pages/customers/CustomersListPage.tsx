@@ -1,4 +1,5 @@
 import { CustomerCsvImportDialog } from '../../features/customers/components/CustomerCsvImportDialog';
+import { CustomerMergeDialog } from '../../features/customers/components/CustomerMergeDialog';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
@@ -14,7 +15,7 @@ import { Modal } from '../../components/ui/Modal';
 import { CustomerForm } from '../../features/customers/components/CustomerForm';
 import { formatBusinessDate } from '../../features/customer-financial/utils/financial-format';
 import { formatDaysAgo } from '../../features/receivables/utils/receivables-tier';
-import { businessLabels } from '../../shared/labels/business-labels';
+import { businessLabels, englishLabel } from '../../shared/labels/business-labels';
 import {
   BRANCH_COLUMN_LABEL,
   BranchBadge,
@@ -32,6 +33,7 @@ export const CustomersListPage: React.FC = () => {
   const [sortBy, setSortBy] = useState('createdAt');
   const [filter, setFilter] = useState<CustomerListFilter | undefined>();
   const [isImportOpen, setIsImportOpen] = useState(false);
+  const [mergeCustomerId, setMergeCustomerId] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const customerSearch = useCustomerSearch({
     page,
@@ -45,6 +47,10 @@ export const CustomersListPage: React.FC = () => {
 
   const createCustomer = useCreateCustomer();
   const showBranch = useShowBranchColumn();
+  // The filter is offered only in All branches; leaving that view must not hide customers.
+  useEffect(() => {
+    if (!showBranch && filter === 'sameName') setFilter(undefined);
+  }, [showBranch, filter]);
   const createGuard = useCreateGuard();
 
   const handleCreateCustomer = (formData: any) => {
@@ -60,11 +66,37 @@ export const CustomersListPage: React.FC = () => {
       header: 'Customer',
       accessor: (customer: Customer) => (
         <div className="flex flex-col">
-          <span
-            className="user-text font-medium text-slate-900 transition-colors group-hover:text-brand-700"
-            dir="auto"
-          >
-            {customer.name}
+          <span className="inline-flex items-center gap-1.5">
+            <span
+              className="user-text font-medium text-slate-900 transition-colors group-hover:text-brand-700"
+              dir="auto"
+            >
+              {customer.name}
+            </span>
+            {(customer.sameNameCount ?? 1) > 1 &&
+              (user?.role === 'ADMIN' ? (
+                <button
+                  type="button"
+                  aria-label={customer.sameNameCount + ' customers share this name. Review or merge'}
+                  title={customer.sameNameCount + ' customers share this name. Click to review or merge'}
+                  className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-amber-100 text-[11px] font-bold text-amber-800 hover:bg-amber-200 focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setMergeCustomerId(customer.id);
+                  }}
+                >
+                  !
+                </button>
+              ) : (
+                <span
+                  role="img"
+                  aria-label={customer.sameNameCount + ' customers share this name'}
+                  title={customer.sameNameCount + ' customers share this name'}
+                  className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-amber-100 text-[11px] font-bold text-amber-800"
+                >
+                  !
+                </span>
+              ))}
           </span>
           {customer.matchedInNotesOnly && (
             <span className="text-[11px] text-slate-400 transition-colors ">Matched in notes</span>
@@ -139,10 +171,13 @@ export const CustomersListPage: React.FC = () => {
   return (
     <div className="space-y-6">
       <CustomerCsvImportDialog open={isImportOpen} onClose={() => setIsImportOpen(false)} />
+      {mergeCustomerId && (
+        <CustomerMergeDialog customerId={mergeCustomerId} onClose={() => setMergeCustomerId(null)} />
+      )}
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">{businessLabels.customer.title}</h1>
+          <h1 className="text-2xl font-bold text-slate-800">{englishLabel(businessLabels.customer.title)}</h1>
           <p className="text-slate-500 mt-1">Manage your customers and their accounts.</p>
         </div>
         <div className="flex gap-2">
@@ -164,7 +199,7 @@ export const CustomersListPage: React.FC = () => {
             onClick={() => setIsAddModalOpen(true)}
             disabled={createGuard.blocked}
             title={createGuard.reason}
-            className="inline-flex items-center justify-center px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors focus:ring-4 focus:ring-emerald-500/20 font-medium disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center justify-center px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition-colors focus:ring-4 focus:ring-brand-500/20 font-medium disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Plus className="w-5 h-5 mr-2" />
             Add Customer
@@ -214,13 +249,14 @@ export const CustomersListPage: React.FC = () => {
             ['Overdue', 'overdue'],
             ['No debt', 'noDebt'],
             ['Inactive', 'inactive'],
+            ...(showBranch ? ([['Same name', 'sameName']] as const) : []),
           ] as const
         ).map(([label, value]) => (
           <button
             type="button"
             key={label}
             onClick={() => setFilter(value)}
-            className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${filter === value ? 'border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700' : 'border-slate-200 bg-slate-100 text-slate-700 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800'}`}
+            className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${filter === value ? 'border-brand-600 bg-brand-600 text-white hover:bg-brand-700' : 'border-slate-200 bg-slate-100 text-slate-700 hover:border-brand-300 hover:bg-brand-50 hover:text-brand-800'}`}
           >
             {label}
           </button>
@@ -230,7 +266,7 @@ export const CustomersListPage: React.FC = () => {
       {/* Content */}
       {isLoading && !data ? (
         <div className="flex justify-center p-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600"></div>
         </div>
       ) : isError ? (
         <div className="p-4 bg-red-50 text-red-700 rounded-lg border border-red-200">
@@ -244,7 +280,7 @@ export const CustomersListPage: React.FC = () => {
               data-testid="customer-scroll-table"
             >
               <table className="w-full border-separate border-spacing-y-1.5 text-left text-xs text-slate-600">
-                <thead className="sticky top-0 z-10 bg-slate-100 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600">
+                <thead className="sticky top-0 z-10 bg-slate-100 text-xs font-semibold text-slate-700">
                   <tr>
                     {columns.map((column) => (
                       <th key={column.header} className="whitespace-nowrap px-4 py-2.5">
@@ -275,7 +311,7 @@ export const CustomersListPage: React.FC = () => {
             </div>
           ) : (
             <EmptyState
-              title={businessLabels.customer.notFound}
+              title={englishLabel(businessLabels.customer.notFound)}
               description={
                 customerSearch.debouncedQuery
                   ? `No customers matching "${customerSearch.debouncedQuery}"`
@@ -288,7 +324,7 @@ export const CustomersListPage: React.FC = () => {
                     onClick={() => setIsAddModalOpen(true)}
                     disabled={createGuard.blocked}
                     title={createGuard.reason}
-                    className="mt-2 inline-flex items-center disabled:cursor-not-allowed disabled:opacity-50 px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+                    className="mt-2 inline-flex items-center disabled:cursor-not-allowed disabled:opacity-50 px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-brand-600 hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500"
                   >
                     <Plus className="w-5 h-5 mr-2 -ml-1" aria-hidden="true" />
                     Add Customer
@@ -303,7 +339,7 @@ export const CustomersListPage: React.FC = () => {
                 type="button"
                 key={customer.id}
                 onClick={() => navigate(`/customers/${customer.id}`)}
-                className="group rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-left shadow-sm transition-all duration-200 hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 hover:shadow-[0_0_14px_rgba(250,204,21,0.3)]"
+                className="group rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-left shadow-sm transition-all duration-200 hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 hover:shadow-md"
               >
                 <div className="flex items-center justify-between gap-3">
                   <span
@@ -336,7 +372,7 @@ export const CustomersListPage: React.FC = () => {
       <Modal
         isOpen={isAddModalOpen}
         onClose={() => !createCustomer.isPending && setIsAddModalOpen(false)}
-        title="Add New Customer / إضافة زبون جديد"
+        title="Add New Customer"
       >
         <CustomerForm
           canManageCreditLimit={user?.role === 'ADMIN'}

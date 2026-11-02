@@ -22,22 +22,22 @@ export const LedgerPaymentRow: React.FC<LedgerPaymentRowProps> = ({
   onVoidPayment,
 }) => (
   <tr className="group align-middle [filter:drop-shadow(0_1px_1px_rgba(15,23,42,0.05))]">
-    <td className="w-10 rounded-l-md bg-white px-2 py-2 transition-all duration-200 group-hover:bg-gray-600" />
-    <td className="whitespace-nowrap bg-white px-4 py-2 text-slate-600 transition-all duration-200 group-hover:bg-gray-600 group-hover:text-yellow-300 group-hover:[text-shadow:0_0_8px_rgba(250,204,21,0.8)]">
+    <td className="w-10 rounded-l-md bg-white px-2 py-2 transition-all duration-200 group-hover:bg-brand-50" />
+    <td className="whitespace-nowrap bg-white px-4 py-2 text-slate-600 transition-all duration-200 group-hover:bg-brand-50 group-hover:text-slate-900">
       <p>{formatBusinessDate(item.paymentDate)}</p>
-      <p className="text-[11px] text-slate-400 transition-colors group-hover:text-yellow-200">Created {formatDateTime(item.createdAt)}</p>
+      <p className="text-[11px] text-slate-400 transition-colors group-hover:text-slate-900">Created {formatDateTime(item.createdAt)}</p>
     </td>
-    <td className="bg-white px-4 py-2 transition-all duration-200 group-hover:bg-gray-600 group-hover:text-yellow-300">
+    <td className="bg-white px-4 py-2 transition-all duration-200 group-hover:bg-brand-50 group-hover:text-slate-900">
       <LedgerCustomerLink customer={item.customer} className="font-medium" />
-      <p className="text-[11px] text-slate-500 transition-colors group-hover:text-yellow-200">{item.customer?.phone ?? '—'}</p>
+      <p className="text-[11px] text-slate-500 transition-colors group-hover:text-slate-900">{item.customer?.phone ?? '—'}</p>
       <BranchRowLabel branchId={item.branchId} />
     </td>
-    <td className="hidden bg-white px-4 py-2 transition-all duration-200 group-hover:bg-gray-600 lg:table-cell">
-      <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700 transition-colors group-hover:bg-yellow-300 group-hover:text-slate-950">
+    <td className="hidden bg-white px-4 py-2 transition-all duration-200 group-hover:bg-brand-50 lg:table-cell">
+      <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700 transition-colors group-hover:bg-brand-500 group-hover:text-slate-950">
         {paymentTypeLabel(item)}
       </span>
     </td>
-    <td className="max-w-xs bg-white px-4 py-2 text-slate-700 transition-all duration-200 group-hover:bg-gray-600 group-hover:text-yellow-300 group-hover:[text-shadow:0_0_8px_rgba(250,204,21,0.8)]">
+    <td className="max-w-xs bg-white px-4 py-2 text-slate-700 transition-all duration-200 group-hover:bg-brand-50 group-hover:text-slate-900">
       <div className="space-y-1">
         <p className="user-text line-clamp-2" dir="auto" title={allocationSummary(item)}>
           {allocationSummary(item)}
@@ -52,18 +52,18 @@ export const LedgerPaymentRow: React.FC<LedgerPaymentRowProps> = ({
     <MoneyCell value={formatMoney(item.amount, item.currency)} weight="medium" />
     <MoneyCell value="—" className="hidden xl:table-cell" />
     <MoneyCell value="—" />
-    <td className="bg-white px-4 py-2 transition-all duration-200 group-hover:bg-gray-600">
+    <td className="bg-white px-4 py-2 transition-all duration-200 group-hover:bg-brand-50">
       <span
         className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ring-1 ${
           item.status === 'VOIDED'
             ? 'bg-amber-50 text-amber-700 ring-amber-600/20'
-            : 'bg-emerald-50 text-emerald-700 ring-emerald-600/20'
+            : 'bg-brand-50 text-brand-700 ring-brand-600/20'
         }`}
       >
         {item.status === 'VOIDED' ? 'Voided' : 'Completed'}
       </span>
     </td>
-    <td className="rounded-r-md bg-white px-4 py-2 text-right transition-all duration-200 group-hover:bg-gray-600 group-hover:text-yellow-300">
+    <td className="rounded-r-md bg-white px-4 py-2 text-right transition-all duration-200 group-hover:bg-brand-50 group-hover:text-slate-900">
       <LedgerRowActions
         menuKey={`desktop-${item.type}-${item.id}`}
         openMenuKey={openMenuKey}
@@ -72,7 +72,7 @@ export const LedgerPaymentRow: React.FC<LedgerPaymentRowProps> = ({
             ? [{ label: 'Void payment', onClick: () => onVoidPayment(item), tone: 'cancel' }]
             : []
         }
-        immutableHint="Immutable"
+        immutableHint="Nothing can be changed on this payment."
         onOpenChange={onOpenMenuChange}
       />
     </td>

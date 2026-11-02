@@ -45,6 +45,8 @@ export interface Customer {
   updatedAt: string;
   /** Present only on searched list responses. */
   matchedInNotesOnly?: boolean;
+  /** Customers with this name in the branches the viewer can see, this one included. */
+  sameNameCount?: number;
   /** Present only when the request opted into `include: 'financial'`. */
   financial?: CustomerFinancialSnapshot | null;
 }
@@ -69,7 +71,7 @@ export interface CustomerResponse {
 
 export interface CustomerSearchSuggestion { query: string; count: number }
 export interface CustomerActivityItem { id: string; type: string; at: string; label: string; amount: string | null; actor: string | null; recordId: string }
-export type CustomerListFilter = 'withBalance' | 'overdue' | 'noDebt' | 'inactive';
+export type CustomerListFilter = 'withBalance' | 'overdue' | 'noDebt' | 'inactive' | 'sameName';
 export interface CustomerListParams {
   page?: number; limit?: number; search?: string; sortBy?: string; sortOrder?: string;
   include?: 'financial'; filter?: CustomerListFilter;
@@ -110,6 +112,16 @@ export const customersApi = {
     return response.data;
   },
 
+  getMergeCandidates: async (id: string) => {
+    const response = await api.get<{ data: CustomerMergeCandidates }>(`/customers/merges/${id}/candidates`);
+    return response.data.data;
+  },
+
+  mergeCustomer: async (keepId: string, data: { mergeCustomerId: string; balance: CustomerMergeBalance }) => {
+    const response = await api.post<{ data: { customerId: string; cancelledDebts: number } }>(`/customers/merges/${keepId}`, data);
+    return response.data.data;
+  },
+
   previewBranchTransfer: async (id: string, toBranchId: string) => {
     const response = await api.get<{ data: CustomerBranchTransferPreview }>(`/customers/${id}/branch-transfer/preview`, {
       params: { toBranchId },
@@ -127,6 +139,27 @@ export type CustomerBranchTransferCounts = Record<
   'sales_orders' | 'sales_returns' | 'cash_refunds' | 'customer_credits' | 'payments' | 'debts' | 'installment_plans' | 'service_jobs',
   number
 >;
+
+export type CustomerMergeBalance = 'ADD_BOTH' | 'KEEP_ONLY';
+export interface CustomerMoneyAmount {
+  currency: 'USD' | 'LBP';
+  amount: string;
+}
+export interface CustomerMergeCandidate {
+  id: string;
+  name: string;
+  phone: string;
+  branchId: string;
+  branchName: string;
+  balances: CustomerMoneyAmount[];
+  /** Unpaid debts a merge may cancel; anything already part-paid is not included. */
+  cancellable: CustomerMoneyAmount[];
+  counts: CustomerBranchTransferCounts;
+}
+export interface CustomerMergeCandidates {
+  customerId: string;
+  customers: CustomerMergeCandidate[];
+}
 
 export interface CustomerBranchTransferPreview {
   customer: { id: string; name: string; phone: string; branchId: string };

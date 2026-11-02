@@ -76,10 +76,7 @@ export const Setup: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen w-full bg-slate-950 flex items-center justify-center relative overflow-hidden font-sans">
-      {/* Background Orbs */}
-      <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-emerald-600/20 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-teal-600/20 blur-[120px] pointer-events-none" />
+    <div className="min-h-screen w-full bg-slate-100 flex items-center justify-center relative overflow-hidden font-sans">
 
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
@@ -87,13 +84,13 @@ export const Setup: React.FC = () => {
         transition={{ duration: 0.5, ease: 'easeOut' }}
         className="w-full max-w-lg p-8 relative z-10"
       >
-        <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-3xl p-8 shadow-2xl">
+        <div className="bg-white border border-slate-200 rounded-3xl p-8 shadow-lg">
           <div className="flex flex-col items-center mb-8 text-center">
-            <div className="h-16 w-16 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-emerald-500/25">
+            <div className="h-16 w-16 bg-brand-600 rounded-2xl flex items-center justify-center mb-6">
               <ShieldCheck className="text-white w-8 h-8" />
             </div>
-            <h1 className="text-3xl font-bold text-white tracking-tight">Account Setup</h1>
-            <p className="text-slate-400 mt-2 text-sm leading-relaxed">
+            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Account Setup</h1>
+            <p className="text-slate-600 mt-2 text-sm leading-relaxed">
               Create the first administrator, or create another account with an existing admin password.
             </p>
           </div>
@@ -103,9 +100,9 @@ export const Setup: React.FC = () => {
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
-                className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4"
+                className="rounded-xl border border-brand-500/20 bg-brand-500/10 p-4"
               >
-                <p className="text-sm text-emerald-300 leading-relaxed">{successMsg}</p>
+                <p className="text-sm text-emerald-700 leading-relaxed">{successMsg}</p>
               </motion.div>
             )}
 
@@ -115,31 +112,31 @@ export const Setup: React.FC = () => {
                 animate={{ opacity: 1, height: 'auto' }}
                 className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 flex items-start gap-3"
               >
-                <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
-                <p className="text-sm text-red-400 leading-relaxed">{errorMsg}</p>
+                <AlertCircle className="w-5 h-5 text-red-700 shrink-0 mt-0.5" />
+                <p className="text-sm text-red-700 leading-relaxed">{errorMsg}</p>
               </motion.div>
             )}
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-300 ml-1">Role</label>
+              <label className="text-sm font-medium text-slate-800 ml-1">Role</label>
               <select
                 {...register('role')}
-                className="w-full bg-slate-950/50 border border-slate-800 text-white rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all"
+                className="w-full bg-white border border-slate-300 text-slate-900 rounded-lg px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500 transition-all"
               >
                 <option value="EMPLOYEE">Employee</option>
                 <option value="ADMIN">Admin</option>
               </select>
             </div>
 
-            <div className="rounded-2xl border border-slate-800 bg-slate-950/30 p-4">
-              <p className="text-sm font-semibold text-slate-200">Existing admin approval</p>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <p className="text-sm font-semibold text-slate-900">Existing admin approval</p>
               <p className="mt-1 text-xs leading-relaxed text-slate-500">
                 Required when an administrator account already exists.
               </p>
 
               <div className="mt-4 space-y-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-300 ml-1">Admin username</label>
+                  <label className="text-sm font-medium text-slate-800 ml-1">Admin username</label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                       <User className="h-5 w-5 text-slate-500" />
@@ -148,14 +145,14 @@ export const Setup: React.FC = () => {
                       {...register('adminUsername')}
                       type="text"
                       autoComplete="username"
-                      className="w-full bg-slate-950/50 border border-slate-800 text-white rounded-xl pl-11 pr-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all placeholder:text-slate-600"
+                      className="w-full bg-white border border-slate-300 text-slate-900 rounded-lg pl-11 pr-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500 transition-all placeholder:text-slate-500"
                       placeholder="admin"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-300 ml-1">Admin password</label>
+                  <label className="text-sm font-medium text-slate-800 ml-1">Admin password</label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                       <Lock className="h-5 w-5 text-slate-500" />
@@ -164,7 +161,7 @@ export const Setup: React.FC = () => {
                       {...register('adminPassword')}
                       type="password"
                       autoComplete="current-password"
-                      className="w-full bg-slate-950/50 border border-slate-800 text-white rounded-xl pl-11 pr-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all placeholder:text-slate-600"
+                      className="w-full bg-white border border-slate-300 text-slate-900 rounded-lg pl-11 pr-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500 transition-all placeholder:text-slate-500"
                       placeholder="••••••••"
                     />
                   </div>
@@ -173,7 +170,7 @@ export const Setup: React.FC = () => {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-300 ml-1">Full Name</label>
+              <label className="text-sm font-medium text-slate-800 ml-1">Full Name</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   <UserPlus className="h-5 w-5 text-slate-500" />
@@ -181,15 +178,15 @@ export const Setup: React.FC = () => {
                 <input
                   {...register('fullName')}
                   type="text"
-                  className="w-full bg-slate-950/50 border border-slate-800 text-white rounded-xl pl-11 pr-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all placeholder:text-slate-600"
+                  className="w-full bg-white border border-slate-300 text-slate-900 rounded-lg pl-11 pr-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500 transition-all placeholder:text-slate-500"
                   placeholder="e.g. John Doe"
                 />
               </div>
-              {errors.fullName && <p className="text-sm text-red-400 ml-1 mt-1">{errors.fullName.message}</p>}
+              {errors.fullName && <p className="text-sm text-red-700 ml-1 mt-1">{errors.fullName.message}</p>}
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-300 ml-1">Username</label>
+              <label className="text-sm font-medium text-slate-800 ml-1">Username</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   <User className="h-5 w-5 text-slate-500" />
@@ -197,15 +194,15 @@ export const Setup: React.FC = () => {
                 <input
                   {...register('username')}
                   type="text"
-                  className="w-full bg-slate-950/50 border border-slate-800 text-white rounded-xl pl-11 pr-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all placeholder:text-slate-600"
+                  className="w-full bg-white border border-slate-300 text-slate-900 rounded-lg pl-11 pr-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500 transition-all placeholder:text-slate-500"
                   placeholder="admin"
                 />
               </div>
-              {errors.username && <p className="text-sm text-red-400 ml-1 mt-1">{errors.username.message}</p>}
+              {errors.username && <p className="text-sm text-red-700 ml-1 mt-1">{errors.username.message}</p>}
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-300 ml-1">Password</label>
+              <label className="text-sm font-medium text-slate-800 ml-1">Password</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   <Lock className="h-5 w-5 text-slate-500" />
@@ -213,15 +210,15 @@ export const Setup: React.FC = () => {
                 <input
                   {...register('password')}
                   type="password"
-                  className="w-full bg-slate-950/50 border border-slate-800 text-white rounded-xl pl-11 pr-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all placeholder:text-slate-600"
+                  className="w-full bg-white border border-slate-300 text-slate-900 rounded-lg pl-11 pr-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500 transition-all placeholder:text-slate-500"
                   placeholder="••••••••"
                 />
               </div>
-              {errors.password && <p className="text-sm text-red-400 ml-1 mt-1">{errors.password.message}</p>}
+              {errors.password && <p className="text-sm text-red-700 ml-1 mt-1">{errors.password.message}</p>}
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-300 ml-1">Confirm Password</label>
+              <label className="text-sm font-medium text-slate-800 ml-1">Confirm Password</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   <Lock className="h-5 w-5 text-slate-500" />
@@ -229,17 +226,17 @@ export const Setup: React.FC = () => {
                 <input
                   {...register('confirmPassword')}
                   type="password"
-                  className="w-full bg-slate-950/50 border border-slate-800 text-white rounded-xl pl-11 pr-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all placeholder:text-slate-600"
+                  className="w-full bg-white border border-slate-300 text-slate-900 rounded-lg pl-11 pr-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500 transition-all placeholder:text-slate-500"
                   placeholder="••••••••"
                 />
               </div>
-              {errors.confirmPassword && <p className="text-sm text-red-400 ml-1 mt-1">{errors.confirmPassword.message}</p>}
+              {errors.confirmPassword && <p className="text-sm text-red-700 ml-1 mt-1">{errors.confirmPassword.message}</p>}
             </div>
 
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-medium py-3.5 rounded-xl transition-all shadow-lg shadow-emerald-500/25 active:scale-[0.98] disabled:opacity-70 disabled:pointer-events-none flex items-center justify-center gap-2 mt-6"
+              className="w-full bg-brand-600 hover:bg-brand-700 text-white font-semibold py-3.5 rounded-lg transition-colors shadow-sm disabled:opacity-70 disabled:pointer-events-none flex items-center justify-center gap-2 mt-6"
             >
               {isSubmitting ? (
                 <>
@@ -252,9 +249,9 @@ export const Setup: React.FC = () => {
             </button>
           </form>
 
-          <p className="mt-6 text-center text-sm text-slate-400">
+          <p className="mt-6 text-center text-sm text-slate-600">
             Already have an account?{' '}
-            <Link to="/login" className="font-medium text-emerald-400 transition-colors hover:text-emerald-300">
+            <Link to="/login" className="font-medium text-brand-700 transition-colors hover:text-brand-700">
               Sign in
             </Link>
           </p>

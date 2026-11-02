@@ -4,7 +4,6 @@ import { PrepaidStatusBadge } from './PrepaidStatusBadge';
 import { PrepaidMobileCard } from './PrepaidMobileCard';
 import { PrepaidRowActions } from './PrepaidRowActions';
 import { formatBusinessDate, formatMoney } from '../../customer-financial/utils/financial-format';
-import { businessLabels } from '../../../shared/labels/business-labels';
 import { BranchRowLabel } from '../../branches/scope/branch-ui';
 
 interface PrepaidTableProps {
@@ -13,6 +12,7 @@ interface PrepaidTableProps {
   openMenuKey: string | null;
   onOpenMenuChange: (key: string | null) => void;
   onDeliver: (item: PrepaidPurchase) => void;
+  onConvert?: (item: PrepaidPurchase) => void;
   onRevertDelivery: (item: PrepaidPurchase) => void;
   onViewDetails: (item: PrepaidPurchase) => void;
   onEdit: (item: PrepaidPurchase) => void;
@@ -36,6 +36,7 @@ export const PrepaidTable: React.FC<PrepaidTableProps> = ({
   openMenuKey,
   onOpenMenuChange,
   onDeliver,
+  onConvert,
   onRevertDelivery,
   onViewDetails,
   onEdit,
@@ -52,6 +53,7 @@ export const PrepaidTable: React.FC<PrepaidTableProps> = ({
           openMenuKey={openMenuKey}
           onOpenMenuChange={onOpenMenuChange}
           onDeliver={onDeliver}
+          onConvert={onConvert}
           onRevertDelivery={onRevertDelivery}
           onViewDetails={onViewDetails}
           onEdit={onEdit}
@@ -64,23 +66,23 @@ export const PrepaidTable: React.FC<PrepaidTableProps> = ({
     <div className="hidden rounded-lg border border-slate-200 bg-white shadow-sm md:block">
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-slate-200 text-sm">
-          <caption className="sr-only">{businessLabels.prepaid.title}</caption>
-          <thead className="sticky top-0 bg-slate-50">
-            <tr className="text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-              <th scope="col" className="px-4 py-3">{businessLabels.common.customer}</th>
-              <th scope="col" className="px-4 py-3">{businessLabels.prepaid.item}</th>
+          <caption className="sr-only">Prepaid purchases</caption>
+          <thead className="sticky top-0 bg-slate-100 font-semibold">
+            <tr className="text-left text-xs font-semibold text-slate-700">
+              <th scope="col" className="px-4 py-3">Customer</th>
+              <th scope="col" className="min-w-44 px-4 py-3">Item</th>
               <th scope="col" className="hidden px-4 py-3 text-right xl:table-cell">
-                {businessLabels.prepaid.fullPrice}
+                Full price
               </th>
-              <th scope="col" className="px-4 py-3 text-right">{businessLabels.prepaid.paid}</th>
-              <th scope="col" className="px-4 py-3 text-right">{businessLabels.prepaid.adminDebt}</th>
-              <th scope="col" className="px-4 py-3 text-right">{businessLabels.prepaid.remaining}</th>
-              <th scope="col" className="px-4 py-3">{businessLabels.prepaid.status}</th>
+              <th scope="col" className="px-4 py-3 text-right">Paid</th>
+              <th scope="col" className="px-4 py-3 text-right">We owe</th>
+              <th scope="col" className="px-4 py-3 text-right">Remaining</th>
+              <th scope="col" className="px-4 py-3">Status</th>
               <th scope="col" className="hidden px-4 py-3 lg:table-cell">
-                {businessLabels.common.created}
+                Created
               </th>
-              <th scope="col" className="px-4 py-3 text-right">
-                <span className="sr-only">{businessLabels.common.actions}</span>
+              <th scope="col" className="w-14 px-4 py-3">
+                <span className="sr-only">Actions</span>
               </th>
             </tr>
           </thead>
@@ -125,6 +127,7 @@ export const PrepaidTable: React.FC<PrepaidTableProps> = ({
                     openMenuKey={openMenuKey}
                     onOpenChange={onOpenMenuChange}
                     onDeliver={onDeliver}
+                    onConvert={onConvert}
                     onRevertDelivery={onRevertDelivery}
                     onViewDetails={onViewDetails}
                     onEdit={onEdit}

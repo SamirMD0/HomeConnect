@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { CustomerStatementPanel } from '../../documents/components/CustomerStatementPanel';
 import { Modal } from '../../../components/ui/Modal';
 import { useAuth } from '../../../hooks/useAuth';
 import { useCustomerFinancialSummary } from '../hooks/useCustomerFinancialSummary';
@@ -32,13 +33,13 @@ import { RecordDebtPaymentDialog } from './RecordDebtPaymentDialog';
 import { RecordPlanPaymentDialog } from './RecordPlanPaymentDialog';
 import { VoidPaymentDialog } from './VoidPaymentDialog';
 import { CustomerPrepaidPanel } from '../../prepaid/components/CustomerPrepaidPanel';
-import { businessLabels } from '../../../shared/labels/business-labels';
+import { businessLabels, englishLabel } from '../../../shared/labels/business-labels';
 import { useCustomerActivity } from '../../customers/hooks/useCustomers';
 import { CustomerActivityTimeline } from '../../../pages/customers/components/CustomerActivityTimeline';
 import { CustomerAttentionPanel } from '../../../pages/customers/components/CustomerAttentionPanel';
 import { CustomerMonthStatusCard } from '../../../pages/customers/components/CustomerMonthStatusCard';
 
-export type FinancialProfileTab = 'overview' | 'debts' | 'prepaid' | 'plans' | 'payments' | 'overdue' | 'activity';
+export type FinancialProfileTab = 'overview' | 'debts' | 'prepaid' | 'plans' | 'payments' | 'overdue' | 'statement' | 'activity';
 
 interface CustomerFinancialProfileProps {
   customerId: string;
@@ -49,11 +50,12 @@ interface CustomerFinancialProfileProps {
 const tabs: Array<{ id: FinancialProfileTab; label: string }> = [
   { id: 'overview', label: 'Overview' },
   { id: 'debts', label: 'Debts' },
-  { id: 'prepaid', label: businessLabels.prepaid.navTitle },
+  { id: 'prepaid', label: englishLabel(businessLabels.prepaid.navTitle) },
   { id: 'plans', label: 'Installment Plans' },
   { id: 'payments', label: 'Payments' },
   { id: 'overdue', label: 'Overdue' },
-  { id: 'activity', label: 'Activity / النشاط' },
+  { id: 'statement', label: 'Statement' },
+  { id: 'activity', label: 'Activity' },
 ];
 
 export const CustomerFinancialProfile: React.FC<CustomerFinancialProfileProps> = ({
@@ -132,14 +134,13 @@ export const CustomerFinancialProfile: React.FC<CustomerFinancialProfileProps> =
               to={`/customers/${customerId}/statement?from=${data.businessDate.slice(0, 4)}-01-01&to=${data.businessDate}`}
               className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
             >
-              Print statement / طباعة كشف الحساب
-            </Link>
+              Print statement</Link>
           )}
           {canMutateFinancialRecords && (
             <button
               type="button"
               onClick={() => setIsAddDialogOpen(true)}
-              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+              className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
             >
               Add financial obligation
             </button>
@@ -149,7 +150,7 @@ export const CustomerFinancialProfile: React.FC<CustomerFinancialProfileProps> =
               type="checkbox"
               checked={includeCancelled}
               onChange={(event) => setIncludeCancelled(event.target.checked)}
-              className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+              className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
             />
             Show cancelled records
           </label>
@@ -179,7 +180,7 @@ export const CustomerFinancialProfile: React.FC<CustomerFinancialProfileProps> =
                 onClick={() => setActiveTab(tab.id)}
                 className={`whitespace-nowrap border-b-2 px-1 py-4 text-sm font-medium transition-colors ${
                   activeTab === tab.id
-                    ? 'border-emerald-500 text-emerald-600'
+                    ? 'border-brand-500 text-brand-600'
                     : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'
                 }`}
               >
@@ -396,6 +397,7 @@ const FinancialTabPanel: React.FC<FinancialTabPanelProps> = ({
   customerId,
 }) => {
   if (activeTab === 'activity') return <CustomerActivityPanel customerId={customerId} />;
+  if (activeTab === 'statement') return <CustomerStatementPanel customerId={customerId} />;
   if (activeTab === 'debts') {
     return (
       <CustomerDebtsList

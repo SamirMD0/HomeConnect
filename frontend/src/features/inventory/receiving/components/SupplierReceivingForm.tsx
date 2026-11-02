@@ -122,10 +122,10 @@ export const SupplierReceivingForm: React.FC<{ prefill?: ReceivingPrefill | null
           placeholder="Search supplier / البحث عن مورد"
           className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5"
         />
-        {values.supplierId && <div className="mt-2 flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2"><span className="user-text" dir="auto">{selectedSupplierName}</span><button type="button" onClick={() => { setValues({ ...values, supplierId: '' }); setSelectedSupplierName(''); }} className="text-xs font-semibold text-emerald-800">Clear / مسح</button></div>}
+        {values.supplierId && <div className="mt-2 flex items-center justify-between rounded-lg border border-brand-200 bg-brand-50 px-3 py-2"><span className="user-text" dir="auto">{selectedSupplierName}</span><button type="button" onClick={() => { setValues({ ...values, supplierId: '' }); setSelectedSupplierName(''); }} className="text-xs font-semibold text-brand-800">Clear / مسح</button></div>}
         <div className="mt-2 max-h-40 divide-y divide-slate-100 overflow-y-auto rounded-lg border border-slate-200">
           <button type="button" onClick={() => { setValues({ ...values, supplierId: '' }); setSelectedSupplierName(''); }} className="block w-full px-3 py-2 text-left text-sm font-normal hover:bg-slate-50">No supplier / بدون مورّد</button>
-          {suppliers.data?.items.map((supplier) => <button key={supplier.id} type="button" onClick={() => { setValues({ ...values, supplierId: supplier.id }); setSelectedSupplierName(supplier.name); setSupplierSearch(''); }} className="user-text block w-full px-3 py-2 text-left text-sm font-normal hover:bg-emerald-50" dir="auto">{supplier.name}</button>)}
+          {suppliers.data?.items.map((supplier) => <button key={supplier.id} type="button" onClick={() => { setValues({ ...values, supplierId: supplier.id }); setSelectedSupplierName(supplier.name); setSupplierSearch(''); }} className="user-text block w-full px-3 py-2 text-left text-sm font-normal hover:bg-brand-50" dir="auto">{supplier.name}</button>)}
           {suppliers.isLoading && <p className="px-3 py-2 text-xs font-normal text-slate-500">Loading suppliers… / جارٍ تحميل الموردين…</p>}
           {!suppliers.isLoading && !suppliers.data?.items.length && <p className="px-3 py-2 text-xs font-normal text-slate-500">No suppliers match / لا يوجد موردون مطابقون</p>}
         </div>
@@ -145,7 +145,7 @@ export const SupplierReceivingForm: React.FC<{ prefill?: ReceivingPrefill | null
     {duplicate.data?.duplicate && <div role="status" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">A receiving document with this supplier and reference may already exist / قد يوجد مستند إدخال بنفس المورد والمرجع. You can still submit after checking the existing document / يمكنك المتابعة بعد مراجعة المستند الموجود.</div>}
 
     <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="font-bold">Products / المنتجات</h2><p className="text-xs text-slate-500">Products needing an opening count remain visible but cannot be selected / المنتجات التي تحتاج جردًا افتتاحيًا تبقى ظاهرة ولا يمكن اختيارها</p></div><button type="button" onClick={() => setValues((current) => ({ ...current, items: [...current.items, newLine()] }))} className="inline-flex items-center gap-2 rounded-lg border border-emerald-600 px-3 py-2 text-sm font-semibold text-emerald-700"><Plus className="h-4 w-4" />Add line / إضافة سطر</button></div>
+      <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="font-bold">Products / المنتجات</h2><p className="text-xs text-slate-500">Products needing an opening count remain visible but cannot be selected / المنتجات التي تحتاج جردًا افتتاحيًا تبقى ظاهرة ولا يمكن اختيارها</p></div><button type="button" onClick={() => setValues((current) => ({ ...current, items: [...current.items, newLine()] }))} className="inline-flex items-center gap-2 rounded-lg border border-brand-600 px-3 py-2 text-sm font-semibold text-brand-700"><Plus className="h-4 w-4" />Add line / إضافة سطر</button></div>
       {values.items.map((line, index) => <div key={line.key} className="grid gap-3 rounded-lg border border-slate-200 p-3 md:grid-cols-[minmax(0,1fr)_180px_auto]">
         <div className="text-sm font-semibold">Product / المنتج
           <div className="mt-1 font-normal"><ProductPicker
@@ -165,6 +165,6 @@ export const SupplierReceivingForm: React.FC<{ prefill?: ReceivingPrefill | null
       {errors.items && <p role="alert" className="text-sm text-red-700">{errors.items}</p>}
     </section>
     {serverError && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{serverError}</div>}
-    <div className="flex justify-end gap-3"><button type="button" onClick={() => navigate('/inventory/receiving')} className="rounded-lg border border-slate-300 px-4 py-2.5 font-semibold">Cancel / إلغاء</button><button disabled={create.isPending} className="rounded-lg bg-emerald-600 px-5 py-2.5 font-semibold text-white disabled:opacity-50">{create.isPending ? 'Saving… / جارٍ الحفظ…' : 'Receive Stock / إدخال إلى المخزون'}</button></div>
+    <div className="flex justify-end gap-3"><button type="button" onClick={() => navigate('/inventory/receiving')} className="rounded-lg border border-slate-300 px-4 py-2.5 font-semibold">Cancel / إلغاء</button><button disabled={create.isPending} className="rounded-lg bg-brand-600 px-5 py-2.5 font-semibold text-white disabled:opacity-50">{create.isPending ? 'Saving… / جارٍ الحفظ…' : 'Receive Stock / إدخال إلى المخزون'}</button></div>
   </form>;
 };

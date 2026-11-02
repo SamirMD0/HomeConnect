@@ -3,10 +3,10 @@ import { AlertTriangle, CircleOff, PackageCheck, PackageX } from 'lucide-react';
 import { ProductStockStatus } from '../types/product.types';
 
 const config = {
-  NOT_TRACKED: { label: 'Not tracked / غير متتبع', icon: CircleOff, style: 'bg-slate-100 text-slate-700' },
-  OUT_OF_STOCK: { label: 'Out of stock / نفد المخزون', icon: PackageX, style: 'bg-red-50 text-red-700 ring-red-200' },
-  LOW_STOCK: { label: 'Low stock / مخزون منخفض', icon: AlertTriangle, style: 'bg-amber-50 text-amber-800 ring-amber-200' },
-  IN_STOCK: { label: 'In stock / متوفر', icon: PackageCheck, style: 'bg-emerald-50 text-emerald-700 ring-emerald-200' },
+  NOT_TRACKED: { label: 'Not tracked', icon: CircleOff, style: 'bg-slate-100 text-slate-700' },
+  OUT_OF_STOCK: { label: 'Out of stock', icon: PackageX, style: 'bg-red-50 text-red-700 ring-red-200' },
+  LOW_STOCK: { label: 'Low stock', icon: AlertTriangle, style: 'bg-amber-50 text-amber-800 ring-amber-200' },
+  IN_STOCK: { label: 'In stock', icon: PackageCheck, style: 'bg-emerald-50 text-emerald-700 ring-emerald-200' },
 } as const;
 
 export const ProductStockBadge: React.FC<{ status: ProductStockStatus }> = ({ status }) => {

@@ -13,7 +13,7 @@ import { generateInstallmentPreview } from '../utils/installment-preview';
 import { canonicalMoneyInput } from '../utils/money-input';
 import { CustomerContext, inputClass, SubmitButton, TextField } from './CreateDebtForm';
 import { InstallmentSchedulePreview } from './InstallmentSchedulePreview';
-import { businessLabels } from '../../../shared/labels/business-labels';
+import { businessLabels, englishLabel } from '../../../shared/labels/business-labels';
 
 interface CreateInstallmentPlanFormProps {
   customer: FinancialSummaryCustomer;
@@ -126,8 +126,7 @@ export const CreateInstallmentPlanForm: React.FC<CreateInstallmentPlanFormProps>
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
       <button type="button" onClick={onBack} className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900">
         <ArrowLeft className="h-4 w-4" />
-        Back / رجوع
-      </button>
+        Back</button>
 
       <CustomerContext customer={customer} />
 
@@ -137,7 +136,7 @@ export const CreateInstallmentPlanForm: React.FC<CreateInstallmentPlanFormProps>
         </div>
       )}
 
-      <TextField label="Total Amount / المبلغ الإجمالي" error={errors.totalAmount?.message}>
+      <TextField label="Total Amount" error={errors.totalAmount?.message}>
         <input
           {...register('totalAmount')}
           inputMode="decimal"
@@ -149,15 +148,15 @@ export const CreateInstallmentPlanForm: React.FC<CreateInstallmentPlanFormProps>
         />
       </TextField>
 
-      <TextField label={businessLabels.financial.description} error={errors.description?.message}>
+      <TextField label={englishLabel(businessLabels.financial.description)} error={errors.description?.message}>
         <input {...register('description')} dir="auto" className={inputClass(Boolean(errors.description))} placeholder="Refrigerator" />
       </TextField>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <TextField label="Start Date / تاريخ البدء" error={errors.startDate?.message}>
+        <TextField label="Start Date" error={errors.startDate?.message}>
           <input {...register('startDate')} type="date" className={inputClass(Boolean(errors.startDate))} />
         </TextField>
-        <TextField label="Number of Installments / عدد الأقساط" error={errors.installmentCount?.message}>
+        <TextField label="Number of Installments" error={errors.installmentCount?.message}>
           <input
             {...register('installmentCount', { valueAsNumber: true })}
             type="number"
@@ -168,14 +167,14 @@ export const CreateInstallmentPlanForm: React.FC<CreateInstallmentPlanFormProps>
         </TextField>
       </div>
 
-      <TextField label="Frequency / التكرار" error={errors.frequency?.message}>
+      <TextField label="Frequency" error={errors.frequency?.message}>
         <select {...register('frequency')} className={inputClass(Boolean(errors.frequency))}>
-          <option value="MONTHLY">Monthly / شهري</option>
-          <option value="WEEKLY">Weekly / أسبوعي</option>
+          <option value="MONTHLY">Monthly</option>
+          <option value="WEEKLY">Weekly</option>
         </select>
       </TextField>
 
-      <TextField label={businessLabels.common.notes} error={errors.notes?.message}>
+      <TextField label={englishLabel(businessLabels.common.notes)} error={errors.notes?.message}>
         <textarea {...register('notes')} dir="auto" rows={3} className={inputClass(Boolean(errors.notes))} placeholder="Optional" />
       </TextField>
 
@@ -186,8 +185,7 @@ export const CreateInstallmentPlanForm: React.FC<CreateInstallmentPlanFormProps>
             onClick={() => setScheduleMode('AUTO')}
             className={scheduleModeClass(scheduleMode === 'AUTO')}
           >
-            Auto / تلقائي
-          </button>
+            Auto</button>
           <button
             type="button"
             onClick={() => {
@@ -198,15 +196,14 @@ export const CreateInstallmentPlanForm: React.FC<CreateInstallmentPlanFormProps>
             }}
             className={scheduleModeClass(scheduleMode === 'MANUAL')}
           >
-            Manual / يدوي
-          </button>
+            Manual</button>
         </div>
 
         {scheduleMode === 'MANUAL' && (
           <div className="rounded-lg border border-slate-200">
             <div className="grid grid-cols-[72px_minmax(0,1fr)] border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-600">
               <span>#</span>
-              <span>{businessLabels.financial.amount}</span>
+              <span>{englishLabel(businessLabels.financial.amount)}</span>
             </div>
             <div className="divide-y divide-slate-100">
               {manualAmounts.map((amount, index) => (
@@ -239,8 +236,8 @@ export const CreateInstallmentPlanForm: React.FC<CreateInstallmentPlanFormProps>
 
       <SubmitButton
         isPending={createPlan.isPending}
-        label="Create Installment Plan / إنشاء خطة تقسيط"
-        pendingLabel="Creating plan... / جارٍ إنشاء الخطة..."
+        label="Create Installment Plan"
+        pendingLabel="Creating plan..."
       />
     </form>
   );
@@ -248,6 +245,6 @@ export const CreateInstallmentPlanForm: React.FC<CreateInstallmentPlanFormProps>
 
 function scheduleModeClass(active: boolean): string {
   return active
-    ? 'rounded-md bg-white px-3 py-1.5 text-sm font-semibold text-emerald-700 shadow-sm'
+    ? 'rounded-md bg-white px-3 py-1.5 text-sm font-semibold text-brand-700 shadow-sm'
     : 'rounded-md px-3 py-1.5 text-sm font-semibold text-slate-600 hover:text-slate-900';
 }

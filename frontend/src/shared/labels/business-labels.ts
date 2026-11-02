@@ -89,6 +89,7 @@ export const businessLabels = {
     statusDelivered: 'Delivered / تم التسليم',
     statusCancelled: 'Cancelled / ملغى',
     markDelivered: 'Mark Delivered / تسجيل التسليم',
+    convert: 'Convert to Debt or Installments',
     revertDelivery: 'Revert Delivery / إلغاء التسليم',
     remainderDueDate: 'Due Date for Remaining / تاريخ استحقاق المتبقي',
     deliveryNotes: 'Delivery Notes / ملاحظات التسليم',
@@ -270,3 +271,7 @@ export const businessValidationMessages = {
   productNameRequired: 'Product name is required / اسم المنتج مطلوب',
   modelRequired: 'Model is required / الموديل مطلوب',
 } as const;
+
+/** The English half of a bilingual label, for sections shown in English only. */
+export const englishLabel = (label: string) =>
+  label.replace(/\s*\/\s*[^/]*[\u0600-\u06FF][^/]*$/, '');

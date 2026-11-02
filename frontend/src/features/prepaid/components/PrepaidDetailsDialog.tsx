@@ -3,7 +3,7 @@ import { PrepaidPurchase } from '../types/prepaid.types';
 import { PrepaidBillHistory } from './PrepaidBillHistory';
 import { PrepaidStatusBadge } from './PrepaidStatusBadge';
 import { formatBusinessDate, formatMoney } from '../../customer-financial/utils/financial-format';
-import { businessLabels } from '../../../shared/labels/business-labels';
+import { businessLabels, englishLabel } from '../../../shared/labels/business-labels';
 import { Banknote, Pencil, Trash2 } from 'lucide-react';
 
 interface PrepaidDetailsDialogProps {
@@ -42,26 +42,26 @@ export const PrepaidDetailsDialog: React.FC<PrepaidDetailsDialogProps> = ({
     </div>
 
     <dl>
-      <Row label={businessLabels.prepaid.fullPrice}>
+      <Row label={englishLabel(businessLabels.prepaid.fullPrice)}>
         <span className="tabular-nums">{formatMoney(item.fullAmount)}</span>
       </Row>
-      <Row label={businessLabels.prepaid.paid}>
+      <Row label={englishLabel(businessLabels.prepaid.paid)}>
         <span className="tabular-nums">{formatMoney(item.amountPaid)}</span>
       </Row>
-      <Row label={businessLabels.prepaid.adminDebt}>
+      <Row label={englishLabel(businessLabels.prepaid.adminDebt)}>
         <span
           className={`tabular-nums ${Number(item.adminDebt) === 0 ? 'text-slate-400' : 'text-red-600'}`}
         >
           {formatMoney(item.adminDebt)}
         </span>
       </Row>
-      <Row label={businessLabels.prepaid.remaining}>
+      <Row label={englishLabel(businessLabels.prepaid.remaining)}>
         <span className="tabular-nums">{formatMoney(item.remainingToCollect)}</span>
       </Row>
-      <Row label={businessLabels.prepaid.bills}>
+      <Row label={englishLabel(businessLabels.prepaid.bills)}>
         <span className="tabular-nums">{item.paymentCount ?? 0}</span>
       </Row>
-      <Row label={businessLabels.common.created}>
+      <Row label={englishLabel(businessLabels.common.created)}>
         {formatBusinessDate(item.createdAt.slice(0, 10))}
         {item.createdBy && (
           <span className="user-text block text-xs font-normal text-slate-500" dir="auto">
@@ -70,7 +70,7 @@ export const PrepaidDetailsDialog: React.FC<PrepaidDetailsDialogProps> = ({
         )}
       </Row>
       {item.deliveredAt && (
-        <Row label={businessLabels.prepaid.deliveredOn}>
+        <Row label={englishLabel(businessLabels.prepaid.deliveredOn)}>
           {formatBusinessDate(item.deliveredAt)}
           {item.deliveredBy && (
             <span className="user-text block text-xs font-normal text-slate-500" dir="auto">
@@ -80,14 +80,14 @@ export const PrepaidDetailsDialog: React.FC<PrepaidDetailsDialogProps> = ({
         </Row>
       )}
       {item.deliveryNotes && (
-        <Row label={businessLabels.prepaid.deliveryNotes}>
+        <Row label={englishLabel(businessLabels.prepaid.deliveryNotes)}>
           <span className="user-text-pre block font-normal" dir="auto">
             {item.deliveryNotes}
           </span>
         </Row>
       )}
       {item.notes && (
-        <Row label={businessLabels.common.notes}>
+        <Row label={englishLabel(businessLabels.common.notes)}>
           <span className="user-text-pre block font-normal" dir="auto">
             {item.notes}
           </span>
@@ -107,16 +107,16 @@ export const PrepaidDetailsDialog: React.FC<PrepaidDetailsDialogProps> = ({
           className="inline-flex items-center gap-2 rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
         >
           <Pencil className="h-4 w-4" aria-hidden="true" />
-          {businessLabels.prepaid.editPurchase}
+          {englishLabel(businessLabels.prepaid.editPurchase)}
         </button>
         {!item.isFullyPaid && (
           <button
             type="button"
             onClick={onRecordPayment}
-            className="inline-flex items-center gap-2 rounded-md border border-emerald-300 px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50"
+            className="inline-flex items-center gap-2 rounded-md border border-brand-300 px-3 py-2 text-sm font-medium text-brand-700 hover:bg-brand-50"
           >
             <Banknote className="h-4 w-4" aria-hidden="true" />
-            {businessLabels.prepaid.recordPayment}
+            {englishLabel(businessLabels.prepaid.recordPayment)}
           </button>
         )}
         <button
@@ -125,7 +125,7 @@ export const PrepaidDetailsDialog: React.FC<PrepaidDetailsDialogProps> = ({
           className="inline-flex items-center gap-2 rounded-md border border-red-300 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
         >
           <Trash2 className="h-4 w-4" aria-hidden="true" />
-          {businessLabels.prepaid.cancelPurchase}
+          {englishLabel(businessLabels.prepaid.cancelPurchase)}
         </button>
       </div>
     )}

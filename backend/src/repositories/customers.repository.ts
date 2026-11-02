@@ -16,6 +16,13 @@ export class CustomersRepository {
     });
   }
 
+  static async findLiveNames(scope: BranchScope) {
+    return prisma.customer.findMany({
+      where: { deletedAt: null, ...scopeWhere(scope) },
+      select: { name: true },
+    });
+  }
+
   static async findAll(params: {
     skip?: number;
     take?: number;

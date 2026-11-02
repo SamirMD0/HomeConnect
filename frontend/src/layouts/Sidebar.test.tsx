@@ -6,6 +6,7 @@ import { Sidebar } from './Sidebar';
 import { findActiveItem, isItemVisible, isPathActive, NAVIGATION, type NavigationRole } from './navigation';
 
 const authState = vi.hoisted(() => ({ role: 'ADMIN' as NavigationRole, fullName: 'Sam Owner' }));
+vi.stubGlobal('__APP_VERSION__', '0.0.0');
 
 vi.mock('../hooks/useAuth', () => ({
   useAuth: () => ({ user: { id: 'user-1', role: authState.role, fullName: authState.fullName } }),

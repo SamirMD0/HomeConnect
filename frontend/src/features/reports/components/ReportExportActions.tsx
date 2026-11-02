@@ -41,7 +41,7 @@ export function ReportExportActions({ onExportCsv }: { onExportCsv?: () => Promi
         type="button"
         onClick={() => window.print()}
         title="Opens the print dialog — choose “Save as PDF” as the destination"
-        className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700"
+        className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
       >
         <Printer className="h-4 w-4" />
         Export PDF / تصدير PDF
