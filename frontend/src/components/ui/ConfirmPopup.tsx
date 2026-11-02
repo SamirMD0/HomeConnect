@@ -19,7 +19,9 @@ export const ConfirmPopupContent: React.FC<ConfirmPopupProps> = ({
   const panelRef = useRef<HTMLDivElement>(null);
   const titleId = `confirm-title-${useId()}`;
   const cancel = useRef(onCancel);
-  cancel.current = onCancel;
+  useEffect(() => {
+    cancel.current = onCancel;
+  }, [onCancel]);
 
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;

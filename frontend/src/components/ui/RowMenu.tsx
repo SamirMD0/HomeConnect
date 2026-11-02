@@ -40,10 +40,12 @@ export function getRowMenuPosition(
 }
 
 /** The menu's list of actions. English only, whatever the label it is given. */
-export const RowMenuList = React.forwardRef<
-  HTMLDivElement,
-  { items: RowMenuItem[]; label: string; emptyHint?: string; style?: React.CSSProperties; className?: string; onPick?: () => void }
->(function RowMenuList({ items, label, emptyHint, style, className, onPick }, ref) {
+export const RowMenuList: React.FC<{
+  items: RowMenuItem[];
+  label: string;
+  emptyHint?: string;
+  onPick?: () => void;
+}> = ({ items, label, emptyHint, onPick }) => {
   const moveFocus = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
     event.preventDefault();
@@ -55,10 +57,8 @@ export const RowMenuList = React.forwardRef<
 
   return (
     <div
-      ref={ref}
       role="menu"
       aria-label={label}
-      style={style}
       onKeyDown={moveFocus}
       // A portal still bubbles React events to the row, which may have its own handlers.
       onClick={(event) => event.stopPropagation()}
@@ -66,7 +66,7 @@ export const RowMenuList = React.forwardRef<
         event.preventDefault();
         event.stopPropagation();
       }}
-      className={cn('rounded-xl border border-slate-200 bg-white p-1.5 text-left shadow-xl', className)}
+      className="rounded-xl border border-slate-200 bg-white p-1.5 text-left shadow-xl"
     >
       {items.map((item) => {
         const Icon = item.icon;
@@ -101,10 +101,10 @@ export const RowMenuList = React.forwardRef<
       {items.length === 0 && emptyHint && <p className="px-3 py-2.5 text-sm text-slate-600">{emptyHint}</p>}
     </div>
   );
-});
+};
 
 /** What a custom menu body must pass on to its `RowMenuList`. */
-export type RowMenuListProps = Pick<React.ComponentProps<typeof RowMenuList>, 'style' | 'className' | 'onPick' | 'label' | 'emptyHint'> & { ref: React.Ref<HTMLDivElement> };
+export type RowMenuListProps = Pick<React.ComponentProps<typeof RowMenuList>, 'onPick' | 'label' | 'emptyHint'>;
 
 export interface RowMenuProps {
   /** Omit when `renderList` builds the items, for menus that load them only once opened. */
@@ -130,8 +130,11 @@ export const RowMenu: React.FC<RowMenuProps> = ({ items = [], renderList, open, 
   const menuRef = useRef<HTMLDivElement>(null);
   const pointRef = useRef<{ x: number; y: number } | null>(null);
   const onOpenChangeRef = useRef(onOpenChange);
-  onOpenChangeRef.current = onOpenChange;
   const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
+
+  useEffect(() => {
+    onOpenChangeRef.current = onOpenChange;
+  }, [onOpenChange]);
 
   useEffect(() => {
     const row = triggerRef.current?.closest('tr, article');
@@ -203,14 +206,7 @@ export const RowMenu: React.FC<RowMenuProps> = ({ items = [], renderList, open, 
     };
   }, [items.length, open]);
 
-  const listProps: RowMenuListProps = {
-    ref: menuRef,
-    label,
-    emptyHint,
-    onPick: () => onOpenChange(false),
-    style: position ? { top: position.top, left: position.left, width: MENU_WIDTH } : undefined,
-    className: 'fixed z-50 max-h-[calc(100vh-1rem)] overflow-y-auto',
-  };
+  const listProps: RowMenuListProps = { label, emptyHint, onPick: () => onOpenChange(false) };
 
   const placed = Boolean(position);
   useEffect(() => {
@@ -239,9 +235,13 @@ export const RowMenu: React.FC<RowMenuProps> = ({ items = [], renderList, open, 
         <MoreVertical className="h-5 w-5" aria-hidden="true" />
       </button>
       {open && position && typeof document !== 'undefined' && createPortal(
-        renderList
-          ? renderList(listProps)
-          : <RowMenuList items={items} {...listProps} />,
+        <div
+          ref={menuRef}
+          style={{ top: position.top, left: position.left, width: MENU_WIDTH }}
+          className="fixed z-50 max-h-[calc(100vh-1rem)] overflow-y-auto"
+        >
+          {renderList ? renderList(listProps) : <RowMenuList items={items} {...listProps} />}
+        </div>,
         document.body
       )}
     </>
