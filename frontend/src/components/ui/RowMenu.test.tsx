@@ -87,7 +87,7 @@ describe('RowMenu', () => {
     const event = rightClick(host.querySelector('[data-testid="cell"]')!);
     expect(event.defaultPrevented).toBe(true);
     expect(menu()).not.toBeNull();
-    expect(menu()!.style.left).toBe('300px');
+    expect(menu()!.parentElement!.style.left).toBe('300px');
   });
 
   it('leaves the browser menu alone on form fields', () => {

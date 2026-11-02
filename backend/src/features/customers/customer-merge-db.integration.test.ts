@@ -324,9 +324,8 @@ const outstanding = async (customerId: string) =>
     const keep = await customer('Najla Khatib', '71194334', a);
     const merged = await customer('Najla Khatib', '', b);
     const send = (path: string, body?: object, method: 'get' | 'post' = 'post', scope?: string) => {
-      const call = request(app)
-        [method]('/api/v1/customers/merges/' + keep.id + path)
-        .set('Authorization', 'Bearer ' + token);
+      const url = '/api/v1/customers/merges/' + keep.id + path;
+      const call = request(app)[method](url).set('Authorization', 'Bearer ' + token);
       if (scope) call.set('X-Branch-Scope', scope);
       return call.send(body);
     };
