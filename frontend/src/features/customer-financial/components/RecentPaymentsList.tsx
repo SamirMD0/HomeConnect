@@ -3,7 +3,7 @@ import { ReceiptText } from 'lucide-react';
 import { RecentFinancialPayment } from '../types/customer-financial.types';
 import { formatBusinessDate, formatDateTime, formatMoney } from '../utils/financial-format';
 import { allocationTargetLabels, paymentMethodLabels } from '../utils/financial-labels';
-import { FinancialEmptyState } from './FinancialEmptyState';
+import { FinancialEmptyState } from './FinancialEmptyState';
 import { englishLabel } from '../../../shared/labels/business-labels';
 
 interface RecentPaymentsListProps {
@@ -95,7 +95,7 @@ export const RecentPaymentsList: React.FC<RecentPaymentsListProps> = ({
                   >
                     <div>
                       <span className="font-medium text-slate-800">
-                        {englishLabel(allocationTargetLabels[allocation.targetType])}
+                        {englishLabel(allocationTargetLabels[allocation.targetType] ?? allocationTargetLabels.UNKNOWN)}
                       </span>
                       <span className="user-text text-slate-500" dir="auto"> · {allocation.description || 'No description'}</span>
                     </div>

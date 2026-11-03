@@ -109,6 +109,7 @@ interface DebtPaymentView {
   currency: Currency;
   exchangeRate: string;
   baseAmount: string;
+  sourceSalesOrderId: string | null;
   paymentDate: string;
   paymentMethod: PaymentMethod;
   reference: string | null;
@@ -129,8 +130,11 @@ interface DebtPaymentView {
   } | null;
   allocations: Array<{
     id: string;
+    targetType: 'DEBT' | 'INSTALLMENT' | 'UNKNOWN';
     debtId: string | null;
     installmentId: string | null;
+    planId: string | null;
+    description: string | null;
     paymentAmount: string;
     exchangeRate: string;
     amount: string;
@@ -647,6 +651,7 @@ export class DebtsService {
           currency: payment.currency ?? Currency.USD,
           exchangeRate: (payment.exchangeRate ?? new Decimal(1)).toFixed(6),
           baseAmount: moneyToApiString(payment.baseAmount ?? payment.totalAmount),
+          sourceSalesOrderId: payment.salesOrderId ?? null,
           paymentDate: prismaDateToBusinessDate(payment.paymentDate),
           paymentMethod: payment.paymentMethod,
           reference: payment.reference,
@@ -669,8 +674,16 @@ export class DebtsService {
             : null,
           allocations: payment.allocations.map((paymentAllocation) => ({
             id: paymentAllocation.id,
+            targetType: paymentAllocation.debtId
+              ? 'DEBT'
+              : paymentAllocation.installmentId
+                ? 'INSTALLMENT'
+                : 'UNKNOWN',
             debtId: paymentAllocation.debtId,
             installmentId: paymentAllocation.installmentId,
+            planId: null,
+            // A payment can also cover other records; only this debt's name is loaded here.
+            description: paymentAllocation.debtId === debt.id ? debt.description : null,
             amount: moneyToApiString(paymentAllocation.amount),
             paymentAmount: moneyToApiString(
               paymentAllocation.paymentAmount ?? paymentAllocation.amount,

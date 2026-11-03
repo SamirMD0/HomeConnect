@@ -295,6 +295,21 @@ describe('DebtsService', () => {
     expect(result.status).toBe(DebtStatus.PARTIALLY_PAID);
   });
 
+  it('describes payment allocations the way the customer summary does', async () => {
+    repositoryMock.findDebtById.mockResolvedValue(makeDebt({
+      paymentAllocations: [makeAllocation('100.00', { salesOrderId: 'sales-order-1' })],
+    }));
+
+    const result = await DebtsService.getDebt('33333333-3333-4333-8333-333333333333');
+
+    expect(result.payments[0].sourceSalesOrderId).toBe('sales-order-1');
+    expect(result.payments[0].allocations[0]).toMatchObject({
+      targetType: 'DEBT',
+      planId: null,
+      description: 'Refrigerator',
+    });
+  });
+
   it('calculates overdue status on reads without mutating stored status', async () => {
     repositoryMock.findDebtById.mockResolvedValue(
       makeDebt({
