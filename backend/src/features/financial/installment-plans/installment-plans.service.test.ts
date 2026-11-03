@@ -397,6 +397,27 @@ describe('InstallmentPlansService', () => {
     ).rejects.toThrow(FinancialInvariantError);
   });
 
+  it('describes payment allocations the way the customer summary does', async () => {
+    repositoryMock.findPlanById.mockResolvedValue(makePlan({
+      installments: [
+        makeInstallment(1, '2026-08-01', '100.00', {
+          paymentAllocations: [
+            makeAllocation('66666666-6666-4666-8666-666666666661', '100.00', { salesOrderId: 'sales-order-1' }),
+          ],
+        }),
+      ],
+    }));
+
+    const result = await InstallmentPlansService.getPlan(planId);
+
+    expect(result.payments[0].sourceSalesOrderId).toBe('sales-order-1');
+    expect(result.payments[0].allocations[0]).toMatchObject({
+      targetType: 'INSTALLMENT',
+      planId,
+      description: 'Refrigerator',
+    });
+  });
+
   it('records a payment across multiple installments oldest first and updates statuses', async () => {
     const firstAllocation = makeAllocation('66666666-6666-4666-8666-666666666661', '100.00');
     const secondAllocation = makeAllocation('66666666-6666-4666-8666-666666666662', '50.00');

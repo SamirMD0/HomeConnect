@@ -152,6 +152,7 @@ interface InstallmentPlanPaymentView {
   currency: Currency;
   exchangeRate: string;
   baseAmount: string;
+  sourceSalesOrderId: string | null;
   paymentDate: string;
   paymentMethod: PaymentMethod;
   reference: string | null;
@@ -172,8 +173,11 @@ interface InstallmentPlanPaymentView {
   } | null;
   allocations: Array<{
     id: string;
+    targetType: 'INSTALLMENT';
     debtId: string | null;
     installmentId: string | null;
+    planId: string;
+    description: string;
     amount: string;
     paymentAmount: string;
     exchangeRate: string;
@@ -1029,6 +1033,7 @@ export class InstallmentPlansService {
             currency: payment.currency ?? Currency.USD,
             exchangeRate: (payment.exchangeRate ?? new Decimal(1)).toFixed(6),
             baseAmount: moneyToApiString(payment.baseAmount ?? payment.totalAmount),
+            sourceSalesOrderId: payment.salesOrderId ?? null,
             paymentDate: prismaDateToBusinessDate(payment.paymentDate),
             paymentMethod: payment.paymentMethod,
             reference: payment.reference,
@@ -1057,8 +1062,11 @@ export class InstallmentPlansService {
               )
               .map((paymentAllocation) => ({
                 id: paymentAllocation.id,
+                targetType: 'INSTALLMENT' as const,
                 debtId: paymentAllocation.debtId,
                 installmentId: paymentAllocation.installmentId,
+                planId: plan.id,
+                description: plan.description,
                 amount: moneyToApiString(paymentAllocation.amount),
                 paymentAmount: moneyToApiString(
                   paymentAllocation.paymentAmount ?? paymentAllocation.amount,

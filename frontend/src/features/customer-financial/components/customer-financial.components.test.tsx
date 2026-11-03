@@ -388,6 +388,16 @@ describe('customer financial profile components', () => {
     expect(completedHtml).not.toContain('Cancel</button>');
   });
 
+  it('labels an allocation as unknown when the server sends no target type', () => {
+    const [payment] = summary.recentPayments;
+    const allocation = { ...payment.allocations[0], targetType: undefined } as unknown as typeof payment.allocations[number];
+    const html = renderToStaticMarkup(
+      <RecentPaymentsList payments={[{ ...payment, allocations: [allocation] }]} />
+    );
+
+    expect(html).toContain('Unknown');
+  });
+
   it('renders each payment once with multiple allocations under the same payment', () => {
     const html = renderToStaticMarkup(
       <RecentPaymentsList
