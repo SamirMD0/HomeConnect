@@ -38,7 +38,6 @@ export const EditInstallmentPlanDialog: React.FC<EditInstallmentPlanDialogProps>
       installmentCount: plan.installmentCount,
       notes: plan.notes ?? '',
       reason: '',
-      accountPassword: '',
     },
   });
 
@@ -53,7 +52,6 @@ export const EditInstallmentPlanDialog: React.FC<EditInstallmentPlanDialogProps>
         notes: values.notes?.trim() || null,
         reason: values.reason.trim(),
         sourceScreen: 'PLAN_DETAILS',
-        accountPassword: values.accountPassword,
       });
       onSuccess();
     } catch (error) {
@@ -76,9 +74,6 @@ export const EditInstallmentPlanDialog: React.FC<EditInstallmentPlanDialogProps>
       }
       if (normalized.fieldErrors.reason) {
         setError('reason', { message: normalized.fieldErrors.reason });
-      }
-      if (normalized.fieldErrors.accountPassword) {
-        setError('accountPassword', { message: normalized.fieldErrors.accountPassword });
       }
     }
   };
@@ -152,15 +147,6 @@ export const EditInstallmentPlanDialog: React.FC<EditInstallmentPlanDialogProps>
           rows={3}
           className={inputClass(Boolean(errors.reason))}
           placeholder="Required for audit history"
-        />
-      </TextField>
-
-      <TextField label="Account password" error={errors.accountPassword?.message}>
-        <input
-          {...register('accountPassword')}
-          type="password"
-          autoComplete="current-password"
-          className={inputClass(Boolean(errors.accountPassword))}
         />
       </TextField>
 

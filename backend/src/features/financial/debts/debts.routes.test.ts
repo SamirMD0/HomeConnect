@@ -257,7 +257,6 @@ describe('debt routes', () => {
       .set('Authorization', `Bearer ${adminToken}`)
       .send({
         reason: 'Customer returned product',
-        accountPassword: 'admin-password',
       });
 
     expect(cancelResponse.status).toBe(200);
@@ -265,7 +264,7 @@ describe('debt routes', () => {
     expect(cancelResponse.body.data.cancellation.reason).toBe('Customer returned product');
   });
 
-  it('allows admins to correct debt details and amount with account password', async () => {
+  it('allows admins to correct debt details and amount without an account password', async () => {
     const response = await request(app)
       .post(`/api/v1/debts/${debtId}/corrections`)
       .set('Authorization', `Bearer ${adminToken}`)
@@ -276,7 +275,6 @@ describe('debt routes', () => {
         notes: 'Updated notes',
         reason: 'Original invoice amount was entered incorrectly',
         sourceScreen: 'CUSTOMER_PROFILE',
-        accountPassword: 'admin-password',
       });
 
     expect(response.status).toBe(200);
@@ -291,7 +289,6 @@ describe('debt routes', () => {
         notes: 'Updated notes',
         reason: 'Original invoice amount was entered incorrectly',
         sourceScreen: 'CUSTOMER_PROFILE',
-        accountPassword: 'admin-password',
       },
       expect.objectContaining({ role: 'ADMIN' })
     );
@@ -307,7 +304,6 @@ describe('debt routes', () => {
         notes: 'Updated notes',
         reason: 'Corrected description typo',
         sourceScreen: 'CUSTOMER_PROFILE',
-        accountPassword: 'admin-password',
       });
 
     expect(response.status).toBe(200);

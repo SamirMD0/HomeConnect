@@ -3,10 +3,10 @@ import { describe, expect, it, vi } from 'vitest';
 import { CreditLimitWarning, creditLimitWarningFromError } from './CreditLimitWarning';
 const warning = { currency: 'USD' as const, currentOutstanding: '70.00', creditLimit: '100.00', projectedOutstanding: '101.00', overage: '1.00' };
 describe('server-derived credit-limit warning', () => {
-  it('shows server amounts and offers ADMIN verification', () => {
+  it('shows server amounts and offers ADMIN approval without a password', () => {
     const html = renderToStaticMarkup(<CreditLimitWarning warning={warning} isAdmin value={{}} onChange={vi.fn()} />);
     for (const amount of ['$70.00', '$100.00', '$101.00', '$1.00']) expect(html).toContain(amount);
-    expect(html).toContain('Credit limit'); expect(html).toContain('type="password"');
+    expect(html).toContain('Credit limit'); expect(html).not.toContain('type="password"');
     expect(html).toContain('Override reason');
   });
   it('does not offer employee override controls or change unrestricted layouts', () => {

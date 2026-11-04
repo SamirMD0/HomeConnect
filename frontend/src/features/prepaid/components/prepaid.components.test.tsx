@@ -1,4 +1,5 @@
 import { renderToStaticMarkup } from 'react-dom/server';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it } from 'vitest';
 import { buildPrepaidMenuItems } from './PrepaidRowActions';
 import { PrepaidTable } from './PrepaidTable';
@@ -7,6 +8,8 @@ import { PrepaidStatusBadge } from './PrepaidStatusBadge';
 import { PrepaidEmptyState } from './PrepaidStates';
 import { PrepaidBillHistory } from './PrepaidBillHistory';
 import { CustomerPrepaidHistory } from './CustomerPrepaidHistory';
+import { EditPrepaidPurchaseDialog } from './EditPrepaidPurchaseDialog';
+import { RevertPrepaidDeliveryDialog } from './RevertPrepaidDeliveryDialog';
 import {
   PrepaidPayment,
   PrepaidPurchase,
@@ -109,6 +112,20 @@ function renderTable(items: PrepaidPurchase[], canMutate = true) {
     />
   );
 }
+
+describe('prepaid corrections without password confirmation', () => {
+  it('renders edit and revert forms without a password field', () => {
+    const dialogs = [
+      <EditPrepaidPurchaseDialog item={pendingItem} onSuccess={() => undefined} />,
+      <RevertPrepaidDeliveryDialog item={deliveredItem} onSuccess={() => undefined} />,
+    ];
+    for (const dialog of dialogs) {
+      const html = renderToStaticMarkup(<QueryClientProvider client={new QueryClient()}>{dialog}</QueryClientProvider>);
+      expect(html).toContain('type="submit"');
+      expect(html).not.toMatch(/type="password"|accountPassword|Account [Pp]assword/);
+    }
+  });
+});
 
 describe('PrepaidTable', () => {
   it('shows the negative amount the business owes', () => {

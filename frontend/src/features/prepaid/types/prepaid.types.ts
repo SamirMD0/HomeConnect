@@ -120,5 +120,5 @@ export type ConvertPrepaidPayload =
 
 export interface RevertPrepaidDeliveryPayload {
   reason: string;
-  accountPassword: string;
+  accountPassword?: string;
 }

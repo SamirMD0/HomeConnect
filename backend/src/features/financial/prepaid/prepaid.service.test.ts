@@ -15,7 +15,6 @@ vi.mock('../../branches/parent-branch', async (importOriginal) => ({
   assertRecordInScope: vi.fn().mockResolvedValue('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
 }));
 
-
 const tx = { id: 'tx' };
 
 const {
@@ -664,7 +663,7 @@ describe('PrepaidService', () => {
 
   describe('revertDelivery of a conversion', () => {
     const id = '33333333-3333-4333-8333-333333333333';
-    const revertInput = { reason: 'Converted by mistake', accountPassword: 'secret' };
+    const revertInput = { reason: 'Converted by mistake' };
 
     it('cancels the unpaid installment plan it created', async () => {
       prepaidRepositoryMock.findById.mockResolvedValue(
@@ -674,7 +673,7 @@ describe('PrepaidService', () => {
 
       const view = await PrepaidService.revertDelivery(id, revertInput, adminUser);
 
-      expect(verifyAdminPasswordMock).toHaveBeenCalled();
+      expect(verifyAdminPasswordMock).not.toHaveBeenCalled();
       expect(plansServiceMock.cancelUnpaidPlanInTransaction).toHaveBeenCalledWith(
         tx,
         'plan-1',
@@ -697,7 +696,7 @@ describe('PrepaidService', () => {
   });
 
   describe('revertDelivery', () => {
-    const revertInput = { reason: 'Delivered the wrong unit', accountPassword: 'secret' };
+    const revertInput = { reason: 'Delivered the wrong unit' };
 
     it('cancels the remainder debt rather than deleting it', async () => {
       prepaidRepositoryMock.findById.mockResolvedValue(
@@ -719,7 +718,7 @@ describe('PrepaidService', () => {
         adminUser
       );
 
-      expect(verifyAdminPasswordMock).toHaveBeenCalled();
+      expect(verifyAdminPasswordMock).not.toHaveBeenCalled();
       expect(debtsRepositoryMock.cancelDebt).toHaveBeenCalledWith(
         tx,
         'remainder-debt-1',

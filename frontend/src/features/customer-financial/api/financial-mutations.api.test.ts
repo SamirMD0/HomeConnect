@@ -73,7 +73,7 @@ describe('financialMutationsApi', () => {
     });
   });
 
-  it('corrects a debt with account password and audit reason', async () => {
+  it('corrects a debt with an audit reason and no password', async () => {
     await financialMutationsApi.updateDebt('debt-1', {
       originalAmount: '650.00',
       description: 'Updated debt',
@@ -81,7 +81,6 @@ describe('financialMutationsApi', () => {
       notes: 'Updated notes',
       reason: 'Original invoice amount was entered incorrectly',
       sourceScreen: 'CUSTOMER_PROFILE',
-      accountPassword: 'admin-password',
     });
 
     expect(apiMock.post).toHaveBeenCalledWith('/debts/debt-1/corrections', {
@@ -91,33 +90,28 @@ describe('financialMutationsApi', () => {
       notes: 'Updated notes',
       reason: 'Original invoice amount was entered incorrectly',
       sourceScreen: 'CUSTOMER_PROFILE',
-      accountPassword: 'admin-password',
     });
   });
 
-  it('cancels debt with a reason and account password', async () => {
+  it('cancels debt with a reason and no password', async () => {
     await financialMutationsApi.cancelDebt('debt-1', {
       reason: 'Returned',
-      accountPassword: 'admin-password',
     });
 
     expect(apiMock.post).toHaveBeenCalledWith('/debts/debt-1/cancel', {
       reason: 'Returned',
-      accountPassword: 'admin-password',
     });
   });
 
-  it('voids a payment with a reason and account password', async () => {
+  it('voids a payment with a reason and no password', async () => {
     await financialMutationsApi.voidPayment('payment-1', {
       reason: 'Wrong payment was entered',
       sourceScreen: 'LEDGER',
-      accountPassword: 'admin-password',
     });
 
     expect(apiMock.post).toHaveBeenCalledWith('/payments/payment-1/void', {
       reason: 'Wrong payment was entered',
       sourceScreen: 'LEDGER',
-      accountPassword: 'admin-password',
     });
   });
 
@@ -129,7 +123,6 @@ describe('financialMutationsApi', () => {
       ],
       reason: 'Payment was allocated to the wrong installments',
       sourceScreen: 'PLAN_DETAILS',
-      accountPassword: 'admin-password',
     });
 
     expect(apiMock.post).toHaveBeenCalledWith('/payments/payment-1/reallocate', {
@@ -139,7 +132,6 @@ describe('financialMutationsApi', () => {
       ],
       reason: 'Payment was allocated to the wrong installments',
       sourceScreen: 'PLAN_DETAILS',
-      accountPassword: 'admin-password',
     });
   });
 
@@ -209,7 +201,7 @@ describe('financialMutationsApi', () => {
     });
   });
 
-  it('corrects an installment plan with account password and audit reason', async () => {
+  it('corrects an installment plan with an audit reason and no password', async () => {
     await financialMutationsApi.updateInstallmentPlan('plan-1', {
       totalAmount: '650.00',
       description: 'Updated plan',
@@ -218,7 +210,6 @@ describe('financialMutationsApi', () => {
       notes: 'Updated notes',
       reason: 'Corrected agreement amount',
       sourceScreen: 'PLAN_DETAILS',
-      accountPassword: 'admin-password',
     });
 
     expect(apiMock.post).toHaveBeenCalledWith('/installment-plans/plan-1/corrections', {
@@ -229,19 +220,16 @@ describe('financialMutationsApi', () => {
       notes: 'Updated notes',
       reason: 'Corrected agreement amount',
       sourceScreen: 'PLAN_DETAILS',
-      accountPassword: 'admin-password',
     });
   });
 
-  it('cancels an installment plan with a reason and account password', async () => {
+  it('cancels an installment plan with a reason and no password', async () => {
     await financialMutationsApi.cancelInstallmentPlan('plan-1', {
       reason: 'Agreement cancelled',
-      accountPassword: 'admin-password',
     });
 
     expect(apiMock.post).toHaveBeenCalledWith('/installment-plans/plan-1/cancel', {
       reason: 'Agreement cancelled',
-      accountPassword: 'admin-password',
     });
   });
 });

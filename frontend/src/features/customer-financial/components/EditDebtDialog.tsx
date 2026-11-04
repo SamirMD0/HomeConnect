@@ -34,7 +34,6 @@ export const EditDebtDialog: React.FC<EditDebtDialogProps> = ({
       dueDate: debt.dueDate,
       notes: debt.notes ?? '',
       reason: '',
-      accountPassword: '',
     },
   });
 
@@ -48,7 +47,6 @@ export const EditDebtDialog: React.FC<EditDebtDialogProps> = ({
         notes: values.notes?.trim() || null,
         reason: values.reason.trim(),
         sourceScreen: 'CUSTOMER_PROFILE',
-        accountPassword: values.accountPassword,
       });
       onSuccess();
     } catch (error) {
@@ -66,9 +64,7 @@ export const EditDebtDialog: React.FC<EditDebtDialogProps> = ({
       if (normalized.fieldErrors.notes) {
         setError('notes', { message: normalized.fieldErrors.notes });
       }
-      if (normalized.fieldErrors.accountPassword) {
-        setError('accountPassword', { message: normalized.fieldErrors.accountPassword });
-      }
+
       if (normalized.fieldErrors.reason) {
         setError('reason', { message: normalized.fieldErrors.reason });
       }
@@ -132,15 +128,6 @@ export const EditDebtDialog: React.FC<EditDebtDialogProps> = ({
           rows={3}
           className={inputClass(Boolean(errors.reason))}
           placeholder="Required for audit history"
-        />
-      </TextField>
-
-      <TextField label="Account password" error={errors.accountPassword?.message}>
-        <input
-          {...register('accountPassword')}
-          type="password"
-          autoComplete="current-password"
-          className={inputClass(Boolean(errors.accountPassword))}
         />
       </TextField>
 

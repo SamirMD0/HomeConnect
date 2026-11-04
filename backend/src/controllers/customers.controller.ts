@@ -92,7 +92,6 @@ export class CustomersController {
       const result = await CustomerBranchTransferService.transfer({
         customerId: req.params.id as string,
         toBranchId: req.body.toBranchId,
-        accountPassword: req.body.accountPassword,
         actor: { userId: req.user!.userId, role: req.user!.role },
         ipAddress: req.ip ?? null,
       });

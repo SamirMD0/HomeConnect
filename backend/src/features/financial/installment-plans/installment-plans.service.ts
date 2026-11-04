@@ -51,7 +51,7 @@ import {
   InstallmentPlansRepository,
 } from './installment-plans.repository';
 import type { FinancialTransactionClient } from '../infrastructure/transaction';
-import { verifyAccountPassword, verifyAdminPasswordForCorrection } from '../authorization/account-password';
+import { assertFinancialAdmin } from '../authorization/financial-policy';
 import { writeFinancialCorrectionAudit } from '../corrections/correction-audit';
 import { convertPaymentAllocation, splitPaymentAmounts } from '../domain/currency-allocation';
 import { ExchangeRatesService } from '../exchange-rates/exchange-rates.service';
@@ -324,11 +324,7 @@ export class InstallmentPlansService {
     input: UpdateInstallmentPlanInput,
     user: AuthenticatedUser
   ): Promise<InstallmentPlanView> {
-    await verifyAdminPasswordForCorrection(user.userId, input.accountPassword, {
-      action: 'CORRECT_INSTALLMENT_PLAN',
-      recordType: FinancialCorrectionRecordType.INSTALLMENT_PLAN,
-      recordId: planId,
-    });
+    assertFinancialAdmin(user);
 
     return runFinancialTransaction(async (tx) => {
       const plan = await InstallmentPlansRepository.findPlanById(planId, tx);
@@ -662,7 +658,7 @@ export class InstallmentPlansService {
     input: CancelInstallmentPlanInput,
     user: AuthenticatedUser
   ): Promise<InstallmentPlanView> {
-    await verifyAccountPassword(user.userId, input.accountPassword);
+    assertFinancialAdmin(user);
 
     return runFinancialTransaction(async (tx) => {
       const plan = await InstallmentPlansRepository.findPlanById(planId, tx);
@@ -697,7 +693,7 @@ export class InstallmentPlansService {
   /**
    * Cancels a plan that nothing has been paid on, inside the caller's
    * transaction. For undoing the action that created the plan: the caller has
-   * already checked permission and the password.
+   * already checked permission.
    */
   static async cancelUnpaidPlanInTransaction(
     tx: FinancialTransactionClient,

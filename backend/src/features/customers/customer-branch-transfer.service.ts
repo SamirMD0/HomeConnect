@@ -1,7 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
-import { AppError, NotFoundError } from '../../lib/errors';
-import { verifyAdminPassword } from '../../lib/admin-verification';
+import { AppError, AuthorizationError, NotFoundError } from '../../lib/errors';
 import { runFinancialTransaction } from '../financial/infrastructure/transaction';
 
 type Db = Prisma.TransactionClient | typeof prisma;
@@ -55,17 +54,11 @@ export class CustomerBranchTransferService {
   static async transfer(input: {
     customerId: string;
     toBranchId: string;
-    accountPassword: string;
+    accountPassword?: string;
     actor: { userId: string; role: string };
     ipAddress?: string | null;
   }) {
-    await verifyAdminPassword(input.actor.userId, input.accountPassword, {
-      action: 'CUSTOMER_BRANCH_TRANSFER',
-      recordType: 'CUSTOMER',
-      recordId: input.customerId,
-      ipAddress: input.ipAddress ?? null,
-      domainLabel: 'customer branch transfer',
-    });
+    if (input.actor.role !== 'ADMIN') throw new AuthorizationError('Only administrators can transfer customers between branches');
 
     return runFinancialTransaction((tx) => this.moveInTransaction(tx, input), { timeoutMs: 120_000 });
   }

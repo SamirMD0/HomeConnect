@@ -499,7 +499,7 @@ describe('DebtsService', () => {
     ).rejects.toThrow(PaymentIdempotencyConflictError);
   });
 
-  it('corrects debt details and amount after admin password verification', async () => {
+  it('corrects debt details and amount without password verification', async () => {
     repositoryMock.findDebtById.mockResolvedValue(makeDebt());
     repositoryMock.updateDebtDetails.mockResolvedValue(
       makeDebt({
@@ -519,16 +519,11 @@ describe('DebtsService', () => {
         notes: 'Updated notes',
         reason: 'Original invoice amount was corrected',
         sourceScreen: FinancialCorrectionSourceScreen.CUSTOMER_PROFILE,
-        accountPassword: 'admin-password',
       },
       adminUser
     );
 
-    expect(verifyAdminPasswordMock).toHaveBeenCalledWith(adminUser.userId, 'admin-password', {
-      action: 'CORRECT_DEBT',
-      recordType: FinancialCorrectionRecordType.DEBT,
-      recordId: '33333333-3333-4333-8333-333333333333',
-    });
+    expect(verifyAdminPasswordMock).not.toHaveBeenCalled();
     expect(repositoryMock.updateDebtDetails).toHaveBeenCalledWith(
       tx,
       '33333333-3333-4333-8333-333333333333',
@@ -570,7 +565,6 @@ describe('DebtsService', () => {
           notes: null,
           reason: 'Correction would break paid balance',
           sourceScreen: FinancialCorrectionSourceScreen.CUSTOMER_PROFILE,
-          accountPassword: 'admin-password',
         },
         adminUser
       )
@@ -580,7 +574,7 @@ describe('DebtsService', () => {
     expect(correctionAuditMock).not.toHaveBeenCalled();
   });
 
-  it('cancels unpaid debts after account-password verification and rejects debts with payments', async () => {
+  it('cancels unpaid debts without password verification and rejects debts with payments', async () => {
     repositoryMock.findDebtById.mockResolvedValue(makeDebt());
     repositoryMock.cancelDebt.mockResolvedValue(
       makeDebt({
@@ -597,25 +591,25 @@ describe('DebtsService', () => {
 
     const cancelled = await DebtsService.cancelDebt(
       '33333333-3333-4333-8333-333333333333',
-      { reason: 'Customer returned product', accountPassword: 'admin-password' },
+      { reason: 'Customer returned product' },
       adminUser
     );
 
     expect(cancelled.status).toBe(DebtStatus.CANCELLED);
     expect(cancelled.cancellation?.reason).toBe('Customer returned product');
-    expect(verifyAccountPasswordMock).toHaveBeenCalledWith(adminUser.userId, 'admin-password');
+    expect(verifyAccountPasswordMock).not.toHaveBeenCalled();
 
     repositoryMock.findDebtById.mockResolvedValue(makeDebt({ paymentAllocations: [makeAllocation('1.00')] }));
     await expect(
       DebtsService.cancelDebt(
         '33333333-3333-4333-8333-333333333333',
-        { reason: 'Customer returned product', accountPassword: 'admin-password' },
+        { reason: 'Customer returned product' },
         adminUser
       )
     ).rejects.toThrow('Debt with payments requires a dedicated reversal workflow');
   });
 
-  it('allows admins to cancel prepaid purchases with payment history after account-password verification', async () => {
+  it('allows admins to cancel prepaid purchases with payment history without password verification', async () => {
     const prepaidDebt = makeDebt({
       kind: DebtKind.PREPAID_PURCHASE,
       status: DebtStatus.PARTIALLY_PAID,
@@ -638,11 +632,11 @@ describe('DebtsService', () => {
 
     const cancelled = await DebtsService.cancelDebt(
       prepaidDebt.id,
-      { reason: 'Customer cancelled reserved item', accountPassword: 'admin-password' },
+      { reason: 'Customer cancelled reserved item' },
       adminUser
     );
 
-    expect(verifyAccountPasswordMock).toHaveBeenCalledWith(adminUser.userId, 'admin-password');
+    expect(verifyAccountPasswordMock).not.toHaveBeenCalled();
     expect(repositoryMock.cancelDebt).toHaveBeenCalledWith(tx, prepaidDebt.id, expect.objectContaining({
       cancelledById: adminUser.userId,
       cancelReason: 'Customer cancelled reserved item',

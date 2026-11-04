@@ -157,7 +157,7 @@ async function debtTotals(customerId: string) {
 
   it('moves the customer and their whole history to the destination branch, leaving amounts unchanged', async () => {
     const before = await debtTotals(rows['customers:x']);
-    const response = await transfer(rows['customers:x'], { toBranchId: b, accountPassword: password });
+    const response = await transfer(rows['customers:x'], { toBranchId: b });
     expect(response.status, JSON.stringify(response.body)).toBe(200);
     expect(response.body.data.moved).toEqual({
       sales_orders: 1, sales_returns: 2, cash_refunds: 1, customer_credits: 1, payments: 2, debts: 1, installment_plans: 1, service_jobs: 1,
@@ -185,15 +185,14 @@ async function debtTotals(customerId: string) {
     expect(await branchOf('customers', rows['customers:x'])).toBe(a);
   });
 
-  it('requires the account password and changes nothing when it is wrong', async () => {
-    const before = await snapshot();
-    const response = await transfer(rows['customers:x'], { toBranchId: b, accountPassword: 'wrong-password' });
-    expect(response.status).toBeGreaterThanOrEqual(400);
-    expect(await snapshot()).toEqual(before);
+  it('moves the customer without an account password', async () => {
+    const response = await transfer(rows['customers:x'], { toBranchId: b });
+    expect(response.status, JSON.stringify(response.body)).toBe(200);
+    expect(await branchOf('customers', rows['customers:x'])).toBe(b);
   });
 
   it('is admin-only', async () => {
-    const response = await transfer(rows['customers:x'], { toBranchId: b, accountPassword: password }, 'employee');
+    const response = await transfer(rows['customers:x'], { toBranchId: b }, 'employee');
     expect(response.status).toBe(403);
     expect(await branchOf('customers', rows['customers:x'])).toBe(a);
   });
@@ -201,7 +200,7 @@ async function debtTotals(customerId: string) {
   it('refuses when the destination branch already has a customer with the same phone', async () => {
     await db.$transaction((tx) => insertMigrationRow(tx, 'customers', { branchId: b, createdBy: admin, name: 'Twin ' + run, phone: 'bt-' + run }));
     const before = await snapshot();
-    const response = await transfer(rows['customers:x'], { toBranchId: b, accountPassword: password });
+    const response = await transfer(rows['customers:x'], { toBranchId: b });
     expect(response.status).toBe(409);
     expect(response.body.error?.code ?? response.body.code).toBe('CUSTOMER_PHONE_EXISTS_IN_BRANCH');
     expect(await snapshot()).toEqual(before);
@@ -215,7 +214,7 @@ async function debtTotals(customerId: string) {
     await db.$executeRawUnsafe(`CREATE TRIGGER ${fn} BEFORE INSERT ON "activity_logs" FOR EACH ROW EXECUTE FUNCTION ${fn}()`);
     try {
       const before = await snapshot();
-      const response = await transfer(rows['customers:x'], { toBranchId: b, accountPassword: password });
+      const response = await transfer(rows['customers:x'], { toBranchId: b });
       expect(response.status).toBeGreaterThanOrEqual(400);
       expect(await snapshot()).toEqual(before);
       expect(await db.customerImportAccount.count({ where: { customerId: rows['customers:x'] } })).toBe(1);

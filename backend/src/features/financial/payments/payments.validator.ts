@@ -22,7 +22,7 @@ export const voidPaymentSchema = z
   .object({
     reason: userTextSchema({ field: 'Void reason', min: 5, max: 1000 }),
     sourceScreen: z.nativeEnum(FinancialCorrectionSourceScreen).default(FinancialCorrectionSourceScreen.API),
-    accountPassword: z.string().min(1, 'Account password is required'),
+    accountPassword: z.string().optional(),
   })
   .strict();
 
@@ -35,7 +35,7 @@ export const correctPaymentSchema = z
     notes: userTextSchema({ field: 'Notes', max: 1000 }).optional().nullable(),
     reason: userTextSchema({ field: 'Correction reason', min: 5, max: 1000 }),
     sourceScreen: z.nativeEnum(FinancialCorrectionSourceScreen).default(FinancialCorrectionSourceScreen.API),
-    accountPassword: z.string().min(1, 'Account password is required'),
+    accountPassword: z.string().optional(),
   })
   .strict();
 
@@ -54,7 +54,7 @@ export const reallocatePaymentSchema = z
       .max(120, 'Too many allocations'),
     reason: userTextSchema({ field: 'Correction reason', min: 5, max: 1000 }),
     sourceScreen: z.nativeEnum(FinancialCorrectionSourceScreen).default(FinancialCorrectionSourceScreen.API),
-    accountPassword: z.string().min(1, 'Account password is required'),
+    accountPassword: z.string().optional(),
   })
   .strict()
   .superRefine((value, context) => {

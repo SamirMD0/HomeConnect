@@ -129,7 +129,7 @@ export const customersApi = {
     return response.data.data;
   },
 
-  transferBranch: async (id: string, data: { toBranchId: string; accountPassword: string }) => {
+  transferBranch: async (id: string, data: { toBranchId: string; accountPassword?: string }) => {
     const response = await api.post<{ data: CustomerBranchTransferResult }>(`/customers/${id}/branch-transfer`, data);
     return response.data.data;
   },

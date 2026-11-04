@@ -37,7 +37,7 @@ import type { FinancialTransactionClient } from '../infrastructure/transaction';
 import { CreditLimitService } from '../credit-limits/credit-limit.service';
 import { DebtsRepository, DebtWithDetails } from './debts.repository';
 import { PrepaidRepository } from '../prepaid/prepaid.repository';
-import { verifyAccountPassword, verifyAdminPasswordForCorrection } from '../authorization/account-password';
+import { assertFinancialAdmin } from '../authorization/financial-policy';
 import { writeFinancialCorrectionAudit } from '../corrections/correction-audit';
 import { convertPaymentAllocation } from '../domain/currency-allocation';
 import { ExchangeRatesService } from '../exchange-rates/exchange-rates.service';
@@ -319,11 +319,7 @@ export class DebtsService {
     input: UpdateDebtInput,
     user: AuthenticatedUser
   ): Promise<DebtView> {
-    await verifyAdminPasswordForCorrection(user.userId, input.accountPassword, {
-      action: 'CORRECT_DEBT',
-      recordType: FinancialCorrectionRecordType.DEBT,
-      recordId: debtId,
-    });
+    assertFinancialAdmin(user);
 
     const correctingUser = await DebtsRepository.findUserIdentity(user.userId);
     if (!correctingUser) {
@@ -550,7 +546,7 @@ export class DebtsService {
     input: CancelDebtInput,
     user: AuthenticatedUser
   ): Promise<DebtView> {
-    await verifyAccountPassword(user.userId, input.accountPassword);
+    assertFinancialAdmin(user);
 
     return runFinancialTransaction(async (tx) => {
       const debt = await DebtsRepository.findDebtById(debtId, tx);

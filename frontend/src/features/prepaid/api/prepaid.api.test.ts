@@ -43,11 +43,10 @@ describe('prepaidApi', () => {
   });
 
   it('posts the revert action', async () => {
-    await prepaidApi.revertDelivery('p1', { reason: 'wrong unit', accountPassword: 'secret' });
+    await prepaidApi.revertDelivery('p1', { reason: 'wrong unit' });
 
     expect(apiMock.post).toHaveBeenCalledWith('/prepaid-purchases/p1/revert-delivery', {
       reason: 'wrong unit',
-      accountPassword: 'secret',
     });
   });
 });

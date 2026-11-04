@@ -256,18 +256,18 @@ export interface UpdateDebtRequest {
   notes?: string | null;
   reason: string;
   sourceScreen: FinancialCorrectionSourceScreen;
-  accountPassword: string;
+  accountPassword?: string;
 }
 
 export interface CancelFinancialRecordRequest {
   reason: string;
-  accountPassword: string;
+  accountPassword?: string;
 }
 
 export interface VoidPaymentRequest {
   reason: string;
   sourceScreen: FinancialCorrectionSourceScreen;
-  accountPassword: string;
+  accountPassword?: string;
 }
 
 export interface ReallocatePaymentRequest {
@@ -277,7 +277,7 @@ export interface ReallocatePaymentRequest {
   }>;
   reason: string;
   sourceScreen: FinancialCorrectionSourceScreen;
-  accountPassword: string;
+  accountPassword?: string;
 }
 
 export interface CreateInstallmentPlanRequest {
@@ -300,7 +300,7 @@ export interface UpdateInstallmentPlanRequest {
   notes?: string | null;
   reason: string;
   sourceScreen: FinancialCorrectionSourceScreen;
-  accountPassword: string;
+  accountPassword?: string;
 }
 
 export interface RecordInstallmentPlanPaymentRequest {

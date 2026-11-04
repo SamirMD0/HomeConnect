@@ -12,7 +12,7 @@ import {
 } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { NotFoundError, ValidationError } from '../../../lib/errors';
-import { verifyAdminPasswordForCorrection } from '../authorization/account-password';
+import { assertFinancialAdmin } from '../authorization/financial-policy';
 import { writeFinancialCorrectionAudit } from '../corrections/correction-audit';
 import {
   assertCanVoidPayment,
@@ -204,11 +204,7 @@ export class PaymentsService {
   ): Promise<PaymentCorrectionResult> {
     writeBranch(scope);
     await assertRecordInScope('payment', paymentId, scope);
-    await verifyAdminPasswordForCorrection(user.userId, input.accountPassword, {
-      action: 'VOID_PAYMENT',
-      recordType: FinancialCorrectionRecordType.PAYMENT,
-      recordId: paymentId,
-    });
+    assertFinancialAdmin(user);
 
     const correctingUser = await PaymentsRepository.findUserIdentity(user.userId);
     if (!correctingUser) {
@@ -283,11 +279,7 @@ export class PaymentsService {
   ): Promise<PaymentCorrectionResult> {
     writeBranch(scope);
     await assertRecordInScope('payment', paymentId, scope);
-    await verifyAdminPasswordForCorrection(user.userId, input.accountPassword, {
-      action: 'CORRECT_PAYMENT',
-      recordType: FinancialCorrectionRecordType.PAYMENT,
-      recordId: paymentId,
-    });
+    assertFinancialAdmin(user);
 
     const correctingUser = await PaymentsRepository.findUserIdentity(user.userId);
     if (!correctingUser) {
@@ -366,11 +358,7 @@ export class PaymentsService {
     for (const allocation of input.allocations) {
       await assertRecordInScope('installment', allocation.installmentId, scope);
     }
-    await verifyAdminPasswordForCorrection(user.userId, input.accountPassword, {
-      action: 'REALLOCATE_PAYMENT',
-      recordType: FinancialCorrectionRecordType.PAYMENT_ALLOCATION,
-      recordId: paymentId,
-    });
+    assertFinancialAdmin(user);
 
     const correctingUser = await PaymentsRepository.findUserIdentity(user.userId);
     if (!correctingUser) {

@@ -91,7 +91,7 @@ export const createInstallmentPlanPaymentSchema = z
 export const cancelInstallmentPlanSchema = z
   .object({
     reason: userTextSchema({ field: 'Cancellation reason', min: 1, max: 1000 }),
-    accountPassword: z.string().min(1, 'Account password is required'),
+    accountPassword: z.string().optional(),
   })
   .strict();
 
@@ -114,7 +114,7 @@ export const updateInstallmentPlanSchema = z
       .optional(),
     reason: userTextSchema({ field: 'Correction reason', min: 5, max: 1000 }),
     sourceScreen: z.nativeEnum(FinancialCorrectionSourceScreen).default(FinancialCorrectionSourceScreen.API),
-    accountPassword: z.string().min(1, 'Account password is required'),
+    accountPassword: z.string().optional(),
   })
   .strict()
   .superRefine((value, context) => {

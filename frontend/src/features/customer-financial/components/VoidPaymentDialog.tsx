@@ -10,7 +10,7 @@ import {
 import { normalizeFinancialError } from '../utils/financial-form-errors';
 import { formatBusinessDate, formatMoney } from '../utils/financial-format';
 import { paymentMethodLabels } from '../utils/financial-labels';
-import { inputClass, SubmitButton, TextField } from './CreateDebtForm';
+import { inputClass, SubmitButton, TextField } from './CreateDebtForm';
 import { englishLabel } from '../../../shared/labels/business-labels';
 
 interface VoidPaymentDialogProps {
@@ -40,7 +40,6 @@ export const VoidPaymentDialog: React.FC<VoidPaymentDialogProps> = ({
     resolver: zodResolver(voidPaymentSchema),
     defaultValues: {
       reason: '',
-      accountPassword: '',
     },
   });
 
@@ -50,7 +49,6 @@ export const VoidPaymentDialog: React.FC<VoidPaymentDialogProps> = ({
       await voidPayment.mutateAsync({
         reason: values.reason.trim(),
         sourceScreen,
-        accountPassword: values.accountPassword,
       });
       onSuccess();
     } catch (error) {
@@ -58,9 +56,6 @@ export const VoidPaymentDialog: React.FC<VoidPaymentDialogProps> = ({
       setServerError(normalized.message);
       if (normalized.fieldErrors.reason) {
         setError('reason', { message: normalized.fieldErrors.reason });
-      }
-      if (normalized.fieldErrors.accountPassword) {
-        setError('accountPassword', { message: normalized.fieldErrors.accountPassword });
       }
     }
   };
@@ -89,15 +84,6 @@ export const VoidPaymentDialog: React.FC<VoidPaymentDialogProps> = ({
           rows={3}
           className={inputClass(Boolean(errors.reason))}
           placeholder="Required for audit history"
-        />
-      </TextField>
-
-      <TextField label="Account password" error={errors.accountPassword?.message}>
-        <input
-          {...register('accountPassword')}
-          type="password"
-          autoComplete="current-password"
-          className={inputClass(Boolean(errors.accountPassword))}
         />
       </TextField>
 

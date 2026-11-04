@@ -59,7 +59,6 @@ export const EditPrepaidPurchaseDialog: React.FC<EditPrepaidPurchaseDialogProps>
       dueDate: item.dueDate,
       notes: item.notes ?? '',
       reason: '',
-      accountPassword: '',
     },
   });
   const fullAmount = watch('originalAmount');
@@ -74,7 +73,6 @@ export const EditPrepaidPurchaseDialog: React.FC<EditPrepaidPurchaseDialogProps>
         notes: values.notes?.trim() || null,
         reason: values.reason.trim(),
         sourceScreen: 'PREPAID',
-        accountPassword: values.accountPassword,
       });
       onSuccess();
     } catch (error) {
@@ -85,7 +83,6 @@ export const EditPrepaidPurchaseDialog: React.FC<EditPrepaidPurchaseDialogProps>
         'description',
         'notes',
         'reason',
-        'accountPassword',
       ] as const) {
         if (normalized.fieldErrors[field]) {
           setError(field, { message: normalized.fieldErrors[field] });
@@ -138,15 +135,6 @@ export const EditPrepaidPurchaseDialog: React.FC<EditPrepaidPurchaseDialogProps>
 
       <TextField label="Correction Reason / سبب التعديل" error={errors.reason?.message}>
         <textarea {...register('reason')} dir="auto" rows={3} className={inputClass(Boolean(errors.reason))} />
-      </TextField>
-
-      <TextField label={businessLabels.prepaid.accountPassword} error={errors.accountPassword?.message}>
-        <input
-          {...register('accountPassword')}
-          type="password"
-          autoComplete="current-password"
-          className={inputClass(Boolean(errors.accountPassword))}
-        />
       </TextField>
 
       <SubmitButton

@@ -22,6 +22,10 @@ export function assertCanPerformFinancialMutation(
     throw new AuthorizationError('Unknown financial mutation action');
   }
 
+  assertFinancialAdmin(user);
+}
+
+export function assertFinancialAdmin(user: FinancialMutationUser | undefined): void {
   if (!user) {
     throw new AuthorizationError('User not authenticated');
   }

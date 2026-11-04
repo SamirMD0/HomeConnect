@@ -33,15 +33,15 @@ describe('derived customer credit-limit enforcement', () => {
     await expect(CreditLimitService.check(tx, customer, new Decimal('31'), { overrideCreditLimit: true, creditLimitOverrideReason: 'Approved exception', accountPassword: 'secret' }, { ...user, role: 'EMPLOYEE' })).rejects.toMatchObject({ statusCode: 403 });
     expect(verify).not.toHaveBeenCalled();
   });
-  it('requires a reason and successful ADMIN step-up before permitting an override', async () => {
+  it('requires a reason and permits ADMIN approval without a password', async () => {
     await expect(CreditLimitService.check(tx, customer, new Decimal('31'), { overrideCreditLimit: true, accountPassword: 'secret' }, user)).rejects.toMatchObject({ statusCode: 400 });
-    verify.mockRejectedValueOnce(new Error('wrong password'));
-    await expect(CreditLimitService.check(tx, customer, new Decimal('31'), { overrideCreditLimit: true, creditLimitOverrideReason: 'Approved exception', accountPassword: 'secret' }, user)).rejects.toThrow('wrong password');
+    await expect(CreditLimitService.check(tx, customer, new Decimal('31'), { overrideCreditLimit: true, creditLimitOverrideReason: 'Approved exception' }, user)).resolves.toMatchObject({ reason: 'Approved exception' });
+    expect(verify).not.toHaveBeenCalled();
   });
   it('audits the exact derived projection and reason without storing the password', async () => {
     const decision = await CreditLimitService.check(tx, customer, new Decimal('31'), { overrideCreditLimit: true, creditLimitOverrideReason: 'Approved exception', accountPassword: 'secret' }, user);
     await CreditLimitService.audit(tx, customer.id, 'debt-id', decision, user);
-    expect(verify).toHaveBeenCalledWith(user.userId, 'secret', expect.objectContaining({ action: 'OVERRIDE_CUSTOMER_CREDIT_LIMIT' }), tx);
+    expect(verify).not.toHaveBeenCalled();
     expect((tx as unknown as { activityLog: { create: ReturnType<typeof vi.fn> } }).activityLog.create).toHaveBeenCalledWith({ data: expect.objectContaining({
       branchId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', action: 'CREDIT_LIMIT_OVERRIDE', entityType: 'Debt', entityId: 'debt-id', userId: user.userId,
       details: expect.objectContaining({ customerId: customer.id, reason: 'Approved exception', currentOutstanding: '70.00', projectedOutstanding: '101.00', overage: '1.00' }),

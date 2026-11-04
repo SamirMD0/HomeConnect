@@ -16,7 +16,6 @@ vi.mock('../../branches/parent-branch', async (importOriginal) => ({
   assertRecordInScope: vi.fn().mockResolvedValue('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
 }));
 
-
 const tx = { id: 'tx' };
 
 const {
@@ -336,16 +335,11 @@ describe('PaymentsService', () => {
       {
         reason: 'Wrong customer payment',
         sourceScreen: FinancialCorrectionSourceScreen.LEDGER,
-        accountPassword: 'admin-password',
       },
       adminUser, phase3bScope
     );
 
-    expect(verifyAdminPasswordMock).toHaveBeenCalledWith(adminUser.userId, 'admin-password', {
-      action: 'VOID_PAYMENT',
-      recordType: FinancialCorrectionRecordType.PAYMENT,
-      recordId: paymentId,
-    });
+    expect(verifyAdminPasswordMock).not.toHaveBeenCalled();
     expect(paymentsRepositoryMock.voidPayment).toHaveBeenCalledWith(
       tx,
       paymentId,
@@ -439,16 +433,11 @@ describe('PaymentsService', () => {
         ],
         reason: 'Payment was allocated to the wrong installments',
         sourceScreen: FinancialCorrectionSourceScreen.PLAN_DETAILS,
-        accountPassword: 'admin-password',
       },
       adminUser, phase3bScope
     );
 
-    expect(verifyAdminPasswordMock).toHaveBeenCalledWith(adminUser.userId, 'admin-password', {
-      action: 'REALLOCATE_PAYMENT',
-      recordType: FinancialCorrectionRecordType.PAYMENT_ALLOCATION,
-      recordId: paymentId,
-    });
+    expect(verifyAdminPasswordMock).not.toHaveBeenCalled();
     expect(paymentsRepositoryMock.voidPayment).not.toHaveBeenCalled();
     expect(paymentsRepositoryMock.voidAllocationsForPayment).toHaveBeenCalledWith(
       tx,

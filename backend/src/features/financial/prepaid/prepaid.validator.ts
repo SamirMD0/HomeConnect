@@ -55,7 +55,7 @@ export const convertPrepaidSchema = z.discriminatedUnion('mode', [
 export const revertPrepaidDeliverySchema = z
   .object({
     reason: userTextSchema({ field: 'Reason', min: 5, max: 1000 }),
-    accountPassword: z.string().min(1, 'Account password is required'),
+    accountPassword: z.string().optional(),
   })
   .strict();
 

@@ -4,7 +4,6 @@ import { formatMoney } from '../utils/financial-format';
 export interface CreditLimitOverride {
   overrideCreditLimit?: boolean;
   creditLimitOverrideReason?: string | null;
-  accountPassword?: string;
 }
 interface Warning {
   currency: 'USD'; currentOutstanding: string; creditLimit: string;
@@ -43,7 +42,6 @@ export function CreditLimitWarning({ warning, isAdmin, value, onChange }: {
     {isAdmin ? <>
       <label className="block"><input type="checkbox" checked={value.overrideCreditLimit ?? false} onChange={(e) => onChange({ ...value, overrideCreditLimit: e.target.checked })} /> Approve ADMIN override</label>
       <label className="block">Override reason<textarea dir="auto" value={value.creditLimitOverrideReason ?? ''} minLength={5} maxLength={1000} onChange={(e) => onChange({ ...value, creditLimitOverrideReason: e.target.value })} className="mt-1 block w-full rounded border p-2" /></label>
-      <label className="block">ADMIN account password<input type="password" autoComplete="current-password" value={value.accountPassword ?? ''} onChange={(e) => onChange({ ...value, accountPassword: e.target.value })} className="mt-1 block w-full rounded border p-2" /></label>
     </> : <p>ADMIN approval required</p>}
   </div>;
 }

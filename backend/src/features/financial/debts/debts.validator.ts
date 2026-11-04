@@ -63,7 +63,7 @@ export const updateDebtSchema = z
     cancelReason: userTextSchema({ field: 'Cancellation reason', min: 5, max: 1000 }).optional().nullable(),
     reason: userTextSchema({ field: 'Correction reason', min: 5, max: 1000 }),
     sourceScreen: z.nativeEnum(FinancialCorrectionSourceScreen).default(FinancialCorrectionSourceScreen.API),
-    accountPassword: z.string().min(1, 'Account password is required'),
+    accountPassword: z.string().optional(),
   })
   .strict();
 
@@ -96,7 +96,7 @@ export const createDebtPaymentSchema = z
 export const cancelDebtSchema = z
   .object({
     reason: userTextSchema({ field: 'Cancellation reason', min: 1, max: 1000 }),
-    accountPassword: z.string().min(1, 'Account password is required'),
+    accountPassword: z.string().optional(),
   })
   .strict();
 

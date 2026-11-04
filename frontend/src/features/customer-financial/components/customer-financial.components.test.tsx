@@ -1,4 +1,5 @@
 import { renderToStaticMarkup } from 'react-dom/server';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CustomerFinancialSummary } from '../types/customer-financial.types';
 import { AddFinancialObligationDialog } from './AddFinancialObligationDialog';
@@ -14,6 +15,12 @@ import { OverdueItemsList } from './OverdueItemsList';
 import { RecentPaymentsList } from './RecentPaymentsList';
 import { createPrepaidPurchaseSchema } from '../schemas/financial-mutation.schemas';
 import { negativeMoneyInput, subtractMoneyInput } from '../utils/money-input';
+import { CancelDebtDialog } from './CancelDebtDialog';
+import { CancelInstallmentPlanDialog } from './CancelInstallmentPlanDialog';
+import { EditDebtDialog } from './EditDebtDialog';
+import { EditInstallmentPlanDialog } from './EditInstallmentPlanDialog';
+import { ReallocatePaymentDialog } from './ReallocatePaymentDialog';
+import { VoidPaymentDialog } from './VoidPaymentDialog';
 
 const { authHookMock, debtDetailHookMock, planDetailHookMock, summaryHookMock } = vi.hoisted(() => ({
   authHookMock: vi.fn(),
@@ -238,6 +245,25 @@ const summary: CustomerFinancialSummary = {
 };
 
 describe('customer financial profile components', () => {
+  it('renders every correction and cancellation dialog without a password field', () => {
+    const onSuccess = vi.fn();
+    const debt = { ...summary.debts[0], customer: summary.customer, payments: [] };
+    const plan = { ...summary.installmentPlans[0], customer: summary.customer, schedule: [], payments: [] };
+    const dialogs = [
+      <EditDebtDialog customerId="customer-1" debt={debt} onSuccess={onSuccess} />,
+      <CancelDebtDialog customerId="customer-1" debt={{ ...debt, totalPaid: '0.00', calculatedStatus: 'UNPAID' }} onSuccess={onSuccess} />,
+      <EditInstallmentPlanDialog customerId="customer-1" plan={plan} onSuccess={onSuccess} />,
+      <CancelInstallmentPlanDialog customerId="customer-1" plan={plan} onSuccess={onSuccess} />,
+      <VoidPaymentDialog customerId="customer-1" payment={summary.recentPayments[0]} sourceScreen="CUSTOMER_PROFILE" onSuccess={onSuccess} />,
+      <ReallocatePaymentDialog customerId="customer-1" planId={plan.id} payment={summary.recentPayments[0]} schedule={[]} onSuccess={onSuccess} />,
+    ];
+    for (const dialog of dialogs) {
+      const html = renderToStaticMarkup(<QueryClientProvider client={new QueryClient()}>{dialog}</QueryClientProvider>);
+      expect(html).toContain('type="submit"');
+      expect(html).not.toMatch(/type="password"|accountPassword|Account password/);
+    }
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     authHookMock.mockReturnValue({
@@ -603,7 +629,7 @@ describe('customer financial profile components', () => {
     expect(html).toContain('Record payment');
   });
 
-  it('shows delete as available for installment plans with payments after password confirmation', () => {
+  it('shows delete as available for installment plans with payments without password confirmation', () => {
     planDetailHookMock.mockReturnValue({
       data: {
         ...summary.installmentPlans[0],

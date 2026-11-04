@@ -23,7 +23,7 @@ router.post('/', validate(createCustomerSchema), CustomersController.createCusto
 // Get customer by ID
 router.get('/:id', CustomersController.getCustomer);
 
-// Move a customer and their whole history to another branch (admin, account password)
+// Move a customer and their whole history to another branch (admin)
 router.get('/:id/branch-transfer/preview', requireRole(['ADMIN']), validate(customerBranchTransferPreviewSchema, 'query'), CustomersController.previewBranchTransfer);
 router.post('/:id/branch-transfer', requireRole(['ADMIN']), validate(customerBranchTransferSchema), CustomersController.transferBranch);
 

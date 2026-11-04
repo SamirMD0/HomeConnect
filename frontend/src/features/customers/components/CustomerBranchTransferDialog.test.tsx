@@ -39,10 +39,10 @@ describe('CustomerBranchTransferDialog', () => {
     expect(html).toContain('All records move together, or nothing moves.');
   });
 
-  it('asks for the account password and keeps the move button inactive until a branch is checked', () => {
+  it('does not ask for a password and keeps the move button inactive until a branch is checked', () => {
     const html = render();
-    expect(html).toContain('type="password"');
-    expect(html).toMatch(/autoComplete="current-password"|autocomplete="current-password"/);
+    expect(html).not.toContain('type="password"');
+    expect(html).not.toMatch(/autoComplete="current-password"|autocomplete="current-password"/);
     expect(html).toMatch(/pointer-events-none opacity-50"><button type="submit"/);
   });
 

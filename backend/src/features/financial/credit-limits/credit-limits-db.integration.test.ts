@@ -16,8 +16,6 @@ import { CustomersService } from '../../../services/customers.service';
 import { CreditLimitService } from './credit-limit.service';
 const phase3bScope = async () => ({ mode: 'all' as const, branchIds: [await branchFixture(db)] });
 
-
-
 const describeDb = process.env.RUN_FINANCIAL_DB_TESTS === '1' && isIsolatedTestDatabase(process.env.DATABASE_URL) ? describe : describe.skip;
 const db = new PrismaClient();
 let userId: string; let customerId: string; let taxProfileId: string; let taxRateId: string;
@@ -103,10 +101,9 @@ describeDb('customer credit-limit transaction invariants', () => {
     await expect(SalesOrdersService.create(sale(), actor(), {}, await phase3bScope())).rejects.toMatchObject({ code: 'CREDIT_LIMIT_EXCEEDED', details: { currentOutstanding: '0.00', overage: '1.00' } });
     for (const count of [await db.salesOrder.count({ where: { createdById: userId } }), await db.debt.count({ where: { createdById: userId } }), await db.payment.count({ where: { createdById: userId } }), await db.salesAudit.count({ where: { changedById: userId } })]) expect(count).toBe(0);
   });
-  it('requires real ADMIN password/reason and audits one successful sale override across retries', async () => {
+  it('requires an ADMIN reason without a password and audits one successful sale override across retries', async () => {
     await db.customer.update({ where: { id: customerId }, data: { creditLimit: '50' } });
-    const input = sale({ overrideCreditLimit: true, creditLimitOverrideReason: 'Owner approved appliance credit', accountPassword: password });
-    await expect(SalesOrdersService.create({ ...input, accountPassword: 'wrong' }, actor(), {}, await phase3bScope())).rejects.toMatchObject({ statusCode: 401 });
+    const input = sale({ overrideCreditLimit: true, creditLimitOverrideReason: 'Owner approved appliance credit' });
     const order = await SalesOrdersService.create(input, actor(), {}, await phase3bScope());
     expect((await SalesOrdersService.create(input, actor(), {}, await phase3bScope())).id).toBe(order.id);
     const logs = await db.activityLog.findMany({ where: { userId, action: 'CREDIT_LIMIT_OVERRIDE' } });
@@ -120,7 +117,7 @@ describeDb('customer credit-limit transaction invariants', () => {
     await db.customer.update({ where: { id: customerId }, data: { creditLimit: '50' } });
     await expect(SalesOrdersService.createDebt(order.id, { dueDate: today }, actor(), {})).rejects.toMatchObject({ code: 'CREDIT_LIMIT_EXCEEDED' });
     expect((await db.salesOrder.findUniqueOrThrow({ where: { id: order.id } })).debtId).toBeNull();
-    await SalesOrdersService.createDebt(order.id, { dueDate: today, overrideCreditLimit: true, creditLimitOverrideReason: 'Approved credit exception', accountPassword: password }, actor(), {});
+    await SalesOrdersService.createDebt(order.id, { dueDate: today, overrideCreditLimit: true, creditLimitOverrideReason: 'Approved credit exception' }, actor(), {});
     expect(await outstanding()).toBe('75.00');
     expect(await db.payment.count({ where: { salesOrderId: order.id } })).toBe(1);
   });
@@ -134,7 +131,7 @@ describeDb('customer credit-limit transaction invariants', () => {
   it('rolls back a debt when the override audit cannot be recorded', async () => {
     await db.customer.update({ where: { id: customerId }, data: { creditLimit: '0' } });
     vi.spyOn(CreditLimitService, 'audit').mockRejectedValueOnce(new Error('audit failure'));
-    await expect(DebtsService.createDebt(customerId, debt('1', { overrideCreditLimit: true, creditLimitOverrideReason: 'Approved exception', accountPassword: password }), actor())).rejects.toThrow('audit failure');
+    await expect(DebtsService.createDebt(customerId, debt('1', { overrideCreditLimit: true, creditLimitOverrideReason: 'Approved exception' }), actor())).rejects.toThrow('audit failure');
     expect(await db.debt.count({ where: { createdById: userId } })).toBe(0);
     expect(await db.activityLog.count({ where: { userId } })).toBe(0);
   });

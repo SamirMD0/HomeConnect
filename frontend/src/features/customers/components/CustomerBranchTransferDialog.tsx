@@ -31,13 +31,12 @@ export interface CustomerBranchTransferDialogProps {
 
 /**
  * Moves a customer and their whole history to another branch. The server does
- * it in one transaction (all or nothing) and requires the account password.
+ * it in one transaction (all or nothing).
  */
 export const CustomerBranchTransferDialog: React.FC<CustomerBranchTransferDialogProps> = ({ isOpen, onClose, customer }) => {
   const scope = useContext(BranchScopeContext);
   const queryClient = useQueryClient();
   const [toBranchId, setToBranchId] = useState('');
-  const [accountPassword, setAccountPassword] = useState('');
   const destinations = (scope?.branches ?? []).filter((branch) => branch.isActive && branch.id !== customer.branchId);
   const current = scope?.branches.find((branch) => branch.id === customer.branchId);
 
@@ -48,7 +47,7 @@ export const CustomerBranchTransferDialog: React.FC<CustomerBranchTransferDialog
   });
 
   const transfer = useMutation({
-    mutationFn: () => customersApi.transferBranch(customer.id, { toBranchId, accountPassword }),
+    mutationFn: () => customersApi.transferBranch(customer.id, { toBranchId }),
     onSuccess: (result) => {
       const destination = scope?.branches.find((branch) => branch.id === result.toBranchId);
       toast.success(`Moved to ${destination?.name ?? 'the new branch'}`);
@@ -63,7 +62,6 @@ export const CustomerBranchTransferDialog: React.FC<CustomerBranchTransferDialog
 
   const close = () => {
     setToBranchId('');
-    setAccountPassword('');
     transfer.reset();
     onClose();
   };
@@ -71,7 +69,7 @@ export const CustomerBranchTransferDialog: React.FC<CustomerBranchTransferDialog
   const counts = preview.data?.counts;
   const total = counts ? Object.values(counts).reduce((sum, value) => sum + value, 0) : 0;
   const blocker = preview.data?.blocker;
-  const canSubmit = Boolean(toBranchId && accountPassword && preview.data && !blocker && !transfer.isPending);
+  const canSubmit = Boolean(toBranchId && preview.data && !blocker && !transfer.isPending);
 
   return (
     <Modal isOpen={isOpen} onClose={() => !transfer.isPending && close()} title="Change branch">
@@ -137,16 +135,6 @@ export const CustomerBranchTransferDialog: React.FC<CustomerBranchTransferDialog
         )}
 
         {blocker && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{blocker.message}</p>}
-
-        <TextField label="Account password">
-          <input
-            type="password"
-            autoComplete="current-password"
-            value={accountPassword}
-            onChange={(event) => setAccountPassword(event.target.value)}
-            className={inputClass(transfer.isError)}
-          />
-        </TextField>
 
         {transfer.isError && <p role="alert" className="text-sm text-red-700">{apiErrorMessage(transfer.error)}</p>}
 

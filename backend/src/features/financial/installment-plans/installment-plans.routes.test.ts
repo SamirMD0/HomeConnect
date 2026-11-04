@@ -247,7 +247,6 @@ describe('installment plan routes', () => {
       .set('Authorization', `Bearer ${adminToken}`)
       .send({
         reason: 'Agreement cancelled',
-        accountPassword: 'admin-password',
       });
 
     expect(cancelResponse.status).toBe(200);
@@ -255,7 +254,7 @@ describe('installment plan routes', () => {
     expect(cancelResponse.body.data.cancellation.reason).toBe('Agreement cancelled');
   });
 
-  it('allows admins to correct plan details with account password and reason', async () => {
+  it('allows admins to correct plan details with an audit reason and no password', async () => {
     const response = await request(app)
       .post(`/api/v1/installment-plans/${planId}/corrections`)
       .set('Authorization', `Bearer ${adminToken}`)
@@ -267,7 +266,6 @@ describe('installment plan routes', () => {
         notes: 'Updated notes',
         reason: 'Corrected agreement amount',
         sourceScreen: 'PLAN_DETAILS',
-        accountPassword: 'admin-password',
       });
 
     expect(response.status).toBe(200);
@@ -283,7 +281,6 @@ describe('installment plan routes', () => {
         notes: 'Updated notes',
         reason: 'Corrected agreement amount',
         sourceScreen: 'PLAN_DETAILS',
-        accountPassword: 'admin-password',
       },
       expect.objectContaining({ role: 'ADMIN' })
     );
@@ -298,7 +295,6 @@ describe('installment plan routes', () => {
         notes: 'Updated notes',
         reason: 'Corrected description typo',
         sourceScreen: 'PLAN_DETAILS',
-        accountPassword: 'admin-password',
       });
 
     expect(response.status).toBe(200);

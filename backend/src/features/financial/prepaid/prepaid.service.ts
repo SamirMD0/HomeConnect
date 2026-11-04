@@ -32,7 +32,7 @@ import {
 import { DebtsRepository } from '../debts/debts.repository';
 import { InstallmentPlansService } from '../installment-plans/installment-plans.service';
 import type { FinancialTransactionClient } from '../infrastructure/transaction';
-import { verifyAdminPasswordForCorrection } from '../authorization/account-password';
+import { assertFinancialAdmin } from '../authorization/financial-policy';
 import { writeFinancialCorrectionAudit } from '../corrections/correction-audit';
 import { PrepaidRepository, PrepaidPurchaseWithDetails } from './prepaid.repository';
 import {
@@ -318,12 +318,7 @@ export class PrepaidService {
       throw new NotFoundError('Acting user not found');
     }
 
-    await verifyAdminPasswordForCorrection(user.userId, input.accountPassword, {
-      action: 'REVERT_PREPAID_DELIVERY',
-      recordType: FinancialCorrectionRecordType.PREPAID_PURCHASE,
-      recordId: id,
-      ipAddress: context.ipAddress ?? null,
-    });
+    assertFinancialAdmin(user);
 
     return runFinancialTransaction(async (tx) => {
       const prepaid = await PrepaidRepository.findById(id, tx);

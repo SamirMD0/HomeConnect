@@ -2,7 +2,6 @@ import { customerBranch } from '../../branches/parent-branch';
 import { Currency, Prisma } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { AppError, AuthorizationError, ValidationError } from '../../../lib/errors';
-import { verifyAdminPassword } from '../../../lib/admin-verification';
 import { CustomerFinancialSummaryService } from '../customer-summary/customer-financial-summary.service';
 import { customerFinancialSummaryQuerySchema } from '../customer-summary/customer-financial-summary.validator';
 import { moneyToApiString, parseMoney } from '../domain/money';
@@ -47,11 +46,7 @@ export class CreditLimitService {
     );
     if (user.role !== 'ADMIN') throw new AuthorizationError('Only an ADMIN can override a customer credit limit');
     const reason = input.creditLimitOverrideReason?.trim();
-    if (!reason || reason.length < 5 || !input.accountPassword) throw new ValidationError('ADMIN password and a credit-limit override reason (at least 5 characters) are required');
-    await verifyAdminPassword(user.userId, input.accountPassword, {
-      action: 'OVERRIDE_CUSTOMER_CREDIT_LIMIT', recordType: 'Customer', recordId: customer.id,
-      domainLabel: 'customer credit-limit overrides',
-    }, tx);
+    if (!reason || reason.length < 5) throw new ValidationError('A credit-limit override reason (at least 5 characters) is required');
     return { ...projection, reason };
   }
 

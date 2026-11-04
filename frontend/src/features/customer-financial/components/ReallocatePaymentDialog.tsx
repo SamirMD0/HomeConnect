@@ -27,7 +27,6 @@ export const ReallocatePaymentDialog: React.FC<ReallocatePaymentDialogProps> = (
   const reallocatePayment = useReallocatePayment(customerId, payment.id, planId);
   const [amounts, setAmounts] = useState<Record<string, string>>(() => initialAmounts(payment, schedule));
   const [reason, setReason] = useState('');
-  const [accountPassword, setAccountPassword] = useState('');
   const [serverError, setServerError] = useState<string | null>(null);
   const [fieldError, setFieldError] = useState<string | null>(null);
   const paymentCents = moneyToCents(payment.totalAmount);
@@ -64,17 +63,12 @@ export const ReallocatePaymentDialog: React.FC<ReallocatePaymentDialogProps> = (
       setFieldError('Correction reason must be at least 5 characters.');
       return;
     }
-    if (!accountPassword) {
-      setFieldError('Account password is required.');
-      return;
-    }
 
     try {
       await reallocatePayment.mutateAsync({
         allocations,
         reason: reason.trim(),
         sourceScreen: 'PLAN_DETAILS',
-        accountPassword,
       });
       onSuccess();
     } catch (error) {
@@ -146,16 +140,6 @@ export const ReallocatePaymentDialog: React.FC<ReallocatePaymentDialogProps> = (
           rows={3}
           className={inputClass(false)}
           placeholder="Required for audit history"
-        />
-      </TextField>
-
-      <TextField label="Account password">
-        <input
-          value={accountPassword}
-          onChange={(event) => setAccountPassword(event.target.value)}
-          type="password"
-          autoComplete="current-password"
-          className={inputClass(false)}
         />
       </TextField>
 

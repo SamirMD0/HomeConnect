@@ -57,5 +57,5 @@ export const customerBranchTransferPreviewSchema = z.object({
 
 export const customerBranchTransferSchema = z.object({
   toBranchId: databaseUuidSchema('Choose a destination branch'),
-  accountPassword: z.string().min(1, 'Account password is required'),
+  accountPassword: z.string().optional(),
 });

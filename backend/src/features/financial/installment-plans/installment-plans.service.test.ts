@@ -27,7 +27,6 @@ vi.mock('../../branches/parent-branch', async (importOriginal) => ({
   assertRecordInScope: vi.fn().mockResolvedValue('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
 }));
 
-
 const tx = {
   id: 'tx',
   user: {
@@ -607,7 +606,7 @@ describe('InstallmentPlansService', () => {
     ).rejects.toThrow(PaymentIdempotencyConflictError);
   });
 
-  it('corrects plan details after admin account-password verification', async () => {
+  it('corrects plan details without password verification', async () => {
     repositoryMock.findPlanById.mockResolvedValue(makePlan());
     repositoryMock.updatePlanDetails.mockResolvedValue(
       makePlan({
@@ -623,16 +622,11 @@ describe('InstallmentPlansService', () => {
         notes: 'Updated notes',
         reason: 'Corrected description typo',
         sourceScreen: FinancialCorrectionSourceScreen.PLAN_DETAILS,
-        accountPassword: 'admin-password',
       },
       adminUser
     );
 
-    expect(verifyAdminPasswordMock).toHaveBeenCalledWith(adminUser.userId, 'admin-password', {
-      action: 'CORRECT_INSTALLMENT_PLAN',
-      recordType: FinancialCorrectionRecordType.INSTALLMENT_PLAN,
-      recordId: planId,
-    });
+    expect(verifyAdminPasswordMock).not.toHaveBeenCalled();
     expect(repositoryMock.updatePlanDetails).toHaveBeenCalledWith(
       tx,
       planId,
@@ -686,7 +680,6 @@ describe('InstallmentPlansService', () => {
         schedule: [{ amountDue: '120.00' }, { amountDue: '110.00' }, { amountDue: '90.00' }],
         reason: 'Corrected agreement schedule',
         sourceScreen: FinancialCorrectionSourceScreen.PLAN_DETAILS,
-        accountPassword: 'admin-password',
       },
       adminUser
     );
@@ -755,7 +748,6 @@ describe('InstallmentPlansService', () => {
         notes: null,
         reason: 'Corrected agreement amount',
         sourceScreen: FinancialCorrectionSourceScreen.PLAN_DETAILS,
-        accountPassword: 'admin-password',
       },
       adminUser
     );
@@ -819,7 +811,6 @@ describe('InstallmentPlansService', () => {
           notes: null,
           reason: 'Corrected agreement amount',
           sourceScreen: FinancialCorrectionSourceScreen.PLAN_DETAILS,
-          accountPassword: 'admin-password',
         },
         adminUser
       )
@@ -829,7 +820,7 @@ describe('InstallmentPlansService', () => {
     expect(correctionAuditMock).not.toHaveBeenCalled();
   });
 
-  it('cancels unpaid plans after account-password verification and rejects plans with payments', async () => {
+  it('cancels unpaid plans without password verification and rejects plans with payments', async () => {
     repositoryMock.findPlanById.mockResolvedValue(makePlan());
     repositoryMock.cancelPlan.mockResolvedValue(
       makePlan({
@@ -851,14 +842,14 @@ describe('InstallmentPlansService', () => {
 
     const cancelled = await InstallmentPlansService.cancelPlan(
       planId,
-      { reason: 'Agreement cancelled', accountPassword: 'admin-password' },
+      { reason: 'Agreement cancelled' },
       adminUser
     );
 
     expect(cancelled.status).toBe(InstallmentPlanStatus.CANCELLED);
     expect(cancelled.schedule.every((installment) => installment.status === InstallmentStatus.CANCELLED)).toBe(true);
 
-    expect(verifyAccountPasswordMock).toHaveBeenCalledWith(adminUser.userId, 'admin-password');
+    expect(verifyAccountPasswordMock).not.toHaveBeenCalled();
 
     repositoryMock.findPlanById.mockResolvedValue(
       makePlan({
@@ -876,7 +867,7 @@ describe('InstallmentPlansService', () => {
     await expect(
       InstallmentPlansService.cancelPlan(
         planId,
-        { reason: 'Agreement cancelled', accountPassword: 'admin-password' },
+        { reason: 'Agreement cancelled' },
         adminUser
       )
     ).rejects.toThrow('Installment plan with payments requires a dedicated reversal workflow');

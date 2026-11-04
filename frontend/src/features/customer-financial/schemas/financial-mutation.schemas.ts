@@ -57,17 +57,14 @@ export const updateDebtSchema = z.object({
   dueDate: businessDateSchema,
   notes: optionalTextSchema,
   reason: z.string().trim().min(5, 'Correction reason must be at least 5 characters'),
-  accountPassword: z.string().min(1, 'Account password is required'),
 });
 
 export const cancelFinancialRecordSchema = z.object({
   reason: z.string().trim().min(1, 'Cancellation reason is required'),
-  accountPassword: z.string().min(1, 'Account password is required'),
 });
 
 export const voidPaymentSchema = z.object({
   reason: z.string().trim().min(5, 'Void reason must be at least 5 characters'),
-  accountPassword: z.string().min(1, 'Account password is required'),
 });
 
 export const createInstallmentPlanSchema = z.object({
@@ -94,7 +91,6 @@ export const updateInstallmentPlanSchema = z.object({
     .max(120, 'Installment count is too large'),
   notes: optionalTextSchema,
   reason: z.string().trim().min(5, 'Correction reason must be at least 5 characters'),
-  accountPassword: z.string().min(1, 'Account password is required'),
 });
 
 export const installmentPlanPaymentSchema = (remainingBalance: string) =>

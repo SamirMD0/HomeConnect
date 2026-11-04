@@ -8,7 +8,6 @@ vi.mock('../../branches/parent-branch', async (importOriginal) => ({
   assertRecordInScope: vi.fn().mockResolvedValue('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
 }));
 
-
 const { paymentsServiceMock } = vi.hoisted(() => ({
   paymentsServiceMock: {
     getReceipt: vi.fn(),
@@ -78,21 +77,19 @@ describe('payment correction routes', () => {
       .set('Authorization', `Bearer ${employeeToken}`)
       .send({
         reason: 'Wrong payment was entered',
-        accountPassword: 'admin-password',
       });
 
     expect(response.status).toBe(403);
     expect(paymentsServiceMock.voidPayment).not.toHaveBeenCalled();
   });
 
-  it('voids a payment with reason and account password', async () => {
+  it('voids a payment with a reason and no password', async () => {
     const response = await request(app)
       .post(`/api/v1/payments/${paymentId}/void`)
       .set('Authorization', `Bearer ${adminToken}`)
       .send({
         reason: 'Wrong payment was entered',
         sourceScreen: 'LEDGER',
-        accountPassword: 'admin-password',
       });
 
     expect(response.status).toBe(200);
@@ -102,7 +99,6 @@ describe('payment correction routes', () => {
       {
         reason: 'Wrong payment was entered',
         sourceScreen: 'LEDGER',
-        accountPassword: 'admin-password',
       },
       expect.objectContaining({ role: 'ADMIN' }), phase3bScope
     );
@@ -119,7 +115,6 @@ describe('payment correction routes', () => {
         notes: 'Corrected reference',
         reason: 'Receipt reference was mistyped',
         sourceScreen: 'LEDGER',
-        accountPassword: 'admin-password',
       });
 
     expect(response.status).toBe(200);
@@ -143,7 +138,6 @@ describe('payment correction routes', () => {
         ],
         reason: 'Payment was allocated to the wrong installments',
         sourceScreen: 'PLAN_DETAILS',
-        accountPassword: 'admin-password',
       });
 
     expect(response.status).toBe(200);
@@ -163,7 +157,6 @@ describe('payment correction routes', () => {
         ],
         reason: 'Payment was allocated to the wrong installments',
         sourceScreen: 'PLAN_DETAILS',
-        accountPassword: 'admin-password',
       },
       expect.objectContaining({ role: 'ADMIN' }), phase3bScope
     );
@@ -186,7 +179,6 @@ describe('payment correction routes', () => {
         ],
         reason: 'Payment was allocated to the wrong installments',
         sourceScreen: 'PLAN_DETAILS',
-        accountPassword: 'admin-password',
       });
 
     expect(response.status).toBe(400);

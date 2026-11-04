@@ -10,7 +10,6 @@ import { TextField, SubmitButton, inputClass } from '../../customer-financial/co
 
 const revertSchema = z.object({
   reason: z.string().trim().min(5, 'Reason must be at least 5 characters'),
-  accountPassword: z.string().min(1, 'Account password is required'),
 });
 
 type RevertFormValues = z.infer<typeof revertSchema>;
@@ -34,7 +33,7 @@ export const RevertPrepaidDeliveryDialog: React.FC<RevertPrepaidDeliveryDialogPr
     formState: { errors },
   } = useForm<RevertFormValues>({
     resolver: zodResolver(revertSchema),
-    defaultValues: { reason: '', accountPassword: '' },
+    defaultValues: { reason: '' },
   });
 
   const onSubmit = handleSubmit(async (values) => {
@@ -42,7 +41,6 @@ export const RevertPrepaidDeliveryDialog: React.FC<RevertPrepaidDeliveryDialogPr
     try {
       await revert.mutateAsync({
         reason: values.reason.trim(),
-        accountPassword: values.accountPassword,
       });
       onSuccess();
     } catch (error) {
@@ -78,18 +76,6 @@ export const RevertPrepaidDeliveryDialog: React.FC<RevertPrepaidDeliveryDialogPr
           dir="auto"
           {...register('reason')}
           className={inputClass(Boolean(errors.reason))}
-        />
-      </TextField>
-
-      <TextField
-        label={businessLabels.prepaid.accountPassword}
-        error={errors.accountPassword?.message}
-      >
-        <input
-          type="password"
-          autoComplete="current-password"
-          {...register('accountPassword')}
-          className={inputClass(Boolean(errors.accountPassword))}
         />
       </TextField>
 
