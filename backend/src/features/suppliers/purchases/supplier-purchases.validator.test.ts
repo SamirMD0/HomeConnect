@@ -73,10 +73,8 @@ describe('createSupplierPurchaseSchema', () => {
     expect(messagesFor(base({ transactionDate: '2099-01-01' }))).toContain('Future purchase dates are not allowed');
   });
 
-  it('requires the account password when a new product is being added', () => {
-    expect(messagesFor(base({ lines: [quickAdd] })))
-      .toContainEqual(expect.stringContaining('account password is required'));
-    expect(createSupplierPurchaseSchema.safeParse(base({ lines: [quickAdd], accountPassword: 'secret' })).success).toBe(true);
+  it('no longer requires an account password to add a new product', () => {
+    expect(createSupplierPurchaseSchema.safeParse(base({ lines: [quickAdd] })).success).toBe(true);
   });
 
   it('refuses to add a new product on a purchase that receives no stock', () => {

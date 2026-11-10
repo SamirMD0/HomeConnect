@@ -476,16 +476,11 @@ describe('SupplierPurchasesService quick add', () => {
     purchasesRepository.findById.mockResolvedValue({ id: transactionId, amount: '600.00', transactionDate: new Date('2026-08-15T00:00:00.000Z'), supplierReceiving: null, purchaseLines: [] });
   });
 
-  it('verifies the admin password before creating anything', async () => {
-    await SupplierPurchasesService.create(supplierId, purchase({ lines: [quickAddLine], accountPassword: 'secret' }), admin, context, phase3bScope);
+  it('adds a product without asking for the admin password', async () => {
+    await SupplierPurchasesService.create(supplierId, purchase({ lines: [quickAddLine] }), admin, context, phase3bScope);
 
-    expect(adminVerification.verifyAdminPassword).toHaveBeenCalledWith(
-      admin.userId, 'secret',
-      expect.objectContaining({ action: 'QUICK_ADD_PRODUCT_FROM_PURCHASE' }),
-      tx
-    );
-    expect(adminVerification.verifyAdminPassword.mock.invocationCallOrder[0])
-      .toBeLessThan(productsRepository.create.mock.invocationCallOrder[0]);
+    expect(adminVerification.verifyAdminPassword).not.toHaveBeenCalled();
+    expect(productsRepository.create).toHaveBeenCalled();
   });
 
   it('writes an observed zero opening count rather than skipping onboarding', async () => {
@@ -520,13 +515,6 @@ describe('SupplierPurchasesService quick add', () => {
     expect(productsRepository.create).not.toHaveBeenCalled();
   });
 
-  it('never onboards a product when password verification fails', async () => {
-    adminVerification.verifyAdminPassword.mockRejectedValueOnce(Object.assign(new Error('Account password is incorrect'), { statusCode: 401 }));
-    await expect(SupplierPurchasesService.create(supplierId, purchase({ lines: [quickAddLine], accountPassword: 'wrong' }), admin, context, phase3bScope)).rejects.toThrow('incorrect');
-    expect(productsRepository.create).not.toHaveBeenCalled();
-    expect(inventoryRepository.createMovement).not.toHaveBeenCalled();
-    expect(transactionsRepository.create).not.toHaveBeenCalled();
-  });
 });
 
 describe('SupplierPurchasesService.receiptCheck', () => {

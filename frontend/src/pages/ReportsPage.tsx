@@ -31,9 +31,9 @@ export const ReportsPage: React.FC = () => {
   return (
     <div className="mx-auto max-w-7xl space-y-8">
       <header>
-        <h1 className="text-2xl font-bold text-slate-900">Reports / التقارير</h1>
+        <h1 className="text-2xl font-bold text-slate-900">Reports</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Choose a report to open it in full, with its own period, totals, and export. / اختر تقريرًا لفتحه كاملًا مع فترته وإجمالياته وتصديره.
+          Choose a report to open it in full, with its own period, totals, and export.
         </p>
       </header>
 
@@ -88,7 +88,7 @@ const ReportCard: React.FC<{ definition: ReportDefinition; data?: MonthlyReviewD
           <span />
         )}
         <span className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-brand-700 group-hover:underline">
-          View report / عرض التقرير
+          View report
           <ChevronRight className="h-4 w-4" aria-hidden="true" />
         </span>
       </div>

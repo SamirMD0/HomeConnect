@@ -6,6 +6,7 @@ import {
 } from '@prisma/client';
 import { z } from 'zod';
 import { userTextSchema } from '../../../validators/user-text';
+import { optionalAdminReasonSchema } from '../../financial/corrections/corrections.validator';
 import { databaseUuidSchema } from '../../../validators/database-uuid';
 
 const uuidSchema = databaseUuidSchema();
@@ -111,11 +112,12 @@ export const changeServiceStatusSchema = z.object({
   returnedToCustomerDate: dateSchema.optional().nullable(),
 }).strict();
 
-// Cancel and reopen stay strict. Their `reason` is not only audit text — cancel
-// persists it to ServiceJob.cancelledReason — and they are terminal actions.
+// Cancel and reopen are admin-only and need no password. The reason is optional:
+// a blank one is stored as NO_REASON_GIVEN (cancel also keeps it on the job).
+// accountPassword is still accepted, and ignored, so older clients keep working.
 export const cancelServiceJobSchema = z.object({
-  reason: userTextSchema({ field: 'Cancellation reason', min: 5, max: 1000 }),
-  accountPassword: z.string().min(1, 'Account password is required'),
+  reason: optionalAdminReasonSchema('Cancellation reason'),
+  accountPassword: z.string().optional(),
 });
 
 export const reopenServiceJobSchema = z.object({
@@ -126,8 +128,8 @@ export const reopenServiceJobSchema = z.object({
     ServiceJobStatus.WAITING_FOR_PART, ServiceJobStatus.WAITING_CUSTOMER_APPROVAL,
     ServiceJobStatus.READY_FOR_PICKUP,
   ]),
-  reason: userTextSchema({ field: 'Reopen reason', min: 5, max: 1000 }),
-  accountPassword: z.string().min(1, 'Account password is required'),
+  reason: optionalAdminReasonSchema('Reopen reason'),
+  accountPassword: z.string().optional(),
 });
 
 const csvEnums = <T extends Record<string, string>>(values: T) => z.string().optional().transform((value, context) => {

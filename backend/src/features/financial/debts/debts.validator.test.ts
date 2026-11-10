@@ -139,7 +139,8 @@ describe('debt validators', () => {
       sortOrder: 'desc',
     });
 
-    expect(() => cancelDebtSchema.parse({ reason: '', accountPassword: '' })).toThrow();
+    expect(cancelDebtSchema.parse({ reason: '', accountPassword: '' }).reason).toBe('No reason given');
+    expect(cancelDebtSchema.parse({}).reason).toBe('No reason given');
     expect(cancelDebtSchema.parse({ reason: ' Customer returned product ' })).toEqual({
       reason: 'Customer returned product',
     });

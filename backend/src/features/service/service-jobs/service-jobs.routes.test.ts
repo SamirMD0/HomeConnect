@@ -44,8 +44,8 @@ describe('service job routes', () => {
     expect((await request(app).post(`/api/v1/service-jobs/${jobId}/status`).set('Authorization', `Bearer ${admin}`).send({ status: 'INSPECTION_PENDING', accountPassword: 'pass' })).status).toBe(400);
   });
 
-  it('still requires a reason and password to cancel or reopen', async () => {
-    expect((await request(app).post(`/api/v1/service-jobs/${jobId}/cancel`).set('Authorization', `Bearer ${admin}`).send({ reason: 'Customer cancelled job' })).status).toBe(400);
-    expect((await request(app).post(`/api/v1/service-jobs/${jobId}/reopen`).set('Authorization', `Bearer ${admin}`).send({ status: 'RECEIVED', reason: 'Reopened by request' })).status).toBe(400);
+  it('lets an admin cancel or reopen without a password or reason', async () => {
+    expect((await request(app).post(`/api/v1/service-jobs/${jobId}/cancel`).set('Authorization', `Bearer ${admin}`).send({})).status).toBe(200);
+    expect((await request(app).post(`/api/v1/service-jobs/${jobId}/reopen`).set('Authorization', `Bearer ${admin}`).send({ status: 'RECEIVED' })).status).toBe(200);
   });
 });

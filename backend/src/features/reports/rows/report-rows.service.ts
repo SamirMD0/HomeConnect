@@ -26,6 +26,7 @@ import { resolveReportsPeriod } from '../shared/reports-period';
 import { ReportRowsRepository } from './report-rows.repository';
 import { categoryPath } from '../../categories/category-hierarchy';
 import type { ReportSlice } from './report-rows.types';
+import { ERP_CSV, isErpReportSlice, loadErpReport } from './erp-reports';
 import type { ReportRowsQueryInput } from './report-rows.validator';
 
 interface ReportRowsOptions { businessDate?: string; generatedAt?: Date }
@@ -34,7 +35,7 @@ interface ReportRowsOptions { businessDate?: string; generatedAt?: Date }
 const STALE_PAYMENT_DAYS = 60;
 /** Balance at or above which a customer is called out regardless of payment behaviour. */
 const HIGH_BALANCE = new Decimal('500.00');
-const CATEGORY_REPORTS = new Set<ReportSlice>(['products-bought', 'products-cost-changes', 'inventory-movements', 'inventory-reconciliation']);
+const CATEGORY_REPORTS = new Set<ReportSlice>(['products-bought', 'products-cost-changes', 'inventory-movements', 'inventory-reconciliation', 'inventory-valuation', 'inventory-low-stock']);
 
 export interface CustomerMovementRow {
   branchId?:string; branchName?:string;
@@ -185,6 +186,7 @@ export class ReportRowsService {
   }
 
   private static async load(slice: ReportSlice, period: ReturnType<typeof resolveReportsPeriod>, scope: BranchScope) {
+    if (isErpReportSlice(slice)) return loadErpReport(slice, period, scope);
     if (slice === 'customers-new') {
       const records = await ReportRowsRepository.newCustomers(period, scope);
       const rows = records.map((record) => ({
@@ -567,6 +569,7 @@ function csvDefinition(slice: ReportSlice, rows: Array<Record<string, unknown>>)
     'inventory-movements': { headers: ['Timestamp', 'SKU', 'Product', 'Type', 'Change', 'Before', 'After', 'Reason', 'Reference'], values: (r) => { const p = r.product as Record<string, unknown>; return [r.createdAt as string, p.sku as string, p.name as string, r.movementType as string, r.quantityChange as number, r.quantityBefore as number, r.quantityAfter as number, r.reason as string, r.referenceId as string | null]; } },
     'inventory-reconciliation': { headers: ['Date', 'Receiving', 'Supplier', 'SKU', 'Product', 'Quantity', 'Status', 'Issues'], values: (r) => { const s = r.supplier as Record<string, unknown> | null; return [r.receivedOn as string, r.referenceNumber as string | null, s?.name as string | undefined, r.sku as string, r.productName as string, r.quantity as number, r.status as string, (r.issues as string[]).join('; ')]; } },
     'customers-financial-integrity': { headers: ['Customer', 'Phone', 'Obligations', 'Non-voided allocations', 'Reported outstanding', 'Independent outstanding', 'Difference', 'Status', 'Issues'], values: (r) => { const c = r.customer as Record<string, unknown>; return [c.name as string, c.phone as string, r.obligationTotal as string, r.allocationTotal as string, r.reportedOutstanding as string, r.independentOutstanding as string, r.difference as string, r.status as string, (r.issues as string[]).join('; ')]; } },
+    ...ERP_CSV,
     'suppliers-financial-integrity': { headers: ['Supplier', 'Phone', 'Active increases', 'Active decreases', 'Reported balance', 'Independent balance', 'Difference', 'Status', 'Issues'], values: (r) => { const s = r.supplier as Record<string, unknown>; return [s.name as string, s.phone as string, r.increaseTotal as string, r.decreaseTotal as string, r.reportedBalance as string, r.independentBalance as string, r.difference as string, r.status as string, (r.issues as string[]).join('; ')]; } },
   };
   const definition = definitions[slice];

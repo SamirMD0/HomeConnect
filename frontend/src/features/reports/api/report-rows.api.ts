@@ -13,6 +13,10 @@ const paths: Record<ReportSlice, string> = {
   'products-cost-changes': 'products/cost-changes',
   'customers-financial-integrity': 'customers/financial-integrity',
   'suppliers-financial-integrity': 'suppliers/financial-integrity',
+  'sales-summary': 'sales/summary', 'sales-by-product': 'sales/by-product',
+  'sales-by-customer': 'sales/by-customer', profit: 'sales/profit', 'cash-flow': 'finance/cash-flow',
+  'inventory-valuation': 'inventory/valuation', 'inventory-low-stock': 'inventory/low-stock',
+  'suppliers-paid': 'suppliers/paid', 'suppliers-not-paid': 'suppliers/not-paid',
 };
 
 function params(query: ReportRowsQuery) {

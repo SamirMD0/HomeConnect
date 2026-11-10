@@ -11,7 +11,7 @@ describe('service frontend components', () => {
   it('renders readable status text and printable label values', () => {
     const status = renderToStaticMarkup(<ServiceJobStatusChip status="READY_FOR_PICKUP" />);
     const label = renderToStaticMarkup(<ProductLabel product={{ id: 'p1', name: 'براد', model: 'RT28', brand: 'Samsung', sku: 'HC-000001', barcodeValue: '8801643123456', barcodeSource: 'MANUFACTURER', internalPriceCode: null }} />);
-    expect(status).toContain('Ready for Pickup');
+    expect(status).toContain('Ready for pickup');
     expect(label).toContain('براد'); expect(label).toContain('RT28'); expect(label).not.toContain('Price');
     expect(label).toContain('Model:');
     expect(label).not.toContain('dir=');
@@ -55,8 +55,8 @@ describe('service frontend components', () => {
   });
 
   it('keeps sent products distinct from company home maintenance and product exchange', () => {
-    expect(renderToStaticMarkup(<ServiceJobStatusChip status="SENT_TO_COMPANY" />)).toContain('Sent to Company');
-    expect(renderToStaticMarkup(<ServiceJobStatusChip status="COMPANY_HOME_MAINTENANCE" />)).toContain('Company Home Maintenance');
-    expect(renderToStaticMarkup(<ServiceJobStatusChip status="PRODUCT_EXCHANGE" />)).toContain('Product Exchange');
+    expect(renderToStaticMarkup(<ServiceJobStatusChip status="SENT_TO_COMPANY" />)).toContain('Sent to service centre');
+    expect(renderToStaticMarkup(<ServiceJobStatusChip status="COMPANY_HOME_MAINTENANCE" />)).toContain('Service centre home visit');
+    expect(renderToStaticMarkup(<ServiceJobStatusChip status="PRODUCT_EXCHANGE" />)).toContain('Replaced with new unit');
   });
 });

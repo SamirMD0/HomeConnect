@@ -25,6 +25,15 @@ const routes: Array<[path: string, slice: ReportSlice]> = [
   ['/inventory/reconciliation', 'inventory-reconciliation'],
   ['/customers/financial-integrity', 'customers-financial-integrity'],
   ['/suppliers/financial-integrity', 'suppliers-financial-integrity'],
+  ['/sales/summary', 'sales-summary'],
+  ['/sales/by-product', 'sales-by-product'],
+  ['/sales/by-customer', 'sales-by-customer'],
+  ['/sales/profit', 'profit'],
+  ['/finance/cash-flow', 'cash-flow'],
+  ['/inventory/valuation', 'inventory-valuation'],
+  ['/inventory/low-stock', 'inventory-low-stock'],
+  ['/suppliers/paid', 'suppliers-paid'],
+  ['/suppliers/not-paid', 'suppliers-not-paid'],
 ];
 
 for (const [path, slice] of routes) {

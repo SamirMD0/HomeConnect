@@ -26,8 +26,8 @@ export const InstallmentPlansList: React.FC<InstallmentPlansListProps> = ({
   if (plans.length === 0) {
     return (
       <FinancialEmptyState
-        title="No installment plans"
-        description="This customer has no installment-plan records in the financial profile."
+        title="No payment plans"
+        description="This customer has no payment plans."
       />
     );
   }
@@ -35,7 +35,7 @@ export const InstallmentPlansList: React.FC<InstallmentPlansListProps> = ({
   return (
     <section aria-labelledby="installment-plans-heading">
       <h2 id="installment-plans-heading" className="mb-4 text-lg font-semibold text-slate-900">
-        Installment plans
+        Payment plans
       </h2>
       <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
         <table className="min-w-full divide-y divide-slate-200 text-sm">
@@ -44,7 +44,7 @@ export const InstallmentPlansList: React.FC<InstallmentPlansListProps> = ({
               <th className="px-4 py-3">Plan</th>
               <th className="px-4 py-3 text-right">Total</th>
               <th className="px-4 py-3 text-right">Paid</th>
-              <th className="px-4 py-3 text-right">Remaining</th>
+              <th className="px-4 py-3 text-right">Balance due</th>
               <th className="px-4 py-3">Start</th>
               <th className="px-4 py-3">Progress</th>
               <th className="px-4 py-3">Next due</th>

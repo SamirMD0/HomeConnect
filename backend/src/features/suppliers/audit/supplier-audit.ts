@@ -3,7 +3,7 @@ import { ValidationError } from '../../../lib/errors';
 import { userTextSchema } from '../../../validators/user-text';
 import { CreateSupplierAuditData, SupplierAuditRepository } from './supplier-audit.repository';
 
-const reasonSchema = userTextSchema({ field: 'Reason', min: 5, max: 1000 });
+const reasonSchema = userTextSchema({ field: 'Reason', min: 1, max: 1000 });
 
 export function writeSupplierAudit(input: CreateSupplierAuditData, tx: Prisma.TransactionClient) {
   return SupplierAuditRepository.create({

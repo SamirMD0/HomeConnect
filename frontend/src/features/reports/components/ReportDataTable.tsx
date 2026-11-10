@@ -56,7 +56,7 @@ export function ReportDataTable({ slice, rows }: { slice: ReportSlice; rows: Rep
         </table>
       </div>
       <p className="border-t border-slate-100 px-4 py-3 text-xs text-slate-500">
-        {rows.length} row{rows.length === 1 ? '' : 's'} / {rows.length} سجل
+        {rows.length} row{rows.length === 1 ? '' : 's'}
       </p>
     </section>
   );

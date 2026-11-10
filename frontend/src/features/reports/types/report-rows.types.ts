@@ -8,7 +8,9 @@ export type ReportSlice =
   | 'inventory-movements' | 'inventory-reconciliation'
   | 'customers-financial-integrity' | 'suppliers-financial-integrity'
   | 'products-cost-changes'
-  | 'products-bought';
+  | 'products-bought'
+  | 'sales-summary' | 'sales-by-product' | 'sales-by-customer' | 'profit' | 'cash-flow'
+  | 'inventory-valuation' | 'inventory-low-stock' | 'suppliers-paid' | 'suppliers-not-paid';
 
 export interface ReportRowsEnvelope<Row = ReportRow> {
   meta: MonthlyReviewMeta;

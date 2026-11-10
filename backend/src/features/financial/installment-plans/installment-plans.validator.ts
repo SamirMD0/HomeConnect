@@ -7,6 +7,7 @@ import {
 } from '@prisma/client';
 import { z } from 'zod';
 import { userTextSchema } from '../../../validators/user-text';
+import { optionalAdminReasonSchema } from '../corrections/corrections.validator';
 
 const uuidSchema = z.string().uuid('Invalid ID');
 const moneyStringSchema = z
@@ -90,7 +91,7 @@ export const createInstallmentPlanPaymentSchema = z
 
 export const cancelInstallmentPlanSchema = z
   .object({
-    reason: userTextSchema({ field: 'Cancellation reason', min: 1, max: 1000 }),
+    reason: optionalAdminReasonSchema('Cancellation reason'),
     accountPassword: z.string().optional(),
   })
   .strict();
@@ -112,7 +113,7 @@ export const updateInstallmentPlanSchema = z
           .strict()
       )
       .optional(),
-    reason: userTextSchema({ field: 'Correction reason', min: 5, max: 1000 }),
+    reason: optionalAdminReasonSchema('Correction reason'),
     sourceScreen: z.nativeEnum(FinancialCorrectionSourceScreen).default(FinancialCorrectionSourceScreen.API),
     accountPassword: z.string().optional(),
   })

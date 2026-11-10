@@ -91,15 +91,11 @@ export const createSupplierPurchaseSchema = z.object({
   paidAmount: z.preprocess(emptyToNull, paidAmount.optional().nullable()),
   /** How the settled portion was paid, for the payment's ledger description. */
   paymentReference: optionalText('Payment reference', 200),
-  /** Required only when a NEW_PRODUCT line is present. */
-  accountPassword: z.string().min(1).optional(),
+  /** No longer required; still accepted so older clients keep working. */
+  accountPassword: z.string().optional(),
   lines: z.array(purchaseLine).min(1, 'At least one purchase line is required').max(100),
 }).strict().superRefine((input, ctx) => {
   const quickAdds = input.lines.filter((line) => line.kind === 'NEW_PRODUCT');
-
-  if (quickAdds.length && !input.accountPassword) {
-    ctx.addIssue({ code: 'custom', path: ['accountPassword'], message: 'Your account password is required to add a new product from a purchase' });
-  }
 
   // Onboarding a product means writing its opening count. Doing that for goods
   // that have not arrived would leave a tracked product whose zero baseline was

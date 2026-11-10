@@ -43,7 +43,7 @@ describe('customer profile — communication section placement', () => {
   it('mounts the collapsed communication section between financial actions and the tabs', () => {
     const html = renderProfile();
 
-    const financialActions = html.indexOf('Financial Actions');
+    const financialActions = html.indexOf('Account actions');
     const communication = html.indexOf('Customer Communication');
 
     expect(financialActions).toBeGreaterThan(-1);

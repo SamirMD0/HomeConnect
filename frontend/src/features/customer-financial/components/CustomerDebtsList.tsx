@@ -23,8 +23,8 @@ export const CustomerDebtsList: React.FC<CustomerDebtsListProps> = ({
   if (debts.length === 0) {
     return (
       <FinancialEmptyState
-        title="No debts or prepaid purchases"
-        description="This customer has no debt or prepaid-purchase records in the financial profile."
+        title="No invoices"
+        description="This customer has no open or past invoices. Deposits for items awaiting delivery are on the Deposits tab."
       />
     );
   }
@@ -32,15 +32,15 @@ export const CustomerDebtsList: React.FC<CustomerDebtsListProps> = ({
   return (
     <section aria-labelledby="customer-debts-heading">
       <h2 id="customer-debts-heading" className="mb-4 text-lg font-semibold text-slate-900">
-        Debts & prepaid purchases</h2>
+        Invoices</h2>
       <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
         <table className="min-w-full divide-y divide-slate-200 text-sm">
           <thead className="bg-slate-100 text-left text-xs font-semibold text-slate-700">
             <tr>
-              <th className="px-4 py-3">Debt</th>
-              <th className="px-4 py-3 text-right">Original</th>
+              <th className="px-4 py-3">Invoice</th>
+              <th className="px-4 py-3 text-right">Amount</th>
               <th className="px-4 py-3 text-right">Paid</th>
-              <th className="px-4 py-3 text-right">Remaining / Admin debt</th>
+              <th className="px-4 py-3 text-right">Balance due</th>
               <th className="px-4 py-3">Due date</th>
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Created</th>
@@ -54,7 +54,7 @@ export const CustomerDebtsList: React.FC<CustomerDebtsListProps> = ({
                   <p className="user-text font-medium text-slate-900" dir="auto">{debt.description}</p>
                   {debt.kind === 'PREPAID_PURCHASE' && (
                     <span className="mt-1 inline-flex rounded-full bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-700 ring-1 ring-brand-600/20">
-                      Prepaid</span>
+                      Deposit</span>
                   )}
                   {debt.cancellation && (
                     <p className="user-text mt-1 text-xs text-slate-500" dir="auto">Cancelled: {debt.cancellation.reason || 'No reason recorded'}</p>

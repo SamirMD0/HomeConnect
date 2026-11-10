@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { userTextSchema } from '../../../validators/user-text';
-import { containsSensitiveSupplierFields } from '../authorization/supplier-policy';
+import { optionalAdminReasonSchema } from '../../financial/corrections/corrections.validator';
 
 const emptyToNull = (value: unknown) => typeof value === 'string' && value.trim() === '' ? null : value;
 const optionalText = (field: string, max: number) => z.preprocess(emptyToNull, userTextSchema({ field, max }).optional().nullable());
@@ -20,17 +20,14 @@ export const updateSupplierSchema = z.object({
   name: supplierFields.name.optional(), phone: supplierFields.phone.optional(),
   companyName: supplierFields.companyName, secondaryPhone: supplierFields.secondaryPhone,
   email: supplierFields.email, notes: supplierFields.notes,
-  reason: userTextSchema({ field: 'Reason', min: 5, max: 1000 }).optional(),
-  accountPassword: z.string().min(1).optional(),
-}).strict().superRefine((values, context) => {
-  const fields = Object.keys(values).filter((key) => !['reason', 'accountPassword'].includes(key) && values[key as keyof typeof values] !== undefined);
-  if (!containsSensitiveSupplierFields(fields)) return;
-  if (!values.reason) context.addIssue({ code: 'custom', path: ['reason'], message: 'Reason is required for name or phone changes' });
-  if (!values.accountPassword) context.addIssue({ code: 'custom', path: ['accountPassword'], message: 'Account password is required' });
-});
+  // Supplier changes are admin-only; admins need neither a reason nor a password.
+  // accountPassword is still accepted (and ignored) so older clients keep working.
+  reason: userTextSchema({ field: 'Reason', max: 1000 }).optional(),
+  accountPassword: z.string().optional(),
+}).strict();
 export const supplierActionSchema = z.object({
-  reason: userTextSchema({ field: 'Reason', min: 5, max: 1000 }),
-  accountPassword: z.string().min(1, 'Account password is required'),
+  reason: optionalAdminReasonSchema('Reason'),
+  accountPassword: z.string().optional(),
 }).strict();
 export const supplierParamsSchema = z.object({ supplierId: z.string().uuid() });
 export const supplierListQuerySchema = z.object({

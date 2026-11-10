@@ -1,12 +1,11 @@
 import { assertInScope, writeBranch, type BranchScope } from '../../branches/branch-scope';
 import { Prisma, SupplierAuditAction, SupplierAuditRecordType } from '@prisma/client';
-import { verifyAdminPassword } from '../../../lib/admin-verification';
 import { AppError, NotFoundError, ValidationError } from '../../../lib/errors';
 import { compareMoney, moneyToApiString, subtractMoney, sumMoney, ZERO_MONEY } from '../../financial/domain/money';
 import { runFinancialTransaction } from '../../financial/infrastructure/transaction';
 import { writeSupplierAudit } from '../audit/supplier-audit';
 import { SupplierAuditRepository } from '../audit/supplier-audit.repository';
-import { assertSupplierAdmin, containsSensitiveSupplierFields } from '../authorization/supplier-policy';
+import { assertSupplierAdmin } from '../authorization/supplier-policy';
 import { changedSnapshot, supplierSnapshot } from '../domain/supplier-domain';
 import { SupplierMutationUser, SupplierRequestContext } from '../domain/supplier-types';
 import {
@@ -75,12 +74,9 @@ export class SuppliersService {
     assertSupplierAdmin(user);
     const fields = Object.keys(input).filter((field) => !['reason', 'accountPassword'].includes(field) && input[field as keyof UpdateSupplierInput] !== undefined);
     if (!fields.length) throw new ValidationError('At least one supplier field is required');
-    const sensitive = containsSensitiveSupplierFields(fields);
-    if (sensitive && (!input.reason || !input.accountPassword)) throw new ValidationError('Reason and account password are required for name or phone changes');
     return runFinancialTransaction(async (tx) => {
       const existing = await requiredSupplier(id, scope, tx);
       writeBranch(scope);
-      if (sensitive) await verify(user.userId, input.accountPassword!, 'UPDATE_SUPPLIER', id, context, tx);
       const data: Prisma.SupplierUncheckedUpdateInput = { updatedById: user.userId };
       if (input.name !== undefined) data.name = input.name;
       if (input.phone !== undefined) data.phone = normalizePhone(input.phone);
@@ -90,7 +86,7 @@ export class SuppliersService {
       if (input.notes !== undefined) data.notes = input.notes;
       const updated = await SuppliersRepository.update(id, data, tx);
       const actor = await loadActor(user.userId, tx);
-      await writeSupplierAudit(auditData(id, SupplierAuditAction.UPDATE, user.userId, actor, input.reason ?? 'Supplier contact details updated', changedSnapshot(supplierSnapshot(existing), fields), changedSnapshot(supplierSnapshot(updated), fields), context), tx);
+      await writeSupplierAudit(auditData(id, SupplierAuditAction.UPDATE, user.userId, actor, input.reason || 'Supplier details updated', changedSnapshot(supplierSnapshot(existing), fields), changedSnapshot(supplierSnapshot(updated), fields), context), tx);
       const balance = await balanceInTx(id, tx);
       return serializeSupplier(updated, balance);
     });
@@ -104,7 +100,6 @@ export class SuppliersService {
     return runFinancialTransaction(async (tx) => {
       const existing = await requiredSupplier(id, scope, tx);
       writeBranch(scope);
-      await verify(user.userId, input.accountPassword, 'DELETE_SUPPLIER', id, context, tx);
       if ((await SuppliersRepository.receivingCount(id, tx)) > 0) throw new AppError('Supplier with stock receivings can only be archived / المورد الذي لديه مستندات استلام مخزون يمكن أرشفته فقط', 409, 'SUPPLIER_HAS_RECEIVINGS');
       if ((await SuppliersRepository.transactionCount(id, tx)) > 0) throw new AppError('Supplier with transactions can only be archived', 409, 'SUPPLIER_HAS_TRANSACTIONS');
       const actor = await loadActor(user.userId, tx);
@@ -127,7 +122,6 @@ export class SuppliersService {
       const existing = await requiredSupplier(id, scope, tx);
       writeBranch(scope);
       if (existing.isActive === active) throw new AppError(`Supplier is already ${active ? 'active' : 'archived'}`, 409, 'SUPPLIER_STATE_CONFLICT');
-      await verify(user.userId, input.accountPassword, active ? 'RESTORE_SUPPLIER' : 'ARCHIVE_SUPPLIER', id, context, tx);
       const updated = await SuppliersRepository.update(id, { isActive: active, archivedAt: active ? null : new Date(), archivedReason: active ? null : input.reason, updatedById: user.userId }, tx);
       const actor = await loadActor(user.userId, tx);
       await writeSupplierAudit(auditData(id, action, user.userId, actor, input.reason, { isActive: existing.isActive, archivedAt: existing.archivedAt?.toISOString() ?? null }, { isActive: updated.isActive, archivedAt: updated.archivedAt?.toISOString() ?? null }, context), tx);
@@ -142,4 +136,3 @@ async function balanceInTx(id: string, tx: Prisma.TransactionClient) { const map
 function normalizePhone(value: string) { return value.trim().replace(/[\s\-()]/g, ''); }
 function serializeSupplier(supplier: Awaited<ReturnType<typeof SuppliersRepository.findById>> extends infer T ? NonNullable<T> : never, balance: string) { return { ...supplier, balance }; }
 function auditData(id: string, action: SupplierAuditAction, userId: string, actor: { fullName: string; username: string }, reason: string, beforeValues: Prisma.InputJsonObject, afterValues: Prisma.InputJsonObject, context: SupplierRequestContext, supplierId: string | null = id) { return { recordType: SupplierAuditRecordType.SUPPLIER, recordId: id, supplierId, action, changedById: userId, changedByName: actor.fullName, changedByUsername: actor.username, reason, beforeValues, afterValues, requestId: context.requestId, ipAddress: context.ipAddress }; }
-function verify(userId: string, password: string, action: string, id: string, context: SupplierRequestContext, tx: Prisma.TransactionClient) { return verifyAdminPassword(userId, password, { action, recordType: 'SUPPLIER', recordId: id, ipAddress: context.ipAddress, domainLabel: 'supplier changes' }, tx); }

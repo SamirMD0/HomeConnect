@@ -1,7 +1,7 @@
-import React, { FormEvent, useState } from 'react';
+import React, { FormEvent, useEffect, useState } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
-import { ArrowLeft, ArchiveX, Edit3, History, RotateCcw, Tag } from 'lucide-react';
+import { ArrowLeft, ArchiveX, Check, Edit3, History, RotateCcw, ShieldAlert, ShieldCheck, ShieldQuestion, Tag } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Modal } from '../../components/ui/Modal';
 import {
@@ -27,11 +27,13 @@ import {
 import {
   REQUEST_TYPE_LABELS,
   ROUTING_LABELS,
+  SERVICE_PROGRESS_STEPS,
   STATUS_LABELS,
   WARRANTY_LABELS,
 } from '../../features/service/utils/service-labels';
+import { getServiceJobAgeState } from '../../features/service/utils/service-age';
 import { useAuth } from '../../hooks/useAuth';
-import { businessLabels } from '../../shared/labels/business-labels';
+import { businessLabels, englishLabel } from '../../shared/labels/business-labels';
 import { branchIdOf, useRecordBranch } from '../../features/branches/scope/branch-ui';
 
 const activeStatuses = Object.keys(STATUS_LABELS).filter(
@@ -85,21 +87,21 @@ export const ServiceJobDetailsPage: React.FC = () => {
               to={`/products/${job.productId}/label`}
               className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 font-medium"
             >
-              <Tag className="h-4 w-4" /> {businessLabels.product.printLabel}
+              <Tag className="h-4 w-4" /> {englishLabel(businessLabels.product.printLabel)}
             </Link>
           )}
           <button
             onClick={() => setDialog('edit')}
             className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 font-medium"
           >
-            <Edit3 className="h-4 w-4" /> {businessLabels.common.edit}
+            <Edit3 className="h-4 w-4" /> {englishLabel(businessLabels.common.edit)}
           </button>
           {!isFinal && (
             <button
               onClick={() => setDialog('status')}
               className="rounded-lg bg-brand-600 px-3 py-2 font-semibold text-white"
             >
-              Change Status / تغيير الحالة
+              Update status
             </button>
           )}
           {isAdmin && !isFinal && (
@@ -107,7 +109,7 @@ export const ServiceJobDetailsPage: React.FC = () => {
               onClick={() => setDialog('cancel')}
               className="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 font-medium text-red-700"
             >
-              <ArchiveX className="h-4 w-4" /> {businessLabels.common.cancel}
+              <ArchiveX className="h-4 w-4" /> Cancel job
             </button>
           )}
           {isAdmin && isFinal && (
@@ -115,11 +117,13 @@ export const ServiceJobDetailsPage: React.FC = () => {
               onClick={() => setDialog('reopen')}
               className="inline-flex items-center gap-2 rounded-lg border border-amber-300 px-3 py-2 font-medium text-amber-800"
             >
-              <RotateCcw className="h-4 w-4" /> Reopen / إعادة فتح
+              <RotateCcw className="h-4 w-4" /> Reopen
             </button>
           )}
         </div>
       </div>
+      <ServiceProgress job={job} />
+      <WarrantyBanner job={job} />
       <div className="grid gap-6 lg:grid-cols-3">
         <section className="space-y-5 lg:col-span-2">
           <DetailSection title="Customer">
@@ -132,10 +136,10 @@ export const ServiceJobDetailsPage: React.FC = () => {
             </Link>
             <p className="text-sm text-slate-500">{job.customer.phone}</p>
           </DetailSection>
-          <DetailSection title="Service details">
+          <DetailSection title="Product & problem">
             <DetailGrid
               values={[
-                ['Request', REQUEST_TYPE_LABELS[job.requestType]],
+                ['Service type', REQUEST_TYPE_LABELS[job.requestType]],
                 [
                   'Product',
                   job.productId ? (
@@ -151,21 +155,21 @@ export const ServiceJobDetailsPage: React.FC = () => {
                 ],
                 ['Model', product.model ?? '—'],
                 ['Brand', product.brand ?? '—'],
-                ['Issue', job.issueDescription],
+                ['Reported problem', job.issueDescription],
                 ['Requested part', job.requestedPartName ?? '—'],
               ]}
             />
           </DetailSection>
-          <DetailSection title="Routing & warranty">
+          <DetailSection title="Repair route & warranty">
             <DetailGrid
               values={[
                 [
-                  'Routing',
-                  job.routingDecision ? ROUTING_LABELS[job.routingDecision] : 'Not decided',
+                  'Repaired by',
+                  job.routingDecision ? ROUTING_LABELS[job.routingDecision] : 'Not decided yet',
                 ],
-                ['Company', job.companyName ?? '—'],
+                ['Service centre', job.companyName ?? '—'],
                 ['Warranty', WARRANTY_LABELS[job.warrantyStatus]],
-                ['Provider', job.warrantyProvider ?? '—'],
+                ['Warranty provider', job.warrantyProvider ?? '—'],
                 [
                   'Warranty expiry',
                   job.warrantyExpiresAt ? formatBusinessDate(job.warrantyExpiresAt) : '—',
@@ -183,26 +187,26 @@ export const ServiceJobDetailsPage: React.FC = () => {
           <DetailSection title="Timeline">
             <DetailGrid
               values={[
-                ['Created', formatBusinessDate(job.serviceCreatedDate)],
+                ['Received from customer', formatBusinessDate(job.serviceCreatedDate)],
                 ['Home visit', dateLabel(job.homeVisitScheduledDate)],
-                ['Sent to company', dateLabel(job.sentToCompanyDate)],
-                ['Received back', dateLabel(job.receivedFromCompanyDate)],
-                ['Returned', dateLabel(job.returnedToCustomerDate)],
+                ['Sent to service centre', dateLabel(job.sentToCompanyDate)],
+                ['Back from service centre', dateLabel(job.receivedFromCompanyDate)],
+                ['Returned to customer', dateLabel(job.returnedToCustomerDate)],
               ]}
             />
           </DetailSection>
-          <DetailSection title="Price">
+          <DetailSection title="Charges">
             <DetailGrid
               values={[
-                ['Estimated', job.estimatedPrice ? formatMoney(job.estimatedPrice) : '—'],
-                ['Final', job.finalPrice ? formatMoney(job.finalPrice) : '—'],
+                ['Estimate', job.estimatedPrice ? formatMoney(job.estimatedPrice) : '—'],
+                ['Final charge', job.finalPrice ? formatMoney(job.finalPrice) : job.warrantyStatus === 'UNDER_WARRANTY' ? 'Free (warranty)' : '—'],
               ]}
             />
           </DetailSection>
         </aside>
       </div>
       {isAdmin && (
-        <DetailSection title="Audit history" icon={<History className="h-5 w-5" />}>
+        <DetailSection title="Change history" icon={<History className="h-5 w-5" />}>
           <ServiceJobAuditList serviceJobId={job.id} />
         </DetailSection>
       )}
@@ -261,6 +265,61 @@ const DetailGrid: React.FC<{ values: [string, React.ReactNode][] }> = ({ values 
 );
 const dateLabel = (value: string | null) => (value ? formatBusinessDate(value) : '—');
 
+/** Where the job is on the usual repair path, plus how long the customer has waited. */
+const ServiceProgress: React.FC<{ job: ServiceJob }> = ({ job }) => {
+  const current = SERVICE_PROGRESS_STEPS.findIndex((step) => step.statuses.includes(job.status));
+  const age = getServiceJobAgeState(job.serviceCreatedDate, job.status);
+  return (
+    <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm" aria-label="Repair progress">
+      <ol className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {SERVICE_PROGRESS_STEPS.map((step, index) => {
+          const done = index < current;
+          const active = index === current;
+          return (
+            <li key={step.label} className="flex items-center gap-2">
+              <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${done ? 'bg-emerald-600 text-white' : active ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                {done ? <Check className="h-4 w-4" aria-hidden="true" /> : index + 1}
+              </span>
+              <span className={`text-sm ${active ? 'font-semibold text-slate-900' : 'text-slate-500'}`}>
+                {step.label}
+                {active && <span className="block text-xs font-normal text-slate-500">{STATUS_LABELS[job.status]}</span>}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+      {age && (
+        <p className={`mt-3 border-t border-slate-100 pt-3 text-sm ${age.state === 'OVERDUE' ? 'font-semibold text-red-700' : 'text-slate-600'}`}>
+          Open for {age.daysOpen} day{age.daysOpen === 1 ? '' : 's'}{age.state === 'OVERDUE' ? ' — overdue, please follow up' : ''}
+        </p>
+      )}
+    </section>
+  );
+};
+
+const WarrantyBanner: React.FC<{ job: ServiceJob }> = ({ job }) => {
+  const tone = job.warrantyStatus === 'UNDER_WARRANTY'
+    ? { box: 'border-emerald-200 bg-emerald-50 text-emerald-900', Icon: ShieldCheck, note: 'Covered by warranty: no charge to the customer unless the warranty excludes this fault.' }
+    : job.warrantyStatus === 'NO_WARRANTY'
+      ? { box: 'border-amber-200 bg-amber-50 text-amber-900', Icon: ShieldAlert, note: 'Paid repair: agree the estimate with the customer before work starts.' }
+      : { box: 'border-slate-200 bg-slate-50 text-slate-800', Icon: ShieldQuestion, note: 'Check the purchase date or warranty card, then set the warranty in Edit.' };
+  const { Icon } = tone;
+  return (
+    <div className={`flex items-start gap-3 rounded-lg border p-4 ${tone.box}`}>
+      <Icon className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+      <div className="text-sm">
+        <p className="font-semibold">
+          {WARRANTY_LABELS[job.warrantyStatus]}
+          {job.warrantyExpiresAt && ` · expires ${formatBusinessDate(job.warrantyExpiresAt)}`}
+          {job.warrantyProvider && ` · ${job.warrantyProvider}`}
+        </p>
+        <p className="mt-0.5">{tone.note}</p>
+      </div>
+    </div>
+  );
+};
+
+
 const EditDialog: React.FC<{
   job: ServiceJob;
   isAdmin: boolean;
@@ -314,7 +373,7 @@ const EditDialog: React.FC<{
     <Modal
       isOpen={open}
       onClose={onClose}
-      title={businessLabels.service.editJob}
+      title="Edit service job"
       maxWidth="max-w-2xl"
     >
       <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
@@ -324,19 +383,19 @@ const EditDialog: React.FC<{
           </p>
         )}
         <Field
-          label="Issue / العطل"
+          label="Reported problem"
           value={form.issueDescription}
           onChange={(v) => set('issueDescription', v)}
           textarea
           disabled={!isAdmin}
         />
         <Field
-          label={businessLabels.service.requestedPart}
+          label={englishLabel(businessLabels.service.requestedPart)}
           value={form.requestedPartName}
           onChange={(v) => set('requestedPartName', v)}
         />
         <Field
-          label={businessLabels.common.notes}
+          label={englishLabel(businessLabels.common.notes)}
           value={form.notes}
           onChange={(v) => set('notes', v)}
           textarea
@@ -344,23 +403,23 @@ const EditDialog: React.FC<{
         {isAdmin && (
           <>
             <Field
-              label="Estimated Price / السعر التقديري"
+              label="Estimate"
               value={form.estimatedPrice}
               onChange={(v) => set('estimatedPrice', v)}
             />
             <Field
-              label="Final Price / السعر النهائي"
+              label="Final charge"
               value={form.finalPrice}
               onChange={(v) => set('finalPrice', v)}
             />
             <label className="text-sm font-medium">
-              {businessLabels.service.routing}
+              Repaired by
               <select
                 value={form.routingDecision}
                 onChange={(e) => set('routingDecision', e.target.value)}
                 className="mt-1 w-full rounded-lg border px-3 py-2"
               >
-                <option value="">Not Decided / لم يحدد</option>
+                <option value="">Not decided yet</option>
                 {Object.entries(ROUTING_LABELS).map(([v, l]) => (
                   <option key={v} value={v}>
                     {l}
@@ -369,12 +428,12 @@ const EditDialog: React.FC<{
               </select>
             </label>
             <Field
-              label={businessLabels.service.company}
+              label="Service centre"
               value={form.companyName}
               onChange={(v) => set('companyName', v)}
             />
             <label className="text-sm font-medium">
-              {businessLabels.service.warranty}
+              Warranty
               <select
                 value={form.warrantyStatus}
                 onChange={(e) => set('warrantyStatus', e.target.value)}
@@ -388,19 +447,19 @@ const EditDialog: React.FC<{
               </select>
             </label>
             <Field
-              label="Sent to Company / أرسل إلى الشركة"
+              label="Sent to service centre"
               type="date"
               value={form.sentToCompanyDate}
               onChange={(v) => set('sentToCompanyDate', v)}
             />
             <Field
-              label="Received from Company / استلم من الشركة"
+              label="Back from service centre"
               type="date"
               value={form.receivedFromCompanyDate}
               onChange={(v) => set('receivedFromCompanyDate', v)}
             />
             <Field
-              label="Returned to Customer / سلّم إلى الزبون"
+              label="Returned to customer"
               type="date"
               value={form.returnedToCustomerDate}
               onChange={(v) => set('returnedToCustomerDate', v)}
@@ -409,18 +468,28 @@ const EditDialog: React.FC<{
         )}
         <div className="sm:col-span-2 flex justify-end gap-2">
           <button type="button" onClick={onClose} className="rounded-lg border px-4 py-2">
-            {businessLabels.common.cancel}
+            Close
           </button>
           <button
             disabled={mutation.isPending}
             className="rounded-lg bg-brand-600 px-4 py-2 font-semibold text-white"
           >
-            {businessLabels.common.saveChanges}
+            Save changes
           </button>
         </div>
       </form>
     </Modal>
   );
+};
+
+const DATE_FIELD_LABELS = {
+  sentToCompanyDate: 'Date sent to service centre',
+  receivedFromCompanyDate: 'Date back from service centre',
+  returnedToCustomerDate: 'Date returned to customer',
+} as const;
+const todayIso = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
 const StatusDialog: React.FC<{
@@ -430,9 +499,23 @@ const StatusDialog: React.FC<{
   onClose: () => void;
 }> = ({ job, isAdmin, open, onClose }) => {
   const mutation = useChangeServiceStatus(job.id);
-  const [status, setStatus] = useState<ServiceJobStatus>('INSPECTION_PENDING');
-  const [date, setDate] = useState('');
+  // Only real moves are offered: never the current status; cancelling has its own button.
+  const options = (isAdmin
+    ? (Object.keys(STATUS_LABELS) as ServiceJobStatus[]).filter((v) => v !== 'CANCELLED')
+    : activeStatuses
+  ).filter((value) => value !== job.status);
+  const order = Object.keys(STATUS_LABELS) as ServiceJobStatus[];
+  const suggested = options.find((value) => order.indexOf(value) > order.indexOf(job.status)) ?? options[0];
+  const [status, setStatus] = useState<ServiceJobStatus | undefined>(suggested);
+  const [date, setDate] = useState(todayIso());
   const [error, setError] = useState('');
+  // The dialog stays mounted, so start from the suggestion each time it opens.
+  useEffect(() => {
+    if (!open) return;
+    setStatus(suggested);
+    setDate(todayIso());
+    setError('');
+  }, [open, suggested]);
   const dateField =
     status === 'SENT_TO_COMPANY'
       ? 'sentToCompanyDate'
@@ -444,6 +527,7 @@ const StatusDialog: React.FC<{
           : null;
   const submit = (e: FormEvent) => {
     e.preventDefault();
+    if (!status) return;
     const body: {
       status: ServiceJobStatus;
       sentToCompanyDate?: string;
@@ -460,30 +544,33 @@ const StatusDialog: React.FC<{
     });
   };
   return (
-    <Modal isOpen={open} onClose={onClose} title="Change service status">
+    <Modal isOpen={open} onClose={onClose} title="Update status">
       <form onSubmit={submit} className="space-y-4">
         {error && <p className="rounded bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+        <p className="text-sm text-slate-600">
+          Now: <span className="font-semibold text-slate-900">{STATUS_LABELS[job.status]}</span>
+        </p>
         <label className="block text-sm font-medium">
-          New status
+          Move to
           <select
-            value={status}
+            value={status ?? ''}
             onChange={(e) => setStatus(e.target.value as ServiceJobStatus)}
             className="mt-1 w-full rounded-lg border px-3 py-2"
           >
-            {(isAdmin
-              ? Object.keys(STATUS_LABELS).filter((v) => v !== 'CANCELLED')
-              : activeStatuses
-            ).map((value) => (
+            {options.map((value) => (
               <option key={value} value={value}>
-                {STATUS_LABELS[value as ServiceJobStatus]}
+                {STATUS_LABELS[value]}
               </option>
             ))}
           </select>
         </label>
         {dateField && (
-          <Field label={`${dateField} *`} type="date" value={date} onChange={setDate} />
+          <Field label={DATE_FIELD_LABELS[dateField]} type="date" value={date} onChange={setDate} />
         )}
-        <button className="w-full rounded-lg bg-brand-600 px-4 py-2 font-semibold text-white">
+        <button
+          disabled={mutation.isPending}
+          className="w-full rounded-lg bg-brand-600 px-4 py-2 font-semibold text-white disabled:opacity-50"
+        >
           Update status
         </button>
       </form>
@@ -500,7 +587,6 @@ const TerminalDialog: React.FC<{
   const cancel = useCancelServiceJob(job.id);
   const reopen = useReopenServiceJob(job.id);
   const [reason, setReason] = useState('');
-  const [password, setPassword] = useState('');
   const [status, setStatus] = useState<ServiceJobStatus>('RECEIVED');
   const [error, setError] = useState('');
   const submit = (e: FormEvent) => {
@@ -512,8 +598,9 @@ const TerminalDialog: React.FC<{
       },
       onError: (r: unknown) => setError(apiError(r)),
     };
-    if (mode === 'cancel') cancel.mutate({ reason, accountPassword: password }, options);
-    else reopen.mutate({ status, reason, accountPassword: password }, options);
+    const trimmed = reason.trim() || undefined;
+    if (mode === 'cancel') cancel.mutate({ reason: trimmed }, options);
+    else reopen.mutate({ status, reason: trimmed }, options);
   };
   return (
     <Modal
@@ -539,8 +626,7 @@ const TerminalDialog: React.FC<{
             </select>
           </label>
         )}
-        <Field label="Reason *" value={reason} onChange={setReason} textarea />
-        <Field label="Account password *" type="password" value={password} onChange={setPassword} />
+        <Field label="Reason (optional)" value={reason} onChange={setReason} textarea />
         <button
           className={`w-full rounded-lg px-4 py-2 font-semibold text-white ${mode === 'cancel' ? 'bg-red-600' : 'bg-amber-600'}`}
         >

@@ -20,7 +20,7 @@
   }
 
   .report-print-root table {
-    font-size: 10px;
+    font-size: 11px;
     page-break-inside: auto;
     width: 100% !important;
     min-width: 0 !important;
@@ -53,9 +53,33 @@
     overflow-wrap: anywhere;
   }
 
+  /* Tahoma has only Regular and Bold, so every semibold/medium cell holding an
+     Arabic name printed in Tahoma Bold, which smears on paper. The app's own
+     variable fonts (already loaded for the screen) have real middle weights. */
+  .report-print-root,
   .report-print-root .user-text,
   .report-print-root .user-text-pre {
-    font-family: Tahoma, Arial, sans-serif !important;
+    font-family: var(--font-sans) !important;
+  }
+
+  .report-print-root th,
+  .report-print-root .font-bold,
+  .report-print-root .font-semibold {
+    font-weight: 600 !important;
+  }
+
+  /* Names and notes (often Arabic) stay light even inside a bold cell. */
+  .report-print-root .user-text,
+  .report-print-root .user-text-pre,
+  .report-print-root [dir="rtl"] {
+    font-weight: 500 !important;
+  }
+
+  /* Grey and brand-blue text washes out on paper; print it black. */
+  .report-print-root td,
+  .report-print-root td a,
+  .report-print-root .user-text {
+    color: #000 !important;
   }
 
   .report-print-root .viz-root button {

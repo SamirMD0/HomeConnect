@@ -191,18 +191,18 @@ export const CustomerProfilePage: React.FC = () => {
             </div>
             <div>
               <h2 id="customer-financial-actions-title" className="font-semibold text-slate-900">
-                Financial Actions</h2>
+                Account actions</h2>
               <p className="mt-0.5 text-sm text-slate-600">
-                Manage debts, payments, installment plans, and ledger history.
+                Create invoices and payment plans, receive payments, and open the ledger.
               </p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2.5">
             {canMutateFinancial && (
               <>
-                <button type="button" onClick={() => setFinancialAction('add')} className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-700">{englishLabel(businessLabels.customer.addDebt)}</button>
-                <button type="button" onClick={() => setFinancialAction('payment')} className="rounded-lg border border-brand-200 bg-white px-4 py-2 text-sm font-semibold text-brand-700 transition-colors hover:border-brand-600 hover:bg-brand-600 hover:text-white">{englishLabel(businessLabels.customer.recordPayment)}</button>
-                <button type="button" onClick={() => setFinancialAction('add')} className="rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 transition-colors hover:border-indigo-600 hover:bg-indigo-600 hover:text-white">{englishLabel(businessLabels.customer.addInstallmentPlan)}</button>
+                <button type="button" onClick={() => setFinancialAction('add')} className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-700">New invoice</button>
+                <button type="button" onClick={() => setFinancialAction('payment')} className="rounded-lg border border-brand-200 bg-white px-4 py-2 text-sm font-semibold text-brand-700 transition-colors hover:border-brand-600 hover:bg-brand-600 hover:text-white">Receive payment</button>
+                <button type="button" onClick={() => setFinancialAction('add')} className="rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 transition-colors hover:border-indigo-600 hover:bg-indigo-600 hover:text-white">New payment plan</button>
               </>
             )}
             <button type="button" onClick={() => setSearchParams({ tab: 'legacy' })} className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-800 transition-colors hover:border-amber-500 hover:bg-amber-500 hover:text-white">{englishLabel(businessLabels.customer.viewLedger)}</button>

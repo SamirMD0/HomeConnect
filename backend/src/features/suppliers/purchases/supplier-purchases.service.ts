@@ -6,7 +6,6 @@ import {
   SupplierTransactionDirection, SupplierTransactionType,
 } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
-import { verifyAdminPassword } from '../../../lib/admin-verification';
 import { AppError, NotFoundError, ValidationError } from '../../../lib/errors';
 import { assertPositiveMoney, divideMoney, moneyToApiString, parseMoney, subtractMoney, sumMoney, toBaseAmount, ZERO_MONEY } from '../../financial/domain/money';
 import { businessDateToPrisma, prismaDateToBusinessDate } from '../../financial/domain/business-date';
@@ -100,17 +99,7 @@ export class SupplierPurchasesService {
         }
       }
 
-      // One verification for the whole purchase, before anything is written.
       const quickAddCount = input.lines.filter((line) => line.kind === 'NEW_PRODUCT').length;
-      if (quickAddCount) {
-        await verifyAdminPassword(user.userId, input.accountPassword!, {
-          action: 'QUICK_ADD_PRODUCT_FROM_PURCHASE',
-          recordType: 'SUPPLIER',
-          recordId: supplierId,
-          ipAddress: context.ipAddress,
-          domainLabel: 'inventory opening count',
-        }, tx);
-      }
 
       const lines: ResolvedLine[] = [];
       for (const line of input.lines) {

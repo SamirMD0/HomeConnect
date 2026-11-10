@@ -29,7 +29,8 @@ export interface SupplierFilters { search?: string; isActive?: boolean; sortBy?:
 export interface SupplierLedgerFilters { supplierId?: string; type?: SupplierTransactionType; direction?: SupplierTransactionDirection; dateFrom?: string; dateTo?: string; search?: string; includeRemoved?: boolean; page?: number; pageSize?: number; sortBy?: 'transactionDate'|'amount'|'supplier'; sortOrder?: 'asc'|'desc' }
 export interface CreateSupplierInput { name: string; phone: string; companyName?: string|null; secondaryPhone?: string|null; email?: string|null; notes?: string|null }
 export type UpdateSupplierInput = Partial<CreateSupplierInput> & { reason?: string; accountPassword?: string };
-export interface ProtectedActionInput { reason: string; accountPassword: string }
+/** Supplier changes are admin-only and need no password; the reason is optional. */
+export interface ProtectedActionInput { reason?: string; accountPassword?: string }
 export interface CreateSupplierTransactionInput { type: SupplierTransactionType; direction?: SupplierTransactionDirection; amount: string; transactionDate: string; dueDate?: string|null; description: string; reference?: string|null; notes?: string|null; supplierReceivingId?: string|null }
 export type UpdateSupplierTransactionInput = Partial<CreateSupplierTransactionInput> & ProtectedActionInput;
 export interface SupplierLedgerResult { summary: SupplierSummary; items: SupplierTransaction[]; pagination: { page:number; pageSize:number; total:number; totalPages:number } }

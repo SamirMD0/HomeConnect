@@ -1,7 +1,6 @@
 import { writeBranch, type BranchScope } from '../../branches/branch-scope';
 import { assertRecordInScope } from '../../branches/parent-branch';
 import { Currency, Prisma, SupplierAuditAction, SupplierAuditRecordType, SupplierTransactionStatus } from '@prisma/client';
-import { verifyAdminPassword } from '../../../lib/admin-verification';
 import { AppError, NotFoundError, ValidationError } from '../../../lib/errors';
 import { assertPositiveMoney, moneyToApiString, subtractMoney, sumMoney, toBaseAmount, ZERO_MONEY } from '../../financial/domain/money';
 import { businessDateToPrisma, prismaDateToBusinessDate } from '../../financial/domain/business-date';
@@ -65,7 +64,6 @@ export class SupplierTransactionsService {
     return runFinancialTransaction(async (tx) => {
       const existing = await requiredTransaction(id, tx);
       if (existing.status === SupplierTransactionStatus.REMOVED) throw new AppError('Restore the transaction before editing it', 409, 'SUPPLIER_TRANSACTION_REMOVED');
-      await verify(user.userId, input.accountPassword, 'UPDATE_SUPPLIER_TRANSACTION', id, context, tx);
       const type = input.type ?? existing.type;
       const requestedDirection = input.direction ?? (type === 'SUPPLIER_ADJUSTMENT' ? existing.direction : undefined);
       const data: Prisma.SupplierTransactionUncheckedUpdateInput = { updatedById: user.userId, type, direction: resolveSupplierDirection(type, requestedDirection) };
@@ -91,7 +89,6 @@ export class SupplierTransactionsService {
     return runFinancialTransaction(async (tx) => {
       const existing = await requiredTransaction(id, tx);
       if (existing.status === status) throw new AppError(`Transaction is already ${status.toLowerCase()}`, 409, 'SUPPLIER_TRANSACTION_STATE_CONFLICT');
-      await verify(user.userId, input.accountPassword, action === SupplierAuditAction.REMOVE ? 'REMOVE_SUPPLIER_TRANSACTION' : 'RESTORE_SUPPLIER_TRANSACTION', id, context, tx);
       const beforeBalance = await supplierBalance(existing.supplierId, tx);
       const updated = await SupplierTransactionsRepository.update(id, status === SupplierTransactionStatus.REMOVED ? { status, removedAt: new Date(), removedById: user.userId, removedReason: input.reason, updatedById: user.userId } : { status, removedAt: null, removedById: null, removedReason: null, updatedById: user.userId }, tx);
       const afterBalance = await supplierBalance(existing.supplierId, tx);
@@ -115,7 +112,6 @@ async function supplierBalance(supplierId: string, tx: Prisma.TransactionClient)
 async function requiredTransaction(id: string, tx: Prisma.TransactionClient) { const t = await SupplierTransactionsRepository.findById(id, tx); if (!t) throw new NotFoundError('Supplier transaction not found'); return t; }
 async function loadActor(id: string, tx: Prisma.TransactionClient) { const actor = await tx.user.findUnique({ where: { id }, select: { fullName: true, username: true } }); if (!actor) throw new NotFoundError('User not found'); return actor; }
 async function auditChange(before: NonNullable<Awaited<ReturnType<typeof SupplierTransactionsRepository.findById>>>, after: NonNullable<Awaited<ReturnType<typeof SupplierTransactionsRepository.findById>>>, fields: string[], action: SupplierAuditAction, reason: string, userId: string, context: SupplierRequestContext, tx: Prisma.TransactionClient, balanceBefore: string, balanceAfter: string) { const actor = await loadActor(userId, tx); await writeSupplierAudit({ recordType: SupplierAuditRecordType.SUPPLIER_TRANSACTION, recordId: before.id, supplierId: before.supplierId, supplierTransactionId: before.id, action, changedById: userId, changedByName: actor.fullName, changedByUsername: actor.username, reason, beforeValues: changedSnapshot(supplierTransactionSnapshot(before), fields), afterValues: changedSnapshot(supplierTransactionSnapshot(after), fields), affectedTotals: { balanceBefore, balanceAfter }, requestId: context.requestId, ipAddress: context.ipAddress }, tx); }
-function verify(userId: string, password: string, action: string, id: string, context: SupplierRequestContext, tx: Prisma.TransactionClient) { return verifyAdminPassword(userId, password, { action, recordType: 'SUPPLIER_TRANSACTION', recordId: id, ipAddress: context.ipAddress, domainLabel: 'supplier changes' }, tx); }
 async function validateReceivingLink(supplierId: string, input: CreateSupplierTransactionInput, tx: Prisma.TransactionClient): Promise<void> {
   if (!input.supplierReceivingId) return;
   if (input.type !== 'SUPPLIER_DEBT') throw new ValidationError('Only supplier debt can be linked to a receiving document / يمكن ربط دين المورد فقط بمستند إدخال');

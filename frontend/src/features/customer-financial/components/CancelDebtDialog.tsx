@@ -80,7 +80,7 @@ export const CancelDebtDialog: React.FC<CancelDebtDialogProps> = ({
         </div>
       ) : (
         <>
-      <TextField label="Cancellation reason" error={errors.reason?.message}>
+      <TextField label="Cancellation reason (optional)" error={errors.reason?.message}>
         <textarea {...register('reason')} dir="auto" rows={4} className={inputClass(Boolean(errors.reason))} />
       </TextField>
       <SubmitButton

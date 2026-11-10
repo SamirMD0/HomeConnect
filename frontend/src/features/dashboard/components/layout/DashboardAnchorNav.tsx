@@ -46,7 +46,7 @@ export function DashboardAnchorNav({ anchors }: { anchors: readonly DashboardAnc
   return (
     <nav
       aria-label="Dashboard sections"
-      className="no-print border-t border-slate-200 bg-white px-5 py-2 lg:px-8"
+      className="no-print glass-panel rounded-2xl px-4 py-2"
     >
       <div className="flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
         {anchors.map((anchor) => {

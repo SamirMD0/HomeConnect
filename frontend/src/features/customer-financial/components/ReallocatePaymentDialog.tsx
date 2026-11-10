@@ -59,11 +59,6 @@ export const ReallocatePaymentDialog: React.FC<ReallocatePaymentDialogProps> = (
       setFieldError(`Allocation total must equal ${formatMoney(payment.totalAmount)}.`);
       return;
     }
-    if (reason.trim().length < 5) {
-      setFieldError('Correction reason must be at least 5 characters.');
-      return;
-    }
-
     try {
       await reallocatePayment.mutateAsync({
         allocations,
@@ -132,14 +127,14 @@ export const ReallocatePaymentDialog: React.FC<ReallocatePaymentDialogProps> = (
         </table>
       </div>
 
-      <TextField label="Correction reason">
+      <TextField label="Correction reason (optional)">
         <textarea
           value={reason}
           onChange={(event) => setReason(event.target.value)}
           dir="auto"
           rows={3}
           className={inputClass(false)}
-          placeholder="Required for audit history"
+          placeholder="Optional — saved to the audit history"
         />
       </TextField>
 

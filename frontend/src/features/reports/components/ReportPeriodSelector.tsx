@@ -2,8 +2,8 @@ import { CalendarRange, RefreshCw } from 'lucide-react';
 import type { MonthlyReviewQuery, ReportsPeriodPreset } from '../types/monthly-review.types';
 
 const presets: Array<{ value: Exclude<ReportsPeriodPreset, 'custom' | 'thisWeek' | 'today'>; label: string }> = [
-  { value: 'thisMonth', label: 'This month / هذا الشهر' },
-  { value: 'lastMonth', label: 'Last month / الشهر الماضي' },
+  { value: 'thisMonth', label: 'This month' },
+  { value: 'lastMonth', label: 'Last month' },
 ];
 
 export function ReportPeriodSelector({
@@ -40,7 +40,7 @@ export function ReportPeriodSelector({
           onClick={() => onChange({ period: 'custom', from: value.from, to: value.to })}
           className={periodButton(value.period === 'custom')}
         >
-          Custom / مخصص
+          Custom
         </button>
         {value.period === 'custom' && (
           <div className="flex flex-wrap items-center gap-2">
@@ -51,7 +51,7 @@ export function ReportPeriodSelector({
               onChange={(event) => onChange({ ...value, from: event.target.value })}
               className="rounded-md border border-slate-200 px-2 py-1.5 text-sm"
             />
-            <span className="text-xs text-slate-500">to / إلى</span>
+            <span className="text-xs text-slate-500">to</span>
             <input
               aria-label="Report to date"
               type="date"

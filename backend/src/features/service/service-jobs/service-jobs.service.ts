@@ -8,7 +8,6 @@ import {
   ServiceRequestType,
   ServiceRoutingDecision,
 } from '@prisma/client';
-import { verifyAdminPassword } from '../../../lib/admin-verification';
 import { NotFoundError, ValidationError } from '../../../lib/errors';
 import {
   businessDateToPrisma,
@@ -184,10 +183,6 @@ export class ServiceJobsService {
       const existing = await ServiceJobsRepository.findById(id, tx);
       if (!existing) throw new NotFoundError('Service job not found');
       if (isTerminalServiceStatus(existing.status)) throw new ValidationError('Final service job cannot be cancelled');
-      await verifyAdminPassword(user.userId, input.accountPassword, {
-        action: 'CANCEL_SERVICE_JOB', recordType: 'SERVICE_JOB', recordId: id,
-        ipAddress: context.ipAddress, domainLabel: 'service and product changes',
-      }, tx);
       const updated = await ServiceJobsRepository.update(id, {
         status: ServiceJobStatus.CANCELLED, cancelledAt: new Date(), cancelledById: user.userId,
         cancelledReason: input.reason, updatedById: user.userId,
@@ -203,10 +198,6 @@ export class ServiceJobsService {
       const existing = await ServiceJobsRepository.findById(id, tx);
       if (!existing) throw new NotFoundError('Service job not found');
       if (!isTerminalServiceStatus(existing.status)) throw new ValidationError('Only final service jobs can be reopened');
-      await verifyAdminPassword(user.userId, input.accountPassword, {
-        action: 'REOPEN_SERVICE_JOB', recordType: 'SERVICE_JOB', recordId: id,
-        ipAddress: context.ipAddress, domainLabel: 'service and product changes',
-      }, tx);
       const updated = await ServiceJobsRepository.update(id, {
         status: input.status, completedAt: null, cancelledAt: null,
         cancelledById: null, cancelledReason: null, updatedById: user.userId,

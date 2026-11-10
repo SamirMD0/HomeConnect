@@ -278,8 +278,10 @@ describe('customer financial profile components', () => {
     expect(html).toContain('$400.00');
     expect(html).toContain('$450.00');
     expect(html).toContain('$350.00');
-    expect(html).toContain('Admin Pre-paid Debt');
-    expect(html).toContain('1 debts, 1 installments');
+    expect(html).toContain('Balance due');
+    expect(html).toContain('Next due');
+    expect(html).not.toContain('Deposits held');
+    expect(html).toContain('2 items past due date');
   });
 
   it('renders next due same-date items and the empty state', () => {
@@ -311,7 +313,7 @@ describe('customer financial profile components', () => {
     expect(html).toContain('Partially paid');
     expect(html).toContain('Cancelled');
     expect(html).toContain('Returned');
-    expect(emptyHtml).toContain('No debts or prepaid purchases');
+    expect(emptyHtml).toContain('No invoices');
   });
 
   it('renders an unknown financial status as a neutral badge instead of crashing', () => {
@@ -377,7 +379,7 @@ describe('customer financial profile components', () => {
     expect(html).toContain('1 overdue');
     expect(html).toContain('Overdue');
     expect(html).toContain('10/08/2026');
-    expect(emptyHtml).toContain('No installment plans');
+    expect(emptyHtml).toContain('No payment plans');
   });
 
   it('renders eligible installment-plan mutation actions for admins only', () => {
@@ -410,7 +412,7 @@ describe('customer financial profile components', () => {
 
     expect(adminHtml).toContain('Payment');
     expect(adminHtml).not.toContain('Cancel</button>');
-    expect(completedHtml).not.toContain('Payment');
+    expect(completedHtml).not.toMatch(/>\s*Payment\s*<\/button>/);
     expect(completedHtml).not.toContain('Cancel</button>');
   });
 
@@ -683,9 +685,9 @@ describe('customer financial profile components', () => {
     const successHtml = renderToStaticMarkup(
       <CustomerFinancialProfile customerId="customer-1" />
     );
-    expect(successHtml).toContain('Financial Profile');
+    expect(successHtml).toContain('Customer account');
     expect(successHtml).toContain('Show cancelled records');
-    expect(successHtml).toContain('Add financial obligation');
+    expect(successHtml).toContain('New invoice or plan');
 
     authHookMock.mockReturnValue({
       user: { id: 'employee-1', username: 'employee', fullName: 'Employee User', role: 'EMPLOYEE' },
@@ -693,7 +695,7 @@ describe('customer financial profile components', () => {
     const employeeHtml = renderToStaticMarkup(
       <CustomerFinancialProfile customerId="customer-1" />
     );
-    expect(employeeHtml).not.toContain('Add financial obligation');
+    expect(employeeHtml).not.toContain('New invoice or plan');
 
     summaryHookMock.mockReturnValue({
       data: undefined,

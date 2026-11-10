@@ -2,6 +2,7 @@ import { Currency, SupplierPaymentMethod, SupplierTransactionDirection, Supplier
 import { z } from 'zod';
 import { compareBusinessDates, parseBusinessDate, todayInBusinessTimezone } from '../../financial/domain/business-date';
 import { userTextSchema } from '../../../validators/user-text';
+import { optionalAdminReasonSchema } from '../../financial/corrections/corrections.validator';
 import { resolveSupplierDirection } from '../domain/supplier-domain';
 import { isPositiveMoney } from '../../financial/domain/money';
 import { databaseUuidSchema } from '../../../validators/database-uuid';
@@ -58,9 +59,9 @@ export const createSupplierTransactionSchema = z.object(values).strict().superRe
 export const updateSupplierTransactionSchema = z.object({
   type: values.type.optional(), direction: values.direction, amount: values.amount.optional(), transactionDate: values.transactionDate.optional(),
   description: values.description.optional(), reference: values.reference, notes: values.notes, dueDate: values.dueDate,
-  reason: userTextSchema({ field: 'Reason', min: 5, max: 1000 }), accountPassword: z.string().min(1),
+  reason: optionalAdminReasonSchema('Reason'), accountPassword: z.string().optional(),
 }).strict();
-export const supplierTransactionActionSchema = z.object({ reason: userTextSchema({ field: 'Reason', min: 5, max: 1000 }), accountPassword: z.string().min(1) }).strict();
+export const supplierTransactionActionSchema = z.object({ reason: optionalAdminReasonSchema('Reason'), accountPassword: z.string().optional() }).strict();
 export const supplierTransactionParamsSchema = z.object({ transactionId: z.string().uuid() });
 export const supplierTransactionSupplierParamsSchema = z.object({ supplierId: z.string().uuid() });
 export const supplierTransactionListQuerySchema = z.object({

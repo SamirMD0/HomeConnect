@@ -51,20 +51,23 @@ export const debtPaymentSchema = (remainingBalance: string) =>
     notes: optionalTextSchema,
   });
 
+/** These actions are admin-only, and admins may leave the reason blank. */
+const optionalReasonSchema = z.string().trim().max(1000, 'Reason is too long');
+
 export const updateDebtSchema = z.object({
   originalAmount: moneySchema,
   description: z.string().trim().min(1, 'Description is required'),
   dueDate: businessDateSchema,
   notes: optionalTextSchema,
-  reason: z.string().trim().min(5, 'Correction reason must be at least 5 characters'),
+  reason: optionalReasonSchema,
 });
 
 export const cancelFinancialRecordSchema = z.object({
-  reason: z.string().trim().min(1, 'Cancellation reason is required'),
+  reason: optionalReasonSchema,
 });
 
 export const voidPaymentSchema = z.object({
-  reason: z.string().trim().min(5, 'Void reason must be at least 5 characters'),
+  reason: optionalReasonSchema,
 });
 
 export const createInstallmentPlanSchema = z.object({
@@ -90,7 +93,7 @@ export const updateInstallmentPlanSchema = z.object({
     .positive('Installment count must be positive')
     .max(120, 'Installment count is too large'),
   notes: optionalTextSchema,
-  reason: z.string().trim().min(5, 'Correction reason must be at least 5 characters'),
+  reason: optionalReasonSchema,
 });
 
 export const installmentPlanPaymentSchema = (remainingBalance: string) =>

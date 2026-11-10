@@ -173,25 +173,6 @@ describe('SupplierTransactionsService', () => {
     expect(result.summary.basis).toBe('filtered');
   });
 
-  it('rejects an edit that does not carry the account password', async () => {
-    repository.findById.mockResolvedValue(makeTransaction());
-    verifyAdminPasswordMock.mockRejectedValue(
-      Object.assign(new Error('Account password is required'), { statusCode: 401 })
-    );
-
-    await expect(
-      SupplierTransactionsService.update(
-        transactionId,
-        { amount: '600.00', reason: 'Invoice re-checked', accountPassword: '' } as never,
-        admin,
-        context
-      )
-    ).rejects.toThrow();
-
-    expect(repository.update).not.toHaveBeenCalled();
-    expect(auditMock).not.toHaveBeenCalled();
-  });
-
   it('writes an audit with balanceBefore and balanceAfter when an edit succeeds', async () => {
     const existing = makeTransaction();
     repository.findById.mockResolvedValue(existing);
@@ -207,7 +188,7 @@ describe('SupplierTransactionsService', () => {
       context
     );
 
-    expect(verifyAdminPasswordMock).toHaveBeenCalled();
+    expect(verifyAdminPasswordMock).not.toHaveBeenCalled();
     const audit = auditMock.mock.calls[0][0];
     expect(audit).toMatchObject({ action: 'UPDATE', reason: 'Invoice re-checked' });
     expect(audit.affectedTotals).toEqual({ balanceBefore: '500.00', balanceAfter: '600.00' });

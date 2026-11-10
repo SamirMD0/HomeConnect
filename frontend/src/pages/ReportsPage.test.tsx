@@ -24,18 +24,18 @@ describe('Reports portal', () => {
   it('lists every report as a card that links to its own page', () => {
     const html = renderPage();
 
-    expect(html).toContain('Reports / التقارير');
+    expect(html).toContain('Reports');
     for (const definition of reportDefinitions) {
       expect(html).toContain(definition.title);
       expect(html).toContain(`href="/reports/${definition.id}"`);
     }
-    expect(html).toContain('View report / عرض التقرير');
+    expect(html).toContain('View report');
   });
 
   it('groups the cards under report categories', () => {
     const html = renderPage();
 
-    for (const label of ['Overview / نظرة عامة', 'Customers / الزبائن', 'Suppliers / الموردون', 'Sales / المبيعات', 'Inventory / المخزون']) {
+    for (const label of ['Overview', 'Customers', 'Suppliers', 'Sales', 'Inventory']) {
       expect(html).toContain(label);
     }
   });
@@ -49,13 +49,13 @@ describe('Reports portal', () => {
     const html = renderPage();
 
     expect(html).not.toContain('<table');
-    expect(html).not.toContain('This month / هذا الشهر');
-    expect(html).not.toContain('Export PDF / تصدير PDF');
-    expect(html).not.toContain('Export CSV / تصدير CSV');
+    expect(html).not.toContain('This month');
+    expect(html).not.toContain('Export PDF');
+    expect(html).not.toContain('Export CSV');
   });
 
   it('shows a backend-supplied headline figure and never invents one', () => {
-    expect(renderPage()).not.toContain('Sales / المبيعات</p>');
+    expect(renderPage()).not.toContain('Sales</p>');
 
     review.data = {
       meta: {},
@@ -78,7 +78,7 @@ describe('Reports portal', () => {
     const html = renderPage();
 
     expect(html).toContain('Reports are admin-only');
-    expect(html).not.toContain('View report / عرض التقرير');
+    expect(html).not.toContain('View report');
   });
 });
 

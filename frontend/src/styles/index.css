@@ -275,10 +275,12 @@
   .control { @apply mt-1 block h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm; }
   /* The dashboard is a full-bleed mosaic: it cancels <main>'s padding, and panels
      are separated by hairlines and tint rather than by floating cards. */
-  .dashboard-shell { overflow-x: clip; @apply -m-4 min-h-[calc(100%+2rem)] bg-white lg:-m-8 lg:min-h-[calc(100%+4rem)]; }
-  .dashboard-chapter { @apply border-t border-slate-200 bg-white px-5 py-8 lg:px-8; }
-  .dashboard-chapters > :nth-child(even) .dashboard-chapter { @apply bg-slate-50; }
-  .dashboard-filter-bar { @apply sticky -top-4 z-20 lg:-top-8 flex flex-col justify-between gap-3 border-b border-slate-200 bg-white px-5 py-2.5 lg:flex-row lg:items-center lg:px-8; }
+  /* The dashboard is a set of white panels floating on the glass page. */
+  .dashboard-shell { overflow-x: clip; @apply space-y-4; }
+  .dashboard-chapters { @apply space-y-4; }
+  .dashboard-chapter { @apply rounded-2xl bg-white px-5 py-8 shadow-[0_8px_24px_-14px_rgb(15_23_42/0.25)] lg:px-8; }
+  .dashboard-panel { @apply overflow-hidden rounded-2xl bg-white shadow-[0_8px_24px_-14px_rgb(15_23_42/0.25)]; }
+  .dashboard-filter-bar { @apply sticky top-0 z-20 flex flex-col justify-between gap-3 rounded-2xl px-5 py-2.5 lg:flex-row lg:items-center lg:px-6; }
   .dashboard-segmented { @apply inline-flex max-w-full overflow-x-auto rounded-full bg-slate-100 p-1; }
   .dashboard-segmented button { @apply whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold text-slate-600 transition-colors hover:text-slate-900; }
   .dashboard-segmented button[aria-pressed="true"] { @apply bg-white text-brand-700 shadow-sm; }
@@ -506,13 +508,17 @@
 .document-watermark { position: absolute; inset: 42% auto auto 22%; transform: rotate(-22deg); color: rgb(185 28 28 / 0.14); font-size: 32pt; font-weight: 900; letter-spacing: 0.08em; pointer-events: none; }
 .receipt-void-watermark { inset: 39% 8% auto; z-index: 1; text-align: center; font-size: 46pt; color: rgb(185 28 28 / 0.16); }
 .receipt-void-metadata { position: relative; z-index: 2; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4mm; margin-top: 7mm; border: 2px solid #b91c1c; border-radius: 2mm; background: #fef2f2; padding: 4mm; break-inside: avoid; page-break-inside: avoid; }
-.statement-table { font-size: 8pt; }
+/* Statements are read on paper by customers: keep body text at a comfortable 10.5pt. */
+.statement-table { font-size: 10.5pt; }
+.statement-table th { font-size: 10pt; }
+.customer-statement .document-info-grid { font-size: 11pt; }
+.customer-statement .document-facts dd { font-size: 13pt; }
 .statement-entry-inactive { color: #64748b; }
-.statement-status { display: inline-block; margin-left: 1mm; border-radius: 999px; padding: 0.4mm 1.5mm; background: #e2e8f0; font-size: 7pt; white-space: nowrap; }
+.statement-status { display: inline-block; margin-left: 1mm; border-radius: 999px; padding: 0.4mm 1.5mm; background: #e2e8f0; font-size: 8.5pt; white-space: nowrap; }
 .statement-status-voided, .statement-status-cancelled { background: #fee2e2; color: #991b1b; font-weight: 800; }
 .statement-aging { margin-top: 7mm; break-inside: avoid; page-break-inside: avoid; }
 .statement-aging-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 6mm; margin-top: 3mm; border-top: 1.5px solid #475569; }
-.statement-aging-grid > div { display: flex; justify-content: space-between; gap: 3mm; border-bottom: 1px solid #e2e8f0; padding: 2mm 0; font-size: 8pt; }
+.statement-aging-grid > div { display: flex; justify-content: space-between; gap: 3mm; border-bottom: 1px solid #e2e8f0; padding: 2mm 0; font-size: 10.5pt; }
 
 @media screen and (max-width: 720px) {
   .document-page { min-height: auto; padding: 6mm; }
@@ -539,4 +545,43 @@
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
+}
+
+/*
+ * Light-gray glass shell (screen only). The backdrop has real depth (light
+ * beams and soft shapes) so the glass layers above it visibly blur something.
+ * The sidebar and the page area are frosted glass; content panels inside a
+ * page stay solid white. Printed pages ignore all of it.
+ */
+@media screen {
+  .app-backdrop {
+    background-color: #c8cdd4;
+    background-image:
+      linear-gradient(115deg, transparent 18%, rgb(255 255 255 / 0.55) 26%, transparent 34%),
+      linear-gradient(115deg, transparent 52%, rgb(255 255 255 / 0.38) 58%, transparent 64%),
+      radial-gradient(520px 520px at 18% 78%, rgb(43 134 224 / 0.22), transparent 70%),
+      radial-gradient(640px 480px at 88% 18%, rgb(71 85 105 / 0.40), transparent 70%),
+      radial-gradient(700px 520px at 60% 105%, rgb(255 255 255 / 0.6), transparent 70%),
+      linear-gradient(160deg, #dde1e6 0%, #c5cbd2 50%, #b0b8c1 100%);
+    background-attachment: fixed;
+  }
+
+  /* Frosted glass: translucent, blurred, with a bright edge like real glass. */
+  .glass-panel {
+    background: linear-gradient(145deg, rgb(255 255 255 / 0.42), rgb(255 255 255 / 0.18));
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+    backdrop-filter: blur(24px) saturate(160%);
+    border: 1px solid rgb(255 255 255 / 0.7);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.9),
+      inset 0 -1px 0 rgb(255 255 255 / 0.25),
+      0 20px 50px -20px rgb(15 23 42 / 0.30);
+  }
+
+  .app-main.glass-panel { border-radius: 1.25rem; }
+}
+
+@media print {
+  .app-backdrop { background: #fff !important; }
+  .glass-panel { background: #fff !important; box-shadow: none !important; border: 0 !important; margin: 0 !important; }
 }

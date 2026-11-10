@@ -20,10 +20,10 @@ describe('supplier components', () => {
     expect(directory).toContain('Archive / أرشفة');
     expect(directory).toContain('dir="auto"');
     const ledger = renderToStaticMarkup(<SupplierTransactionTable items={[transaction]} canMutate onEdit={noop} onRemove={noop} onRestore={noop} />);
-    expect(ledger).toContain('Supplier Debt');
+    expect(ledger).toContain('Bill');
     expect(ledger).toContain('+ Owed');
     expect(ledger).toContain('Remove');
-    expect(ledger).not.toContain('Supplier Debt / دين للمورّد');
+    expect(ledger).not.toContain('Bill / فاتورة مورّد');
     expect(ledger).not.toContain('Remove / حذف');
     expect(ledger).toContain('data-testid="supplier-ledger-scroll-table"');
     expect(ledger).toContain('data-table-scroll');

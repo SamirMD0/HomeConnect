@@ -21,7 +21,7 @@ export function ReportExportActions({ onExportCsv }: { onExportCsv?: () => Promi
     try {
       await onExportCsv();
     } catch {
-      toast.error('CSV export failed / تعذر تصدير CSV');
+      toast.error('CSV export failed');
     }
   };
 
@@ -34,7 +34,7 @@ export function ReportExportActions({ onExportCsv }: { onExportCsv?: () => Promi
           className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
         >
           <Download className="h-4 w-4" />
-          Export CSV / تصدير CSV
+          Export CSV
         </button>
       )}
       <button
@@ -44,7 +44,7 @@ export function ReportExportActions({ onExportCsv }: { onExportCsv?: () => Promi
         className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
       >
         <Printer className="h-4 w-4" />
-        Export PDF / تصدير PDF
+        Export PDF
       </button>
     </div>
   );

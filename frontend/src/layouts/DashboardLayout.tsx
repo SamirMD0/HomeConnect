@@ -59,7 +59,7 @@ const DashboardShell: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background print:h-auto print:overflow-visible font-sans text-foreground">
+    <div className="app-backdrop flex h-screen overflow-hidden bg-background print:h-auto print:overflow-visible font-sans text-foreground">
       <Sidebar
         collapsed={collapsed}
         onToggle={() => setCollapsed((prev) => !prev)}
@@ -67,7 +67,7 @@ const DashboardShell: React.FC = () => {
       />
 
       <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden print:overflow-visible">
-        <header className="no-print z-30 flex h-[4.5rem] shrink-0 items-center justify-between gap-3 border-b border-border bg-white px-4 lg:px-8">
+        <header className="no-print z-30 flex h-[4.5rem] shrink-0 items-center justify-between gap-3 px-4 lg:px-6">
           <div className="flex min-w-0 items-center gap-3">
             <PageJump />
             <BranchSelector />
@@ -90,7 +90,7 @@ const DashboardShell: React.FC = () => {
           </div>
         </header>
 
-        <main ref={mainRef} className="relative flex-1 overflow-y-auto p-4 lg:p-8">
+        <main ref={mainRef} className="app-main glass-panel relative mb-2 mr-2 flex-1 overflow-y-auto p-4 max-lg:ml-2 lg:mb-3 lg:mr-3 lg:p-6">
           {branchScopeReady ? (
             <Outlet />
           ) : (

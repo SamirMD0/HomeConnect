@@ -57,7 +57,7 @@ export function MonthlyReview() {
       anchor.download = `monthly-review-${review.data?.meta.from ?? 'report'}-to-${review.data?.meta.to ?? 'report'}.csv`;
       anchor.click();
       window.URL.revokeObjectURL(url);
-    } catch { toast.error('CSV export failed / تعذر تصدير CSV'); }
+    } catch { toast.error('CSV export failed CSV'); }
   };
 
   return (
@@ -76,7 +76,7 @@ export function MonthlyReview() {
 
       {incompleteCustom ? (
         <div className="rounded-lg border border-blue-200 bg-blue-50 p-5 text-sm text-blue-900">
-          Select both dates to load the custom review / اختر التاريخين لتحميل المراجعة المخصصة
+          Select both dates to load the custom review
         </div>
       ) : review.isLoading && !review.data ? (
         <ReportLoadingState />
@@ -115,20 +115,20 @@ export function MonthlyReviewContent({
       <section aria-labelledby="monthly-review-headline">
         <h2 id="monthly-review-headline" className="sr-only">Monthly review headline</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
-          <StatCard title="Sales / المبيعات" value={formatMoney(data.sales.totalAmount)} icon={<ShoppingCart className="h-5 w-5" />} color="info" />
-          <StatCard title="Paid / المدفوع" value={formatMoney(data.sales.paidAmount)} icon={<Banknote className="h-5 w-5" />} color="success" />
-          <StatCard title="Unpaid / غير المدفوع" value={formatMoney(data.sales.unpaidAmount)} icon={<CircleDollarSign className="h-5 w-5" />} color="danger" />
-          <StatCard title="Returns / المرتجعات" value={formatMoney(data.sales.returnsAmount ?? '0.00')} icon={<ReceiptText className="h-5 w-5" />} color="warning" />
-          <StatCard title="Net sales / صافي المبيعات" value={formatMoney(data.sales.netSalesAmount ?? data.sales.totalAmount)} icon={<ShoppingCart className="h-5 w-5" />} color="info" />
-          <StatCard title="Cash refunds / الاسترداد النقدي" value={formatMoney(data.sales.cashRefunds ?? '0.00')} icon={<Banknote className="h-5 w-5" />} color="danger" />
-          <StatCard title="Store credit issued / رصيد صادر" value={formatMoney(data.sales.storeCreditIssued ?? '0.00')} icon={<ReceiptText className="h-5 w-5" />} color="warning" />
-          <StatCard title="Orders / الطلبات" value={data.sales.orderCount} icon={<ReceiptText className="h-5 w-5" />} color="primary" />
-          <StatCard title="New customers / زبائن جدد" value={data.customers.newCustomers} icon={<UserPlus className="h-5 w-5" />} color="warning" />
+          <StatCard title="Sales" value={formatMoney(data.sales.totalAmount)} icon={<ShoppingCart className="h-5 w-5" />} color="info" />
+          <StatCard title="Paid" value={formatMoney(data.sales.paidAmount)} icon={<Banknote className="h-5 w-5" />} color="success" />
+          <StatCard title="Unpaid" value={formatMoney(data.sales.unpaidAmount)} icon={<CircleDollarSign className="h-5 w-5" />} color="danger" />
+          <StatCard title="Returns" value={formatMoney(data.sales.returnsAmount ?? '0.00')} icon={<ReceiptText className="h-5 w-5" />} color="warning" />
+          <StatCard title="Net sales" value={formatMoney(data.sales.netSalesAmount ?? data.sales.totalAmount)} icon={<ShoppingCart className="h-5 w-5" />} color="info" />
+          <StatCard title="Cash refunds" value={formatMoney(data.sales.cashRefunds ?? '0.00')} icon={<Banknote className="h-5 w-5" />} color="danger" />
+          <StatCard title="Store credit issued" value={formatMoney(data.sales.storeCreditIssued ?? '0.00')} icon={<ReceiptText className="h-5 w-5" />} color="warning" />
+          <StatCard title="Orders" value={data.sales.orderCount} icon={<ReceiptText className="h-5 w-5" />} color="primary" />
+          <StatCard title="New customers" value={data.customers.newCustomers} icon={<UserPlus className="h-5 w-5" />} color="warning" />
         </div>
       </section>
 
       <BranchBreakdownTable<MonthlyReviewData>
-        title="By branch / حسب الفرع"
+        title="By branch"
         description="This period's sales per branch, in USD."
         total={data}
         rows={(data as WithBranchBreakdown<MonthlyReviewData>).branchBreakdown}
@@ -144,21 +144,21 @@ export function MonthlyReviewContent({
       <section className="rounded-xl border border-slate-200 bg-white p-4" aria-labelledby="monthly-review-comparison">
         <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h2 id="monthly-review-comparison" className="text-lg font-semibold text-slate-900">Period comparison / مقارنة الفترات</h2>
+            <h2 id="monthly-review-comparison" className="text-lg font-semibold text-slate-900">Period comparison</h2>
             <p className="text-xs text-slate-500">Backend-calculated values for the selected and immediately preceding periods.</p>
           </div>
-          {comparison ? <span className="text-xs text-slate-500">Previous: {comparison.meta.from} → {comparison.meta.to}</span> : comparisonUnavailable ? <span className="text-xs text-amber-700">Previous period unavailable / الفترة السابقة غير متاحة</span> : <span className="text-xs text-slate-400">Loading previous period…</span>}
+          {comparison ? <span className="text-xs text-slate-500">Previous: {comparison.meta.from} → {comparison.meta.to}</span> : comparisonUnavailable ? <span className="text-xs text-amber-700">Previous period unavailable</span> : <span className="text-xs text-slate-400">Loading previous period…</span>}
         </div>
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-          <MetricComparisonTable title="Sales / المبيعات" rows={[
+          <MetricComparisonTable title="Sales" rows={[
             ['Total sales', data.sales.totalAmount, comparison?.data.sales.totalAmount, true],
             ['Paid', data.sales.paidAmount, comparison?.data.sales.paidAmount, true],
             ['Unpaid', data.sales.unpaidAmount, comparison?.data.sales.unpaidAmount, true],
             ['Average order', data.sales.averageOrderValue, comparison?.data.sales.averageOrderValue, true],
             ['Orders', String(data.sales.orderCount), comparison ? String(comparison.data.sales.orderCount) : undefined, false],
           ]} />
-          <MovementComparison title="Customers / الزبائن" current={data.customers.movement} previous={comparison?.data.customers.movement} />
-          <MovementComparison title="Suppliers / الموردون" current={data.suppliers.movement} previous={comparison?.data.suppliers.movement} />
+          <MovementComparison title="Customers" current={data.customers.movement} previous={comparison?.data.customers.movement} />
+          <MovementComparison title="Suppliers" current={data.suppliers.movement} previous={comparison?.data.suppliers.movement} />
         </div>
       </section>
 
@@ -184,7 +184,7 @@ export function MonthlyReviewContent({
       )}
 
       <section className="grid grid-cols-1 gap-4 xl:grid-cols-3" aria-label="Operational snapshots">
-        <SnapshotCard title="Customers requiring attention / زبائن يحتاجون متابعة" icon={<Users className="h-5 w-5" />}>
+        <SnapshotCard title="Customers requiring attention" icon={<Users className="h-5 w-5" />}>
           <SnapshotRow label="Active customers" value={String(data.customers.activeCustomers)} />
           <SnapshotRow label="Paid in period" value={String(data.customers.paidCount)} />
           <SnapshotRow label="Did not pay" value={String(data.customers.didNotPayCount)} />
@@ -194,7 +194,7 @@ export function MonthlyReviewContent({
             </Link>
           ))}
         </SnapshotCard>
-        <SnapshotCard title="Supplier position / وضع الموردين" icon={<Truck className="h-5 w-5" />}>
+        <SnapshotCard title="Supplier position" icon={<Truck className="h-5 w-5" />}>
           <SnapshotRow label="Current amount owed" value={formatMoney(data.suppliers.operationalSnapshot.owed)} />
           <SnapshotRow label="Suppliers with balance" value={String(data.suppliers.operationalSnapshot.suppliersWithBalance)} />
           {data.suppliers.operationalSnapshot.topBalances.slice(0, 5).map((supplier) => (
@@ -209,12 +209,12 @@ export function MonthlyReviewContent({
       <AlertsCenter data={data.risk} isLoading={false} isError={false} onRetry={() => undefined} />
 
       <section className="rounded-xl border border-slate-200 bg-white p-4 print:hidden" aria-labelledby="monthly-review-actions">
-        <h2 id="monthly-review-actions" className="text-lg font-semibold text-slate-900">Actions / الإجراءات</h2>
+        <h2 id="monthly-review-actions" className="text-lg font-semibold text-slate-900">Actions</h2>
         <div className="mt-3 flex flex-wrap gap-2">
-          <ActionLink to="/sales-orders" icon={<ShoppingCart className="h-4 w-4" />} label="Review sales / مراجعة المبيعات" />
-          <ActionLink to="/customers" icon={<Users className="h-4 w-4" />} label="Follow up customers / متابعة الزبائن" />
-          <ActionLink to="/suppliers" icon={<Truck className="h-4 w-4" />} label="Review suppliers / مراجعة الموردين" />
-          <ActionLink to="/inventory" icon={<PackageSearch className="h-4 w-4" />} label="Check inventory / فحص المخزون" />
+          <ActionLink to="/sales-orders" icon={<ShoppingCart className="h-4 w-4" />} label="Review sales" />
+          <ActionLink to="/customers" icon={<Users className="h-4 w-4" />} label="Follow up customers" />
+          <ActionLink to="/suppliers" icon={<Truck className="h-4 w-4" />} label="Review suppliers" />
+          <ActionLink to="/inventory" icon={<PackageSearch className="h-4 w-4" />} label="Check inventory" />
         </div>
       </section>
     </div>
@@ -222,7 +222,7 @@ export function MonthlyReviewContent({
 }
 
 function ReviewPeriodHeader({ review }: { review: ReviewEnvelope }) {
-  return <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700"><strong>Reporting period / فترة التقرير:</strong> {review.meta.from} → {review.meta.to}<span className="ml-3 text-xs text-slate-500">Currency: {review.meta.currency}</span></div>;
+  return <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700"><strong>Reporting period:</strong> {review.meta.from} → {review.meta.to}<span className="ml-3 text-xs text-slate-500">Currency: {review.meta.currency}</span></div>;
 }
 
 type ComparisonRow = [label: string, current: string, previous: string | undefined, money: boolean];
@@ -252,7 +252,7 @@ function SnapshotRow({ label, value }: { label: string; value: string }) {
 }
 
 function InventorySnapshot({ summary }: { summary: MonthlyReviewData['inventory']['operationalSnapshot']['summary'] }) {
-  return <SnapshotCard title="Inventory now / المخزون الآن" icon={<Boxes className="h-5 w-5" />}><SnapshotRow label="Tracked products" value={String(summary.trackedProducts)} /><SnapshotRow label="Low stock" value={String(summary.lowStockProducts)} /><SnapshotRow label="Out of stock" value={String(summary.outOfStockProducts)} /><SnapshotRow label="Total units" value={String(summary.totalUnits)} /><SnapshotRow label="Movements today" value={String(summary.movementsToday)} /><SnapshotRow label="Awaiting stock deduction" value={String(summary.ordersAwaitingStockDeduction)} /></SnapshotCard>;
+  return <SnapshotCard title="Inventory now" icon={<Boxes className="h-5 w-5" />}><SnapshotRow label="Tracked products" value={String(summary.trackedProducts)} /><SnapshotRow label="Low stock" value={String(summary.lowStockProducts)} /><SnapshotRow label="Out of stock" value={String(summary.outOfStockProducts)} /><SnapshotRow label="Total units" value={String(summary.totalUnits)} /><SnapshotRow label="Movements today" value={String(summary.movementsToday)} /><SnapshotRow label="Awaiting stock deduction" value={String(summary.ordersAwaitingStockDeduction)} /></SnapshotCard>;
 }
 
 function ActionLink({ to, icon, label }: { to: string; icon: React.ReactNode; label: string }) {

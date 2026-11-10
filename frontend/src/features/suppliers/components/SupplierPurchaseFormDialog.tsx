@@ -84,7 +84,6 @@ export const SupplierPurchaseFormDialog: React.FC<Props> = ({ open, supplier, on
     if (form.overrideEnabled && !form.amountOverrideReason.trim()) return 'Give a reason for the adjusted total / اذكر سبب تعديل الإجمالي';
     if (form.paymentStatus === 'PARTIAL' && paidCents <= 0n) return 'Enter how much was paid / أدخل المبلغ المدفوع';
     if (form.paymentStatus === 'PARTIAL' && paidCents > totalCents) return 'The paid amount cannot exceed the total / المبلغ المدفوع لا يمكن أن يتجاوز الإجمالي';
-    if (quickAdd && !form.accountPassword) return 'Your account password is required to add a new product / كلمة مرور الحساب مطلوبة لإضافة منتج جديد';
     if (quickAdd && !form.receiveStock) return 'A new product can only be added on a purchase that receives stock / لا يمكن إضافة منتج جديد دون استلام مخزون';
     return null;
   })();
@@ -116,7 +115,6 @@ export const SupplierPurchaseFormDialog: React.FC<Props> = ({ open, supplier, on
           amountOverrideReason: form.overrideEnabled ? form.amountOverrideReason.trim() : null,
           paidAmount: paidCents > 0n ? canonicalMoneyInput(paidAmount) : null,
           paymentReference: paidCents > 0n ? form.paymentReference.trim() || null : null,
-          ...(quickAdd ? { accountPassword: form.accountPassword } : {}),
           lines: toApiLines(lines),
         },
       });
@@ -273,11 +271,6 @@ export const SupplierPurchaseFormDialog: React.FC<Props> = ({ open, supplier, on
           <div><dt className="text-xs text-slate-500">Still owed / المتبقي</dt><dd className="tabular-nums font-semibold text-brand-700">{remaining ?? '—'}</dd></div>
         </dl>
       </section>
-
-      {quickAdd && <label className="block text-sm font-semibold text-slate-700">Account password / كلمة مرور الحساب *
-        <input type="password" value={form.accountPassword} onChange={set('accountPassword')} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 font-normal" />
-        <span className="mt-1 block text-xs font-normal text-slate-500">Required because this purchase creates a new product and its opening count / مطلوبة لأن هذه الفاتورة تنشئ منتجًا جديدًا وجرده الافتتاحي</span>
-      </label>}
 
       {blocker && <p role="status" className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-900">{blocker}</p>}
 

@@ -77,13 +77,13 @@ export const VoidPaymentDialog: React.FC<VoidPaymentDialogProps> = ({
         </div>
       )}
 
-      <TextField label="Void reason" error={errors.reason?.message}>
+      <TextField label="Void reason (optional)" error={errors.reason?.message}>
         <textarea
           {...register('reason')}
           dir="auto"
           rows={3}
           className={inputClass(Boolean(errors.reason))}
-          placeholder="Required for audit history"
+          placeholder="Optional — saved to the audit history"
         />
       </TextField>
 

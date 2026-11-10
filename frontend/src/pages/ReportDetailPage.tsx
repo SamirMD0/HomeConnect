@@ -35,6 +35,8 @@ import type {
   MonthlyFinancialActivityData,
 } from '../features/reports/types/monthly-reports.types';
 import { currentMonthValue } from '../features/reports/utils/report-query';
+import { formatMoney } from '../features/customer-financial/utils/financial-format';
+import { EnglishOnlyLabels } from '../features/dashboard/components/layout/BilingualLabel';
 import '../features/reports/print.css';
 
 /**
@@ -52,11 +54,12 @@ export const ReportDetailPage: React.FC = () => {
   if (!definition) return <Navigate to="/reports" replace />;
 
   return (
-    <div className="mx-auto max-w-[1600px] space-y-5 report-print-root">
+    <EnglishOnlyLabels>
+    <div className="mx-auto max-w-[1600px] space-y-5 report-print-root" lang="en">
       <style media="print">{'@page { size: A4 landscape; margin: 10mm; }'}</style>
       <Link to="/reports" className="inline-flex items-center gap-1 text-sm font-semibold text-brand-700 print:hidden">
         <ArrowLeft className="h-4 w-4" />
-        All reports / كل التقارير
+        All reports
       </Link>
       {definition.kind === 'rows' && definition.slice
         ? <RowsReport definition={definition} slice={definition.slice} />
@@ -68,6 +71,7 @@ export const ReportDetailPage: React.FC = () => {
         ? <LegacyMonthReport definition={definition} kind="debts" />
         : <LegacyMonthReport definition={definition} kind="activity" />}
     </div>
+    </EnglishOnlyLabels>
   );
 };
 
@@ -85,8 +89,8 @@ const ReportFrame: React.FC<{
         <p className="mt-1 text-sm text-slate-500">{definition.description}</p>
         <div className="mt-2 hidden text-sm text-slate-600 print:block">
           <p className="font-semibold">Home Connects</p>
-          {period && <p>Period / الفترة: {period}</p>}
-          <p>Generated / أُنشئ في: {new Date().toLocaleString('en-GB')}</p>
+          {period && <p>Period: {period}</p>}
+          <p>Generated: {new Date().toLocaleString('en-GB')}</p>
         </div>
       </div>
       {actions}
@@ -123,6 +127,33 @@ function AnalysisReport({ definition }: { definition: ReportDefinition }) {
   );
 }
 
+/** Cash flow's money in and out, split by how it moved. Figures come from the backend as-is. */
+function CashByMethod({ summary }: { summary: Record<string, unknown> }) {
+  const groups: Array<[string, Array<{ label: string; amount: string }>]> = [
+    ['Money in by method', (summary.inByMethod as Array<{ label: string; amount: string }>) ?? []],
+    ['Money out by type', (summary.outByMethod as Array<{ label: string; amount: string }>) ?? []],
+  ];
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      {groups.map(([title, items]) => (
+        <section key={title} className="rounded-lg border border-slate-200 bg-white p-4">
+          <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
+          {items.length === 0 ? <p className="mt-2 text-sm text-slate-500">Nothing in this period.</p> : (
+            <dl className="mt-2 divide-y divide-slate-100 text-sm">
+              {items.map((item) => (
+                <div key={item.label} className="flex justify-between gap-3 py-1.5">
+                  <dt className="text-slate-600">{item.label}</dt>
+                  <dd className="font-semibold tabular-nums text-slate-900">{formatMoney(item.amount)}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+        </section>
+      ))}
+    </div>
+  );
+}
+
 function RowsReport({ definition, slice }: { definition: ReportDefinition; slice: ReportSlice }) {
   const [period, setPeriod] = useState<ReportRowsQuery>({ period: 'thisMonth' });
   const report = useReportRows(slice, period);
@@ -150,19 +181,19 @@ function RowsReport({ definition, slice }: { definition: ReportDefinition; slice
 
       {definition.operational && (
         <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-blue-900">
-          This is a current operational backlog; the selected period is retained only for consistent report navigation. / هذه قائمة تشغيلية حالية.
+          This is a current operational backlog; the selected period is retained only for consistent report navigation.
         </div>
       )}
 
       {meta && (
         <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-          <strong>Reporting period / فترة التقرير:</strong> {meta.from} → {meta.to}
+          <strong>Reporting period:</strong> {meta.from} → {meta.to}
         </div>
       )}
 
       {incompleteCustom ? (
         <div className="rounded-lg border border-blue-200 bg-blue-50 p-5 text-sm text-blue-900">
-          Select both dates to load the report / اختر التاريخين لتحميل التقرير
+          Select both dates to load the report
         </div>
       ) : report.isLoading && !report.data ? (
         <ReportLoadingState />
@@ -172,6 +203,7 @@ function RowsReport({ definition, slice }: { definition: ReportDefinition; slice
         <>
           <ReportTotals items={summariesFor(slice, report.data.data.summary)} />
           {slice === 'suppliers-aging' && <SupplierAgingSummary summary={report.data.data.summary} />}
+          {slice === 'cash-flow' && <CashByMethod summary={report.data.data.summary} />}
           {slice === 'inventory-movements' && (
             <StockMovementsByTypeChart data={movementSummaryRows(report.data.data.summary.movementsByType)} />
           )}

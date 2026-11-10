@@ -64,26 +64,26 @@ describe('Analysis portal', () => {
   it('compares customer debt, supplier debt, sales, and inventory in one view', () => {
     const html = render();
     for (const label of [
-      'Sales / المبيعات', 'Customer debt added / دين زبائن جديد', 'Supplier debt added / دين موردين جديد',
-      'Customer receivables / ذمم الزبائن', 'Supplier payables / ذمم الموردين',
-      'Units received / وحدات مستلمة', 'Units sold / وحدات مباعة',
+      'Sales', 'Customer debt added', 'Supplier debt added',
+      'Customer receivables', 'Supplier payables',
+      'Units received', 'Units sold',
     ]) expect(html).toContain(label);
   });
 
   it('renders every section the analysis portal promises', () => {
     const html = render();
     for (const section of [
-      'Business health / صحة العمل', 'Cashflow pressure / ضغط التدفق النقدي',
-      'Sales vs debt / المبيعات مقابل الدين', 'Supplier position / وضع الموردين',
-      'Inventory position / وضع المخزون', 'Risk &amp; actions / المخاطر والإجراءات',
+      'Business health', 'Cashflow pressure',
+      'Sales vs debt', 'Supplier position',
+      'Inventory position', 'Risk &amp; actions',
     ]) expect(html).toContain(section);
   });
 
   /** The portal explains risk in words, which is the point of an ERP report. */
-  it('explains each risk in both languages rather than only showing numbers', () => {
+  it('explains each risk in English rather than only showing numbers', () => {
     const html = render();
     expect(html).toContain('Supplier debt grew faster than collections');
-    expect(html).toContain('ديون الموردين نمت أسرع من التحصيل');
+    expect(html).not.toContain('ديون الموردين نمت أسرع من التحصيل');
     expect(html).toContain('This may create cash pressure');
     expect(html).toContain('Products received but not sold');
   });

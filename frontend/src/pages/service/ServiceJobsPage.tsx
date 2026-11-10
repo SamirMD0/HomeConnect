@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Plus, Search, Wrench } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { CreateServiceJobDialog } from '../../features/service/components/CreateServiceJobDialog';
+import { ServiceDashboardCards } from '../../features/service/components/ServiceDashboardCards';
 import { ServiceJobsTable } from '../../features/service/components/ServiceJobsTable';
 import { useServiceJobs } from '../../features/service/hooks/useServiceJobs';
 import {
@@ -14,7 +15,7 @@ import {
   STATUS_LABELS,
   WARRANTY_LABELS,
 } from '../../features/service/utils/service-labels';
-import { businessLabels } from '../../shared/labels/business-labels';
+import { businessLabels, englishLabel } from '../../shared/labels/business-labels';
 import { useCreateGuard } from '../../features/branches/scope/branch-ui';
 
 const filterControlClass =
@@ -58,11 +59,11 @@ export const ServiceJobsPage: React.FC = () => {
           <div className="flex flex-wrap items-center gap-2">
             <Wrench className="h-6 w-6 shrink-0 text-brand-600" aria-hidden="true" />
             <h1 className="text-xl font-bold leading-tight text-slate-900">
-              {businessLabels.service.maintenance}
+              Service &amp; warranty repairs
             </h1>
           </div>
           <p className="mt-1 text-xs leading-5 text-slate-500">
-            Track repair jobs from intake through delivery / متابعة الصيانة من الاستلام حتى التسليم.
+            Broken products brought in for repair, from drop-off to return. Click a card to see those jobs.
           </p>
         </div>
         <button
@@ -73,9 +74,11 @@ export const ServiceJobsPage: React.FC = () => {
           className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-brand-600 px-4 text-xs font-semibold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
         >
           <Plus className="h-4 w-4 shrink-0" aria-hidden="true" />
-          <span>{businessLabels.service.newJob}</span>
+          <span>{englishLabel(businessLabels.service.newJob)}</span>
         </button>
       </div>
+
+      <ServiceDashboardCards compact />
 
       <section className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
         <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-[minmax(18rem,1.7fr)_repeat(4,minmax(10.5rem,1fr))]">
@@ -87,7 +90,7 @@ export const ServiceJobsPage: React.FC = () => {
             <input
               value={params.get('search') ?? ''}
               onChange={(event) => update('search', event.target.value)}
-              placeholder="Job, customer, phone, product / الطلب، الزبون، الهاتف، المنتج"
+              placeholder="Search job no., customer, phone or product"
               aria-label="Search service jobs"
               className={`${filterControlClass} pl-9`}
             />
@@ -99,9 +102,9 @@ export const ServiceJobsPage: React.FC = () => {
             aria-label="Filter by service status"
             className={filterControlClass}
           >
-            <option value="">Open Jobs / الطلبات المفتوحة</option>
-            <option value="OPEN">All Open / كل المفتوحة</option>
-            <option value="CLOSED">All Completed / كل المكتملة</option>
+            <option value="">Open jobs</option>
+            <option value="OPEN">All open</option>
+            <option value="CLOSED">All closed</option>
             {Object.entries(STATUS_LABELS).map(([value, label]) => (
               <option key={value} value={value}>{label}</option>
             ))}
@@ -113,7 +116,7 @@ export const ServiceJobsPage: React.FC = () => {
             aria-label="Filter by request type"
             className={filterControlClass}
           >
-            <option value="">Any Request / أي طلب</option>
+            <option value="">Any service type</option>
             {Object.entries(REQUEST_TYPE_LABELS).map(([value, label]) => (
               <option key={value} value={value}>{label}</option>
             ))}
@@ -125,7 +128,7 @@ export const ServiceJobsPage: React.FC = () => {
             aria-label="Filter by warranty"
             className={filterControlClass}
           >
-            <option value="">Any Warranty / أي كفالة</option>
+            <option value="">Any warranty</option>
             {Object.entries(WARRANTY_LABELS).map(([value, label]) => (
               <option key={value} value={value}>{label}</option>
             ))}
@@ -137,10 +140,10 @@ export const ServiceJobsPage: React.FC = () => {
             aria-label="Sort service jobs"
             className={filterControlClass}
           >
-            <option value="createdDesc">Newest First / الأحدث أولاً</option>
-            <option value="createdAsc">Oldest First / الأقدم أولاً</option>
-            <option value="statusAsc">Status / الحالة</option>
-            <option value="customerAsc">Customer / الزبون</option>
+            <option value="createdDesc">Newest first</option>
+            <option value="createdAsc">Oldest first (longest waiting)</option>
+            <option value="statusAsc">Status</option>
+            <option value="customerAsc">Customer</option>
           </select>
         </div>
 
@@ -154,7 +157,7 @@ export const ServiceJobsPage: React.FC = () => {
               }
               className="h-3.5 w-3.5 accent-brand-600"
             />
-            <span>Show delivered / إظهار المسلّمة</span>
+            <span>Include closed jobs</span>
           </label>
         </div>
       </section>

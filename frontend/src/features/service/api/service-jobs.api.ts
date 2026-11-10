@@ -24,8 +24,8 @@ export const serviceJobsApi = {
   create: async (input: CreateServiceJobInput): Promise<ServiceJob> => (await api.post('/service-jobs', input)).data.data,
   update: async (id: string, input: UpdateServiceJobInput): Promise<ServiceJob> => (await api.patch(`/service-jobs/${id}`, input)).data.data,
   status: async (id: string, input: { status: ServiceJobStatus; sentToCompanyDate?: string | null; receivedFromCompanyDate?: string | null; returnedToCustomerDate?: string | null }): Promise<ServiceJob> => (await api.post(`/service-jobs/${id}/status`, input)).data.data,
-  cancel: async (id: string, input: { reason: string; accountPassword: string }): Promise<ServiceJob> => (await api.post(`/service-jobs/${id}/cancel`, input)).data.data,
-  reopen: async (id: string, input: { status: ServiceJobStatus; reason: string; accountPassword: string }): Promise<ServiceJob> => (await api.post(`/service-jobs/${id}/reopen`, input)).data.data,
+  cancel: async (id: string, input: { reason?: string }): Promise<ServiceJob> => (await api.post(`/service-jobs/${id}/cancel`, input)).data.data,
+  reopen: async (id: string, input: { status: ServiceJobStatus; reason?: string }): Promise<ServiceJob> => (await api.post(`/service-jobs/${id}/reopen`, input)).data.data,
   audit: async (id: string): Promise<ServiceAudit[]> => (await api.get(`/service-jobs/${id}/audit`)).data.data,
   summary: async (): Promise<ServiceSummary> => (await api.get('/service-jobs/summary')).data.data,
 };

@@ -122,14 +122,14 @@ describe('service job security and audit policy', () => {
     expect(verify).not.toHaveBeenCalled();
   });
 
-  it('keeps the admin password and typed reason on cancel and reopen', async () => {
+  it('cancels and reopens without a password, keeping a typed reason', async () => {
     await ServiceJobsService.cancel(jobId, { reason: 'Customer cancelled job', accountPassword: 'secret' }, admin, context);
-    expect(verify).toHaveBeenCalledTimes(1);
+    expect(verify).not.toHaveBeenCalled();
     expect(lastAudit()).toMatchObject({ action: 'CANCEL', reason: 'Customer cancelled job' });
 
     repository.findById.mockResolvedValue(jobOf({ status: ServiceJobStatus.CANCELLED }));
     await ServiceJobsService.reopen(jobId, { status: ServiceJobStatus.RECEIVED, reason: 'Reopened by request', accountPassword: 'secret' }, admin, context);
-    expect(verify).toHaveBeenCalledTimes(2);
+    expect(verify).not.toHaveBeenCalled();
     expect(lastAudit()).toMatchObject({ action: 'REOPEN', reason: 'Reopened by request' });
   });
 });

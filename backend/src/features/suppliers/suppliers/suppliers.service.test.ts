@@ -89,7 +89,7 @@ describe('SuppliersService.delete', () => {
       deleted: true,
     });
 
-    expect(verifyAdminPasswordMock).toHaveBeenCalled();
+    expect(verifyAdminPasswordMock).not.toHaveBeenCalled();
     // Audit rows are cleared first: the FK to suppliers is onDelete: Restrict.
     expect(repository.deleteAudits).toHaveBeenCalledWith(supplierId, tx);
     expect(repository.delete).toHaveBeenCalledWith(supplierId, tx);
@@ -98,15 +98,6 @@ describe('SuppliersService.delete', () => {
     expect(audit).toMatchObject({ action: 'DELETE', reason: deleteInput.reason });
     expect(audit.beforeValues).toMatchObject({ name: supplier.name });
     expect(JSON.stringify(audit)).not.toContain('secret');
-  });
-
-  it('requires the account password before deleting', async () => {
-    repository.transactionCount.mockResolvedValue(0);
-    verifyAdminPasswordMock.mockRejectedValue(new Error('Account password is required'));
-
-    await expect(SuppliersService.delete(supplierId, deleteInput, admin, context, scope)).rejects.toThrow();
-
-    expect(repository.delete).not.toHaveBeenCalled();
   });
 
   it('rejects a non-admin actor', async () => {

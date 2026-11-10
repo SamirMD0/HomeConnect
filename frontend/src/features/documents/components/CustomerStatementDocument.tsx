@@ -19,12 +19,12 @@ const labels = {
   effect: { en: 'Balance effect', ar: 'أثر الرصيد' },
   running: { en: 'Running balance', ar: 'الرصيد الجاري' },
   aging: { en: 'Aging summary', ar: 'ملخص أعمار الديون' },
-  agingTotal: { en: 'Total outstanding', ar: 'إجمالي المستحق' },
+  agingTotal: { en: 'Balance due', ar: 'إجمالي المستحق' },
 } as const;
 
 const typeLabels = {
-  DEBT: 'Debt / دين',
-  INSTALLMENT: 'Installment / قسط',
+  DEBT: 'Invoice / فاتورة',
+  INSTALLMENT: 'Plan installment / قسط',
   PAYMENT: 'Payment / دفعة',
   RETURN: 'Sales return / مرتجع مبيعات',
 } as const;
@@ -84,7 +84,7 @@ export function CustomerStatementDocument({ statement, business }: { statement: 
             <tr key={`${entry.type}-${entry.id}`} className={entry.status === 'POSTED' ? '' : 'statement-entry-inactive'}>
               <td dir="ltr">{formatBusinessDate(entry.date)}</td>
               <td><div className="font-semibold">{typeLabels[entry.type]} <span className={`statement-status statement-status-${entry.status.toLowerCase()}`}>{statusLabels[entry.status]}</span></div><p className="user-text mt-1" dir="auto">{entry.description}</p>{entry.reference && <p className="user-text text-xs text-slate-500" dir="auto">{entry.reference}</p>}{entry.dueDate && <p className="text-xs text-slate-500" dir="ltr">Due / الاستحقاق: {formatBusinessDate(entry.dueDate)}</p>}{entry.reason && <p className="user-text text-xs text-red-700" dir="auto">{entry.reason}</p>}</td>
-              <td className="text-right"><DocumentMoney field={`entries.${entry.id}.originalAmount`} value={entry.originalAmount} currency={entry.currency} />{entry.currency !== 'USD' && <p className="mt-1 text-[7pt] text-slate-500" dir="ltr">{entry.exchangeRate} LBP / USD</p>}</td>
+              <td className="text-right"><DocumentMoney field={`entries.${entry.id}.originalAmount`} value={entry.originalAmount} currency={entry.currency} />{entry.currency !== 'USD' && <p className="mt-1 text-[8.5pt] text-slate-500" dir="ltr">{entry.exchangeRate} LBP / USD</p>}</td>
               <td className="text-right"><DocumentMoney field={`entries.${entry.id}.balanceEffect`} value={entry.balanceEffect} currency="USD" /></td>
               <td className="text-right font-semibold"><DocumentMoney field={`entries.${entry.id}.runningBalance`} value={entry.runningBalance} currency="USD" /></td>
             </tr>

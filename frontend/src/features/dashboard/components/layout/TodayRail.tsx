@@ -77,7 +77,7 @@ export function TodayRail({ businessDate, kpis, isLoading, alerts, alertsAnchorI
   const attention = alerts?.alerts ?? [];
 
   return (
-    <aside className="flex min-w-0 flex-col gap-6 border-b border-brand-100 bg-brand-50 p-5 lg:p-8 xl:border-b-0 xl:border-r">
+    <aside className="dashboard-panel flex min-w-0 flex-col gap-6 p-5 lg:p-8">
       <header className="border-b border-brand-200/70 pb-6">
         <p className="text-sm font-medium text-slate-600">{displayDate ?? 'Today'}</p>
         <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">

@@ -55,25 +55,27 @@ export const NAVIGATION: readonly NavigationSection[] = [
     heading: { en: 'Sales', ar: 'المبيعات' },
     items: [
       { key: 'sales-orders', label: { en: 'Sales Orders', ar: 'طلبات البيع' }, path: '/sales-orders', icon: ShoppingCart },
-      { key: 'scanner', label: { en: 'Scanner Hub', ar: 'مركز المسح' }, path: '/scanner', icon: ScanLine },
+      { key: 'scanner', label: { en: 'Barcode Scanner', ar: 'الماسح' }, path: '/scanner', icon: ScanLine },
     ],
   },
   {
-    id: 'finance',
-    heading: { en: 'Finance', ar: 'المالية' },
-    items: [
-      { key: 'ledger', label: { en: 'Ledger', ar: 'دفتر الحسابات' }, path: '/ledger', icon: BookOpen },
-      { key: 'receivables', label: { en: 'Receivables', ar: 'الذمم' }, path: '/receivables', icon: Wallet },
-      { key: 'prepaid', label: { en: 'Prepaid', ar: 'المدفوع مسبقاً' }, path: '/prepaid', icon: Coins },
-    ],
-  },
-  {
-    id: 'contacts',
-    heading: { en: 'Contacts', ar: 'جهات الاتصال' },
+    // Accounts receivable: everything the customers owe us, in ERP terms.
+    id: 'customers',
+    heading: { en: 'Customers', ar: 'الزبائن' },
     items: [
       { key: 'customers', label: { en: 'Customers', ar: 'الزبائن' }, path: '/customers', icon: Users },
+      { key: 'ledger', label: { en: 'Transactions', ar: 'الحركات' }, path: '/ledger', icon: BookOpen },
+      { key: 'receivables', label: { en: 'Receivables', ar: 'الذمم' }, path: '/receivables', icon: Wallet },
+      { key: 'prepaid', label: { en: 'Deposits', ar: 'العربون' }, path: '/prepaid', icon: Coins },
+    ],
+  },
+  {
+    // Accounts payable: what we owe our suppliers.
+    id: 'suppliers',
+    heading: { en: 'Suppliers', ar: 'المورّدون' },
+    items: [
       { key: 'suppliers', label: { en: 'Suppliers', ar: 'المورّدون' }, path: '/suppliers', icon: Truck },
-      { key: 'supplier-ledger', label: { en: 'Supplier Ledger', ar: 'حسابات المورّدين' }, path: '/supplier-ledger', icon: Receipt },
+      { key: 'supplier-ledger', label: { en: 'Bills & Payments', ar: 'الفواتير' }, path: '/supplier-ledger', icon: Receipt },
     ],
   },
   {
@@ -81,15 +83,15 @@ export const NAVIGATION: readonly NavigationSection[] = [
     heading: { en: 'Inventory', ar: 'المخزون' },
     items: [
       { key: 'products', label: { en: 'Products', ar: 'المنتجات' }, path: '/products', icon: Package },
-      { key: 'inventory', label: { en: 'Inventory', ar: 'المخزون' }, path: '/inventory', icon: Warehouse },
-      { key: 'pricing-presets', label: { en: 'Pricing Presets', ar: 'صيغ التسعير' }, path: '/pricing-presets', icon: Calculator },
+      { key: 'inventory', label: { en: 'Stock Levels', ar: 'كميات المخزون' }, path: '/inventory', icon: Warehouse },
+      { key: 'pricing-presets', label: { en: 'Price Rules', ar: 'قواعد التسعير' }, path: '/pricing-presets', icon: Calculator },
     ],
   },
   {
     id: 'service',
-    heading: { en: 'Service', ar: 'الخدمة' },
+    heading: { en: 'After-Sales', ar: 'خدمة ما بعد البيع' },
     items: [
-      { key: 'service', label: { en: 'Service', ar: 'الصيانة' }, path: '/service', icon: Wrench },
+      { key: 'service', label: { en: 'Repairs & Warranty', ar: 'الصيانة والكفالة' }, path: '/service', icon: Wrench },
     ],
   },
   {
@@ -103,7 +105,7 @@ export const NAVIGATION: readonly NavigationSection[] = [
     id: 'system',
     heading: { en: 'System', ar: 'النظام' },
     items: [
-      { key: 'pricing-cards', label: { en: 'Pricing Cards', ar: 'بطاقات الأسعار' }, path: '/pricing-cards', icon: LayoutTemplate, requiresRole: ['ADMIN'] },
+      { key: 'pricing-cards', label: { en: 'Price Cards', ar: 'بطاقات الأسعار' }, path: '/pricing-cards', icon: LayoutTemplate, requiresRole: ['ADMIN'] },
       { key: 'settings', label: { en: 'Settings', ar: 'الإعدادات' }, path: '/settings', icon: Settings, requiresRole: ['ADMIN'] },
     ],
   },

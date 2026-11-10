@@ -105,7 +105,7 @@ describe('monthly report components', () => {
     const html = renderToStaticMarkup(<MonthlyActivityReportTable report={{
       ...activityReport, items: [{ ...activityReport.items[0], customer: null }],
     }} />);
-    expect(html).toContain('Walk-in / زبون عابر');
+    expect(html).toContain('Walk-in');
     expect(html).not.toContain('/customers/null');
   });
 

@@ -37,11 +37,11 @@ describe('Report detail page', () => {
   it('renders one report with its title, period, totals, and full table', () => {
     const html = render('customer-payments');
 
-    expect(html).toContain('Customer Payments / دفعات الزبائن');
-    expect(html).toContain('Reporting period / فترة التقرير');
+    expect(html).toContain('Customer Payments');
+    expect(html).toContain('Reporting period');
     expect(html).toContain('2026-08-01');
     expect(html).toContain('2026-08-17');
-    expect(html).toContain('Collected / المحصل');
+    expect(html).toContain('Collected');
     expect(html).toContain('<table');
     expect(html).toContain('Rami');
     expect(html).toContain('ليلى');
@@ -52,9 +52,9 @@ describe('Report detail page', () => {
   it('gives the report its own export controls and a way back to the portal', () => {
     const html = render('customer-payments');
 
-    expect(html).toContain('Export PDF / تصدير PDF');
-    expect(html).toContain('Export CSV / تصدير CSV');
-    expect(html).toContain('All reports / كل التقارير');
+    expect(html).toContain('Export PDF');
+    expect(html).toContain('Export CSV');
+    expect(html).toContain('All reports');
     expect(html).toContain('href="/reports"');
   });
 
@@ -65,7 +65,7 @@ describe('Report detail page', () => {
   it('renders only the requested report, never another report body', () => {
     const html = render('customer-payments');
 
-    expect(html).toContain('Customer Payments / دفعات الزبائن');
+    expect(html).toContain('Customer Payments');
     for (const other of reportDefinitions.filter((definition) => definition.id !== 'customer-payments')) {
       expect(html).not.toContain(other.title);
     }
@@ -75,16 +75,16 @@ describe('Report detail page', () => {
   it('offers a period selector on the report itself', () => {
     const html = render('customer-payments');
 
-    expect(html).toContain('This month / هذا الشهر');
-    expect(html).toContain('Last month / الشهر الماضي');
-    expect(html).toContain('Custom / مخصص');
+    expect(html).toContain('This month');
+    expect(html).toContain('Last month');
+    expect(html).toContain('Custom');
   });
 
   it('renders the monthly review body for the review report', () => {
     const html = render('monthly-review');
 
     expect(html).toContain('Monthly Review Loaded');
-    expect(html).toContain('Monthly Review / المراجعة الشهرية');
+    expect(html).toContain('Monthly Review');
   });
 
   it('renders empty, loading, and error states', () => {
@@ -115,9 +115,9 @@ describe('Report detail page', () => {
   it('opens the analysis portal on its own page with its own export', () => {
     const html = render('analysis');
 
-    expect(html).toContain('Analysis Portal / بوابة التحليل');
+    expect(html).toContain('Analysis Portal');
     expect(html).toContain('Analysis Portal Loaded');
-    expect(html).toContain('Export PDF / تصدير PDF');
+    expect(html).toContain('Export PDF');
     expect(html).not.toContain('Monthly Review Loaded');
   });
 });
@@ -136,10 +136,10 @@ describe('Report detail page — ERP reports', () => {
     );
     const html = render('receivables-aging');
 
-    expect(html).toContain('Receivables Aging / أعمار ديون الزبائن');
-    expect(html).toContain('Total receivables / إجمالي الذمم');
-    expect(html).toContain('Over 90 days / أكثر من ٩٠ يوم');
-    expect(html).toContain('90+ days / ٩٠+');
+    expect(html).toContain('Receivables Aging');
+    expect(html).toContain('Total receivables');
+    expect(html).toContain('Over 90 days');
+    expect(html).toContain('90+ days');
     expect(html).toContain('108');
     expect(html).toContain('OVERDUE');
     expect(html).toContain('Rami');
@@ -152,11 +152,11 @@ describe('Report detail page — ERP reports', () => {
     );
     const html = render('customers-not-paid');
 
-    expect(html).toContain('Customers Who Did Not Pay / زبائن لم يدفعوا');
-    expect(html).toContain('Opening / الافتتاحي');
-    expect(html).toContain('Closing / الختامي');
-    expect(html).toContain('No payment this month / لم يدفع هذا الشهر');
-    expect(html).toContain('Debt increased / الدين ازداد');
+    expect(html).toContain('Customers Who Did Not Pay');
+    expect(html).toContain('Opening');
+    expect(html).toContain('Closing');
+    expect(html).toContain('No payment this month');
+    expect(html).toContain('Debt increased');
   });
 
   it('renders customers who paid with their payment counts', () => {
@@ -166,8 +166,8 @@ describe('Report detail page — ERP reports', () => {
     );
     const html = render('customers-paid');
 
-    expect(html).toContain('Customers Who Paid / زبائن دفعوا');
-    expect(html).toContain('Payments / الدفعات');
+    expect(html).toContain('Customers Who Paid');
+    expect(html).toContain('Payments');
     expect(html).toContain('Maya');
   });
 
@@ -179,11 +179,11 @@ describe('Report detail page — ERP reports', () => {
     );
     const html = render('products-bought');
 
-    expect(html).toContain('Products Bought / المنتجات المشتراة');
-    expect(html).toContain('Total units / إجمالي الوحدات');
-    expect(html).toContain('Received not sold / لم تُبع');
+    expect(html).toContain('Products Bought');
+    expect(html).toContain('Total units');
+    expect(html).toContain('Received not sold');
     expect(html).toContain('Fan');
-    for (const forbidden of ['Cost / التكلفة', 'Purchase value', 'Unit price', 'قيمة الشراء']) {
+    for (const forbidden of ['Cost', 'Purchase value', 'Unit price', 'قيمة الشراء']) {
       expect(html).not.toContain(forbidden);
     }
   });
@@ -193,8 +193,8 @@ describe('Report detail page — ERP reports', () => {
 
     for (const reportId of ['receivables-aging', 'customers-not-paid', 'customers-paid', 'products-bought']) {
       const html = render(reportId);
-      expect(html).toContain('Export PDF / تصدير PDF');
-      expect(html).toContain('Export CSV / تصدير CSV');
+      expect(html).toContain('Export PDF');
+      expect(html).toContain('Export CSV');
     }
   });
 
@@ -204,8 +204,8 @@ describe('Report detail page — ERP reports', () => {
       [{ customer: { id: 'c1', name: 'Ali', phone: '70' }, obligationTotal: '150.00', allocationTotal: '40.00', reportedOutstanding: '109.00', independentOutstanding: '110.00', difference: '-1.00', status: 'MISMATCH', issues: ['Reported outstanding does not match obligations minus allocations'] }]
     );
     const customerHtml = render('customer-financial-integrity');
-    expect(customerHtml).toContain('Customer Financial Integrity / سلامة حسابات الزبائن');
-    expect(customerHtml).toContain('Mismatches / غير مطابق');
+    expect(customerHtml).toContain('Customer Financial Integrity');
+    expect(customerHtml).toContain('Mismatches');
     expect(customerHtml).toContain('Reported outstanding does not match obligations minus allocations');
 
     rows.value = withRows(
@@ -213,8 +213,8 @@ describe('Report detail page — ERP reports', () => {
       [{ supplier: { id: 's1', name: 'Supplier', phone: '71' }, increaseTotal: '500.00', decreaseTotal: '120.00', reportedBalance: '380.00', independentBalance: '380.00', difference: '0.00', status: 'OK', issues: [] }]
     );
     const supplierHtml = render('supplier-financial-integrity');
-    expect(supplierHtml).toContain('Supplier Financial Integrity / سلامة حسابات الموردين');
-    expect(supplierHtml).toContain('Independent / المستقل');
+    expect(supplierHtml).toContain('Supplier Financial Integrity');
+    expect(supplierHtml).toContain('Independent');
     expect(supplierHtml).toContain('Supplier');
   });
 
@@ -225,7 +225,7 @@ describe('Report detail page — ERP reports', () => {
     );
 
     const html = render('product-cost-changes');
-    expect(html).toContain('Product Cost Changes / تغييرات كلفة المنتجات');
+    expect(html).toContain('Product Cost Changes');
     expect(html).toContain('+20.00%');
     expect(html).toContain('INV-1');
   });

@@ -3,7 +3,7 @@ import { ValidationError } from '../../../lib/errors';
 import { userTextSchema } from '../../../validators/user-text';
 import { CreateServiceAuditData, ServiceAuditRepository } from './service-audit.repository';
 
-const reasonSchema = userTextSchema({ field: 'Reason', min: 5, max: 1000 });
+const reasonSchema = userTextSchema({ field: 'Reason', min: 1, max: 1000 });
 
 export async function writeServiceAudit(
   input: CreateServiceAuditData,

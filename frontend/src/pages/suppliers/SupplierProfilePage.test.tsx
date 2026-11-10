@@ -31,8 +31,8 @@ describe('SupplierProfilePage receiving integration', () => {
     const html = renderToStaticMarkup(<MemoryRouter initialEntries={['/suppliers/supplier-1']}><Routes><Route path="/suppliers/:id" element={<SupplierProfilePage />} /></Routes></MemoryRouter>);
     expect(html).toContain('data-supplier-id="supplier-1"');
     expect(html).toContain('Receiving History / سجل إدخال المخزون');
-    expect(html).toContain('Transactions / الحركات');
-    expect(html.indexOf('Receiving History')).toBeLessThan(html.indexOf('Transactions / الحركات'));
+    expect(html).toContain('Bills &amp; payments');
+    expect(html.indexOf('Receiving History')).toBeLessThan(html.indexOf('Bills &amp; payments'));
     expect(html).toContain('separate from financial transactions');
   });
 });

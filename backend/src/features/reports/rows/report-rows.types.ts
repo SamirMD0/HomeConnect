@@ -1,3 +1,5 @@
+import type { ErpReportSlice } from './erp-reports';
+
 export type ReportSlice =
   | 'customers-new'
   | 'customers-debts'
@@ -15,7 +17,8 @@ export type ReportSlice =
   | 'customers-financial-integrity'
   | 'suppliers-financial-integrity'
   | 'products-cost-changes'
-  | 'products-bought';
+  | 'products-bought'
+  | ErpReportSlice;
 
 export interface ReportRowsData<Row = unknown, Summary = Record<string, unknown>> {
   summary: Summary;

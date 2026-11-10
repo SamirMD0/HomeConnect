@@ -30,9 +30,9 @@ describe('customer profile mutations without password confirmation', () => {
     expect(schema.safeParse(input).success).toBe(true);
   });
 
-  it('keeps correction reasons and balance validation', () => {
-    expect(voidPaymentSchema.safeParse({ reason: '' }).success).toBe(false);
-    expect(cancelFinancialRecordSchema.safeParse({ reason: '' }).success).toBe(false);
+  it('lets admins leave the reason blank but keeps balance validation', () => {
+    expect(voidPaymentSchema.safeParse({ reason: '' }).success).toBe(true);
+    expect(cancelFinancialRecordSchema.safeParse({ reason: '' }).success).toBe(true);
     expect(debtPaymentSchema('10.00').safeParse(payment).success).toBe(false);
   });
 });

@@ -140,13 +140,13 @@ export const EditInstallmentPlanDialog: React.FC<EditInstallmentPlanDialogProps>
         />
       </TextField>
 
-      <TextField label="Correction reason" error={errors.reason?.message}>
+      <TextField label="Correction reason (optional)" error={errors.reason?.message}>
         <textarea
           {...register('reason')}
           dir="auto"
           rows={3}
           className={inputClass(Boolean(errors.reason))}
-          placeholder="Required for audit history"
+          placeholder="Optional — saved to the audit history"
         />
       </TextField>
 

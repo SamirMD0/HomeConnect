@@ -1,6 +1,7 @@
 import { FinancialCorrectionSourceScreen, PaymentMethod } from '@prisma/client';
 import { z } from 'zod';
 import { userTextSchema } from '../../../validators/user-text';
+import { optionalAdminReasonSchema } from '../corrections/corrections.validator';
 
 const uuidSchema = z.string().uuid('Invalid ID');
 const businessDateSchema = z
@@ -20,7 +21,7 @@ export const paymentParamsSchema = z.object({
 
 export const voidPaymentSchema = z
   .object({
-    reason: userTextSchema({ field: 'Void reason', min: 5, max: 1000 }),
+    reason: optionalAdminReasonSchema('Void reason'),
     sourceScreen: z.nativeEnum(FinancialCorrectionSourceScreen).default(FinancialCorrectionSourceScreen.API),
     accountPassword: z.string().optional(),
   })
@@ -33,7 +34,7 @@ export const correctPaymentSchema = z
     paymentMethod: z.nativeEnum(PaymentMethod),
     reference: userTextSchema({ field: 'Reference', max: 100 }).optional().nullable(),
     notes: userTextSchema({ field: 'Notes', max: 1000 }).optional().nullable(),
-    reason: userTextSchema({ field: 'Correction reason', min: 5, max: 1000 }),
+    reason: optionalAdminReasonSchema('Correction reason'),
     sourceScreen: z.nativeEnum(FinancialCorrectionSourceScreen).default(FinancialCorrectionSourceScreen.API),
     accountPassword: z.string().optional(),
   })
@@ -52,7 +53,7 @@ export const reallocatePaymentSchema = z
       )
       .min(1, 'At least one allocation is required')
       .max(120, 'Too many allocations'),
-    reason: userTextSchema({ field: 'Correction reason', min: 5, max: 1000 }),
+    reason: optionalAdminReasonSchema('Correction reason'),
     sourceScreen: z.nativeEnum(FinancialCorrectionSourceScreen).default(FinancialCorrectionSourceScreen.API),
     accountPassword: z.string().optional(),
   })

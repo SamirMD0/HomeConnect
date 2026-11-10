@@ -69,7 +69,7 @@ export const SupplierTransactionFormDialog: React.FC<Props> = ({ open, supplier,
     event.preventDefault();
     try {
       const input = { type: form.type, direction: form.type === 'SUPPLIER_ADJUSTMENT' ? (form.direction || undefined) as SupplierTransactionDirection|undefined : undefined, amount: canonicalMoneyInput(form.amount), transactionDate: form.transactionDate, dueDate: form.type === 'SUPPLIER_DEBT' || (form.type === 'SUPPLIER_ADJUSTMENT' && form.direction === 'INCREASE_OWED') ? form.dueDate || null : null, description: form.description, reference: form.reference || null, notes: form.notes || null };
-      if (transaction) await mutations.update.mutateAsync({ id: transaction.id, input: { ...input, reason: form.reason, accountPassword: form.accountPassword } });
+      if (transaction) await mutations.update.mutateAsync({ id: transaction.id, input: { ...input, reason: form.reason.trim() || undefined } });
       else await mutations.create.mutateAsync({ supplierId: supplier.id, input: { ...input, supplierReceivingId: form.supplierReceivingId || null } });
       onClose();
     } catch (error) { toast.error(normalizeFinancialError(error).message); }
@@ -99,7 +99,7 @@ export const SupplierTransactionFormDialog: React.FC<Props> = ({ open, supplier,
       </section>}
       <Field label={businessLabels.supplier.description} required value={form.description} onChange={set('description')} />
       <div className="grid gap-4 sm:grid-cols-2"><Field label={businessLabels.supplier.reference} value={form.reference} onChange={set('reference')} /><Field label={businessLabels.supplier.notes} value={form.notes} onChange={set('notes')} /></div>
-      {transaction && <div className="grid gap-4 border-t border-slate-200 pt-4 sm:grid-cols-2"><Field label={businessLabels.supplier.reason} required value={form.reason} onChange={set('reason')} /><Field label={businessLabels.supplier.accountPassword} required type="password" value={form.accountPassword} onChange={set('accountPassword')} /></div>}
+      {transaction && <div className="border-t border-slate-200 pt-4"><Field label="Reason for the change (optional)" value={form.reason} onChange={set('reason')} /></div>}
       <button disabled={mutation.isPending} className="w-full rounded-md bg-brand-600 px-4 py-2.5 font-semibold text-white disabled:opacity-50">{mutation.isPending ? 'Saving... / جارٍ الحفظ' : businessLabels.common.save}</button>
     </form>
   </Modal>;

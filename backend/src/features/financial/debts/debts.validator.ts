@@ -1,6 +1,7 @@
 import { Currency, DebtStatus, FinancialCorrectionSourceScreen, PaymentMethod } from '@prisma/client';
 import { z } from 'zod';
 import { userTextSchema } from '../../../validators/user-text';
+import { optionalAdminReasonSchema } from '../corrections/corrections.validator';
 
 import { creditLimitOverrideFields } from '../credit-limits/credit-limit.validator';
 
@@ -61,7 +62,7 @@ export const updateDebtSchema = z
     dueDate: businessDateSchema,
     notes: userTextSchema({ field: 'Notes', max: 1000 }).optional().nullable(),
     cancelReason: userTextSchema({ field: 'Cancellation reason', min: 5, max: 1000 }).optional().nullable(),
-    reason: userTextSchema({ field: 'Correction reason', min: 5, max: 1000 }),
+    reason: optionalAdminReasonSchema('Correction reason'),
     sourceScreen: z.nativeEnum(FinancialCorrectionSourceScreen).default(FinancialCorrectionSourceScreen.API),
     accountPassword: z.string().optional(),
   })
@@ -95,7 +96,7 @@ export const createDebtPaymentSchema = z
 
 export const cancelDebtSchema = z
   .object({
-    reason: userTextSchema({ field: 'Cancellation reason', min: 1, max: 1000 }),
+    reason: optionalAdminReasonSchema('Cancellation reason'),
     accountPassword: z.string().optional(),
   })
   .strict();

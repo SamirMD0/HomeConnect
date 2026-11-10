@@ -33,7 +33,6 @@ import { RecordDebtPaymentDialog } from './RecordDebtPaymentDialog';
 import { RecordPlanPaymentDialog } from './RecordPlanPaymentDialog';
 import { VoidPaymentDialog } from './VoidPaymentDialog';
 import { CustomerPrepaidPanel } from '../../prepaid/components/CustomerPrepaidPanel';
-import { businessLabels, englishLabel } from '../../../shared/labels/business-labels';
 import { useCustomerActivity } from '../../customers/hooks/useCustomers';
 import { CustomerActivityTimeline } from '../../../pages/customers/components/CustomerActivityTimeline';
 import { CustomerAttentionPanel } from '../../../pages/customers/components/CustomerAttentionPanel';
@@ -49,9 +48,9 @@ interface CustomerFinancialProfileProps {
 
 const tabs: Array<{ id: FinancialProfileTab; label: string }> = [
   { id: 'overview', label: 'Overview' },
-  { id: 'debts', label: 'Debts' },
-  { id: 'prepaid', label: englishLabel(businessLabels.prepaid.navTitle) },
-  { id: 'plans', label: 'Installment Plans' },
+  { id: 'debts', label: 'Invoices' },
+  { id: 'plans', label: 'Payment plans' },
+  { id: 'prepaid', label: 'Deposits' },
   { id: 'payments', label: 'Payments' },
   { id: 'overdue', label: 'Overdue' },
   { id: 'statement', label: 'Statement' },
@@ -125,8 +124,8 @@ export const CustomerFinancialProfile: React.FC<CustomerFinancialProfileProps> =
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-slate-900">Financial Profile</h2>
-          <p className="mt-1 text-sm text-slate-500">Current balances, obligations, and payments.</p>
+          <h2 className="text-xl font-semibold text-slate-900">Customer account</h2>
+          <p className="mt-1 text-sm text-slate-500">Balance due, open invoices, payment plans and payments.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           {data.businessDate && (
@@ -142,7 +141,7 @@ export const CustomerFinancialProfile: React.FC<CustomerFinancialProfileProps> =
               onClick={() => setIsAddDialogOpen(true)}
               className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
             >
-              Add financial obligation
+              New invoice or plan
             </button>
           )}
           <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
@@ -163,8 +162,8 @@ export const CustomerFinancialProfile: React.FC<CustomerFinancialProfileProps> =
 
       {hasNoFinancialData && (
         <FinancialEmptyState
-          title="No financial obligations"
-          description="This customer has no debts, installment plans, overdue items, or payment history."
+          title="No open account activity"
+          description="This customer has no invoices, payment plans, overdue items, or payments yet."
         />
       )}
 
@@ -210,7 +209,7 @@ export const CustomerFinancialProfile: React.FC<CustomerFinancialProfileProps> =
       <Modal
         isOpen={isAddDialogOpen}
         onClose={() => setIsAddDialogOpen(false)}
-        title="Add financial obligation"
+        title="New invoice or payment plan"
         maxWidth="max-w-3xl"
       >
         <AddFinancialObligationDialog
@@ -222,7 +221,7 @@ export const CustomerFinancialProfile: React.FC<CustomerFinancialProfileProps> =
       <Modal
         isOpen={Boolean(selectedDebtId)}
         onClose={() => setSelectedDebtId(null)}
-        title="Debt details"
+        title="Invoice details"
         maxWidth="max-w-4xl"
       >
         <DebtDetails
@@ -241,7 +240,7 @@ export const CustomerFinancialProfile: React.FC<CustomerFinancialProfileProps> =
       <Modal
         isOpen={Boolean(debtForEdit)}
         onClose={() => setDebtForEdit(null)}
-        title="Edit debt"
+        title="Edit invoice"
         maxWidth="max-w-2xl"
       >
         {debtForEdit && (
@@ -256,7 +255,7 @@ export const CustomerFinancialProfile: React.FC<CustomerFinancialProfileProps> =
       <Modal
         isOpen={Boolean(selectedPlanId)}
         onClose={() => setSelectedPlanId(null)}
-        title="Installment plan details"
+        title="Payment plan details"
         maxWidth="max-w-5xl"
       >
         <InstallmentPlanDetails
@@ -275,7 +274,7 @@ export const CustomerFinancialProfile: React.FC<CustomerFinancialProfileProps> =
       <Modal
         isOpen={Boolean(planForEdit)}
         onClose={() => setPlanForEdit(null)}
-        title="Edit installment plan"
+        title="Edit payment plan"
         maxWidth="max-w-2xl"
       >
         {planForEdit && (
@@ -290,7 +289,7 @@ export const CustomerFinancialProfile: React.FC<CustomerFinancialProfileProps> =
       <Modal
         isOpen={Boolean(debtForPayment)}
         onClose={() => setDebtForPayment(null)}
-        title="Record debt payment"
+        title="Receive payment for invoice"
         maxWidth="max-w-2xl"
       >
         {debtForPayment && (
@@ -305,7 +304,7 @@ export const CustomerFinancialProfile: React.FC<CustomerFinancialProfileProps> =
       <Modal
         isOpen={Boolean(debtForCancellation)}
         onClose={() => setDebtForCancellation(null)}
-        title="Cancel debt"
+        title="Cancel invoice"
         maxWidth="max-w-xl"
       >
         {debtForCancellation && (
@@ -320,7 +319,7 @@ export const CustomerFinancialProfile: React.FC<CustomerFinancialProfileProps> =
       <Modal
         isOpen={Boolean(planForPayment)}
         onClose={() => setPlanForPayment(null)}
-        title="Record installment payment"
+        title="Receive payment for plan"
         maxWidth="max-w-2xl"
       >
         {planForPayment && (
@@ -335,7 +334,7 @@ export const CustomerFinancialProfile: React.FC<CustomerFinancialProfileProps> =
       <Modal
         isOpen={Boolean(planForCancellation)}
         onClose={() => setPlanForCancellation(null)}
-        title="Cancel installment plan"
+        title="Cancel payment plan"
         maxWidth="max-w-xl"
       >
         {planForCancellation && (
@@ -401,7 +400,7 @@ const FinancialTabPanel: React.FC<FinancialTabPanelProps> = ({
   if (activeTab === 'debts') {
     return (
       <CustomerDebtsList
-        debts={data.debts}
+        debts={data.debts.filter((debt) => debt.kind !== 'PREPAID_PURCHASE')}
         onOpenDebt={onOpenDebt}
         canMutate={canMutate}
         onRecordPayment={onRecordDebtPayment}

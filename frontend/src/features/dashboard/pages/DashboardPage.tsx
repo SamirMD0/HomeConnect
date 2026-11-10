@@ -108,7 +108,7 @@ export function DashboardPage() {
         generatedAt={overview.data?.meta.generatedAt}
       />
 
-      <div className="grid xl:grid-cols-[22rem_minmax(0,1fr)]">
+      <div className="grid gap-4 xl:grid-cols-[22rem_minmax(0,1fr)]">
         <TodayRail
           businessDate={businessDate}
           kpis={overview.data?.data.kpis}
@@ -117,7 +117,7 @@ export function DashboardPage() {
           alertsAnchorId={anchorIds.alerts}
         />
 
-        <div className="min-w-0 divide-y divide-slate-200 bg-white">
+        <div className="dashboard-panel min-w-0 divide-y divide-slate-200">
           <DashboardSectionBoundary>
             <KpiStrip
               kpis={overview.data?.data.kpis}

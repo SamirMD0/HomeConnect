@@ -35,7 +35,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onLogout 
       title={toggleLabel}
       className={cn(
         'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-500',
-        'transition-colors hover:bg-slate-100 hover:text-slate-800',
+        'transition-colors hover:bg-white/60 hover:text-slate-800',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60'
       )}
     >
@@ -47,9 +47,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onLogout 
     <aside
       className={cn(
         'no-print relative z-20 flex shrink-0 flex-col overflow-hidden',
-        'border-r border-border bg-white text-slate-700',
+        'glass-panel m-2 rounded-2xl border text-slate-700 lg:m-3',
         'transition-[width] duration-150 ease-out motion-reduce:transition-none',
-        collapsed ? 'w-[4.5rem]' : 'w-[17rem] max-lg:absolute max-lg:inset-y-0 max-lg:left-0 max-lg:z-40 max-lg:shadow-xl'
+        collapsed ? 'w-[4.5rem]' : 'w-[17rem] max-lg:absolute max-lg:inset-y-0 max-lg:left-0 max-lg:z-40 max-lg:bg-slate-100 max-lg:shadow-xl'
       )}
     >
       <div
@@ -83,7 +83,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onLogout 
                   {section.heading.en}
                 </p>
               )}
-              {collapsed && <div className="mx-2 mb-2 h-px bg-slate-200" aria-hidden="true" />}
+              {collapsed && <div className="mx-2 mb-2 h-px bg-slate-300/60" aria-hidden="true" />}
               <ul className="space-y-0.5">
                 {items.map((item) => (
                   <SidebarNavItem
@@ -125,7 +125,7 @@ const SidebarNavItem: React.FC<SidebarNavItemProps> = ({ item, active, collapsed
           'group relative flex items-center gap-3 rounded-lg text-sm outline-none',
           'transition-colors duration-150 motion-reduce:transition-none',
           collapsed ? 'justify-center px-0 py-2.5' : 'px-3 py-2',
-          active ? 'bg-brand-500/15 text-brand-700' : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900',
+          active ? 'bg-white/80 text-brand-700 shadow-sm ring-1 ring-white' : 'text-slate-700 hover:bg-white/55 hover:text-slate-900',
           'focus-visible:ring-2 focus-visible:ring-ring/60'
         )}
       >
@@ -166,7 +166,7 @@ const SidebarAccountRow: React.FC<SidebarAccountRowProps> = ({ collapsed, onLogo
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400/60'
   );
   return (
-    <div className="shrink-0 border-t border-border p-3">
+    <div className="shrink-0 border-t border-white/60 p-3">
       <div className={cn('flex items-center gap-2.5', collapsed && 'justify-center')}>
         <div
           aria-hidden="true"
