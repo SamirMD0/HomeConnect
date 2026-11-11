@@ -43,3 +43,8 @@ frontend/vite.config.d.ts
 !.claude/skills/graphify/
 !.claude/skills/graphify/**
 graphify-out/
+
+# Never commit CSV files (customer/business data exports). Owner rule, 2026-11-11.
+*.csv
+*.CSV
+CSV/
