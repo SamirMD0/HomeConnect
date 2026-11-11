@@ -1,6 +1,6 @@
 import React, { useEffect, useId, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import { Button } from './Button';
+import { portalToBody } from './portal';
 
 export interface ConfirmPopupProps {
   title: string;
@@ -79,4 +79,4 @@ export const ConfirmPopupContent: React.FC<ConfirmPopupProps> = ({
 
 /** In-app confirmation that can sit on top of an open Modal. */
 export const ConfirmPopup: React.FC<ConfirmPopupProps> = (props) =>
-  createPortal(<ConfirmPopupContent {...props} />, document.body);
+  portalToBody(<ConfirmPopupContent {...props} />);

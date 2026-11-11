@@ -1,6 +1,5 @@
 import { isBranchDependentQuery } from '../../branches/scope/branch-scope-store';
 import React, { useContext, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle,
@@ -1237,7 +1236,7 @@ function CustomerImportSession({ onClose }: { onClose: () => void }) {
       }
       setStep((value) => value + 1);
     });
-  return portalToBody(
+  return (
     <>
       <Modal
         isOpen
@@ -1324,13 +1323,6 @@ function CustomerImportSession({ onClose }: { onClose: () => void }) {
       )}
     </>
   );
-}
-/**
- * The glass content panel uses backdrop-filter, which traps fixed overlays inside
- * it. Rendering into <body> lets the dialog cover and centre on the whole window.
- */
-function portalToBody(content: React.ReactElement) {
-  return typeof document === 'undefined' ? content : createPortal(content, document.body);
 }
 export function CustomerCsvImportDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   return open ? <CustomerImportSession onClose={onClose} /> : null;

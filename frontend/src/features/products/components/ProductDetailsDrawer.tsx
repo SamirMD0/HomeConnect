@@ -3,6 +3,7 @@ import { Archive, Copy, Edit3, Printer, RotateCcw, ShoppingCart, X } from 'lucid
 import { Link } from 'react-router-dom';
 import { formatBusinessDate, formatDateTime, formatMoney } from '../../customer-financial/utils/financial-format';
 import { useAuth } from '../../../hooks/useAuth';
+import { portalToBody } from '../../../components/ui/portal';
 import { useDialogFocus } from '../../../hooks/useDialogFocus';
 import { salesOrderCreateUrl } from '../../sales-orders/utils/sales-order-links';
 import { businessLabels } from '../../../shared/labels/business-labels';
@@ -62,7 +63,7 @@ export const ProductDetailsDrawer: React.FC<ProductDetailsDrawerProps> = ({ prod
 
   if (!productId) return null;
 
-  return <div className="fixed inset-0 z-40">
+  return portalToBody(<div className="fixed inset-0 z-40">
     <div ref={overlayRef} onClick={(event) => { if (event.target === overlayRef.current) onClose(); }} className="absolute inset-0 bg-slate-900/40" />
     <aside ref={panelRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Product details" className="absolute inset-y-0 right-0 flex w-full max-w-xl flex-col bg-white shadow-2xl focus:outline-none lg:max-w-2xl xl:max-w-3xl">
       <header className="flex items-start justify-between gap-3 border-b border-slate-200 px-5 py-4">
@@ -143,7 +144,7 @@ export const ProductDetailsDrawer: React.FC<ProductDetailsDrawerProps> = ({ prod
       </div>
     </aside>
     <ProductSkuEditDialog product={skuProduct} onClose={() => setSkuProduct(null)} />
-  </div>;
+  </div>);
 };
 
 const sectionLinks: Array<{ id: ProductDetailSection; label: string }> = [
