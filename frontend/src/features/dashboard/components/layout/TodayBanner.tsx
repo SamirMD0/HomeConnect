@@ -22,7 +22,7 @@ export function TodayBanner({ totals }: { totals?: SalesAnalyticsData['totals'] 
     >
       <BrandArt className="pointer-events-none absolute -bottom-3 right-4 hidden w-[19rem] text-brand-400 md:block" />
       <div className="relative max-w-lg">
-        <h2 className="text-[1.625rem] font-bold leading-tight tracking-tight text-emerald-800">
+        <h2 className="sensitive-number text-[1.625rem] font-bold leading-tight tracking-tight text-emerald-800">
           {totals ? `${formatMoney(totals.salesToday)} sold today` : 'Today’s sales'}
         </h2>
         {totals && (

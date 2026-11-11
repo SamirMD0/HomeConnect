@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Zap } from 'lucide-react';
 import { useAuth } from '../../../hooks/useAuth';
 import { dashboardLabels } from '../config/dashboard-labels';
@@ -54,7 +54,18 @@ const anchorIds = {
   activity: 'dashboard-activity',
 } as const;
 
+const HIDE_NUMBERS_KEY = 'homeconnect.dashboard.hideNumbers';
+
 export function DashboardPage() {
+  // Hides money and counts behind a blur, e.g. when a customer is at the counter.
+  // A per-device preference only; nothing is protected by it.
+  const [numbersHidden, setNumbersHidden] = useState<boolean>(() => {
+    try { return window.localStorage.getItem(HIDE_NUMBERS_KEY) === '1'; } catch { return false; }
+  });
+  useEffect(() => {
+    try { window.localStorage.setItem(HIDE_NUMBERS_KEY, numbersHidden ? '1' : '0'); } catch { /* storage unavailable */ }
+  }, [numbersHidden]);
+
   const { user } = useAuth();
   const showBranches = useShowBranchColumn();
   const [query, setQuery] = useState<DashboardQueryParams>({ range: 'month', includeArchived: false });
@@ -99,13 +110,15 @@ export function DashboardPage() {
   }, [user?.role, showBranches]);
 
   return (
-    <div className="dashboard-shell">
+    <div className={`dashboard-shell${numbersHidden ? ' numbers-hidden' : ''}`}>
       <DashboardFilterBar
         query={query}
         onChange={setQuery}
         onRefresh={refresh}
         isRefreshing={refreshing}
         generatedAt={overview.data?.meta.generatedAt}
+        numbersHidden={numbersHidden}
+        onToggleNumbers={() => setNumbersHidden((value) => !value)}
       />
 
       <div className="grid gap-4 xl:grid-cols-[22rem_minmax(0,1fr)]">

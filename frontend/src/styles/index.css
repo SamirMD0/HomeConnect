@@ -581,6 +581,17 @@
   .app-main.glass-panel { border-radius: 1.25rem; }
 }
 
+/* Dashboard "Hide numbers": blur figures until the eye button shows them again. */
+.numbers-hidden :is(.tabular-nums, .sensitive-number),
+.numbers-hidden .recharts-wrapper :is(text, .recharts-tooltip-wrapper) {
+  filter: blur(7px);
+  transition: filter 150ms ease;
+  user-select: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .numbers-hidden :is(.tabular-nums, .sensitive-number) { transition: none; }
+}
+
 @media print {
   .app-backdrop { background: #fff !important; }
   .glass-panel { background: #fff !important; box-shadow: none !important; border: 0 !important; margin: 0 !important; }

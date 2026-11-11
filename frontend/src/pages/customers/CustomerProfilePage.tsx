@@ -15,7 +15,7 @@ import { isFinancialAdmin } from '../../features/customer-financial/utils/financ
 import { AddFinancialObligationDialog } from '../../features/customer-financial/components/AddFinancialObligationDialog';
 import { GlobalReceivePaymentDialog } from '../../features/financial-ledger/components/GlobalReceivePaymentDialog';
 import { CustomerCommunicationSection } from '../../features/customer-communication/components/CustomerCommunicationSection';
-import { useRecordBranch } from '../../features/branches/scope/branch-ui';
+import { BranchBadge, useRecordBranch } from '../../features/branches/scope/branch-ui';
 import { BranchScopeContext } from '../../features/branches/scope/BranchScopeProvider';
 import { CustomerBranchTransferDialog } from '../../features/customers/components/CustomerBranchTransferDialog';
 
@@ -120,6 +120,9 @@ export const CustomerProfilePage: React.FC = () => {
                   }`}
                 >
                   {customer.isActive ? englishLabel(businessLabels.customer.active) : englishLabel(businessLabels.customer.inactive)}
+                </span>
+                <span className="inline-flex items-center gap-1.5 text-xs text-slate-500" title="Branch this customer belongs to">
+                  Branch <BranchBadge branchId={customer.branchId} />
                 </span>
               </div>
               <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-500">
