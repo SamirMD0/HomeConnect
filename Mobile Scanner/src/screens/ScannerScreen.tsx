@@ -11,6 +11,7 @@ import { StatusBanner } from '../components/StatusBanner';
 import { ConnectionSettings, ScanResult } from '../types/scanner.types';
 import { recentSubmission, RecentSubmission, shouldSuppressDuplicate } from '../utils/duplicate-scan';
 import { prepareScanCode } from '../utils/scan-code';
+import { PendingBillsScreen } from './PendingBillsScreen';
 import { ReceiptCaptureScreen } from './ReceiptCaptureScreen';
 import { SupplierPaymentScreen } from './SupplierPaymentScreen';
 import { SupplierPurchaseScreen } from './SupplierPurchaseScreen';
@@ -51,6 +52,7 @@ export function ScannerScreen({
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<ScanResult | null>(null);
   const [banner, setBanner] = useState<Banner | null>(startupMessage ? { tone: 'warning', message: startupMessage } : null);
+  const [pendingBillsVisible, setPendingBillsVisible] = useState(false);
   const [receiptModalVisible, setReceiptModalVisible] = useState(false);
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
   const [purchaseModalVisible, setPurchaseModalVisible] = useState(false);
@@ -161,6 +163,7 @@ export function ScannerScreen({
       <ActionGrid
         supplierActionsDisabled={supplierActionsDisabled}
         onScan={() => void openCamera()}
+        onPendingBills={() => setPendingBillsVisible(true)}
         onAttachReceipt={() => setReceiptModalVisible(true)}
         onSupplierInvoice={() => setPurchaseModalVisible(true)}
         onSupplierPayment={() => setPaymentModalVisible(true)}
@@ -245,6 +248,9 @@ export function ScannerScreen({
         </View>
       )}
 
+      <Modal animationType="slide" visible={pendingBillsVisible} onRequestClose={() => setPendingBillsVisible(false)}>
+        <PendingBillsScreen connection={connection} token={token} onDone={() => setPendingBillsVisible(false)} />
+      </Modal>
       <Modal
         animationType="slide"
         onRequestClose={() => setReceiptModalVisible(false)}

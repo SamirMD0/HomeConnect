@@ -34,13 +34,25 @@ describe('mobile JWT gateway', () => {
   });
   it('forwards supplier JSON and raw receipt uploads with scope, without cookies or scanner credentials', async () => {
     const path = '/api/v1/supplier-purchases/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/receipts';
-    const response = await request(app).post(path).set('Authorization', 'Bearer jwt').set('X-Branch-Scope', 'all').set('Cookie', 'secret=1').set('X-Scanner-Session', 'scanner-only').set('Content-Type', 'image/jpeg').send(Buffer.from([1, 2, 255]));
+    const response = await request(app).post(path).set('Authorization', 'Bearer jwt').set('X-Branch-Scope', 'all').set('X-Receipt-Id', '11111111-1111-4111-8111-111111111111').set('Cookie', 'secret=1').set('X-Scanner-Session', 'scanner-only').set('Content-Type', 'image/jpeg').send(Buffer.from([1, 2, 255]));
     expect(response.body.body).toBe('0102ff');
     expect(response.body.headers['x-branch-scope']).toBe('all');
+    expect(response.body.headers['x-receipt-id']).toBe('11111111-1111-4111-8111-111111111111');
     expect(response.body.headers.cookie).toBeUndefined();
     expect(response.body.headers['x-scanner-session']).toBeUndefined();
     const json = await request(app).post('/api/v1/auth/login').send({ email: 'a', password: 'b' });
     expect(Buffer.from(json.body.body, 'hex').toString()).toBe(JSON.stringify({ email: 'a', password: 'b' }));
+  });
+  it('forwards all bill routes and purchase receipt listing with exact methods', async () => {
+    const id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    const cases = [ ['post', `/api/v1/suppliers/${id}/bills?note=Page%201`], ['get', `/api/v1/suppliers/${id}/bills?linked=false`],
+      ['patch', `/api/v1/supplier-bills/${id}`], ['delete', `/api/v1/supplier-bills/${id}`], ['get', `/api/v1/supplier-bills/${id}/image`], ['get', `/api/v1/supplier-purchases/${id}/receipts`] ] as const;
+    for (const [method, path] of cases) {
+      const response = await request(app)[method](path).set('Authorization', 'Bearer jwt').set('X-Branch-Scope', id);
+      expect(response.status).toBe(200); expect(response.body.path).toBe(path); expect(response.body.headers['x-branch-scope']).toBe(id);
+    }
+    expect((await request(app).post(`/api/v1/supplier-bills/${id}/image`).set('Authorization', 'Bearer jwt')).status).toBe(404);
+    expect((await request(app).get(`/api/v1/supplier-bills/${id}/extra`).set('Authorization', 'Bearer jwt')).status).toBe(404);
   });
   it('preserves a branch denial response from the desktop', async () => {
     expect((await request(app).get('/api/v1/suppliers?denied').set('Authorization', 'Bearer jwt')).status).toBe(403);

@@ -1,6 +1,7 @@
 import { ArrowLeft, Ban, FileCheck2, PencilLine, ReceiptText, ShieldCheck } from 'lucide-react';
 import React, { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { SupplierBills } from '../../../suppliers/components/SupplierBills';
 import { Badge } from '../../../../components/ui';
 import type { SupplierTransactionPrefill } from '../../../suppliers/components/SupplierTransactionFormDialog';
 import type { SupplierReceiving, SupplierReceivingItem } from '../types/supplier-receiving.types';
@@ -77,6 +78,7 @@ export const SupplierReceivingDetailPage: React.FC = () => {
       {receiving.note && <div className="sm:col-span-2 lg:col-span-3"><Detail label="Note / الملاحظة" value={receiving.note} userText /></div>}
     </section>
 
+    <SupplierBills receivingId={receiving.id} />
     <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
       <div className="border-b border-slate-200 px-5 py-3"><h2 className="font-bold">Received products / المنتجات المستلمة</h2></div>
       <div className="overflow-x-auto"><table className="w-full text-sm">

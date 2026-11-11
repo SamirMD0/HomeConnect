@@ -594,6 +594,8 @@ describe.runIf(enabled)('Phase 3B financial and sales branch isolation (real dat
             changedById: admin,
           });
           await add('photo', 'supplier_receiving_receipts', {
+            supplierId: r.supplier,
+            branchId,
             supplierReceivingId: r.receiving,
             capturedById: admin,
             mime: 'image/jpeg',

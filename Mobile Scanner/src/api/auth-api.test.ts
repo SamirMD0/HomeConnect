@@ -36,7 +36,7 @@ describe('mobile authentication API', () => {
   });
 
   it('sends the backend username field, not email', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ success: true, data: { accessToken: 'token', user } }) });
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ success: true, data: { accessToken: 'token', user } }) });
     vi.stubGlobal('fetch', fetchMock);
     expect((await login(connection, { username: 'shop-admin', password: 'secret' })).user.username).toBe('shop-admin');
     expect(fetchMock).toHaveBeenCalledWith(
@@ -46,7 +46,7 @@ describe('mobile authentication API', () => {
   });
 
   it('reads the username returned by /auth/me', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ success: true, data: user }) });
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ success: true, data: user }) });
     vi.stubGlobal('fetch', fetchMock);
     expect((await fetchMe(connection, 'token')).username).toBe('shop-admin');
     expect(fetchMock).toHaveBeenCalledWith(

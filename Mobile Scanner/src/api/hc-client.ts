@@ -9,7 +9,7 @@ import { ApiFailure, ApiSuccess, ConnectionSettings } from '../types/scanner.typ
 
 const REQUEST_TIMEOUT_MS = 10_000;
 
-export type HcApiErrorKind = 'UNAUTHORIZED' | 'RATE_LIMITED' | 'VALIDATION' | 'NETWORK' | 'SERVER';
+export type HcApiErrorKind = 'UNAUTHORIZED' | 'RATE_LIMITED' | 'VALIDATION' | 'NETWORK' | 'SERVER' | 'TOO_LARGE' | 'NOT_FOUND' | 'BRANCH';
 
 export class HcApiError extends Error {
   constructor(
@@ -26,7 +26,10 @@ export class HcApiError extends Error {
 function errorKind(status: number): HcApiErrorKind {
   if (status === 401) return 'UNAUTHORIZED';
   if (status === 429) return 'RATE_LIMITED';
-  if (status === 400 || status === 413 || status === 422) return 'VALIDATION';
+  if (status === 413) return 'TOO_LARGE';
+  if (status === 404) return 'NOT_FOUND';
+  if (status === 403 || status === 409) return 'BRANCH';
+  if (status >= 400 && status < 500) return 'VALIDATION';
   return 'SERVER';
 }
 
@@ -75,15 +78,19 @@ export async function requestJson<T>(url: string, init: RequestInit = {}): Promi
     // Non-JSON body — fall through to the generic handling below.
   }
 
-  if (response.ok && parsed && typeof parsed === 'object' && (parsed as ApiSuccess<T>).success === true) {
+  return parseJsonEnvelope<T>(response.status, parsed, branchHeaders['X-Branch-Scope'] ?? null);
+}
+
+/** Shared by JSON requests and native binary uploads. */
+export function parseJsonEnvelope<T>(status: number, parsed: unknown, sentBranch: string | null): T {
+  if (status >= 200 && status < 300 && parsed && typeof parsed === 'object' && (parsed as ApiSuccess<T>).success === true) {
     return (parsed as ApiSuccess<T>).data;
   }
-
   const failure = parsed as ApiFailure | null;
   const code = failure?.error?.code ?? null;
-  const message = failure?.error?.message ?? defaultMessage(response.status);
-  handleBranchRejection(response.status, code, branchHeaders['X-Branch-Scope'] ?? null);
-  throw new HcApiError(message, errorKind(response.status), response.status, code);
+  const message = failure?.error?.message ?? defaultMessage(status);
+  handleBranchRejection(status, code, sentBranch);
+  throw new HcApiError(message, errorKind(status), status, code);
 }
 
 function defaultMessage(status: number): string {

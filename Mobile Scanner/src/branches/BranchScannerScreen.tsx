@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { AppState, StyleSheet, Text, View } from 'react-native';
 import type { ComponentProps } from 'react';
 import { authedHeaders, backendBaseUrl, HcApiError, requestJson } from '../api/hc-client';
+import { receiptQueue } from '../services/receipt-queue';
 import { AppButton } from '../components/AppButton';
 import { StatusBanner } from '../components/StatusBanner';
 import { ScannerScreen } from '../screens/ScannerScreen';
@@ -54,6 +55,17 @@ export function BranchScannerScreen(props: ComponentProps<typeof ScannerScreen>)
     void clearSelectedBranch().then(() => setRefresh((value) => value + 1)).catch((failure: Error) => { setError(failure.message); setBusy(false); });
   }), []);
   useEffect(() => () => setSelectedBranch(null), []);
+  // This screen mounts after login; wait for a validated branch before syncing.
+  useEffect(() => {
+    if (!selected || busy) return;
+    const sync = () => {
+      void receiptQueue().flush({ baseUrl: backendBaseUrl(props.connection), token: props.token })
+        .catch((failure: Error) => setError(failure.message));
+    };
+    sync();
+    const subscription = AppState.addEventListener('change', (state) => { if (state === 'active') sync(); });
+    return () => subscription.remove();
+  }, [selected, busy, props.connection, props.token]);
   const choose = async (branch: MobileBranch) => {
     try { await saveSelectedBranch(branch.id); requireSelection.current = false; setSelected(branch); }
     catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not store branch.'); }

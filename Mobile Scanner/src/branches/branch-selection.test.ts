@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { handleBranchRejection, onBranchRejected, selectAccessibleBranch, selectedBranchHeaders, setSelectedBranch } from './branch-selection';
 import { authedHeaders, requestJson } from '../api/hc-client';
+import { uploadAsync } from 'expo-file-system/legacy';
 import { uploadReceipt } from '../api/receipts-api';
+vi.mock('expo-file-system/legacy', () => ({ uploadAsync: vi.fn(), FileSystemUploadType: { BINARY_CONTENT: 0 }, FileSystemSessionType: { FOREGROUND: 0 } }));
 const a = { id: 'a', name: 'Main' }, b = { id: 'b', name: 'Second' };
 afterEach(() => { setSelectedBranch(null); vi.unstubAllGlobals(); });
 describe('mobile branch selection', () => {
@@ -15,7 +17,7 @@ describe('mobile branch selection', () => {
   it('blocks supplier actions with zero accessible branches', () => { expect(selectAccessibleBranch([], 'a')).toBeNull(); });
   it('attaches selected scope to every JSON request and authenticated headers', async () => {
     setSelectedBranch('a');
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ success: true, data: [] }) });
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ success: true, data: [] }) });
     vi.stubGlobal('fetch', fetchMock);
     await requestJson('http://pc/api/v1/suppliers');
     expect(fetchMock.mock.calls[0]?.[1]?.headers['X-Branch-Scope']).toBe('a');
@@ -31,10 +33,9 @@ describe('mobile branch selection', () => {
   });
   it('attaches scope to receipt bytes and returns to picker on upload 403', async () => {
     setSelectedBranch('b'); const listener = vi.fn(); const off = onBranchRejected(listener);
-    const fetchMock = vi.fn().mockResolvedValueOnce({ blob: async () => new Blob(['photo']) }).mockResolvedValueOnce({ ok: false, status: 403, json: async () => ({ error: { code: 'BRANCH_ACCESS_DENIED' } }) });
-    vi.stubGlobal('fetch', fetchMock);
+    vi.mocked(uploadAsync).mockResolvedValueOnce({ status: 403, body: JSON.stringify({ error: { code: 'BRANCH_ACCESS_DENIED' } }), headers: {}, mimeType: null });
     await expect(uploadReceipt({ baseUrl: 'http://pc', token: 'jwt' }, { supplierPurchaseId: 'p', localUri: 'file:photo', mime: 'image/jpeg' })).rejects.toMatchObject({ code: 'BRANCH_ACCESS_DENIED' });
-    expect(fetchMock.mock.calls[1]?.[1]?.headers['X-Branch-Scope']).toBe('b');
+    expect(vi.mocked(uploadAsync).mock.calls[0]?.[2]?.headers?.['X-Branch-Scope']).toBe('b');
     expect(listener).toHaveBeenCalledOnce(); expect(selectedBranchHeaders()).toEqual({}); off();
   });
   it('does not clear a new selection for a stale denial or unrelated error', () => {

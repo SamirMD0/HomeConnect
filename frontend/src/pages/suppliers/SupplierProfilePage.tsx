@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { ArrowLeft, Plus } from 'lucide-react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { SupplierBills } from '../../features/suppliers/components/SupplierBills';
+import { Button } from '../../components/ui';
 import { Pagination } from '../../components/ui/Pagination';
 import { SupplierActionDialog } from '../../features/suppliers/components/SupplierActionDialog';
 import { SupplierFormDialog } from '../../features/suppliers/components/SupplierFormDialog';
@@ -28,6 +30,7 @@ export const SupplierProfilePage: React.FC = () => {
   const canMutate = user?.role === 'ADMIN';
   const supplier = useSupplier(id);
   useRecordBranch(branchIdOf(supplier.data));
+  const [tab, setTab] = useState<'overview' | 'bills'>('overview');
   const [page, setPage] = useState(1);
   const [includeRemoved, setIncludeRemoved] = useState(false);
   const transactions = useSupplierTransactions(id, includeRemoved, page);
@@ -76,11 +79,17 @@ export const SupplierProfilePage: React.FC = () => {
       </div>}
     </header>
     {item.summary && <SupplierSummaryCards summary={item.summary} />}
+    <div role="tablist" aria-label="Supplier sections" className="flex gap-2">
+      <Button role="tab" id="supplier-overview-tab" aria-controls="supplier-overview-panel" aria-selected={tab === 'overview'} variant={tab === 'overview' ? 'primary' : 'secondary'} onClick={() => setTab('overview')}>Overview</Button>
+      <Button role="tab" id="supplier-bills-tab" aria-controls="supplier-bills-panel" aria-selected={tab === 'bills'} variant={tab === 'bills' ? 'primary' : 'secondary'} onClick={() => setTab('bills')}>Bills</Button>
+    </div>
+    {tab === 'bills' ? <div role="tabpanel" id="supplier-bills-panel" aria-labelledby="supplier-bills-tab"><SupplierBills supplierId={id} /></div> : <div role="tabpanel" id="supplier-overview-panel" aria-labelledby="supplier-overview-tab" className="space-y-5">
     <SupplierReceivingHistory supplierId={id} />
     <SupplierStatementPanel supplierId={id} />
     <section className="grid gap-4 lg:grid-cols-3"><div className="rounded-lg border bg-white p-4 lg:col-span-2"><h2 className="font-bold">Supplier information</h2><dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2"><Info label="Email" value={item.email} /><Info label="Company" value={item.companyName} /><Info label="Notes" value={item.notes} auto /></dl></div><div className="rounded-lg border bg-white p-4"><h2 className="font-bold">Record</h2><p className="mt-3 text-sm text-slate-600">Created by {item.createdBy?.fullName ?? 'Unknown'}</p><p className="text-sm text-slate-500">{new Date(item.createdAt).toLocaleString()}</p>{item.archivedReason && <p className="user-text mt-3 rounded bg-amber-50 p-2 text-sm text-amber-800" dir="auto">{item.archivedReason}</p>}</div></section>
     <section className="space-y-3"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-bold">Bills &amp; payments</h2><p className="mt-0.5 text-xs text-slate-500">Use “New bill” for a supplier bill with its products. Use “Record payment or credit” for a payment, credit, or adjustment on its own.</p></div><div className="flex items-center gap-3"><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={includeRemoved} onChange={(event) => { setIncludeRemoved(event.target.checked); setPage(1); }} />Show removed</label></div></div>{transactions.isLoading ? <PageState text="Loading bills and payments..." /> : transactions.isError ? <PageState error text="Unable to load bills and payments" /> : transactions.data?.items.length ? <><SupplierTransactionTable items={transactions.data.items} canMutate={canMutate} showSupplier={false} onEdit={(transaction) => setTransactionForm({ open: true, transaction })} onRemove={(transaction) => setAction({ kind: 'removeTransaction', transaction })} onRestore={(transaction) => setAction({ kind: 'restoreTransaction', transaction })} /><Pagination currentPage={page} totalPages={transactions.data.pagination.totalPages} onPageChange={setPage} /></> : <PageState text="No bills or payments yet" />}</section>
     {canMutate && <section className="rounded-lg border bg-white p-4"><h2 className="font-bold">Change history</h2>{audit.isLoading ? <p className="mt-3 text-sm text-slate-500">Loading...</p> : audit.data?.items.length ? <div className="mt-3 divide-y">{audit.data.items.map((entry) => <div key={entry.id} className="py-3 text-sm"><div className="flex justify-between gap-3"><strong>{entry.action}</strong><span className="text-xs text-slate-500">{new Date(entry.changedAt).toLocaleString()}</span></div><p className="user-text mt-1 text-slate-600" dir="auto">{entry.reason}</p><p className="text-xs text-slate-500">{entry.changedByName}</p></div>)}</div> : <p className="mt-3 text-sm text-slate-500">No changes recorded</p>}</section>}
+    </div>}
     <SupplierFormDialog open={editSupplier} supplier={item} onClose={() => setEditSupplier(false)} />
     <SupplierTransactionFormDialog open={transactionForm.open} supplier={item} transaction={transactionForm.transaction} prefill={transactionForm.transaction ? null : transactionPrefill} onClose={() => { setTransactionForm({ open: false, transaction: null }); setTransactionPrefill(null); }} />
     <SupplierPurchaseFormDialog open={purchaseForm} supplier={item} onClose={() => setPurchaseForm(false)} />

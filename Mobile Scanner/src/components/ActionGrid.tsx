@@ -5,6 +5,7 @@ interface ActionGridProps {
   supplierActionsDisabled?: boolean;
   onScan: () => void;
   onAttachReceipt: () => void;
+  onPendingBills: () => void;
   onSupplierInvoice: () => void;
   onSupplierPayment: () => void;
   onSupplierStatement: () => void;
@@ -15,10 +16,11 @@ interface ActionGridProps {
 export function ActionGrid(props: ActionGridProps) {
   const actions: { label: string; accessibilityLabel: string; icon: keyof typeof Ionicons.glyphMap; onPress: () => void; primary?: boolean; disabled?: boolean }[] = [
     { label: 'Scan product', accessibilityLabel: 'Scan a product', icon: 'barcode-outline', onPress: props.onScan, primary: true },
-    { label: 'Attach receipt', accessibilityLabel: 'Attach supplier receipt', icon: 'receipt-outline', onPress: props.onAttachReceipt, disabled: props.supplierActionsDisabled },
+    { label: 'Supplier bill', accessibilityLabel: 'Supplier bill', icon: 'receipt-outline', onPress: props.onAttachReceipt, disabled: props.supplierActionsDisabled },
     { label: 'Supplier invoice', accessibilityLabel: 'Record supplier invoice', icon: 'document-text-outline', onPress: props.onSupplierInvoice, disabled: props.supplierActionsDisabled },
     { label: 'Supplier payment', accessibilityLabel: 'Record supplier payment', icon: 'wallet-outline', onPress: props.onSupplierPayment, disabled: props.supplierActionsDisabled },
     { label: 'Supplier statement', accessibilityLabel: 'Supplier statement', icon: 'list-outline', onPress: props.onSupplierStatement, disabled: props.supplierActionsDisabled },
+    { label: 'Pending bills', accessibilityLabel: 'Pending bills', icon: 'cloud-upload-outline', onPress: props.onPendingBills },
     { label: 'Sign out', accessibilityLabel: 'Sign out', icon: 'log-out-outline', onPress: props.onSignOut },
   ];
 
