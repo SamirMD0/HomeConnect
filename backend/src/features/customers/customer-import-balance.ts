@@ -1,4 +1,11 @@
-import { Currency, DebtKind, DebtStatus, InstallmentPlanStatus, Prisma } from '@prisma/client';
+import {
+  Currency,
+  DebtKind,
+  DebtStatus,
+  InstallmentPlanStatus,
+  PrepaidPurchaseStatus,
+  Prisma,
+} from '@prisma/client';
 import {
   calculateDebtBalance,
   calculateInstallmentBalance,
@@ -25,22 +32,34 @@ export interface OpenObligation {
   dueDate: string;
   remaining: Decimal;
 }
+/** A deposit an earlier import created and the shop still holds. */
+export interface ImportedDeposit {
+  id: string;
+  currency: Currency;
+  held: Decimal;
+}
 export interface CustomerBalanceState {
   obligations: OpenObligation[];
   activitySinceLastImport: boolean;
+  /** Imported deposits awaiting delivery; deposits taken in HomeConnect are not compared. */
+  deposits?: ImportedDeposit[];
 }
 export type BalanceChangeKind =
-  | 'NEW'
-  | 'NONE'
-  | 'NO_INFO'
-  | 'INCREASE'
-  | 'DECREASE'
-  | 'CURRENCY_MISMATCH';
+  'NEW' | 'NONE' | 'NO_INFO' | 'INCREASE' | 'DECREASE' | 'CURRENCY_MISMATCH';
+/** ADD records the difference as a deposit; LOWER is reported only, never applied. */
+export type DepositChangeKind = 'NONE' | 'ADD' | 'LOWER';
+export interface DepositChange {
+  kind: DepositChangeKind;
+  current: string;
+  file: string;
+  difference: string;
+}
 export interface BalanceChange {
   kind: BalanceChangeKind;
   current: string;
   file: string | null;
   difference: string;
+  deposit: DepositChange;
 }
 export interface PlannedBalancePayment {
   kind: 'DEBT' | 'PLAN';
@@ -75,6 +94,8 @@ export function classifyBalance(
   row: {
     hasBalance: boolean;
     openingBalance: string;
+    /** Credit balance in the file; absent means none. */
+    deposit?: string;
     currency: Currency;
     issues: string[];
   },
@@ -86,13 +107,29 @@ export function classifyBalance(
     sameCurrency.map((item) => item.remaining),
     row.currency
   );
+  const heldDeposit = sumMoney(
+    (state?.deposits ?? [])
+      .filter((item) => item.currency === row.currency)
+      .map((item) => item.held),
+    row.currency
+  );
+  const known = !row.issues.length && row.hasBalance;
+  const fileDeposit = known ? parseMoney(row.deposit || '0', row.currency) : heldDeposit;
+  const depositDifference = subtractMoney(fileDeposit, heldDeposit, row.currency);
+  const deposit: DepositChange = {
+    kind: depositDifference.isZero() ? 'NONE' : depositDifference.isNegative() ? 'LOWER' : 'ADD',
+    current: moneyToApiString(heldDeposit, row.currency),
+    file: moneyToApiString(fileDeposit, row.currency),
+    difference: moneyToApiString(depositDifference, row.currency),
+  };
   const view = (kind: BalanceChangeKind, file: Decimal | null, difference = ZERO_MONEY) => ({
     kind,
     current: moneyToApiString(current, row.currency),
     file: file && moneyToApiString(file, row.currency),
     difference: moneyToApiString(difference, row.currency),
+    deposit,
   });
-  if (row.issues.length || !row.hasBalance) return view('NO_INFO', null);
+  if (!known) return view('NO_INFO', null);
   const file = parseMoney(row.openingBalance, row.currency);
   if (sameCurrency.length !== obligations.length) return view('CURRENCY_MISMATCH', file);
   const difference = subtractMoney(file, current, row.currency);
@@ -129,6 +166,7 @@ export async function loadCustomerBalances(
         createdAt: true,
         sourceCustomerImportId: true,
         sourceCustomerImport: { select: { committedAt: true } },
+        prepaidPurchase: { select: { status: true } },
         paymentAllocations: { select: allocationSelect },
         returnAllocations: { select: { amount: true } },
       },
@@ -170,15 +208,36 @@ export async function loadCustomerBalances(
   };
   const add = (id: string, obligation: OpenObligation) =>
     obligations.set(id, [...(obligations.get(id) ?? []), obligation]);
-  const settled = (allocation: Parameters<typeof isPaymentAllocationVoided>[0] & { amount: Decimal }) => ({
+  const deposits = new Map<string, ImportedDeposit[]>();
+  const settled = (
+    allocation: Parameters<typeof isPaymentAllocationVoided>[0] & { amount: Decimal }
+  ) => ({
     amount: allocation.amount,
     isVoided: isPaymentAllocationVoided(allocation),
   });
 
   for (const debt of debts) {
-    if (debt.sourceCustomerImportId) later(lastImport, debt.customerId, debt.sourceCustomerImport?.committedAt);
+    if (debt.sourceCustomerImportId)
+      later(lastImport, debt.customerId, debt.sourceCustomerImport?.committedAt);
     else later(lastOther, debt.customerId, debt.createdAt);
-    if (debt.kind === DebtKind.PREPAID_PURCHASE) continue;
+    if (debt.kind === DebtKind.PREPAID_PURCHASE) {
+      const awaiting =
+        !debt.prepaidPurchase || debt.prepaidPurchase.status === PrepaidPurchaseStatus.PENDING;
+      if (debt.sourceCustomerImportId && awaiting) {
+        const held = sumMoney(
+          debt.paymentAllocations
+            .filter((allocation) => !isPaymentAllocationVoided(allocation))
+            .map((allocation) => allocation.amount),
+          debt.currency
+        );
+        if (held.greaterThan(ZERO_MONEY))
+          deposits.set(debt.customerId, [
+            ...(deposits.get(debt.customerId) ?? []),
+            { id: debt.id, currency: debt.currency, held },
+          ]);
+      }
+      continue;
+    }
     const { remainingBalance } = calculateDebtBalance({
       originalAmount: debt.originalAmount,
       allocations: debt.paymentAllocations.map(settled),
@@ -234,6 +293,7 @@ export async function loadCustomerBalances(
     const imported = lastImport.get(id);
     states.set(id, {
       obligations: sortObligations(obligations.get(id) ?? []),
+      deposits: deposits.get(id) ?? [],
       // A customer never imported has no earlier file to be older than.
       activitySinceLastImport: imported !== undefined && (lastOther.get(id) ?? 0) > imported,
     });

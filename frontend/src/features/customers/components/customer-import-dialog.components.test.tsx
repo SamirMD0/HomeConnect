@@ -5,8 +5,14 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import {
+  BranchReconciliation,
   CustomerImportSummary,
   CustomerImportWizard,
+  MainBranchCheck,
+  depositChangeText,
+  isMainBranch,
+  rowGroup,
+  totalOfBranches,
   balanceChangeText,
   branchMoveMessage,
   importNeedsResolution,
@@ -266,7 +272,7 @@ describe('customer CSV import dialog', () => {
     };
     const html = render(4, { preview: { ...preview, rows: [named] } });
     expect(html).toContain('Keep every customer in their own branch');
-    expect(html).toContain('ADD AS NEW');
+    expect(html).toContain('Add as new');
     expect(importNeedsResolution({ ...preview, rows: [named] })).toBe(false);
     expect(render(4)).not.toContain('Keep every customer in their own branch');
   });
@@ -369,5 +375,146 @@ describe('account-based customer import controls', () => {
     ).toBe(false);
     expect(importNeedsResolution({ ...preview, rows: [row, { ...row, rowNumber: 3 }] })).toBe(true);
     expect(render(3, { preview: { ...preview, rows: [row] } })).toContain('00123');
+  });
+});
+
+describe('grouped preview, deposits and branch totals', () => {
+  const base = preview.rows[0];
+  const update = {
+    ...base,
+    matchedBy: 'ACCOUNT' as const,
+    matches: [{ id: 'c', name: 'علي' }],
+    status: 'CONFLICT' as const,
+    conflicts: [
+      { kind: 'EXISTING_ACCOUNT', message: 'Account number already exists', blocking: true },
+    ],
+    decision: { rowNumber: 2, action: 'UPDATE' as const, targetCustomerId: 'c' },
+  };
+  it('puts a known account in Update or No change, never in Conflict', () => {
+    expect(
+      rowGroup({
+        ...update,
+        balance: { kind: 'DECREASE', current: '20.00', file: '10.00', difference: '-10.00' },
+      })
+    ).toBe('update');
+    expect(
+      rowGroup({
+        ...update,
+        balance: { kind: 'NONE', current: '10.00', file: '10.00', difference: '0.00' },
+      })
+    ).toBe('unchanged');
+  });
+  it('separates invalid, conflicting, new and skipped rows', () => {
+    expect(rowGroup({ ...base, status: 'INVALID', issues: ['Bad'] })).toBe('invalid');
+    expect(rowGroup(base)).toBe('new');
+    expect(rowGroup({ ...base, decision: { rowNumber: 2, action: 'SKIP' } })).toBe('skipped');
+    expect(
+      rowGroup({
+        ...base,
+        conflicts: [{ kind: 'FILE_PHONE', message: 'Twice', blocking: true }],
+      })
+    ).toBe('conflict');
+    expect(
+      rowGroup({
+        ...base,
+        mainMatches: [
+          {
+            id: 'm',
+            name: 'علي',
+            phone: '',
+            branchName: 'Main branch',
+            matchedBy: 'SIMILAR_NAME',
+            balanceUsd: '200.00',
+          },
+        ],
+        conflicts: [{ kind: 'MAIN_BRANCH_MATCH', message: 'Also in Main', blocking: false }],
+      })
+    ).toBe('conflict');
+  });
+  it('colors each group and offers a filter for it', () => {
+    const html = render(3, {
+      preview: {
+        ...preview,
+        rows: [base, { ...base, rowNumber: 3, status: 'INVALID', issues: ['Bad'] }],
+      },
+    });
+    expect(html).toContain('bg-red-50');
+    expect(html).toContain('aria-label="Show rows"');
+    expect(html).toContain('Invalid');
+  });
+  it('describes a credit balance as a deposit', () => {
+    const balance = {
+      kind: 'NONE' as const,
+      current: '0.00',
+      file: '0.00',
+      difference: '0.00',
+      deposit: { kind: 'ADD' as const, current: '0.00', file: '200.00', difference: '200.00' },
+    };
+    expect(depositChangeText(balance, 'USD')).toBe('Deposit $200.00 (credit balance)');
+    expect(
+      depositChangeText(
+        {
+          ...balance,
+          deposit: { kind: 'LOWER', current: '200.00', file: '100.00', difference: '-100.00' },
+        },
+        'USD'
+      )
+    ).toBe('Deposit held $200.00, file says $100.00; not changed');
+  });
+  it('totals every branch and keeps the main branch out of the choices', () => {
+    const line = {
+      branchId: 'b',
+      branchName: 'Barja',
+      rows: 2,
+      created: 1,
+      updated: 1,
+      skipped: 0,
+      invalid: 0,
+      conflicts: 0,
+      fileDebtUsd: '100.10',
+      fileDepositUsd: '0.00',
+      newDebtUsd: '50.00',
+      increaseUsd: '0.00',
+      paymentUsd: '20.00',
+      depositUsd: '200.00',
+      netDebtChangeUsd: '30.00',
+      openBeforeUsd: '1000.20',
+      openAfterUsd: '1030.20',
+    };
+    const total = totalOfBranches([line, { ...line, branchId: 'j', branchName: 'Jadra' }]);
+    expect(total).toMatchObject({ fileDebtUsd: '200.20', openAfterUsd: '2060.40', rows: 4 });
+    const html = renderToStaticMarkup(
+      <BranchReconciliation lines={[line, { ...line, branchId: 'j', branchName: 'Jadra' }]} />
+    );
+    expect(html).toContain('Owed after import');
+    expect(html).toContain('$2,060.40');
+    expect(html).toContain('<tfoot>');
+    expect(isMainBranch({ code: 'MAIN' })).toBe(true);
+    expect(isMainBranch({ code: 'B' })).toBe(false);
+  });
+  it('lists main-branch look-alikes for reading on the Confirm step', () => {
+    const html = renderToStaticMarkup(
+      <MainBranchCheck
+        rows={[
+          {
+            ...base,
+            mainMatches: [
+              {
+                id: 'm',
+                name: 'علي الكبير',
+                phone: '',
+                branchName: 'Main branch',
+                matchedBy: 'SIMILAR_NAME',
+                balanceUsd: '200.00',
+              },
+            ],
+          },
+        ]}
+      />
+    );
+    expect(html).toContain('Main branch check');
+    expect(html).toContain('one letter different');
+    expect(html).toContain('$200.00');
+    expect(renderToStaticMarkup(<MainBranchCheck rows={[base]} />)).toBe('');
   });
 });

@@ -111,6 +111,7 @@ const http = (method: 'get' | 'patch' | 'post', path: string, body?: object) => 
     await db.payment.deleteMany({ where: { createdById: owner } });
     await db.installment.deleteMany({ where: { installmentPlan: { createdById: owner } } });
     await db.installmentPlan.deleteMany({ where: { createdById: owner } });
+    await db.prepaidPurchase.deleteMany({ where: { debt: { branchId: { in: branchIds } } } });
     await db.debt.deleteMany({ where: { branchId: { in: branchIds } } });
     await db.customerImportAccount.deleteMany({ where: { branchId: { in: branchIds } } });
     await db.customerImport.deleteMany({ where: { branchId: { in: branchIds } } });
@@ -514,6 +515,7 @@ const http = (method: 'get' | 'patch' | 'post', path: string, body?: object) => 
         current: '200.00',
         file: '100.00',
         difference: '-100.00',
+        deposit: { kind: 'NONE', current: '0.00', file: '0.00', difference: '0.00' },
       });
       expect(draft.planned).toMatchObject({
         balancePayments: 1,
@@ -630,11 +632,7 @@ const http = (method: 'get' | 'patch' | 'post', path: string, body?: object) => 
       await commit(draft.id);
       expect(await outstanding(id)).toBe('150.00');
       const again = await editedFile('second');
-      await commit(
-        again.id,
-        [{ ...again.rows[0].decision, skipOpeningBalance: false }],
-        password
-      );
+      await commit(again.id, [{ ...again.rows[0].decision, skipOpeningBalance: false }], password);
       expect(await outstanding(id)).toBe('200.00');
     });
     it('a lower balance pays oldest first across a debt and an installment plan, with exact totals', async () => {
@@ -662,8 +660,18 @@ const http = (method: 'get' | 'patch' | 'post', path: string, body?: object) => 
           createdById: owner,
           installments: {
             create: [
-              { installmentNumber: 1, dueDate: new Date('2026-01-01'), amountDue: 30, baseAmountDue: 30 },
-              { installmentNumber: 2, dueDate: new Date('2026-08-01'), amountDue: 30, baseAmountDue: 30 },
+              {
+                installmentNumber: 1,
+                dueDate: new Date('2026-01-01'),
+                amountDue: 30,
+                baseAmountDue: 30,
+              },
+              {
+                installmentNumber: 2,
+                dueDate: new Date('2026-08-01'),
+                amountDue: 30,
+                baseAmountDue: 30,
+              },
             ],
           },
         },
@@ -701,6 +709,106 @@ const http = (method: 'get' | 'patch' | 'post', path: string, body?: object) => 
     });
   });
 
+  describe('deposits and the main branch', () => {
+    const trial = (credit: string) =>
+      create(
+        'Account,Name,Curr,Total Debit,Total Credit,Balance Debit,Balance Credit\n' +
+          '41109,Ali,USD,100,' +
+          (100 + Number(credit)) +
+          ',0,' +
+          credit
+      );
+    it('a credit balance becomes a cash deposit, pays nothing it does not owe, and is not added twice', async () => {
+      const draft = await trial('150');
+      expect(draft.rows[0]).toMatchObject({ status: 'READY', issues: [] });
+      expect(draft.rows[0].balance.deposit).toMatchObject({ kind: 'ADD', difference: '150.00' });
+      expect(draft.planned).toMatchObject({ deposits: 1, depositTotalUsd: '150.00' });
+      expect(draft.planned.branchTotals).toEqual([
+        expect.objectContaining({ branchId: a, depositUsd: '150.00', fileDepositUsd: '150.00' }),
+      ]);
+      await expect(commit(draft.id)).rejects.toMatchObject({ statusCode: 400 });
+      expect(await commit(draft.id, [], password)).toMatchObject({
+        created: 1,
+        deposits: 1,
+        depositTotalUsd: '150.00',
+      });
+      const id = (await db.customer.findFirstOrThrow({ where: { branchId: a } })).id;
+      const deposit = await db.debt.findFirstOrThrow({
+        where: { customerId: id },
+        include: { prepaidPurchase: true },
+      });
+      expect(deposit).toMatchObject({ kind: 'PREPAID_PURCHASE', sourceCustomerImportId: draft.id });
+      expect(deposit.prepaidPurchase?.status).toBe('PENDING');
+      const payment = await db.payment.findFirstOrThrow({ where: { customerId: id } });
+      expect(payment).toMatchObject({ paymentMethod: 'CASH', branchId: a });
+      expect(payment.notes).toContain('Deposit');
+      expect(await outstanding(id)).toBe('0.00');
+      const summary = await CustomerFinancialSummaryService.getCustomerFinancialSummary(
+        id,
+        customerFinancialSummaryQuerySchema.parse({ includePayments: 'false' })
+      );
+      expect(summary.summary.totalPrepaidAdminDebt).toBe('-150.00');
+      const again = await trial('150');
+      expect(again.rows[0].balance.deposit.kind).toBe('NONE');
+      const more = await trial('200');
+      expect(more.rows[0].balance.deposit).toMatchObject({ kind: 'ADD', difference: '50.00' });
+    });
+    it('the main branch is never a destination, but its customers are shown read only', async () => {
+      const main =
+        (await db.branch.findFirst({ where: { code: 'MAIN' } })) ??
+        (await db.branch.create({
+          data: { code: 'MAIN', name: 'Main branch', createdById: owner },
+        }));
+      const kept = await db.customer.create({
+        data: { name: 'Ali Main', phone: '03123456', branchId: main.id, createdBy: owner },
+      });
+      const settled = await db.customer.create({
+        data: { name: 'Ali Maix', phone: '71999999', branchId: main.id, createdBy: owner },
+      });
+      await db.debt.create({
+        data: {
+          customerId: kept.id,
+          branchId: main.id,
+          description: 'Old debt kept in the main branch',
+          originalAmount: '200.00',
+          baseOriginalAmount: '200.00',
+          dueDate: new Date('2026-01-01'),
+          status: 'UNPAID',
+          createdById: owner,
+        },
+      });
+      try {
+        await expect(create('Name,Phone\nAli,03123456', main.id)).rejects.toMatchObject({
+          statusCode: 400,
+        });
+        const draft = await create(
+          'Name,Phone,Opening balance\nAli,03123456,10\nAli Maim,71000000,5'
+        );
+        expect(draft.branches.map((branch) => branch.id)).not.toContain(main.id);
+        expect(draft.rows[0]).toMatchObject({ branchId: a, matchedBy: null });
+        expect(draft.rows[0].mainMatches).toEqual([
+          expect.objectContaining({ id: kept.id, matchedBy: 'PHONE', balanceUsd: '200.00' }),
+        ]);
+        // "Ali Maix" is also one letter away but owes nothing, so it is not listed.
+        expect(draft.rows[1].mainMatches).toEqual([
+          expect.objectContaining({ id: kept.id, matchedBy: 'SIMILAR_NAME' }),
+        ]);
+        expect(draft.rows[0].conflicts).toContainEqual(
+          expect.objectContaining({ kind: 'MAIN_BRANCH_MATCH', blocking: false })
+        );
+        await expect(
+          moveRows(draft.id, [{ rowNumber: 2, branchId: main.id }])
+        ).rejects.toMatchObject({ statusCode: 400 });
+        await commit(draft.id, [], password);
+        expect(await db.customer.count({ where: { branchId: main.id, createdBy: owner } })).toBe(2);
+      } finally {
+        await db.debt.deleteMany({ where: { customerId: kept.id } });
+        await db.customer.deleteMany({ where: { id: { in: [kept.id, settled.id] } } });
+        if (main.createdById === owner) await db.branch.delete({ where: { id: main.id } });
+      }
+    });
+  });
+
   describe('branch per customer', () => {
     const branchCode = (id: string) => (id === a ? 'CSV-A-' + a : 'CSV-B-' + b);
 
@@ -728,7 +836,11 @@ const http = (method: 'get' | 'patch' | 'post', path: string, body?: object) => 
       expect(result.childImportIds).toHaveLength(1);
       const accountB = await db.customerImportAccount.findFirstOrThrow({ where: { branchId: b } });
       expect(accountB.sourceCustomerImportId).toBe(result.childImportIds[0]);
-      expect(await db.customerImport.findUniqueOrThrow({ where: { id: accountB.sourceCustomerImportId } })).toMatchObject({
+      expect(
+        await db.customerImport.findUniqueOrThrow({
+          where: { id: accountB.sourceCustomerImportId },
+        })
+      ).toMatchObject({
         status: 'COMMITTED',
         branchId: b,
       });
@@ -827,9 +939,9 @@ const http = (method: 'get' | 'patch' | 'post', path: string, body?: object) => 
       const draft = await create('Name,Phone\nAli,03123456', third);
       expect(draft.rows[0].conflicts.map((item) => item.kind)).toContain('BRANCH_AMBIGUOUS');
       expect(draft.rows[0].decision.action).toBe('SKIP');
-      await expect(
-        commit(draft.id, [{ rowNumber: 2, action: 'CREATE' }])
-      ).rejects.toMatchObject({ code: 'CUSTOMER_IMPORT_UNRESOLVED' });
+      await expect(commit(draft.id, [{ rowNumber: 2, action: 'CREATE' }])).rejects.toMatchObject({
+        code: 'CUSTOMER_IMPORT_UNRESOLVED',
+      });
       const chosen = await moveRows(draft.id, [{ rowNumber: 2, branchId: a }]);
       expect(chosen.rows[0].conflicts.map((item) => item.kind)).not.toContain('BRANCH_AMBIGUOUS');
       await db.customerImport.delete({ where: { id: draft.id } });

@@ -28,17 +28,50 @@ export interface RowBranch {
   branchId: string | null;
 }
 export type BalanceChangeKind =
-  | 'NEW'
-  | 'NONE'
-  | 'NO_INFO'
-  | 'INCREASE'
-  | 'DECREASE'
-  | 'CURRENCY_MISMATCH';
+  'NEW' | 'NONE' | 'NO_INFO' | 'INCREASE' | 'DECREASE' | 'CURRENCY_MISMATCH';
+/** ADD records the difference as a deposit; LOWER is reported only, never applied. */
+export interface DepositChange {
+  kind: 'NONE' | 'ADD' | 'LOWER';
+  current: string;
+  file: string;
+  difference: string;
+}
 export interface BalanceChange {
   kind: BalanceChangeKind;
   current: string;
   file: string | null;
   difference: string;
+  /** Older drafts predate deposits. */
+  deposit?: DepositChange;
+}
+/** One reconciliation line per destination branch on the Confirm step. */
+export interface ImportBranchTotal {
+  branchId: string;
+  branchName: string;
+  rows: number;
+  created: number;
+  updated: number;
+  skipped: number;
+  invalid: number;
+  conflicts: number;
+  fileDebtUsd: string;
+  fileDepositUsd: string;
+  newDebtUsd: string;
+  increaseUsd: string;
+  paymentUsd: string;
+  depositUsd: string;
+  netDebtChangeUsd: string;
+  openBeforeUsd: string;
+  openAfterUsd: string;
+}
+/** A main-branch customer the row resembles. Shown for reading only; never changed. */
+export interface MainBranchMatch {
+  id: string;
+  name: string;
+  phone: string;
+  branchName: string;
+  matchedBy: 'ACCOUNT' | 'PHONE' | 'NAME' | 'SIMILAR_NAME';
+  balanceUsd: string;
 }
 export interface CustomerImportResult {
   created: number;
@@ -52,6 +85,9 @@ export interface CustomerImportResult {
   balanceIncreaseTotalUsd: string;
   balancePayments: number;
   balancePaymentTotalUsd: string;
+  deposits?: number;
+  depositTotalUsd?: string;
+  branchTotals?: ImportBranchTotal[];
   dueDateRequired?: boolean;
   reportCsv?: string;
 }
@@ -79,6 +115,8 @@ export interface CustomerImportPreview {
     notes?: string;
     creditLimit?: string | null;
     openingBalance: string;
+    /** Credit balance in the file, imported as a deposit. */
+    deposit?: string;
     currency: 'USD' | 'LBP';
     dueDate?: string | null;
     branchId: string;
@@ -92,6 +130,7 @@ export interface CustomerImportPreview {
     issues: string[];
     conflicts: Array<{ kind: string; message: string; blocking: boolean }>;
     matches: Array<{ id: string; name: string }>;
+    mainMatches?: MainBranchMatch[];
     decision: CustomerImportDecision;
   }>;
   result: CustomerImportResult | null;

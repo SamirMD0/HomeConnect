@@ -6,7 +6,7 @@ import {
   commitCustomerImportSchema,
   updateCustomerImportSchema,
 } from './customer-import.validator';
-import { buildCustomerImportPreview } from './customer-import.service';
+import { buildCustomerImportPreview, withinOneEdit } from './customer-import.service';
 
 const csv =
   'Name,Phone,Address,Notes,Credit limit,Opening balance,Currency,Due date,Active\nAli, 03 123 456 ,Beirut,Note,25,10,USD,2026-10-28,yes';
@@ -173,12 +173,21 @@ describe('customer import preview conflict kinds', () => {
         findMany: vi.fn().mockResolvedValue([
           { id: 'existing', branchId: 'a', name: 'Ali', phone: '03123456', isActive: true },
           { id: 'same-name', branchId: 'a', name: 'Same Name', phone: '70333333', isActive: true },
-          { id: 'elsewhere', branchId: 'b', name: 'Elsewhere', phone: '70 222 222', isActive: true },
+          {
+            id: 'elsewhere',
+            branchId: 'b',
+            name: 'Elsewhere',
+            phone: '70 222 222',
+            isActive: true,
+          },
         ]),
       },
     } as unknown as Prisma.TransactionClient;
     const document2 = { ...document, rowBranches: { 5: 'a' } };
-    const preview = await buildCustomerImportPreview({ ...draft, rows: document2 } as typeof draft, tx);
+    const preview = await buildCustomerImportPreview(
+      { ...draft, rows: document2 } as typeof draft,
+      tx
+    );
     expect(preview.rows[0].conflicts.map((conflict) => conflict.kind)).toEqual([
       'FILE_PHONE',
       'EXISTING_PHONE',
@@ -235,13 +244,13 @@ describe('trial-balance customer reports', () => {
     expect(rows.map((row) => row.accountCode)).toEqual(['41101', '41102', '41103']);
     expect(rows.every((row) => !row.issues.length)).toBe(true);
   });
-  it('handles strictly grouped amounts while rejecting credit balances and incomplete accounts', () => {
+  it('handles strictly grouped amounts, reads credit balances as deposits and rejects incomplete accounts', () => {
     const { rows } = mapped(
       trialHeaders +
         '\n41101,First,USD,2000,0,"1,234.56",0\n41102,Second,USD,0,10,0,10\n41103,Third,LBP,0,0,"1,000.50",0\n41104,Fourth,USD\n41105,Fifth,,0,0,10,0'
     );
     expect(rows[0]).toMatchObject({ openingBalance: '1234.56', issues: [] });
-    expect(rows[1].issues.join()).toMatch(/Credit balances/);
+    expect(rows[1]).toMatchObject({ openingBalance: '0', deposit: '10.00', issues: [] });
     expect(rows[2].issues.length).toBeGreaterThan(0);
     expect(rows[3].issues).toContain('Incomplete trial-balance account row');
     expect(rows[4].issues).toContain('Trial-balance currency is required');
@@ -252,5 +261,27 @@ describe('trial-balance customer reports', () => {
     );
     expect(rows[0].issues).toEqual([]);
     expect(rows.slice(1).every((row) => row.issues.length)).toBe(true);
+  });
+});
+
+describe('credit balances as deposits', () => {
+  const mapped = (csv: string) => {
+    const document = parseCustomerCsv(csv);
+    return { document, rows: mapCustomerRows(document, detectColumnMapping(document.headers)) };
+  };
+  it('matches names one letter apart, ignoring spaces, and nothing looser', () => {
+    expect(withinOneEdit('عبدالسلام', 'عبدالسلم')).toBe(true);
+    expect(withinOneEdit('محمدالعطار', 'محمدالعطاز')).toBe(true);
+    expect(withinOneEdit('رياضالمحمد', 'رياضالمحمدي')).toBe(true);
+    expect(withinOneEdit('سامي', 'سالم')).toBe(false);
+    expect(withinOneEdit('محمدعلي', 'محمدحسن')).toBe(false);
+  });
+  it('rejects an account with both a debit and a credit balance', () => {
+    const { rows } = mapped(trialHeaders + '\n41101,First,USD,100,50,40,10');
+    expect(rows[0].issues).toContain('An account cannot have both a debit and a credit balance');
+  });
+  it('treats a negative opening balance in a plain file as a deposit', () => {
+    const { rows } = mapped('Name,Phone,Opening balance\nAli,03123456,-25');
+    expect(rows[0]).toMatchObject({ openingBalance: '0', deposit: '25.00', issues: [] });
   });
 });
