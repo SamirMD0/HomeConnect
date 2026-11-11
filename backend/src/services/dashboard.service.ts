@@ -1,13 +1,16 @@
 import { DashboardFinancialService } from '../features/dashboard/dashboard-financial.service';
+import type { DashboardFinancialSummaryView } from '../features/dashboard/dashboard-financial.types';
 import { scopeWhere, type BranchScope } from '../features/branches/branch-scope';
 import { withBranchBreakdown } from '../features/branches/branch-breakdown';
 import { prisma } from '../lib/prisma';
 
 export class DashboardService {
-  static getSummary(scope: BranchScope) { return withBranchBreakdown(scope, scoped => this.calculateSummary(scoped)); }
-  private static async calculateSummary(scope: BranchScope) {
-    // Compatibility adapter for the retired transactions-table dashboard.
-    const current = await DashboardFinancialService.calculateGetFinancialSummary(scope);
+  static async getSummary(scope: BranchScope) {
+    const calculate = await DashboardFinancialService.summaryCalculator(scope);
+    return withBranchBreakdown(scope, async (scoped) => this.toLegacySummary(await calculate(scoped)));
+  }
+  // Compatibility adapter for the retired transactions-table dashboard.
+  private static toLegacySummary(current: DashboardFinancialSummaryView) {
     return {
       totalCustomers: current.counts.totalCustomers,
       customersWithDebt: current.counts.customersWithOutstanding,

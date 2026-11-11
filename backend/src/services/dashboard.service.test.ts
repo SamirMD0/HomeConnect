@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 const { calculate } = vi.hoisted(() => ({calculate:vi.fn()}));
-vi.mock('../features/dashboard/dashboard-financial.service',()=>({DashboardFinancialService:{calculateGetFinancialSummary:calculate}}));
+vi.mock('../features/dashboard/dashboard-financial.service',()=>({DashboardFinancialService:{summaryCalculator:async()=>calculate}}));
 import { DashboardService } from './dashboard.service';
 
 describe('legacy dashboard current-ledger adapter',()=>{
