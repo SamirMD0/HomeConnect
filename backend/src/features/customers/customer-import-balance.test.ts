@@ -89,7 +89,9 @@ describe('planBalancePayments', () => {
     ]);
   });
   it('stops once the amount is covered', () => {
-    expect(planBalancePayments([open('a', '50'), open('b', '50')], new Decimal('50'), Currency.USD)).toHaveLength(1);
+    expect(
+      planBalancePayments([open('a', '50'), open('b', '50')], new Decimal('50'), Currency.USD)
+    ).toHaveLength(1);
   });
 });
 
@@ -99,7 +101,9 @@ describe('customer import parser balance and branch columns', () => {
     return mapCustomerRows(document, detectColumnMapping(document.headers));
   };
   it('reports whether a balance was actually supplied', () => {
-    const rows = parse('Name,Phone,Opening balance\nAli,03123456,\nMaya,70123456,0\nSam,71123456,5');
+    const rows = parse(
+      'Name,Phone,Opening balance\nAli,03123456,\nMaya,70123456,0\nSam,71123456,5'
+    );
     expect(rows.map((item) => item.hasBalance)).toEqual([false, true, true]);
     expect(parse('Name,Phone\nAli,03123456')[0].hasBalance).toBe(false);
   });
@@ -107,5 +111,40 @@ describe('customer import parser balance and branch columns', () => {
     expect(detectColumnMapping(['Name', 'Branch']).branch).toBe(1);
     expect(detectColumnMapping(['الاسم', 'الفرع']).branch).toBe(1);
     expect(parse('Name,Phone,Branch\nAli,03123456, main ')[0].branchValue).toBe('main');
+  });
+});
+
+describe('deposits from credit balances', () => {
+  const withDeposit = (deposit: string) => ({ ...row('0'), deposit });
+  const held = (amount: string): CustomerBalanceState => ({
+    obligations: [],
+    activitySinceLastImport: false,
+    deposits: [{ id: 'd', currency: Currency.USD, held: new Decimal(amount) }],
+  });
+  it('adds a new deposit and pays off open debt for a credit balance', () => {
+    const change = classifyBalance(withDeposit('150'), state(open('a', '40')));
+    expect(change).toMatchObject({ kind: 'DECREASE', difference: '-40.00' });
+    expect(change.deposit).toEqual({
+      kind: 'ADD',
+      current: '0.00',
+      file: '150.00',
+      difference: '150.00',
+    });
+  });
+  it('adds only the difference to an imported deposit and never lowers one', () => {
+    expect(classifyBalance(withDeposit('150'), held('100')).deposit).toMatchObject({
+      kind: 'ADD',
+      difference: '50.00',
+    });
+    expect(classifyBalance(withDeposit('100'), held('100')).deposit.kind).toBe('NONE');
+    expect(classifyBalance(withDeposit('60'), held('100')).deposit).toMatchObject({
+      kind: 'LOWER',
+      difference: '-40.00',
+    });
+  });
+  it('makes no deposit change when the row carries no balance information', () => {
+    expect(
+      classifyBalance({ ...withDeposit('150'), hasBalance: false }, held('100')).deposit.kind
+    ).toBe('NONE');
   });
 });

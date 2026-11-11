@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useId, useRef } from 'react';
 import { X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../../lib/cn';
+import { portalToBody } from './portal';
 
 export type ModalSize = 'sm' | 'md' | 'lg' | 'xl';
 
@@ -124,7 +125,7 @@ export const Modal: React.FC<ModalProps> = ({
     if (event.target === overlayRef.current) onClose();
   };
 
-  return (
+  return portalToBody(
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-0">

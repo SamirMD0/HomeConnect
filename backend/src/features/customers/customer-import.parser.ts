@@ -151,29 +151,44 @@ export function mapCustomerRows(document: CsvDocument, mapping: ColumnMapping) {
       issues.push('Phone must contain digits, or supply an account number');
     const currency = cell('currency').toUpperCase() || 'USD';
     if (currency !== 'USD' && currency !== 'LBP') issues.push('Currency must be USD or LBP');
-    const openingBalance = reportMoney(cell('openingBalance')) || '0';
+    const moneyCurrency = currency === 'LBP' ? 'LBP' : 'USD';
+    let openingBalance = reportMoney(cell('openingBalance')) || '0';
+    // A credit balance is money the customer left with the shop: a deposit.
+    let deposit = '0';
     if (document.format === 'TRIAL_BALANCE') {
       if (!cells[0]?.trim()) issues.push('Trial-balance account number is missing');
       if (!cells[2]?.trim()) issues.push('Trial-balance currency is required');
       if (!cells[5]?.trim() || !cells[6]?.trim())
         issues.push('Trial-balance debit and credit balances are required');
       try {
-        const credit = parseMoney(
-          reportMoney((cells[6] ?? '').trim()) || '0',
-          currency === 'LBP' ? 'LBP' : 'USD'
-        );
-        if (!credit.isZero())
-          issues.push(
-            'Credit balances cannot be imported as opening debts; review this account separately'
-          );
+        const credit = parseMoney(reportMoney((cells[6] ?? '').trim()) || '0', moneyCurrency);
+        if (credit.isNegative()) issues.push('Balance credit cannot be negative');
+        else if (!credit.isZero()) {
+          let debit: ReturnType<typeof parseMoney> | null = null;
+          try {
+            debit = parseMoney(openingBalance, moneyCurrency);
+          } catch {
+            // Reported below with the opening balance.
+          }
+          if (debit && !debit.isZero())
+            issues.push('An account cannot have both a debit and a credit balance');
+          else deposit = credit.toFixed(moneyCurrency === 'LBP' ? 0 : 2);
+        }
         if (cells.length < 7) issues.push('Incomplete trial-balance account row');
       } catch {
         issues.push('Invalid balance credit');
       }
     }
     try {
-      if (parseMoney(openingBalance, currency === 'LBP' ? 'LBP' : 'USD').isNegative())
-        issues.push('Opening balance cannot be negative');
+      const opening = parseMoney(openingBalance, moneyCurrency);
+      if (opening.isNegative()) {
+        if (deposit !== '0')
+          issues.push('An account cannot have both a debit and a credit balance');
+        else {
+          deposit = opening.abs().toFixed(moneyCurrency === 'LBP' ? 0 : 2);
+          openingBalance = '0';
+        }
+      }
     } catch (error) {
       issues.push(error instanceof Error ? error.message : 'Invalid opening balance');
     }
@@ -198,6 +213,7 @@ export function mapCustomerRows(document: CsvDocument, mapping: ColumnMapping) {
       phoneKey,
       currency: currency as 'USD' | 'LBP',
       openingBalance,
+      deposit,
       hasBalance: cell('openingBalance') !== '',
       branchValue: cell('branch'),
       dueDate,

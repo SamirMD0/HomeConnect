@@ -9,10 +9,11 @@ import { assertInScope } from '../branches/branch-scope';
 import { BranchesService, type BranchActor } from '../branches/branches.service';
 import { runFinancialTransaction } from '../financial/infrastructure/transaction';
 import { DebtsRepository } from '../financial/debts/debts.repository';
+import { PrepaidRepository } from '../financial/prepaid/prepaid.repository';
 import { DebtsService } from '../financial/debts/debts.service';
 import { InstallmentPlansService } from '../financial/installment-plans/installment-plans.service';
 import { ExchangeRatesService } from '../financial/exchange-rates/exchange-rates.service';
-import { moneyToApiString, parseMoney, toBaseAmount } from '../financial/domain/money';
+import { moneyToApiString, parseMoney, sumMoney, toBaseAmount } from '../financial/domain/money';
 import {
   businessDateToPrisma,
   parseBusinessDate,
@@ -107,18 +108,45 @@ const assertDraft = (draft: Draft) => {
 };
 
 const MONEY_CHANGES = ['NEW', 'INCREASE', 'DECREASE'] as const;
-const changesMoney = (row: {
-  balance: { kind: string };
+type MoneyRow = {
+  balance: { kind: string; deposit: { kind: string } };
   decision: Pick<CustomerImportDecision, 'action' | 'skipOpeningBalance'>;
-}) =>
-  row.decision.action !== 'SKIP' &&
-  !row.decision.skipOpeningBalance &&
-  (MONEY_CHANGES as readonly string[]).includes(row.balance.kind);
-const addsDebt = (row: Parameters<typeof changesMoney>[0]) =>
-  changesMoney(row) && row.balance.kind !== 'DECREASE';
+};
+const applies = (row: MoneyRow) =>
+  row.decision.action !== 'SKIP' && !row.decision.skipOpeningBalance;
+/** New debt, a balance increase, or payments that bring the debt down to the file. */
+const changesDebt = (row: MoneyRow) =>
+  applies(row) && (MONEY_CHANGES as readonly string[]).includes(row.balance.kind);
+/** A credit balance in the file, recorded as a deposit held for the customer. */
+const addsDeposit = (row: MoneyRow) => applies(row) && row.balance.deposit.kind === 'ADD';
+const changesMoney = (row: MoneyRow) => changesDebt(row) || addsDeposit(row);
+const addsDebt = (row: MoneyRow) => changesDebt(row) && row.balance.kind !== 'DECREASE';
 const absoluteDifference = (row: { balance: { difference: string }; currency: 'USD' | 'LBP' }) =>
   parseMoney(row.balance.difference, row.currency).abs();
 const branchKey = (value: string) => value.trim().toLowerCase();
+/** The main branch holds the shop's own older records; an import may read it, never write to it. */
+const MAIN_BRANCH_CODE = 'MAIN';
+export const isMainBranch = (branch: { code: string | null }) =>
+  branch.code?.trim().toUpperCase() === MAIN_BRANCH_CODE;
+const assertImportDestination = (branch: { code: string | null }) => {
+  if (isMainBranch(branch))
+    throw new ValidationError('The main branch cannot receive a CSV import; choose another branch');
+};
+/** Spaces carry no meaning in a name: "عبد السلام" and "عبدالسلام" are one person. */
+const nameKey = (name: string) => normalizeSearchTerm(name).replace(/\s+/g, '');
+/** True when two names differ by at most one added, removed or changed letter. */
+export function withinOneEdit(a: string, b: string) {
+  if (a === b) return true;
+  if (Math.abs(a.length - b.length) > 1) return false;
+  let i = 0;
+  while (i < a.length && i < b.length && a[i] === b[i]) i++;
+  if (a.length === b.length) return a.slice(i + 1) === b.slice(i + 1);
+  return a.length > b.length ? a.slice(i + 1) === b.slice(i) : a.slice(i) === b.slice(i + 1);
+}
+/** Short names collide by chance; a one-letter difference only means something past this length. */
+const SIMILAR_NAME_MIN_LENGTH = 5;
+const similarName = (a: string, b: string) =>
+  a !== b && Math.min(a.length, b.length) >= SIMILAR_NAME_MIN_LENGTH && withinOneEdit(a, b);
 
 export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
   const document = draft.rows as unknown as CsvDocument;
@@ -133,9 +161,11 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
     { userId: draft.createdById, role: actor.role },
     tx
   );
-  const branches = new Map(accessible.map((branch) => [branch.id, branch]));
+  const destinations = accessible.filter((branch) => !isMainBranch(branch));
+  const mainBranches = accessible.filter(isMainBranch);
+  const branches = new Map(destinations.map((branch) => [branch.id, branch]));
   const namedBranches = new Map<string, string>();
-  for (const branch of accessible)
+  for (const branch of destinations)
     for (const label of [branch.code, branch.name])
       if (label && !namedBranches.has(branchKey(label)))
         namedBranches.set(branchKey(label), branch.id);
@@ -154,6 +184,57 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
     include: { importAccounts: true },
   });
   type Found = (typeof customers)[number];
+  // Main-branch customers are only compared, so the owner sees a debt already kept there.
+  const mainCustomers = mainBranches.length
+    ? await tx.customer.findMany({
+        where: { branchId: { in: mainBranches.map((branch) => branch.id) }, deletedAt: null },
+        include: { importAccounts: true },
+      })
+    : [];
+  const mainBalances = await loadCustomerBalances(
+    mainCustomers.map((customer) => customer.id),
+    tx
+  );
+  const mainKeys = mainCustomers.map((customer) => ({
+    customer,
+    name: nameKey(customer.name),
+    phone: normalizePhoneTerm(customer.phone),
+  }));
+  const mainMatchesFor = (row: { name: string; phoneKey: string; accountCode: string }) => {
+    const key = nameKey(row.name);
+    return mainKeys.flatMap(({ customer, name, phone }) => {
+      const matchedBy =
+        row.accountCode &&
+        (customer.importAccounts ?? []).some((account) => account.accountCode === row.accountCode)
+          ? ('ACCOUNT' as const)
+          : row.phoneKey && phone === row.phoneKey
+            ? ('PHONE' as const)
+            : key && name === key
+              ? ('NAME' as const)
+              : similarName(key, name)
+                ? ('SIMILAR_NAME' as const)
+                : null;
+      if (!matchedBy) return [];
+      const owed = sumMoney(
+        (mainBalances.get(customer.id)?.obligations ?? [])
+          .filter((item) => item.currency === 'USD')
+          .map((item) => item.remaining)
+      );
+      // Only an open debt there can be counted twice; a settled look-alike is noise.
+      if (!owed.greaterThan(0)) return [];
+      return [
+        {
+          id: customer.id,
+          name: customer.name,
+          phone: customer.phone,
+          branchName: mainBranches.find((branch) => branch.id === customer.branchId)?.name ?? '',
+          matchedBy,
+          balanceUsd: moneyToApiString(owed),
+        },
+      ];
+    });
+  };
+  const activeByBranch = new Map<string, Array<{ customer: Found; key: string }>>();
   const push = (index: Map<string, Found[]>, key: string, customer: Found) => {
     if (key) index.set(key, [...(index.get(key) ?? []), customer]);
   };
@@ -165,6 +246,10 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
     for (const account of customer.importAccounts ?? [])
       push(byAccount, account.accountCode, customer);
     if (!customer.deletedAt) {
+      activeByBranch.set(customer.branchId, [
+        ...(activeByBranch.get(customer.branchId) ?? []),
+        { customer, key: nameKey(customer.name) },
+      ]);
       push(byPhone, normalizePhoneTerm(customer.phone), customer);
       push(byNameAnywhere, normalizeSearchTerm(customer.name).trim(), customer);
     }
@@ -214,7 +299,8 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
     // A Branch column places new customers only; known customers stay in their own branch.
     const decided = chosen ?? (existing.length ? home : (named ?? home));
     const elsewhere = Boolean(chosen && homes.length && !homes.includes(chosen));
-    const toMove = elsewhere && existing.length === 1 && !existing[0].deletedAt ? existing[0] : null;
+    const toMove =
+      elsewhere && existing.length === 1 && !existing[0].deletedAt ? existing[0] : null;
     return {
       ...row,
       branchId: decided ?? draft.branchId,
@@ -244,8 +330,7 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
         'Account number belongs to an archived customer; restore that customer before importing'
       );
     const phoneMatches = row.phoneKey ? inBranch(byPhone.get(row.phoneKey)) : [];
-    const nameMatches =
-      accountMatches.length || phoneMatches.length ? [] : inBranch(sameName(row));
+    const nameMatches = accountMatches.length || phoneMatches.length ? [] : inBranch(sameName(row));
     const matchedBy = accountMatches.length
       ? ('ACCOUNT' as const)
       : phoneMatches.length
@@ -379,11 +464,48 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
         message: 'Similar name on another customer in this branch',
         blocking: false,
       });
+    const rowKey = nameKey(row.name);
+    for (const { customer } of (activeByBranch.get(row.branchId) ?? []).filter(
+      ({ customer, key }) =>
+        similarName(rowKey, key) && !matches.some((match) => match.id === customer.id)
+    ))
+      conflicts.push({
+        kind: 'NAME_ONE_LETTER',
+        message:
+          'One letter from "' +
+          customer.name +
+          '" in this branch; check it is not the same customer',
+        blocking: false,
+      });
+    const mainMatches = mainMatchesFor(row);
+    for (const match of mainMatches)
+      conflicts.push({
+        kind: 'MAIN_BRANCH_MATCH',
+        message:
+          (match.matchedBy === 'SIMILAR_NAME' ? 'Similar name in ' : 'Also in ') +
+          (match.branchName || 'the main branch') +
+          ' (read only): "' +
+          match.name +
+          '" owes $' +
+          match.balanceUsd,
+        blocking: false,
+      });
     const state = matches.length === 1 ? balances.get(matches[0].id) : undefined;
     const balance = classifyBalance(
       matches.length > 1 ? { ...row, hasBalance: false } : row,
       state
     );
+    if (balance.deposit.kind === 'LOWER')
+      conflicts.push({
+        kind: 'DEPOSIT_LOWER',
+        message:
+          'File deposit ' +
+          balance.deposit.file +
+          ' is lower than the imported deposit held (' +
+          balance.deposit.current +
+          '); refund or use it on the Deposits page',
+        blocking: false,
+      });
     if (balance.kind === 'CURRENCY_MISMATCH')
       conflicts.push({
         kind: 'BALANCE_CURRENCY',
@@ -425,11 +547,10 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
     const fingerprint = JSON.stringify([
       row.branchId,
       row.toMove?.branchId ?? null,
-      matches
-        .map((match) => [match.id, match.isActive, match.accountCodes])
-        .sort(),
+      matches.map((match) => [match.id, match.isActive, match.accountCodes]).sort(),
       (state?.obligations ?? []).map((item) => [item.id, item.remaining.toFixed(2)]),
       Boolean(state?.activitySinceLastImport),
+      (state?.deposits ?? []).map((item) => [item.id, item.held.toFixed(2)]),
     ]);
     const { ambiguous: _ambiguous, toMove: _toMove, existingBranches, ...fields } = row;
     return {
@@ -441,6 +562,7 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
         : null,
       existingBranches: existingBranches.map((id) => ({ id, name: branchName(id) })),
       matches,
+      mainMatches,
       conflicts,
       balance,
       status: row.issues.length
@@ -458,24 +580,146 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
     conflicts: rows.filter((row) => row.status === 'CONFLICT').length,
     invalid: rows.filter((row) => row.status === 'INVALID').length,
   };
+  const zero = () => new Prisma.Decimal(0);
   const totals = {
-    NEW: { count: 0, usd: new Prisma.Decimal(0) },
-    INCREASE: { count: 0, usd: new Prisma.Decimal(0) },
-    DECREASE: { count: 0, usd: new Prisma.Decimal(0) },
+    NEW: { count: 0, usd: zero() },
+    INCREASE: { count: 0, usd: zero() },
+    DECREASE: { count: 0, usd: zero() },
+    DEPOSIT: { count: 0, usd: zero() },
   };
   const rates = new Map<'USD' | 'LBP', Prisma.Decimal>();
-  for (const row of rows) {
-    if (!changesMoney(row)) continue;
+  const rateFor = async (currency: 'USD' | 'LBP') => {
     const rate =
-      rates.get(row.currency) ??
-      (await ExchangeRatesService.snapshotFor(row.currency, new Date(), tx));
-    rates.set(row.currency, rate);
-    const total = totals[row.balance.kind as keyof typeof totals];
-    total.count++;
-    total.usd = total.usd.plus(
-      toBaseAmount(absoluteDifference(row), row.currency, rate, Prisma.Decimal.ROUND_HALF_UP)
-    );
+      rates.get(currency) ?? (await ExchangeRatesService.snapshotFor(currency, new Date(), tx));
+    rates.set(currency, rate);
+    return rate;
+  };
+  const usd = async (amount: string, currency: 'USD' | 'LBP') => {
+    let value: Prisma.Decimal;
+    try {
+      value = parseMoney(amount, currency).abs();
+    } catch {
+      return zero();
+    }
+    return toBaseAmount(value, currency, await rateFor(currency), Prisma.Decimal.ROUND_HALF_UP);
+  };
+  // One reconciliation line per destination branch, like an ERP posting summary.
+  const perBranch = new Map<
+    string,
+    {
+      branchId: string;
+      branchName: string;
+      rows: number;
+      created: number;
+      updated: number;
+      skipped: number;
+      invalid: number;
+      conflicts: number;
+      fileDebt: Prisma.Decimal;
+      fileDeposit: Prisma.Decimal;
+      newDebt: Prisma.Decimal;
+      increase: Prisma.Decimal;
+      payment: Prisma.Decimal;
+      deposit: Prisma.Decimal;
+    }
+  >();
+  for (const row of rows) {
+    const line = perBranch.get(row.branchId) ?? {
+      branchId: row.branchId,
+      branchName: row.branchName,
+      rows: 0,
+      created: 0,
+      updated: 0,
+      skipped: 0,
+      invalid: 0,
+      conflicts: 0,
+      fileDebt: zero(),
+      fileDeposit: zero(),
+      newDebt: zero(),
+      increase: zero(),
+      payment: zero(),
+      deposit: zero(),
+    };
+    perBranch.set(row.branchId, line);
+    line.rows++;
+    if (row.status === 'INVALID') line.invalid++;
+    if (row.status === 'CONFLICT') line.conflicts++;
+    if (row.decision.action === 'SKIP') {
+      line.skipped++;
+      continue;
+    }
+    if (row.decision.action === 'CREATE') line.created++;
+    else line.updated++;
+    if (row.balance.kind !== 'NO_INFO') {
+      line.fileDebt = line.fileDebt.plus(await usd(row.openingBalance, row.currency));
+      line.fileDeposit = line.fileDeposit.plus(await usd(row.deposit, row.currency));
+    }
+    if (changesDebt(row)) {
+      const amount = await usd(row.balance.difference, row.currency);
+      const total = totals[row.balance.kind as 'NEW' | 'INCREASE' | 'DECREASE'];
+      total.count++;
+      total.usd = total.usd.plus(amount);
+      if (row.balance.kind === 'NEW') line.newDebt = line.newDebt.plus(amount);
+      else if (row.balance.kind === 'INCREASE') line.increase = line.increase.plus(amount);
+      else line.payment = line.payment.plus(amount);
+    }
+    if (addsDeposit(row)) {
+      const amount = await usd(row.balance.deposit.difference, row.currency);
+      totals.DEPOSIT.count++;
+      totals.DEPOSIT.usd = totals.DEPOSIT.usd.plus(amount);
+      line.deposit = line.deposit.plus(amount);
+    }
   }
+  // What each branch's customers owe in HomeConnect now, on the same basis as the balances above.
+  const branchCustomers = perBranch.size
+    ? await tx.customer.findMany({
+        where: { branchId: { in: [...perBranch.keys()] }, deletedAt: null },
+        select: { id: true, branchId: true },
+      })
+    : [];
+  const branchBalances = await loadCustomerBalances(
+    branchCustomers.map((customer) => customer.id),
+    tx
+  );
+  const openBefore = new Map<string, Prisma.Decimal>();
+  for (const customer of branchCustomers)
+    for (const item of branchBalances.get(customer.id)?.obligations ?? [])
+      openBefore.set(
+        customer.branchId,
+        (openBefore.get(customer.branchId) ?? zero()).plus(
+          toBaseAmount(
+            item.remaining,
+            item.currency,
+            await rateFor(item.currency),
+            Prisma.Decimal.ROUND_HALF_UP
+          )
+        )
+      );
+  const branchTotals = [...perBranch.values()]
+    .sort((left, right) => left.branchName.localeCompare(right.branchName))
+    .map((line) => {
+      const before = openBefore.get(line.branchId) ?? zero();
+      const net = line.newDebt.plus(line.increase).minus(line.payment);
+      return {
+        branchId: line.branchId,
+        branchName: line.branchName,
+        rows: line.rows,
+        created: line.created,
+        updated: line.updated,
+        skipped: line.skipped,
+        invalid: line.invalid,
+        conflicts: line.conflicts,
+        fileDebtUsd: line.fileDebt.toFixed(2),
+        fileDepositUsd: line.fileDeposit.toFixed(2),
+        newDebtUsd: line.newDebt.toFixed(2),
+        increaseUsd: line.increase.toFixed(2),
+        paymentUsd: line.payment.toFixed(2),
+        depositUsd: line.deposit.toFixed(2),
+        netDebtChangeUsd: net.toFixed(2),
+        openBeforeUsd: before.toFixed(2),
+        openAfterUsd: before.plus(net).toFixed(2),
+      };
+    });
   const planned = {
     created: rows.filter((row) => row.decision.action === 'CREATE').length,
     updated: rows.filter((row) => row.decision.action === 'UPDATE').length,
@@ -487,6 +731,9 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
     balanceIncreaseTotalUsd: totals.INCREASE.usd.toFixed(2),
     balancePayments: totals.DECREASE.count,
     balancePaymentTotalUsd: totals.DECREASE.usd.toFixed(2),
+    deposits: totals.DEPOSIT.count,
+    depositTotalUsd: totals.DEPOSIT.usd.toFixed(2),
+    branchTotals,
     dueDateRequired: rows.some((row) => addsDebt(row) && !row.dueDate),
   };
   return {
@@ -498,7 +745,11 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
     headers: document.headers,
     format: document.format,
     columnMapping: mapping,
-    branches: accessible.map((branch) => ({ id: branch.id, code: branch.code, name: branch.name })),
+    branches: destinations.map((branch) => ({
+      id: branch.id,
+      code: branch.code,
+      name: branch.name,
+    })),
     rows,
     summary,
     previousCommittedImport:
@@ -547,6 +798,7 @@ export class CustomerImportService {
     const document = parseCustomerCsv(values.csvText);
     return runFinancialTransaction(async (tx) => {
       const branch = await checkedBranch(values.branchId, actor, tx);
+      assertImportDestination(branch);
       const draft = await tx.customerImport.create({
         data: {
           branchId: branch.id,
@@ -573,7 +825,7 @@ export class CustomerImportService {
       assertDraft(existing);
       const document = existing.rows as unknown as CsvDocument;
       for (const branchId of new Set(values.rowBranches?.map((item) => item.branchId)))
-        if (branchId) await checkedBranch(branchId, actor, tx);
+        if (branchId) assertImportDestination(await checkedBranch(branchId, actor, tx));
       if (
         values.rowBranches?.some(
           (item) => item.rowNumber < 2 || item.rowNumber > document.records.length + 1
@@ -607,10 +859,7 @@ export class CustomerImportService {
                   rowBranches: {
                     ...document.rowBranches,
                     ...Object.fromEntries(
-                      values.rowBranches.map((item) => [
-                        item.rowNumber,
-                        item.branchId ?? undefined,
-                      ])
+                      values.rowBranches.map((item) => [item.rowNumber, item.branchId ?? undefined])
                     ),
                   },
                 }),
@@ -658,9 +907,7 @@ export class CustomerImportService {
           if (row.conflicts.some((conflict) => conflict.kind === 'BRANCH_AMBIGUOUS'))
             throw unresolved('Choose a branch for row ' + row.rowNumber);
           if (snapshot[row.rowNumber] !== row.fingerprint)
-            throw stale(
-              'Matching customers or balances changed for row ' + row.rowNumber + '.'
-            );
+            throw stale('Matching customers or balances changed for row ' + row.rowNumber + '.');
           const identity = row.branchId + row.identityKey;
           const phone = row.phoneKey && row.branchId + row.phoneKey;
           if (chosenKeys.has(identity) || (phone && chosenPhones.has(phone)))
@@ -687,7 +934,7 @@ export class CustomerImportService {
         const acting = rows.filter((row) => row.decision.action !== 'SKIP');
         // The destination check covers revocation and deactivation since the preview.
         for (const branchId of new Set(acting.map((row) => row.branchId)))
-          await checkedBranch(branchId, actor, tx);
+          assertImportDestination(await checkedBranch(branchId, actor, tx));
         if (rows.some((row) => addsDebt(row) && !row.dueDate) && !values.dueDate)
           throw new ValidationError('Choose a due date for the new debts');
         const defaultDueDate = values.dueDate ? parseBusinessDate(values.dueDate) : null;
@@ -738,7 +985,7 @@ export class CustomerImportService {
         }
         const balances = await loadCustomerBalances(
           rows
-            .filter((row) => changesMoney(row) && row.balance.kind === 'DECREASE')
+            .filter((row) => changesDebt(row) && row.balance.kind === 'DECREASE')
             .map((row) => row.decision.targetCustomerId!),
           tx
         );
@@ -754,7 +1001,10 @@ export class CustomerImportService {
           balanceIncreaseTotalUsd: '0.00',
           balancePayments: 0,
           balancePaymentTotalUsd: '0.00',
+          deposits: 0,
+          depositTotalUsd: '0.00',
         };
+        let depositTotal = new Prisma.Decimal(0);
         let openingTotal = new Prisma.Decimal(0);
         let increaseTotal = new Prisma.Decimal(0);
         let paymentTotal = new Prisma.Decimal(0);
@@ -854,131 +1104,214 @@ export class CustomerImportService {
             },
           });
           if (!changesMoney(row)) continue;
-          const amount = absoluteDifference(row);
           const exchangeRate = await ExchangeRatesService.snapshotFor(row.currency, new Date(), tx);
-          const baseAmount = toBaseAmount(
-            amount,
-            row.currency,
-            exchangeRate,
-            Prisma.Decimal.ROUND_HALF_UP
-          );
-          if (row.balance.kind === 'DECREASE') {
-            const scope = { mode: 'single' as const, branchIds: [row.branchId] };
-            for (const payment of planBalancePayments(
-              balances.get(customerId)?.obligations ?? [],
-              amount,
-              row.currency
-            )) {
-              const input = {
-                amount: moneyToApiString(payment.amount, row.currency),
-                currency: row.currency,
-                paymentDate: today,
-                paymentMethod: 'OTHER' as const,
-                reference,
-                idempotencyKey:
-                  IMPORT_PAYMENT_KEY_PREFIX + id + ':' + row.rowNumber + ':' + payment.id,
-              };
-              if (payment.kind === 'DEBT')
-                await DebtsService.recordDebtPaymentInTransaction(tx, payment.id, input, actor, scope);
-              else
-                await InstallmentPlansService.recordPlanPaymentInTransaction(
-                  tx,
-                  payment.id,
-                  input,
-                  actor,
-                  scope
-                );
-            }
-            await tx.activityLog.create({
-              data: {
-                branchId: row.branchId,
-                userId: actor.userId,
-                action: 'CUSTOMER_IMPORT_BALANCE_PAYMENT',
-                entityType: 'Customer',
-                entityId: customerId,
-                details: {
-                  customerImportId: id,
-                  rowNumber: row.rowNumber,
-                  previousBalance: row.balance.current,
-                  fileBalance: row.balance.file,
-                  amount: amount.toString(),
+          const toBase = (value: Prisma.Decimal) =>
+            toBaseAmount(value, row.currency, exchangeRate, Prisma.Decimal.ROUND_HALF_UP);
+          const reasons: string[] = [];
+          if (changesDebt(row)) {
+            const amount = absoluteDifference(row);
+            const baseAmount = toBase(amount);
+            reasons.push(
+              'Balance ' + row.balance.current + ' to ' + row.balance.file + ' ' + row.currency
+            );
+            if (row.balance.kind === 'DECREASE') {
+              const scope = { mode: 'single' as const, branchIds: [row.branchId] };
+              for (const payment of planBalancePayments(
+                balances.get(customerId)?.obligations ?? [],
+                amount,
+                row.currency
+              )) {
+                const input = {
+                  amount: moneyToApiString(payment.amount, row.currency),
                   currency: row.currency,
+                  paymentDate: today,
+                  paymentMethod: 'OTHER' as const,
+                  reference,
+                  idempotencyKey:
+                    IMPORT_PAYMENT_KEY_PREFIX + id + ':' + row.rowNumber + ':' + payment.id,
+                };
+                if (payment.kind === 'DEBT')
+                  await DebtsService.recordDebtPaymentInTransaction(
+                    tx,
+                    payment.id,
+                    input,
+                    actor,
+                    scope
+                  );
+                else
+                  await InstallmentPlansService.recordPlanPaymentInTransaction(
+                    tx,
+                    payment.id,
+                    input,
+                    actor,
+                    scope
+                  );
+              }
+              await tx.activityLog.create({
+                data: {
+                  branchId: row.branchId,
+                  userId: actor.userId,
+                  action: 'CUSTOMER_IMPORT_BALANCE_PAYMENT',
+                  entityType: 'Customer',
+                  entityId: customerId,
+                  details: {
+                    customerImportId: id,
+                    rowNumber: row.rowNumber,
+                    previousBalance: row.balance.current,
+                    fileBalance: row.balance.file,
+                    amount: amount.toString(),
+                    currency: row.currency,
+                  },
+                  ipAddress: context.ipAddress,
                 },
-                ipAddress: context.ipAddress,
-              },
-            });
-            summary.balancePayments++;
-            paymentTotal = paymentTotal.plus(baseAmount);
-          } else {
-            const isFirst = row.balance.kind === 'NEW';
-            const dueDate = row.dueDate ?? defaultDueDate!;
-            const debt = await DebtsRepository.createDebt(
+              });
+              summary.balancePayments++;
+              paymentTotal = paymentTotal.plus(baseAmount);
+            } else {
+              const isFirst = row.balance.kind === 'NEW';
+              const dueDate = row.dueDate ?? defaultDueDate!;
+              const debt = await DebtsRepository.createDebt(
+                {
+                  customerId,
+                  description:
+                    (isFirst ? 'Opening balance' : 'Balance increase') +
+                    ' — import ' +
+                    draft.fileName,
+                  kind: 'STANDARD',
+                  originalAmount: amount,
+                  currency: row.currency,
+                  exchangeRate,
+                  baseOriginalAmount: baseAmount,
+                  dueDate: businessDateToPrisma(dueDate),
+                  status: determineDebtStatus({
+                    isCancelled: false,
+                    dueDate,
+                    businessDate: today,
+                    balance: calculateDebtBalance({ originalAmount: amount }),
+                    overdueEligible: true,
+                  }),
+                  createdById: actor.userId,
+                  sourceCustomerImportId: importId,
+                },
+                tx
+              );
+              await tx.activityLog.create({
+                data: {
+                  branchId: debt.branchId,
+                  userId: actor.userId,
+                  action: 'DEBT_CREATED',
+                  entityType: 'Debt',
+                  entityId: debt.id,
+                  details: {
+                    customerId,
+                    customerImportId: id,
+                    rowNumber: row.rowNumber,
+                    originalAmount: amount.toString(),
+                    currency: row.currency,
+                    exchangeRate: exchangeRate.toString(),
+                    baseOriginalAmount: baseAmount.toFixed(2),
+                  },
+                  ipAddress: context.ipAddress,
+                },
+              });
+              if (isFirst) {
+                summary.openingDebts++;
+                openingTotal = openingTotal.plus(baseAmount);
+              } else {
+                summary.balanceIncreases++;
+                increaseTotal = increaseTotal.plus(baseAmount);
+              }
+            }
+          }
+          if (addsDeposit(row)) {
+            const amount = parseMoney(row.balance.deposit.difference, row.currency);
+            const baseAmount = toBase(amount);
+            const note = (
+              'Deposit carried over from the previous system (import ' +
+              draft.fileName +
+              ')'
+            ).slice(0, 1000);
+            const deposit = await DebtsRepository.createDebt(
               {
                 customerId,
-                description:
-                  (isFirst ? 'Opening balance' : 'Balance increase') +
-                  ' — import ' +
-                  draft.fileName,
-                kind: 'STANDARD',
+                description: 'Opening deposit — import ' + draft.fileName,
+                kind: 'PREPAID_PURCHASE',
                 originalAmount: amount,
                 currency: row.currency,
                 exchangeRate,
                 baseOriginalAmount: baseAmount,
-                dueDate: businessDateToPrisma(dueDate),
-                status: determineDebtStatus({
-                  isCancelled: false,
-                  dueDate,
-                  businessDate: today,
-                  balance: calculateDebtBalance({ originalAmount: amount }),
-                  overdueEligible: true,
-                }),
+                dueDate: businessDateToPrisma(today),
+                status: 'UNPAID',
+                notes: note,
                 createdById: actor.userId,
                 sourceCustomerImportId: importId,
               },
               tx
             );
+            await PrepaidRepository.createForDebt(tx, { debtId: deposit.id });
+            // Real money the customer handed over: a cash payment, held as a deposit.
+            const payment = await DebtsRepository.createPayment(tx, {
+              customerId,
+              totalAmount: amount,
+              currency: row.currency,
+              exchangeRate,
+              baseAmount,
+              paymentDate: businessDateToPrisma(today),
+              paymentMethod: 'CASH',
+              reference,
+              notes: note,
+              idempotencyKey: IMPORT_PAYMENT_KEY_PREFIX + id + ':' + row.rowNumber + ':deposit',
+              createdById: actor.userId,
+            });
+            await DebtsRepository.createDebtPaymentAllocation(tx, {
+              paymentId: payment.id,
+              debtId: deposit.id,
+              amount,
+            });
+            await DebtsRepository.updateDebtStatus(
+              tx,
+              deposit.id,
+              determineDebtStatus({
+                isCancelled: false,
+                dueDate: today,
+                businessDate: today,
+                balance: calculateDebtBalance({
+                  originalAmount: amount,
+                  allocations: [{ amount, isVoided: false }],
+                }),
+                overdueEligible: false,
+              })
+            );
             await tx.activityLog.create({
               data: {
-                branchId: debt.branchId,
+                branchId: deposit.branchId,
                 userId: actor.userId,
-                action: 'DEBT_CREATED',
+                action: 'CUSTOMER_IMPORT_DEPOSIT',
                 entityType: 'Debt',
-                entityId: debt.id,
+                entityId: deposit.id,
                 details: {
                   customerId,
                   customerImportId: id,
                   rowNumber: row.rowNumber,
-                  originalAmount: amount.toString(),
+                  previousDeposit: row.balance.deposit.current,
+                  fileDeposit: row.balance.deposit.file,
+                  amount: amount.toString(),
                   currency: row.currency,
-                  exchangeRate: exchangeRate.toString(),
-                  baseOriginalAmount: baseAmount.toFixed(2),
+                  paymentId: payment.id,
                 },
                 ipAddress: context.ipAddress,
               },
             });
-            if (isFirst) {
-              summary.openingDebts++;
-              openingTotal = openingTotal.plus(baseAmount);
-            } else {
-              summary.balanceIncreases++;
-              increaseTotal = increaseTotal.plus(baseAmount);
-            }
+            summary.deposits++;
+            depositTotal = depositTotal.plus(baseAmount);
+            reasons.push('Deposit ' + row.balance.deposit.difference + ' ' + row.currency);
           }
-          reportRow(
-            row,
-            'Balance ' +
-              row.balance.current +
-              ' to ' +
-              row.balance.file +
-              ' ' +
-              row.currency +
-              ' in ' +
-              row.branchName
-          );
+          reportRow(row, reasons.join('; ') + ' in ' + row.branchName);
         }
         summary.openingDebtTotalUsd = openingTotal.toFixed(2);
         summary.balanceIncreaseTotalUsd = increaseTotal.toFixed(2);
         summary.balancePaymentTotalUsd = paymentTotal.toFixed(2);
+        summary.depositTotalUsd = depositTotal.toFixed(2);
         const result = {
           ...summary,
           ...(childImportIds.length ? { childImportIds } : {}),
