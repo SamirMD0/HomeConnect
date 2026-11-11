@@ -606,6 +606,7 @@ model CustomerImportAccount {
 
   @@id([branchId, accountCode])
   @@index([customerId, branchId])
+  @@index([sourceCustomerImportId])
   @@map("customer_import_accounts")
 }
 
@@ -660,6 +661,8 @@ model ActivityLog {
 
   @@index([entityType, entityId])
   @@index([createdAt])
+  @@index([branchId, createdAt])
+  @@index([userId])
   @@map("activity_logs")
 }
 
@@ -707,6 +710,7 @@ model Debt {
   @@index([kind])
   @@index([customerId, status])
   @@index([branchId])
+  @@index([branchId, status])
   @@map("debts")
 }
 
@@ -782,6 +786,7 @@ model InstallmentPlan {
   @@index([status])
   @@index([startDate])
   @@index([branchId])
+  @@index([branchId, status])
   @@map("installment_plans")
 }
 
@@ -846,6 +851,7 @@ model Payment {
   @@index([createdById])
   @@index([salesOrderId])
   @@index([branchId])
+  @@index([branchId, paymentDate])
   @@map("payments")
 }
 
@@ -1512,6 +1518,7 @@ model SalesOrder {
   @@index([fulfillmentStatus, orderDate])
   @@index([customerId, fulfillmentStatus])
   @@index([branchId])
+  @@index([branchId, orderDate])
   @@map("sales_orders")
 }
 
@@ -1693,6 +1700,7 @@ model SalesReturnItem {
   @@unique([salesReturnId, salesOrderItemId])
   @@index([salesOrderItemId])
   @@index([productId, stockDisposition])
+  @@index([salesOrderStockFulfillmentId])
   @@map("sales_return_items")
 }
 
@@ -1795,6 +1803,9 @@ model CustomerCreditApplication {
 
   @@index([customerCreditId, appliedAt])
   @@index([customerId, appliedAt])
+  @@index([salesOrderId])
+  @@index([debtId])
+  @@index([installmentId])
   @@map("customer_credit_applications")
 }
 
@@ -2095,6 +2106,7 @@ model SupplierAudit {
   @@index([recordType, recordId, changedAt])
   @@index([supplierId, changedAt])
   @@index([changedAt])
+  @@index([supplierTransactionId])
   @@map("supplier_audits")
 }
 

@@ -22,6 +22,7 @@ import {
 } from '../financial';
 import {
   DashboardDebtRecord,
+  DashboardFinancialRecordSet,
   DashboardFinancialRepository,
   DashboardPaymentRecord,
   DashboardPlanRecord,
@@ -57,11 +58,29 @@ interface PlanComputation {
 
 export class DashboardFinancialService {
   static async getFinancialSummary(scope: BranchScope) {
-    return withBranchBreakdown(scope, scope => this.calculateGetFinancialSummary(scope));
+    return withBranchBreakdown(scope, await this.summaryCalculator(scope));
+  }
+
+  /** Returns a calculator for withBranchBreakdown. With several branches it
+   * loads the records once and serves the total and every branch from them,
+   * instead of reloading everything for each branch. */
+  static async summaryCalculator(
+    scope: BranchScope
+  ): Promise<(scope: BranchScope) => Promise<DashboardFinancialSummaryView>> {
+    if (scope.branchIds.length <= 1) return (single) => this.calculateGetFinancialSummary(single);
+    const { total, byBranch } = await DashboardFinancialRepository.loadFinancialRecordsByBranch(scope);
+    return async (requested) => {
+      if (requested === scope) return this.summarize(total);
+      const records = requested.branchIds.length === 1 ? byBranch.get(requested.branchIds[0]) : undefined;
+      return records ? this.summarize(records) : this.calculateGetFinancialSummary(requested);
+    };
   }
 
   static async calculateGetFinancialSummary(scope: BranchScope): Promise<DashboardFinancialSummaryView> {
-    const records = await DashboardFinancialRepository.loadFinancialRecords(scope);
+    return this.summarize(await DashboardFinancialRepository.loadFinancialRecords(scope));
+  }
+
+  private static summarize(records: DashboardFinancialRecordSet): DashboardFinancialSummaryView {
     const businessDate = todayInBusinessTimezone();
     const monthStart = `${businessDate.slice(0, 7)}-01`;
     const debtComputations = records.debts.map((debt) => this.computeDebt(debt, businessDate));

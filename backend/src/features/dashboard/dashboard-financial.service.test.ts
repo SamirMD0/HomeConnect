@@ -15,11 +15,15 @@ import {
 } from './dashboard-financial.repository';
 import { DashboardFinancialService } from './dashboard-financial.service';
 
-const { repositoryMock } = vi.hoisted(() => ({
+const { repositoryMock, branchFindMany } = vi.hoisted(() => ({
   repositoryMock: {
     loadFinancialRecords: vi.fn(),
+    loadFinancialRecordsByBranch: vi.fn(),
   },
+  branchFindMany: vi.fn(),
 }));
+
+vi.mock('../../lib/prisma', () => ({ prisma: { branch: { findMany: branchFindMany } } }));
 
 vi.mock('./dashboard-financial.repository', () => ({
   DashboardFinancialRepository: repositoryMock,
@@ -252,6 +256,38 @@ describe('DashboardFinancialService', () => {
     expect(summary.counts.customersWithOutstanding).toBe(0);
     expect(summary.money.totalOutstanding).toBe('0.00');
     expect(summary.money.obligationsCreatedThisMonth).toBe('0.00');
+  });
+});
+
+describe('DashboardFinancialService branch breakdown', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('loads records once and serves the total and each branch from them', async () => {
+    const branchA = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    const branchB = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+    const scope = { mode: 'all' as const, branchIds: [branchA, branchB] };
+    const debtA = makeDebt({ originalAmount: new Decimal('300.00') });
+    const debtB = makeDebt({ id: '44444444-4444-4444-8444-444444444449', originalAmount: new Decimal('200.00') });
+    const recordSet = (totalCustomers: number, debts: DashboardDebtRecord[]) =>
+      ({ totalCustomers, debts, plans: [], payments: [], returns: [] });
+    repositoryMock.loadFinancialRecordsByBranch.mockResolvedValue({
+      total: recordSet(3, [debtA, debtB]),
+      byBranch: new Map([[branchA, recordSet(2, [debtA])], [branchB, recordSet(1, [debtB])]]),
+    });
+    branchFindMany.mockResolvedValue([
+      { id: branchA, code: 'A', name: 'Branch A' },
+      { id: branchB, code: 'B', name: 'Branch B' },
+    ]);
+
+    const summary = await DashboardFinancialService.getFinancialSummary(scope);
+
+    expect(repositoryMock.loadFinancialRecordsByBranch).toHaveBeenCalledExactlyOnceWith(scope);
+    expect(repositoryMock.loadFinancialRecords).not.toHaveBeenCalled();
+    expect(summary.money.totalOutstanding).toBe('500.00');
+    expect(summary.branchBreakdown?.map((row) => [row.branchCode, row.counts.totalCustomers, row.money.totalOutstanding]))
+      .toEqual([['A', 2, '300.00'], ['B', 1, '200.00']]);
   });
 });
 

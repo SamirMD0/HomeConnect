@@ -55,7 +55,7 @@ export type DashboardPlanRecord = Prisma.InstallmentPlanGetPayload<{ include: ty
 export type DashboardPaymentRecord = Prisma.PaymentGetPayload<{ include: typeof dashboardPaymentInclude }>;
 
 export interface DashboardFinancialRecordSet {
-  returns?: Array<{ returnDate: Date; baseReceivableReliefAmount: Prisma.Decimal; baseRefundableAmount: Prisma.Decimal; refundMethod: string }>;
+  returns?: Array<{ branchId?: string; returnDate: Date; baseReceivableReliefAmount: Prisma.Decimal; baseRefundableAmount: Prisma.Decimal; refundMethod: string }>;
   totalCustomers: number;
   debts: DashboardDebtRecord[];
   plans: DashboardPlanRecord[];
@@ -132,7 +132,61 @@ export class DashboardFinancialRepository {
       totalCustomers,
       debts,
       plans,
-      payments: [...new Map([...monthlyPayments, ...recentPayments].map((payment) => [payment.id, payment])).values()],
+      payments: mergePayments(monthlyPayments, recentPayments),
     };
   }
+
+  /** Loads the full-scope record set once and splits it per branch, so a
+   * dashboard branch breakdown costs one load instead of one per branch.
+   * Every per-branch set equals what loadFinancialRecords would return for
+   * that single branch. */
+  static async loadFinancialRecordsByBranch(scope: BranchScope): Promise<{
+    total: DashboardFinancialRecordSet;
+    byBranch: Map<string, DashboardFinancialRecordSet>;
+  }> {
+    const monthStart = businessDateToPrisma(`${todayInBusinessTimezone().slice(0, 7)}-01`);
+    const [total, customerCounts] = await Promise.all([
+      this.loadFinancialRecords(scope),
+      prisma.customer.groupBy({
+        by: ['branchId'],
+        where: { ...scopeWhere(scope), deletedAt: null, isActive: true },
+        _count: { _all: true },
+      }),
+    ]);
+    const countByBranch = new Map(customerCounts.map((row) => [row.branchId, row._count._all]));
+    // The full-scope set holds this month's payments plus the five most recent
+    // overall. A branch with fewer than five payments this month needs its own
+    // five most recent, which the overall five may not contain.
+    const monthlyByBranch = new Map(scope.branchIds.map((branchId) => [
+      branchId,
+      total.payments.filter((payment) => payment.branchId === branchId && payment.paymentDate >= monthStart),
+    ]));
+    const recentByBranch = new Map(await Promise.all(
+      scope.branchIds
+        .filter((branchId) => (monthlyByBranch.get(branchId)?.length ?? 0) < 5)
+        .map(async (branchId) => [branchId, await prisma.payment.findMany({
+          where: {
+            branchId,
+            OR: [{ customerId: null }, { customer: { deletedAt: null, isActive: true } }],
+            voidedAt: null,
+          },
+          include: { ...dashboardPaymentInclude, branch: { select: { name: true } } },
+          orderBy: [{ paymentDate: 'desc' }, { createdAt: 'desc' }, { id: 'asc' }],
+          take: 5,
+        })] as const)
+    ));
+
+    const byBranch = new Map(scope.branchIds.map((branchId) => [branchId, {
+      returns: total.returns?.filter((record) => record.branchId === branchId),
+      totalCustomers: countByBranch.get(branchId) ?? 0,
+      debts: total.debts.filter((debt) => debt.branchId === branchId),
+      plans: total.plans.filter((plan) => plan.branchId === branchId),
+      payments: mergePayments(monthlyByBranch.get(branchId) ?? [], recentByBranch.get(branchId) ?? []),
+    }]));
+    return { total, byBranch };
+  }
+}
+
+function mergePayments<T extends { id: string }>(monthly: T[], recent: T[]): T[] {
+  return [...new Map([...monthly, ...recent].map((payment) => [payment.id, payment])).values()];
 }
