@@ -1,15 +1,8 @@
-import { Stack, useRouter } from 'expo-router';
-import { EmptyState } from '../../../src/components/EmptyState';
-export default function Upcoming() {
+import { View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { CustomersScreen } from '../../../src/lookup/screens/CustomersScreen';
+import { ListRow } from '../../../src/components/ListRow';
+export default function Sell() {
   const router = useRouter();
-  return (
-    <>
-      <Stack.Screen options={{ title: 'Sell' }} />
-      <EmptyState
-        title="Sell"
-        message="Selling from the phone is coming in a later update. Use the shop PC to create sales for now."
-        action={{ label: 'Scan a product', onPress: () => router.push('/scan') }}
-      />
-    </>
-  );
+  return <View style={{ flex: 1 }}><ListRow title="Sales orders" subtitle="Search orders, payments and delivery status" onPress={() => router.push('/(tabs)/sell/orders')} /><CustomersScreen /></View>;
 }

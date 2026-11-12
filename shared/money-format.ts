@@ -14,3 +14,14 @@ export function formatMoney(value: string, currency: 'USD' | 'LBP' = 'USD'): str
     ? `${sign}${withSeparators} LBP`
     : `${sign}$${withSeparators}.${decimalPart.padEnd(2, '0').slice(0, 2)}`;
 }
+
+/** Shared with the desktop customer financial page, without timezone shifts. */
+export function formatBusinessDate(value: string | null): string {
+  if (!value) return '—';
+  const [year, month, day] = value.split('-');
+  if (!year || !month || !day) return value;
+  return `${day}/${month}/${year}`;
+}
+export function formatDateTime(value: string): string {
+  return new Date(value).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
+}

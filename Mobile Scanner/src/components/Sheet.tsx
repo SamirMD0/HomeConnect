@@ -16,7 +16,8 @@ export function Sheet({
   onClose,
   title,
   children,
-}: PropsWithChildren<{ visible: boolean; title: string; onClose: () => void }>) {
+  scrollable = true,
+}: PropsWithChildren<{ visible: boolean; title: string; onClose: () => void; scrollable?: boolean }>) {
   const { height } = useWindowDimensions();
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
@@ -37,7 +38,7 @@ export function Sheet({
               {title}
             </Text>
           </View>
-          <ScrollView keyboardShouldPersistTaps="handled">{children}</ScrollView>
+          {scrollable ? <ScrollView keyboardShouldPersistTaps="handled">{children}</ScrollView> : <View style={{ flexShrink: 1 }}>{children}</View>}
           <View style={styles.footer}>
             <AppButton label="Close" variant="secondary" onPress={onClose} />
           </View>

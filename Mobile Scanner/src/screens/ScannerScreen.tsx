@@ -18,6 +18,7 @@ interface ScannerScreenProps {
   userDisplayName: string;
   startupMessage: string | null;
   onDone?: () => void;
+  onProductDetail?: (id: string) => void;
   onSessionInvalid: () => Promise<void>;
 }
 
@@ -32,6 +33,7 @@ export function ScannerScreen({
   startupMessage,
   onSessionInvalid,
   onDone,
+  onProductDetail,
 }: ScannerScreenProps) {
   const client = useMemo(() => clientFrom(connection, token), [connection, token]);
   const [permission, requestPermission] = useCameraPermissions();
@@ -216,6 +218,7 @@ export function ScannerScreen({
       {result && (
         <View style={styles.resultSection}>
           <ProductResult result={result} />
+          {result.product && onProductDetail && <AppButton label="View product details" onPress={() => onProductDetail(result.product!.id)} />}
           <AppButton
             label="Scan another"
             onPress={() => { setResult(null); setBanner(null); }}

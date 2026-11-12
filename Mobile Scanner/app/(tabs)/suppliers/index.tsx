@@ -1,1 +1,1 @@
-export { SuppliersHomeScreen as default } from '../../../src/screens/SuppliersHomeScreen';
+export { SuppliersScreen as default } from '../../../src/lookup/screens/SuppliersScreen';

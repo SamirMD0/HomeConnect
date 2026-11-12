@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSession } from '../session/SessionProvider';
 import { backendBaseUrl } from '../api/hc-client';
 import { receiptQueue } from '../services/receipt-queue';
@@ -8,9 +9,11 @@ import { queryKeys } from '../query/keys';
 import { ActionGrid, type QuickAction } from '../components/ActionGrid';
 import { ListRow } from '../components/ListRow';
 import { theme } from '../theme';
+import { DashboardPanel } from '../lookup/DashboardPanel';
 export function HomeScreen() {
   const session = useSession(),
     router = useRouter();
+  const [refreshRevision, setRefreshRevision] = useState(0);
   const pending = useQuery({
     queryKey: queryKeys.pendingBills({
       server: session.connection ? backendBaseUrl(session.connection) : '',
@@ -44,12 +47,13 @@ export function HomeScreen() {
     },
   ];
   return (
-    <ScrollView contentContainerStyle={styles.content}>
+    <ScrollView contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={pending.isRefetching} onRefresh={() => { setRefreshRevision((value) => value + 1); void pending.refetch(); }} />}>
       <View style={styles.greeting}>
         <Text style={styles.eyebrow}>YOUR SHOP, CONNECTED</Text>
         <Text style={styles.title}>Hello, {session.user?.fullName || session.user?.username}</Text>
         <Text style={styles.subtitle}>{session.branch.selected?.name}</Text>
       </View>
+      <DashboardPanel refreshRevision={refreshRevision} />
       <Text style={styles.section}>Quick actions</Text>
       <ActionGrid actions={actions} />
       <View style={styles.pending}>

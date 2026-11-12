@@ -1,0 +1,813 @@
+{
+  "checks": [
+    "Dashboard server KPIs and privacy masking of money, counts and accessible text",
+    "Three customers: actual desktop API/summary components vs mobile details and server statement closing balances",
+    "Customer server pagination and empty search",
+    "Network error retains app navigation and retries the list",
+    "Product search filters, server prices/VAT, barcode, shared stock and paged movements",
+    "Global scan result opens product detail",
+    "Three suppliers: actual desktop API/summary components vs mobile balances, negative credit and server statements; purchases and authenticated bill image",
+    "Sales order filters and server totals, paid/remaining and VAT detail",
+    "All 30 desktop reports open without charts or write controls",
+    "Branch switch refetches dashboard/customers/suppliers and shows no prior branch records",
+    "375px and landscape/reduced-motion layouts"
+  ],
+  "comparisons": [
+    {
+      "type": "customer",
+      "name": "Fixture Customer A",
+      "branch": "Fixture branch A",
+      "from": "2026-11-01",
+      "to": "2026-11-12",
+      "desktopBalance": "$125.50",
+      "mobileBalance": "$125.50",
+      "statementClosing": "125.50",
+      "matched": true
+    },
+    {
+      "type": "customer",
+      "name": "Fixture Customer B",
+      "branch": "Fixture branch A",
+      "from": "2026-11-01",
+      "to": "2026-11-12",
+      "desktopBalance": "$0.00",
+      "mobileBalance": "$0.00",
+      "statementClosing": "0.00",
+      "matched": true
+    },
+    {
+      "type": "customer",
+      "name": "Fixture Customer C",
+      "branch": "Fixture branch A",
+      "from": "2026-11-01",
+      "to": "2026-11-12",
+      "desktopBalance": "$9,050.25",
+      "mobileBalance": "$9,050.25",
+      "statementClosing": "9050.25",
+      "matched": true
+    },
+    {
+      "type": "supplier",
+      "name": "Fixture Supplier A",
+      "branch": "Fixture branch A",
+      "from": "2026-11-01",
+      "to": "2026-11-12",
+      "desktopBalance": "$940.25",
+      "mobileBalance": "$940.25",
+      "statementClosing": "940.25",
+      "creditInOurFavour": false,
+      "matched": true
+    },
+    {
+      "type": "supplier",
+      "name": "Fixture Supplier B",
+      "branch": "Fixture branch A",
+      "from": "2026-11-01",
+      "to": "2026-11-12",
+      "desktopBalance": "$0.00",
+      "mobileBalance": "$0.00",
+      "statementClosing": "0.00",
+      "creditInOurFavour": false,
+      "matched": true
+    },
+    {
+      "type": "supplier",
+      "name": "Fixture Supplier C",
+      "branch": "Fixture branch A",
+      "from": "2026-11-01",
+      "to": "2026-11-12",
+      "desktopBalance": "$45.50",
+      "mobileBalance": "$45.50",
+      "statementClosing": "-45.50",
+      "creditInOurFavour": true,
+      "matched": true
+    }
+  ],
+  "errors": [],
+  "calls": [
+    {
+      "method": "GET",
+      "path": "/api/v1/system/client-compat",
+      "params": {},
+      "status": 200,
+      "branch": null
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/me",
+      "params": {},
+      "status": 200,
+      "branch": null
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/branches/accessible",
+      "params": {},
+      "status": 200,
+      "branch": null
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/dashboard/overview",
+      "params": {
+        "range": "month",
+        "includeArchived": "false"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/customers",
+      "params": {
+        "page": "1",
+        "limit": "25",
+        "include": "financial",
+        "sortBy": "name",
+        "sortOrder": "asc"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/customers/customer-1",
+      "params": {},
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/customers/customer-1/financial-summary",
+      "params": {},
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/customers/customer-1/statement",
+      "params": {
+        "from": "2026-11-01",
+        "to": "2026-11-12"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/customers/customer-2",
+      "params": {},
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/customers/customer-2/financial-summary",
+      "params": {},
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/customers/customer-2/statement",
+      "params": {
+        "from": "2026-11-01",
+        "to": "2026-11-12"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/customers/customer-3",
+      "params": {},
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/customers/customer-3/financial-summary",
+      "params": {},
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/customers/customer-3/statement",
+      "params": {
+        "from": "2026-11-01",
+        "to": "2026-11-12"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/customers",
+      "params": {
+        "search": "no matching fixture",
+        "page": "1",
+        "limit": "25",
+        "include": "financial",
+        "sortBy": "name",
+        "sortOrder": "asc"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/customers",
+      "params": {
+        "page": "2",
+        "limit": "25",
+        "include": "financial",
+        "sortBy": "name",
+        "sortOrder": "asc"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/customers",
+      "params": {
+        "search": "error fixture",
+        "page": "1",
+        "limit": "25",
+        "include": "financial",
+        "sortBy": "name",
+        "sortOrder": "asc"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/products",
+      "params": {
+        "isActive": "true",
+        "page": "1",
+        "pageSize": "25",
+        "sortBy": "name",
+        "sortOrder": "asc"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/products/brands",
+      "params": {},
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/categories",
+      "params": {},
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/products",
+      "params": {
+        "brand": "Cedar",
+        "isActive": "true",
+        "page": "1",
+        "pageSize": "25",
+        "sortBy": "name",
+        "sortOrder": "asc"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/products",
+      "params": {
+        "brand": "Cedar",
+        "categoryId": "category-1",
+        "isActive": "true",
+        "page": "1",
+        "pageSize": "25",
+        "sortBy": "name",
+        "sortOrder": "asc"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/products/product-1",
+      "params": {},
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/products/product-1/inventory",
+      "params": {},
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/inventory/movements",
+      "params": {
+        "productId": "product-1",
+        "page": "1",
+        "pageSize": "25"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/inventory/movements",
+      "params": {
+        "productId": "product-1",
+        "page": "2",
+        "pageSize": "25"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/products/scan",
+      "params": {
+        "code": "QA-000001"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/suppliers",
+      "params": {
+        "page": "1",
+        "pageSize": "25",
+        "sortBy": "name",
+        "sortOrder": "asc"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/suppliers/supplier-1",
+      "params": {},
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/suppliers/supplier-1/statement",
+      "params": {
+        "from": "2026-11-01",
+        "to": "2026-11-12"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/suppliers/supplier-1/purchases",
+      "params": {
+        "page": "1",
+        "pageSize": "25"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/suppliers/supplier-1/bills",
+      "params": {
+        "linked": "all"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/supplier-bills/bill-1/image",
+      "params": {},
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/suppliers/supplier-2",
+      "params": {},
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/suppliers/supplier-2/statement",
+      "params": {
+        "from": "2026-11-01",
+        "to": "2026-11-12"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/suppliers/supplier-3",
+      "params": {},
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/suppliers/supplier-3/statement",
+      "params": {
+        "from": "2026-11-01",
+        "to": "2026-11-12"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/sales-orders",
+      "params": {
+        "dateFrom": "2026-11-01",
+        "dateTo": "2026-11-12",
+        "sort": "createdDesc",
+        "page": "1",
+        "pageSize": "25"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/sales-orders",
+      "params": {
+        "fulfillmentStatus": "CONFIRMED",
+        "dateFrom": "2026-11-01",
+        "dateTo": "2026-11-12",
+        "sort": "createdDesc",
+        "page": "1",
+        "pageSize": "25"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/sales-orders/order-1",
+      "params": {},
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/system/client-compat",
+      "params": {},
+      "status": 200,
+      "branch": null
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/me",
+      "params": {},
+      "status": 200,
+      "branch": null
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/branches/accessible",
+      "params": {},
+      "status": 200,
+      "branch": null
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/sales/summary",
+      "params": {
+        "period": "thisMonth"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/sales/by-product",
+      "params": {
+        "period": "thisMonth"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/sales/by-customer",
+      "params": {
+        "period": "thisMonth"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/finance/cash-flow",
+      "params": {
+        "period": "thisMonth"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/sales/profit",
+      "params": {
+        "period": "thisMonth"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/suppliers/paid",
+      "params": {
+        "period": "thisMonth"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/suppliers/not-paid",
+      "params": {
+        "period": "thisMonth"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/inventory/valuation",
+      "params": {
+        "period": "thisMonth"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/inventory/low-stock",
+      "params": {
+        "period": "thisMonth"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/monthly-review",
+      "params": {
+        "period": "thisMonth"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/analysis",
+      "params": {
+        "period": "thisMonth"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/customers/receivables-aging",
+      "params": {
+        "period": "thisMonth"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/customers/not-paid",
+      "params": {
+        "period": "thisMonth"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/customers/paid",
+      "params": {
+        "period": "thisMonth"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/products/bought",
+      "params": {
+        "period": "thisMonth"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/products/cost-changes",
+      "params": {
+        "period": "thisMonth"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/customers/new",
+      "params": {
+        "period": "thisMonth"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/customers/debts",
+      "params": {
+        "period": "thisMonth"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/customers/financial-integrity",
+      "params": {
+        "period": "thisMonth"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/customers/payments",
+      "params": {
+        "period": "thisMonth"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/monthly-debts",
+      "params": {
+        "month": "2026-11",
+        "page": "1",
+        "limit": "25",
+        "sortBy": "OUTSTANDING",
+        "sortOrder": "DESC",
+        "includeZero": "false",
+        "includeCancelled": "false",
+        "overdueOnly": "false"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/monthly-financial-activity",
+      "params": {
+        "month": "2026-11",
+        "page": "1",
+        "limit": "25"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/suppliers/debts",
+      "params": {
+        "period": "thisMonth"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/suppliers/payables-aging",
+      "params": {
+        "period": "thisMonth"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/suppliers/financial-integrity",
+      "params": {
+        "period": "thisMonth"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/suppliers/receiving",
+      "params": {
+        "period": "thisMonth"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/sales/orders",
+      "params": {
+        "period": "thisMonth"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/sales/unpaid",
+      "params": {
+        "period": "thisMonth"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/inventory/movements",
+      "params": {
+        "period": "thisMonth"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/inventory/reconciliation",
+      "params": {
+        "period": "thisMonth"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/branches/accessible",
+      "params": {},
+      "status": 200,
+      "branch": null
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/dashboard/overview",
+      "params": {
+        "range": "month",
+        "includeArchived": "false"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000002"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/customers",
+      "params": {
+        "page": "1",
+        "limit": "25",
+        "include": "financial",
+        "sortBy": "name",
+        "sortOrder": "asc"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000002"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/suppliers",
+      "params": {
+        "page": "1",
+        "pageSize": "25",
+        "sortBy": "name",
+        "sortOrder": "asc"
+      },
+      "status": 200,
+      "branch": "00000000-0000-4000-8000-000000000002"
+    }
+  ],
+  "limitations": "Synthetic desktop API fixture; actual desktop summary/API modules and production LAN gateway; browser copy with native storage/filesystem/camera fixtures. No live shop DB, native device or APK."
+}

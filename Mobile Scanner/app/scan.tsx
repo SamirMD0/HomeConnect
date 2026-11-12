@@ -13,6 +13,7 @@ export default function Scan() {
       startupMessage={null}
       onSessionInvalid={() => session.invalidateToken(session.token!)}
       onDone={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/home'))}
+      onProductDetail={(id) => router.replace({ pathname: '/(tabs)/stock/product/[id]', params: { id } })}
     />
   );
 }

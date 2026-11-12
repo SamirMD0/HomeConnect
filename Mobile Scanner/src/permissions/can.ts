@@ -6,11 +6,13 @@ export type Permission =
   | 'supplierBills.capture'
   | 'supplierInvoices.write'
   | 'supplierPayments.write'
-  | 'settings.admin';
+  | 'settings.admin'
+  | 'reports.read';
 const adminOnly = new Set<Permission>([
   'supplierInvoices.write',
   'supplierPayments.write',
   'settings.admin',
+  'reports.read',
 ]);
 /** Mirrors desktop NAVIGATION.isItemVisible and requireSupplierAdmin. Unknown
  * roles (including future manager/cashier names) receive no admin write rights. */
