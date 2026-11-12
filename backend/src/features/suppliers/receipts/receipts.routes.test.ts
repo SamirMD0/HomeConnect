@@ -19,6 +19,7 @@ const { receiving, receipt, blob, supplier } = vi.hoisted(() => ({
     findUnique: vi.fn(),
     update: vi.fn(),
     delete: vi.fn(),
+    count: vi.fn(),
   },
   blob: { findUnique: vi.fn() },
   supplier: { findUnique: vi.fn() },
@@ -349,6 +350,33 @@ describe('supplier bills inbox', () => {
       .set('Authorization', `Bearer ${token}`);
     expect(response.status).toBe(200);
     expect(response.body.toString()).toBe('db-photo');
+  });
+  it('lists unlinked bills across suppliers within the branch scope, through the LAN gateway', async () => {
+    receipt.findMany.mockResolvedValue([
+      { id: billId, supplierId, branchId: routeBranchId, supplierReceivingId: null, note: null, supplier: { id: supplierId, name: 'Fixture supplier' } },
+    ]);
+    const response = await request(lanApp)
+      .get('/api/v1/supplier-bills?linked=false&limit=20')
+      .set('Authorization', `Bearer ${token}`);
+    expect(response.status).toBe(200);
+    expect(response.body.data).toEqual([
+      expect.objectContaining({ id: billId, supplierName: 'Fixture supplier', supplierReceivingId: null }),
+    ]);
+    expect(response.body.data[0].supplier).toBeUndefined();
+    const query = receipt.findMany.mock.calls[0]![0];
+    expect(query.where).toEqual({ supplierReceivingId: null, branchId: { in: [routeBranchId] } });
+    expect(query.take).toBe(20);
+  });
+  it('counts unlinked bills for the desktop badge and validates the inbox filter', async () => {
+    receipt.count.mockResolvedValue(3);
+    const count = await request(app).get('/api/v1/supplier-bills/unlinked-count').set('Authorization', `Bearer ${token}`);
+    expect(count.status).toBe(200);
+    expect(count.body.data).toEqual({ count: 3 });
+    expect(receipt.count).toHaveBeenCalledWith({ where: { supplierReceivingId: null, branchId: { in: [routeBranchId] } } });
+    expect((await request(app).get('/api/v1/supplier-bills?linked=true').set('Authorization', `Bearer ${token}`)).status).toBe(400);
+    expect((await request(app).get('/api/v1/supplier-bills?linked=false&limit=500').set('Authorization', `Bearer ${token}`)).status).toBe(400);
+    expect((await request(app).get('/api/v1/supplier-bills?linked=false')).status).toBe(401);
+    expect((await request(app).get('/api/v1/supplier-bills/unlinked-count').set('Authorization', `Bearer ${token}`).set('X-Branch-Scope', userId)).status).toBe(403);
   });
   it('rejects branch scope on each route, including image and delete', async () => {
     await seedBill(userId);

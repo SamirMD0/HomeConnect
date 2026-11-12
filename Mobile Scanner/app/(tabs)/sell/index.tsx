@@ -20,6 +20,11 @@ export default function Sell() {
         subtitle="Search orders, payments and delivery status"
         onPress={() => router.push('/(tabs)/sell/orders')}
       />
+      <ListRow
+        title="Prepaid items"
+        subtitle="Items customers paid for in advance"
+        onPress={() => router.push('/(tabs)/sell/prepaid')}
+      />
       <CustomersScreen />
     </View>
   );

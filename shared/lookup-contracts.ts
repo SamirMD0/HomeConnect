@@ -175,6 +175,8 @@ export interface PurchaseRead {
   description: string;
   status: string;
   currency?: Currency;
+  /** Set when the purchase received stock; only these purchases can hold a bill. */
+  supplierReceivingId?: string | null;
 }
 export interface BillRead {
   id: string;

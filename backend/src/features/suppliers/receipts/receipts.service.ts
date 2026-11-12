@@ -133,6 +133,24 @@ export async function listBills(
     orderBy: { capturedAt: 'desc' },
   });
 }
+/**
+ * Bills inbox: unlinked bills across every supplier the caller can see, newest
+ * first, with the supplier's name so a phone or the PC can triage them.
+ */
+export async function listUnlinkedBills(scope: BranchScope, limit = 100) {
+  const rows = await prisma.supplierReceivingReceipt.findMany({
+    where: { supplierReceivingId: null, branchId: { in: scope.branchIds } },
+    orderBy: { capturedAt: 'desc' },
+    take: Math.min(Math.max(limit, 1), 200),
+    include: { supplier: { select: { id: true, name: true } } },
+  });
+  return rows.map(({ supplier, ...row }) => ({ ...row, supplierName: supplier.name }));
+}
+export function countUnlinkedBills(scope: BranchScope) {
+  return prisma.supplierReceivingReceipt.count({
+    where: { supplierReceivingId: null, branchId: { in: scope.branchIds } },
+  });
+}
 async function scopedBill(id: string, scope: BranchScope) {
   const row = await prisma.supplierReceivingReceipt.findUnique({ where: { id } });
   if (!row) throw new NotFoundError('Bill not found');

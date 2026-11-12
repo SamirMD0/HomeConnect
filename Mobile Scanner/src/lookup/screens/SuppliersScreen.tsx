@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
+import { View } from 'react-native';
+import { SupplierShortcuts } from '../../suppliers/SupplierShortcuts';
 import { listSupplierLookup } from '../../api/supplier-lookup-api';
 import { useLookup, useLookupPages } from '../useLookup';
 import { LookupList } from '../LookupList';
@@ -23,12 +25,15 @@ export function SuppliersScreen({ statement = false }: { statement?: boolean }) 
       query={suppliers}
       itemKey={(item) => item.id}
       header={
-        <SearchBar
-          label="Search suppliers"
-          placeholder="Name, company or phone"
-          value={search}
-          onChangeText={setSearch}
-        />
+        <View style={{ gap: 10 }}>
+          {!statement && <SupplierShortcuts />}
+          <SearchBar
+            label="Search suppliers"
+            placeholder="Name, company or phone"
+            value={search}
+            onChangeText={setSearch}
+          />
+        </View>
       }
       renderItem={(item) => (
         <ListRow

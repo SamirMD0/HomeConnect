@@ -5,6 +5,7 @@ import { cn } from '../lib/cn';
 import { useAuth } from '../hooks/useAuth';
 import { NAVIGATION, isItemVisible, isPathActive, type NavigationItem } from './navigation';
 import { UpdateChip } from '../features/updates/UpdateChip';
+import { useUnlinkedBillsCount } from '../features/suppliers/hooks/useUnlinkedBillsCount';
 
 export interface SidebarProps {
   collapsed: boolean;
@@ -23,6 +24,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onLogout 
   const { user } = useAuth();
   const location = useLocation();
   const role = user?.role;
+  const unlinkedBills = useUnlinkedBillsCount();
   const toggleLabel = collapsed ? 'Expand navigation' : 'Collapse navigation';
   const ToggleIcon = collapsed ? PanelLeftOpen : PanelLeftClose;
 
@@ -91,6 +93,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onLogout 
                     item={item}
                     active={isPathActive(item.path, location.pathname)}
                     collapsed={collapsed}
+                    badge={item.key === 'suppliers' ? unlinkedBills : 0}
                   />
                 ))}
               </ul>
@@ -109,11 +112,14 @@ interface SidebarNavItemProps {
   item: NavigationItem;
   active: boolean;
   collapsed: boolean;
+  /** Items waiting for attention, e.g. unlinked supplier bills. */
+  badge?: number;
 }
 
-const SidebarNavItem: React.FC<SidebarNavItemProps> = ({ item, active, collapsed }) => {
+const SidebarNavItem: React.FC<SidebarNavItemProps> = ({ item, active, collapsed, badge = 0 }) => {
   const Icon = item.icon;
-  const accessibleName = `${item.label.en} / ${item.label.ar}`;
+  const badgeText = badge > 0 ? `${badge > 99 ? '99+' : badge}` : '';
+  const accessibleName = `${item.label.en} / ${item.label.ar}${badge > 0 ? `, ${badge} unlinked bill${badge === 1 ? '' : 's'}` : ''}`;
   return (
     <li>
       <Link
@@ -144,6 +150,17 @@ const SidebarNavItem: React.FC<SidebarNavItemProps> = ({ item, active, collapsed
             >
               {item.label.ar}
             </span>
+          </span>
+        )}
+        {badgeText && (
+          <span
+            aria-hidden="true"
+            className={cn(
+              'rounded-full bg-amber-500 px-1.5 text-[11px] font-semibold leading-5 text-white',
+              collapsed && 'absolute right-1 top-0.5'
+            )}
+          >
+            {badgeText}
           </span>
         )}
       </Link>

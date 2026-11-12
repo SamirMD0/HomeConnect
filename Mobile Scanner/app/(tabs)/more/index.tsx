@@ -9,7 +9,6 @@ export default function More() {
   return (
     <ScrollView contentContainerStyle={{ padding: theme.spacing.lg, paddingBottom: 112 }}>
       {session.can('reports.read') && <ListRow title="Reports" subtitle="Read-only reports from the shop PC" onPress={() => router.push('/(tabs)/more/reports')} />}
-      <ListRow title="Supplier tools" subtitle="Existing bill capture, pending bills and entry tools" onPress={() => router.push('/(tabs)/suppliers/tools')} />
       <ListRow
         title={session.user?.fullName ?? 'Account'}
         subtitle={`Role: ${session.user?.role ?? ''}`}

@@ -7,6 +7,8 @@ import {
   billImage,
   deleteBill,
   listBills,
+  listUnlinkedBills,
+  countUnlinkedBills,
   listReceiptsForReceiving,
   receiptReceiving,
   storeReceipt,
@@ -102,6 +104,25 @@ supplierBillsRoutes.get(
   }
 );
 export const supplierBillsGlobalRoutes = Router();
+// Bills inbox across suppliers (both static paths are registered before /:receiptId).
+supplierBillsGlobalRoutes.get(
+  '/',
+  validate(z.object({ linked: z.literal('false'), limit: z.coerce.number().int().min(1).max(200).default(100) }), 'query'),
+  async (req, res, next) => {
+    try {
+      res.json({ success: true, data: await listUnlinkedBills(req.branchScope!, Number(req.query.limit) || 100) });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+supplierBillsGlobalRoutes.get('/unlinked-count', async (req, res, next) => {
+  try {
+    res.json({ success: true, data: { count: await countUnlinkedBills(req.branchScope!) } });
+  } catch (error) {
+    next(error);
+  }
+});
 supplierBillsGlobalRoutes.patch(
   '/:receiptId',
   validate(billParams, 'params'),

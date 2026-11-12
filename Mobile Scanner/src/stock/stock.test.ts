@@ -153,13 +153,14 @@ describe('stock routes through the LAN gateway', () => {
   const client = { baseUrl: 'http://shop-pc:3011', token: 'access' };
   let fetchMock: ReturnType<typeof vi.fn>;
   const reply = (status: number, body: object) => ({ status, json: async () => body });
-  let signOut: ReturnType<typeof vi.fn>, refresh: ReturnType<typeof vi.fn>;
+  let signOut: ReturnType<typeof vi.fn<() => Promise<void>>>,
+    refresh: ReturnType<typeof vi.fn<() => Promise<string | null>>>;
   beforeEach(() => {
     setSelectedBranch('branch-a');
     fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
     signOut = vi.fn(async () => undefined);
-    refresh = vi.fn(async () => 'fresh');
+    refresh = vi.fn(async (): Promise<string | null> => 'fresh');
     configureApiSession({ baseUrl: client.baseUrl, getToken: () => 'access', refresh, signOut });
   });
   afterEach(() => {

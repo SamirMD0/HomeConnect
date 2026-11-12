@@ -23,6 +23,8 @@ export const supplierBillsApi = {
       { headers: { 'X-Branch-Scope': bill.branchId } }
     );
   },
+  unlinkedCount: async (): Promise<number> =>
+    (await api.get('/supplier-bills/unlinked-count')).data.data.count,
   image: (bill: SupplierBill) =>
     fetchAuthenticatedImage(`/supplier-bills/${bill.id}/image`, bill.branchId),
 };

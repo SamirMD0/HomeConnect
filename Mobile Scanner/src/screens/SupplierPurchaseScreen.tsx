@@ -13,6 +13,9 @@ import { AppButton } from '../components/AppButton';
 import { AppInput } from '../components/AppInput';
 import { StatusBanner } from '../components/StatusBanner';
 import { ConnectionSettings } from '../types/scanner.types';
+import type { InvoiceFromBill } from '../navigation/FeatureScreen';
+import { BillPreview } from '../suppliers/BillPreview';
+import { linkAfterPurchase } from '../suppliers/bills-inbox';
 import { PurchaseLineEditor } from './PurchaseLineEditor';
 import { buildDescription, issueForInvoice, lineSubtotal, moneyMinorUnits, moneyText, newKey, newPurchaseLine, PurchaseLineDraft, toApiLine, today } from './supplier-purchase-form';
 
@@ -21,12 +24,14 @@ interface SupplierPurchaseScreenProps {
   token: string;
   onDone: () => void;
   onSessionInvalid: () => Promise<void>;
+  /** "Create purchase from bill": pin the photo, preselect its supplier, link it after saving. */
+  fromBill?: InvoiceFromBill;
 }
 
 type Step = 'SUPPLIER' | 'DETAILS' | 'REVIEW' | 'DONE';
 type Banner = { tone: 'danger' | 'warning'; message: string };
 
-export function SupplierPurchaseScreen({ connection, token, onDone, onSessionInvalid }: SupplierPurchaseScreenProps) {
+export function SupplierPurchaseScreen({ connection, token, onDone, onSessionInvalid, fromBill }: SupplierPurchaseScreenProps) {
   const client = useMemo(() => clientFrom(connection, token), [connection, token]);
   const [step, setStep] = useState<Step>('SUPPLIER');
   const [suppliers, setSuppliers] = useState<SupplierSummary[] | null>(null);
@@ -49,19 +54,26 @@ export function SupplierPurchaseScreen({ connection, token, onDone, onSessionInv
   const [duplicateReceipt, setDuplicateReceipt] = useState(false);
   const [duplicateConfirmed, setDuplicateConfirmed] = useState(false);
   const [created, setCreated] = useState<RecordedSupplierPurchase | null>(null);
+  const [billResult, setBillResult] = useState<{ linked: boolean; message: string } | null>(null);
   const idempotencyKey = useRef(newKey());
 
   useEffect(() => {
     let active = true;
     void listSuppliers(client).then((rows) => {
-      if (active) setSuppliers(rows);
+      if (!active) return;
+      setSuppliers(rows);
+      const billSupplier = fromBill && rows.find((row) => row.id === fromBill.supplierId);
+      if (billSupplier) {
+        setSupplier((current) => current ?? billSupplier);
+        setStep((current) => (current === 'SUPPLIER' ? 'DETAILS' : current));
+      }
     }).catch(async (error: unknown) => {
       if (!active) return;
       if (error instanceof HcApiError && error.kind === 'UNAUTHORIZED') await onSessionInvalid();
       else setBanner({ tone: 'danger', message: 'Could not load suppliers' });
     });
     return () => { active = false; };
-  }, [client, onSessionInvalid, supplierRetry]);
+  }, [client, onSessionInvalid, supplierRetry, fromBill]);
 
   const filteredSuppliers = useMemo(() => {
     const query = supplierFilter.trim().toLocaleLowerCase();
@@ -132,6 +144,12 @@ export function SupplierPurchaseScreen({ connection, token, onDone, onSessionInv
     try {
       const purchase = await recordSupplierPurchase(client, body);
       setCreated(purchase);
+      if (fromBill)
+        setBillResult(
+          purchase.supplierId === fromBill.supplierId
+            ? await linkAfterPurchase(client, { id: fromBill.billId, branchId: fromBill.billBranchId }, purchase)
+            : { linked: false, message: 'This purchase is for a different supplier than the bill, so the bill stays in the bills inbox.' }
+        );
       setStep('DONE');
     } catch (error) {
       if (error instanceof HcApiError && error.kind === 'UNAUTHORIZED') await onSessionInvalid();
@@ -143,12 +161,19 @@ export function SupplierPurchaseScreen({ connection, token, onDone, onSessionInv
     idempotencyKey.current = newKey();
     setReceiptNumber(''); setTransactionDate(today()); setDueDate(''); setCurrency('USD');
     setReceiveStock(true); setDescription(''); setReference(''); setNotes(''); setBilledTotal('');
-    setLines([newPurchaseLine(newKey())]); setBanner(null); setCreated(null);
+    setLines([newPurchaseLine(newKey())]); setBanner(null); setCreated(null); setBillResult(null);
     setDuplicateReceipt(false); setDuplicateConfirmed(false); setStep('DETAILS');
   };
 
   return (
     <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+      {fromBill && step !== 'DONE' ? (
+        <View style={{ gap: 6 }}>
+          <Text style={styles.label}>Bill photo</Text>
+          <BillPreview bill={{ id: fromBill.billId, branchId: fromBill.billBranchId }} compact />
+          <Text style={styles.muted}>Keep Receive stock on to attach this bill to the purchase.</Text>
+        </View>
+      ) : null}
       <Text style={styles.title}>Supplier purchase invoice</Text>
       {banner ? <StatusBanner tone={banner.tone} message={banner.message} /> : null}
 
@@ -236,8 +261,12 @@ export function SupplierPurchaseScreen({ connection, token, onDone, onSessionInv
           <Text style={styles.title}>Invoice recorded ✓</Text>
           <Text style={styles.total}>{created.currency} {created.amount}</Text>
           <Text style={styles.muted}>Use Supplier payment to record money paid</Text>
-          {created.supplierReceivingId ? <Text style={styles.muted}>A receipt photo can be attached from Scanner</Text> : null}
-          <AppButton label="Record another" onPress={recordAnother} />
+          {billResult ? (
+            <StatusBanner tone={billResult.linked ? 'info' : 'warning'} message={billResult.message} />
+          ) : created.supplierReceivingId ? (
+            <Text style={styles.muted}>A bill photo can be attached from Supplier bill or the bills inbox</Text>
+          ) : null}
+          {!fromBill && <AppButton label="Record another" onPress={recordAnother} />}
           <AppButton label="Done" variant="secondary" onPress={onDone} />
         </View>
       )}

@@ -47,6 +47,7 @@ export function CustomerDetailScreen() {
               {data.name}
             </Text>
             {session.can('payments.create') && <AppButton label="Take payment" onPress={() => router.push({ pathname: '/(tabs)/sell/collect/[id]', params: { id } })} />}
+            {session.user?.role === 'ADMIN' && <AppButton label="New prepaid item" variant="secondary" onPress={() => router.push({ pathname: '/(tabs)/sell/customer/[id]/prepaid-new', params: { id } })} />}
             <Card title="Contact">
               <Field
                 label="Branch"
