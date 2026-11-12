@@ -1,3 +1,4 @@
+import { theme } from '../theme';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useState } from 'react';
 import { Modal, StyleSheet, Text, View } from 'react-native';
@@ -116,10 +117,10 @@ export function QrPairScreen({ visible, onCancel, onPaired }: QrPairScreenProps)
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f172a', padding: 20, gap: 14 },
+  container: { flex: 1, backgroundColor: theme.colors.text, padding: 20, gap: 14 },
   title: { color: '#ecfdf5', fontSize: 22, fontWeight: '900' },
-  copy: { color: '#cbd5e1', fontSize: 14, lineHeight: 20 },
-  status: { color: '#a7f3d0', fontSize: 13, textAlign: 'center' },
+  copy: { color: theme.colors.border, fontSize: 14, lineHeight: 20 },
+  status: { color: theme.colors.brandBorder, fontSize: 13, textAlign: 'center' },
   cameraFrame: { flex: 1, borderRadius: 18, overflow: 'hidden', backgroundColor: '#020617' },
   camera: { flex: 1 },
 });

@@ -1,3 +1,4 @@
+import { theme } from '../theme';
 import { useState } from 'react';
 import { Alert, Keyboard, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { login } from '../api/auth-api';
@@ -10,7 +11,7 @@ import { ConnectionSettings } from '../types/scanner.types';
 interface LoginScreenProps {
   connection: ConnectionSettings;
   startupMessage: string | null;
-  onLoggedIn: (accessToken: string, user: { id: string; username: string; fullName: string; role: 'ADMIN' | 'EMPLOYEE' }) => Promise<void>;
+  onLoggedIn: (accessToken: string, user: { id: string; username: string; fullName: string; role: 'ADMIN' | 'EMPLOYEE' }, refreshToken?: string | null) => Promise<void>;
   onChangeConnection: () => Promise<void>;
 }
 
@@ -33,7 +34,7 @@ export function LoginScreen({ connection, startupMessage, onLoggedIn, onChangeCo
     setSubmitting(true);
     try {
       const result = await login(connection, { username: username.trim(), password });
-      await onLoggedIn(result.accessToken, result.user);
+      await onLoggedIn(result.accessToken, result.user, result.refreshToken);
     } catch (error) {
       if (error instanceof HcApiError && error.kind === 'UNAUTHORIZED') {
         setBanner({ tone: 'danger', message: 'Username or password is wrong. Try again.' });
@@ -111,8 +112,8 @@ export function LoginScreen({ connection, startupMessage, onLoggedIn, onChangeCo
 const styles = StyleSheet.create({
   container: { padding: 20, gap: 20 },
   header: { gap: 6 },
-  title: { fontSize: 28, fontWeight: '800', color: '#0f172a' },
-  subtitle: { color: '#475569' },
-  subtitleStrong: { fontWeight: '700', color: '#0f172a' },
+  title: { fontSize: 28, fontWeight: '800', color: theme.colors.text },
+  subtitle: { color: theme.colors.muted },
+  subtitleStrong: { fontWeight: '700', color: theme.colors.text },
   form: { gap: 16 },
 });

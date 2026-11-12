@@ -44,7 +44,7 @@ import { customerServiceJobsRoutes, serviceJobsRoutes } from './features/service
 import { customerSalesOrdersRoutes, salesOrdersRoutes, salesReturnsRoutes } from './features/sales';
 import { supplierLedgerRoutes, supplierPurchasesGlobalRoutes, supplierPurchasesRoutes, supplierReceiptsRoutes, supplierBillsRoutes, supplierBillsGlobalRoutes, suppliersRoutes, supplierTransactionsGlobalRoutes, supplierTransactionsRoutes } from './features/suppliers';
 import { pricingCalculatorRoutes, pricingPresetsRoutes } from './features/pricing';
-import { systemRoutes } from './features/system/system.routes';
+import { systemRoutes, clientCompatRoutes } from './features/system/system.routes';
 import { scannerRoutes } from './features/scanner/scanner.routes';
 import { inventoryRoutes } from './features/inventory/inventory.routes';
 import { businessSettingsRoutes } from './features/documents/business-settings.routes';
@@ -157,6 +157,7 @@ if (process.env.HOSTED_MODE !== 'true') {
 app.use('/api/v1/admin/diagnostics', requireAuth, diagnosticsRoutes);
 app.use('/api/v1/admin/preflight', requireAuth, preflightRoutes);
 app.use('/api/v1/admin/maintenance', requireAuth, maintenanceRoutes);
+app.use('/api/v1/system/client-compat', clientCompatRoutes);
 app.use('/api/v1/system', requireAuth, systemRoutes);
 app.use('/api/v1/scanner', requireAuth, scannerRoutes);
 app.use('/api/v1/business-settings', requireAuth, businessSettingsRoutes);

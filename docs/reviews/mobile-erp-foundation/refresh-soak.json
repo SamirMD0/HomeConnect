@@ -1,0 +1,64 @@
+{
+  "accessExpiry": "2m",
+  "elapsedMs": 180819,
+  "gateway": "127.0.0.1:3011",
+  "desktop": "127.0.0.1:3001",
+  "loginCalls": 1,
+  "productVisible": true,
+  "loginScreenVisible": false,
+  "calls": [
+    {
+      "path": "/api/v1/system/client-compat",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/auth/me",
+      "status": 401
+    },
+    {
+      "path": "/api/v1/auth/refresh",
+      "status": 204
+    },
+    {
+      "path": "/api/v1/auth/logout",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/auth/login",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/auth/refresh",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/auth/me",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/branches/accessible",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/products/scan",
+      "status": 401
+    },
+    {
+      "path": "/api/v1/auth/refresh",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/products/scan",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/auth/me",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/branches/accessible",
+      "status": 200
+    }
+  ],
+  "limitations": "Chrome source-copy preview; SecureStore/FileSystem and database user fixture in memory; real desktop controller/service/JWT, gateway and mobile session code; no phone/APK."
+}

@@ -1,0 +1,18 @@
+import { useRouter } from 'expo-router';
+import { ScannerScreen } from '../src/screens/ScannerScreen';
+import { useSession } from '../src/session/SessionProvider';
+export default function Scan() {
+  const session = useSession(),
+    router = useRouter();
+  if (!session.connection || !session.token) return null;
+  return (
+    <ScannerScreen
+      connection={session.connection}
+      token={session.token}
+      userDisplayName={session.user?.fullName ?? ''}
+      startupMessage={null}
+      onSessionInvalid={() => session.invalidateToken(session.token!)}
+      onDone={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/home'))}
+    />
+  );
+}

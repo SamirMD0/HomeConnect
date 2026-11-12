@@ -1,3 +1,4 @@
+import { theme } from '../theme';
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, AppState, Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -219,10 +220,10 @@ export function PendingBillsScreen({
   );
 }
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#f8fafc' },
-  content: { padding: 16, gap: 12 },
-  title: { fontSize: 24, fontWeight: '800', color: '#0f172a' },
-  label: { fontSize: 16, fontWeight: '700', color: '#334155' },
-  card: { padding: 16, gap: 8, backgroundColor: '#ffffff', borderRadius: 12 },
+  screen: { flex: 1, backgroundColor: theme.colors.background },
+  content: { padding: 16, paddingBottom: 112, gap: 12 },
+  title: { fontSize: 24, fontWeight: '800', color: theme.colors.text },
+  label: { fontSize: 16, fontWeight: '700', color: theme.colors.muted },
+  card: { padding: 16, gap: 8, backgroundColor: theme.colors.surface, borderRadius: 12 },
   thumbnail: { width: '100%', height: 160, resizeMode: 'contain' },
 });

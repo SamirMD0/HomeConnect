@@ -10,7 +10,7 @@ describe('API authorization architecture', () => {
       .filter((line) => line.includes("app.use('/api/v1/"));
     expect(mounts.length).toBeGreaterThan(20);
 
-    const publicMounts = new Set(['/api/v1/auth']);
+    const publicMounts = new Set(['/api/v1/auth', '/api/v1/system/client-compat']);
     for (const line of mounts) {
       const route = line.match(/app\.use\('([^']+)'/)?.[1];
       expect(route, line).toBeTruthy();

@@ -1,3 +1,4 @@
+import { theme } from '../theme';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { HcApiError, AuthedClient } from '../api/hc-client';
@@ -96,7 +97,7 @@ export function PurchaseLineEditor({
           {searchError ? <StatusBanner tone="danger" message={searchError} /> : null}
           {searchError ? <AppButton label="Retry" variant="secondary" onPress={() => setSearchRetry((value) => value + 1)} /> : null}
           <ScrollView contentContainerStyle={styles.results} keyboardShouldPersistTaps="handled">
-            {!products && !searchError ? <ActivityIndicator color="#047857" /> : null}
+            {!products && !searchError ? <ActivityIndicator color={theme.colors.brand} /> : null}
             {products?.length === 0 ? <Text style={styles.hint}>No products found</Text> : null}
             {products?.map((product) => {
               const unavailable = usedProductIds.has(product.id) || (product.priceCurrency ?? 'USD') !== currency
@@ -117,20 +118,20 @@ export function PurchaseLineEditor({
 }
 
 const styles = StyleSheet.create({
-  card: { padding: 14, gap: 10, backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: '#e2e8f0' },
-  title: { color: '#0f172a', fontSize: 17, fontWeight: '800' },
+  card: { padding: 14, gap: 10, backgroundColor: theme.colors.surface, borderRadius: 14, borderWidth: 1, borderColor: theme.colors.border },
+  title: { color: theme.colors.text, fontSize: 17, fontWeight: '800' },
   choiceRow: { flexDirection: 'row', gap: 8 },
-  choice: { flex: 1, minHeight: 54, padding: 8, justifyContent: 'center', borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 10 },
-  selected: { backgroundColor: '#d1fae5', borderColor: '#047857' },
-  choiceText: { color: '#0f172a', fontSize: 12, fontWeight: '700', textAlign: 'center' },
-  hint: { color: '#64748b', fontSize: 12 },
+  choice: { flex: 1, minHeight: 54, padding: 8, justifyContent: 'center', borderWidth: 1, borderColor: theme.colors.border, borderRadius: 10 },
+  selected: { backgroundColor: theme.colors.brandSoft, borderColor: theme.colors.brand },
+  choiceText: { color: theme.colors.text, fontSize: 12, fontWeight: '700', textAlign: 'center' },
+  hint: { color: theme.colors.muted, fontSize: 12 },
   vatToggle: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6 },
-  toggleMark: { color: '#047857', fontSize: 22 },
-  vatLabel: { color: '#334155', fontSize: 13 },
-  subtotal: { color: '#0f172a', fontSize: 13, fontWeight: '700' },
-  picker: { flex: 1, padding: 18, gap: 12, backgroundColor: '#f8fafc' },
+  toggleMark: { color: theme.colors.brand, fontSize: 22 },
+  vatLabel: { color: theme.colors.muted, fontSize: 13 },
+  subtotal: { color: theme.colors.text, fontSize: 13, fontWeight: '700' },
+  picker: { flex: 1, padding: 18, gap: 12, backgroundColor: theme.colors.background },
   results: { gap: 8, paddingBottom: 12 },
-  productRow: { padding: 13, backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: '#e2e8f0' },
-  productName: { color: '#0f172a', fontSize: 14, fontWeight: '700' },
+  productRow: { padding: 13, backgroundColor: theme.colors.surface, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.border },
+  productName: { color: theme.colors.text, fontSize: 14, fontWeight: '700' },
   disabled: { opacity: 0.45 },
 });

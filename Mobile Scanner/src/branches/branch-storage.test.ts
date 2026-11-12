@@ -21,6 +21,7 @@ describe('secure branch storage', () => {
     await saveSelectedBranch('a'); await clearAllAuth();
     expect(selectedBranchHeaders()).toEqual({});
     expect(storage.deleteItemAsync.mock.calls.map((call) => call[0])).toContain('homeconnect.scanner.selected-branch.v1');
-    expect(storage.deleteItemAsync).toHaveBeenCalledTimes(3);
+    expect(storage.deleteItemAsync.mock.calls.map((call) => call[0])).toContain('homeconnect.scanner.auth-refresh-token.v1');
+    expect(storage.deleteItemAsync).toHaveBeenCalledTimes(4);
   });
 });

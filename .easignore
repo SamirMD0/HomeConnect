@@ -1,7 +1,9 @@
-# Upload only the standalone mobile app for its EAS builds.
+# Upload the mobile app and its shared wire/display contracts for EAS builds.
 /*
 !/Mobile Scanner
 !/Mobile Scanner/**
+!/shared
+!/shared/**
 
 # Preserve the mobile project's generated-file and credential exclusions.
 node_modules/

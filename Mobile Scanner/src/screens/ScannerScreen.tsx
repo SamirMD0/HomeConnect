@@ -1,9 +1,9 @@
+import { theme } from '../theme';
 import { BarcodeType, CameraType, CameraView, useCameraPermissions } from 'expo-camera';
 import { useMemo, useRef, useState } from 'react';
 import { Modal, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { backendBaseUrl, HcApiError } from '../api/hc-client';
 import { clientFrom, scanLookup } from '../api/products-api';
-import { ActionGrid } from '../components/ActionGrid';
 import { AppButton } from '../components/AppButton';
 import { AppInput } from '../components/AppInput';
 import { ProductResult } from '../components/ProductResult';
@@ -11,21 +11,14 @@ import { StatusBanner } from '../components/StatusBanner';
 import { ConnectionSettings, ScanResult } from '../types/scanner.types';
 import { recentSubmission, RecentSubmission, shouldSuppressDuplicate } from '../utils/duplicate-scan';
 import { prepareScanCode } from '../utils/scan-code';
-import { PendingBillsScreen } from './PendingBillsScreen';
-import { ReceiptCaptureScreen } from './ReceiptCaptureScreen';
-import { SupplierPaymentScreen } from './SupplierPaymentScreen';
-import { SupplierPurchaseScreen } from './SupplierPurchaseScreen';
-import { SupplierStatementScreen } from './SupplierStatementScreen';
 
 interface ScannerScreenProps {
-  supplierActionsDisabled?: boolean;
   connection: ConnectionSettings;
   token: string;
   userDisplayName: string;
   startupMessage: string | null;
+  onDone?: () => void;
   onSessionInvalid: () => Promise<void>;
-  onChangeConnection: () => Promise<void>;
-  onLogout: () => Promise<void>;
 }
 
 type Banner = { tone: 'info' | 'warning' | 'danger'; message: string };
@@ -33,14 +26,12 @@ type Banner = { tone: 'info' | 'warning' | 'danger'; message: string };
 const PRODUCT_BARCODE_TYPES: BarcodeType[] = ['ean13', 'ean8', 'upc_a', 'upc_e', 'code128', 'code39', 'codabar'];
 
 export function ScannerScreen({
-  supplierActionsDisabled = false,
   connection,
   token,
   userDisplayName,
   startupMessage,
   onSessionInvalid,
-  onChangeConnection,
-  onLogout,
+  onDone,
 }: ScannerScreenProps) {
   const client = useMemo(() => clientFrom(connection, token), [connection, token]);
   const [permission, requestPermission] = useCameraPermissions();
@@ -52,11 +43,6 @@ export function ScannerScreen({
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<ScanResult | null>(null);
   const [banner, setBanner] = useState<Banner | null>(startupMessage ? { tone: 'warning', message: startupMessage } : null);
-  const [pendingBillsVisible, setPendingBillsVisible] = useState(false);
-  const [receiptModalVisible, setReceiptModalVisible] = useState(false);
-  const [paymentModalVisible, setPaymentModalVisible] = useState(false);
-  const [purchaseModalVisible, setPurchaseModalVisible] = useState(false);
-  const [statementModalVisible, setStatementModalVisible] = useState(false);
   const recentRef = useRef<RecentSubmission | null>(null);
 
   const submitCode = async (rawCode: string) => {
@@ -158,19 +144,9 @@ export function ScannerScreen({
         <View style={styles.connectedDot} />
       </View>
 
+      <AppButton label="Open camera" onPress={() => void openCamera()} />
+      {onDone && <AppButton label="Done" variant="secondary" onPress={onDone} />}
       {banner && <StatusBanner tone={banner.tone} message={banner.message} />}
-
-      <ActionGrid
-        supplierActionsDisabled={supplierActionsDisabled}
-        onScan={() => void openCamera()}
-        onPendingBills={() => setPendingBillsVisible(true)}
-        onAttachReceipt={() => setReceiptModalVisible(true)}
-        onSupplierInvoice={() => setPurchaseModalVisible(true)}
-        onSupplierPayment={() => setPaymentModalVisible(true)}
-        onSupplierStatement={() => setStatementModalVisible(true)}
-        onSignOut={() => void onLogout()}
-        onChangeConnection={() => void onChangeConnection()}
-      />
 
       <Modal
         animationType="slide"
@@ -248,83 +224,25 @@ export function ScannerScreen({
         </View>
       )}
 
-      <Modal animationType="slide" visible={pendingBillsVisible} onRequestClose={() => setPendingBillsVisible(false)}>
-        <PendingBillsScreen connection={connection} token={token} onDone={() => setPendingBillsVisible(false)} />
-      </Modal>
-      <Modal
-        animationType="slide"
-        onRequestClose={() => setReceiptModalVisible(false)}
-        statusBarTranslucent
-        visible={receiptModalVisible}
-      >
-        <ReceiptCaptureScreen
-          connection={connection}
-          token={token}
-          onDone={() => setReceiptModalVisible(false)}
-          onSessionInvalid={onSessionInvalid}
-        />
-      </Modal>
-
-      <Modal
-        animationType="slide"
-        onRequestClose={() => setPaymentModalVisible(false)}
-        statusBarTranslucent
-        visible={paymentModalVisible}
-      >
-        <SupplierPaymentScreen
-          connection={connection}
-          token={token}
-          onDone={() => setPaymentModalVisible(false)}
-          onSessionInvalid={onSessionInvalid}
-        />
-      </Modal>
-
-      <Modal
-        animationType="slide"
-        onRequestClose={() => setPurchaseModalVisible(false)}
-        statusBarTranslucent
-        visible={purchaseModalVisible}
-      >
-        <SupplierPurchaseScreen
-          connection={connection}
-          token={token}
-          onDone={() => setPurchaseModalVisible(false)}
-          onSessionInvalid={onSessionInvalid}
-        />
-      </Modal>
-
-      <Modal
-        animationType="slide"
-        onRequestClose={() => setStatementModalVisible(false)}
-        statusBarTranslucent
-        visible={statementModalVisible}
-      >
-        <SupplierStatementScreen
-          connection={connection}
-          token={token}
-          onDone={() => setStatementModalVisible(false)}
-          onSessionInvalid={onSessionInvalid}
-        />
-      </Modal>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { padding: 18, gap: 18, backgroundColor: '#f8fafc', flexGrow: 1 },
+  content: { padding: 18, gap: 18, backgroundColor: theme.colors.background, flexGrow: 1 },
   header: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   headerText: { flex: 1, gap: 2 },
-  eyebrow: { color: '#047857', fontSize: 14, fontWeight: '700' },
-  backendUrl: { color: '#64748b', fontSize: 13 },
-  connectedDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: '#10b981', marginTop: 8 },
+  eyebrow: { color: theme.colors.brand, fontSize: 14, fontWeight: '700' },
+  backendUrl: { color: theme.colors.muted, fontSize: 13 },
+  connectedDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: theme.colors.success, marginTop: 8 },
   camera: { flex: 1 },
-  cameraModal: { flex: 1, backgroundColor: '#0f172a', padding: 18, paddingTop: 48, gap: 12 },
-  cameraModalTitle: { color: '#ffffff', fontSize: 20, fontWeight: '900', textAlign: 'center' },
-  cameraModalPreview: { flex: 1, minHeight: 320, overflow: 'hidden', backgroundColor: '#020617' },
-  cameraModalStatus: { color: '#d1fae5', fontSize: 13, fontWeight: '700', textAlign: 'center' },
+  cameraModal: { flex: 1, backgroundColor: theme.colors.text, padding: 18, paddingTop: 48, gap: 12 },
+  cameraModalTitle: { color: theme.colors.surface, fontSize: 20, fontWeight: '900', textAlign: 'center' },
+  cameraModalPreview: { flex: 1, minHeight: 320, overflow: 'hidden', backgroundColor: theme.colors.text },
+  cameraModalStatus: { color: theme.colors.successSoft, fontSize: 13, fontWeight: '700', textAlign: 'center' },
   dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
-  divider: { height: 1, backgroundColor: '#cbd5e1', flex: 1 },
-  or: { color: '#64748b', fontSize: 10, fontWeight: '800' },
+  divider: { height: 1, backgroundColor: theme.colors.border, flex: 1 },
+  or: { color: theme.colors.muted, fontSize: 10, fontWeight: '800' },
   manual: { gap: 12 },
   resultSection: { gap: 10 },
 });

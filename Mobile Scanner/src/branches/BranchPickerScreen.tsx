@@ -1,3 +1,4 @@
+import { theme } from '../theme';
 import { ScrollView, StyleSheet, Text } from 'react-native';
 import { AppButton } from '../components/AppButton';
 import { StatusBanner } from '../components/StatusBanner';
@@ -16,4 +17,4 @@ export function BranchPickerScreen({ branches, error, busy, onSelect, onRetry, o
     <AppButton label="Sign out" onPress={onLogout} variant="secondary" />
   </ScrollView>;
 }
-const styles = StyleSheet.create({ content: { padding: 20, gap: 14 }, title: { fontSize: 24, fontWeight: '800', color: '#0f172a' } });
+const styles = StyleSheet.create({ content: { padding: 20, gap: 14 }, title: { fontSize: 24, fontWeight: '800', color: theme.colors.text } });

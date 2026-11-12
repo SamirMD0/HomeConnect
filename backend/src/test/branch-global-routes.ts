@@ -160,7 +160,8 @@ export const globalRouteGroups = [
   "GET /api/v1/admin/maintenance/thermal-reconcile-notes"
 ] },
   { group: "system", reason: "Desktop process status.", routes: [
-  "GET /api/v1/system/local-status"
+  "GET /api/v1/system/local-status",
+  "GET /api/v1/system/client-compat"
 ] },
   { group: "business-settings", reason: "Singleton shop/document settings.", routes: [
   "GET /api/v1/business-settings",

@@ -1,3 +1,4 @@
+import { theme } from '../theme';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -322,11 +323,11 @@ export function ReceiptCaptureScreen({ connection, token, onDone, onSessionInval
   );
 }
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#f8fafc' },
-  content: { padding: 16, gap: 12 },
-  title: { fontSize: 24, fontWeight: '800', color: '#0f172a' },
-  subtitle: { fontSize: 16, color: '#334155' },
-  card: { padding: 12, gap: 8, backgroundColor: '#ffffff', borderRadius: 12 },
+  screen: { flex: 1, backgroundColor: theme.colors.background },
+  content: { padding: 16, paddingBottom: 112, gap: 12 },
+  title: { fontSize: 24, fontWeight: '800', color: theme.colors.text },
+  subtitle: { fontSize: 16, color: theme.colors.muted },
+  card: { padding: 12, gap: 8, backgroundColor: theme.colors.surface, borderRadius: 12 },
   thumbnail: { width: '100%', height: 180, resizeMode: 'contain' },
   camera: { flex: 1, minHeight: 200 },
 });

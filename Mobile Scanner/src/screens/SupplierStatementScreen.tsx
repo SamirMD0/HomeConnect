@@ -1,3 +1,4 @@
+import { theme } from '../theme';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { HcApiError } from '../api/hc-client';
@@ -228,7 +229,7 @@ export function SupplierStatementScreen({
           {banner && <StatusBanner tone={banner.tone} message={banner.message} />}
           {banner?.retry ? <AppButton label="Retry" onPress={() => setSupplierRetry((value) => value + 1)} /> : null}
           <AppInput label="Search suppliers" value={filter} onChangeText={setFilter} placeholder="Name or phone" />
-          {!suppliers ? <ActivityIndicator color="#047857" /> : filteredSuppliers.length === 0 ? (
+          {!suppliers ? <ActivityIndicator color={theme.colors.brand} /> : filteredSuppliers.length === 0 ? (
             <Text style={styles.empty}>No suppliers found</Text>
           ) : filteredSuppliers.map((row) => (
             <Pressable key={row.id} onPress={() => { setSupplier(row); setBanner(null); }} style={styles.supplierRow}>
@@ -248,9 +249,9 @@ export function SupplierStatementScreen({
             keyExtractor={(entry) => entry.id}
             renderItem={({ item }) => <TransactionCard entry={item} />}
             ListHeaderComponent={header}
-            ListEmptyComponent={loading ? <ActivityIndicator style={styles.loader} color="#047857" /> :
+            ListEmptyComponent={loading ? <ActivityIndicator style={styles.loader} color={theme.colors.brand} /> :
               result ? <Text style={styles.empty}>No transactions in this range</Text> : null}
-            ListFooterComponent={loadingMore ? <ActivityIndicator style={styles.loader} color="#047857" /> : null}
+            ListFooterComponent={loadingMore ? <ActivityIndicator style={styles.loader} color={theme.colors.brand} /> : null}
             onRefresh={() => void loadFirst(true)}
             refreshing={refreshing}
             onEndReached={() => void loadMore()}
@@ -279,48 +280,48 @@ export function SupplierStatementScreen({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8fafc' },
+  container: { flex: 1, backgroundColor: theme.colors.background },
   picker: { padding: 18, gap: 12 },
-  title: { color: '#0f172a', fontSize: 23, fontWeight: '900' },
-  caption: { color: '#64748b', fontSize: 13 },
-  empty: { color: '#64748b', textAlign: 'center', padding: 24 },
-  supplierRow: { padding: 14, borderRadius: 12, borderWidth: 1, borderColor: '#e2e8f0', backgroundColor: '#fff' },
-  rowName: { color: '#0f172a', fontSize: 16, fontWeight: '700' },
-  supplierPhone: { color: '#64748b', fontSize: 12, marginTop: 3 },
-  list: { padding: 14, gap: 10 },
+  title: { color: theme.colors.text, fontSize: 23, fontWeight: '900' },
+  caption: { color: theme.colors.muted, fontSize: 13 },
+  empty: { color: theme.colors.muted, textAlign: 'center', padding: 24 },
+  supplierRow: { padding: 14, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface },
+  rowName: { color: theme.colors.text, fontSize: 16, fontWeight: '700' },
+  supplierPhone: { color: theme.colors.muted, fontSize: 12, marginTop: 3 },
+  list: { paddingBottom: 112, padding: 14, gap: 10 },
   banner: { padding: 14, gap: 8 },
   loader: { margin: 24 },
-  headerCard: { padding: 18, gap: 10, backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: '#d1fae5' },
-  supplierName: { color: '#0f172a', fontSize: 22, fontWeight: '900' },
+  headerCard: { padding: 18, gap: 10, backgroundColor: theme.colors.surface, borderRadius: 16, borderWidth: 1, borderColor: theme.colors.brandSoft },
+  supplierName: { color: theme.colors.text, fontSize: 22, fontWeight: '900' },
   dateRow: { flexDirection: 'row', gap: 9 },
-  dateChip: { flex: 1, padding: 10, borderRadius: 10, backgroundColor: '#f1f5f9' },
-  dateLabel: { color: '#64748b', fontSize: 11, fontWeight: '700' },
-  dateValue: { color: '#0f172a', fontSize: 13, fontWeight: '800', marginTop: 3 },
+  dateChip: { flex: 1, padding: 10, borderRadius: 10, backgroundColor: theme.colors.neutralSoft },
+  dateLabel: { color: theme.colors.muted, fontSize: 11, fontWeight: '700' },
+  dateValue: { color: theme.colors.text, fontSize: 13, fontWeight: '800', marginTop: 3 },
   stats: { flexDirection: 'row', gap: 6 },
-  stat: { flex: 1, padding: 8, borderRadius: 10, backgroundColor: '#f8fafc', minWidth: 0 },
-  statLabel: { color: '#64748b', fontSize: 10, fontWeight: '700' },
-  statValue: { color: '#0f172a', fontSize: 12, fontWeight: '800', marginTop: 5 },
-  usdNote: { color: '#64748b', fontSize: 11 },
-  transaction: { flexDirection: 'row', gap: 12, padding: 14, borderRadius: 14, backgroundColor: '#fff', borderWidth: 1, borderColor: '#e2e8f0' },
+  stat: { flex: 1, padding: 8, borderRadius: 10, backgroundColor: theme.colors.background, minWidth: 0 },
+  statLabel: { color: theme.colors.muted, fontSize: 10, fontWeight: '700' },
+  statValue: { color: theme.colors.text, fontSize: 12, fontWeight: '800', marginTop: 5 },
+  usdNote: { color: theme.colors.muted, fontSize: 11 },
+  transaction: { flexDirection: 'row', gap: 12, padding: 14, borderRadius: 14, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border },
   dateColumn: { width: 52, alignItems: 'center' },
-  shortDate: { color: '#0f172a', fontSize: 16, fontWeight: '900' },
-  weekday: { color: '#64748b', fontSize: 11, marginTop: 4 },
+  shortDate: { color: theme.colors.text, fontSize: 16, fontWeight: '900' },
+  weekday: { color: theme.colors.muted, fontSize: 11, marginTop: 4 },
   transactionBody: { flex: 1, gap: 7 },
   transactionTop: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   typePill: { overflow: 'hidden', borderRadius: 7, paddingHorizontal: 7, paddingVertical: 4, fontSize: 11, fontWeight: '800' },
-  PU: { color: '#334155', backgroundColor: '#e2e8f0' },
-  PV: { color: '#047857', backgroundColor: '#d1fae5' },
-  ADJ: { color: '#92400e', backgroundColor: '#fef3c7' },
-  OPENING: { color: '#075985', backgroundColor: '#e0f2fe' },
-  OTHER: { color: '#52525b', backgroundColor: '#f4f4f5' },
-  reference: { flex: 1, color: '#64748b', fontSize: 11, textAlign: 'right' },
-  description: { color: '#0f172a', fontSize: 14, lineHeight: 19 },
+  PU: { color: theme.colors.muted, backgroundColor: theme.colors.border },
+  PV: { color: theme.colors.success, backgroundColor: theme.colors.successSoft },
+  ADJ: { color: theme.colors.warning, backgroundColor: theme.colors.warningSoft },
+  OPENING: { color: theme.colors.brandStrong, backgroundColor: theme.colors.brandSoft },
+  OTHER: { color: theme.colors.muted, backgroundColor: theme.colors.neutralSoft },
+  reference: { flex: 1, color: theme.colors.muted, fontSize: 11, textAlign: 'right' },
+  description: { color: theme.colors.text, fontSize: 14, lineHeight: 19 },
   movement: { fontSize: 15, fontWeight: '800', textAlign: 'right' },
-  owedMore: { color: '#be123c' },
-  owedLess: { color: '#047857' },
-  running: { color: '#64748b', fontSize: 11, textAlign: 'right' },
-  footer: { padding: 12, gap: 8, borderTopWidth: 1, borderTopColor: '#e2e8f0', backgroundColor: '#fff' },
+  owedMore: { color: theme.colors.danger },
+  owedLess: { color: theme.colors.success },
+  running: { color: theme.colors.muted, fontSize: 11, textAlign: 'right' },
+  footer: { padding: 12, gap: 8, borderTopWidth: 1, borderTopColor: theme.colors.border, backgroundColor: theme.colors.surface },
   dateBackdrop: { flex: 1, justifyContent: 'center', padding: 24, backgroundColor: '#0f172a99' },
-  dateDialog: { padding: 18, gap: 12, borderRadius: 14, backgroundColor: '#fff' },
-  dialogTitle: { color: '#0f172a', fontSize: 19, fontWeight: '800' },
+  dateDialog: { padding: 18, gap: 12, borderRadius: 14, backgroundColor: theme.colors.surface },
+  dialogTitle: { color: theme.colors.text, fontSize: 19, fontWeight: '800' },
 });

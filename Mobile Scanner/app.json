@@ -2,7 +2,7 @@
   "expo": {
     "name": "HomeConnect Mobile Scanner",
     "slug": "homeconnect-mobile-scanner",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -15,7 +15,7 @@
       }
     },
     "android": {
-      "versionCode": 3,
+      "versionCode": 4,
       "package": "com.homeconnect.mobilescanner",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
@@ -55,13 +55,18 @@
           "cameraPermission": false,
           "microphonePermission": false
         }
-      ]
+      ],
+      "expo-router"
     ],
     "extra": {
       "eas": {
         "projectId": "b1b5215c-65a4-49b0-8a86-9cf656dba998"
       }
     },
-    "owner": "ryomen0"
+    "owner": "ryomen0",
+    "scheme": "homeconnect",
+    "experiments": {
+      "typedRoutes": true
+    }
   }
 }

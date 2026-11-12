@@ -2,6 +2,8 @@ const path = require('path');
 const { getDefaultConfig } = require('expo/metro-config');
 
 const config = getDefaultConfig(__dirname);
+config.watchFolders = [...(config.watchFolders ?? []), path.resolve(__dirname, '../shared')];
+config.resolver.nodeModulesPaths = [path.resolve(__dirname, 'node_modules'), path.resolve(__dirname, '../node_modules')];
 // npm may keep Expo's bundled icons nested. Resolve them from Expo's closure
 // without declaring another dependency in the companion app.
 const expoDirectory = path.dirname(require.resolve('expo/package.json'));
