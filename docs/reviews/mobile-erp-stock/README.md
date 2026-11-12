@@ -47,7 +47,11 @@ The check ran the real desktop API (:3001) behind the real LAN gateway (:3011), 
 | Same receiving key sent 3 times (2 at the same moment) | one receiving id; stock 17 → 22 (+5 once) |
 | Duplicate-check route | 200 |
 
-**PC follow-up (not fixed here):** in that last check, one of the two simultaneous receivings returned **500** instead of the existing record. Sales orders catch this database race (`P2002`) and return the saved record; `supplier-receivings.service.ts` does not. No stock was added twice, and the phone never sends two at once, but the PC should handle it the same way sales orders do.
+**PC fix (follow-up commit):** in that check, one of the two simultaneous receivings first returned **500**. Keyed receivings run once under serializable isolation, so the loser of the race failed with a write conflict (`P2034`, or `P2002` on the unique key) and nothing caught it. No stock was added twice.
+
+`supplier-receivings.service.ts` now handles it the way sales orders do. After either error on a keyed request, it returns the receiving the winner saved, after the same scope and fingerprint checks as a normal replay. If nothing was saved, it retries once. Unkeyed requests are unchanged.
+
+Re-run: 2 and 4 identical requests sent at once all return 201 with one receiving id, and stock rises by 5 once each time. There are 3 new service tests, and all 127 inventory tests pass.
 
 ## Tests
 
