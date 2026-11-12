@@ -5,7 +5,7 @@ const connection = { host: 'pc', port: 3011 };
 describe('startup compatibility over the PC LAN gateway', () => {
   it.each([
     ['2.1.0', '1.2.0', false, false],
-    ['2.1.0', '1.5.0', true, false],
+    ['2.1.0', '1.6.0', true, false],
     ['2.0.0', '1.0.0', false, true],
   ])(
     'checks backend %s and minimum mobile %s',

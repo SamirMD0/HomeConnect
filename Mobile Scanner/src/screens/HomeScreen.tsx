@@ -40,11 +40,18 @@ export function HomeScreen() {
       icon: 'wallet-outline',
       onPress: () => router.push('/(tabs)/sell/payment'),
     },
-    {
-      label: 'Stock count',
-      icon: 'clipboard-outline',
-      onPress: () => router.push('/(tabs)/stock/count'),
-    },
+    // Counting corrects stock totals (admin-only on the PC); employees get receiving.
+    session.user?.role === 'ADMIN'
+      ? {
+          label: 'Stock count',
+          icon: 'clipboard-outline',
+          onPress: () => router.push('/(tabs)/stock/count'),
+        }
+      : {
+          label: 'Receive goods',
+          icon: 'cube-outline',
+          onPress: () => router.push('/(tabs)/stock/receive'),
+        },
   ];
   return (
     <ScrollView contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={pending.isRefetching} onRefresh={() => { setRefreshRevision((value) => value + 1); void pending.refetch(); }} />}>

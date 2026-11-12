@@ -10,6 +10,7 @@ import { ListRow } from '../../components/ListRow';
 import { MoneyText } from '../../components/MoneyText';
 import { ErrorState } from '../../components/ErrorState';
 import { SelectFilter, useDebouncedSearch } from '../FilterControls';
+import { StockActions } from '../../stock/StockActions';
 export function ProductListScreen() {
   const { client, key, session } = useLookup(),
     router = useRouter();
@@ -36,6 +37,7 @@ export function ProductListScreen() {
       itemKey={(item) => item.id}
       header={
         <View style={{ gap: 10 }}>
+          <StockActions />
           <SearchBar
             label="Search products"
             placeholder="Name, SKU or barcode"

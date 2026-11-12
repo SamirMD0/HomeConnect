@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { AppButton } from '../../components/AppButton';
 import { Text, View } from 'react-native';
 import { formatDateTime } from '@shared/money-format';
 import { getProduct, getInventory, listMovements } from '../../api/catalog-api';
@@ -10,7 +11,8 @@ import { Card, Field, ReadState, readStyles } from '../ReadUI';
 import { humanLabel } from '../filters';
 export function ProductDetailScreen() {
   const { id = '' } = useLocalSearchParams<{ id: string }>(),
-    { client, key, scope } = useLookup();
+    { client, key, scope } = useLookup(),
+    router = useRouter();
   const product = useQuery({
     queryKey: queryKeys.product(scope, id),
     queryFn: () => getProduct(client, id),
@@ -108,6 +110,15 @@ export function ProductDetailScreen() {
                   The desktop keeps one shared stock quantity. A per-branch allocation is not
                   recorded.
                 </Text>
+                {stock.product.trackStock && (
+                  <AppButton
+                    label="Adjust stock"
+                    variant="secondary"
+                    onPress={() =>
+                      router.push({ pathname: '/(tabs)/stock/adjust/[id]', params: { id } })
+                    }
+                  />
+                )}
               </Card>
             )}
             <Text accessibilityRole="header" style={readStyles.section}>

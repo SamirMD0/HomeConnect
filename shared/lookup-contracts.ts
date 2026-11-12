@@ -45,6 +45,8 @@ export interface ProductRead {
     monthlyPayment?: string;
     installmentMonths?: number;
     reason?: string;
+    /** Sent by the PC to administrators only (products.service.ts). */
+    costPrice?: string | null;
   };
 }
 export interface StockMovementRead {
