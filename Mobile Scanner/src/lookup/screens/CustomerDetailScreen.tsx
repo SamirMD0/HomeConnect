@@ -46,6 +46,7 @@ export function CustomerDetailScreen() {
             <Text accessibilityRole="header" style={readStyles.title}>
               {data.name}
             </Text>
+            {session.can('payments.create') && <AppButton label="Take payment" onPress={() => router.push({ pathname: '/(tabs)/sell/collect/[id]', params: { id } })} />}
             <Card title="Contact">
               <Field
                 label="Branch"
