@@ -122,3 +122,22 @@ describe('prepaid purchases', () => {
     expect(init.headers['X-Branch-Scope']).toBe('branch-b');
   });
 });
+
+describe('over-the-air update row', async () => {
+  const { describeInstalledUpdate, updateCheckMessage } = await import('../updates/update-status');
+  it('describes the installed version in plain words', () => {
+    expect(describeInstalledUpdate({ version: '2.0.0', enabled: false, channel: null, updateId: null, isEmbeddedLaunch: true })).toBe(
+      'Version 2.0.0 · updates are off in this build'
+    );
+    expect(describeInstalledUpdate({ version: '2.0.0', enabled: true, channel: 'preview', updateId: null, isEmbeddedLaunch: true })).toBe(
+      'built-in version · preview · tap to check for an update'
+    );
+    expect(
+      describeInstalledUpdate({ version: '2.0.0', enabled: true, channel: 'production', updateId: 'abcdef1234567890', isEmbeddedLaunch: false })
+    ).toBe('update abcdef12 · production · tap to check for an update');
+  });
+  it('explains that updates need the internet and that drafts are kept', () => {
+    expect(updateCheckMessage('error')).toMatch(/internet/);
+    expect(updateCheckMessage('ready')).toMatch(/drafts and pending bills are kept/);
+  });
+});

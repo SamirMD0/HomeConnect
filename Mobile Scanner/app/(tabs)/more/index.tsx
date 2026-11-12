@@ -3,6 +3,7 @@ import { ListRow } from '../../../src/components/ListRow';
 import { useSession } from '../../../src/session/SessionProvider';
 import { theme } from '../../../src/theme';
 import { useRouter } from 'expo-router';
+import { AppUpdateRow } from '../../../src/updates/AppUpdateRow';
 export default function More() {
   const session = useSession();
   const router = useRouter();
@@ -33,7 +34,7 @@ export default function More() {
         subtitle="Keep this PC connection for next time"
         onPress={() => void session.signOut()}
       />
-      <ListRow title="HomeConnect Mobile" subtitle="Version 1.3.0" />
+      <AppUpdateRow />
     </ScrollView>
   );
 }

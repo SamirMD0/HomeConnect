@@ -3,7 +3,12 @@ import appConfig from '../../app.json';
 import { backendBaseUrl, HcApiError, requestJson } from './hc-client';
 import type { ConnectionSettings } from '../types/scanner.types';
 import { compareVersions } from '../utils/version';
-export const REQUIRED_API_VERSION = '2.1.0';
+/**
+ * The first desktop release that carries everything this app uses (bills inbox,
+ * stock routes, the gateway deny-list, the refresh header). Older PCs still
+ * work for the basics but show a warning.
+ */
+export const REQUIRED_API_VERSION = '2.2.0';
 export interface CompatibilityState {
   blocked: boolean;
   warning: string | null;

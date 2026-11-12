@@ -1,8 +1,10 @@
-# HomeConnect Mobile Scanner
+# Home Connect (phone app)
 
-A shop-floor Expo app that scans products and handles supplier invoices, payments, statements, and receipt photos. It talks directly to the business PC over the shop LAN.
+The phone version of Home Connect: selling, customer payments, stock, suppliers and reports, saved straight to the shop PC over the shop Wi-Fi. It keeps no business data of its own; drafts and bill photos wait on the phone only until the PC confirms them.
 
-The app is not an offline ERP client. Supplier actions are sent to the HomeConnect backend; receipt photos can be queued locally until the PC is reachable. The app does not manage customer debts or sales.
+**Operator guide, troubleshooting and release steps:** [docs/mobile/README.md](../docs/mobile/README.md) · [release checklist](../docs/mobile/release-checklist.md).
+
+The sections below are developer notes from earlier phases.
 
 ## Requirements
 
