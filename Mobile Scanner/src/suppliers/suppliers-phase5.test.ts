@@ -141,3 +141,16 @@ describe('over-the-air update row', async () => {
     expect(updateCheckMessage('ready')).toMatch(/drafts and pending bills are kept/);
   });
 });
+
+describe('update banner', async () => {
+  const { updateBannerState } = await import('../updates/update-status');
+  it('says when an update downloads and when it is ready to restart', () => {
+    expect(updateBannerState({ enabled: false, isDownloading: true, isUpdatePending: false })).toBeNull();
+    expect(updateBannerState({ enabled: true, isDownloading: false, isUpdatePending: false })).toBeNull();
+    expect(updateBannerState({ enabled: true, isDownloading: true, isUpdatePending: false, progress: 0.42 })).toEqual({
+      kind: 'downloading', message: 'Downloading update… 42%',
+    });
+    expect(updateBannerState({ enabled: true, isDownloading: true, isUpdatePending: false })?.message).toBe('Downloading update…');
+    expect(updateBannerState({ enabled: true, isDownloading: false, isUpdatePending: true })).toEqual({ kind: 'ready', message: 'Update ready' });
+  });
+});

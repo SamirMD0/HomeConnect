@@ -8,6 +8,7 @@ import { ErrorState } from '../src/components/ErrorState';
 import { AppButton } from '../src/components/AppButton';
 import { theme } from '../src/theme';
 import { BranchHeader } from '../src/navigation/BranchHeader';
+import { UpdateBanner } from '../src/updates/UpdateBanner';
 function Navigation() {
   const session = useSession();
   if (session.phase === 'restoring')
@@ -78,6 +79,7 @@ export default function RootLayout() {
       <QueryProvider>
         <SessionProvider>
           <Navigation />
+          <UpdateBanner />
           <StatusBar style="dark" />
         </SessionProvider>
       </QueryProvider>
