@@ -1,0 +1,18 @@
+{
+  "viewport": "393x852",
+  "environment": "Web copy; native SecureStore/FileSystem and API mocked; no camera or APK validation",
+  "checks": [
+    "Restored account verified, two branches offered, selected branch enters Home with pending-bill count",
+    "Global scanner opens and returns to each of five tabs; manual scan shows product details and Scan another",
+    "All five supplier feature routes open and return; Suppliers stack persists across tab changes",
+    "Offline banner appears and clears when network state returns",
+    "Header sheet switches branch and resets the protected tab tree",
+    "Sign-out retains PC settings; fresh employee sign-in hides invoice and payment entry",
+    "Minimum mobile version blocks entry; older backend warns after a successful retry"
+  ],
+  "unexpectedErrors": [],
+  "environmentWarnings": [
+    "Failed to execute 'importScripts' on 'WorkerGlobalScope': The script at 'https://cdn.jsdelivr.net/npm/jsqr@1.2.0/dist/jsQR.min.js' failed to load.",
+    "Failed to execute 'importScripts' on 'WorkerGlobalScope': The script at 'https://cdn.jsdelivr.net/npm/jsqr@1.2.0/dist/jsQR.min.js' failed to load."
+  ]
+}

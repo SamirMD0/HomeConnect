@@ -101,6 +101,10 @@
           "**/*.sql",
           "manifest.json"
         ]
+      },
+      {
+        "from": "package.json",
+        "to": "dist/server/package.json"
       }
     ],
     "win": {

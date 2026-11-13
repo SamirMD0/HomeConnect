@@ -1,3 +1,4 @@
+import { theme } from '../theme';
 import { StyleSheet, Text, View } from 'react-native';
 import { ScanResult } from '../types/scanner.types';
 import { StatusBanner } from './StatusBanner';
@@ -48,16 +49,16 @@ export function ProductResult({ result }: ProductResultProps) {
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#a7f3d0', borderRadius: 16, padding: 16, gap: 12 },
+  card: { backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.successBorder, borderRadius: 16, padding: 16, gap: 12 },
   headingRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   headingText: { flex: 1, gap: 4 },
-  name: { color: '#0f172a', fontSize: 22, fontWeight: '800' },
-  match: { color: '#64748b', fontSize: 12 },
-  badge: { backgroundColor: '#d1fae5', borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4 },
-  archivedBadge: { backgroundColor: '#f1f5f9' },
-  badgeText: { color: '#047857', fontSize: 11, fontWeight: '800' },
-  archivedText: { color: '#475569' },
-  row: { borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingTop: 10, gap: 3 },
-  rowLabel: { color: '#64748b', fontSize: 12, fontWeight: '700' },
-  rowValue: { color: '#0f172a', fontSize: 15, fontWeight: '600' },
+  name: { color: theme.colors.text, fontSize: 22, fontWeight: '800' },
+  match: { color: theme.colors.muted, fontSize: 12 },
+  badge: { backgroundColor: theme.colors.successSoft, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4 },
+  archivedBadge: { backgroundColor: theme.colors.neutralSoft },
+  badgeText: { color: theme.colors.success, fontSize: 11, fontWeight: '800' },
+  archivedText: { color: theme.colors.muted },
+  row: { borderTopWidth: 1, borderTopColor: theme.colors.neutralSoft, paddingTop: 10, gap: 3 },
+  rowLabel: { color: theme.colors.muted, fontSize: 12, fontWeight: '700' },
+  rowValue: { color: theme.colors.text, fontSize: 15, fontWeight: '600' },
 });

@@ -1,3 +1,4 @@
+import { theme } from '../theme';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { testBackendConnection } from '../api/auth-api';
@@ -129,12 +130,12 @@ export function ConnectionSetupScreen({ initialSettings, onConnected }: Connecti
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  content: { flexGrow: 1, padding: 22, justifyContent: 'center', gap: 22, backgroundColor: '#f8fafc' },
+  content: { flexGrow: 1, padding: 22, justifyContent: 'center', gap: 22, backgroundColor: theme.colors.background },
   hero: { gap: 7 },
-  eyebrow: { color: '#047857', fontSize: 12, fontWeight: '900', letterSpacing: 2 },
-  title: { color: '#0f172a', fontSize: 30, fontWeight: '900' },
-  subtitle: { color: '#64748b', fontSize: 15, lineHeight: 22, marginTop: 6 },
+  eyebrow: { color: theme.colors.brand, fontSize: 12, fontWeight: '900', letterSpacing: 2 },
+  title: { color: theme.colors.text, fontSize: 30, fontWeight: '900' },
+  subtitle: { color: theme.colors.muted, fontSize: 15, lineHeight: 22, marginTop: 6 },
   primary: { gap: 10, alignItems: 'stretch' },
-  toggleLink: { color: '#047857', fontWeight: '700', textAlign: 'center', paddingVertical: 6 },
+  toggleLink: { color: theme.colors.brand, fontWeight: '700', textAlign: 'center', paddingVertical: 6 },
   form: { gap: 17 },
 });

@@ -5,6 +5,9 @@
       "@expo/vector-icons/*": [
         "./node_modules/@expo/vector-icons/*",
         "./node_modules/expo/node_modules/@expo/vector-icons/*"
+      ],
+      "@shared/*": [
+        "../shared/*"
       ]
     },
     "strict": true,

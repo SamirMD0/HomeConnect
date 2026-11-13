@@ -1,69 +1,96 @@
-import { handleBranchRejection } from '../branches/branch-selection';
-import { AuthedClient, authedHeaders, HcApiError } from './hc-client';
-
-/**
- * Upload a captured receipt photo. The backend accepts raw image bytes with
- * Content-Type: image/jpeg (or png / heic / heif / webp). No multipart; the
- * mobile sends the file URI's binary content directly.
- */
+import * as FileSystem from 'expo-file-system/legacy';
+import { AuthedClient, authedHeaders, HcApiError, parseJsonEnvelope } from './hc-client';
 
 export interface UploadReceiptInput {
-  supplierPurchaseId: string;
+  supplierPurchaseId: string | null;
+  supplierId?: string;
+  note?: string;
   localUri: string;
   mime: string;
+  receiptId?: string;
 }
-
 export interface UploadedReceipt {
   id: string;
-  supplierReceivingId: string;
+  supplierId: string;
+  supplierReceivingId: string | null;
   filename: string;
   mime: string;
   bytes: number;
   capturedAt: string;
   capturedById: string;
 }
-
-export async function uploadReceipt(client: AuthedClient, input: UploadReceiptInput): Promise<UploadedReceipt> {
-  // Read the local file into a Blob the fetch body can carry. `expo-file-system`
-  // writes bytes to a file URI; the simplest cross-platform path is to let
-  // fetch handle the URI directly — React Native supports `uri` as a body on
-  // modern versions, but Blob + FileSystem is also safe. Use a straight
-  // fetch-into-Blob to keep behaviour deterministic.
-  const fileResponse = await fetch(input.localUri);
-  const blob = await fileResponse.blob();
-
+// Retain a native transfer that outlives the UI timeout. A retry joins it (or
+// consumes its successful result), so a slow native request cannot double-upload.
+const transfers = new Map<string, Promise<UploadedReceipt>>();
+export async function uploadReceipt(
+  client: AuthedClient,
+  input: UploadReceiptInput
+): Promise<UploadedReceipt> {
   const headers = authedHeaders(client);
-  const envelope = await fetch(
-    `${client.baseUrl}/api/v1/supplier-purchases/${encodeURIComponent(input.supplierPurchaseId)}/receipts`,
-    {
-      method: 'POST',
-      headers: {
-        ...headers,
-        'Content-Type': input.mime,
-      },
-      body: blob,
-    },
-  );
-
-  let parsed: unknown = null;
+  const key = `${client.baseUrl}|${headers['X-Branch-Scope']}|${input.localUri}|${input.supplierPurchaseId}|${input.supplierId}`;
+  let transfer = transfers.get(key);
+  if (!transfer) {
+    const route = input.supplierPurchaseId
+      ? `/supplier-purchases/${encodeURIComponent(input.supplierPurchaseId)}/receipts`
+      : `/suppliers/${encodeURIComponent(input.supplierId ?? '')}/bills`;
+    transfer = (async () => {
+      let result: FileSystem.FileSystemUploadResult;
+      try {
+        result = await FileSystem.uploadAsync(
+          `${client.baseUrl}/api/v1${route}?note=${encodeURIComponent(input.note ?? '')}`,
+          input.localUri,
+          {
+            uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+            httpMethod: 'POST',
+            sessionType: FileSystem.FileSystemSessionType.FOREGROUND,
+            headers: {
+              ...headers,
+              'Content-Type': 'image/jpeg',
+              Accept: 'application/json',
+              ...(input.receiptId ? { 'X-Receipt-Id': input.receiptId } : {}),
+            },
+          }
+        );
+      } catch {
+        throw new HcApiError(
+          'Cannot reach the Home Connect server. Check Wi-Fi and the backend URL.',
+          'NETWORK'
+        );
+      }
+      let parsed: unknown = null;
+      try {
+        parsed = JSON.parse(result.body);
+      } catch {
+        /* Use shared HTTP fallback. */
+      }
+      return parseJsonEnvelope<UploadedReceipt>(
+        result.status,
+        parsed,
+        headers['X-Branch-Scope'] ?? null
+      );
+    })();
+    transfers.set(key, transfer);
+    void transfer.catch(() => {
+      transfers.delete(key);
+    });
+  }
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    parsed = await envelope.json();
-  } catch {
-    // Non-JSON — fall through.
+    const result = await Promise.race([
+      transfer,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () =>
+            reject(
+              new HcApiError('Upload timed out after 60 seconds. Check Wi-Fi and retry.', 'NETWORK')
+            ),
+          60_000
+        );
+      }),
+    ]);
+    transfers.delete(key);
+    return result;
+  } finally {
+    clearTimeout(timer);
   }
-
-  if (envelope.ok && parsed && typeof parsed === 'object' && (parsed as { success?: boolean }).success === true) {
-    return (parsed as { data: UploadedReceipt }).data;
-  }
-
-  const errorEnvelope = parsed as { error?: { code?: string; message?: string } } | null;
-  const code = errorEnvelope?.error?.code ?? null;
-  const message = errorEnvelope?.error?.message ?? 'Upload failed.';
-  handleBranchRejection(envelope.status, code, headers['X-Branch-Scope'] ?? null);
-  throw new HcApiError(
-    message,
-    envelope.status === 401 ? 'UNAUTHORIZED' : envelope.status === 413 ? 'VALIDATION' : envelope.status >= 500 ? 'SERVER' : 'VALIDATION',
-    envelope.status,
-    code,
-  );
 }

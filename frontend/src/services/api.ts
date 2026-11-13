@@ -26,6 +26,21 @@ export const setAccessToken = (token: string | null) => {
   currentAccessToken = token;
 };
 
+/** Images need authenticated bytes, never a credential in an <img> URL. */
+export async function fetchAuthenticatedImage(endpoint: string, branchId: string): Promise<Blob> {
+  const load = () => fetch(`${API_URL}${endpoint}`, {
+    credentials: 'include',
+    headers: { ...(currentAccessToken ? { Authorization: `Bearer ${currentAccessToken}` } : {}), 'X-Branch-Scope': branchId },
+  });
+  let response = await load();
+  if (response.status === 401 && await refreshAccessToken()) response = await load();
+  if (!response.ok) {
+    const envelope = await response.json().catch(() => null);
+    throw new Error(envelope?.error?.message ?? 'Could not load bill image.');
+  }
+  return response.blob();
+}
+
 // Request interceptor to attach access token and the selected branch scope.
 // A per-request X-Branch-Scope (see withBranchScope) always wins.
 api.interceptors.request.use(

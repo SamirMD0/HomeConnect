@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "HomeConnect Mobile Scanner",
+    "name": "Home Connect",
     "slug": "homeconnect-mobile-scanner",
-    "version": "1.0.1",
+    "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -15,7 +15,7 @@
       }
     },
     "android": {
-      "versionCode": 2,
+      "versionCode": 9,
       "package": "com.homeconnect.mobilescanner",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
@@ -25,7 +25,9 @@
       },
       "predictiveBackGestureEnabled": false,
       "permissions": [
-        "android.permission.CAMERA",
+        "android.permission.CAMERA"
+      ],
+      "blockedPermissions": [
         "android.permission.RECORD_AUDIO"
       ]
     },
@@ -37,7 +39,8 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow HomeConnect Mobile Scanner to scan product barcodes."
+          "cameraPermission": "Allow Home Connect to scan product barcodes and photograph supplier bills.",
+          "recordAudioAndroid": false
         }
       ],
       [
@@ -47,13 +50,34 @@
             "usesCleartextTraffic": true
           }
         }
-      ]
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Home Connect to choose supplier bill photos.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ],
+      "expo-router"
     ],
     "extra": {
       "eas": {
         "projectId": "b1b5215c-65a4-49b0-8a86-9cf656dba998"
       }
     },
-    "owner": "ryomen0"
+    "owner": "ryomen0",
+    "scheme": "homeconnect",
+    "experiments": {
+      "typedRoutes": true
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/b1b5215c-65a4-49b0-8a86-9cf656dba998",
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    }
   }
 }

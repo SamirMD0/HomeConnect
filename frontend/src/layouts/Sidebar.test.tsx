@@ -8,6 +8,9 @@ import { findActiveItem, isItemVisible, isPathActive, NAVIGATION, type Navigatio
 const authState = vi.hoisted(() => ({ role: 'ADMIN' as NavigationRole, fullName: 'Sam Owner' }));
 vi.stubGlobal('__APP_VERSION__', '0.0.0');
 
+const bills = vi.hoisted(() => ({ count: 0 }));
+vi.mock('../features/suppliers/hooks/useUnlinkedBillsCount', () => ({ useUnlinkedBillsCount: () => bills.count }));
+
 vi.mock('../hooks/useAuth', () => ({
   useAuth: () => ({ user: { id: 'user-1', role: authState.role, fullName: authState.fullName } }),
 }));
@@ -119,5 +122,16 @@ describe('navigation helpers', () => {
   it('findActiveItem returns the deepest match', () => {
     const item = findActiveItem('/products/deep/child', 'ADMIN');
     expect(item?.key).toBe('products');
+  });
+
+  it('shows the unlinked supplier bills count on Suppliers only when there are some', () => {
+    authState.role = 'ADMIN';
+    bills.count = 0;
+    expect(render({ path: '/', collapsed: false })).not.toContain('unlinked bill');
+    bills.count = 3;
+    const html = render({ path: '/', collapsed: false });
+    expect(html).toContain('aria-label="Suppliers / المورّدون, 3 unlinked bills"');
+    expect(html).toMatch(/>3<\/span>/);
+    bills.count = 0;
   });
 });

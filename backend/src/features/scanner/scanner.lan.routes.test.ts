@@ -13,6 +13,8 @@ import { resetRateLimits } from './scanner-rate-limit';
 import { ScannerService } from './scanner.service';
 import { scannerStore } from './scanner.store';
 import { AuthService } from '../../services/auth.service';
+import { CustomersService } from '../../services/customers.service';
+import { BranchesService } from '../branches/branches.service';
 import { app as mainApp } from '../../app';
 
 // The LAN gateway forwards mobile requests over HTTP to the desktop API on
@@ -60,7 +62,7 @@ beforeEach(() => {
 });
 
 describe('LAN surface', () => {
-  it('does not expose desktop-only API routes', async () => {
+  it('keeps no-token business routes and desktop operations inaccessible', async () => {
     const forbidden = [
       '/api/v1/customers',
       '/api/v1/debts',
@@ -78,13 +80,34 @@ describe('LAN surface', () => {
       '/api/v1/health',
     ];
     for (const path of forbidden) {
-      expect((await request(app).get(path)).status, `GET ${path}`).toBe(404);
+      const denied = path.startsWith('/api/v1/admin/') || path.startsWith('/api/v1/system/') || path.startsWith('/api/v1/scanner/');
+      expect((await request(app).get(path)).status, `GET ${path}`).toBe(denied ? 403 : 404);
     }
     expect((await request(app).post('/api/v1/products').send({})).status).toBe(404);
     expect((await request(app).post('/api/v1/suppliers').send({})).status).toBe(404);
     expect((await request(app).get('/api/v1/suppliers/not-a-uuid/purchases')).status).toBe(404);
-    const adminToken = jwt.sign({ userId: '11111111-1111-4111-8111-111111111111', role: 'ADMIN' }, process.env.JWT_SECRET!);
-    expect((await request(app).get('/api/v1/customers').set('Authorization', `Bearer ${adminToken}`)).status).toBe(404);
+  });
+
+  it('forwards customers through desktop JWT and branch middleware while denying PC operations', async () => {
+    const branchId = '22222222-2222-4222-8222-222222222222';
+    const customer = { id: '33333333-3333-4333-8333-333333333333', name: 'LAN customer', phone: '01123456', branchId, isActive: true };
+    const branches = vi.spyOn(BranchesService, 'accessibleBranches').mockResolvedValue([{ id: branchId, name: 'Shop' }] as never);
+    const customers = vi.spyOn(CustomersService, 'listCustomers').mockResolvedValue({ customers: [customer], total: 1 } as never);
+    try {
+      const token = jwt.sign({ userId: '11111111-1111-4111-8111-111111111111', role: 'EMPLOYEE' }, process.env.JWT_SECRET!);
+      const response = await request(app).get('/api/v1/customers')
+        .set('Authorization', `Bearer ${token}`).set('X-Branch-Scope', branchId);
+      expect(response.status).toBe(200);
+      expect(response.body.data).toEqual([customer]);
+      expect(customers).toHaveBeenCalledWith(expect.any(Object), { mode: 'single', branchIds: [branchId] });
+      expect(branches).toHaveBeenCalledWith(expect.objectContaining({ userId: '11111111-1111-4111-8111-111111111111', role: 'EMPLOYEE' }));
+      const denied = await request(app).get('/api/v1/admin/backups').set('Authorization', `Bearer ${token}`);
+      expect(denied.status).toBe(403);
+      expect(denied.body.error.code).toBe('NOT_AVAILABLE_ON_MOBILE');
+    } finally {
+      branches.mockRestore();
+      customers.mockRestore();
+    }
   });
 
   it('leaves allowed mobile routes unmounted without a bearer token', async () => {
@@ -232,7 +255,8 @@ describe('LAN scan events', () => {
       .post('/api/v1/scanner/events')
       .set('Authorization', 'Bearer looks-like-a-user-token')
       .send({ code: 'HC-000001' });
-    expect(response.status).toBe(401);
+    expect(response.status).toBe(403);
+    expect(response.body.error.code).toBe('NOT_AVAILABLE_ON_MOBILE');
   });
 
   it('looks the code up server-side and returns the minimal payload', async () => {

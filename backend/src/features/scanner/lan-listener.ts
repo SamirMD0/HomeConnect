@@ -61,9 +61,9 @@ const FIREWALL_GUIDANCE = {
  * A second Express app, entirely separate from the main API.
  *
  * This is the core of the design. The main app stays bound to loopback and is
- * never exposed; the LAN app mounts global product scans and the exact mobile
- * JWT gateway allow-list. Forwarded requests retain the desktop API's auth,
- * role and branch checks; other desktop routes remain unreachable.
+ * never exposed; the LAN app mounts global product scans and the mobile
+ * JWT gateway deny-list. Forwarded requests retain the desktop API's auth,
+ * role and branch checks; desktop-only operations remain unreachable.
  *
  * Exported so tests can drive it with supertest without binding a real port.
  */

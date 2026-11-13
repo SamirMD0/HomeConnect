@@ -299,7 +299,11 @@ describeDatabase('supplier receiving database contract', () => {
         SupplierReceivingsService.create(concurrentInput, user, await phase3bScope(prisma)),
       ]);
       lookupSpy.mockRestore();
-      expect(concurrent.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+      // The race loser no longer fails: like sales orders, it returns the
+      // receiving the winner saved. Stock is still posted exactly once.
+      expect(concurrent.map((result) => result.status)).toEqual(['fulfilled', 'fulfilled']);
+      const ids = concurrent.map((result) => (result as PromiseFulfilledResult<{ id: string }>).value.id);
+      expect(ids[0]).toBe(ids[1]);
       expect(await prisma.supplierReceiving.count({ where: { idempotencyKey: concurrentKey } })).toBe(1);
       expect((await prisma.product.findUniqueOrThrow({ where: { id: secondProductId } })).stockQuantity).toBe(1);
     } finally {

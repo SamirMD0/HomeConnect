@@ -1,97 +1,173 @@
-import express, { Router } from 'express';
+import express, { Router, type RequestHandler } from 'express';
 import { z } from 'zod';
 import { validate } from '../../../middleware/validate.middleware';
-import { listReceiptsForReceiving, ReceiptError, storeReceipt, RECEIPT_LIMITS } from './receipts.service';
+import { requireRole } from '../../../middleware/role.middleware';
+import { ValidationError } from '../../../lib/errors';
+import {
+  billImage,
+  deleteBill,
+  listBills,
+  listUnlinkedBills,
+  countUnlinkedBills,
+  listReceiptsForReceiving,
+  receiptReceiving,
+  storeReceipt,
+  updateBill,
+  RECEIPT_LIMITS,
+} from './receipts.service';
 
-/**
- * Receipt-photo endpoints for a supplier receiving (BIRD "Purchase Invoice").
- * Mobile uploads the raw image bytes with Content-Type: image/jpeg (or png,
- * heic, heif, webp). The route uses `express.raw` with a 5 MB cap. No
- * multer / formidable dependency — the mobile client knows the MIME and the
- * server trusts the Content-Type header after validation.
- */
-
-const paramsSchema = z.object({
-  supplierReceivingId: z.string().uuid('Invalid supplier receiving id'),
-});
-
+const receivingParams = z.object({ supplierReceivingId: z.string().uuid() });
+const supplierParams = z.object({ supplierId: z.string().uuid() });
+const billParams = z.object({ receiptId: z.string().uuid() });
+const note = z.string().max(2000).optional();
+const rawBody = express.raw({ type: RECEIPT_LIMITS.allowedMimes, limit: RECEIPT_LIMITS.maxBytes });
+const upload: RequestHandler = async (req, res, next) => {
+  try {
+    const identifier = z.string().uuid().optional().safeParse(req.header('X-Receipt-Id'));
+    if (!identifier.success) throw new ValidationError('Invalid bill upload identifier.');
+    const created = await storeReceipt(
+      {
+        receiptId: identifier.data,
+        supplierReceivingId: req.params.supplierReceivingId as string | undefined,
+        supplierId: req.params.supplierId as string | undefined,
+        note: req.query.note as string | undefined,
+        capturedById: req.user!.userId,
+        mime: (req.header('content-type') ?? '').split(';')[0].trim().toLowerCase(),
+        bytes: Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0),
+      },
+      req.branchScope!
+    );
+    res.status(201).json({ success: true, data: created });
+  } catch (error) {
+    next(error);
+  }
+};
 export const supplierReceiptsRoutes = Router();
-
 supplierReceiptsRoutes.get(
   '/:supplierReceivingId/receipts',
-  validate(paramsSchema, 'params'),
+  validate(receivingParams, 'params'),
   async (req, res, next) => {
     try {
-      const { supplierReceivingId } = req.params as { supplierReceivingId: string };
-      const data = await listReceiptsForReceiving(supplierReceivingId, req.branchScope!);
       res.json({
         success: true,
-        data,
-        meta: { timestamp: new Date().toISOString() },
+        data: await listReceiptsForReceiving(
+          String(req.params.supplierReceivingId),
+          req.branchScope!
+        ),
       });
     } catch (error) {
       next(error);
     }
-  },
+  }
 );
-
-const rawBodyParser = express.raw({
-  type: RECEIPT_LIMITS.allowedMimes,
-  limit: RECEIPT_LIMITS.maxBytes,
-});
-
 supplierReceiptsRoutes.post(
   '/:supplierReceivingId/receipts',
-  validate(paramsSchema, 'params'),
-  rawBodyParser,
-  async (req, res, next) => {
+  validate(receivingParams, 'params'),
+  async (req, _res, next) => {
     try {
-      const { supplierReceivingId } = req.params as { supplierReceivingId: string };
-      const mime = (req.header('content-type') ?? '').split(';')[0]?.trim().toLowerCase();
-      const bytes = Buffer.isBuffer(req.body) ? (req.body as Buffer) : Buffer.alloc(0);
-      const capturedById = req.user?.userId;
-      if (!capturedById) {
-        res.status(401).json({
-          success: false,
-          error: { code: 'UNAUTHORIZED', message: 'User context missing.' },
-          meta: { timestamp: new Date().toISOString() },
-        });
-        return;
-      }
-
-      const created = await storeReceipt({
-        supplierReceivingId,
-        capturedById,
-        mime: mime ?? '',
-        bytes,
-      }, req.branchScope!);
-
-      res.status(201).json({
-        success: true,
-        data: {
-          id: created.id,
-          branchId: created.branchId,
-          supplierReceivingId: created.supplierReceivingId,
-          filename: created.filename,
-          mime: created.mime,
-          bytes: created.bytes,
-          capturedAt: created.capturedAt.toISOString(),
-          capturedById: created.capturedById,
-        },
-        meta: { timestamp: new Date().toISOString() },
-      });
+      await receiptReceiving(String(req.params.supplierReceivingId), req.branchScope!);
+      next();
     } catch (error) {
-      if (error instanceof ReceiptError) {
-        const status =
-          error.code === 'NOT_FOUND' ? 404 : error.code === 'TOO_LARGE' ? 413 : 400;
-        res.status(status).json({
-          success: false,
-          error: { code: error.code, message: error.message },
-          meta: { timestamp: new Date().toISOString() },
-        });
-        return;
-      }
       next(error);
     }
   },
+  validate(z.object({ note }), 'query'),
+  rawBody,
+  upload
+);
+
+export const supplierBillsRoutes = Router();
+supplierBillsRoutes.post(
+  '/:supplierId/bills',
+  validate(supplierParams, 'params'),
+  validate(z.object({ note }), 'query'),
+  rawBody,
+  upload
+);
+supplierBillsRoutes.get(
+  '/:supplierId/bills',
+  validate(supplierParams, 'params'),
+  validate(z.object({ linked: z.enum(['false', 'true', 'all']).default('all') }), 'query'),
+  async (req, res, next) => {
+    try {
+      res.json({
+        success: true,
+        data: await listBills(
+          String(req.params.supplierId),
+          req.query.linked as 'false' | 'true' | 'all',
+          req.branchScope!
+        ),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+export const supplierBillsGlobalRoutes = Router();
+// Bills inbox across suppliers (both static paths are registered before /:receiptId).
+supplierBillsGlobalRoutes.get(
+  '/',
+  validate(z.object({ linked: z.literal('false'), limit: z.coerce.number().int().min(1).max(200).default(100) }), 'query'),
+  async (req, res, next) => {
+    try {
+      res.json({ success: true, data: await listUnlinkedBills(req.branchScope!, Number(req.query.limit) || 100) });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+supplierBillsGlobalRoutes.get('/unlinked-count', async (req, res, next) => {
+  try {
+    res.json({ success: true, data: { count: await countUnlinkedBills(req.branchScope!) } });
+  } catch (error) {
+    next(error);
+  }
+});
+supplierBillsGlobalRoutes.patch(
+  '/:receiptId',
+  validate(billParams, 'params'),
+  validate(z.object({ supplierReceivingId: z.string().uuid().nullable(), note })),
+  async (req, res, next) => {
+    try {
+      res.json({
+        success: true,
+        data: await updateBill(String(req.params.receiptId), req.body, req.branchScope!),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+supplierBillsGlobalRoutes.get(
+  '/:receiptId/image',
+  validate(billParams, 'params'),
+  async (req, res, next) => {
+    try {
+      const { row, bytes } = await billImage(String(req.params.receiptId), req.branchScope!);
+      res
+        .set({
+          'Content-Type': row.mime,
+          'Cache-Control': 'private, max-age=86400',
+          'Content-Length': String(bytes.length),
+        })
+        .send(bytes);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+// The current Role enum has ADMIN and EMPLOYEE only. MANAGER is accepted by the
+// shared guard for installations introducing that role; employees cannot delete.
+supplierBillsGlobalRoutes.delete(
+  '/:receiptId',
+  requireRole(['ADMIN', 'MANAGER']),
+  validate(billParams, 'params'),
+  async (req, res, next) => {
+    try {
+      await deleteBill(String(req.params.receiptId), req.branchScope!);
+      res.json({ success: true, data: null });
+    } catch (error) {
+      next(error);
+    }
+  }
 );

@@ -1,3 +1,4 @@
+import { theme } from '../theme';
 import { ActivityIndicator, Pressable, StyleSheet, Text, ViewStyle } from 'react-native';
 
 interface AppButtonProps {
@@ -32,7 +33,7 @@ export function AppButton({
         style,
       ]}
     >
-      {loading && <ActivityIndicator color={variant === 'primary' ? '#ffffff' : '#0f172a'} size="small" />}
+      {loading && <ActivityIndicator color={variant === 'primary' ? theme.colors.surface : theme.colors.text} size="small" />}
       <Text style={[styles.label, variant !== 'primary' && styles.darkLabel]}>{label}</Text>
     </Pressable>
   );
@@ -49,11 +50,11 @@ const styles = StyleSheet.create({
     gap: 8,
     borderWidth: 1,
   },
-  primary: { backgroundColor: '#047857', borderColor: '#047857' },
-  secondary: { backgroundColor: '#ffffff', borderColor: '#cbd5e1' },
-  danger: { backgroundColor: '#fff1f2', borderColor: '#fecdd3' },
-  label: { color: '#ffffff', fontSize: 16, fontWeight: '700', textAlign: 'center' },
-  darkLabel: { color: '#0f172a' },
+  primary: { backgroundColor: theme.colors.brand, borderColor: theme.colors.brand },
+  secondary: { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+  danger: { backgroundColor: theme.colors.dangerSoft, borderColor: theme.colors.dangerBorder },
+  label: { color: theme.colors.surface, fontSize: 16, fontWeight: '700', textAlign: 'center' },
+  darkLabel: { color: theme.colors.text },
   disabled: { opacity: 0.55 },
   pressed: { opacity: 0.82 },
 });

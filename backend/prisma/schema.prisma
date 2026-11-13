@@ -500,6 +500,7 @@ model Branch {
   customerCredits        CustomerCredit[]
   supplierTransactions   SupplierTransaction[]
   supplierReceivings     SupplierReceiving[]
+  supplierReceipts       SupplierReceivingReceipt[]
   serviceJobs            ServiceJob[]
   activityLogs           ActivityLog[]
 
@@ -1857,6 +1858,7 @@ model Supplier {
   transactions SupplierTransaction[]
   audits       SupplierAudit[]
   receivings   SupplierReceiving[]
+  receipts     SupplierReceivingReceipt[]
 
   @@unique([id, branchId])
   @@index([name])
@@ -1907,26 +1909,37 @@ model SupplierReceiving {
   @@map("supplier_receivings")
 }
 
-/// Photo of a paper receipt or invoice attached to a supplier receiving/purchase.
-/// Image bytes are written to the shop PC's filesystem under
-/// `${userData}/receipts/<filename>`; the row stores only metadata and the
-/// reference. One supplier receiving may have many attached receipts; deleting
-/// the receiving cascades to its receipts (so admin voiding a purchase does not
-/// leave orphan metadata behind). Receipt file cleanup is a separate concern.
+/// A paper supplier bill page, optionally linked to a receiving.
 model SupplierReceivingReceipt {
-  id                  String            @id @default(uuid()) @db.Uuid
-  supplierReceivingId String            @db.Uuid
-  supplierReceiving   SupplierReceiving @relation(fields: [supplierReceivingId], references: [id], onDelete: Cascade)
+  id                  String             @id @default(uuid()) @db.Uuid
+  supplierId          String             @db.Uuid
+  supplier            Supplier           @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  branchId            String             @db.Uuid
+  branch              Branch             @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  supplierReceivingId String?            @db.Uuid
+  supplierReceiving   SupplierReceiving? @relation(fields: [supplierReceivingId], references: [id], onDelete: Cascade)
+  note                String?            @db.Text
   filename            String
   mime                String
   bytes               Int
-  capturedAt          DateTime          @default(now())
-  capturedById        String            @db.Uuid
-  capturedBy          User              @relation("SupplierReceivingReceiptCapturedBy", fields: [capturedById], references: [id], onDelete: Restrict)
+  capturedAt          DateTime           @default(now())
+  capturedById        String             @db.Uuid
+  capturedBy          User               @relation("SupplierReceivingReceiptCapturedBy", fields: [capturedById], references: [id], onDelete: Restrict)
+  blob                SupplierReceiptBlob?
 
   @@index([supplierReceivingId])
   @@index([capturedAt])
+  @@index([supplierId, capturedAt])
+  @@index([branchId])
   @@map("supplier_receiving_receipts")
+}
+
+model SupplierReceiptBlob {
+  receiptId String                   @id @db.Uuid
+  receipt   SupplierReceivingReceipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  data      Bytes
+
+  @@map("supplier_receipt_blobs")
 }
 
 /// One received product line and the single movement that moved its stock.

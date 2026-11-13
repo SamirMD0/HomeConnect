@@ -16,7 +16,8 @@ import {
   createIdempotencyFingerprint,
   normalizeIdempotencyKey,
 } from '../../financial/infrastructure/idempotency';
-import { runFinancialTransaction } from '../../financial/infrastructure/transaction';
+import { isRetryableTransactionError, runFinancialTransaction } from '../../financial/infrastructure/transaction';
+import { prisma } from '../../../lib/prisma';
 import { InventoryRepository } from '../inventory.repository';
 import { INVENTORY_QUANTITY_LIMIT, InventoryRequestContext, InventoryUser } from '../inventory.types';
 import { normalizeOptionalText } from '../inventory.validator';
@@ -130,47 +131,55 @@ export class SupplierReceivingsService {
     assertReceivingDateNotFuture(receivedOn);
     validateLines(input.items);
 
-    return runFinancialTransaction(async (tx) => {
-      const supplier = supplierId ? await SupplierReceivingsRepository.findSupplier(supplierId, tx) : null;
-      if (supplierId && !supplier) throw new NotFoundError('Supplier not found / المورد غير موجود');
-      if (supplierId) await assertRecordInScope('supplier', supplierId, scope, tx, 'Supplier not found / المورد غير موجود');
+    const incoming = { supplierId, referenceNumber, note, receivedOn, items: input.items, idempotencyKey, receivedById: user.userId };
+    const replay = async (existing: ReceivingRecord, tx?: Prisma.TransactionClient) => {
+      await assertRecordInScope('receiving', existing.id, scope, tx);
+      assertIdempotentReplay({
+        existingFingerprint: createReceivingFingerprint({
+          supplierId: existing.supplierId,
+          referenceNumber: existing.referenceNumber,
+          note: existing.note,
+          receivedOn: prismaDateToBusinessDate(existing.receivedOn),
+          items: existing.items,
+          idempotencyKey: existing.idempotencyKey,
+          receivedById: existing.receivedById,
+        }),
+        incomingFingerprint: createReceivingFingerprint(incoming),
+      });
+      return serializeReceiving(existing);
+    };
 
-      if (idempotencyKey) {
-        const existingReceiving = await SupplierReceivingsRepository.findByIdempotencyKey(tx, idempotencyKey);
-        if (existingReceiving) {
-          await assertRecordInScope('receiving', existingReceiving.id, scope, tx);
-          assertIdempotentReplay({
-            existingFingerprint: createReceivingFingerprint({
-              supplierId: existingReceiving.supplierId,
-              referenceNumber: existingReceiving.referenceNumber,
-              note: existingReceiving.note,
-              receivedOn: prismaDateToBusinessDate(existingReceiving.receivedOn),
-              items: existingReceiving.items,
-              idempotencyKey: existingReceiving.idempotencyKey,
-              receivedById: existingReceiving.receivedById,
-            }),
-            incomingFingerprint: createReceivingFingerprint({
-              supplierId,
-              referenceNumber,
-              note,
-              receivedOn,
-              items: input.items,
-              idempotencyKey,
-              receivedById: user.userId,
-            }),
-          });
-          return serializeReceiving(existingReceiving);
-        }
+    // A keyed request is never blindly retried, so the same document cannot post
+    // stock twice. When two identical requests race, the loser fails with a
+    // serialization conflict (P2034) or a unique-key violation (P2002); it then
+    // returns the winner's receiving, or retries once if nothing was saved.
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        return await runFinancialTransaction(async (tx) => {
+          const supplier = supplierId ? await SupplierReceivingsRepository.findSupplier(supplierId, tx) : null;
+          if (supplierId && !supplier) throw new NotFoundError('Supplier not found / المورد غير موجود');
+          if (supplierId) await assertRecordInScope('supplier', supplierId, scope, tx, 'Supplier not found / المورد غير موجود');
+
+          if (idempotencyKey) {
+            const existingReceiving = await SupplierReceivingsRepository.findByIdempotencyKey(tx, idempotencyKey);
+            if (existingReceiving) return replay(existingReceiving, tx);
+          }
+
+          const { receivingId } = await postSupplierReceiving({
+            idempotencyKey, supplier, referenceNumber, note, receivedOn, items: input.items, userId: user.userId,
+          }, tx, scope);
+
+          const result = await SupplierReceivingsRepository.findById(receivingId, tx);
+          if (!result) throw new NotFoundError('Receiving not found after creation');
+          return serializeReceiving(result);
+        }, idempotencyKey ? { maxRetries: 0 } : undefined);
+      } catch (error) {
+        if (!idempotencyKey || !isKeyedRace(error)) throw error;
+        const winner = await SupplierReceivingsRepository.findByIdempotencyKey(prisma, idempotencyKey);
+        if (winner) return replay(winner);
+        if (attempt >= 1) throw error;
       }
-
-      const { receivingId } = await postSupplierReceiving({
-        idempotencyKey, supplier, referenceNumber, note, receivedOn, items: input.items, userId: user.userId,
-      }, tx, scope);
-
-      const result = await SupplierReceivingsRepository.findById(receivingId, tx);
-      if (!result) throw new NotFoundError('Receiving not found after creation');
-      return serializeReceiving(result);
-    }, idempotencyKey ? { maxRetries: 0 } : undefined);
+    }
   }
 
   static async list(input: SupplierReceivingListInput, user: InventoryUser, scope: BranchScope) {
@@ -451,4 +460,11 @@ function createReceivingFingerprint(input: {
       .sort((left, right) => left.productId.localeCompare(right.productId))
       .map(({ productId, quantity }) => ({ productId, quantity })),
   });
+}
+
+type ReceivingRecord = NonNullable<Awaited<ReturnType<typeof SupplierReceivingsRepository.findByIdempotencyKey>>>;
+
+function isKeyedRace(error: unknown): boolean {
+  return isRetryableTransactionError(error)
+    || (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002');
 }

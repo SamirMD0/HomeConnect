@@ -1,3 +1,4 @@
+import { theme } from '../theme';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { HcApiError } from '../api/hc-client';
@@ -159,7 +160,7 @@ export function SupplierPaymentScreen({
             onChangeText={setFilter}
             placeholder="Name or phone"
           />
-          {!suppliers ? <ActivityIndicator color="#047857" /> : filteredSuppliers.length === 0 ? (
+          {!suppliers ? <ActivityIndicator color={theme.colors.brand} /> : filteredSuppliers.length === 0 ? (
             <Text style={styles.empty}>No suppliers found</Text>
           ) : filteredSuppliers.map((row) => (
             <Pressable
@@ -256,29 +257,29 @@ export function SupplierPaymentScreen({
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 18, gap: 16, backgroundColor: '#f8fafc', flexGrow: 1 },
+  container: { paddingBottom: 112, padding: 18, gap: 16, backgroundColor: theme.colors.background, flexGrow: 1 },
   header: { gap: 3 },
-  title: { color: '#0f172a', fontSize: 24, fontWeight: '900' },
+  title: { color: theme.colors.text, fontSize: 24, fontWeight: '900' },
   section: { gap: 12 },
-  step: { color: '#047857', fontSize: 13, fontWeight: '800' },
-  empty: { color: '#64748b', textAlign: 'center', paddingVertical: 24 },
-  supplierRow: { padding: 13, borderRadius: 12, borderWidth: 1, borderColor: '#e2e8f0', backgroundColor: '#fff' },
-  pressed: { backgroundColor: '#f1f5f9' },
-  rowTitle: { color: '#0f172a', fontSize: 16, fontWeight: '700' },
-  rowMeta: { color: '#64748b', fontSize: 12, marginTop: 3 },
-  supplierName: { color: '#0f172a', fontSize: 20, fontWeight: '800' },
-  fieldLabel: { color: '#334155', fontSize: 14, fontWeight: '700' },
+  step: { color: theme.colors.brand, fontSize: 13, fontWeight: '800' },
+  empty: { color: theme.colors.muted, textAlign: 'center', paddingVertical: 24 },
+  supplierRow: { padding: 13, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface },
+  pressed: { backgroundColor: theme.colors.neutralSoft },
+  rowTitle: { color: theme.colors.text, fontSize: 16, fontWeight: '700' },
+  rowMeta: { color: theme.colors.muted, fontSize: 12, marginTop: 3 },
+  supplierName: { color: theme.colors.text, fontSize: 20, fontWeight: '800' },
+  fieldLabel: { color: theme.colors.muted, fontSize: 14, fontWeight: '700' },
   segmentRow: { flexDirection: 'row', gap: 10 },
-  segment: { flex: 1, padding: 13, borderRadius: 12, borderWidth: 1, borderColor: '#cbd5e1', backgroundColor: '#fff', alignItems: 'center' },
-  selected: { backgroundColor: '#047857', borderColor: '#047857' },
-  choiceText: { color: '#0f172a', fontWeight: '800', textAlign: 'center' },
-  selectedText: { color: '#fff' },
+  segment: { flex: 1, padding: 13, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, alignItems: 'center' },
+  selected: { backgroundColor: theme.colors.brand, borderColor: theme.colors.brand },
+  choiceText: { color: theme.colors.text, fontWeight: '800', textAlign: 'center' },
+  selectedText: { color: theme.colors.surface },
   methodGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  method: { width: '48%', minHeight: 70, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: '#cbd5e1', backgroundColor: '#fff', justifyContent: 'center' },
+  method: { width: '48%', minHeight: 70, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, justifyContent: 'center' },
   note: { minHeight: 90, paddingTop: 12, textAlignVertical: 'top' },
-  summary: { padding: 16, gap: 5, borderRadius: 14, borderWidth: 1, borderColor: '#d1fae5', backgroundColor: '#fff' },
-  summaryLabel: { color: '#64748b', fontSize: 12, fontWeight: '700', marginTop: 6 },
-  summaryValue: { color: '#0f172a', fontSize: 16, fontWeight: '700' },
-  amount: { color: '#047857', fontSize: 25, fontWeight: '900' },
+  summary: { padding: 16, gap: 5, borderRadius: 14, borderWidth: 1, borderColor: theme.colors.brandSoft, backgroundColor: theme.colors.surface },
+  summaryLabel: { color: theme.colors.muted, fontSize: 12, fontWeight: '700', marginTop: 6 },
+  summaryValue: { color: theme.colors.text, fontSize: 16, fontWeight: '700' },
+  amount: { color: theme.colors.brand, fontSize: 25, fontWeight: '900' },
   done: { flex: 1, minHeight: 400, alignItems: 'stretch', justifyContent: 'center', gap: 12 },
 });

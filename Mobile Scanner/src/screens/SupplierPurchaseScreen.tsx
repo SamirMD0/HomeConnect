@@ -1,3 +1,4 @@
+import { theme } from '../theme';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { HcApiError } from '../api/hc-client';
@@ -12,6 +13,9 @@ import { AppButton } from '../components/AppButton';
 import { AppInput } from '../components/AppInput';
 import { StatusBanner } from '../components/StatusBanner';
 import { ConnectionSettings } from '../types/scanner.types';
+import type { InvoiceFromBill } from '../navigation/FeatureScreen';
+import { BillPreview } from '../suppliers/BillPreview';
+import { linkAfterPurchase } from '../suppliers/bills-inbox';
 import { PurchaseLineEditor } from './PurchaseLineEditor';
 import { buildDescription, issueForInvoice, lineSubtotal, moneyMinorUnits, moneyText, newKey, newPurchaseLine, PurchaseLineDraft, toApiLine, today } from './supplier-purchase-form';
 
@@ -20,12 +24,14 @@ interface SupplierPurchaseScreenProps {
   token: string;
   onDone: () => void;
   onSessionInvalid: () => Promise<void>;
+  /** "Create purchase from bill": pin the photo, preselect its supplier, link it after saving. */
+  fromBill?: InvoiceFromBill;
 }
 
 type Step = 'SUPPLIER' | 'DETAILS' | 'REVIEW' | 'DONE';
 type Banner = { tone: 'danger' | 'warning'; message: string };
 
-export function SupplierPurchaseScreen({ connection, token, onDone, onSessionInvalid }: SupplierPurchaseScreenProps) {
+export function SupplierPurchaseScreen({ connection, token, onDone, onSessionInvalid, fromBill }: SupplierPurchaseScreenProps) {
   const client = useMemo(() => clientFrom(connection, token), [connection, token]);
   const [step, setStep] = useState<Step>('SUPPLIER');
   const [suppliers, setSuppliers] = useState<SupplierSummary[] | null>(null);
@@ -48,19 +54,26 @@ export function SupplierPurchaseScreen({ connection, token, onDone, onSessionInv
   const [duplicateReceipt, setDuplicateReceipt] = useState(false);
   const [duplicateConfirmed, setDuplicateConfirmed] = useState(false);
   const [created, setCreated] = useState<RecordedSupplierPurchase | null>(null);
+  const [billResult, setBillResult] = useState<{ linked: boolean; message: string } | null>(null);
   const idempotencyKey = useRef(newKey());
 
   useEffect(() => {
     let active = true;
     void listSuppliers(client).then((rows) => {
-      if (active) setSuppliers(rows);
+      if (!active) return;
+      setSuppliers(rows);
+      const billSupplier = fromBill && rows.find((row) => row.id === fromBill.supplierId);
+      if (billSupplier) {
+        setSupplier((current) => current ?? billSupplier);
+        setStep((current) => (current === 'SUPPLIER' ? 'DETAILS' : current));
+      }
     }).catch(async (error: unknown) => {
       if (!active) return;
       if (error instanceof HcApiError && error.kind === 'UNAUTHORIZED') await onSessionInvalid();
       else setBanner({ tone: 'danger', message: 'Could not load suppliers' });
     });
     return () => { active = false; };
-  }, [client, onSessionInvalid, supplierRetry]);
+  }, [client, onSessionInvalid, supplierRetry, fromBill]);
 
   const filteredSuppliers = useMemo(() => {
     const query = supplierFilter.trim().toLocaleLowerCase();
@@ -131,6 +144,12 @@ export function SupplierPurchaseScreen({ connection, token, onDone, onSessionInv
     try {
       const purchase = await recordSupplierPurchase(client, body);
       setCreated(purchase);
+      if (fromBill)
+        setBillResult(
+          purchase.supplierId === fromBill.supplierId
+            ? await linkAfterPurchase(client, { id: fromBill.billId, branchId: fromBill.billBranchId }, purchase)
+            : { linked: false, message: 'This purchase is for a different supplier than the bill, so the bill stays in the bills inbox.' }
+        );
       setStep('DONE');
     } catch (error) {
       if (error instanceof HcApiError && error.kind === 'UNAUTHORIZED') await onSessionInvalid();
@@ -142,12 +161,19 @@ export function SupplierPurchaseScreen({ connection, token, onDone, onSessionInv
     idempotencyKey.current = newKey();
     setReceiptNumber(''); setTransactionDate(today()); setDueDate(''); setCurrency('USD');
     setReceiveStock(true); setDescription(''); setReference(''); setNotes(''); setBilledTotal('');
-    setLines([newPurchaseLine(newKey())]); setBanner(null); setCreated(null);
+    setLines([newPurchaseLine(newKey())]); setBanner(null); setCreated(null); setBillResult(null);
     setDuplicateReceipt(false); setDuplicateConfirmed(false); setStep('DETAILS');
   };
 
   return (
     <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+      {fromBill && step !== 'DONE' ? (
+        <View style={{ gap: 6 }}>
+          <Text style={styles.label}>Bill photo</Text>
+          <BillPreview bill={{ id: fromBill.billId, branchId: fromBill.billBranchId }} compact />
+          <Text style={styles.muted}>Keep Receive stock on to attach this bill to the purchase.</Text>
+        </View>
+      ) : null}
       <Text style={styles.title}>Supplier purchase invoice</Text>
       {banner ? <StatusBanner tone={banner.tone} message={banner.message} /> : null}
 
@@ -155,7 +181,7 @@ export function SupplierPurchaseScreen({ connection, token, onDone, onSessionInv
         <View style={styles.section}>
           <Text style={styles.step}>1 of 3 · Choose supplier</Text>
           <AppInput label="Search suppliers" value={supplierFilter} onChangeText={setSupplierFilter} placeholder="Name or phone" />
-          {!suppliers && !banner ? <ActivityIndicator color="#047857" /> : null}
+          {!suppliers && !banner ? <ActivityIndicator color={theme.colors.brand} /> : null}
           {!suppliers && banner ? <AppButton label="Retry" onPress={() => { setBanner(null); setSupplierRetry((value) => value + 1); }} /> : null}
           {suppliers?.length === 0 ? <Text style={styles.muted}>No suppliers found</Text> : null}
           {filteredSuppliers.map((item) => (
@@ -235,8 +261,12 @@ export function SupplierPurchaseScreen({ connection, token, onDone, onSessionInv
           <Text style={styles.title}>Invoice recorded ✓</Text>
           <Text style={styles.total}>{created.currency} {created.amount}</Text>
           <Text style={styles.muted}>Use Supplier payment to record money paid</Text>
-          {created.supplierReceivingId ? <Text style={styles.muted}>A receipt photo can be attached from Scanner</Text> : null}
-          <AppButton label="Record another" onPress={recordAnother} />
+          {billResult ? (
+            <StatusBanner tone={billResult.linked ? 'info' : 'warning'} message={billResult.message} />
+          ) : created.supplierReceivingId ? (
+            <Text style={styles.muted}>A bill photo can be attached from Supplier bill or the bills inbox</Text>
+          ) : null}
+          {!fromBill && <AppButton label="Record another" onPress={recordAnother} />}
           <AppButton label="Done" variant="secondary" onPress={onDone} />
         </View>
       )}
@@ -245,23 +275,23 @@ export function SupplierPurchaseScreen({ connection, token, onDone, onSessionInv
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 18, gap: 14, flexGrow: 1, backgroundColor: '#f8fafc' },
-  title: { color: '#0f172a', fontSize: 23, fontWeight: '900' },
+  container: { paddingBottom: 112, padding: 18, gap: 14, flexGrow: 1, backgroundColor: theme.colors.background },
+  title: { color: theme.colors.text, fontSize: 23, fontWeight: '900' },
   section: { gap: 12 },
-  step: { color: '#047857', fontSize: 13, fontWeight: '800' },
-  supplierRow: { padding: 14, borderRadius: 12, backgroundColor: '#fff', borderWidth: 1, borderColor: '#e2e8f0' },
-  supplierName: { color: '#0f172a', fontSize: 18, fontWeight: '800' },
-  muted: { color: '#64748b', fontSize: 12, lineHeight: 18 },
-  label: { color: '#334155', fontSize: 14, fontWeight: '700' },
+  step: { color: theme.colors.brand, fontSize: 13, fontWeight: '800' },
+  supplierRow: { padding: 14, borderRadius: 12, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border },
+  supplierName: { color: theme.colors.text, fontSize: 18, fontWeight: '800' },
+  muted: { color: theme.colors.muted, fontSize: 12, lineHeight: 18 },
+  label: { color: theme.colors.muted, fontSize: 14, fontWeight: '700' },
   choiceRow: { flexDirection: 'row', gap: 9 },
-  choice: { flex: 1, padding: 14, alignItems: 'center', borderRadius: 10, borderWidth: 1, borderColor: '#cbd5e1', backgroundColor: '#fff' },
-  selected: { backgroundColor: '#d1fae5', borderColor: '#047857' },
-  choiceText: { color: '#0f172a', fontWeight: '800' },
-  toggle: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 8, backgroundColor: '#fff', borderRadius: 10 },
-  mark: { color: '#047857', fontSize: 22 },
+  choice: { flex: 1, padding: 14, alignItems: 'center', borderRadius: 10, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface },
+  selected: { backgroundColor: theme.colors.brandSoft, borderColor: theme.colors.brand },
+  choiceText: { color: theme.colors.text, fontWeight: '800' },
+  toggle: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 8, backgroundColor: theme.colors.surface, borderRadius: 10 },
+  mark: { color: theme.colors.brand, fontSize: 22 },
   flex: { flex: 1, gap: 2 },
-  summary: { padding: 16, gap: 10, borderRadius: 14, backgroundColor: '#fff', borderWidth: 1, borderColor: '#d1fae5' },
-  reviewLine: { paddingVertical: 8, borderTopWidth: 1, borderTopColor: '#e2e8f0' },
-  total: { color: '#047857', fontSize: 19, fontWeight: '900' },
+  summary: { padding: 16, gap: 10, borderRadius: 14, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.brandSoft },
+  reviewLine: { paddingVertical: 8, borderTopWidth: 1, borderTopColor: theme.colors.border },
+  total: { color: theme.colors.brand, fontSize: 19, fontWeight: '900' },
   done: { flex: 1, minHeight: 400, justifyContent: 'center', gap: 14 },
 });

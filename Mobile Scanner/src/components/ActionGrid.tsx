@@ -1,71 +1,64 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-
-interface ActionGridProps {
-  supplierActionsDisabled?: boolean;
-  onScan: () => void;
-  onAttachReceipt: () => void;
-  onSupplierInvoice: () => void;
-  onSupplierPayment: () => void;
-  onSupplierStatement: () => void;
-  onSignOut: () => void;
-  onChangeConnection: () => void;
+import { theme } from '../theme';
+export interface QuickAction {
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  onPress: () => void;
+  badge?: number;
 }
-
-export function ActionGrid(props: ActionGridProps) {
-  const actions: { label: string; accessibilityLabel: string; icon: keyof typeof Ionicons.glyphMap; onPress: () => void; primary?: boolean; disabled?: boolean }[] = [
-    { label: 'Scan product', accessibilityLabel: 'Scan a product', icon: 'barcode-outline', onPress: props.onScan, primary: true },
-    { label: 'Attach receipt', accessibilityLabel: 'Attach supplier receipt', icon: 'receipt-outline', onPress: props.onAttachReceipt, disabled: props.supplierActionsDisabled },
-    { label: 'Supplier invoice', accessibilityLabel: 'Record supplier invoice', icon: 'document-text-outline', onPress: props.onSupplierInvoice, disabled: props.supplierActionsDisabled },
-    { label: 'Supplier payment', accessibilityLabel: 'Record supplier payment', icon: 'wallet-outline', onPress: props.onSupplierPayment, disabled: props.supplierActionsDisabled },
-    { label: 'Supplier statement', accessibilityLabel: 'Supplier statement', icon: 'list-outline', onPress: props.onSupplierStatement, disabled: props.supplierActionsDisabled },
-    { label: 'Sign out', accessibilityLabel: 'Sign out', icon: 'log-out-outline', onPress: props.onSignOut },
-  ];
-
+export function ActionGrid({ actions }: { actions: QuickAction[] }) {
   return (
-    <View style={styles.container}>
-      <View style={styles.grid}>
-        {actions.map((action) => (
-          <Pressable
-            key={action.icon}
-            accessibilityRole="button"
-            accessibilityLabel={action.accessibilityLabel}
-            disabled={action.disabled}
-            accessibilityState={{ disabled: Boolean(action.disabled) }}
-            onPress={action.onPress}
-            style={({ pressed }) => [styles.card, action.primary && styles.primaryCard, action.disabled && { opacity: 0.45 }, pressed && styles.pressed]}
-          >
-            <Ionicons name={action.icon} size={36} color={action.primary ? '#047857' : '#0f172a'} accessible={false} />
-            <Text style={[styles.label, action.primary && styles.primaryLabel]}>{action.label}</Text>
-          </Pressable>
-        ))}
-      </View>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Change backend URL"
-        onPress={props.onChangeConnection}
-        style={({ pressed }) => [styles.settings, pressed && styles.pressed]}
-      >
-        <Ionicons name="cog-outline" size={32} color="#475569" accessible={false} />
-        <Text style={styles.settingsLabel}>Change backend URL</Text>
-      </Pressable>
+    <View style={styles.grid}>
+      {actions.map((action) => (
+        <Pressable
+          key={action.label}
+          accessibilityRole="button"
+          accessibilityLabel={`${action.label}${action.badge ? `, ${action.badge} pending` : ''}`}
+          onPress={action.onPress}
+          style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+        >
+          <View style={styles.icon}>
+            <Ionicons name={action.icon} size={24} color={theme.colors.brand} accessible={false} />
+          </View>
+          <Text style={styles.label}>{action.label}</Text>
+          {Boolean(action.badge) && <Text style={styles.badge}>{action.badge}</Text>}
+        </Pressable>
+      ))}
     </View>
   );
 }
-
 const styles = StyleSheet.create({
-  container: { gap: 12 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 12 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.md },
   card: {
-    width: '48%', aspectRatio: 1 / 0.9, minHeight: 132,
-    backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 14,
-    padding: 16, gap: 12, alignItems: 'center', justifyContent: 'center',
-    elevation: 2, shadowColor: '#0f172a', shadowOffset: { width: 0, height: 2 }, shadowRadius: 4, shadowOpacity: 0.05,
+    flexBasis: '46%',
+    flexGrow: 1,
+    minHeight: 120,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.lg,
+    padding: theme.spacing.lg,
+    gap: theme.spacing.md,
   },
-  primaryCard: { borderColor: '#a7f3d0' },
-  pressed: { transform: [{ scale: 0.98 }], backgroundColor: '#f1f5f9' },
-  label: { color: '#0f172a', fontSize: 16, fontWeight: '700', textAlign: 'center', flexShrink: 1 },
-  primaryLabel: { color: '#047857' },
-  settings: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 48, padding: 12, borderRadius: 14 },
-  settingsLabel: { color: '#475569', fontSize: 14, fontWeight: '600' },
+  icon: {
+    width: 44,
+    height: 44,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.brandSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  label: { fontSize: theme.type.body, fontWeight: '600', color: theme.colors.text },
+  pressed: { backgroundColor: theme.colors.brandSoft },
+  badge: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    color: theme.colors.brandStrong,
+    backgroundColor: theme.colors.brandSoft,
+    paddingHorizontal: 8,
+    borderRadius: theme.radius.pill,
+    fontWeight: '700',
+  },
 });

@@ -15,6 +15,7 @@ export interface SupplierSummary {
 export interface SupplierPurchaseSummary {
   id: string;
   referenceNumber: string | null;
+  supplierReceivingId?: string | null;
   receivedOn: string; // ISO date
   supplierId: string | null;
   note: string | null;
@@ -54,6 +55,11 @@ export async function listSupplierPurchases(
     `${client.baseUrl}/api/v1/suppliers/${encodeURIComponent(supplierId)}/purchases?${query.toString()}`,
     { headers: authedHeaders(client) },
   );
-  if (Array.isArray(data)) return data;
-  return data.rows ?? [];
+  const rows = Array.isArray(data) ? data : data.rows ?? [];
+  // Purchases are ledger entries, with a separate optional stock receiving.
+  return rows.map((row) => {
+    const purchase = row as SupplierPurchaseSummary & { reference?: string; receiptNumber?: string; transactionDate?: string };
+    return { ...row, referenceNumber: row.referenceNumber ?? purchase.receiptNumber ?? purchase.reference ?? null,
+      receivedOn: row.receivedOn ?? purchase.transactionDate ?? '', supplierReceivingId: row.supplierReceivingId ?? null };
+  });
 }

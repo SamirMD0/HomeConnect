@@ -1,3 +1,4 @@
+import { theme } from '../theme';
 import { StyleSheet, Text, TextInput, TextInputProps, View } from 'react-native';
 
 interface AppInputProps extends TextInputProps {
@@ -12,7 +13,7 @@ export function AppInput({ label, hint, style, ...props }: AppInputProps) {
       <TextInput
         {...props}
         accessibilityLabel={label}
-        placeholderTextColor="#94a3b8"
+        placeholderTextColor={theme.colors.subtle}
         style={[styles.input, style]}
       />
       {hint ? <Text style={styles.hint}>{hint}</Text> : null}
@@ -22,16 +23,16 @@ export function AppInput({ label, hint, style, ...props }: AppInputProps) {
 
 const styles = StyleSheet.create({
   group: { gap: 6 },
-  label: { color: '#334155', fontSize: 14, fontWeight: '700' },
+  label: { color: theme.colors.muted, fontSize: 14, fontWeight: '700' },
   input: {
     minHeight: 50,
     borderWidth: 1,
-    borderColor: '#cbd5e1',
-    backgroundColor: '#ffffff',
-    color: '#0f172a',
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+    color: theme.colors.text,
     borderRadius: 12,
     paddingHorizontal: 14,
     fontSize: 16,
   },
-  hint: { color: '#64748b', fontSize: 12, lineHeight: 17 },
+  hint: { color: theme.colors.muted, fontSize: 12, lineHeight: 17 },
 });

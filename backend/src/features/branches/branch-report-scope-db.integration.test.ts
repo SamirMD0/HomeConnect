@@ -601,6 +601,8 @@ describe.runIf(enabled)('Phase 3C reports and dashboards branch isolation', () =
           });
 
           await add('photo', 'supplier_receiving_receipts', {
+            supplierId: r.supplier,
+            branchId,
             supplierReceivingId: r.receiving,
             capturedById: admin,
             mime: 'image/jpeg',

@@ -12,9 +12,19 @@
     "outDir": "./dist/server",
     "rootDir": ".",
     "paths": {
-      "@backend/*": ["./backend/src/*"],
-      "@desktop/*": ["./desktop/src/*"]
+      "@backend/*": [
+        "./backend/src/*"
+      ],
+      "@desktop/*": [
+        "./desktop/src/*"
+      ]
     }
   },
-  "include": ["backend/src", "desktop/src", "shared", "backend/src/features/maintenance/checksum-allowlist.json"]
+  "include": [
+    "backend/src",
+    "desktop/src",
+    "shared",
+    "backend/src/features/maintenance/checksum-allowlist.json",
+    "package.json"
+  ]
 }

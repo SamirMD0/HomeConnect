@@ -16,7 +16,12 @@ const { receivingRepository, inventoryRepository, verifyAdminPassword } = vi.hoi
 vi.mock('./supplier-receivings.repository', () => ({ SupplierReceivingsRepository: receivingRepository }));
 vi.mock('../inventory.repository', () => ({ InventoryRepository: inventoryRepository }));
 vi.mock('../../../lib/admin-verification', () => ({ verifyAdminPassword }));
-vi.mock('../../financial/infrastructure/transaction', () => ({ runFinancialTransaction: vi.fn((operation: (client: unknown) => unknown) => operation(tx)) }));
+const { runFinancialTransaction } = vi.hoisted(() => ({ runFinancialTransaction: vi.fn() }));
+vi.mock('../../financial/infrastructure/transaction', () => ({
+  runFinancialTransaction,
+  isRetryableTransactionError: (error: unknown) => (error as { code?: string })?.code === 'P2034',
+}));
+vi.mock('../../../lib/prisma', () => ({ prisma: { id: 'root-client' } }));
 
 import { SupplierReceivingsService } from './supplier-receivings.service';
 const phase3bScope = { mode: 'all' as const, branchIds: ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'] };
@@ -36,6 +41,7 @@ const product = (id: string, quantity = 4) => ({ id, sku: `SKU-${id[0]}`, name: 
 describe('SupplierReceivingsService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    runFinancialTransaction.mockImplementation((operation: (client: unknown) => unknown) => operation(tx));
     process.env.BUSINESS_TIMEZONE = 'Asia/Beirut';
     receivingRepository.findSupplier.mockResolvedValue({ id: supplierId, name: 'Supplier One', isActive: true });
     receivingRepository.create.mockResolvedValue({ id: '55555555-5555-4555-8555-555555555555' });
@@ -96,6 +102,46 @@ describe('SupplierReceivingsService', () => {
       receivedOn: '2026-08-14',
       items: [{ productId: firstId, quantity: 3 }],
     }, user, phase3bScope)).rejects.toMatchObject({ statusCode: 409, code: 'PAYMENT_IDEMPOTENCY_CONFLICT' });
+  });
+
+  it('returns the saved receiving when an identical keyed request loses a race', async () => {
+    const { Prisma } = await import('@prisma/client');
+    const idempotencyKey = 'supplier-receiving-race-key';
+    const conflict = new Prisma.PrismaClientKnownRequestError('write conflict', { code: 'P2034', clientVersion: 'test' });
+    runFinancialTransaction.mockRejectedValueOnce(conflict);
+    receivingRepository.findByIdempotencyKey.mockResolvedValueOnce({
+      id: receivingId, idempotencyKey, supplierId, referenceNumber: 'INV-9', note: null,
+      receivedOn: new Date('2026-08-14T00:00:00.000Z'), receivedById: user.userId,
+      items: [{ productId: firstId, quantity: 2 }],
+    });
+    const result = await SupplierReceivingsService.create({
+      idempotencyKey, supplierId, referenceNumber: 'INV-9', receivedOn: '2026-08-14', items: [{ productId: firstId, quantity: 2 }],
+    }, user, phase3bScope);
+    expect(result.id).toBe(receivingId);
+    expect(receivingRepository.findByIdempotencyKey).toHaveBeenCalledWith({ id: 'root-client' }, idempotencyKey);
+    expect(runFinancialTransaction).toHaveBeenCalledTimes(1);
+    expect(inventoryRepository.createMovement).not.toHaveBeenCalled();
+  });
+
+  it('retries a keyed race once when nothing was saved, then gives up', async () => {
+    const { Prisma } = await import('@prisma/client');
+    const conflict = new Prisma.PrismaClientKnownRequestError('write conflict', { code: 'P2034', clientVersion: 'test' });
+    const input = { idempotencyKey: 'supplier-receiving-retry-key', receivedOn: '2026-08-14', items: [{ productId: firstId, quantity: 2 }] };
+    runFinancialTransaction.mockRejectedValueOnce(conflict);
+    await expect(SupplierReceivingsService.create(input, user, phase3bScope)).resolves.toMatchObject({ id: receivingId });
+    expect(runFinancialTransaction).toHaveBeenCalledTimes(2);
+
+    runFinancialTransaction.mockReset().mockRejectedValue(conflict);
+    await expect(SupplierReceivingsService.create(input, user, phase3bScope)).rejects.toBe(conflict);
+    expect(runFinancialTransaction).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not treat an unkeyed conflict as a replay', async () => {
+    const { Prisma } = await import('@prisma/client');
+    const conflict = new Prisma.PrismaClientKnownRequestError('write conflict', { code: 'P2034', clientVersion: 'test' });
+    runFinancialTransaction.mockRejectedValueOnce(conflict);
+    await expect(SupplierReceivingsService.create({ receivedOn: '2026-08-14', items: [{ productId: firstId, quantity: 2 }] }, user, phase3bScope)).rejects.toBe(conflict);
+    expect(receivingRepository.findByIdempotencyKey).not.toHaveBeenCalled();
   });
 
   it('allows no supplier and normalizes blank reference and note to null', async () => {

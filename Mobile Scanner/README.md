@@ -1,8 +1,10 @@
-# HomeConnect Mobile Scanner
+# Home Connect (phone app)
 
-A shop-floor Expo app that scans products and handles supplier invoices, payments, statements, and receipt photos. It talks directly to the business PC over the shop LAN.
+The phone version of Home Connect: selling, customer payments, stock, suppliers and reports, saved straight to the shop PC over the shop Wi-Fi. It keeps no business data of its own; drafts and bill photos wait on the phone only until the PC confirms them.
 
-The app is not an offline ERP client. Supplier actions are sent to the HomeConnect backend; receipt photos can be queued locally until the PC is reachable. The app does not manage customer debts or sales.
+**Operator guide, troubleshooting and release steps:** [docs/mobile/README.md](../docs/mobile/README.md) · [release checklist](../docs/mobile/release-checklist.md).
+
+The sections below are developer notes from earlier phases.
 
 ## Requirements
 
@@ -39,13 +41,15 @@ The `internal` EAS profile produces a signed APK for direct installation on a sh
 npx eas-cli build --platform android --profile internal
 ```
 
-The mobile app uses the Scanner Hub LAN port (normally `3011`). That listener exposes only scanner routes and the exact authenticated API operations required for product lookup and supplier workflows; the full desktop API remains private. Do not treat an APK as shop-ready until the real-phone checks below pass.
+The mobile app uses the Scanner Hub LAN port (normally `3011`), which forwards authenticated `/api/v1/*` business requests to the desktop API on port `3001`. Desktop backup, setup, maintenance, diagnostics, preflight, system, updates, and scanner administration routes are denied. Login and the cheap compatibility handshake are public. The exported list in `backend/src/features/scanner/mobile-api-gateway.ts` includes the actual `/admin/*` mounts. Do not treat an APK as shop-ready until the real-phone checks below pass.
+
+The Phase 1 cloud build is pending. Version `1.2.0` / Android versionCode `4` needs a new internal APK to validate the native navigation dependencies.
 
 Record the build URL, APK checksum, build date, and tested phone model in the release notes. Keep the download link private: an internal build URL may be accessible to anyone who has it. The build needs Expo account/project setup and network access; this repository does not contain signing credentials. Do not publish a desktop release until the APK is installed and the following real-phone checks pass.
 
 ### Supplier workflow on a real shop phone
 
-- [ ] Sign in, reconnect after force-closing the app, and confirm an expired session returns to sign-in.
+- [ ] Sign in, reconnect after force-closing the app, and confirm access-token expiry refreshes silently; rejected refresh credentials return to sign-in.
 - [ ] Record an invoice using an existing product and a manual line; check quantity, unit cost, total, and resulting supplier balance on the PC. No payment should be recorded during invoice creation.
 - [ ] Record a supplier payment with the correct method; check the balance and statement entry on the PC. Avoid duplicate submission after a slow response.
 - [ ] Capture and upload a receipt photo for the new purchase; verify it appears on the PC. Turn Wi-Fi off, queue another photo, reconnect, and verify the queued photo uploads exactly once.
@@ -59,19 +63,30 @@ Record the build URL, APK checksum, build date, and tested phone model in the re
 2. Press **Turn On**. Note the PC IPv4 address and scanner port. The default port is `3011`.
 3. In the phone app, enter the PC IP and port and press **Test connection and continue**.
 4. Sign in with an active HomeConnect username and password. The phone uses the account's normal permissions; an admin account is required to record supplier invoices and payments. No scanner pairing code is needed for this app.
-5. The access token and connection settings are stored in the phone's secure credential storage.
+5. The access token, refresh token, and connection settings are stored in the phone's secure credential storage.
+6. Choose an accessible branch. A saved selection is validated again after login. The branch header lets you switch; switching closes forms and clears the query cache.
 
 If the app cannot reach the PC, confirm that Scanner Hub is turned on, both devices are on the same Wi-Fi, the PC network profile is Private, and the Windows firewall rule exists.
 
+## Mobile navigation
+
+The five tabs are **Home**, **Sell**, **Stock**, **Suppliers**, and **More**, each with its own stack. Home includes quick actions and the on-device pending-bills count. Sell and Stock display a later-update state until their business features are implemented. Supplier bill capture, pending bills, invoices, payments, and statements live under Suppliers. The global Scan button is available from every tab.
+
+More contains the account, PC connection, branch switcher, and sign-out action. Signing out clears account credentials and query data while keeping the PC connection. Pending bill photos remain on the phone under the Phase 0 queue rules.
+
+The desktop currently defines only `ADMIN` and `EMPLOYEE`. Mobile mirrors desktop visibility: supplier invoice/payment entry requires `ADMIN`; supplier bill capture and statements remain available to signed-in users. Future manager/cashier roles receive no implicit admin rights.
+
+The startup handshake blocks an app below the PC's minimum mobile version and warns when the PC API is too old. Login/refresh responses translate the desktop's refresh cookie into `X-Refresh-Token`; the gateway translates that header back to exactly one refresh cookie only for refresh/logout. The phone stores it in SecureStore. Access-token expiry gets one coordinated refresh/retry; foreground work waits for a refresh when fewer than five minutes remain. Network errors retain the session and show the offline banner. Rejected refresh credentials return to sign-in. Sign-out attempts desktop logout and then clears both tokens while keeping the PC connection.
+
 ## Scanning
 
-- Press **Open camera**, grant camera permission, and point the target at a product barcode.
+- Press the global **Scan** button, then **Open camera**, grant camera permission, and point the target at a product barcode.
 - Manual barcode or SKU entry is always available.
 - The barcode lookup sends the code to the authenticated product-scan endpoint; HomeConnect decides whether and how it matches.
 - A found result contains only product ID, name, model, SKU, barcode, brand, and active/archive state.
 - Repeated scans of the same code inside 2.5 seconds are suppressed.
 - Unknown products and invalid codes are normal results, not application failures.
-- An expired or revoked account session returns the app to sign-in.
+- Access-token expiry refreshes silently. Rejected refresh credentials or a revoked account return the app to sign-in.
 - HTTP 429 responses show a slow-down message. Network failures explain that Wi-Fi or the PC listener may be unavailable.
 
 The app never queues a scan. If the PC is unreachable, scan again after connectivity is restored.
@@ -80,7 +95,7 @@ The app never queues a scan. If the PC is unreachable, scan again after connecti
 
 - This native app uses the account's authenticated backend session for barcode lookup and supplier workflows. The legacy scanner web page uses a separate pairing session.
 - Session credentials use `expo-secure-store`. Pending receipt photos are stored locally until upload succeeds; protect the phone with a screen lock.
-- There is no analytics, telemetry, crash reporting, remote logging, or product cache.
+- There is no analytics, telemetry, crash reporting, or remote logging. The shared query client uses a 30-second stale time; keys include PC, account, and branch, and its cache is cleared on sign-out and branch switch.
 - Communication stays on the local network. The current backend listener uses plain HTTP, so use it only on the trusted shop LAN.
 - Changing the PC address clears the account session and requires sign-in again.
 
@@ -92,7 +107,7 @@ The app never queues a scan. If the PC is unreachable, scan again after connecti
 - [ ] Connection test succeeds against the address displayed by Scanner Hub.
 - [ ] A wrong IP, disabled listener, or Wi-Fi outage produces a clear connection message rather than a crash.
 - [ ] Valid account credentials sign in; wrong credentials show a clear failure.
-- [ ] An expired or revoked account session returns to sign-in.
+- [ ] Access-token expiry refreshes silently; rejected refresh credentials return to sign-in.
 - [ ] The secure session survives fully closing and reopening the app.
 - [ ] Camera permission can be granted and a real EAN/UPC/Code 128 barcode scans.
 - [ ] Denying camera permission leaves manual entry usable.
@@ -107,5 +122,11 @@ The app never queues a scan. If the PC is unreachable, scan again after connecti
 - [ ] Repeated failed sign-ins are rate-limited without exposing account details.
 - [ ] Pressing **Sign out** removes the saved account token.
 - [ ] Pressing **Change PC** removes the saved account token and returns to connection setup.
+- [ ] All five tabs and their own back stacks work; the global Scan action opens from every tab.
+- [ ] Supplier bill, pending bills, invoice, payment, and statement screens open from Suppliers and return correctly.
+- [ ] Switching branch closes forms and shows the newly selected branch; no prior branch query data remains.
+- [ ] An employee sees no supplier invoice/payment entry; an admin sees both.
+- [ ] Losing Wi-Fi shows the connection banner and restoring Wi-Fi clears it without a blank screen.
+- [ ] A PC requiring mobile `1.3.0` blocks this `1.2.0` app; a backend older than `2.1.0` shows a warning.
 
 This checklist requires a real phone and the shop LAN. It is not replaced by simulator or unit-test results.
