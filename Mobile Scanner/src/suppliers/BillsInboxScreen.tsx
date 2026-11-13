@@ -63,9 +63,6 @@ export function BillsInboxScreen() {
         <Text accessibilityRole="header" style={readStyles.title}>
           Bills inbox
         </Text>
-        <Text style={readStyles.subtitle}>
-          Bill photos saved without a purchase, for every supplier in this branch.
-        </Text>
         {message ? <StatusBanner tone={message.tone} message={message.text} /> : null}
         <ReadState query={bills} />
         {bills.data && bills.data.length === 0 ? (
@@ -112,10 +109,7 @@ export function BillsInboxScreen() {
                 <Text style={readStyles.section}>Recent purchases that received stock</Text>
                 <ReadState query={purchases} />
                 {purchases.data && options.length === 0 ? (
-                  <Text style={readStyles.subtitle}>
-                    No purchase from this supplier has a receiving document yet. Create the purchase from
-                    this bill instead.
-                  </Text>
+                  <Text style={readStyles.subtitle}>No purchases with received stock.</Text>
                 ) : null}
                 {options.map((purchase) => (
                   <ListRow

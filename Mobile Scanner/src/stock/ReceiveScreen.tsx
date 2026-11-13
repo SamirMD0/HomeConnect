@@ -177,9 +177,6 @@ export function ReceiveScreen() {
     <>
       <Stack.Screen options={{ title: 'Receive goods' }} />
       <FormPage title="Receive goods">
-        <Text style={readStyles.subtitle}>
-          Adds the scanned quantities to shared stock (all branches), like New receiving on the PC.
-        </Text>
         <DraftNotice locked={locked} error="" onDiscard={() => void draft.restart()} />
         {banner ? <StatusBanner tone={banner.tone} message={banner.message} /> : null}
         {locked ? (
@@ -188,7 +185,8 @@ export function ReceiveScreen() {
           <>
             <ListRow
               title={current.supplierName || 'No supplier'}
-              subtitle="Supplier (optional) · tap to change"
+              subtitle="Supplier"
+              icon="business-outline"
               onPress={() => setMode('suppliers')}
             />
             <AppInput
@@ -215,7 +213,7 @@ export function ReceiveScreen() {
               maxLength={2000}
               onChangeText={(note) => void update((f) => ({ ...f, note }))}
             />
-            <ScanPanel onCode={onCode} disabled={submitting} hint="Scan each item received; repeat scans add one." />
+            <ScanPanel onCode={onCode} disabled={submitting} />
             <AppButton label="Search products" variant="secondary" onPress={() => setMode('products')} />
             <Text accessibilityRole="header" style={readStyles.section}>
               Products ({current.lines.length})

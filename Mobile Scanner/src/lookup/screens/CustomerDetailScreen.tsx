@@ -110,7 +110,7 @@ export function CustomerDetailScreen() {
             </Card>
             <ListRow
               title="Statement of account"
-              subtitle="Opening, movements and closing balance"
+              icon="document-text-outline"
               onPress={() =>
                 router.push({ pathname: '/(tabs)/sell/customer/[id]/statement', params: { id } })
               }

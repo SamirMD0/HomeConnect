@@ -1,4 +1,5 @@
 import { theme } from '../theme';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { ActivityIndicator, Pressable, StyleSheet, Text, ViewStyle } from 'react-native';
 
 interface AppButtonProps {
@@ -8,6 +9,8 @@ interface AppButtonProps {
   loading?: boolean;
   variant?: 'primary' | 'secondary' | 'danger';
   style?: ViewStyle;
+  /** Optional leading icon (Ionicons name). */
+  icon?: keyof typeof Ionicons.glyphMap;
 }
 
 export function AppButton({
@@ -17,6 +20,7 @@ export function AppButton({
   loading = false,
   variant = 'primary',
   style,
+  icon,
 }: AppButtonProps) {
   const unavailable = disabled || loading;
   return (
@@ -33,7 +37,11 @@ export function AppButton({
         style,
       ]}
     >
-      {loading && <ActivityIndicator color={variant === 'primary' ? theme.colors.surface : theme.colors.text} size="small" />}
+      {loading ? (
+        <ActivityIndicator color={variant === 'primary' ? theme.colors.surface : theme.colors.text} size="small" />
+      ) : icon ? (
+        <Ionicons name={icon} size={20} color={variant === 'primary' ? theme.colors.surface : theme.colors.text} accessible={false} />
+      ) : null}
       <Text style={[styles.label, variant !== 'primary' && styles.darkLabel]}>{label}</Text>
     </Pressable>
   );

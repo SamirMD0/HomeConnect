@@ -35,14 +35,12 @@ export function DraftNotice({
   return (
     <View style={{ gap: 12 }}>
       {error ? <StatusBanner tone="danger" message={error} /> : null}
-      <StatusBanner
-        message={
-          locked
-            ? 'This submission may already be saved on the PC. Retry to retrieve the same record. Its details are locked until the outcome is known.'
-            : 'Your form is saved on this phone. You can leave and resume it later.'
-        }
-        tone={locked ? 'warning' : 'info'}
-      />
+      {locked ? (
+        <StatusBanner
+          message="This may already be saved on the PC. Retry to get the same record."
+          tone="warning"
+        />
+      ) : null}
       {!locked && <AppButton label="Discard form" variant="secondary" onPress={onDiscard} />}
     </View>
   );

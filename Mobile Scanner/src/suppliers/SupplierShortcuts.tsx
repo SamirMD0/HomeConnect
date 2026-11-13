@@ -19,32 +19,32 @@ export function SupplierShortcuts() {
     <View style={{ gap: 8 }}>
       <ListRow
         title={count ? `Bills inbox · ${count} waiting` : 'Bills inbox'}
-        subtitle="Bill photos saved without a purchase"
+        icon="file-tray-full-outline"
         onPress={() => router.push('/(tabs)/suppliers/inbox')}
       />
       {session.can('supplierBills.capture') && (
         <ListRow
           title="Supplier bill"
-          subtitle="Photograph bill pages"
+          icon="camera-outline"
           onPress={() => router.push('/(tabs)/suppliers/bill')}
         />
       )}
       <ListRow
         title="Pending uploads"
-        subtitle="Bill photos still on this phone"
+        icon="cloud-upload-outline"
         onPress={() => router.push('/(tabs)/suppliers/pending-bills')}
       />
       {session.can('supplierInvoices.write') && (
         <ListRow
           title="Supplier invoice"
-          subtitle="Record a purchase and its products"
+          icon="document-text-outline"
           onPress={() => router.push('/(tabs)/suppliers/invoice')}
         />
       )}
       {session.can('supplierPayments.write') && (
         <ListRow
           title="Supplier payment"
-          subtitle="Record money paid to a supplier"
+          icon="wallet-outline"
           onPress={() => router.push('/(tabs)/suppliers/payment')}
         />
       )}

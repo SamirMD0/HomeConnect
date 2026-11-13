@@ -1,6 +1,7 @@
 import { theme } from '../theme';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { testBackendConnection } from '../api/auth-api';
 import { HcApiError } from '../api/hc-client';
 import { AppButton } from '../components/AppButton';
@@ -70,57 +71,52 @@ export function ConnectionSetupScreen({ initialSettings, onConnected }: Connecti
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.hero}>
-          <Text style={styles.eyebrow}>HOME CONNECT</Text>
-          <Text style={styles.title}>Connect to the shop PC</Text>
-          <Text style={styles.subtitle}>
-            On the PC, open Scanner Hub and turn on Mobile Scanner. Scan the QR shown there — no typing needed.
-          </Text>
+          <View style={styles.logo}>
+            <Ionicons name="storefront-outline" size={40} color={theme.colors.brand} accessible={false} />
+          </View>
+          <Text accessibilityRole="header" style={styles.title}>Home Connect</Text>
+          <Text style={styles.subtitle}>Connect to the shop PC</Text>
         </View>
 
         {message && <StatusBanner tone="danger" message={message} />}
 
         <View style={styles.primary}>
           <AppButton
-            label="Scan Scanner Hub QR"
+            label="Scan PC code"
+            icon="qr-code-outline"
             onPress={() => { setMessage(null); setQrOpen(true); }}
             loading={busy && !manualOpen}
           />
-          <Pressable onPress={() => setManualOpen((value) => !value)} accessibilityRole="button">
-            <Text style={styles.toggleLink}>
-              {manualOpen
-                ? 'Hide manual address entry'
-                : 'Enter address manually'}
-            </Text>
-          </Pressable>
+          <AppButton
+            label={manualOpen ? 'Hide address' : 'Type address'}
+            icon={manualOpen ? 'chevron-up-outline' : 'create-outline'}
+            variant="secondary"
+            onPress={() => setManualOpen((value) => !value)}
+          />
         </View>
 
         {manualOpen && (
           <View style={styles.form}>
             <AppInput
-              label="PC IP address"
+              label="PC address"
               value={host}
               onChangeText={setHost}
               autoCapitalize="none"
               autoCorrect={false}
               keyboardType="numbers-and-punctuation"
               placeholder="192.168.1.20"
-              hint="Use the address displayed in Scanner Hub. The phone and PC must be on the same Wi-Fi."
             />
             <AppInput
-              label="Scanner port"
+              label="Port"
               value={port}
               onChangeText={setPort}
               keyboardType="number-pad"
               maxLength={5}
               placeholder={String(DEFAULT_SCANNER_PORT)}
             />
-            <AppButton label="Test connection and continue" onPress={() => void testAndContinue()} loading={busy} />
+            <AppButton label="Connect" icon="link-outline" onPress={() => void testAndContinue()} loading={busy} />
           </View>
         )}
-
-        <StatusBanner
-          message="Nothing is sent to the internet. This app talks only to the PC address you enter"
-        />
       </ScrollView>
 
       <QrPairScreen visible={qrOpen} onCancel={() => setQrOpen(false)} onPaired={handlePaired} />
@@ -129,13 +125,20 @@ export function ConnectionSetupScreen({ initialSettings, onConnected }: Connecti
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
+  flex: { flex: 1, backgroundColor: theme.colors.background },
   content: { flexGrow: 1, padding: 22, justifyContent: 'center', gap: 22, backgroundColor: theme.colors.background },
-  hero: { gap: 7 },
-  eyebrow: { color: theme.colors.brand, fontSize: 12, fontWeight: '900', letterSpacing: 2 },
-  title: { color: theme.colors.text, fontSize: 30, fontWeight: '900' },
-  subtitle: { color: theme.colors.muted, fontSize: 15, lineHeight: 22, marginTop: 6 },
+  hero: { gap: 6, alignItems: 'center' },
+  logo: {
+    width: 76,
+    height: 76,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.brandSoft,
+    marginBottom: 8,
+  },
+  title: { color: theme.colors.text, fontSize: 28, fontWeight: '800' },
+  subtitle: { color: theme.colors.muted, fontSize: 16 },
   primary: { gap: 10, alignItems: 'stretch' },
-  toggleLink: { color: theme.colors.brand, fontWeight: '700', textAlign: 'center', paddingVertical: 6 },
   form: { gap: 17 },
 });

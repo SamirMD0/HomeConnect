@@ -1,3 +1,4 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme } from '../theme';
 import { useState } from 'react';
 import { Alert, Keyboard, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -52,8 +53,8 @@ export function LoginScreen({ connection, startupMessage, onLoggedIn, onChangeCo
 
   const confirmChangeConnection = () => {
     Alert.alert(
-      'Change backend URL',
-      'This clears the current URL and sends you back to Setup. You will need to type the backend URL again.',
+      'Change PC',
+      'Connect this phone to a different PC?',
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Change', style: 'destructive', onPress: () => void onChangeConnection() },
@@ -64,12 +65,12 @@ export function LoginScreen({ connection, startupMessage, onLoggedIn, onChangeCo
   return (
     <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
       <View style={styles.header}>
-        <Text style={styles.title}>Sign in</Text>
+        <View style={styles.logo}>
+          <Ionicons name="person-circle-outline" size={44} color={theme.colors.brand} accessible={false} />
+        </View>
+        <Text accessibilityRole="header" style={styles.title}>Sign in</Text>
         <Text style={styles.subtitle}>
-          Connecting to{' '}
-          <Text style={styles.subtitleStrong}>
-            {connection.host}:{connection.port}
-          </Text>
+          <Ionicons name="desktop-outline" size={14} color={theme.colors.muted} /> {connection.host}:{connection.port}
         </Text>
       </View>
 
@@ -82,7 +83,6 @@ export function LoginScreen({ connection, startupMessage, onLoggedIn, onChangeCo
           onChangeText={setUsername}
           autoCapitalize="none"
           autoCorrect={false}
-          placeholder="Your HomeConnect username"
           editable={!submitting}
         />
         <AppInput
@@ -98,20 +98,30 @@ export function LoginScreen({ connection, startupMessage, onLoggedIn, onChangeCo
 
         <AppButton
           label={submitting ? 'Signing in…' : 'Sign in'}
+          icon="log-in-outline"
           onPress={handleSubmit}
           loading={submitting}
           disabled={!canSubmit}
         />
       </View>
 
-      <AppButton label="Change backend URL" variant="secondary" onPress={confirmChangeConnection} />
+      <AppButton label="Change PC" icon="swap-horizontal-outline" variant="secondary" onPress={confirmChangeConnection} />
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 20, gap: 20 },
-  header: { gap: 6 },
+  container: { flexGrow: 1, justifyContent: 'center', padding: 22, gap: 20, backgroundColor: theme.colors.background },
+  header: { gap: 6, alignItems: 'center' },
+  logo: {
+    width: 76,
+    height: 76,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.brandSoft,
+    marginBottom: 8,
+  },
   title: { fontSize: 28, fontWeight: '800', color: theme.colors.text },
   subtitle: { color: theme.colors.muted },
   subtitleStrong: { fontWeight: '700', color: theme.colors.text },

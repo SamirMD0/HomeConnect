@@ -106,10 +106,6 @@ export function ProductDetailScreen() {
                 <Field label="Quantity" value={stock.product.stockQuantity} />
                 <Field label="Status" value={humanLabel(stock.product.stockStatus)} />
                 <Field label="Reorder level" value={stock.product.lowStockThreshold} />
-                <Text style={readStyles.subtitle}>
-                  The desktop keeps one shared stock quantity. A per-branch allocation is not
-                  recorded.
-                </Text>
                 {stock.product.trackStock && (
                   <AppButton
                     label="Adjust stock"

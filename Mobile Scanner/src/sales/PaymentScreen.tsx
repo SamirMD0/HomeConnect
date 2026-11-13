@@ -137,9 +137,6 @@ export function PaymentScreen() {
             >
               <Card title={data?.customer.name ?? (form.customerName || 'Customer payment')}>
                 <Field label="Currency" value="USD" />
-                <Text style={readStyles.subtitle}>
-                  This receivables flow records USD payments, as on the desktop.
-                </Text>
                 {data && (
                   <Field
                     label="Current account balance"

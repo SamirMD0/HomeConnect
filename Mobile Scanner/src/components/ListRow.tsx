@@ -7,11 +7,14 @@ export function ListRow({
   subtitle,
   onPress,
   trailing,
+  icon,
 }: {
   title: string;
   subtitle?: string;
   onPress?: () => void;
   trailing?: ReactNode;
+  /** Optional leading icon (Ionicons name) for menu rows. */
+  icon?: keyof typeof Ionicons.glyphMap;
 }) {
   return (
     <Pressable
@@ -20,6 +23,11 @@ export function ListRow({
       disabled={!onPress}
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
     >
+      {icon ? (
+        <View style={styles.icon}>
+          <Ionicons name={icon} size={22} color={theme.colors.brand} accessible={false} />
+        </View>
+      ) : null}
       <View style={styles.copy}>
         <Text style={styles.title}>{title}</Text>
         {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
@@ -43,6 +51,14 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
   },
   copy: { flex: 1, gap: 4 },
+  icon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.brandSoft,
+  },
   title: { fontSize: theme.type.body, fontWeight: '600', color: theme.colors.text },
   subtitle: { fontSize: theme.type.small, color: theme.colors.muted },
   pressed: { backgroundColor: theme.colors.brandSoft },

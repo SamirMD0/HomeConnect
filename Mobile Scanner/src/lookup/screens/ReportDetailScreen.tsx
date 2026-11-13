@@ -166,9 +166,7 @@ export function ReportDetailScreen() {
           </>
         )}
         {'operational' in definition && definition.operational && (
-          <Text style={readStyles.subtitle}>
-            Current operational snapshot. The selected period does not change this backlog.
-          </Text>
+          <Text style={readStyles.subtitle}>Current snapshot</Text>
         )}
         <ReadState query={report} />
         {data && (

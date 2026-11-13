@@ -171,7 +171,6 @@ export function SupplierPurchaseScreen({ connection, token, onDone, onSessionInv
         <View style={{ gap: 6 }}>
           <Text style={styles.label}>Bill photo</Text>
           <BillPreview bill={{ id: fromBill.billId, branchId: fromBill.billBranchId }} compact />
-          <Text style={styles.muted}>Keep Receive stock on to attach this bill to the purchase.</Text>
         </View>
       ) : null}
       <Text style={styles.title}>Supplier purchase invoice</Text>
@@ -200,7 +199,7 @@ export function SupplierPurchaseScreen({ connection, token, onDone, onSessionInv
           <Text style={styles.supplierName}>{supplier.name}</Text>
           <AppInput label="Receipt / invoice no." value={receiptNumber} onChangeText={setReceiptNumber} maxLength={200} />
           <AppInput label="Purchase date (YYYY-MM-DD)" value={transactionDate} onChangeText={setTransactionDate} keyboardType="numbers-and-punctuation" maxLength={10} />
-          <AppInput label="Due date (optional)" value={dueDate} onChangeText={setDueDate} keyboardType="numbers-and-punctuation" maxLength={10} hint="Leave blank for no due date" />
+          <AppInput label="Due date (optional)" value={dueDate} onChangeText={setDueDate} keyboardType="numbers-and-punctuation" maxLength={10} />
           <Text style={styles.label}>Currency</Text>
           <View style={styles.choiceRow}>
             {(['USD', 'LBP'] as PurchaseCurrency[]).map((value) => (
@@ -223,7 +222,7 @@ export function SupplierPurchaseScreen({ connection, token, onDone, onSessionInv
           ))}
           <AppButton label="Add line" variant="secondary" disabled={lines.length >= 100} onPress={() => setLines((current) => [...current, newPurchaseLine(newKey())])} />
           <Text style={styles.muted}>Entered line amounts (VAT may change the line sum): {currency} {moneyText(quotedSubtotal, currency)}</Text>
-          <AppInput label="Total on supplier invoice" value={billedTotal} onChangeText={setBilledTotal} keyboardType="decimal-pad" hint="This is the amount posted to the supplier account" />
+          <AppInput label="Total on supplier invoice" value={billedTotal} onChangeText={setBilledTotal} keyboardType="decimal-pad" />
           <AppInput label="Description (optional)" value={description} onChangeText={setDescription} multiline maxLength={500} hint={`Suggested: ${generatedDescription || '—'}`} />
           <AppInput label="Reference (optional)" value={reference} onChangeText={setReference} maxLength={200} />
           <AppInput label="Notes (optional)" value={notes} onChangeText={setNotes} multiline maxLength={2000} />

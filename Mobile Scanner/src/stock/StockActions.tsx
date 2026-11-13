@@ -11,18 +11,18 @@ export function StockActions() {
     <View style={{ gap: 8 }}>
       <ListRow
         title="Price check"
-        subtitle="Scan to see price and shared stock"
+        icon="pricetag-outline"
         onPress={() => router.push('/(tabs)/stock/price-check')}
       />
       <ListRow
         title="Receive goods"
-        subtitle="Scan delivered items into stock"
+        icon="cube-outline"
         onPress={() => router.push('/(tabs)/stock/receive')}
       />
       {session.user?.role === 'ADMIN' && (
         <ListRow
           title="Stock count"
-          subtitle="Count shelves and correct stock totals"
+          icon="clipboard-outline"
           onPress={() => router.push('/(tabs)/stock/count')}
         />
       )}

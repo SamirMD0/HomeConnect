@@ -11,18 +11,18 @@ export default function Sell() {
       {session.can('orders.create') && (
         <ListRow
           title="New order"
-          subtitle="Create or resume the order saved on this phone"
+          icon="cart-outline"
           onPress={() => router.push('/(tabs)/sell/new-order')}
         />
       )}
       <ListRow
         title="Sales orders"
-        subtitle="Search orders, payments and delivery status"
+        icon="receipt-outline"
         onPress={() => router.push('/(tabs)/sell/orders')}
       />
       <ListRow
         title="Prepaid items"
-        subtitle="Items customers paid for in advance"
+        icon="time-outline"
         onPress={() => router.push('/(tabs)/sell/prepaid')}
       />
       <CustomersScreen />

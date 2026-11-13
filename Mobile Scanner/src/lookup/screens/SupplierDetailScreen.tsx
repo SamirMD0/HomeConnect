@@ -54,21 +54,21 @@ export function SupplierDetailScreen() {
             </Card>
             <ListRow
               title="Statement of account"
-              subtitle="Server-computed opening, running and closing balances"
+              icon="document-text-outline"
               onPress={() =>
                 router.push({ pathname: '/(tabs)/suppliers/detail/[id]/statement', params: { id } })
               }
             />
             <ListRow
               title="Purchases"
-              subtitle="Receipts and posted amounts"
+              icon="cart-outline"
               onPress={() =>
                 router.push({ pathname: '/(tabs)/suppliers/detail/[id]/purchases', params: { id } })
               }
             />
             <ListRow
               title="Bills"
-              subtitle="View supplier bill photos"
+              icon="images-outline"
               onPress={() =>
                 router.push({ pathname: '/(tabs)/suppliers/detail/[id]/bills', params: { id } })
               }

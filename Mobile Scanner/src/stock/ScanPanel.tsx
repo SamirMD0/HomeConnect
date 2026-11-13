@@ -77,11 +77,10 @@ export function ScanPanel({
           />
         </View>
       ) : null}
-      <Text style={styles.hint}>
-        {busy ? 'Looking up…' : (hint ?? 'Scan barcodes one after another, or type a code.')}
-      </Text>
+      {busy || hint ? <Text style={styles.hint}>{busy ? 'Looking up…' : hint}</Text> : null}
       <AppButton
         label={cameraOn ? 'Close camera' : 'Open camera'}
+        icon={cameraOn ? 'close-outline' : 'camera-outline'}
         variant="secondary"
         onPress={() => (cameraOn ? setCameraOn(false) : void openCamera())}
       />
@@ -105,6 +104,7 @@ export function ScanPanel({
       </View>
       <AppButton
         label="Add code"
+        icon="add-outline"
         variant="secondary"
         disabled={disabled || busy || !manual.trim()}
         onPress={() => {

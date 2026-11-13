@@ -127,7 +127,6 @@ export function AdjustScreen() {
             {guarded && (
               <AppInput
                 label="Your account password"
-                hint="Required by the PC to remove or correct stock. It is not saved."
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry

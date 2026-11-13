@@ -27,7 +27,6 @@ export function ReportsScreen() {
       <Stack.Screen options={{ title: 'Reports' }} />
       <LookupList
         title="Reports"
-        subtitle="The same reports as the desktop. All figures are computed on the PC."
         query={reports}
         itemKey={(item) => item.id}
         header={<SearchBar label="Search reports" value={search} onChangeText={setSearch} />}

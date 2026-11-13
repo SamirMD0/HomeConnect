@@ -31,7 +31,6 @@ export function PrepaidListScreen() {
       <Stack.Screen options={{ title: 'Prepaid items' }} />
       <LookupList
         title="Prepaid items"
-        subtitle="Items customers paid for in advance."
         query={query}
         itemKey={(item) => item.id}
         header={

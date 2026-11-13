@@ -35,7 +35,7 @@ export function PriceCheckScreen() {
     <>
       <Stack.Screen options={{ title: 'Price check' }} />
       <FormPage title="Price check">
-        <ScanPanel onCode={onCode} hint="Scan a product to see its price and shared stock." />
+        <ScanPanel onCode={onCode} />
         {error ? <StatusBanner tone="danger" message={error} /> : null}
         {results.map((product, index) => (
           <Card key={product.id} title={`${index === 0 ? 'Latest · ' : ''}${product.name}`}>

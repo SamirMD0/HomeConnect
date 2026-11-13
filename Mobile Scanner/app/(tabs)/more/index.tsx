@@ -9,16 +9,18 @@ export default function More() {
   const router = useRouter();
   return (
     <ScrollView contentContainerStyle={{ padding: theme.spacing.lg, paddingBottom: 112 }}>
-      {session.can('reports.read') && <ListRow title="Reports" subtitle="Read-only reports from the shop PC" onPress={() => router.push('/(tabs)/more/reports')} />}
+      {session.can('reports.read') && <ListRow title="Reports" icon="bar-chart-outline" onPress={() => router.push('/(tabs)/more/reports')} />}
       <ListRow
         title={session.user?.fullName ?? 'Account'}
+        icon="person-outline"
         subtitle={`Role: ${session.user?.role ?? ''}`}
       />
       <ListRow
         title="PC connection"
+        icon="desktop-outline"
         subtitle={session.connection ? `${session.connection.host}:${session.connection.port}` : ''}
         onPress={() =>
-          Alert.alert('Change shop PC?', 'You will sign out and return to connection setup.', [
+          Alert.alert('Change PC?', 'You will be signed out.', [
             { text: 'Cancel', style: 'cancel' },
             { text: 'Change PC', onPress: () => void session.changeConnection() },
           ])
@@ -26,12 +28,13 @@ export default function More() {
       />
       <ListRow
         title="Switch branch"
+        icon="business-outline"
         subtitle={session.branch.selected?.name}
         onPress={() => void session.branch.switchBranch()}
       />
       <ListRow
         title="Sign out"
-        subtitle="Keep this PC connection for next time"
+        icon="log-out-outline"
         onPress={() => void session.signOut()}
       />
       <AppUpdateRow />

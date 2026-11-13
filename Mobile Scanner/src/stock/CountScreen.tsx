@@ -185,10 +185,6 @@ export function CountScreen() {
     <>
       <Stack.Screen options={{ title: 'Stock count' }} />
       <FormPage title="Stock count">
-        <Text style={readStyles.subtitle}>
-          Shared stock · all branches. Scan each item; every scan adds one. Your count is saved on
-          this phone until you submit it.
-        </Text>
         {banner ? <StatusBanner tone={banner.tone} message={banner.message} /> : null}
         <ScanPanel onCode={onCode} disabled={submitting} />
         <AppButton label="Search products" variant="secondary" onPress={() => setSearching(true)} />
@@ -235,7 +231,6 @@ export function CountScreen() {
             />
             <AppInput
               label="Your account password"
-              hint="Required by the PC for stock corrections. It is not saved."
               value={password}
               onChangeText={setPassword}
               secureTextEntry

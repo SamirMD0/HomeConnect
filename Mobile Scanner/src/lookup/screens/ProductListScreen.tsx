@@ -32,7 +32,6 @@ export function ProductListScreen() {
   return (
     <LookupList
       title="Products & stock"
-      subtitle="Search the catalogue. Stock quantities are shared across all branches."
       query={products}
       itemKey={(item) => item.id}
       header={

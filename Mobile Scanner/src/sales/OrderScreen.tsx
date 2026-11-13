@@ -254,7 +254,6 @@ export function OrderScreen() {
                       value={line.discountAmount}
                       keyboardType="decimal-pad"
                       editable={!locked}
-                      hint="Discount for the whole line, in the order currency."
                       onChangeText={(value) =>
                         change(
                           'items',
@@ -296,7 +295,6 @@ export function OrderScreen() {
                   keyboardType="decimal-pad"
                   editable={!locked}
                   onChangeText={(value) => change('paidAmount', value)}
-                  hint="Enter the amount actually received; use zero for an unpaid order."
                 />
                 <AppInput
                   label="Debt due date"
@@ -304,12 +302,7 @@ export function OrderScreen() {
                   placeholder="YYYY-MM-DD"
                   editable={!locked}
                   onChangeText={(value) => change('debtDueDate', value)}
-                  hint="Used only if a balance remains after confirmation."
                 />
-                <Text style={readStyles.subtitle}>
-                  The PC calculates VAT, discounts and totals when you save. The saved order shows
-                  those final numbers.
-                </Text>
               </Card>
               {form.salesChannel !== 'SHOP_DIRECT' && (
                 <Card title="Delivery">
