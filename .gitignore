@@ -48,3 +48,6 @@ graphify-out/
 *.csv
 *.CSV
 CSV/
+
+# Supplier bill photos saved by the dev backend (never commit)
+receipts-dev/
