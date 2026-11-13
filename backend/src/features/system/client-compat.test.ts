@@ -9,10 +9,15 @@ vi.mock('../../lib/prisma', () => ({ prisma: {}, activityLogModel: {} }));
 
 describe('public client compatibility handshake', () => {
   it('ships version metadata beside the compiled backend in the PC installer', () => {
+    // Copy the compiler's dist/server/package.json. Copying the root
+    // package.json as an extra resource made electron-builder leave the app's
+    // own package.json out of app.asar, which broke the 2.2.0 installer build.
     expect(build.extraResources).toContainEqual({
-      from: 'package.json',
-      to: 'dist/server/package.json',
+      from: 'dist/server',
+      to: 'dist/server',
+      filter: ['package.json'],
     });
+    expect(build.extraResources).not.toContainEqual(expect.objectContaining({ from: 'package.json' }));
   });
   it('returns package version and minimum mobile version without auth or a DB probe', async () => {
     const response = await request(app).get('/api/v1/system/client-compat');
