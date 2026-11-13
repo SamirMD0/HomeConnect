@@ -62,6 +62,30 @@ export function defaultUrl(urls: string[]): string | null {
 }
 
 /**
+ * What the pairing QR encodes: the chosen URL, plus every other address of
+ * this PC in `alt`. The phone tries them all at once and keeps the one that
+ * answers, so a wrong guess (a WSL or VPN adapter) no longer fails the pairing.
+ * Phones from before 2.1 read only host and port and ignore the query.
+ */
+export function pairingQrPayload(selectedUrl: string, urls: string[]): string {
+  const host = (url: string) => {
+    try {
+      return new URL(url).hostname;
+    } catch {
+      return null;
+    }
+  };
+  const selectedHost = host(selectedUrl);
+  const alternates = urls
+    .map(host)
+    .filter((value, index, all): value is string =>
+      Boolean(value) && value !== selectedHost && all.indexOf(value) === index);
+  if (!alternates.length) return selectedUrl;
+  const base = selectedUrl.split(/[?#]/)[0];
+  return `${base}?alt=${alternates.join(',')}`;
+}
+
+/**
  * A session the operator can act on.
  *
  * Revoked and expired sessions are shown rather than hidden — "the phone I

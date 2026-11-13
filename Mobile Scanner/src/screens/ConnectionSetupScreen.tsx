@@ -2,8 +2,8 @@ import { theme } from '../theme';
 import { useState } from 'react';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { testBackendConnection } from '../api/auth-api';
-import { HcApiError } from '../api/hc-client';
+import type { CompatibilityState } from '../api/system-api';
+import { candidateHosts, findPc } from '../connection/find-pc';
 import { AppButton } from '../components/AppButton';
 import { AppInput } from '../components/AppInput';
 import { StatusBanner } from '../components/StatusBanner';
@@ -11,10 +11,11 @@ import { saveConnection } from '../storage/secure-storage';
 import { ConnectionSettings } from '../types/scanner.types';
 import { DEFAULT_SCANNER_PORT, parseConnection } from '../utils/scanner-url';
 import { QrPairScreen } from './QrPairScreen';
+import { ConnectionLogPanel } from '../connection/ConnectionLogPanel';
 
 interface ConnectionSetupScreenProps {
   initialSettings: ConnectionSettings | null;
-  onConnected: (settings: ConnectionSettings) => void;
+  onConnected: (settings: ConnectionSettings, compat: CompatibilityState) => void;
 }
 
 export function ConnectionSetupScreen({ initialSettings, onConnected }: ConnectionSetupScreenProps) {
@@ -26,16 +27,22 @@ export function ConnectionSetupScreen({ initialSettings, onConnected }: Connecti
   // action most operators see is "Scan QR" — the fix for the main pain point.
   const [manualOpen, setManualOpen] = useState(!!initialSettings);
   const [qrOpen, setQrOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   const connect = async (settings: ConnectionSettings): Promise<string | null> => {
+    let found;
     try {
-      await testBackendConnection(settings);
-      await saveConnection(settings);
-      onConnected(settings);
-      return null;
+      found = await findPc(settings);
     } catch (error) {
-      return error instanceof HcApiError ? error.message : 'Could not securely save the PC connection.';
+      return error instanceof Error ? error.message : 'Could not reach the shop PC.';
     }
+    try {
+      await saveConnection(found.settings);
+    } catch {
+      return 'Could not securely save the PC connection.';
+    }
+    onConnected(found.settings, found.compat);
+    return null;
   };
 
   const testAndContinue = async () => {
@@ -46,7 +53,11 @@ export function ConnectionSetupScreen({ initialSettings, onConnected }: Connecti
     }
     setBusy(true);
     setMessage(null);
-    const failure = await connect(validation.value);
+    // Typing the address the phone already knows keeps the PC's other addresses.
+    const known = initialSettings && candidateHosts(initialSettings).includes(validation.value.host);
+    const failure = await connect(
+      known ? { ...validation.value, alternates: candidateHosts(initialSettings) } : validation.value
+    );
     if (failure) setMessage(failure);
     setBusy(false);
   };
@@ -79,6 +90,15 @@ export function ConnectionSetupScreen({ initialSettings, onConnected }: Connecti
         </View>
 
         {message && <StatusBanner tone="danger" message={message} />}
+        {message && (
+          <AppButton
+            label={detailsOpen ? 'Hide details' : 'Connection details'}
+            icon="pulse-outline"
+            variant="secondary"
+            onPress={() => setDetailsOpen((value) => !value)}
+          />
+        )}
+        {message && detailsOpen && <ConnectionLogPanel limit={12} />}
 
         <View style={styles.primary}>
           <AppButton

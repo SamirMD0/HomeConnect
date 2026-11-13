@@ -27,6 +27,27 @@ describe('parsePairingPayload', () => {
     expect(parsePairingPayload('not a url')).toBeNull();
   });
 
+  it('reads the other PC addresses from the Scanner Hub QR', () => {
+    expect(
+      parsePairingPayload('http://192.168.0.178:3011/mobile-scanner?alt=172.17.208.1,10.0.0.4')
+    ).toEqual({ host: '192.168.0.178', port: 3011, alternates: ['172.17.208.1', '10.0.0.4'] });
+    expect(parsePairingPayload('hc://pair?h=192.168.1.20&p=3011&alt=10.0.0.5')).toEqual({
+      host: '192.168.1.20',
+      port: 3011,
+      alternates: ['10.0.0.5'],
+    });
+  });
+
+  it('drops broken, repeated and duplicate-of-main alternates', () => {
+    expect(
+      parsePairingPayload('http://192.168.0.178:3011/?alt=nope,192.168.0.178,10.0.0.4,10.0.0.4,')
+    ).toEqual({ host: '192.168.0.178', port: 3011, alternates: ['10.0.0.4'] });
+    expect(parsePairingPayload('http://192.168.0.178:3011/mobile-scanner?alt=')).toEqual({
+      host: '192.168.0.178',
+      port: 3011,
+    });
+  });
+
   it('round-trips with buildPairingPayload', () => {
     const settings = { host: '192.168.1.20', port: 3011 };
     expect(parsePairingPayload(buildPairingPayload(settings))).toEqual(settings);

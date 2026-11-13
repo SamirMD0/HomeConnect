@@ -17,11 +17,13 @@ export interface PairingQrCodeProps {
 
 /**
  * Renders the Scanner Hub pairing QR into a canvas sized so a phone across the
- * till can still read it. 192px is the smallest size that stayed readable in
- * our shop testing; printing the panel keeps the QR crisp because it is drawn
- * at the canvas's intrinsic resolution rather than scaled from CSS.
+ * till can still read it. Phones read the old 192px code with a 1-module border
+ * only now and then on a glossy screen: 256px gives the camera bigger modules,
+ * and the 4-module quiet zone the QR spec asks for lets it find the code's edge.
+ * Printing keeps the QR crisp because it is drawn at the canvas's intrinsic
+ * resolution rather than scaled from CSS.
  */
-export const PairingQrCode: React.FC<PairingQrCodeProps> = ({ url, size = 192 }) => {
+export const PairingQrCode: React.FC<PairingQrCodeProps> = ({ url, size = 256 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,7 +32,7 @@ export const PairingQrCode: React.FC<PairingQrCodeProps> = ({ url, size = 192 })
     if (!canvas || !url) return;
     toCanvas(canvas, url, {
       width: size,
-      margin: 1,
+      margin: 4,
       errorCorrectionLevel: 'M',
       color: { dark: '#0f172a', light: '#ffffff' },
     }).then(() => setError(null)).catch((reason: unknown) => {

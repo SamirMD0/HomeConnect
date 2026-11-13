@@ -27,6 +27,11 @@ export default function More() {
         }
       />
       <ListRow
+        title="Connection details"
+        icon="pulse-outline"
+        onPress={() => router.push('/(tabs)/more/connection-log')}
+      />
+      <ListRow
         title="Switch branch"
         icon="business-outline"
         subtitle={session.branch.selected?.name}

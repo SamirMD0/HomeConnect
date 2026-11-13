@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useEffect, useRef, useState } from 'react';
-import { AppState, BackHandler, Linking, StyleSheet, Text, View } from 'react-native';
+import { AppState, BackHandler, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { AppButton } from '../components/AppButton';
 import { StatusBanner } from '../components/StatusBanner';
 import { theme } from '../theme';
@@ -25,6 +25,10 @@ export function QrPairScreen({ visible, onCancel, onPaired }: QrPairScreenProps)
   const [permission, requestPermission, getPermission] = useCameraPermissions();
   const [session, setSession] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [torch, setTorch] = useState(false);
+  // A QR on a PC screen is small from arm's length; zooming makes its squares bigger.
+  const [zoomed, setZoomed] = useState(false);
+  const hintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const consumed = useRef(false);
   const asked = useRef(false);
 
@@ -56,12 +60,17 @@ export function QrPairScreen({ visible, onCancel, onPaired }: QrPairScreenProps)
     return () => sub.remove();
   });
 
+  useEffect(() => () => {
+    if (hintTimer.current) clearTimeout(hintTimer.current);
+  }, []);
+
   if (!visible) return null;
 
   function close() {
     consumed.current = false;
     asked.current = false;
     setError(null);
+    setTorch(false);
     onCancel();
   }
 
@@ -69,7 +78,10 @@ export function QrPairScreen({ visible, onCancel, onPaired }: QrPairScreenProps)
     if (consumed.current) return;
     const parsed = parsePairingPayload(data);
     if (!parsed) {
-      setError('This is not the Home Connect code.');
+      // Another QR in view (or a half-read one): say so briefly and keep scanning.
+      setError('Not the Home Connect code');
+      if (hintTimer.current) clearTimeout(hintTimer.current);
+      hintTimer.current = setTimeout(() => setError(null), 2500);
       return;
     }
     consumed.current = true;
@@ -96,10 +108,32 @@ export function QrPairScreen({ visible, onCancel, onPaired }: QrPairScreenProps)
             facing="back"
             style={StyleSheet.absoluteFill}
             barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
+            enableTorch={torch}
+            zoom={zoomed ? 0.35 : 0}
             onBarcodeScanned={handleScan}
             onMountError={({ message }) => setError(`Camera could not start: ${message}`)}
           />
           <View pointerEvents="none" style={styles.aim} />
+          <View style={styles.cameraTools}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={torch ? 'Turn light off' : 'Turn light on'}
+              accessibilityState={{ selected: torch }}
+              onPress={() => setTorch((value) => !value)}
+              style={[styles.tool, torch && styles.toolOn]}
+            >
+              <Ionicons name={torch ? 'flashlight' : 'flashlight-outline'} size={24} color="#FFFFFF" accessible={false} />
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={zoomed ? 'Zoom out' : 'Zoom in'}
+              accessibilityState={{ selected: zoomed }}
+              onPress={() => setZoomed((value) => !value)}
+              style={[styles.tool, zoomed && styles.toolOn]}
+            >
+              <Ionicons name={zoomed ? 'contract-outline' : 'expand-outline'} size={24} color="#FFFFFF" accessible={false} />
+            </Pressable>
+          </View>
         </View>
       ) : (
         <View style={styles.permission}>
@@ -165,6 +199,21 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: '#FFFFFF',
   },
+  cameraTools: {
+    position: 'absolute',
+    bottom: theme.spacing.lg,
+    flexDirection: 'row',
+    gap: theme.spacing.lg,
+  },
+  tool: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.55)',
+  },
+  toolOn: { backgroundColor: theme.colors.brand },
   permission: {
     flex: 1,
     alignItems: 'center',

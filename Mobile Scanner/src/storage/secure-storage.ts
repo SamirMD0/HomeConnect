@@ -2,6 +2,7 @@ import type { AccountUser } from '@shared/mobile-contracts';
 import * as SecureStore from 'expo-secure-store';
 import { clearSelectedBranch } from '../branches/branch-storage';
 import { ConnectionSettings } from '../types/scanner.types';
+import { cleanAlternates } from '../utils/pairing-payload';
 import { parseConnection } from '../utils/scanner-url';
 
 const CONNECTION_KEY = 'homeconnect.scanner.connection.v1';
@@ -29,7 +30,12 @@ export async function loadConnection(): Promise<ConnectionSettings | null> {
   try {
     const parsed = JSON.parse(stored) as Partial<ConnectionSettings>;
     const validation = parseConnection(String(parsed.host ?? ''), String(parsed.port ?? ''));
-    if (validation.ok) return validation.value;
+    if (validation.ok) {
+      const alternates = Array.isArray(parsed.alternates)
+        ? cleanAlternates(validation.value.host, validation.value.port, parsed.alternates)
+        : [];
+      return alternates.length ? { ...validation.value, alternates } : validation.value;
+    }
   } catch {
     // Corrupt settings are removed below and re-entered by the operator.
   }

@@ -8,8 +8,11 @@ import { parseConnection } from './scanner-url';
  *
  * Two shapes are accepted so the scanner is robust to the operator aiming at a
  * generic URL printed anywhere in the shop:
- *   hc://pair?h=<ip>&p=<port>   (the canonical Scanner Hub payload)
- *   http://<ip>:<port>          (the plain backend URL, same effect)
+ *   hc://pair?h=<ip>&p=<port>[&alt=<ip>,<ip>]   (the canonical payload)
+ *   http://<ip>:<port>[/path][?alt=<ip>,<ip>]    (the plain URL the Hub shows)
+ *
+ * `alt` lists the PC's other addresses. Invalid entries are dropped, so a
+ * damaged list never stops the main address from working.
  *
  * Anything else (including https://, hostnames, scanner codes) returns null so
  * the UI can tell the operator the QR is not a Scanner Hub pairing code.
@@ -32,16 +35,35 @@ export function parsePairingPayload(input: string): ConnectionSettings | null {
     const host = params.get('h') ?? '';
     const port = params.get('p') ?? '';
     const parsed = parseConnection(host, port);
-    return parsed.ok ? parsed.value : null;
+    return parsed.ok ? withAlternates(parsed.value, params.get('alt')) : null;
   }
 
   const httpMatch = /^http:\/\/([^:/?#\s]+):(\d{1,5})(?:[/?#].*)?$/i.exec(text);
   if (httpMatch) {
     const parsed = parseConnection(httpMatch[1] ?? '', httpMatch[2] ?? '');
-    return parsed.ok ? parsed.value : null;
+    if (!parsed.ok) return null;
+    const query = /\?([^#]*)/.exec(text)?.[1] ?? '';
+    return withAlternates(parsed.value, parseQuery(query).get('alt'));
   }
 
   return null;
+}
+
+function withAlternates(settings: ConnectionSettings, list: string | undefined): ConnectionSettings {
+  const alternates = cleanAlternates(settings.host, settings.port, (list ?? '').split(','));
+  return alternates.length ? { ...settings, alternates } : settings;
+}
+
+/** Valid, distinct IPv4 addresses other than `host`. */
+export function cleanAlternates(host: string, port: number, values: unknown[]): string[] {
+  const found: string[] = [];
+  for (const value of values) {
+    if (typeof value !== 'string') continue;
+    const parsed = parseConnection(value, String(port));
+    if (parsed.ok && parsed.value.host !== host && !found.includes(parsed.value.host))
+      found.push(parsed.value.host);
+  }
+  return found;
 }
 
 function parseQuery(query: string): Map<string, string> {

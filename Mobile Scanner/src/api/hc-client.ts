@@ -1,6 +1,7 @@
 import { handleBranchRejection, selectedBranchHeaders } from '../branches/branch-selection';
 import { ApiFailure, ApiSuccess, ConnectionSettings } from '../types/scanner.types';
 import { accessTokenNeedsRefresh } from '../utils/jwt-expiry';
+import { describeUrl, logConnection } from '../connection/connection-log';
 
 /**
  * Account-authenticated HTTP client for the approved /api/v1/* routes on the
@@ -121,18 +122,49 @@ export function backendBaseUrl(connection: ConnectionSettings): string {
   return `${scheme}://${normalisedHost}${port}`;
 }
 
-async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {
+/** A failed read is retried once after this pause; Wi-Fi waking up often drops the first request. */
+const READ_RETRY_DELAY_MS = 800;
+
+async function fetchOnce(url: string, init?: RequestInit): Promise<Response> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, REQUEST_TIMEOUT_MS);
+  const started = Date.now();
   try {
     return await fetch(url, { ...init, signal: controller.signal });
   } catch {
+    const { host, path } = describeUrl(url);
+    logConnection({
+      host,
+      action: path,
+      outcome: timedOut ? 'timeout' : 'network',
+      ms: Date.now() - started,
+      detail: null,
+    });
     throw new HcApiError(
-      'Cannot reach the Home Connect server. Check Wi-Fi and the backend URL.',
+      timedOut
+        ? 'The shop PC timed out. Check Wi-Fi and try again.'
+        : 'Cannot reach the shop PC. Check Wi-Fi and that Home Connect is open on the PC.',
       'NETWORK'
     );
   } finally {
     clearTimeout(timer);
+  }
+}
+
+async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetchOnce(url, init);
+  } catch (error) {
+    // Reads only, and only a fast failure: a write might have reached the PC,
+    // and a timeout has already made the operator wait long enough.
+    const method = (init?.method ?? 'GET').toUpperCase();
+    if (method !== 'GET' || /timed out/.test((error as Error).message)) throw error;
+    await new Promise((resolve) => setTimeout(resolve, READ_RETRY_DELAY_MS));
+    return fetchOnce(url, init);
   }
 }
 

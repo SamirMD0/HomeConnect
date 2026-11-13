@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ScannerSession } from '../types/scanner.types';
 import {
   canManageScanner, defaultUrl, describeLanMode, describeSession,
-  formatCountdown, formatLastSeen, PAIRING_CODE_EXPIRED, secondsRemaining,
+  formatCountdown, formatLastSeen, pairingQrPayload, PAIRING_CODE_EXPIRED, secondsRemaining,
 } from './scanner-admin';
 
 const NOW = Date.parse('2026-08-07T14:20:00.000Z');
@@ -88,6 +88,22 @@ describe('defaultUrl', () => {
 
   it('has nothing to offer when the listener is down', () => {
     expect(defaultUrl([])).toBeNull();
+  });
+});
+
+describe('pairingQrPayload', () => {
+  const urls = ['http://192.168.0.178:3011/mobile-scanner', 'http://172.17.208.1:3011/mobile-scanner'];
+
+  it('adds the other addresses so the phone can try them all', () => {
+    expect(pairingQrPayload(urls[0], urls)).toBe('http://192.168.0.178:3011/mobile-scanner?alt=172.17.208.1');
+  });
+
+  it('keeps the chosen address first when the operator picked another one', () => {
+    expect(pairingQrPayload(urls[1], urls)).toBe('http://172.17.208.1:3011/mobile-scanner?alt=192.168.0.178');
+  });
+
+  it('stays the plain URL when the PC has a single address', () => {
+    expect(pairingQrPayload(urls[0], [urls[0]])).toBe(urls[0]);
   });
 });
 

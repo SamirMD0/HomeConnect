@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { AlertTriangle, Check, Copy, Loader2, Smartphone } from 'lucide-react';
 import { businessLabels } from '../../../shared/labels/business-labels';
 import { LanStatus, PairingCode } from '../types/scanner.types';
-import { defaultUrl, describeLanMode, formatCountdown, PAIRING_CODE_EXPIRED, secondsRemaining } from '../utils/scanner-admin';
+import { defaultUrl, describeLanMode, formatCountdown, pairingQrPayload, PAIRING_CODE_EXPIRED, secondsRemaining } from '../utils/scanner-admin';
 import { PairingQrCode } from './PairingQrCode';
 
 const labels = businessLabels.scanner;
@@ -103,7 +103,7 @@ export const MobileScannerPanel: React.FC<MobileScannerPanelProps> = ({
                   افتح تطبيق الهاتف واضغط على مسح رمز الربط
                 </p>
               </div>
-              <PairingQrCode url={url} />
+              <PairingQrCode url={pairingQrPayload(url, urls)} />
             </div>
             <p className="mt-1 text-xs text-slate-500">{labels.addressHint}</p>
 

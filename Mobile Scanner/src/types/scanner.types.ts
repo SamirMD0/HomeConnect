@@ -1,6 +1,12 @@
 export interface ConnectionSettings {
   host: string;
   port: number;
+  /**
+   * The PC's other LAN addresses, from the pairing QR. A Windows PC also has
+   * WSL, Hyper-V or VPN adapters; when `host` stops answering the phone tries
+   * these before giving up.
+   */
+  alternates?: string[];
 }
 
 export type ScanStatus = 'FOUND' | 'NOT_FOUND' | 'INVALID_CODE';

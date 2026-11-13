@@ -15,7 +15,8 @@ import {
   HcApiError,
   refreshApiSession,
 } from '../api/hc-client';
-import { checkClientCompatibility, type CompatibilityState } from '../api/system-api';
+import type { CompatibilityState } from '../api/system-api';
+import { findPc } from '../connection/find-pc';
 import { useBranchSession } from '../branches/useBranchSession';
 import { clearQueryCache } from '../query/client';
 import {
@@ -23,6 +24,7 @@ import {
   loadConnection,
   requireSecureStorage,
   saveAuthUser,
+  saveConnection,
 } from '../storage/secure-storage';
 import type { ConnectionSettings } from '../types/scanner.types';
 import { can, type Permission } from '../permissions/can';
@@ -45,6 +47,36 @@ function useSessionState() {
   const [compat, setCompat] = useState<CompatibilityState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [revision, setRevision] = useState(0);
+  // A connection whose PC was already found (by the connect screen or a
+  // re-search), so the startup check does not search again for it.
+  const resolvedRef = useRef<{ connection: ConnectionSettings; compat: CompatibilityState } | null>(
+    null
+  );
+  const searchingRef = useRef(false);
+  const lastSearchRef = useRef(0);
+  const switchTo = useCallback(async (found: { settings: ConnectionSettings; compat: CompatibilityState }) => {
+    await saveConnection(found.settings).catch(() => undefined);
+    resolvedRef.current = { connection: found.settings, compat: found.compat };
+    setConnection(found.settings);
+  }, []);
+  // The PC stopped answering: look for it on its other addresses (its IP can
+  // change after a router restart). At most once every 30 seconds.
+  const searchAgain = useCallback(() => {
+    const current = connectionRef.current;
+    if (!current?.alternates?.length || searchingRef.current) return;
+    if (Date.now() - lastSearchRef.current < 30_000) return;
+    searchingRef.current = true;
+    lastSearchRef.current = Date.now();
+    void findPc(current)
+      .then(async (found) => {
+        if (connectionRef.current === current && found.settings.host !== current.host)
+          await switchTo(found);
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        searchingRef.current = false;
+      });
+  }, [switchTo]);
   const [restoreRevision, setRestoreRevision] = useState(0);
   const signOut = useCallback(async () => {
     const clearing = credentials.signOut(connectionRef.current);
@@ -92,18 +124,28 @@ function useSessionState() {
       getToken: () => credentials.accessToken,
       signOut,
       refresh: () => credentials.refresh(connection),
-      onConnectionChange: (online) => setOffline(!online),
+      onConnectionChange: (online) => {
+        setOffline(!online);
+        if (!online) searchAgain();
+      },
     });
     return () => configureApiSession(null);
-  }, [connection, signOut, sessionRevision, credentials]);
+  }, [connection, signOut, sessionRevision, credentials, searchAgain]);
   useEffect(() => {
     if (restoring || !connection) return;
     let active = true;
-    setCompat(null);
     setError(null);
-    void checkClientCompatibility(connection)
-      .then((value) => {
-        if (active) setCompat(value);
+    const resolved = resolvedRef.current;
+    if (resolved?.connection === connection) {
+      setCompat(resolved.compat);
+      return;
+    }
+    setCompat(null);
+    void findPc(connection)
+      .then(async (found) => {
+        if (!active) return;
+        if (sameAddresses(found.settings, connection)) setCompat(found.compat);
+        else await switchTo(found);
       })
       .catch((failure: Error) => {
         if (active) setError(failure.message);
@@ -111,7 +153,7 @@ function useSessionState() {
     return () => {
       active = false;
     };
-  }, [connection, restoring, revision]);
+  }, [connection, restoring, revision, switchTo]);
   useEffect(() => {
     if (!connection || !token) return;
     let active = true;
@@ -163,7 +205,9 @@ function useSessionState() {
     setCompat(null);
     setError(null);
   };
-  const connect = (value: ConnectionSettings) => {
+  /** `compat` is passed when the caller already found the PC at this address. */
+  const connect = (value: ConnectionSettings, compat?: CompatibilityState) => {
+    resolvedRef.current = compat ? { connection: value, compat } : null;
     setConnection(value);
     setCompat(null);
     setError(null);
@@ -219,4 +263,9 @@ export function useSession() {
   const value = useContext(SessionContext);
   if (!value) throw new Error('SessionProvider is required');
   return value;
+}
+
+function sameAddresses(a: ConnectionSettings, b: ConnectionSettings): boolean {
+  const list = (value: ConnectionSettings) => (value.alternates ?? []).join(',');
+  return a.host === b.host && a.port === b.port && list(a) === list(b);
 }
