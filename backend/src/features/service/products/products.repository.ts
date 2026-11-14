@@ -110,6 +110,10 @@ export class ProductsRepository {
     return (tx ?? prisma).product.findUnique({ where: { id }, include: productActorInclude });
   }
 
+  static findCatalogById(id: string) {
+    return prisma.product.findUnique({ where: { id }, include: productListInclude });
+  }
+
   /**
    * Bulk label lookup. Only `pricingPreset` is included: the price code needs it
    * (a product with `pricingPresetId` set but the relation unloaded resolves as

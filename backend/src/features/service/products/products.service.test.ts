@@ -7,7 +7,7 @@ const { repository, pricing, writeAudit, verify, tx } = vi.hoisted(() => {
     repository: {
       findByBarcode: vi.fn(), findBySku: vi.fn(), findDuplicates: vi.fn(), findPricingPreset: vi.fn(), create: vi.fn(),
       findActiveDefaultPricingPreset: vi.fn(), findActiveDefaultTaxProfile: vi.fn(),
-      findById: vi.fn(), update: vi.fn(), deleteImage: vi.fn(),
+      findById: vi.fn(), findCatalogById: vi.fn(), update: vi.fn(), deleteImage: vi.fn(),
       groupBrandSpellings: vi.fn(), list: vi.fn(),
       findActiveFeatureIconCodes: vi.fn(), replacePricingCardFeatures: vi.fn(),
     },
@@ -73,6 +73,25 @@ describe('product service workflow', () => {
     pricing.resolveProductPricing.mockReturnValue(unavailable);
     repository.create.mockImplementation((data) => Promise.resolve(productOf({ ...data })));
     repository.update.mockImplementation((_id, data) => Promise.resolve(productOf({ ...data })));
+  });
+
+  it('loads a single catalogue record with the list serializer and inventory state', async () => {
+    const product = { ...productOf(), _count: { stockMovements: 0 } };
+    repository.findCatalogById.mockResolvedValue(product);
+    repository.list.mockResolvedValue({ items: [product], total: 1 });
+    const list = await ProductsService.list({
+      page: 1, pageSize: 10, sortBy: 'name', sortOrder: 'asc',
+      isActive: undefined, hasBarcode: undefined, trackStock: undefined,
+    });
+    expect(await ProductsService.getCatalogRecord(product.id)).toEqual(list.items[0]);
+    expect(list.items[0]).toMatchObject({ notInInventory: true, exactMatch: false });
+    expect(list.items[0]).not.toHaveProperty('image.data');
+    expect(list.items[0].pricing).not.toHaveProperty('costPrice');
+  });
+
+  it('reports a missing single catalogue record', async () => {
+    repository.findCatalogById.mockResolvedValue(null);
+    await expect(ProductsService.getCatalogRecord('missing')).rejects.toThrow('Product not found');
   });
 
   it('keeps preset output ex-VAT and makes the label price VAT-inclusive', async () => {

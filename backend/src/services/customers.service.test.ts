@@ -241,6 +241,23 @@ describe('credit-limit configuration authorization', () => {
   });
 });
 
+describe('single customer financial read', () => {
+  it('attaches the existing receivables projection without changing its figures', async () => {
+    const customer = { ...alice, branchId: scope.branchIds[0] };
+    repositoryMock.findById.mockResolvedValue(customer);
+    const financial = projection(alice.id, '123.45');
+    receivablesMock.computeReceivableProjections.mockResolvedValue(new Map([[alice.id, financial]]));
+    expect(await CustomersService.getCustomerWithFinancial(alice.id, scope)).toEqual({ ...customer, financial });
+    expect(receivablesMock.computeReceivableProjections).toHaveBeenCalledWith({ scope, customerIds: [alice.id] });
+  });
+
+  it('preserves scope and soft-delete filtering for a missing customer', async () => {
+    repositoryMock.findById.mockResolvedValue(null);
+    await expect(CustomersService.getCustomerWithFinancial('missing', scope)).rejects.toThrow('Customer not found');
+    expect(repositoryMock.findById).toHaveBeenCalledWith('missing', scope);
+  });
+});
+
 const phase3cScope = { mode: 'all' as const, branchIds: ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'] };
 
 vi.mock('../features/branches/branch-breakdown', async (importOriginal) => ({

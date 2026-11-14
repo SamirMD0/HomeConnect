@@ -155,7 +155,7 @@
     "test:e2e": "playwright test",
     "test:e2e:electron": "playwright test --config playwright.electron.config.ts",
     "audit:migration-drift": "node scripts/assert-migration-drift-allowlisted.mjs",
-    "test:ci": "node scripts/assert-test-database.mjs && cross-env RUN_FINANCIAL_DB_TESTS=1 RUN_INVENTORY_DB_TESTS=1 RUN_SALES_FULFILLMENT_DB_TESTS=1 RUN_SALES_RETURN_DB_TESTS=1 RUN_SUPPLIER_PURCHASE_DB_TESTS=1 RUN_SUPPLIER_RECEIVING_DB_TESTS=1 RUN_PHASE4_DEBT_DB_TESTS=1 RUN_PHASE5_INSTALLMENT_DB_TESTS=1 RUN_PHASE6_CUSTOMER_SUMMARY_DB_TESTS=1 vitest run --no-file-parallelism --reporter=default --reporter=json --outputFile.json=node_modules/.cache/home-connect/vitest-report.json && node scripts/assert-zero-skips.mjs",
+    "test:ci": "node scripts/assert-test-database.mjs && cross-env RUN_SYNC_DB_TESTS=1 RUN_FINANCIAL_DB_TESTS=1 RUN_INVENTORY_DB_TESTS=1 RUN_SALES_FULFILLMENT_DB_TESTS=1 RUN_SALES_RETURN_DB_TESTS=1 RUN_SUPPLIER_PURCHASE_DB_TESTS=1 RUN_SUPPLIER_RECEIVING_DB_TESTS=1 RUN_PHASE4_DEBT_DB_TESTS=1 RUN_PHASE5_INSTALLMENT_DB_TESTS=1 RUN_PHASE6_CUSTOMER_SUMMARY_DB_TESTS=1 vitest run --no-file-parallelism --reporter=default --reporter=json --outputFile.json=node_modules/.cache/home-connect/vitest-report.json && node scripts/assert-zero-skips.mjs",
     "prisma:validate": "tsx backend/prisma/validate.ts",
     "seed:catalog-defaults": "tsx scripts/seed-catalog-defaults.ts",
     "lint": "eslint frontend/src backend/src desktop/src --ext ts,tsx",
