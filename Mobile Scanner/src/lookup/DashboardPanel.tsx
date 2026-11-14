@@ -9,6 +9,8 @@ import { Card, ReadState, readStyles } from './ReadUI';
 import { SelectFilter, RangeFilter } from './FilterControls';
 import { monthRange } from './filters';
 import { AppButton } from '../components/AppButton';
+import { useRouter } from 'expo-router';
+import { ReceivablesCard } from '../customers/ReceivablesCard';
 import {
   DASHBOARD_HIDE_KEY,
   dashboardDisplayValue,
@@ -26,6 +28,7 @@ const labels: Record<string, string> = {
 };
 export function DashboardPanel({ refreshRevision }: { refreshRevision: number }) {
   const { client, key } = useLookup();
+  const router = useRouter();
   const [hidden, setHidden] = useState(true),
     [range, setRange] = useState(monthRange),
     [period, setPeriod] = useState<DashboardFilters['range']>('month');
@@ -68,6 +71,7 @@ export function DashboardPanel({ refreshRevision }: { refreshRevision: number })
         variant="secondary"
         onPress={toggle}
       />
+      <ReceivablesCard hidden={hidden} onPress={() => router.push('/(tabs)/sell/receivables')} />
       <SelectFilter
         label="Dashboard period"
         value={period}

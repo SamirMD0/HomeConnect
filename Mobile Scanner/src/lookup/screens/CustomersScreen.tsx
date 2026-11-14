@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useRouter } from 'expo-router';
 import { listCustomers } from '../../api/customers-api';
 import { useLookup, useLookupPages } from '../useLookup';
@@ -7,7 +7,14 @@ import { SearchBar } from '../../components/SearchBar';
 import { ListRow } from '../../components/ListRow';
 import { MoneyText } from '../../components/MoneyText';
 import { useDebouncedSearch } from '../FilterControls';
-export function CustomersScreen({ onSelect }: { onSelect?: (id: string, name: string) => void }) {
+export function CustomersScreen({
+  onSelect,
+  intro,
+}: {
+  onSelect?: (id: string, name: string) => void;
+  /** Shown above the search box and scrolls with the list (Customers tab actions). */
+  intro?: ReactNode;
+}) {
   const { client, key, session } = useLookup(),
     router = useRouter();
   const [search, setSearch] = useState(''),
@@ -23,12 +30,15 @@ export function CustomersScreen({ onSelect }: { onSelect?: (id: string, name: st
       query={customers}
       itemKey={(item) => item.id}
       header={
-        <SearchBar
-          label="Search customers"
-          placeholder="Name or phone"
-          value={search}
-          onChangeText={setSearch}
-        />
+        <>
+          {intro}
+          <SearchBar
+            label="Search customers"
+            placeholder="Name or phone"
+            value={search}
+            onChangeText={setSearch}
+          />
+        </>
       }
       renderItem={(item) => (
         <ListRow

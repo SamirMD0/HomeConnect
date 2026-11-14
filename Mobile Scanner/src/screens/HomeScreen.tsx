@@ -25,7 +25,10 @@ export function HomeScreen() {
   });
   const actions: QuickAction[] = [
     { label: 'Scan', icon: 'scan-outline', onPress: () => router.push('/scan') },
-    { label: 'Sell', icon: 'cart-outline', onPress: () => router.push('/(tabs)/sell') },
+    // Sales actions live on Home now that the second tab is Customers.
+    session.can('orders.create')
+      ? { label: 'New order', icon: 'cart-outline', onPress: () => router.push('/(tabs)/sell/new-order') }
+      : { label: 'Orders', icon: 'receipt-outline', onPress: () => router.push('/(tabs)/sell/orders') },
     ...(session.can('supplierBills.capture')
       ? [
           {

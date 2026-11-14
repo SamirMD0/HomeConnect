@@ -78,7 +78,7 @@ function Navigation() {
           options={{
             presentation: 'modal',
             headerShown: true,
-            header: () => <BranchHeader />,
+            header: () => <BranchHeader menu={false} />,
             title: 'Scan product',
             headerTintColor: theme.colors.brand,
           }}

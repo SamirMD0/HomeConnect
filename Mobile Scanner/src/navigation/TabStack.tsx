@@ -8,6 +8,7 @@ const titles: Record<string, string> = {
   statement: 'Supplier statement',
   count: 'Stock count',
   'connection-log': 'Connection details',
+  receivables: 'Receivables',
 };
 export function TabStack() {
   return (

@@ -6,7 +6,7 @@ import { BranchHeader } from '../../src/navigation/BranchHeader';
 import { theme } from '../../src/theme';
 const icons = {
   home: 'home-outline',
-  sell: 'cart-outline',
+  sell: 'people-outline',
   stock: 'cube-outline',
   suppliers: 'business-outline',
   more: 'grid-outline',
@@ -38,31 +38,47 @@ export default function TabLayout() {
         })}
       >
         <Tabs.Screen name="home" options={{ title: 'Home' }} />
-        <Tabs.Screen name="sell" options={{ title: 'Sell' }} />
+        <Tabs.Screen name="sell" options={{ title: 'Customers' }} />
+        <Tabs.Screen
+          name="scan-tab"
+          options={{
+            title: 'Scan',
+            // The centre button opens the full-screen scanner instead of a tab.
+            tabBarButton: () => (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Scan a product"
+                onPress={() => router.push('/scan')}
+                style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
+              >
+                {({ pressed }) => (
+                  <View
+                    style={{
+                      width: 56,
+                      height: 56,
+                      marginTop: -18,
+                      borderRadius: 28,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: theme.colors.brand,
+                      borderWidth: 4,
+                      borderColor: theme.colors.surface,
+                      elevation: 4,
+                      opacity: pressed ? 0.8 : 1,
+                    }}
+                  >
+                    <Ionicons name="scan" color={theme.colors.white} size={26} accessible={false} />
+                  </View>
+                )}
+              </Pressable>
+            ),
+          }}
+        />
         <Tabs.Screen name="stock" options={{ title: 'Stock' }} />
         <Tabs.Screen name="suppliers" options={{ title: 'Suppliers' }} />
-        <Tabs.Screen name="more" options={{ title: 'More' }} />
+        {/* Reports and settings open from the header menu button. */}
+        <Tabs.Screen name="more" options={{ title: 'More', href: null }} />
       </Tabs>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Scan a product from any tab"
-        onPress={() => router.push('/scan')}
-        style={({ pressed }) => ({
-          position: 'absolute',
-          right: 20,
-          bottom: 80 + insets.bottom,
-          width: 56,
-          height: 56,
-          borderRadius: 28,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: theme.colors.brand,
-          elevation: 4,
-          opacity: pressed ? 0.8 : 1,
-        })}
-      >
-        <Ionicons name="scan" color={theme.colors.white} size={28} accessible={false} />
-      </Pressable>
     </View>
   );
 }
