@@ -96,7 +96,15 @@ export function LookupList<T>({
   );
 }
 const styles = StyleSheet.create({
-  content: { flexGrow: 1, padding: theme.spacing.lg, paddingBottom: 112, gap: 8 },
+  content: {
+    flexGrow: 1,
+    padding: theme.spacing.lg,
+    paddingBottom: 112,
+    gap: 8,
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
+  },
   header: { gap: 12, paddingBottom: 12 },
   title: { ...theme.text.headline, color: theme.colors.text },
   subtitle: { ...theme.text.label, fontWeight: '400', color: theme.colors.muted },

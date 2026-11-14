@@ -45,6 +45,10 @@ export function ReadScreen({
         padding: theme.spacing.lg,
         paddingBottom: 112,
         gap: theme.spacing.lg,
+        // Tablets and landscape: a readable column instead of edge-to-edge.
+        width: '100%',
+        maxWidth: 760,
+        alignSelf: 'center',
         flexGrow: 1,
         backgroundColor: theme.colors.background,
       }}

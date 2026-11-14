@@ -7,6 +7,7 @@ import { LookupList } from '../LookupList';
 import { useLookup, useLookupPages } from '../useLookup';
 import { SearchBar } from '../../components/SearchBar';
 import { ListRow } from '../../components/ListRow';
+import { ProductImage } from '../../components/ui/product-image';
 import { MoneyText } from '../../components/MoneyText';
 import { ErrorState } from '../../components/ErrorState';
 import { SelectFilter, useDebouncedSearch } from '../FilterControls';
@@ -76,6 +77,7 @@ export function ProductListScreen() {
       }
       renderItem={(item) => (
         <ListRow
+          leading={<ProductImage product={item} size={52} />}
           title={item.name}
           subtitle={`${item.sku} · ${item.brand ?? 'No brand'}\n${item.trackStock ? `${item.stockQuantity} in shared stock` : 'Stock not tracked'}`}
           trailing={

@@ -9,6 +9,7 @@ import { useLookup, useLookupPages } from '../useLookup';
 import { LookupList } from '../LookupList';
 import { Card, Field, ReadState, readStyles } from '../ReadUI';
 import { humanLabel } from '../filters';
+import { ProductImage } from '../../components/ui/product-image';
 export function ProductDetailScreen() {
   const { id = '' } = useLocalSearchParams<{ id: string }>(),
     { client, key, scope } = useLookup(),
@@ -48,6 +49,9 @@ export function ProductDetailScreen() {
             <ReadState query={product} />
             {data && (
               <>
+                <View style={{ alignItems: 'center' }}>
+                  <ProductImage product={data} size={220} className="rounded-2xl" />
+                </View>
                 <Card title="Prices">
                   <Field label="Currency" value={data.priceCurrency ?? 'USD'} />
                   <Field

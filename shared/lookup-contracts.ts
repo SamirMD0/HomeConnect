@@ -34,6 +34,10 @@ export interface ProductRead {
   stockStatus: string;
   trackStock: boolean;
   notes: string | null;
+  /** An external photo link set on the PC. */
+  imageUrl?: string | null;
+  /** A photo uploaded on the PC (metadata only; bytes come from /products/:id/image). */
+  image?: { mimeType: string; byteSize: number; updatedAt: string } | null;
   pricing?: {
     pricingAvailable: boolean;
     cashPrice?: string;

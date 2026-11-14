@@ -37,7 +37,8 @@ A phone that speaks directly to the shop's own PC over the LAN. There is no clou
 
 - The Home Connect logo blue (#1A6FC9) is the brand colour. Green means money in or done.
 - The style reference is the Noble POS-ERP mobile design (screenshots shared 2026-11-14): white screens, light blue filled inputs, bold left-aligned titles, a blue hero card, tinted icon tiles, pill filters and zebra tables. It is a reference, not a copy.
-- System font (Roboto), so Arabic renders natively.
+- Same theme as the PC ERP (confirmed 2026-11-14): Plus Jakarta Sans, the PC colours and its glass shell, built with shadcn (NativeWind). See DESIGN.md.
+- A real ERP client, not a showcase: screens show the useful data the PC chooses, never raw field dumps. Reports are tables (sideways scroll) with PDF export. Products show their photos.
 - Short screen text with no tutorial copy. Labels and icons do the work.
 
 ## Evidence on Hand

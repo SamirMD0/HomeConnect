@@ -2,6 +2,7 @@ import { theme } from '../theme';
 import { StyleSheet, Text, View } from 'react-native';
 import { ScanResult } from '../types/scanner.types';
 import { StatusBanner } from './StatusBanner';
+import { ProductImage, type ProductImageSource } from './ui/product-image';
 
 interface ProductResultProps {
   result: ScanResult;
@@ -36,6 +37,9 @@ export function ProductResult({ result }: ProductResultProps) {
   return (
     <View style={styles.card}>
       <View style={styles.headingRow}>
+        {'id' in product && product.id ? (
+          <ProductImage product={product as ProductImageSource} size={64} />
+        ) : null}
         <View style={styles.headingText}>
           <Text style={styles.name}>{product.name}</Text>
           <Text style={styles.match}>

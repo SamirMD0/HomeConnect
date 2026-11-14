@@ -9,6 +9,7 @@ export function ListRow({
   onPress,
   trailing,
   icon,
+  leading,
 }: {
   title: string;
   subtitle?: string;
@@ -16,6 +17,8 @@ export function ListRow({
   trailing?: ReactNode;
   /** Optional leading icon (Ionicons name) for menu rows. */
   icon?: keyof typeof Ionicons.glyphMap;
+  /** Any element before the text, e.g. a product photo. */
+  leading?: ReactNode;
 }) {
   return (
     <Pressable
@@ -24,7 +27,7 @@ export function ListRow({
       disabled={!onPress}
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
     >
-      {icon ? <IconTile icon={icon} size={44} /> : null}
+      {leading ?? (icon ? <IconTile icon={icon} size={44} /> : null)}
       <View style={styles.copy}>
         <Text style={styles.title}>{title}</Text>
         {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { Animated, View, type ViewProps } from 'react-native';
 import { cn } from '../../lib/utils';
 
@@ -17,7 +17,7 @@ export function Separator({ className, orientation = 'horizontal', ...props }: P
 
 /** shadcn Skeleton: a soft pulse while data loads. */
 export function Skeleton({ className, ...props }: Props) {
-  const opacity = useRef(new Animated.Value(0.5)).current;
+  const [opacity] = useState(() => new Animated.Value(0.5));
   useEffect(() => {
     const loop = Animated.loop(
       Animated.sequence([
