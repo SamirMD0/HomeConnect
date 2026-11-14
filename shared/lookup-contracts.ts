@@ -183,10 +183,18 @@ export interface BillRead {
   supplierId: string;
   branchId: string;
   supplierReceivingId: string | null;
+  /** PC 2.3.0+: a payment, or a purchase with no received stock. */
+  supplierTransactionId?: string | null;
+  billGroupId?: string | null;
+  pageNumber?: number;
+  capturedById?: string;
   note: string | null;
   mime: string;
   bytes: number;
   capturedAt: string;
+  /** PC 2.3.0+: every page of this bill, in order. Older PCs send one page per bill. */
+  pages?: BillRead[];
+  pageCount?: number;
 }
 export interface SalesOrderRead {
   id: string;

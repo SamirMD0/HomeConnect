@@ -98,6 +98,7 @@ export function createMobileApiGateway(port = Number(process.env.PORT || 3001)):
       'content-length',
       'x-branch-scope',
       'x-receipt-id',
+      'x-bill-group',
       'x-request-id',
       'if-none-match',
     ]) {

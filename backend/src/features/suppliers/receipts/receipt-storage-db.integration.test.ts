@@ -64,10 +64,14 @@ const enabled =
     expect((await billImage(row.id, scope)).bytes).toEqual(input.bytes);
     expect((await storeReceipt(input, scope)).id).toBe(row.id);
     expect(await prisma.supplierReceivingReceipt.count({ where: { id: row.id } })).toBe(1);
-    await deleteBill(row.id, scope);
+    // Deletes are soft: the row records who deleted it and the bytes stay.
+    await deleteBill(row.id, { wholeBill: true }, { userId, role: 'ADMIN' }, scope);
+    expect(
+      await prisma.supplierReceivingReceipt.findUnique({ where: { id: row.id } })
+    ).toMatchObject({ deletedById: userId });
     expect(
       await prisma.supplierReceiptBlob.findUnique({ where: { receiptId: row.id } })
-    ).toBeNull();
+    ).not.toBeNull();
   });
   it('rolls back the receipt row when its blob cannot be written', async () => {
     vi.stubEnv('HOSTED_MODE', 'true');

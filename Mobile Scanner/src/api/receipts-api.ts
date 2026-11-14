@@ -8,10 +8,13 @@ export interface UploadReceiptInput {
   localUri: string;
   mime: string;
   receiptId?: string;
+  /** Upload id of the bill's first page: this photo becomes its next page. */
+  billGroupId?: string;
 }
 export interface UploadedReceipt {
   id: string;
   supplierId: string;
+  branchId?: string;
   supplierReceivingId: string | null;
   filename: string;
   mime: string;
@@ -48,6 +51,7 @@ export async function uploadReceipt(
               'Content-Type': 'image/jpeg',
               Accept: 'application/json',
               ...(input.receiptId ? { 'X-Receipt-Id': input.receiptId } : {}),
+              ...(input.billGroupId ? { 'X-Bill-Group': input.billGroupId } : {}),
             },
           }
         );
@@ -93,4 +97,35 @@ export async function uploadReceipt(
   } finally {
     clearTimeout(timer);
   }
+}
+
+/** Replace one bill page with a new photo; the PC keeps the old page as history. */
+export async function replaceBillPage(
+  client: AuthedClient,
+  page: { id: string; branchId: string },
+  localUri: string
+): Promise<UploadedReceipt> {
+  const headers = { ...authedHeaders(client), 'X-Branch-Scope': page.branchId };
+  let result: FileSystem.FileSystemUploadResult;
+  try {
+    result = await FileSystem.uploadAsync(
+      `${client.baseUrl}/api/v1/supplier-bills/${encodeURIComponent(page.id)}/replace`,
+      localUri,
+      {
+        uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+        httpMethod: 'POST',
+        sessionType: FileSystem.FileSystemSessionType.FOREGROUND,
+        headers: { ...headers, 'Content-Type': 'image/jpeg', Accept: 'application/json' },
+      }
+    );
+  } catch {
+    throw new HcApiError('Cannot reach the Home Connect server. Check Wi-Fi and retry.', 'NETWORK');
+  }
+  let parsed: unknown = null;
+  try {
+    parsed = JSON.parse(result.body);
+  } catch {
+    /* Use shared HTTP fallback. */
+  }
+  return parseJsonEnvelope<UploadedReceipt>(result.status, parsed, page.branchId);
 }

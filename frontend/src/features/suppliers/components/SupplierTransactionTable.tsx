@@ -1,4 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { Modal } from '../../../components/ui';
+import { SupplierBills } from './SupplierBills';
 import { Link } from 'react-router-dom';
 import { formatBusinessDate, formatMoney } from '../../customer-financial/utils/financial-format';
 import { SupplierTransaction } from '../types/supplier.types';
@@ -89,6 +91,7 @@ export const SupplierTransactionTable: React.FC<Props> = ({
                   </p>
                 )}
                 {transaction.supplierReceiving && <ReceivingLink transaction={transaction} />}
+                <BillsLink transaction={transaction} />
               </td>
               <td className={`px-4 py-2 text-right font-semibold tabular-nums ${cellHover}`}>
                 {formatMoney(transaction.amount)}
@@ -154,6 +157,7 @@ const TransactionCard: React.FC<Omit<Props, 'items'> & { transaction: SupplierTr
       {transaction.description}
     </p>
     {transaction.supplierReceiving && <ReceivingLink transaction={transaction} />}
+    <BillsLink transaction={transaction} />
     <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-2 text-xs transition-colors group-hover:border-slate-500">
       <span className="transition-colors group-hover:text-slate-900">
         {englishLabel(supplierDirectionLabels[transaction.direction])}
@@ -207,4 +211,30 @@ const ReceivingLink: React.FC<{ transaction: SupplierTransaction }> = ({ transac
   if (!receiving) return null;
   const products = receiving.items.map((item) => `${item.product.name} ×${item.quantity}`).join(', ');
   return <Link title={products} to={`/inventory/receiving/${receiving.id}`} className="mt-1 block max-w-xs truncate text-[11px] font-semibold text-emerald-700 hover:underline group-hover:text-slate-900">Receiving: {receiving.referenceNumber || receiving.receivedOn} · {products} / عرض مستند الإدخال</Link>;
+};
+
+/** Bill photos on a purchase or payment row: direct pages plus its receiving's. */
+export function billCount(transaction: SupplierTransaction): number {
+  return (transaction._count?.bills ?? 0) + (transaction.supplierReceiving?._count?.receipts ?? 0);
+}
+const BillsLink: React.FC<{ transaction: SupplierTransaction }> = ({ transaction }) => {
+  const [open, setOpen] = useState(false);
+  const count = billCount(transaction);
+  if (!count) return null;
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="mt-1 block text-[11px] font-semibold text-brand-700 hover:underline group-hover:text-slate-900"
+      >
+        Bill photos ({count}) / صور الفاتورة
+      </button>
+      {open && (
+        <Modal isOpen size="xl" title="Bill photos" onClose={() => setOpen(false)}>
+          <SupplierBills transactionId={transaction.id} />
+        </Modal>
+      )}
+    </>
+  );
 };

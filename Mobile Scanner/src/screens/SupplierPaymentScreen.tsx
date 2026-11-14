@@ -1,6 +1,7 @@
 import { theme } from '../theme';
+import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { HcApiError } from '../api/hc-client';
 import { clientFrom } from '../api/products-api';
 import {
@@ -11,6 +12,9 @@ import { listSuppliers, SupplierSummary } from '../api/suppliers-api';
 import { AppButton } from '../components/AppButton';
 import { AppInput } from '../components/AppInput';
 import { StatusBanner } from '../components/StatusBanner';
+import { selectedBranchHeaders } from '../branches/branch-selection';
+import { receiptQueue, uploadFailureMessage } from '../services/receipt-queue';
+import { prepareReceiptPhoto } from '../services/receipt-photo';
 import { ConnectionSettings } from '../types/scanner.types';
 
 interface SupplierPaymentScreenProps {
@@ -48,6 +52,8 @@ export function SupplierPaymentScreen({
   const [note, setNote] = useState('');
   const [banner, setBanner] = useState<Banner | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [pages, setPages] = useState<string[]>([]);
+  const [billMessage, setBillMessage] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -90,6 +96,58 @@ export function SupplierPaymentScreen({
     if (method === 'CASH_LBP') setCurrency('LBP');
   };
 
+  const addPage = async (source: 'camera' | 'gallery') => {
+    try {
+      const access = source === 'camera'
+        ? await ImagePicker.requestCameraPermissionsAsync()
+        : await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!access.granted) {
+        setBanner({ tone: 'warning', message: source === 'camera' ? 'Allow camera access to photograph the bill' : 'Allow photo access to choose the bill' });
+        return;
+      }
+      const result = source === 'camera'
+        ? await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 1 })
+        : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsMultipleSelection: true, quality: 1 });
+      if (result.canceled) return;
+      const added: string[] = [];
+      for (const photo of result.assets) added.push(await prepareReceiptPhoto(photo));
+      setPages((items) => [...items, ...added]);
+    } catch (error) {
+      setBanner({ tone: 'danger', message: error instanceof Error ? error.message : 'Could not add the photo' });
+    }
+  };
+
+  /** Queue the bill pages, linked to the new payment, and try to send them now. */
+  const attachBill = async (paymentId: string) => {
+    if (!supplier || !pages.length) return;
+    try {
+      const queue = receiptQueue();
+      const ids: string[] = [];
+      let groupLeadId: string | undefined;
+      for (const uri of pages) {
+        const entry = await queue.enqueue({
+          supplierId: supplier.id,
+          supplierPurchaseId: null,
+          supplierTransactionId: paymentId,
+          ...(groupLeadId ? { groupLeadId } : {}),
+          supplierPurchaseLabel: `${supplier.name} · Payment`,
+          branchId: selectedBranchHeaders()['X-Branch-Scope'],
+          serverUrl: client.baseUrl,
+          sourceUri: uri,
+          mime: 'image/jpeg',
+        });
+        ids.push(entry.id);
+        groupLeadId ??= entry.id;
+      }
+      setPages([]);
+      await queue.flush(client);
+      const left = (await queue.listPending()).filter((entry) => ids.includes(entry.id));
+      setBillMessage(left.length ? left.map(uploadFailureMessage).join(' ') : 'Bill photo attached');
+    } catch (error) {
+      setBillMessage(error instanceof Error ? error.message : 'Bill photo saved on this phone. It will retry.');
+    }
+  };
+
   const review = () => {
     if (!validAmount) {
       setBanner({
@@ -109,7 +167,7 @@ export function SupplierPaymentScreen({
     setSubmitting(true);
     setBanner(null);
     try {
-      await recordSupplierPayment(client, {
+      const payment = await recordSupplierPayment(client, {
         supplierId: supplier.id,
         amount: numericAmount,
         currency,
@@ -117,6 +175,7 @@ export function SupplierPaymentScreen({
         ...(note.trim() ? { note: note.trim() } : {}),
       });
       setStep('DONE');
+      void attachBill(payment.id);
     } catch (error) {
       if (error instanceof HcApiError && error.kind === 'UNAUTHORIZED') {
         await onSessionInvalid();
@@ -139,6 +198,8 @@ export function SupplierPaymentScreen({
     setCurrency('USD');
     setPaymentMethod('CASH_USD');
     setNote('');
+    setPages([]);
+    setBillMessage(null);
     setBanner(null);
     setStep('PICK_SUPPLIER');
   };
@@ -219,10 +280,26 @@ export function SupplierPaymentScreen({
             maxLength={500}
             style={styles.note}
           />
-          <StatusBanner
-            tone="info"
-            message="Receipt attachment to payments is coming soon"
-          />
+          <Text style={styles.fieldLabel}>Bill photo (optional)</Text>
+          {pages.length ? (
+            <View style={styles.pageRow}>
+              {pages.map((uri, index) => (
+                <Pressable
+                  key={uri}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Remove bill page ${index + 1}`}
+                  onPress={() => setPages((items) => items.filter((item) => item !== uri))}
+                >
+                  <Image source={{ uri }} style={styles.pageThumb} />
+                  <Text style={styles.rowMeta}>Page {index + 1} · tap to remove</Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
+          <View style={styles.segmentRow}>
+            <View style={styles.flex}><AppButton label={pages.length ? 'Add page' : 'Take photo'} variant="secondary" onPress={() => void addPage('camera')} /></View>
+            <View style={styles.flex}><AppButton label="Gallery" variant="secondary" onPress={() => void addPage('gallery')} /></View>
+          </View>
           <AppButton label="Review payment" onPress={review} />
           <AppButton label="Back" variant="secondary" onPress={() => setStep('PICK_SUPPLIER')} />
         </View>
@@ -239,6 +316,7 @@ export function SupplierPaymentScreen({
             <Text style={styles.summaryLabel}>Method</Text>
             <Text style={styles.summaryValue}>{selectedMethod.label}</Text>
             {note.trim() ? <><Text style={styles.summaryLabel}>Note</Text><Text style={styles.summaryValue}>{note.trim()}</Text></> : null}
+            {pages.length ? <><Text style={styles.summaryLabel}>Bill photo</Text><Text style={styles.summaryValue}>{pages.length} page{pages.length === 1 ? '' : 's'}</Text></> : null}
           </View>
           <AppButton label="Record payment" onPress={() => void submit()} loading={submitting} />
           <AppButton label="Edit details" variant="secondary" onPress={() => setStep('DETAILS')} />
@@ -248,6 +326,7 @@ export function SupplierPaymentScreen({
       {step === 'DONE' && (
         <View style={styles.done}>
           <Text style={styles.title}>Payment recorded ✓</Text>
+          {billMessage ? <StatusBanner tone={billMessage === 'Bill photo attached' ? 'info' : 'warning'} message={billMessage} /> : null}
           <AppButton label="Record another" onPress={recordAnother} />
           <AppButton label="Done" variant="secondary" onPress={onDone} />
         </View>
@@ -281,5 +360,8 @@ const styles = StyleSheet.create({
   summaryLabel: { color: theme.colors.muted, fontSize: 12, fontWeight: '700', marginTop: 6 },
   summaryValue: { color: theme.colors.text, fontSize: 16, fontWeight: '700' },
   amount: { color: theme.colors.brand, fontSize: 25, fontWeight: '900' },
+  pageRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  pageThumb: { width: 96, height: 128, borderRadius: 10, backgroundColor: theme.colors.border },
+  flex: { flex: 1 },
   done: { flex: 1, minHeight: 400, alignItems: 'stretch', justifyContent: 'center', gap: 12 },
 });

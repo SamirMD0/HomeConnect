@@ -120,12 +120,17 @@ export function ReceiptCaptureScreen({ connection, token, onDone, onSessionInval
       if (!supplier || !pages.length) return;
       const queue = receiptQueue();
       const ids: string[] = [];
+      // Every page of this capture is one bill: later pages name the first.
+      let groupLeadId: string | undefined;
       // Remove each saved page from this draft immediately, so retrying a local
       // save failure cannot enqueue the already durable pages twice.
       for (const uri of pages) {
         const entry = await queue.enqueue({
           supplierId: supplier.id,
           supplierPurchaseId: purchase?.supplierReceivingId ?? null,
+          // A purchase that received no stock links to its ledger entry (PC 2.3.0+).
+          ...(purchase && !purchase.supplierReceivingId ? { supplierTransactionId: purchase.id } : {}),
+          ...(groupLeadId ? { groupLeadId } : {}),
           supplierPurchaseLabel: `${supplier.name} · ${purchase?.referenceNumber ?? 'No purchase yet'}`,
           branchId: selectedBranchHeaders()['X-Branch-Scope'],
           serverUrl: client.baseUrl,
@@ -134,6 +139,7 @@ export function ReceiptCaptureScreen({ connection, token, onDone, onSessionInval
           mime: 'image/jpeg',
         });
         ids.push(entry.id);
+        groupLeadId ??= entry.id;
         setPages((items) => items.filter((page) => page !== uri));
       }
       await queue.flush(client);
@@ -148,7 +154,7 @@ export function ReceiptCaptureScreen({ connection, token, onDone, onSessionInval
       setMessage(
         remaining.length
           ? remaining.map(uploadFailureMessage).join(' ')
-          : `Uploaded ${ids.length} bill page(s).`
+          : `Saved 1 bill with ${ids.length} page${ids.length === 1 ? '' : 's'}.`
       );
       setStep('done');
     });
@@ -198,7 +204,6 @@ export function ReceiptCaptureScreen({ connection, token, onDone, onSessionInval
               <View key={item.id} style={styles.card}>
                 <AppButton
                   label={`Ref # ${item.referenceNumber ?? item.id.slice(0, 8)}`}
-                  disabled={!item.supplierReceivingId}
                   variant="secondary"
                   onPress={() => {
                     setPurchase(item);
@@ -206,7 +211,7 @@ export function ReceiptCaptureScreen({ connection, token, onDone, onSessionInval
                   }}
                 />
                 {!item.supplierReceivingId && (
-                  <Text>This purchase has no receiving. Save with “No purchase yet”.</Text>
+                  <Text>No stock received. Needs PC 2.3.0 or later.</Text>
                 )}
               </View>
             ))}

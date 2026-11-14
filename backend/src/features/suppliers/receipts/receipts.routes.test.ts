@@ -11,13 +11,17 @@ import { app } from '../../../app';
 import { buildLanApp } from '../../scanner/lan-listener';
 import { routeBranchId } from '../../../test/branch-scope-fixture';
 
-const { receiving, receipt, blob, supplier } = vi.hoisted(() => ({
+const { receiving, receipt, blob, supplier, transaction } = vi.hoisted(() => ({
   receiving: { findUnique: vi.fn() },
+  transaction: { findUnique: vi.fn() },
   receipt: {
     create: vi.fn(),
     findMany: vi.fn(),
     findUnique: vi.fn(),
+    findUniqueOrThrow: vi.fn(),
     update: vi.fn(),
+    updateMany: vi.fn(),
+    groupBy: vi.fn(),
     delete: vi.fn(),
     count: vi.fn(),
   },
@@ -31,7 +35,9 @@ vi.mock('../../../lib/prisma', async () => ({
     supplierReceiving: receiving,
     supplierReceivingReceipt: receipt,
     supplierReceiptBlob: blob,
+    supplierTransaction: transaction,
     supplier,
+    $transaction: async (operations: Promise<unknown>[]) => Promise.all(operations),
   },
   transactionModel: {},
   activityLogModel: {},
@@ -83,6 +89,21 @@ beforeEach(async () => {
     const row = { ...rows.get(where.id), ...data };
     rows.set(where.id, row);
     return row;
+  });
+  receipt.findUniqueOrThrow.mockImplementation(async ({ where }) => rows.get(where.id));
+  // Minimal where-matcher for the fields the service filters bills by.
+  receipt.updateMany.mockImplementation(async ({ where, data }) => {
+    let count = 0;
+    for (const [id, row] of rows) {
+      const matches = Object.entries(where).every(([key, value]) =>
+        key === 'id' ? id === value : (row as Record<string, unknown>)[key] === value
+      );
+      if (matches) {
+        rows.set(id, { ...row, ...data });
+        count += 1;
+      }
+    }
+    return { count };
   });
   receipt.delete.mockImplementation(async ({ where }) => {
     const row = rows.get(where.id);
@@ -183,7 +204,15 @@ async function seedBill(branchId = routeBranchId) {
     id: billId,
     supplierId,
     branchId,
-    supplierReceivingId: null,
+    supplierReceivingId: null as string | null,
+    supplierTransactionId: null as string | null,
+    billGroupId: billId,
+    pageNumber: 1,
+    replacedById: null,
+    replacedAt: null,
+    deletedAt: null as Date | null,
+    deletedById: null as string | null,
+    deleteReason: null as string | null,
     note: null,
     filename: `${billId}.jpg`,
     mime: 'image/jpeg',
@@ -286,9 +315,13 @@ describe('supplier bills inbox', () => {
           where: expect.objectContaining({
             supplierId,
             branchId: { in: [routeBranchId] },
+            deletedAt: null,
+            replacedAt: null,
             ...(linked === 'all'
               ? {}
-              : { supplierReceivingId: linked === 'true' ? { not: null } : null }),
+              : linked === 'true'
+                ? { NOT: { supplierReceivingId: null, supplierTransactionId: null } }
+                : { supplierReceivingId: null, supplierTransactionId: null }),
           }),
         })
       );
@@ -353,7 +386,7 @@ describe('supplier bills inbox', () => {
   });
   it('lists unlinked bills across suppliers within the branch scope, through the LAN gateway', async () => {
     receipt.findMany.mockResolvedValue([
-      { id: billId, supplierId, branchId: routeBranchId, supplierReceivingId: null, note: null, supplier: { id: supplierId, name: 'Fixture supplier' } },
+      { id: billId, supplierId, branchId: routeBranchId, supplierReceivingId: null, note: null, billGroupId: billId, pageNumber: 1, supplier: { id: supplierId, name: 'Fixture supplier' } },
     ]);
     const response = await request(lanApp)
       .get('/api/v1/supplier-bills?linked=false&limit=20')
@@ -364,15 +397,26 @@ describe('supplier bills inbox', () => {
     ]);
     expect(response.body.data[0].supplier).toBeUndefined();
     const query = receipt.findMany.mock.calls[0]![0];
-    expect(query.where).toEqual({ supplierReceivingId: null, branchId: { in: [routeBranchId] } });
-    expect(query.take).toBe(20);
+    expect(query.where).toEqual({
+      supplierReceivingId: null,
+      supplierTransactionId: null,
+      deletedAt: null,
+      replacedAt: null,
+      branchId: { in: [routeBranchId] },
+    });
+    // Pages share bills, so the query over-fetches rows for 20 bills.
+    expect(query.take).toBe(80);
+    expect(response.body.data[0]).toMatchObject({ pageCount: 1 });
   });
   it('counts unlinked bills for the desktop badge and validates the inbox filter', async () => {
-    receipt.count.mockResolvedValue(3);
+    receipt.groupBy.mockResolvedValue([{ billGroupId: 'a' }, { billGroupId: 'b' }, { billGroupId: 'c' }]);
     const count = await request(app).get('/api/v1/supplier-bills/unlinked-count').set('Authorization', `Bearer ${token}`);
     expect(count.status).toBe(200);
     expect(count.body.data).toEqual({ count: 3 });
-    expect(receipt.count).toHaveBeenCalledWith({ where: { supplierReceivingId: null, branchId: { in: [routeBranchId] } } });
+    expect(receipt.groupBy).toHaveBeenCalledWith({
+      by: ['billGroupId'],
+      where: { supplierReceivingId: null, supplierTransactionId: null, deletedAt: null, replacedAt: null, branchId: { in: [routeBranchId] } },
+    });
     expect((await request(app).get('/api/v1/supplier-bills?linked=true').set('Authorization', `Bearer ${token}`)).status).toBe(400);
     expect((await request(app).get('/api/v1/supplier-bills?linked=false&limit=500').set('Authorization', `Bearer ${token}`)).status).toBe(400);
     expect((await request(app).get('/api/v1/supplier-bills?linked=false')).status).toBe(401);
@@ -401,18 +445,134 @@ describe('supplier bills inbox', () => {
     expect(
       (await request(app).delete(billUrl).set('Authorization', `Bearer ${adminToken}`)).status
     ).toBe(404);
-    expect(receipt.delete).not.toHaveBeenCalled();
+    expect(receipt.updateMany).not.toHaveBeenCalled();
   });
-  it('allows admin deletion, removes the disk file, and refuses employee deletion', async () => {
+  it('soft-deletes with who and why, keeping the row and the photo file', async () => {
+    const row = await seedBill();
+    row.supplierReceivingId = receivingId;
+    const response = await request(app)
+      .delete(`${billUrl}?reason=Wrong%20supplier`)
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(response.status).toBe(200);
+    expect(response.body.data).toEqual({ deleted: 1 });
+    expect(rows.get(billId)).toMatchObject({ deletedById: userId, deleteReason: 'Wrong supplier' });
+    expect(rows.get(billId)!.deletedAt).toBeInstanceOf(Date);
+    expect(await fs.readdir(tempDir)).toEqual([`${billId}.jpg`]);
+    expect(
+      (await request(app).get(`${billUrl}/image`).set('Authorization', `Bearer ${token}`)).status
+    ).toBe(404);
+  });
+  it('lets an employee delete only their own unlinked bill under 24 hours old', async () => {
+    const otherToken = jwt.sign({ userId: supplierId, role: 'EMPLOYEE' }, process.env.JWT_SECRET!);
+    const row = await seedBill();
+    const del = (auth: string) => request(app).delete(billUrl).set('Authorization', `Bearer ${auth}`);
+    expect((await del(otherToken)).status).toBe(403);
+    row.supplierReceivingId = receivingId;
+    expect((await del(token)).status).toBe(403);
+    row.supplierReceivingId = null;
+    row.capturedAt = new Date(Date.now() - 25 * 60 * 60 * 1000);
+    expect((await del(token)).status).toBe(403);
+    row.capturedAt = new Date();
+    expect((await del(token)).status).toBe(200);
+  });
+  it('deletes every page of a bill with bill=true', async () => {
     await seedBill();
+    const second = { ...rows.get(billId)!, id: userId, pageNumber: 2, filename: `${userId}.jpg` };
+    rows.set(userId, second);
+    const response = await request(app)
+      .delete(`${billUrl}?bill=true`)
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(response.body.data).toEqual({ deleted: 2 });
+    expect(rows.get(userId)!.deletedAt).toBeInstanceOf(Date);
+  });
+  it('links a whole bill to a payment, and a stock purchase through its receiving', async () => {
+    await seedBill();
+    const paymentId = '66666666-6666-4666-8666-666666666666';
+    transaction.findUnique.mockResolvedValue({
+      id: paymentId, supplierId, branchId: routeBranchId, status: 'ACTIVE',
+      type: 'SUPPLIER_PAYMENT', supplierReceivingId: null,
+    });
+    const payment = await request(app)
+      .patch(billUrl)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ supplierTransactionId: paymentId });
+    expect(payment.status).toBe(200);
+    expect(payment.body.data).toMatchObject({ supplierTransactionId: paymentId, supplierReceivingId: null });
+    expect(receipt.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { billGroupId: billId, deletedAt: null, replacedAt: null } })
+    );
+    transaction.findUnique.mockResolvedValue({
+      id: paymentId, supplierId, branchId: routeBranchId, status: 'ACTIVE',
+      type: 'SUPPLIER_DEBT', supplierReceivingId: receivingId,
+    });
+    const purchase = await request(app)
+      .patch(billUrl)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ supplierTransactionId: paymentId });
+    // Both links are allowed: the earlier payment link stays.
+    expect(purchase.body.data).toMatchObject({ supplierReceivingId: receivingId, supplierTransactionId: paymentId });
+  });
+  it('rejects links to removed, foreign or non-purchase entries, and empty patches', async () => {
+    await seedBill();
+    const paymentId = '66666666-6666-4666-8666-666666666666';
+    for (const entry of [
+      { supplierId, branchId: routeBranchId, status: 'REMOVED', type: 'SUPPLIER_PAYMENT' },
+      { supplierId: userId, branchId: routeBranchId, status: 'ACTIVE', type: 'SUPPLIER_PAYMENT' },
+      { supplierId, branchId: routeBranchId, status: 'ACTIVE', type: 'SUPPLIER_CREDIT' },
+    ]) {
+      transaction.findUnique.mockResolvedValue({ id: paymentId, supplierReceivingId: null, ...entry });
+      const response = await request(app)
+        .patch(billUrl)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ supplierTransactionId: paymentId });
+      expect(response.status).toBe(400);
+    }
+    expect((await request(app).patch(billUrl).set('Authorization', `Bearer ${token}`).send({})).status).toBe(400);
+    expect(receipt.updateMany).not.toHaveBeenCalled();
+  });
+  it('adds a page to an existing bill and copies its links', async () => {
+    const first = await seedBill();
+    first.supplierReceivingId = receivingId;
+    receipt.findMany.mockResolvedValue([first]);
+    const response = await request(lanApp)
+      .post(inbox)
+      .set('Authorization', `Bearer ${token}`)
+      .set('X-Bill-Group', billId)
+      .set('Content-Type', 'image/jpeg')
+      .send(Buffer.from('page2'));
+    expect(response.status).toBe(201);
+    expect(response.body.data).toMatchObject({ billGroupId: billId, pageNumber: 2, supplierReceivingId: receivingId });
+  });
+  it('replaces a page and keeps the old one as history', async () => {
+    await seedBill();
+    const response = await request(lanApp)
+      .post(`${billUrl}/replace`)
+      .set('Authorization', `Bearer ${token}`)
+      .set('Content-Type', 'image/jpeg')
+      .send(Buffer.from('retake'));
+    expect(response.status).toBe(201);
+    const page = response.body.data;
+    expect(page).toMatchObject({ billGroupId: billId, pageNumber: 1 });
+    expect(page.id).not.toBe(billId);
+    expect(rows.get(billId)).toMatchObject({ replacedById: page.id });
+    expect(rows.get(billId)!.replacedAt).toBeInstanceOf(Date);
     expect(
-      (await request(app).delete(billUrl).set('Authorization', `Bearer ${token}`)).status
-    ).toBe(403);
-    expect(
-      (await request(app).delete(billUrl).set('Authorization', `Bearer ${adminToken}`)).status
-    ).toBe(200);
-    expect(rows.has(billId)).toBe(false);
-    expect(await fs.readdir(tempDir)).toEqual([]);
+      (await request(app).post(`${billUrl}/replace`).set('Authorization', `Bearer ${token}`).set('Content-Type', 'image/jpeg').send(Buffer.from('x'))).status
+    ).toBe(400);
+  });
+  it('lists bills for a payment and for a purchase receiving', async () => {
+    const paymentId = '66666666-6666-4666-8666-666666666666';
+    transaction.findUnique.mockResolvedValue({ id: paymentId, branchId: routeBranchId, supplierReceivingId: receivingId });
+    receipt.findMany.mockResolvedValue([await seedBill()]);
+    const response = await request(lanApp)
+      .get(`/api/v1/supplier-bills/for-transaction/${paymentId}`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(response.status).toBe(200);
+    expect(response.body.data[0]).toMatchObject({ id: billId, pageCount: 1 });
+    expect(receipt.findMany.mock.calls[0]![0].where.OR).toEqual([
+      { supplierTransactionId: paymentId },
+      { supplierReceivingId: receivingId },
+    ]);
   });
   it('returns 404 for absent bills and blocks unsafe disk filenames', async () => {
     expect(

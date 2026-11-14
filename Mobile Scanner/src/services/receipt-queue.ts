@@ -2,8 +2,15 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { AuthedClient, HcApiError } from '../api/hc-client';
 import { uploadReceipt as defaultUploadReceipt, UploadReceiptInput } from '../api/receipts-api';
 import { selectedBranchHeaders } from '../branches/branch-selection';
+import { linkBillToEntry } from '../suppliers/bills-inbox';
 
 export type QueueUploader = (client: AuthedClient, input: UploadReceiptInput) => Promise<unknown>;
+/** Links an uploaded bill to a ledger entry (a payment). */
+export type QueueLinker = (
+  client: AuthedClient,
+  bill: { id: string; branchId: string },
+  transactionId: string
+) => Promise<unknown>;
 export type QueueStatus = 'pending' | 'uploading' | 'failed' | 'blocked';
 export interface QueuedReceipt {
   id: string;
@@ -13,6 +20,10 @@ export interface QueuedReceipt {
   branchId?: string;
   serverUrl?: string;
   note?: string;
+  /** Queue id of this bill's first page; set on page 2 and later. */
+  groupLeadId?: string;
+  /** Link the uploaded bill to this ledger entry (a payment) after upload. */
+  supplierTransactionId?: string;
   localPath: string;
   mime: string;
   bytes: number;
@@ -29,6 +40,8 @@ export interface EnqueueInput {
   branchId?: string;
   serverUrl?: string;
   note?: string;
+  groupLeadId?: string;
+  supplierTransactionId?: string;
   sourceUri: string;
   mime: string;
 }
@@ -82,9 +95,20 @@ interface Coordinator {
 }
 // Shared across queue instances (capture, Pending bills, foreground sync).
 const coordinators = new WeakMap<QueueFsAdapter, Coordinator>();
+/**
+ * Stable upload UUID for a queue id (four groups of eight hex digits). The PC
+ * deduplicates on it, and later pages name the first page's id as their bill.
+ */
+export function receiptIdFor(queueId: string): string | undefined {
+  const hex = queueId.replace(/-/g, '');
+  return /^[0-9a-f]{32}$/i.test(hex)
+    ? `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-8${hex.slice(17, 20)}-${hex.slice(20)}`
+    : undefined;
+}
 export function createReceiptQueue(
   fs: QueueFsAdapter = defaultFs,
-  uploader: QueueUploader = defaultUploadReceipt
+  uploader: QueueUploader = defaultUploadReceipt,
+  linker: QueueLinker = linkBillToEntry
 ): ReceiptQueue {
   if (!fs.documentDirectory) throw new Error('Photo storage is unavailable.');
   const dir = `${fs.documentDirectory}receipts-pending/`;
@@ -204,6 +228,10 @@ export function createReceiptQueue(
       for (const entry of pending) {
         // Stop if a revocation or branch switch happened during this flush.
         if (selectedBranchHeaders()['X-Branch-Scope'] !== branch) break;
+        // A later page waits until its first page is on the PC (it then
+        // leaves the queue); uploading it first would be refused.
+        if (entry.groupLeadId && (await listPending()).some((row) => row.id === entry.groupLeadId))
+          continue;
         let claimed = false;
         await mutate((rows) =>
           rows.map((row) => {
@@ -215,20 +243,25 @@ export function createReceiptQueue(
         );
         if (!claimed) continue;
         try {
-          // Stable UUID also covers old queue ids (four groups of eight hex
-          // digits). Server deduplication closes the crash-after-response gap.
-          const hex = entry.id.replace(/-/g, '');
-          const receiptId = /^[0-9a-f]{32}$/i.test(hex)
-            ? `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-8${hex.slice(17, 20)}-${hex.slice(20)}`
-            : undefined;
-          await uploader(client, {
+          // Server deduplication on this stable id closes the
+          // crash-after-response gap, and makes a retried link step safe.
+          const receiptId = receiptIdFor(entry.id);
+          const uploaded = (await uploader(client, {
             supplierPurchaseId: entry.supplierPurchaseId,
             supplierId: entry.supplierId,
             note: entry.note,
             localUri: entry.localPath,
             mime: entry.mime,
             receiptId,
-          });
+            billGroupId: entry.groupLeadId ? receiptIdFor(entry.groupLeadId) : undefined,
+          })) as { id?: string; branchId?: string } | undefined;
+          // Later pages inherit the first page's links on the PC.
+          if (entry.supplierTransactionId && !entry.groupLeadId && uploaded?.id)
+            await linker(
+              client,
+              { id: uploaded.id, branchId: uploaded.branchId ?? entry.branchId ?? branch ?? '' },
+              entry.supplierTransactionId
+            );
         } catch (error) {
           failed += 1;
           const retryable =

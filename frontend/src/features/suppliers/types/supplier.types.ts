@@ -22,7 +22,10 @@ export interface SupplierTransaction {
   supplierReceiving?: {
     id: string; referenceNumber: string|null; receivedOn: string;
     items: Array<{ quantity: number; product: { id: string; name: string; sku: string } }>;
+    _count?: { receipts: number };
   }|null;
+  /** Bill pages attached straight to this entry (payments, purchases without stock). */
+  _count?: { bills: number };
 }
 export interface PaginationMeta { page: number; pageSize: number; totalItems: number; totalPages: number }
 export interface SupplierFilters { search?: string; isActive?: boolean; sortBy?: 'name'|'createdAt'|'balance'; sortOrder?: 'asc'|'desc'; page?: number; pageSize?: number }

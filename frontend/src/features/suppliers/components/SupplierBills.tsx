@@ -1,8 +1,26 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Badge, Button, Modal } from '../../../components/ui';
+import { useAuth } from '../../../hooks/useAuth';
 import { supplierBillsApi, type BillFilter, type SupplierBill } from '../api/supplier-bills.api';
 import { supplierPurchasesApi } from '../api/supplier-purchases.api';
+import { supplierTransactionsApi } from '../api/supplier-transactions.api';
 import type { SupplierPurchase } from '../types/supplier-purchase.types';
+import type { SupplierTransaction } from '../types/supplier.types';
+
+const isLinked = (bill: SupplierBill) =>
+  Boolean(bill.supplierReceivingId || bill.supplierTransactionId);
+const pagesOf = (bill: SupplierBill) => (bill.pages?.length ? bill.pages : [bill]);
+const DAY_MS = 24 * 60 * 60 * 1000;
+/** Mirrors the server rule so the button only shows when the delete will work. */
+function canDelete(bill: SupplierBill, user: { id: string; role: string } | null | undefined) {
+  if (!user) return false;
+  if (user.role === 'ADMIN' || user.role === 'MANAGER') return true;
+  return (
+    bill.capturedById === user.id &&
+    !isLinked(bill) &&
+    Date.now() - new Date(bill.capturedAt).getTime() < DAY_MS
+  );
+}
 
 function useBillImage(bill: SupplierBill) {
   const [state, setState] = useState<{ url?: string; error?: string }>({});
@@ -49,10 +67,26 @@ function BillThumbnail({ bill, onOpen }: { bill: SupplierBill; onOpen: () => voi
     </Button>
   );
 }
-function BillLightbox({ bill, onClose }: { bill: SupplierBill; onClose: () => void }) {
-  const { url, error } = useBillImage(bill);
+function BillLightbox({
+  bill,
+  onClose,
+  onChanged,
+}: {
+  bill: SupplierBill;
+  onClose: () => void;
+  onChanged: () => void;
+}) {
+  const { user } = useAuth();
+  const pages = pagesOf(bill);
+  const [index, setIndex] = useState(0);
+  const page = pages[Math.min(index, pages.length - 1)];
+  const { url, error } = useBillImage(page);
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
   const viewport = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(700);
   const [aspect, setAspect] = useState(1.4);
@@ -64,11 +98,46 @@ function BillLightbox({ bill, onClose }: { bill: SupplierBill; onClose: () => vo
     window.addEventListener('resize', measure);
     return () => window.removeEventListener('resize', measure);
   }, []);
+  const run = async (action: () => Promise<unknown>) => {
+    setBusy(true);
+    setFailure(null);
+    try {
+      await action();
+      onChanged();
+      onClose();
+    } catch (problem) {
+      setFailure(problem instanceof Error ? problem.message : 'That did not work. Try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
   const imageWidth = width * zoom;
   const imageHeight = imageWidth * aspect;
+  const many = pages.length > 1;
   return (
     <Modal isOpen title="Supplier bill" size="xl" onClose={onClose}>
       <div className="flex flex-wrap items-center gap-2 pb-3">
+        {many && (
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => setIndex((value) => value - 1)}
+              disabled={index === 0}
+            >
+              Previous page
+            </Button>
+            <span className="text-sm font-semibold" aria-live="polite">
+              Page {index + 1} of {pages.length}
+            </span>
+            <Button
+              variant="secondary"
+              onClick={() => setIndex((value) => value + 1)}
+              disabled={index >= pages.length - 1}
+            >
+              Next page
+            </Button>
+          </>
+        )}
         <Button
           variant="secondary"
           onClick={() => setZoom((value) => Math.min(4, value + 0.25))}
@@ -99,7 +168,7 @@ function BillLightbox({ bill, onClose }: { bill: SupplierBill; onClose: () => vo
           <a
             className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-brand-700"
             href={url}
-            download={`supplier-bill-${bill.id}.${bill.mime === 'image/png' ? 'png' : bill.mime === 'image/jpeg' ? 'jpg' : bill.mime.split('/')[1]}`}
+            download={`supplier-bill-${page.id}.${page.mime === 'image/png' ? 'png' : page.mime === 'image/jpeg' ? 'jpg' : page.mime.split('/')[1]}`}
           >
             Download
           </a>
@@ -143,18 +212,93 @@ function BillLightbox({ bill, onClose }: { bill: SupplierBill; onClose: () => vo
         )}
       </div>
       {bill.note && <p className="mt-3 whitespace-pre-wrap text-sm">{bill.note}</p>}
+      <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
+        <input
+          ref={fileInput}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+          className="hidden"
+          aria-label="New photo for this page"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            event.target.value = '';
+            if (file) void run(() => supplierBillsApi.replace(page, file));
+          }}
+        />
+        <Button variant="secondary" disabled={busy} onClick={() => fileInput.current?.click()}>
+          Replace this page
+        </Button>
+        {isLinked(bill) && (
+          <Button variant="secondary" disabled={busy} onClick={() => void run(() => supplierBillsApi.unlinkAll(bill))}>
+            Unlink bill
+          </Button>
+        )}
+        {canDelete(bill, user) &&
+          (confirmDelete ? (
+            <>
+              <span className="text-sm font-semibold text-red-700">Delete for good?</span>
+              {many && (
+                <Button
+                  variant="secondary"
+                  disabled={busy}
+                  onClick={() => void run(() => supplierBillsApi.remove(page, false))}
+                >
+                  This page only
+                </Button>
+              )}
+              <Button
+                variant="danger"
+                disabled={busy}
+                onClick={() => void run(() => supplierBillsApi.remove(page, true))}
+              >
+                {many ? 'Whole bill' : 'Delete bill'}
+              </Button>
+              <Button variant="ghost" disabled={busy} onClick={() => setConfirmDelete(false)}>
+                Keep it
+              </Button>
+            </>
+          ) : (
+            <Button variant="ghost" disabled={busy} onClick={() => setConfirmDelete(true)}>
+              Delete…
+            </Button>
+          ))}
+      </div>
+      {failure && (
+        <p role="alert" className="mt-2 text-sm text-red-700">
+          {failure}
+        </p>
+      )}
     </Modal>
   );
+}
+
+type LinkOption = { value: string; label: string };
+/** Purchases with stock link through their receiving; everything else through the entry. */
+function purchaseOption(purchase: SupplierPurchase): LinkOption {
+  const name = `${purchase.receiptNumber || purchase.reference || purchase.transactionDate} · ${purchase.description}`;
+  return purchase.supplierReceivingId
+    ? { value: `r:${purchase.supplierReceivingId}`, label: `Purchase · ${name}` }
+    : { value: `t:${purchase.id}`, label: `Purchase · ${name}` };
+}
+function paymentOption(payment: SupplierTransaction): LinkOption {
+  return {
+    value: `t:${payment.id}`,
+    label: `Payment · ${payment.transactionDate.slice(0, 10)} · ${payment.amount} · ${payment.description}`,
+  };
 }
 
 export function SupplierBills({
   supplierId,
   receivingId,
+  transactionId,
 }: {
   supplierId?: string;
   receivingId?: string;
+  /** Bills attached to one ledger entry (a payment, or a purchase). */
+  transactionId?: string;
 }) {
   const purchasePickerId = useId();
+  const attached = Boolean(receivingId || transactionId);
   const [filter, setFilter] = useState<BillFilter>('false');
   const [bills, setBills] = useState<SupplierBill[]>([]);
   const [loading, setLoading] = useState(true);
@@ -162,7 +306,7 @@ export function SupplierBills({
   const [revision, setRevision] = useState(0);
   const [opened, setOpened] = useState<SupplierBill | null>(null);
   const [linking, setLinking] = useState<SupplierBill | null>(null);
-  const [purchases, setPurchases] = useState<SupplierPurchase[]>([]);
+  const [options, setOptions] = useState<LinkOption[]>([]);
   const [purchasePage, setPurchasePage] = useState(1);
   const [purchasePages, setPurchasePages] = useState(1);
   const [choice, setChoice] = useState('');
@@ -171,9 +315,11 @@ export function SupplierBills({
     let active = true;
     setLoading(true);
     setError(null);
-    const load = receivingId
-      ? supplierBillsApi.forPurchase(receivingId)
-      : supplierBillsApi.list(supplierId!, filter);
+    const load = transactionId
+      ? supplierBillsApi.forTransaction(transactionId)
+      : receivingId
+        ? supplierBillsApi.forPurchase(receivingId)
+        : supplierBillsApi.list(supplierId!, filter);
     void load
       .then((rows) => {
         if (active) setBills(rows);
@@ -187,18 +333,28 @@ export function SupplierBills({
     return () => {
       active = false;
     };
-  }, [supplierId, receivingId, filter, revision]);
+  }, [supplierId, receivingId, transactionId, filter, revision]);
   useEffect(() => {
     if (!linking) return;
     let active = true;
     setSaving(true);
-    void supplierPurchasesApi
-      .list(linking.supplierId, purchasePage, 50)
-      .then((result) => {
-        if (active) {
-          setPurchases(result.items);
-          setPurchasePages(result.pagination.totalPages);
-        }
+    void Promise.all([
+      supplierPurchasesApi.list(linking.supplierId, purchasePage, 50),
+      // Payments are fewer; the first 50 recent ones cover the usual case.
+      purchasePage === 1
+        ? supplierTransactionsApi
+            .list(linking.supplierId, false, 1, 50)
+            .then((result) => result.items.filter((item) => item.type === 'SUPPLIER_PAYMENT'))
+            .catch(() => [] as SupplierTransaction[])
+        : Promise.resolve([] as SupplierTransaction[]),
+    ])
+      .then(([purchases, payments]) => {
+        if (!active) return;
+        setOptions([
+          ...purchases.items.filter((item) => item.status !== 'REMOVED').map(purchaseOption),
+          ...payments.map(paymentOption),
+        ]);
+        setPurchasePages(purchases.pagination.totalPages);
       })
       .catch((failure: Error) => {
         if (active) setError(failure.message);
@@ -215,7 +371,9 @@ export function SupplierBills({
     setSaving(true);
     setError(null);
     try {
-      await supplierBillsApi.link(linking, choice);
+      const [kind, id] = [choice.slice(0, 1), choice.slice(2)];
+      if (kind === 'r') await supplierBillsApi.link(linking, id);
+      else await supplierBillsApi.linkEntry(linking, id);
       setLinking(null);
       setRevision((value) => value + 1);
     } catch (failure) {
@@ -227,14 +385,14 @@ export function SupplierBills({
   return (
     <section
       className="space-y-3 rounded-lg border bg-white p-4"
-      aria-label={receivingId ? 'Attached bills' : 'Bills'}
+      aria-label={attached ? 'Attached bills' : 'Bills'}
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="flex items-center gap-2 font-bold">
-          {receivingId ? 'Attached bills' : 'Bills'} <Badge>{bills.length}</Badge>
+          {attached ? 'Attached bills' : 'Bills'} <Badge>{bills.length}</Badge>
         </h2>
         <div className="flex flex-wrap items-center gap-3">
-          {!receivingId && (
+          {!attached && (
             <label className="text-sm font-semibold">
               Show bills{' '}
               <select
@@ -265,46 +423,60 @@ export function SupplierBills({
       ) : (
         <div
           className={
-            receivingId
+            attached
               ? 'flex gap-3 overflow-x-auto pb-2'
               : 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
           }
         >
-          {bills.map((bill) => (
-            <article
-              key={bill.id}
-              className={`space-y-2 rounded-lg border border-slate-200 p-3 ${receivingId ? 'w-48 shrink-0' : ''}`}
-            >
-              <BillThumbnail bill={bill} onOpen={() => setOpened(bill)} />
-              <p className="text-xs text-slate-500">
-                {new Date(bill.capturedAt).toLocaleString('en-GB')}
-              </p>
-              <Badge tone={bill.supplierReceivingId ? 'success' : 'neutral'}>
-                {bill.supplierReceivingId ? 'Linked' : 'Unlinked'}
-              </Badge>
-              {bill.note && <p className="line-clamp-3 whitespace-pre-wrap text-sm">{bill.note}</p>}
-              {!bill.supplierReceivingId && (
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    setChoice('');
-                    setPurchases([]);
-                    setPurchasePage(1);
-                    setLinking(bill);
-                  }}
-                >
-                  Link to purchase
-                </Button>
-              )}
-            </article>
-          ))}
+          {bills.map((bill) => {
+            const pageCount = pagesOf(bill).length;
+            return (
+              <article
+                key={bill.id}
+                className={`space-y-2 rounded-lg border border-slate-200 p-3 ${attached ? 'w-48 shrink-0' : ''}`}
+              >
+                <BillThumbnail bill={bill} onOpen={() => setOpened(bill)} />
+                <p className="text-xs text-slate-500">
+                  {new Date(bill.capturedAt).toLocaleString('en-GB')}
+                </p>
+                <div className="flex flex-wrap gap-1">
+                  <Badge tone={isLinked(bill) ? 'success' : 'neutral'}>
+                    {isLinked(bill) ? 'Linked' : 'Unlinked'}
+                  </Badge>
+                  {pageCount > 1 && <Badge>{pageCount} pages</Badge>}
+                </div>
+                {bill.note && (
+                  <p className="line-clamp-3 whitespace-pre-wrap text-sm">{bill.note}</p>
+                )}
+                {!isLinked(bill) && (
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setChoice('');
+                      setOptions([]);
+                      setPurchasePage(1);
+                      setLinking(bill);
+                    }}
+                  >
+                    Link to purchase or payment
+                  </Button>
+                )}
+              </article>
+            );
+          })}
         </div>
       )}
-      {opened && <BillLightbox bill={opened} onClose={() => setOpened(null)} />}
+      {opened && (
+        <BillLightbox
+          bill={opened}
+          onClose={() => setOpened(null)}
+          onChanged={() => setRevision((value) => value + 1)}
+        />
+      )}
       {linking && (
         <Modal
           isOpen
-          title="Link bill to purchase"
+          title="Link bill"
           onClose={() => {
             if (!saving) setLinking(null);
           }}
@@ -315,7 +487,7 @@ export function SupplierBills({
           }
         >
           <label htmlFor={purchasePickerId} className="block text-sm font-semibold">
-            Purchase
+            Purchase or payment
           </label>
           <select
             id={purchasePickerId}
@@ -324,19 +496,13 @@ export function SupplierBills({
             onChange={(event) => setChoice(event.target.value)}
             className="mt-2 w-full rounded-lg border border-slate-300 p-2"
           >
-            <option value="">Choose a purchase</option>
-            {purchases
-              .filter((purchase) => purchase.supplierReceivingId)
-              .map((purchase) => (
-                <option key={purchase.id} value={purchase.supplierReceivingId!}>
-                  {purchase.receiptNumber || purchase.reference || purchase.transactionDate} ·{' '}
-                  {purchase.description}
-                </option>
-              ))}
+            <option value="">Choose one</option>
+            {options.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
-          <p className="mt-2 text-xs text-slate-500">
-            Purchases with a receiving document can be linked.
-          </p>
           {error && (
             <p role="alert" className="mt-2 text-sm text-red-700">
               {error}

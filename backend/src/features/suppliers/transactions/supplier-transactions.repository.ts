@@ -13,9 +13,12 @@ export const supplierTransactionInclude = {
   supplierReceiving: {
     select: {
       id: true, referenceNumber: true, receivedOn: true,
+      _count: { select: { receipts: { where: { deletedAt: null, replacedAt: null } } } },
       items: { select: { quantity: true, product: { select: { id: true, name: true, sku: true } } }, orderBy: [{ createdAt: 'asc' as const }, { id: 'asc' as const }] },
     },
   },
+  // Bill pages attached straight to this entry (payments, purchases without stock).
+  _count: { select: { bills: { where: { deletedAt: null, replacedAt: null } } } },
 } satisfies Prisma.SupplierTransactionInclude;
 
 export interface SupplierSearchMatch {

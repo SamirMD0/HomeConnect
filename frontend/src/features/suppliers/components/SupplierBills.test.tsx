@@ -3,9 +3,20 @@ import { act, type ComponentProps, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('../api/supplier-bills.api', () => ({
-  supplierBillsApi: { list: vi.fn(), forPurchase: vi.fn(), image: vi.fn(), link: vi.fn() },
+  supplierBillsApi: {
+    list: vi.fn(),
+    forPurchase: vi.fn(),
+    forTransaction: vi.fn(),
+    image: vi.fn(),
+    link: vi.fn(),
+    linkEntry: vi.fn(),
+    remove: vi.fn(),
+  },
 }));
 vi.mock('../api/supplier-purchases.api', () => ({ supplierPurchasesApi: { list: vi.fn() } }));
+vi.mock('../api/supplier-transactions.api', () => ({ supplierTransactionsApi: { list: vi.fn() } }));
+const auth = vi.hoisted(() => ({ user: { id: 'u', role: 'EMPLOYEE' } as { id: string; role: string } }));
+vi.mock('../../../hooks/useAuth', () => ({ useAuth: () => auth }));
 vi.mock('../../../components/ui', () => ({
   Button: ({
     children,
@@ -35,6 +46,7 @@ vi.mock('../../../components/ui', () => ({
 import { SupplierBills } from './SupplierBills';
 import { supplierBillsApi } from '../api/supplier-bills.api';
 import { supplierPurchasesApi } from '../api/supplier-purchases.api';
+import { supplierTransactionsApi } from '../api/supplier-transactions.api';
 
 let host: HTMLDivElement, root: Root;
 const bill = {
@@ -60,6 +72,14 @@ beforeEach(() => {
   vi.mocked(supplierBillsApi.list).mockResolvedValue([bill]);
   vi.mocked(supplierBillsApi.image).mockResolvedValue(new Blob(['photo']));
   vi.mocked(supplierBillsApi.link).mockResolvedValue(undefined);
+  auth.user = { id: 'u', role: 'EMPLOYEE' };
+  vi.mocked(supplierTransactionsApi.list).mockResolvedValue({
+    items: [
+      { id: 'pay', type: 'SUPPLIER_PAYMENT', transactionDate: '2026-11-10', amount: '50.00', description: 'Cash' },
+      { id: 'debt', type: 'SUPPLIER_DEBT', transactionDate: '2026-11-10', amount: '9.00', description: 'Old' },
+    ],
+    pagination: { totalPages: 1 },
+  } as never);
   vi.mocked(supplierPurchasesApi.list).mockResolvedValue({
     items: [{ id: 'p', supplierReceivingId: 'r', description: 'Delivery', receiptNumber: '42' }],
     pagination: { totalPages: 1 },
@@ -95,11 +115,11 @@ describe('supplier Bills tab', () => {
   });
   it('opens the supplier purchase picker and links the selected receiving', async () => {
     await render();
-    await act(async () => button('Link to purchase').click());
+    await act(async () => button('Link to purchase or payment').click());
     expect(supplierPurchasesApi.list).toHaveBeenCalledWith('s', 1, 50);
     const picker = host.querySelector('[role="dialog"] select') as HTMLSelectElement;
     await act(async () => {
-      picker.value = 'r';
+      picker.value = 'r:r';
       picker.dispatchEvent(new Event('change', { bubbles: true }));
     });
     await act(async () => button('Link bill').click());
@@ -119,5 +139,50 @@ describe('supplier Bills tab', () => {
       (host.querySelector('img[alt="Full size supplier bill"]') as HTMLImageElement).style.transform
     ).toContain('rotate(90deg)');
     expect(host.querySelector('a[download]')?.getAttribute('href')).toBe('blob:bill-image');
+  });
+  it('offers payments in the picker and links a payment to its ledger entry', async () => {
+    await render();
+    await act(async () => button('Link to purchase or payment').click());
+    const picker = host.querySelector('[role="dialog"] select') as HTMLSelectElement;
+    const labels = Array.from(picker.options).map((option) => option.textContent);
+    expect(labels.some((label) => label?.startsWith('Payment'))).toBe(true);
+    expect(labels.join()).not.toContain('Old');
+    await act(async () => {
+      picker.value = 't:pay';
+      picker.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await act(async () => button('Link bill').click());
+    expect(supplierBillsApi.linkEntry).toHaveBeenCalledWith(bill, 'pay');
+  });
+  it('loads bills for a ledger entry and pages through a multi-page bill', async () => {
+    const second = { ...bill, id: 'b2', pageNumber: 2 };
+    vi.mocked(supplierBillsApi.forTransaction).mockResolvedValue([
+      { ...bill, supplierTransactionId: 'pay', pages: [bill, second], pageCount: 2 },
+    ]);
+    await act(async () => root.render(<SupplierBills transactionId="pay" />));
+    expect(supplierBillsApi.forTransaction).toHaveBeenCalledWith('pay');
+    expect(host.textContent).toContain('2 pages');
+    await act(async () =>
+      (host.querySelector('button[aria-label^="Open bill"]') as HTMLButtonElement).click()
+    );
+    expect(host.textContent).toContain('Page 1 of 2');
+    await act(async () => button('Next page').click());
+    expect(host.textContent).toContain('Page 2 of 2');
+    expect(vi.mocked(supplierBillsApi.image).mock.calls.at(-1)![0]).toMatchObject({ id: 'b2' });
+    // Linked bills are not deletable by employees.
+    expect(button('Delete…')).toBeUndefined();
+  });
+  it('lets an employee delete their own fresh unlinked bill after confirming', async () => {
+    vi.mocked(supplierBillsApi.list).mockResolvedValue([
+      { ...bill, capturedById: 'u', capturedAt: new Date().toISOString() },
+    ]);
+    vi.mocked(supplierBillsApi.remove).mockResolvedValue(undefined);
+    await render();
+    await act(async () =>
+      (host.querySelector('button[aria-label^="Open bill"]') as HTMLButtonElement).click()
+    );
+    await act(async () => button('Delete…').click());
+    await act(async () => button('Delete bill').click());
+    expect(supplierBillsApi.remove).toHaveBeenCalledWith(expect.objectContaining({ id: 'b' }), true);
   });
 });

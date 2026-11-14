@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { HcApiError } from '../api/hc-client';
-import { createReceiptQueue, QueuedReceipt } from './receipt-queue';
+import { createReceiptQueue, QueuedReceipt, receiptIdFor } from './receipt-queue';
 
 // Stub out expo-file-system/legacy BEFORE the queue module is imported, so
 // Vitest's SSR transform never has to parse react-native's Flow-based entry
@@ -307,5 +307,39 @@ describe('receipt queue recovery and concurrency', () => {
     await queue.flush(dummyClient);
     expect(uploader).toHaveBeenCalledTimes(1);
     expect(await queue.listPending()).toEqual([]);
+  });
+
+  it('sends later pages with the first page bill, and waits while the first fails', async () => {
+    const fs = createMemoryFs();
+    const uploader = vi.fn().mockRejectedValueOnce(new Error('offline')).mockResolvedValue({ id: 'x' });
+    const queue = createReceiptQueue(fs, uploader);
+    const lead = await queue.enqueue({ supplierPurchaseId: null, supplierId: 's', supplierPurchaseLabel: 'A', sourceUri: 'file://1', mime: 'image/jpeg' });
+    await queue.enqueue({ supplierPurchaseId: null, supplierId: 's', groupLeadId: lead.id, supplierPurchaseLabel: 'A', sourceUri: 'file://2', mime: 'image/jpeg' });
+
+    // First page fails: the second page must not go up alone.
+    expect(await queue.flush(dummyClient)).toEqual({ attempted: 1, synced: 0, failed: 1 });
+    expect(uploader).toHaveBeenCalledTimes(1);
+
+    expect(await queue.flush(dummyClient)).toEqual({ attempted: 2, synced: 2, failed: 0 });
+    expect(uploader.mock.calls[1]![1]).toMatchObject({ receiptId: receiptIdFor(lead.id), billGroupId: undefined });
+    expect(uploader.mock.calls[2]![1]).toMatchObject({ billGroupId: receiptIdFor(lead.id) });
+  });
+
+  it('links a payment bill after upload and retries the link safely', async () => {
+    const fs = createMemoryFs();
+    const uploader = vi.fn().mockResolvedValue({ id: 'bill-1', branchId: 'b' });
+    const linker = vi.fn().mockRejectedValueOnce(new Error('offline')).mockResolvedValue(undefined);
+    const queue = createReceiptQueue(fs, uploader, linker);
+    const lead = await queue.enqueue({ supplierPurchaseId: null, supplierId: 's', supplierTransactionId: 'pay-1', supplierPurchaseLabel: 'P', sourceUri: 'file://1', mime: 'image/jpeg' });
+    await queue.enqueue({ supplierPurchaseId: null, supplierId: 's', supplierTransactionId: 'pay-1', groupLeadId: lead.id, supplierPurchaseLabel: 'P', sourceUri: 'file://2', mime: 'image/jpeg' });
+
+    expect((await queue.flush(dummyClient)).failed).toBe(1);
+    expect((await queue.listPending())[0]).toMatchObject({ id: lead.id, status: 'failed' });
+    expect(await queue.flush(dummyClient)).toMatchObject({ synced: 2, failed: 0 });
+    // The retried upload reuses the same id, so the PC returns the same row.
+    expect(uploader.mock.calls[1]![1].receiptId).toBe(uploader.mock.calls[0]![1].receiptId);
+    // Only the first page links; later pages inherit it on the PC.
+    expect(linker).toHaveBeenCalledTimes(2);
+    expect(linker).toHaveBeenLastCalledWith(dummyClient, { id: 'bill-1', branchId: 'b' }, 'pay-1');
   });
 });

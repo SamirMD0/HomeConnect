@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { configureApiSession } from '../api/hc-client';
 import { setSelectedBranch } from '../branches/branch-selection';
-import { countUnlinkedBills, linkablePurchases, linkAfterPurchase, linkBill, listUnlinkedBills } from './bills-inbox';
+import { canDeleteBill, countUnlinkedBills, deleteBill, linkablePurchases, linkAfterPurchase, linkBill, listRecentPayments, listUnlinkedBills } from './bills-inbox';
 import {
   buildConvertPayload,
   buildCreatePayload,
@@ -54,21 +54,39 @@ describe('bills inbox', () => {
     ).toEqual(['a']);
   });
 
-  it('links after "create purchase from bill" only when the purchase received stock', async () => {
-    const withStock = await linkAfterPurchase(client, { id: 'b1', branchId: 'branch-a' }, { supplierReceivingId: 'r9' });
+  it('links after "create purchase from bill", through the receiving or the ledger entry', async () => {
+    const withStock = await linkAfterPurchase(client, { id: 'b1', branchId: 'branch-a' }, { id: 'p1', supplierReceivingId: 'r9' });
     expect(withStock.linked).toBe(true);
     expect(JSON.parse(fetchMock.mock.calls[0]![1].body)).toEqual({ supplierReceivingId: 'r9' });
 
     fetchMock.mockClear();
-    const noStock = await linkAfterPurchase(client, { id: 'b1', branchId: 'branch-a' }, { supplierReceivingId: null });
-    expect(noStock.linked).toBe(false);
-    expect(noStock.message).toMatch(/stays in the bills inbox/);
-    expect(fetchMock).not.toHaveBeenCalled();
+    const noStock = await linkAfterPurchase(client, { id: 'b1', branchId: 'branch-a' }, { id: 'p1', supplierReceivingId: null });
+    expect(noStock.linked).toBe(true);
+    expect(JSON.parse(fetchMock.mock.calls[0]![1].body)).toEqual({ supplierTransactionId: 'p1' });
 
     fetchMock.mockResolvedValueOnce({ status: 400, json: async () => ({ success: false, error: { message: 'Wrong supplier' } }) });
-    const failed = await linkAfterPurchase(client, { id: 'b1', branchId: 'branch-a' }, { supplierReceivingId: 'r9' });
+    const failed = await linkAfterPurchase(client, { id: 'b1', branchId: 'branch-a' }, { id: 'p1', supplierReceivingId: 'r9' });
     expect(failed).toMatchObject({ linked: false });
-    expect(failed.message).toMatch(/purchase was saved.*Wrong supplier/);
+    expect(failed.message).toMatch(/purchase was saved.*Wrong supplier.*stays in the bills inbox/);
+  });
+
+  it('applies the PC delete rule and lists only active payments', async () => {
+    const now = Date.parse('2026-11-14T10:00:00Z');
+    const bill = { supplierReceivingId: null, supplierTransactionId: null, capturedById: 'u', capturedAt: '2026-11-14T09:00:00Z' };
+    expect(canDeleteBill(bill, { id: 'u', role: 'EMPLOYEE' }, now)).toBe(true);
+    expect(canDeleteBill(bill, { id: 'x', role: 'EMPLOYEE' }, now)).toBe(false);
+    expect(canDeleteBill({ ...bill, supplierTransactionId: 't' }, { id: 'u', role: 'EMPLOYEE' }, now)).toBe(false);
+    expect(canDeleteBill({ ...bill, capturedAt: '2026-11-13T09:00:00Z' }, { id: 'u', role: 'EMPLOYEE' }, now)).toBe(false);
+    expect(canDeleteBill({ ...bill, supplierTransactionId: 't' }, { id: 'x', role: 'ADMIN' }, now)).toBe(true);
+    fetchMock.mockResolvedValueOnce(ok([
+      { id: 'p', type: 'SUPPLIER_PAYMENT', status: 'ACTIVE' },
+      { id: 'r', type: 'SUPPLIER_PAYMENT', status: 'REMOVED' },
+      { id: 'd', type: 'SUPPLIER_DEBT', status: 'ACTIVE' },
+    ]));
+    expect((await listRecentPayments(client, 's1')).map((row) => row.id)).toEqual(['p']);
+    await deleteBill(client, { id: 'b1', branchId: 'branch-a' }, true);
+    expect(fetchMock.mock.calls.at(-1)![0]).toContain('/supplier-bills/b1?bill=true');
+    expect(fetchMock.mock.calls.at(-1)![1].method).toBe('DELETE');
   });
 });
 

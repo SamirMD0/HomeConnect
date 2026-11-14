@@ -1,11 +1,12 @@
 import express, { Router, type RequestHandler } from 'express';
 import { z } from 'zod';
 import { validate } from '../../../middleware/validate.middleware';
-import { requireRole } from '../../../middleware/role.middleware';
 import { ValidationError } from '../../../lib/errors';
 import {
   billImage,
   deleteBill,
+  listBillsForTransaction,
+  replaceBillPage,
   listBills,
   listUnlinkedBills,
   countUnlinkedBills,
@@ -25,9 +26,12 @@ const upload: RequestHandler = async (req, res, next) => {
   try {
     const identifier = z.string().uuid().optional().safeParse(req.header('X-Receipt-Id'));
     if (!identifier.success) throw new ValidationError('Invalid bill upload identifier.');
+    const group = z.string().uuid().optional().safeParse(req.header('X-Bill-Group'));
+    if (!group.success) throw new ValidationError('Invalid bill identifier for the new page.');
     const created = await storeReceipt(
       {
         receiptId: identifier.data,
+        billGroupId: group.data,
         supplierReceivingId: req.params.supplierReceivingId as string | undefined,
         supplierId: req.params.supplierId as string | undefined,
         note: req.query.note as string | undefined,
@@ -123,10 +127,38 @@ supplierBillsGlobalRoutes.get('/unlinked-count', async (req, res, next) => {
     next(error);
   }
 });
+supplierBillsGlobalRoutes.get(
+  '/for-transaction/:transactionId',
+  validate(z.object({ transactionId: z.string().uuid() }), 'params'),
+  async (req, res, next) => {
+    try {
+      res.json({
+        success: true,
+        data: await listBillsForTransaction(String(req.params.transactionId), req.branchScope!),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 supplierBillsGlobalRoutes.patch(
   '/:receiptId',
   validate(billParams, 'params'),
-  validate(z.object({ supplierReceivingId: z.string().uuid().nullable(), note })),
+  validate(
+    z
+      .object({
+        supplierReceivingId: z.string().uuid().nullable().optional(),
+        supplierTransactionId: z.string().uuid().nullable().optional(),
+        note,
+      })
+      .refine(
+        (body) =>
+          body.supplierReceivingId !== undefined ||
+          body.supplierTransactionId !== undefined ||
+          body.note !== undefined,
+        'Nothing to change.'
+      )
+  ),
   async (req, res, next) => {
     try {
       res.json({
@@ -156,16 +188,49 @@ supplierBillsGlobalRoutes.get(
     }
   }
 );
-// The current Role enum has ADMIN and EMPLOYEE only. MANAGER is accepted by the
-// shared guard for installations introducing that role; employees cannot delete.
-supplierBillsGlobalRoutes.delete(
-  '/:receiptId',
-  requireRole(['ADMIN', 'MANAGER']),
+// Replace one page: the raw image body becomes the page; the old one is kept.
+supplierBillsGlobalRoutes.post(
+  '/:receiptId/replace',
   validate(billParams, 'params'),
+  rawBody,
   async (req, res, next) => {
     try {
-      await deleteBill(String(req.params.receiptId), req.branchScope!);
-      res.json({ success: true, data: null });
+      const page = await replaceBillPage(
+        String(req.params.receiptId),
+        {
+          capturedById: req.user!.userId,
+          mime: (req.header('content-type') ?? '').split(';')[0].trim().toLowerCase(),
+          bytes: Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0),
+        },
+        req.branchScope!
+      );
+      res.status(201).json({ success: true, data: page });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+// Soft delete. Admins delete any bill; employees only their own unlinked bill
+// within 24 hours (checked in the service). `bill=true` deletes every page.
+supplierBillsGlobalRoutes.delete(
+  '/:receiptId',
+  validate(billParams, 'params'),
+  validate(
+    z.object({
+      bill: z.enum(['true', 'false']).default('false'),
+      reason: z.string().trim().max(500).optional(),
+    }),
+    'query'
+  ),
+  async (req, res, next) => {
+    try {
+      const result = await deleteBill(
+        String(req.params.receiptId),
+        { wholeBill: req.query.bill === 'true', reason: req.query.reason as string | undefined },
+        { userId: req.user!.userId, role: req.user!.role },
+        req.branchScope!
+      );
+      res.json({ success: true, data: result });
     } catch (error) {
       next(error);
     }

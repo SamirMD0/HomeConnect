@@ -452,6 +452,7 @@ model User {
   supplierReceivingsReceived     SupplierReceiving[]          @relation("SupplierReceivingReceivedBy")
   supplierReceivingsVoided       SupplierReceiving[]          @relation("SupplierReceivingVoidedBy")
   supplierReceivingReceipts      SupplierReceivingReceipt[]   @relation("SupplierReceivingReceiptCapturedBy")
+  deletedSupplierBills           SupplierReceivingReceipt[]   @relation("SupplierBillDeletedBy")
   supplierReceivingItemsReversed SupplierReceivingItem[]      @relation("ReceivingItemReversedBy")
   supplierReceivingAudits        SupplierReceivingAudit[]     @relation("SupplierReceivingAuditChangedBy")
   businessSettingsUpdates        BusinessSettings[]           @relation("BusinessSettingsUpdatedBy")
@@ -779,8 +780,8 @@ model InstallmentPlan {
   cancelledBy      User?                    @relation("InstallmentPlanCancelledBy", fields: [cancelledById], references: [id], onDelete: Restrict)
   cancelReason     String?                  @db.Text
 
-  installments Installment[]
-  salesOrder   SalesOrder?   @relation("SalesOrderInstallmentPlan")
+  installments        Installment[]
+  salesOrder          SalesOrder?      @relation("SalesOrderInstallmentPlan")
   prepaidRemainderFor PrepaidPurchase? @relation("PrepaidRemainderPlan")
 
   @@index([customerId])
@@ -1909,25 +1910,43 @@ model SupplierReceiving {
   @@map("supplier_receivings")
 }
 
-/// A paper supplier bill page, optionally linked to a receiving.
+/// One page of a paper supplier bill. Pages sharing `billGroupId` form one
+/// bill; links, notes and deletes apply to the whole bill. A bill can link to a
+/// purchase receiving, to a ledger transaction (a payment, or a purchase with
+/// no receiving), or to both. Replaced and deleted pages are kept as history.
 model SupplierReceivingReceipt {
-  id                  String             @id @default(uuid()) @db.Uuid
-  supplierId          String             @db.Uuid
-  supplier            Supplier           @relation(fields: [supplierId], references: [id], onDelete: Restrict)
-  branchId            String             @db.Uuid
-  branch              Branch             @relation(fields: [branchId], references: [id], onDelete: Restrict)
-  supplierReceivingId String?            @db.Uuid
-  supplierReceiving   SupplierReceiving? @relation(fields: [supplierReceivingId], references: [id], onDelete: Cascade)
-  note                String?            @db.Text
-  filename            String
-  mime                String
-  bytes               Int
-  capturedAt          DateTime           @default(now())
-  capturedById        String             @db.Uuid
-  capturedBy          User               @relation("SupplierReceivingReceiptCapturedBy", fields: [capturedById], references: [id], onDelete: Restrict)
-  blob                SupplierReceiptBlob?
+  id                    String                    @id @default(uuid()) @db.Uuid
+  supplierId            String                    @db.Uuid
+  supplier              Supplier                  @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  branchId              String                    @db.Uuid
+  branch                Branch                    @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  supplierReceivingId   String?                   @db.Uuid
+  supplierReceiving     SupplierReceiving?        @relation(fields: [supplierReceivingId], references: [id], onDelete: Cascade)
+  supplierTransactionId String?                   @db.Uuid
+  supplierTransaction   SupplierTransaction?      @relation(fields: [supplierTransactionId], references: [id], onDelete: SetNull)
+  /// Id of the bill's first page. Older rows were backfilled with their own id.
+  billGroupId           String?                   @db.Uuid
+  pageNumber            Int                       @default(1)
+  replacedById          String?                   @unique @db.Uuid
+  replacedBy            SupplierReceivingReceipt? @relation("SupplierBillReplacement", fields: [replacedById], references: [id], onDelete: SetNull)
+  replaces              SupplierReceivingReceipt? @relation("SupplierBillReplacement")
+  replacedAt            DateTime?
+  deletedAt             DateTime?
+  deletedById           String?                   @db.Uuid
+  deletedBy             User?                     @relation("SupplierBillDeletedBy", fields: [deletedById], references: [id], onDelete: Restrict)
+  deleteReason          String?                   @db.Text
+  note                  String?                   @db.Text
+  filename              String
+  mime                  String
+  bytes                 Int
+  capturedAt            DateTime                  @default(now())
+  capturedById          String                    @db.Uuid
+  capturedBy            User                      @relation("SupplierReceivingReceiptCapturedBy", fields: [capturedById], references: [id], onDelete: Restrict)
+  blob                  SupplierReceiptBlob?
 
   @@index([supplierReceivingId])
+  @@index([supplierTransactionId])
+  @@index([billGroupId])
   @@index([capturedAt])
   @@index([supplierId, capturedAt])
   @@index([branchId])
@@ -2083,6 +2102,7 @@ model SupplierTransaction {
 
   audits        SupplierAudit[]
   purchaseLines SupplierPurchaseLine[]
+  bills         SupplierReceivingReceipt[]
 
   @@index([supplierId])
   @@index([supplierId, status])
