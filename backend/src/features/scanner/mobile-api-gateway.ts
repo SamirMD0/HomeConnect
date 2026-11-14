@@ -15,6 +15,7 @@ export const MOBILE_DENIED_PREFIXES = [
   '/api/v1/diagnostics',
   '/api/v1/preflight',
   '/api/v1/scanner',
+  '/api/v1/sync',
   '/api/v1/admin/backups',
   '/api/v1/admin/maintenance',
   '/api/v1/admin/diagnostics',

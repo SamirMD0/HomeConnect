@@ -56,6 +56,10 @@ const productData = (id: string) => ({ id, sku: `SYNC-${id}`, name: `Sync ${id}`
     expect(feed.records.find(row => row.entity === 'customer' && row.id === customerId)).toMatchObject({
       op: 'upsert', data: { financial: customer.financial },
     });
+    const inspection = await request(app).get('/api/v1/sync/changes').query({ after: after.toString(), limit: 500 })
+      .set('Authorization', `Bearer ${token}`).set('X-Branch-Scope', branchId);
+    expect(inspection.status).toBe(200);
+    expect(inspection.body.data).toEqual(JSON.parse(JSON.stringify(feed)));
   }
 
   it('records product insert/update/delete and returns a tombstone', async () => {
