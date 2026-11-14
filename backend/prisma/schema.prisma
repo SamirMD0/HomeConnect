@@ -2172,3 +2172,17 @@ model RepairHistory {
   @@index([repairId, appliedAt])
   @@map("repair_history")
 }
+
+// Durable entity invalidations, retained independently of deleted business rows.
+model SyncChange {
+  seq       BigInt   @id @default(autoincrement())
+  entity    String
+  entityId  String   @map("entity_id") @db.Uuid
+  branchId  String?  @map("branch_id") @db.Uuid
+  op        String
+  changedAt DateTime @default(now()) @map("changed_at") @db.Timestamptz(6)
+
+  @@index([entity, entityId])
+  @@index([changedAt])
+  @@map("sync_changes")
+}
