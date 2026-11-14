@@ -1,4 +1,5 @@
 import { Stack } from 'expo-router';
+import { ScreenHeader } from '../ui/ScreenHeader';
 import { theme } from '../theme';
 const titles: Record<string, string> = {
   bill: 'Supplier bill',
@@ -9,14 +10,23 @@ const titles: Record<string, string> = {
   count: 'Stock count',
   'connection-log': 'Connection details',
   receivables: 'Receivables',
+  design: 'Design preview',
 };
 export function TabStack() {
   return (
     <Stack
       screenOptions={({ route }) => ({
         title: titles[route.name] ?? route.name,
-        headerTintColor: theme.colors.brand,
-        headerStyle: { backgroundColor: theme.colors.surface },
+        // Centred blue title and back chevron. The bell lives in the branch header above.
+        header: ({ navigation, options, back }) => (
+          <ScreenHeader
+            title={
+              typeof options.title === 'string' ? options.title : (titles[route.name] ?? route.name)
+            }
+            onBack={back ? navigation.goBack : undefined}
+            topInset={false}
+          />
+        ),
         contentStyle: { backgroundColor: theme.colors.background },
       })}
     >

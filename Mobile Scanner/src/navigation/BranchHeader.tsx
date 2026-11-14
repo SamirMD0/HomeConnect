@@ -9,6 +9,7 @@ import { AppButton } from '../components/AppButton';
 import { Sheet } from '../components/Sheet';
 import { StatusBanner } from '../components/StatusBanner';
 import { theme } from '../theme';
+import { ActionBell } from '../ui/ActionBell';
 export function BranchHeader({ menu = true }: { menu?: boolean }) {
   const session = useSession();
   const router = useRouter();
@@ -33,6 +34,7 @@ export function BranchHeader({ menu = true }: { menu?: boolean }) {
           <Text style={styles.branchName}>{session.branch.selected?.name}</Text>
           <Ionicons name="chevron-down" color={theme.colors.brand} size={16} accessible={false} />
         </Pressable>
+        {menu && <ActionBell />}
         {menu && (
           <Pressable
             accessibilityRole="button"

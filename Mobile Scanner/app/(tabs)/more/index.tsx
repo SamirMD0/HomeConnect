@@ -9,6 +9,7 @@ export default function More() {
   const router = useRouter();
   return (
     <ScrollView contentContainerStyle={{ padding: theme.spacing.lg, paddingBottom: 112 }}>
+      {session.can('settings.admin') && <ListRow title="Design preview" icon="color-palette-outline" onPress={() => router.push('/(tabs)/more/design')} />}
       {session.can('reports.read') && <ListRow title="Reports" icon="bar-chart-outline" onPress={() => router.push('/(tabs)/more/reports')} />}
       <ListRow
         title={session.user?.fullName ?? 'Account'}

@@ -9,7 +9,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { AppButton } from './AppButton';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme } from '../theme';
 export function Sheet({
   visible,
@@ -33,28 +33,59 @@ export function Sheet({
           style={[styles.sheet, { maxHeight: height * 0.85 }]}
           accessibilityViewIsModal
         >
+          <View style={styles.handle} />
           <View style={styles.header}>
-            <Text accessibilityRole="header" style={styles.title}>
+            <Text accessibilityRole="header" style={styles.title} numberOfLines={2}>
               {title}
             </Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Close"
+              onPress={onClose}
+              hitSlop={4}
+              style={({ pressed }) => [styles.close, pressed && styles.closePressed]}
+            >
+              <Ionicons name="close" size={24} color={theme.colors.text} accessible={false} />
+            </Pressable>
           </View>
           {scrollable ? <ScrollView keyboardShouldPersistTaps="handled">{children}</ScrollView> : <View style={{ flexShrink: 1 }}>{children}</View>}
-          <View style={styles.footer}>
-            <AppButton label="Close" variant="secondary" onPress={onClose} />
-          </View>
         </SafeAreaView>
       </View>
     </Modal>
   );
 }
 const styles = StyleSheet.create({
-  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: '#1B212480' },
+  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: theme.colors.overlay },
   sheet: {
     backgroundColor: theme.colors.surface,
-    borderTopLeftRadius: theme.radius.lg,
-    borderTopRightRadius: theme.radius.lg,
+    borderTopLeftRadius: theme.radius.xl,
+    borderTopRightRadius: theme.radius.xl,
+    paddingBottom: theme.spacing.md,
+    ...theme.elevation.raised,
   },
-  header: { padding: theme.spacing.lg, borderBottomWidth: 1, borderColor: theme.colors.border },
-  title: { fontSize: theme.type.title, fontWeight: '700', color: theme.colors.text },
-  footer: { padding: theme.spacing.lg },
+  handle: {
+    alignSelf: 'center',
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    marginTop: 10,
+    backgroundColor: theme.colors.border,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    paddingLeft: theme.spacing.lg,
+    paddingRight: theme.spacing.sm,
+    paddingVertical: theme.spacing.sm,
+  },
+  title: { flex: 1, ...theme.text.title, color: theme.colors.text },
+  close: {
+    width: theme.touch,
+    height: theme.touch,
+    borderRadius: theme.radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closePressed: { backgroundColor: theme.colors.neutralSoft },
 });

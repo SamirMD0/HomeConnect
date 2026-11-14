@@ -19,22 +19,39 @@ export default function TabLayout() {
       <Tabs
         screenOptions={({ route }) => ({
           header: () => <BranchHeader />,
-          tabBarActiveTintColor: theme.colors.brand,
+          tabBarActiveTintColor: theme.colors.brandStrong,
           tabBarInactiveTintColor: theme.colors.muted,
           tabBarStyle: {
-            height: 64 + insets.bottom,
-            paddingBottom: insets.bottom + 4,
+            height: 72 + insets.bottom,
+            paddingTop: 8,
+            paddingBottom: insets.bottom + 6,
             backgroundColor: theme.colors.surface,
             borderTopColor: theme.colors.border,
+            ...theme.elevation.raised,
           },
-          tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons
-              name={icons[route.name as keyof typeof icons] ?? 'ellipse-outline'}
-              color={color}
-              size={size}
-            />
-          ),
+          tabBarLabelStyle: { fontSize: 12, fontWeight: '600', marginTop: 2 },
+          // Material 3 navigation bar: a soft pill behind the active icon,
+          // filled icon when active, outline when not.
+          tabBarIcon: ({ color, focused }) => {
+            const outline = icons[route.name as keyof typeof icons] ?? 'ellipse-outline';
+            const name = (
+              focused ? outline.replace('-outline', '') : outline
+            ) as keyof typeof Ionicons.glyphMap;
+            return (
+              <View
+                style={{
+                  width: 56,
+                  height: 30,
+                  borderRadius: theme.radius.pill,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: focused ? theme.colors.brandSoft : 'transparent',
+                }}
+              >
+                <Ionicons name={name} color={color} size={22} />
+              </View>
+            );
+          },
         })}
       >
         <Tabs.Screen name="home" options={{ title: 'Home' }} />

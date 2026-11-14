@@ -2,7 +2,7 @@
   "expo": {
     "name": "Home Connect",
     "slug": "homeconnect-mobile-scanner",
-    "version": "2.0.1",
+    "version": "2.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -15,7 +15,7 @@
       }
     },
     "android": {
-      "versionCode": 10,
+      "versionCode": 11,
       "package": "com.homeconnect.mobilescanner",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",

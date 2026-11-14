@@ -1,6 +1,7 @@
 import { Stack } from 'expo-router';
 import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { StatusBar } from 'expo-status-bar';
 import { SessionProvider, useSession } from '../src/session/SessionProvider';
 import { QueryProvider } from '../src/query/QueryProvider';
@@ -90,13 +91,15 @@ function Navigation() {
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
-      <QueryProvider>
-        <SessionProvider>
-          <Navigation />
-          <UpdateBanner />
-          <StatusBar style="dark" />
-        </SessionProvider>
-      </QueryProvider>
+      <KeyboardProvider>
+        <QueryProvider>
+          <SessionProvider>
+            <Navigation />
+            <UpdateBanner />
+            <StatusBar style="dark" />
+          </SessionProvider>
+        </QueryProvider>
+      </KeyboardProvider>
     </SafeAreaProvider>
   );
 }
