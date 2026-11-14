@@ -2,6 +2,7 @@ import { HcApiError } from '../api/hc-client';
 import { checkClientCompatibility, type CompatibilityState } from '../api/system-api';
 import type { ConnectionSettings } from '../types/scanner.types';
 import { logConnection } from './connection-log';
+import { networkHint, type PhoneNetwork } from './network-hint';
 
 /**
  * Finds the shop PC among every address it is known by.
@@ -22,6 +23,20 @@ export interface FindPcDeps {
   probe(settings: ConnectionSettings): Promise<CompatibilityState>;
   wait(ms: number): Promise<void>;
   now(): number;
+  /** The phone's own network, read only after a failed search. */
+  network?(): Promise<PhoneNetwork | null>;
+}
+
+/** NetInfo is loaded lazily so tests and old builds without it still work. */
+async function readPhoneNetwork(): Promise<PhoneNetwork | null> {
+  try {
+    const { default: NetInfo } = await import('@react-native-community/netinfo');
+    const state = await NetInfo.fetch();
+    const details = state.details as { ipAddress?: string | null } | null;
+    return { type: state.type, ipAddress: state.type === 'wifi' ? (details?.ipAddress ?? null) : null };
+  } catch {
+    return null;
+  }
 }
 
 export const RETRY_DELAYS_MS = [0, 1500, 3000];
@@ -31,6 +46,7 @@ const defaultDeps: FindPcDeps = {
   probe: checkClientCompatibility,
   wait: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   now: () => Date.now(),
+  network: readPhoneNetwork,
 };
 
 export function candidateHosts(settings: ConnectionSettings): string[] {
@@ -59,7 +75,16 @@ export async function findPc(
     errors = round.errors;
     if (!errors.every(retryable)) break;
   }
-  throw explain(errors, hosts, settings.port);
+  const error = explain(errors, hosts, settings.port);
+  // Nothing answered at all: say so plainly when the phone's own network is the cause.
+  if (error instanceof HcApiError && error.kind === 'NETWORK' && deps.network) {
+    const hint = networkHint(await deps.network().catch(() => null), hosts);
+    if (hint) {
+      logConnection({ host: hosts[0] ?? '', action: 'phone network', outcome: 'network', ms: 0, detail: hint });
+      throw new HcApiError(hint, 'NETWORK');
+    }
+  }
+  throw error;
 }
 
 async function firstAnswer(
