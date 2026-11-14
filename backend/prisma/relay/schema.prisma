@@ -1,0 +1,97 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../../node_modules/.prisma/relay-client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("RELAY_DATABASE_URL")
+}
+
+model RelayDevice {
+  id          String    @id @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  userName    String    @map("user_name")
+  branchIds   String[]  @map("branch_ids") @db.Uuid
+  name        String
+  tokenSha256 String    @unique @map("token_sha256")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  lastSeenAt  DateTime? @map("last_seen_at") @db.Timestamptz(6)
+  revokedAt   DateTime? @map("revoked_at") @db.Timestamptz(6)
+  actions     RelayOutbox[]
+
+  @@map("relay_devices")
+}
+
+model RelayRecord {
+  entity    String
+  entityId  String   @map("entity_id") @db.Uuid
+  branchId  String?  @map("branch_id") @db.Uuid
+  op        String
+  data      Json?
+  // The database trigger allocates the sequence value on every insert/update.
+  rev       BigInt   @default(0)
+  pcSeq     String   @map("pc_seq")
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@id([entity, entityId])
+  @@index([rev])
+  @@index([branchId, rev])
+  @@map("relay_records")
+}
+
+model RelayOutbox {
+  id         String      @id @db.Uuid
+  deviceId   String      @map("device_id") @db.Uuid
+  device     RelayDevice @relation(fields: [deviceId], references: [id], onDelete: Restrict)
+  userId     String      @map("user_id") @db.Uuid
+  branchId   String      @map("branch_id") @db.Uuid
+  type       String
+  payload    Json
+  createdAt  DateTime    @map("created_at") @db.Timestamptz(6)
+  receivedAt DateTime    @default(now()) @map("received_at") @db.Timestamptz(6)
+  status     String      @default("pending")
+  claimedAt  DateTime?   @map("claimed_at") @db.Timestamptz(6)
+  attempts   Int         @default(0)
+  result     Json?
+  resolvedAt DateTime?   @map("resolved_at") @db.Timestamptz(6)
+  blob       RelayBlob?
+
+  @@index([status, receivedAt])
+  @@index([deviceId, receivedAt])
+  @@map("relay_outbox")
+}
+
+model RelayBlob {
+  id        String      @id @default(uuid()) @db.Uuid
+  outboxId  String      @unique @map("outbox_id") @db.Uuid
+  outbox    RelayOutbox @relation(fields: [outboxId], references: [id], onDelete: Cascade)
+  mime      String
+  bytes     Bytes
+  size      Int
+  createdAt DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([createdAt])
+  @@map("relay_blobs")
+}
+
+model RelayUsage {
+  day             DateTime @id @db.Date
+  requests        Int      @default(0)
+  bytesIn         BigInt   @default(0) @map("bytes_in")
+  bytesOut        BigInt   @default(0) @map("bytes_out")
+  recordsWritten  Int      @default(0) @map("records_written")
+  actionsReceived Int      @default(0) @map("actions_received")
+
+  @@map("relay_usage")
+}
+
+model RelayWorker {
+  id           Int       @id @default(1)
+  lastSeenAt   DateTime? @map("last_seen_at") @db.Timestamptz(6)
+  lastPcSeq    String    @default("0") @map("last_pc_seq")
+  // Durable hourly maintenance throttle, including across process restarts.
+  lastUpkeepAt DateTime? @map("last_upkeep_at") @db.Timestamptz(6)
+
+  @@map("relay_worker")
+}

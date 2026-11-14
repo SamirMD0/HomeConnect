@@ -20,6 +20,7 @@
       ]
     }
   },
+  "exclude": ["backend/src/relay"],
   "include": [
     "backend/src",
     "desktop/src",
