@@ -123,6 +123,52 @@ export function createRelayApp(options: RelayOptions = {}) {
   worker.get('/devices', validate(emptyInput, 'query'), async (_req, res) => { res.json(await store.devices()); });
   worker.get('/usage', validate(emptyInput, 'query'), async (_req, res) => { res.json(await store.usage()); });
   app.use('/relay/v1/worker', worker);
+
+  const device = express.Router();
+  device.use(async (req, res, next) => {
+    try {
+      const token = tokenFrom(req.headers.authorization);
+      if (!token) throw new RelayError(401, 'UNAUTHORIZED', 'Device authentication required.');
+      const hash = digest(token);
+      if (timingSafeEqual(hash, expected)) throw new RelayError(401, 'UNAUTHORIZED', 'Device authentication required.');
+      const paired = await store.findDevice(hash.toString('hex'));
+      if (!paired) throw new RelayError(401, 'UNAUTHORIZED', 'Device authentication required.');
+      if (paired.revokedAt) throw new RelayError(401, 'DEVICE_REVOKED', 'This device has been revoked.');
+      res.locals.device = paired;
+      if (!paired.lastSeenAt || now() - paired.lastSeenAt.getTime() >= 60000) {
+        await store.touchDevice(paired.id, new Date(now()));
+      }
+      next();
+    } catch (error) { next(error); }
+  }, rateLimit(120, now), countBody, express.json({ limit: MAX_BLOB_BYTES }));
+  device.get('/records', validate(recordsQuery, 'query'), async (_req, res) => {
+    const query = res.locals.query as z.infer<typeof recordsQuery>;
+    const paired = res.locals.device as RelayDevice;
+    res.json(await store.readRecords(paired.branchIds, query.after, query.limit));
+  });
+  device.post('/actions', validate(actionInput, 'body'), async (_req, res) => {
+    const paired = res.locals.device as RelayDevice;
+    if (!paired.branchIds.includes(res.locals.body.branchId)) throw new RelayError(403, 'BRANCH_ACCESS_DENIED', 'Branch access denied.');
+    const result = await store.enqueue(paired, res.locals.body);
+    res.locals.actionsReceived = result.created ? 1 : 0;
+    res.status(result.created ? 201 : 200).json({ id: result.id, status: result.status });
+  });
+  device.put('/actions/:id/blob', validate(idInput, 'params'), (req, _res, next) => {
+    if (!imageMime.safeParse(req.headers['content-type']?.split(';')[0].trim().toLowerCase()).success) {
+      return next(new RelayError(415, 'UNSUPPORTED_IMAGE', 'Use a JPEG, PNG or WebP image.'));
+    }
+    next();
+  }, express.raw({ type: () => true, limit: MAX_BLOB_BYTES }), async (req, res) => {
+    if (!Buffer.isBuffer(req.body) || !req.body.length) throw new RelayError(400, 'EMPTY_IMAGE', 'An image body is required.');
+    const paired = res.locals.device as RelayDevice;
+    const mime = imageMime.parse(req.headers['content-type']!.split(';')[0].trim().toLowerCase());
+    res.json(await store.putBlob(paired.id, res.locals.params.id, mime, req.body));
+  });
+  device.get('/actions', validate(actionsQuery, 'query'), async (_req, res) => {
+    const paired = res.locals.device as RelayDevice;
+    res.json(await store.actionResults(paired.id, res.locals.query.ids));
+  });
+  app.use('/relay/v1/device', device);
   app.use((_req, _res, next) => next(new RelayError(404, 'NOT_FOUND', 'Route not found.')));
   const errors: ErrorRequestHandler = (error: unknown, _req, res, _next) => {
     if (error instanceof RelayError) {
