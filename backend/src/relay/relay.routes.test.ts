@@ -38,9 +38,12 @@ describe('isolated relay routes', () => {
   });
 
   it('serves health with no database calls or CORS headers', async () => {
-    const response = await request(makeApp()).get('/relay/v1/health');
+    const app = makeApp();
+    const response = await request(app).get('/relay/v1/health');
     expect(response.body).toEqual({ ok: true });
     expect(response.headers['access-control-allow-origin']).toBeUndefined();
+    expect((await request(app).get('/relay/v1/health/')).status).toBe(200);
+    expect((await request(app).head('/relay/v1/health')).status).toBe(200);
     for (const method of Object.values(store)) expect(method).not.toHaveBeenCalled();
   });
 
@@ -77,6 +80,14 @@ describe('isolated relay routes', () => {
     store.findDevice.mockResolvedValue({ ...paired, lastSeenAt: new Date(0) });
     await request(makeApp()).get('/relay/v1/device/records').set('Authorization', deviceAuth);
     expect(store.touchDevice).toHaveBeenCalledWith(id, expect.any(Date));
+  });
+
+  it('normalizes UUID casing before device branch comparisons', async () => {
+    const namedBranch = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    store.findDevice.mockResolvedValue({ ...paired, branchIds: [namedBranch] });
+    expect((await request(makeApp()).post('/relay/v1/device/actions').set('Authorization', deviceAuth)
+      .send({ ...action, branchId: namedBranch.toUpperCase() })).status).toBe(201);
+    expect(store.enqueue).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ branchId: namedBranch }));
   });
 
   it('passes opaque records and tombstones to the worker transaction', async () => {
@@ -140,6 +151,8 @@ describe('isolated relay routes', () => {
       .set('Content-Type', 'image/png').send(Buffer.alloc(MAX_BLOB_BYTES + 1))).status).toBe(413);
     expect((await request(app).put(`/relay/v1/device/actions/${id}/blob`).set('Authorization', deviceAuth)
       .set('Content-Type', 'application/octet-stream').send(Buffer.from('image'))).status).toBe(415);
+    expect((await request(app).put(`/relay/v1/device/actions/${id}/blob`).set('Authorization', deviceAuth)
+      .set('Content-Type', 'image/png').send(Buffer.alloc(0))).status).toBe(400);
     store.putBlob.mockRejectedValue(new RelayError(409, 'ACTION_NOT_PENDING', 'Action was claimed.'));
     expect((await request(app).put(`/relay/v1/device/actions/${id}/blob`).set('Authorization', deviceAuth)
       .set('Content-Type', 'image/png').send(Buffer.from('image'))).status).toBe(409);
@@ -157,6 +170,44 @@ describe('isolated relay routes', () => {
     store.saveResult.mockRejectedValueOnce(new RelayError(409, 'RESULT_CONFLICT', 'Different final status.'));
     expect((await request(app).post(`/relay/v1/worker/outbox/${id}/result`).set('Authorization', workerAuth)
       .send({ status: 'refused', result: {} })).status).toBe(409);
+  });
+
+  it('registers, lists and revokes devices, reads state/usage, and claims bounded batches', async () => {
+    const app = makeApp();
+    const registration = { id, userId: paired.userId, userName: paired.userName, branchIds: paired.branchIds,
+      name: paired.name, tokenSha256: paired.tokenSha256 };
+    store.registerDevice.mockResolvedValue({ id });
+    store.devices.mockResolvedValue([{ id, name: 'Phone' }]);
+    store.revokeDevice.mockResolvedValue({ id, revoked: true });
+    store.workerState.mockResolvedValue({ lastPcSeq: '55', lastSeenAt: null });
+    store.usage.mockResolvedValue({ days: [], totals: { bytesIn: 9007199254740993n } });
+    store.claim.mockResolvedValue([{ id, hasBlob: true }]);
+    expect((await request(app).post('/relay/v1/worker/devices').set('Authorization', workerAuth).send(registration)).status).toBe(200);
+    expect(store.registerDevice).toHaveBeenCalledWith(registration);
+    expect((await request(app).get('/relay/v1/worker/devices').set('Authorization', workerAuth)).body).toEqual([{ id, name: 'Phone' }]);
+    expect((await request(app).post(`/relay/v1/worker/devices/${id}/revoke`).set('Authorization', workerAuth)).status).toBe(200);
+    expect((await request(app).get('/relay/v1/worker/state').set('Authorization', workerAuth)).body.lastPcSeq).toBe('55');
+    expect((await request(app).get('/relay/v1/worker/usage').set('Authorization', workerAuth)).body.totals.bytesIn).toBe('9007199254740993');
+    expect((await request(app).post('/relay/v1/worker/outbox/claim').set('Authorization', workerAuth).send({ limit: 50 })).body)
+      .toEqual([{ id, hasBlob: true }]);
+    expect((await request(app).post('/relay/v1/worker/outbox/claim').set('Authorization', workerAuth).send({ limit: 51 })).status).toBe(400);
+    expect((await request(app).post('/relay/v1/worker/devices').set('Authorization', workerAuth)
+      .send({ ...registration, tokenSha256: hash(workerSecret) })).status).toBe(400);
+    expect(store.upkeep).toHaveBeenCalledTimes(1);
+    expect(store.countUsage).toHaveBeenCalledWith(expect.objectContaining({ recordsWritten: 0, actionsReceived: 0 }));
+  });
+
+  it('accounts accepted record/action writes without counting duplicate actions again', async () => {
+    const app = makeApp();
+    store.writeRecords.mockResolvedValue({ stored: 1, lastPcSeq: '1' });
+    await request(app).post('/relay/v1/worker/records').set('Authorization', workerAuth)
+      .send({ pcSeq: '1', records: [{ entity: 'x', id, branchId: null, op: 'delete' }] });
+    expect(store.countUsage).toHaveBeenLastCalledWith(expect.objectContaining({ recordsWritten: 1, actionsReceived: 0 }));
+    await request(app).post('/relay/v1/device/actions').set('Authorization', deviceAuth).send(action);
+    expect(store.countUsage).toHaveBeenLastCalledWith(expect.objectContaining({ recordsWritten: 0, actionsReceived: 1 }));
+    store.enqueue.mockResolvedValue({ created: false, id, status: 'pending' });
+    await request(app).post('/relay/v1/device/actions').set('Authorization', deviceAuth).send(action);
+    expect(store.countUsage).toHaveBeenLastCalledWith(expect.objectContaining({ recordsWritten: 0, actionsReceived: 0 }));
   });
 
   it('logs only request metadata even for invalid JSON or database errors', async () => {
@@ -179,6 +230,10 @@ describe('isolated relay routes', () => {
     expect((await request(app).get('/relay/v1/device/records').set('Authorization', deviceAuth)).status).toBe(429);
     store.workerState.mockResolvedValue({ lastPcSeq: '0', lastSeenAt: null });
     expect((await request(app).get('/relay/v1/worker/state').set('Authorization', workerAuth)).status).toBe(200);
+    for (let count = 1; count < 120; count++) {
+      expect((await request(app).get('/relay/v1/worker/state').set('Authorization', workerAuth)).status).toBe(200);
+    }
+    expect((await request(app).get('/relay/v1/worker/state').set('Authorization', workerAuth)).status).toBe(429);
     time += 60000;
     expect((await request(app).get('/relay/v1/device/records').set('Authorization', deviceAuth)).status).toBe(200);
     expect(store.upkeep).toHaveBeenCalledTimes(1);

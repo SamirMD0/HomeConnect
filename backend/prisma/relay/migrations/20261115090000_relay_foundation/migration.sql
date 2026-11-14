@@ -41,7 +41,7 @@ FOR EACH ROW EXECUTE FUNCTION relay_assign_record_rev();
 
 CREATE TABLE relay_outbox (
   id UUID PRIMARY KEY,
-  device_id UUID NOT NULL REFERENCES relay_devices(id),
+  device_id UUID NOT NULL REFERENCES relay_devices(id) ON DELETE RESTRICT ON UPDATE CASCADE,
   user_id UUID NOT NULL,
   branch_id UUID NOT NULL,
   type TEXT NOT NULL,
@@ -58,7 +58,7 @@ CREATE INDEX relay_outbox_status_received_at_idx ON relay_outbox (status, receiv
 CREATE INDEX relay_outbox_device_id_received_at_idx ON relay_outbox (device_id, received_at);
 CREATE TABLE relay_blobs (
   id UUID PRIMARY KEY,
-  outbox_id UUID NOT NULL UNIQUE REFERENCES relay_outbox(id) ON DELETE CASCADE,
+  outbox_id UUID NOT NULL UNIQUE REFERENCES relay_outbox(id) ON DELETE CASCADE ON UPDATE CASCADE,
   mime TEXT NOT NULL CHECK (mime IN ('image/jpeg','image/png','image/webp')),
   bytes BYTEA NOT NULL,
   size INTEGER NOT NULL CHECK (size BETWEEN 1 AND 2097152 AND size = octet_length(bytes)),

@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { createRelayClient, type RelayDevice } from './client';
 import { RelayError } from './errors';
 import {
-  actionsQuery, claimInput, deviceInput, emptyInput, idInput, imageMime, MAX_BLOB_BYTES,
+  actionsQuery, blobInput, claimInput, deviceInput, emptyInput, idInput, imageMime, MAX_BLOB_BYTES,
   recordsInput, recordsQuery, resultInput, actionInput,
 } from './inputs';
 import { RelayStore } from './store';
@@ -69,7 +69,7 @@ export function createRelayApp(options: RelayOptions = {}) {
     res.on('finish', () => {
       log({ method: req.method, path, status: res.statusCode, ms: Math.max(0, now() - started) });
       // Health polling must allow the database to remain asleep.
-      if (path === '/relay/v1/health') return;
+      if (res.locals.health) return;
       void store.countUsage({
         bytesIn: res.locals.bytesIn ?? 0, bytesOut: req.method === 'HEAD' ? 0 : Number(res.getHeader('content-length') ?? 0),
         recordsWritten: res.locals.recordsWritten ?? 0, actionsReceived: res.locals.actionsReceived ?? 0,
@@ -77,7 +77,10 @@ export function createRelayApp(options: RelayOptions = {}) {
     });
     next();
   });
-  app.get('/relay/v1/health', validate(emptyInput, 'query'), (_req, res) => { res.json({ ok: true }); });
+  app.get('/relay/v1/health', validate(emptyInput, 'query'), (_req, res) => {
+    res.locals.health = true;
+    res.json({ ok: true });
+  });
 
   const worker = express.Router();
   worker.use((req, _res, next) => {
@@ -158,11 +161,10 @@ export function createRelayApp(options: RelayOptions = {}) {
       return next(new RelayError(415, 'UNSUPPORTED_IMAGE', 'Use a JPEG, PNG or WebP image.'));
     }
     next();
-  }, express.raw({ type: () => true, limit: MAX_BLOB_BYTES }), async (req, res) => {
-    if (!Buffer.isBuffer(req.body) || !req.body.length) throw new RelayError(400, 'EMPTY_IMAGE', 'An image body is required.');
+  }, express.raw({ type: () => true, limit: MAX_BLOB_BYTES }), validate(blobInput, 'body'), async (req, res) => {
     const paired = res.locals.device as RelayDevice;
     const mime = imageMime.parse(req.headers['content-type']!.split(';')[0].trim().toLowerCase());
-    res.json(await store.putBlob(paired.id, res.locals.params.id, mime, req.body));
+    res.json(await store.putBlob(paired.id, res.locals.params.id, mime, res.locals.body));
   });
   device.get('/actions', validate(actionsQuery, 'query'), async (_req, res) => {
     const paired = res.locals.device as RelayDevice;

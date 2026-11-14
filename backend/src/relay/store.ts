@@ -192,11 +192,13 @@ export class RelayStore {
       if (!claimed.count) return false;
       const monthAgo = new Date(now.getTime() - 30 * 86400000);
       await tx.relayRecord.deleteMany({ where: { op: 'delete', updatedAt: { lt: monthAgo } } });
+      // Delete action headers first so cascades follow the same action -> blob
+      // lock order as result writes and uploads.
+      await tx.relayOutbox.deleteMany({ where: { status: { in: ['applied', 'refused', 'failed'] }, resolvedAt: { lt: monthAgo } } });
       await tx.relayBlob.deleteMany({ where: { OR: [
         { outbox: { status: { in: ['applied', 'refused', 'failed'] } } },
         { createdAt: { lt: new Date(now.getTime() - 7 * 86400000) } },
       ] } });
-      await tx.relayOutbox.deleteMany({ where: { status: { in: ['applied', 'refused', 'failed'] }, resolvedAt: { lt: monthAgo } } });
       return true;
     }, { timeout: 30000 });
   }
