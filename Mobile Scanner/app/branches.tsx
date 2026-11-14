@@ -4,7 +4,7 @@ import { useSession } from '../src/session/SessionProvider';
 export default function Branches() {
   const session = useSession();
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1 }} edges={[]}>
       <BranchPickerScreen
         branches={session.branch.branches}
         busy={session.branch.busy}

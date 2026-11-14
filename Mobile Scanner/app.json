@@ -59,7 +59,8 @@
           "cameraPermission": "Allow Home Connect to photograph supplier bills."
         }
       ],
-      "expo-router"
+      "expo-router",
+      "expo-font"
     ],
     "extra": {
       "eas": {

@@ -1,20 +1,62 @@
-import { theme } from '../theme';
-import { ScrollView, StyleSheet, Text } from 'react-native';
-import { AppButton } from '../components/AppButton';
+import { useState } from 'react';
+import { Building2, LogOut, RefreshCw } from 'lucide-react-native';
 import { StatusBanner } from '../components/StatusBanner';
+import { Button } from '../components/ui/button';
+import { Select } from '../components/ui/select';
+import { Text } from '../components/ui/text';
+import { AuthLayout } from '../ui/AuthLayout';
 import type { MobileBranch } from './branch-selection';
 
-export function BranchPickerScreen({ branches, error, busy, onSelect, onRetry, onLogout }: {
-  branches: MobileBranch[]; error: string | null; busy: boolean;
-  onSelect: (branch: MobileBranch) => void; onRetry: () => void; onLogout: () => void;
+/** First branch choice after sign-in: one dropdown, Continue, and Sign out in the corner. */
+export function BranchPickerScreen({
+  branches,
+  error,
+  busy,
+  onSelect,
+  onRetry,
+  onLogout,
+}: {
+  branches: MobileBranch[];
+  error: string | null;
+  busy: boolean;
+  onSelect: (branch: MobileBranch) => void;
+  onRetry: () => void;
+  onLogout: () => void;
 }) {
-  return <ScrollView contentContainerStyle={styles.content}>
-    <Text style={styles.title}>Choose a branch</Text>
-    {error && <StatusBanner tone="danger" message={error} />}
-    {!busy && !error && branches.length === 0 && <StatusBanner tone="warning" message="No branch assigned — ask an administrator" />}
-    {branches.map((branch) => <AppButton key={branch.id} label={branch.name} disabled={busy} onPress={() => onSelect(branch)} />)}
-    <AppButton label={busy ? 'Loading branches…' : 'Refresh branches'} disabled={busy} onPress={onRetry} variant="secondary" />
-    <AppButton label="Sign out" onPress={onLogout} variant="secondary" />
-  </ScrollView>;
+  const [picked, setPicked] = useState<string | null>(branches.length === 1 ? (branches[0]?.id ?? null) : null);
+  const branch = branches.find((item) => item.id === picked) ?? null;
+  return (
+    <AuthLayout
+      title="Branch"
+      corner={
+        <Button variant="ghost" size="sm" onPress={onLogout}>
+          <LogOut size={16} color="#1B2124" />
+          <Text>Sign out</Text>
+        </Button>
+      }
+    >
+      {error && <StatusBanner tone="danger" message={error} />}
+      {!busy && !error && branches.length === 0 && (
+        <StatusBanner tone="warning" message="No branch assigned. Ask an administrator." />
+      )}
+      {branches.length > 0 && (
+        <Select
+          label="Branch"
+          icon={Building2}
+          placeholder="Choose a branch"
+          value={picked}
+          options={branches.map((item) => ({ value: item.id, label: item.name }))}
+          onChange={setPicked}
+          disabled={busy}
+        />
+      )}
+      <Button disabled={!branch || busy} onPress={() => branch && onSelect(branch)}>
+        <Text>Continue</Text>
+      </Button>
+      <Button variant="ghost" size="sm" disabled={busy} onPress={onRetry}>
+        <RefreshCw size={16} color="#1B2124" />
+        <Text>{busy ? 'Loading…' : 'Refresh'}</Text>
+      </Button>
+    </AuthLayout>
+  );
 }
-const styles = StyleSheet.create({ content: { padding: 20, gap: 14 }, title: { fontSize: 24, fontWeight: '800', color: theme.colors.text } });

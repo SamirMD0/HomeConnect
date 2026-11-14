@@ -1,5 +1,6 @@
 const path = require('path');
 const { getDefaultConfig } = require('expo/metro-config');
+const { withNativeWind } = require('nativewind/metro');
 
 const config = getDefaultConfig(__dirname);
 config.watchFolders = [...(config.watchFolders ?? []), path.resolve(__dirname, '../shared')];
@@ -21,4 +22,5 @@ config.resolver.resolveRequest = (context, name, platform) => {
   return context.resolveRequest(context, name, platform);
 };
 
-module.exports = config;
+// NativeWind turns global.css + tailwind.config.js into native styles.
+module.exports = withNativeWind(config, { input: './global.css' });

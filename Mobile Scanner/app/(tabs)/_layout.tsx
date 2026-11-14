@@ -1,5 +1,6 @@
 import { Tabs, useRouter } from 'expo-router';
-import { Pressable, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { GlassPanel } from '../../src/components/ui/glass';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { BranchHeader } from '../../src/navigation/BranchHeader';
@@ -19,17 +20,32 @@ export default function TabLayout() {
       <Tabs
         screenOptions={({ route }) => ({
           header: () => <BranchHeader />,
+          // Screens are see-through so the glass backdrop shows behind them.
+          sceneStyle: { backgroundColor: 'transparent' },
           tabBarActiveTintColor: theme.colors.brandStrong,
           tabBarInactiveTintColor: theme.colors.muted,
+          // Frosted glass bar, like the header and the PC sidebar.
+          tabBarBackground: () => <GlassPanel style={StyleSheet.absoluteFill} />,
           tabBarStyle: {
             height: 72 + insets.bottom,
             paddingTop: 8,
             paddingBottom: insets.bottom + 6,
-            backgroundColor: theme.colors.surface,
-            borderTopColor: theme.colors.border,
-            ...theme.elevation.raised,
+            backgroundColor: 'transparent',
+            borderTopColor: 'rgba(255,255,255,0.7)',
+            elevation: 0,
           },
-          tabBarLabelStyle: { fontSize: 12, fontWeight: '600', marginTop: 2 },
+          tabBarItemStyle: { paddingHorizontal: 0 },
+          // Shrinks to fit instead of cutting words ("Custo...").
+          tabBarLabel: ({ color, children }) => (
+            <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.75}
+              style={{ color, fontSize: 12, fontFamily: 'PlusJakartaSans_600SemiBold', marginTop: 2, maxWidth: '100%' }}
+            >
+              {children}
+            </Text>
+          ),
           // Material 3 navigation bar: a soft pill behind the active icon,
           // filled icon when active, outline when not.
           tabBarIcon: ({ color, focused }) => {

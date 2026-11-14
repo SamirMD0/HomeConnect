@@ -1,59 +1,52 @@
-import type { PropsWithChildren } from 'react';
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { StyleSheet, Text, View } from 'react-native';
+import type { PropsWithChildren, ReactNode } from 'react';
+import { Store } from 'lucide-react-native';
+import { View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import appConfig from '../../app.json';
-import { theme } from '../theme';
-import { PageTitle } from './ScreenHeader';
+import { Card, CardContent } from '../components/ui/card';
+import { Text } from '../components/ui/text';
 
 /**
- * Connect and sign-in frame: brand mark, large left title with a grey
- * subtitle, the form, and the version at the bottom. The focused field and
- * the main button stay above the keyboard.
+ * Connect, sign-in and branch screens: the logo on the glass backdrop and one
+ * white card holding the form, like the PC's sign-in. No explanation text.
+ * `corner` sits top right (e.g. Sign out on the branch screen).
  */
 export function AuthLayout({
   title,
-  subtitle,
   children,
-}: PropsWithChildren<{ title: string; subtitle: string }>) {
+  corner,
+}: PropsWithChildren<{ title: string; subtitle?: string; corner?: ReactNode }>) {
+  const insets = useSafeAreaInsets();
   return (
     <KeyboardAwareScrollView
       bottomOffset={32}
       keyboardShouldPersistTaps="handled"
-      contentContainerStyle={styles.content}
-      style={styles.screen}
+      contentContainerStyle={{
+        flexGrow: 1,
+        justifyContent: 'center',
+        paddingTop: insets.top + 24,
+        paddingBottom: insets.bottom + 24,
+        paddingHorizontal: 20,
+        gap: 24,
+      }}
     >
-      <View style={styles.brand}>
-        <View style={styles.mark}>
-          <Ionicons name="storefront" size={26} color={theme.colors.onBrand} accessible={false} />
+      {corner ? <View style={{ position: 'absolute', top: insets.top + 8, right: 12 }}>{corner}</View> : null}
+      <View className="items-center gap-3">
+        <View className="h-16 w-16 items-center justify-center rounded-2xl bg-primary shadow-lg shadow-brand-900/30">
+          <Store size={34} color="#ffffff" />
         </View>
-        <Text style={styles.name}>Home Connect</Text>
+        <Text className="font-sans-extrabold text-2xl text-slate-900">Home Connect</Text>
       </View>
-      <PageTitle title={title} subtitle={subtitle} />
-      <View style={styles.body}>{children}</View>
-      <Text style={styles.version}>Version {appConfig.expo.version}</Text>
+      <Card className="w-full max-w-md self-center">
+        <CardContent className="gap-4 p-5">
+          <Text accessibilityRole="header" className="font-sans-bold text-xl">
+            {title}
+          </Text>
+          {children}
+        </CardContent>
+      </Card>
+      <Text className="text-center text-xs text-slate-600">v{appConfig.expo.version}</Text>
     </KeyboardAwareScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: theme.colors.background },
-  content: {
-    flexGrow: 1,
-    padding: theme.spacing.xl,
-    paddingTop: theme.spacing.xxl,
-    gap: theme.spacing.xl,
-  },
-  brand: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md },
-  mark: {
-    width: 48,
-    height: 48,
-    borderRadius: theme.radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: theme.colors.brand,
-  },
-  name: { ...theme.text.titleSmall, color: theme.colors.brandStrong },
-  body: { gap: theme.spacing.lg, flexGrow: 1 },
-  version: { ...theme.text.caption, color: theme.colors.subtle, textAlign: 'center' },
-});

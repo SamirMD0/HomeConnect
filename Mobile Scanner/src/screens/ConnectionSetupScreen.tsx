@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 import { AuthLayout } from '../ui/AuthLayout';
+import { Activity, ChevronUp, Keyboard, Monitor, Network, QrCode } from 'lucide-react-native';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Text } from '../components/ui/text';
 import type { CompatibilityState } from '../api/system-api';
 import { candidateHosts, findPc } from '../connection/find-pc';
-import { AppButton } from '../components/AppButton';
-import { AppInput } from '../components/AppInput';
 import { StatusBanner } from '../components/StatusBanner';
 import { saveConnection } from '../storage/secure-storage';
 import { ConnectionSettings } from '../types/scanner.types';
@@ -99,70 +101,72 @@ export function ConnectionSetupScreen({
 
   return (
     <>
-      <AuthLayout
-        title="Connect to your shop"
-        subtitle="Scan the code on the PC, or type its address"
-      >
+      <AuthLayout title="Connect">
         {message && <StatusBanner tone="danger" message={message} />}
         {message && (
-          <AppButton
-            label={detailsOpen ? 'Hide details' : 'Connection details'}
-            icon="pulse-outline"
-            variant="ghost"
-            onPress={() => setDetailsOpen((value) => !value)}
-          />
+          <Button variant="ghost" size="sm" onPress={() => setDetailsOpen((value) => !value)}>
+            <Activity size={16} color="#1B2124" />
+            <Text>{detailsOpen ? 'Hide details' : 'Details'}</Text>
+          </Button>
         )}
         {message && detailsOpen && <ConnectionLogPanel limit={12} />}
 
-        <AppButton
-          label="Scan PC code"
-          icon="qr-code-outline"
+        <Button
+          size="lg"
+          loading={busy && !manualOpen}
           onPress={() => {
             setMessage(null);
             setQrOpen(true);
           }}
-          loading={busy && !manualOpen}
-        />
-        <AppButton
-          label={manualOpen ? 'Hide address' : 'Type address'}
-          icon={manualOpen ? 'chevron-up-outline' : 'create-outline'}
-          variant="secondary"
-          onPress={() => setManualOpen((value) => !value)}
-        />
+        >
+          <QrCode size={22} color="#ffffff" />
+          <Text>Scan QR</Text>
+        </Button>
+        <Button variant="outline" onPress={() => setManualOpen((value) => !value)}>
+          {manualOpen ? <ChevronUp size={18} color="#1B2124" /> : <Keyboard size={18} color="#1B2124" />}
+          <Text>Enter address</Text>
+        </Button>
 
         {manualOpen && (
-          <View style={styles.form}>
-            <AppInput
-              label="PC address"
-              required
-              icon="desktop-outline"
-              value={host}
-              onChangeText={setHost}
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="numbers-and-punctuation"
-              placeholder="192.168.1.20"
-            />
-            <AppInput
-              label="Port"
-              required
-              value={port}
-              onChangeText={setPort}
-              keyboardType="number-pad"
-              maxLength={5}
-              placeholder={String(DEFAULT_SCANNER_PORT)}
-            />
-            <AppInput
-              label="Second address (if the PC has one)"
-              icon="git-branch-outline"
+          <View className="gap-4 pt-1">
+            <View className="flex-row gap-3">
+              <View className="flex-[3]">
+                <Input
+                  label="IP"
+                  required
+                  icon={Monitor}
+                  value={host}
+                  onChangeText={setHost}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="numbers-and-punctuation"
+                  placeholder="192.168.0.103"
+                />
+              </View>
+              <View className="flex-[2]">
+                <Input
+                  label="Port"
+                  required
+                  value={port}
+                  onChangeText={setPort}
+                  keyboardType="number-pad"
+                  maxLength={5}
+                  placeholder={String(DEFAULT_SCANNER_PORT)}
+                />
+              </View>
+            </View>
+            <Input
+              label="Second IP (optional)"
+              icon={Network}
               value={secondHost}
               onChangeText={setSecondHost}
               autoCapitalize="none"
               autoCorrect={false}
               keyboardType="numbers-and-punctuation"
-              hint="Tried at the same time as the first one."
             />
-            <AppButton label="Connect" onPress={() => void testAndContinue()} loading={busy} />
+            <Button onPress={() => void testAndContinue()} loading={busy}>
+              <Text>Connect</Text>
+            </Button>
           </View>
         )}
       </AuthLayout>
@@ -171,7 +175,3 @@ export function ConnectionSetupScreen({
     </>
   );
 }
-
-const styles = StyleSheet.create({
-  form: { gap: 16, marginTop: 8 },
-});

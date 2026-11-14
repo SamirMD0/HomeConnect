@@ -14,6 +14,11 @@
  * Old keys (background, surface, muted, small, title, ...) stay so existing
  * screens keep compiling while Phase D moves them to the role tokens.
  */
+import tokens from '../../../shared/design-tokens.json';
+
+/** PC colours (shared/design-tokens.json, generated from the PC stylesheet). */
+const slate = tokens.colors.slate;
+
 const palette = {
   blue600: '#1A6FC9',
   blue700: '#155AA3',
@@ -31,13 +36,13 @@ const palette = {
   amber700: '#A65A14',
   amber50: '#FEF4EA',
   amber200: '#FBCE9F',
-  ink900: '#1B2124',
-  ink600: '#4D595E',
+  ink900: slate['900'],
+  ink600: slate['600'],
   ink550: '#5B676C',
   ink500: '#6A787E',
-  ink200: '#D6DFE3',
-  ink100: '#EAF0F2',
-  ink50: '#F5F9FE',
+  ink200: slate['200'],
+  ink100: slate['100'],
+  ink50: slate['50'],
   white: '#FFFFFF',
 } as const;
 
@@ -60,8 +65,9 @@ export const theme = {
     warning: palette.amber700,
     warningSoft: palette.amber50,
     warningBorder: palette.amber200,
-    // Surfaces.
-    background: palette.white,
+    // Surfaces. Screens are transparent so the PC's glass backdrop shows
+    // through; panels and cards stay solid white, as on the PC.
+    background: 'transparent',
     surface: palette.white,
     /** Zebra rows, quiet section grounds. */
     surfaceMuted: palette.ink50,
@@ -83,16 +89,16 @@ export const theme = {
   radius: { sm: 8, md: 12, lg: 16, xl: 20, pill: 999 },
   /** Legacy sizes; new code uses `text` roles below. */
   type: { caption: 12, small: 14, body: 16, title: 22, heading: 28 },
-  /** Material-style type roles on the system face (Roboto). Sizes are sp. */
+  // Plus Jakarta Sans, the PC's face. Android needs the weight in the family.
   text: {
-    display: { fontSize: 32, lineHeight: 38, fontWeight: '800' },
-    headline: { fontSize: 26, lineHeight: 32, fontWeight: '800' },
-    title: { fontSize: 20, lineHeight: 26, fontWeight: '700' },
-    titleSmall: { fontSize: 17, lineHeight: 22, fontWeight: '700' },
-    body: { fontSize: 16, lineHeight: 22, fontWeight: '400' },
-    bodyStrong: { fontSize: 16, lineHeight: 22, fontWeight: '600' },
-    label: { fontSize: 14, lineHeight: 20, fontWeight: '600' },
-    caption: { fontSize: 12, lineHeight: 16, fontWeight: '500' },
+    display: { fontSize: 32, lineHeight: 38, fontFamily: 'PlusJakartaSans_800ExtraBold' },
+    headline: { fontSize: 26, lineHeight: 32, fontFamily: 'PlusJakartaSans_800ExtraBold' },
+    title: { fontSize: 20, lineHeight: 26, fontFamily: 'PlusJakartaSans_700Bold' },
+    titleSmall: { fontSize: 17, lineHeight: 22, fontFamily: 'PlusJakartaSans_700Bold' },
+    body: { fontSize: 16, lineHeight: 22, fontFamily: 'PlusJakartaSans_400Regular' },
+    bodyStrong: { fontSize: 16, lineHeight: 22, fontFamily: 'PlusJakartaSans_600SemiBold' },
+    label: { fontSize: 14, lineHeight: 20, fontFamily: 'PlusJakartaSans_600SemiBold' },
+    caption: { fontSize: 12, lineHeight: 16, fontFamily: 'PlusJakartaSans_500Medium' },
   },
   /** Offset + soft blur, blue-tinted. Android reads `elevation`. */
   elevation: {

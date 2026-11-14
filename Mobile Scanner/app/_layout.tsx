@@ -1,4 +1,16 @@
+import '../global.css';
 import { Stack } from 'expo-router';
+import { PortalHost } from '@rn-primitives/portal';
+import { useFonts } from 'expo-font';
+import {
+  PlusJakartaSans_400Regular,
+  PlusJakartaSans_500Medium,
+  PlusJakartaSans_600SemiBold,
+  PlusJakartaSans_700Bold,
+  PlusJakartaSans_800ExtraBold,
+} from '@expo-google-fonts/plus-jakarta-sans';
+import { NotoSansArabic_400Regular } from '@expo-google-fonts/noto-sans-arabic';
+import { GlassBackdrop } from '../src/components/ui/glass';
 import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
@@ -61,7 +73,7 @@ function Navigation() {
       </SafeAreaView>
     );
   return (
-    <Stack screenOptions={{ headerShown: false }}>
+    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' } }}>
       <Stack.Screen name="index" />
       <Stack.Protected guard={session.phase === 'setup' || session.phase === 'login'}>
         <Stack.Screen name="(auth)" />
@@ -89,14 +101,27 @@ function Navigation() {
   );
 }
 export default function RootLayout() {
+  // The PC's typeface. Until it loads (a few ms from the APK) the splash stays.
+  const [fontsLoaded, fontError] = useFonts({
+    PlusJakartaSans_400Regular,
+    PlusJakartaSans_500Medium,
+    PlusJakartaSans_600SemiBold,
+    PlusJakartaSans_700Bold,
+    PlusJakartaSans_800ExtraBold,
+    NotoSansArabic_400Regular,
+  });
+  if (!fontsLoaded && !fontError) return null;
   return (
     <SafeAreaProvider>
       <KeyboardProvider>
         <QueryProvider>
           <SessionProvider>
-            <Navigation />
-            <UpdateBanner />
+            <GlassBackdrop>
+              <Navigation />
+              <UpdateBanner />
+            </GlassBackdrop>
             <StatusBar style="dark" />
+            <PortalHost />
           </SessionProvider>
         </QueryProvider>
       </KeyboardProvider>

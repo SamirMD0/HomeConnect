@@ -2,11 +2,14 @@ import { useState } from 'react';
 import { Alert, Keyboard } from 'react-native';
 import { login } from '../api/auth-api';
 import { HcApiError } from '../api/hc-client';
-import { AppButton } from '../components/AppButton';
-import { AppInput } from '../components/AppInput';
 import { StatusBanner } from '../components/StatusBanner';
 import { ConnectionSettings } from '../types/scanner.types';
 import { AuthLayout } from '../ui/AuthLayout';
+import { ArrowLeftRight, Lock, Monitor, User } from 'lucide-react-native';
+import { Badge } from '../components/ui/badge';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Text } from '../components/ui/text';
 
 interface LoginScreenProps {
   connection: ConnectionSettings;
@@ -70,12 +73,15 @@ export function LoginScreen({
   };
 
   return (
-    <AuthLayout title="Welcome back" subtitle={`Sign in to the shop PC at ${connection.host}`}>
+    <AuthLayout title="Sign in">
+      <Badge variant="secondary" className="flex-row gap-1.5">
+        <Monitor size={13} color="#3B464B" />
+        <Text>{connection.host}</Text>
+      </Badge>
       {banner ? <StatusBanner tone={banner.tone} message={banner.message} /> : null}
-      <AppInput
+      <Input
         label="Username"
-        required
-        icon="person-outline"
+        icon={User}
         value={username}
         onChangeText={setUsername}
         autoCapitalize="none"
@@ -84,10 +90,9 @@ export function LoginScreen({
         returnKeyType="next"
         editable={!submitting}
       />
-      <AppInput
+      <Input
         label="Password"
-        required
-        icon="lock-closed-outline"
+        icon={Lock}
         value={password}
         onChangeText={setPassword}
         secureTextEntry
@@ -99,18 +104,13 @@ export function LoginScreen({
         onSubmitEditing={() => void handleSubmit()}
         editable={!submitting}
       />
-      <AppButton
-        label={submitting ? 'Signing in…' : 'Sign in'}
-        onPress={handleSubmit}
-        loading={submitting}
-        disabled={!canSubmit}
-      />
-      <AppButton
-        label="Use another PC"
-        icon="swap-horizontal-outline"
-        variant="ghost"
-        onPress={confirmChangeConnection}
-      />
+      <Button onPress={() => void handleSubmit()} loading={submitting} disabled={!canSubmit}>
+        <Text>Sign in</Text>
+      </Button>
+      <Button variant="ghost" onPress={confirmChangeConnection}>
+        <ArrowLeftRight size={18} color="#1B2124" />
+        <Text>Change PC</Text>
+      </Button>
     </AuthLayout>
   );
 }
