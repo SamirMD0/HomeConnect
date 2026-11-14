@@ -4,9 +4,11 @@ afterEach(() => vi.unstubAllGlobals());
 const connection = { host: 'pc', port: 3011 };
 describe('startup compatibility over the PC LAN gateway', () => {
   it.each([
-    ['2.2.0', '1.2.0', false, false],
+    ['2.3.0', '1.2.0', false, false],
+    // PC 2.2.x works but lacks the 2.3.0 bill features, so the phone warns.
+    ['2.2.2', '1.2.0', false, true],
     // A minimum above any real app version always blocks.
-    ['2.2.0', '9.0.0', true, false],
+    ['2.3.0', '9.0.0', true, false],
     ['2.1.0', '1.2.0', false, true],
     ['2.0.0', '1.0.0', false, true],
   ])(

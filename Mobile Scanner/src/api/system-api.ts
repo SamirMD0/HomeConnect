@@ -8,7 +8,8 @@ import { compareVersions } from '../utils/version';
  * stock routes, the gateway deny-list, the refresh header). Older PCs still
  * work for the basics but show a warning.
  */
-export const REQUIRED_API_VERSION = '2.2.0';
+/** PC 2.3.0 added bill pages, payment links, replace and delete. */
+export const REQUIRED_API_VERSION = '2.3.0';
 export interface CompatibilityState {
   blocked: boolean;
   warning: string | null;
