@@ -283,4 +283,58 @@ const input = (id = randomUUID()): ActionInput => ({ id, branchId, type: 'opaque
     await store.upkeep(new Date(now + 32 * 86400000));
     expect((await db.relayWorker.findUniqueOrThrow({ where: { id: 1 } })).prunedThroughRev).toBe(horizon);
   });
+
+  it('paginates a full copy across retained records older than the pruning horizon', async () => {
+    const ids = [randomUUID(), randomUUID(), randomUUID(), randomUUID()];
+    recordIds.push(...ids);
+    await store.writeRecords({ pcSeq: (BigInt((await store.workerState()).lastPcSeq) + 1n).toString(), records: [
+      ...ids.slice(0, 3).map(id => ({ entity: 'full_copy', id, branchId, op: 'upsert' as const, data: { id } })),
+      { entity: 'full_copy', id: ids[3], branchId, op: 'delete' },
+    ] });
+    await store.upkeep(new Date(Date.now() + 31 * 86400000));
+    const horizon = (await db.relayWorker.findUniqueOrThrow({ where: { id: 1 } })).prunedThroughRev.toString();
+    let page = await store.readRecords([branchId], '0', 1, { fullCopy: true });
+    expect(page.hasMore).toBe(true);
+    expect(page.snapshotHorizon).toBe(horizon);
+    expect(BigInt(page.nextRev)).toBeLessThan(BigInt(horizon));
+    await expect(store.readRecords([branchId], page.nextRev, 1)).rejects.toMatchObject({ status: 410 });
+    const seen = page.records.map(row => row.id);
+    for (let count = 0; page.hasMore && count < 50; count++) {
+      page = await store.readRecords([branchId], page.nextRev, 1, { fullCopy: true, snapshotHorizon: horizon });
+      seen.push(...page.records.map(row => row.id));
+      expect(page.snapshotHorizon).toBe(horizon);
+    }
+    expect(page.hasMore).toBe(false);
+    expect(seen).toEqual(expect.arrayContaining(ids.slice(0, 3)));
+    expect(seen).not.toContain(ids[3]);
+    expect(BigInt(page.nextRev)).toBeGreaterThanOrEqual(BigInt(horizon));
+    await expect(store.readRecords([branchId], page.nextRev, 500)).resolves.toMatchObject({ hasMore: false });
+  });
+
+  it('restarts a full copy when pruning advances between pages', async () => {
+    const ids = [randomUUID(), randomUUID(), randomUUID(), randomUUID()];
+    recordIds.push(...ids);
+    let sequence = BigInt((await store.workerState()).lastPcSeq);
+    await store.writeRecords({ pcSeq: (++sequence).toString(), records: [
+      { entity: 'snapshot', id: ids[0], branchId, op: 'upsert', data: {} },
+      { entity: 'snapshot', id: ids[1], branchId, op: 'upsert', data: {} },
+      { entity: 'snapshot', id: ids[2], branchId, op: 'delete' },
+    ] });
+    const now = Date.now();
+    await store.upkeep(new Date(now + 31 * 86400000));
+    const first = await store.readRecords([branchId], '0', 1, { fullCopy: true });
+    expect(first.hasMore).toBe(true);
+    await store.writeRecords({ pcSeq: (++sequence).toString(), records: [
+      { entity: 'snapshot', id: ids[3], branchId, op: 'delete' },
+    ] });
+    await store.upkeep(new Date(now + 32 * 86400000));
+    await expect(store.readRecords([branchId], first.nextRev, 1, {
+      fullCopy: true, snapshotHorizon: first.snapshotHorizon,
+    })).rejects.toMatchObject({ status: 410, code: 'RESYNC_REQUIRED' });
+    const restarted = await store.readRecords([branchId], '0', 500, {
+      fullCopy: true, snapshotHorizon: first.snapshotHorizon,
+    });
+    expect(BigInt(restarted.snapshotHorizon!)).toBeGreaterThan(BigInt(first.snapshotHorizon!));
+    expect(restarted.hasMore).toBe(false);
+  });
 });

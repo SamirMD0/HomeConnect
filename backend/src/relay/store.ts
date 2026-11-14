@@ -61,10 +61,13 @@ export class RelayStore {
     }, { timeout: 30000 });
   }
 
-  async readRecords(branchIds: string[], after: string, limit: number) {
+  async readRecords(branchIds: string[], after: string, limit: number, options: { fullCopy?: boolean; snapshotHorizon?: string } = {}) {
     const { rows, horizon } = await this.db.$transaction(async tx => {
       const state = await tx.relayWorker.findUniqueOrThrow({ where: { id: 1 }, select: { prunedThroughRev: true } });
-      if (BigInt(after) > 0n && BigInt(after) < state.prunedThroughRev) {
+      const revision = BigInt(after);
+      const invalidSnapshot = options.fullCopy && revision > 0n &&
+        (options.snapshotHorizon === undefined || BigInt(options.snapshotHorizon) !== state.prunedThroughRev);
+      if (invalidSnapshot || (!options.fullCopy && revision > 0n && revision < state.prunedThroughRev)) {
         throw new RelayError(410, 'RESYNC_REQUIRED', 'Start a full copy from revision zero.');
       }
       const rows = await tx.relayRecord.findMany({
@@ -87,6 +90,7 @@ export class RelayStore {
         return { ...row, id: entityId, rev: row.rev.toString(), op: visible ? row.op : 'delete', data: visible ? row.data : null };
       }),
       nextRev: nextRev.toString(), hasMore,
+      ...(options.fullCopy ? { snapshotHorizon: horizon.toString() } : {}),
     };
   }
 

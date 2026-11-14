@@ -23,7 +23,11 @@ export const deviceInput = z.object({
 export const recordsQuery = z.object({
   after: cursor.default('0').refine(value => BigInt(value) <= 9223372036854775807n),
   limit: z.coerce.number().int().min(1).max(500).default(500),
-});
+  fullCopy: z.enum(['true', 'false']).default('false').transform(value => value === 'true'),
+  snapshotHorizon: cursor.refine(value => BigInt(value) <= 9223372036854775807n).optional(),
+}).refine(value => value.fullCopy
+  ? BigInt(value.after) === 0n || value.snapshotHorizon !== undefined
+  : value.snapshotHorizon === undefined, 'Full-copy continuation requires its snapshot horizon');
 export const actionInput = z.object({
   id: uuid, type: z.string().min(1).max(100), branchId: uuid,
   payload: z.json().refine(value => Buffer.byteLength(JSON.stringify(value), 'utf8') <= 256 * 1024, 'Payload exceeds 256 KB'),

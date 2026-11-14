@@ -147,7 +147,8 @@ export function createRelayApp(options: RelayOptions = {}) {
   device.get('/records', validate(recordsQuery, 'query'), async (_req, res) => {
     const query = res.locals.query as z.infer<typeof recordsQuery>;
     const paired = res.locals.device as RelayDevice;
-    res.json(await store.readRecords(paired.branchIds, query.after, query.limit));
+    const options = query.fullCopy ? { fullCopy: true, snapshotHorizon: query.snapshotHorizon } : undefined;
+    res.json(await store.readRecords(paired.branchIds, query.after, query.limit, options));
   });
   device.post('/actions', validate(actionInput, 'body'), async (_req, res) => {
     const paired = res.locals.device as RelayDevice;

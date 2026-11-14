@@ -72,7 +72,7 @@ describe('isolated relay routes', () => {
     const response = await request(makeApp()).get('/relay/v1/device/records?after=9007199254740993&limit=1&branchId=' + otherBranch)
       .set('Authorization', deviceAuth);
     expect(response.status).toBe(200);
-    expect(store.readRecords).toHaveBeenCalledWith([branchId], '9007199254740993', 1);
+    expect(store.readRecords).toHaveBeenCalledWith([branchId], '9007199254740993', 1, undefined);
     expect(store.touchDevice).not.toHaveBeenCalled();
   });
 
@@ -148,6 +148,25 @@ describe('isolated relay routes', () => {
     expect(response.status).toBe(410);
     expect(response.body).toEqual({ code: 'RESYNC_REQUIRED' });
   });
+
+  it('starts a full copy and carries its snapshot horizon on continuation pages', async () => {
+    const app = makeApp();
+    store.readRecords.mockResolvedValue({ records: [], nextRev: '3', hasMore: true, snapshotHorizon: '100' });
+    const first = await request(app).get('/relay/v1/device/records?after=0&fullCopy=true&limit=1').set('Authorization', deviceAuth);
+    expect(first.status).toBe(200);
+    expect(first.body.snapshotHorizon).toBe('100');
+    expect(store.readRecords).toHaveBeenLastCalledWith([branchId], '0', 1, { fullCopy: true, snapshotHorizon: undefined });
+    const next = await request(app).get('/relay/v1/device/records?after=3&fullCopy=true&snapshotHorizon=100&limit=1').set('Authorization', deviceAuth);
+    expect(next.status).toBe(200);
+    expect(store.readRecords).toHaveBeenLastCalledWith([branchId], '3', 1, { fullCopy: true, snapshotHorizon: '100' });
+  });
+
+  it.each(['after=1&fullCopy=true', 'snapshotHorizon=1', 'fullCopy=invalid', 'after=1&fullCopy=true&snapshotHorizon=-1'])(
+    'rejects invalid full-copy parameters %s', async query => {
+      expect((await request(makeApp()).get('/relay/v1/device/records?' + query).set('Authorization', deviceAuth)).status).toBe(400);
+      expect(store.readRecords).not.toHaveBeenCalled();
+    }
+  );
 
   it('polls only the authenticated device actions', async () => {
     store.actionResults.mockResolvedValue([{ id, status: 'applied', result: { receiptId: id } }]);
