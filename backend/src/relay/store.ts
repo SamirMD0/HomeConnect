@@ -62,14 +62,31 @@ export class RelayStore {
   }
 
   async readRecords(branchIds: string[], after: string, limit: number) {
-    const rows = await this.db.relayRecord.findMany({
-      where: { rev: { gt: BigInt(after) }, OR: [{ branchId: null }, { branchId: { in: branchIds } }] },
-      orderBy: { rev: 'asc' }, take: limit + 1,
-    });
+    const { rows, horizon } = await this.db.$transaction(async tx => {
+      const state = await tx.relayWorker.findUniqueOrThrow({ where: { id: 1 }, select: { prunedThroughRev: true } });
+      if (BigInt(after) > 0n && BigInt(after) < state.prunedThroughRev) {
+        throw new RelayError(410, 'RESYNC_REQUIRED', 'Start a full copy from revision zero.');
+      }
+      const rows = await tx.relayRecord.findMany({
+        where: { rev: { gt: BigInt(after) }, OR: [
+          { branchId: null }, { branchId: { in: branchIds } }, { previousBranchIds: { hasSome: branchIds } },
+        ] },
+        orderBy: { rev: 'asc' }, take: limit + 1,
+      });
+      return { rows, horizon: state.prunedThroughRev };
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
     const records = rows.slice(0, limit);
+    const hasMore = rows.length > limit;
+    const lastRev = records.at(-1)?.rev ?? BigInt(after);
+    // A completed full copy can advance over pruned revisions without skipping
+    // any remaining visible records, even if its newest live row is older.
+    const nextRev = !hasMore && horizon > lastRev ? horizon : lastRev;
     return {
-      records: records.map(({ entityId, ...row }) => ({ ...row, id: entityId, rev: row.rev.toString() })),
-      nextRev: records.at(-1)?.rev.toString() ?? after, hasMore: rows.length > limit,
+      records: records.map(({ entityId, previousBranchIds, ...row }) => {
+        const visible = row.branchId === null || branchIds.includes(row.branchId);
+        return { ...row, id: entityId, rev: row.rev.toString(), op: visible ? row.op : 'delete', data: visible ? row.data : null };
+      }),
+      nextRev: nextRev.toString(), hasMore,
     };
   }
 
@@ -85,6 +102,7 @@ export class RelayStore {
       RETURNING o.id, o.device_id AS "deviceId", o.user_id AS "userId", o.branch_id AS "branchId",
         o.type, o.payload, o.created_at AS "createdAt", o.received_at AS "receivedAt", o.status,
         o.claimed_at AS "claimedAt", o.attempts, o.result, o.resolved_at AS "resolvedAt",
+        o.photo_mime AS "photoMime", o.photo_size AS "photoSize",
         EXISTS (SELECT 1 FROM relay_blobs b WHERE b.outbox_id = o.id) AS "hasBlob"`;
   }
 
@@ -126,9 +144,11 @@ export class RelayStore {
 
   enqueue(device: RelayDevice, input: ActionInput) {
     return this.db.$transaction(async tx => {
+      const { photo, ...actionInput } = input;
       const inserted = await tx.relayOutbox.createMany({ data: [{
-        ...input, createdAt: new Date(input.createdAt), payload: json(input.payload),
+        ...actionInput, createdAt: new Date(input.createdAt), payload: json(input.payload),
         deviceId: device.id, userId: device.userId,
+        status: photo ? 'awaiting_photo' : 'pending', photoMime: photo?.mime, photoSize: photo?.size,
       }], skipDuplicates: true });
       const action = await tx.relayOutbox.findUniqueOrThrow({ where: { id: input.id } });
       if (action.deviceId !== device.id) throw new RelayError(409, 'ACTION_ID_CONFLICT', 'Action ID belongs to another device.');
@@ -138,14 +158,23 @@ export class RelayStore {
 
   putBlob(deviceId: string, id: string, mime: string, bytes: Buffer) {
     return this.db.$transaction(async tx => {
-      const rows = await tx.$queryRaw<Array<{ deviceId: string; status: string }>>`
-        SELECT device_id AS "deviceId", status FROM relay_outbox WHERE id = ${id}::uuid FOR UPDATE`;
+      const rows = await tx.$queryRaw<Array<{ deviceId: string; status: string; photoMime: string | null; photoSize: number | null }>>`
+        SELECT device_id AS "deviceId", status, photo_mime AS "photoMime", photo_size AS "photoSize"
+        FROM relay_outbox WHERE id = ${id}::uuid FOR UPDATE`;
       if (!rows[0] || rows[0].deviceId !== deviceId) throw new RelayError(404, 'NOT_FOUND', 'Action not found.');
-      if (rows[0].status !== 'pending') throw new RelayError(409, 'ACTION_NOT_PENDING', 'Photos can be uploaded while an action is pending.');
+      const action = rows[0];
+      if (action.status !== 'pending' && action.status !== 'awaiting_photo') {
+        throw new RelayError(409, 'ACTION_NOT_PENDING', 'Photos can be uploaded while an action is awaiting a photo or pending.');
+      }
+      if (action.status === 'awaiting_photo' && (mime !== action.photoMime || action.photoSize === null ||
+        Math.abs(bytes.length - action.photoSize) * 100 > action.photoSize * 5)) {
+        throw new RelayError(400, 'PHOTO_DECLARATION_MISMATCH', 'Photo must match the declared MIME and size within five percent.');
+      }
       await tx.relayBlob.upsert({
         where: { outboxId: id }, create: { outboxId: id, mime, bytes, size: bytes.length },
         update: { mime, bytes, size: bytes.length, createdAt: new Date() },
       });
+      if (action.status === 'awaiting_photo') await tx.relayOutbox.update({ where: { id }, data: { status: 'pending' } });
       return { id, size: bytes.length };
     });
   }
@@ -191,7 +220,16 @@ export class RelayStore {
       });
       if (!claimed.count) return false;
       const monthAgo = new Date(now.getTime() - 30 * 86400000);
-      await tx.relayRecord.deleteMany({ where: { op: 'delete', updatedAt: { lt: monthAgo } } });
+      await tx.$executeRaw`
+        WITH removed AS (
+          DELETE FROM relay_records WHERE op = 'delete' AND updated_at < ${monthAgo} RETURNING rev
+        )
+        UPDATE relay_worker SET pruned_through_rev = GREATEST(pruned_through_rev,
+          COALESCE((SELECT MAX(rev) FROM removed), 0)) WHERE id = 1`;
+      await tx.relayOutbox.updateMany({
+        where: { status: 'awaiting_photo', receivedAt: { lt: new Date(now.getTime() - 7 * 86400000) } },
+        data: { status: 'failed', result: { reason: 'PHOTO_NEVER_ARRIVED' }, resolvedAt: now },
+      });
       // Delete action headers first so cascades follow the same action -> blob
       // lock order as result writes and uploads.
       await tx.relayOutbox.deleteMany({ where: { status: { in: ['applied', 'refused', 'failed'] }, resolvedAt: { lt: monthAgo } } });

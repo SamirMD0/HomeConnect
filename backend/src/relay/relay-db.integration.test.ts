@@ -1,11 +1,13 @@
 import { randomUUID, createHash } from 'node:crypto';
+import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createRelayClient, type RelayClient } from './client';
 import { RelayStore } from './store';
+import { createRelayApp } from './app';
 import type { ActionInput, DeviceInput } from './inputs';
 
 function testDatabase(url: string | undefined) {
-  try { return Boolean(url && /(^|[_-])(test|ci)([_-]|$)/i.test(new URL(url).pathname.slice(1))); }
+  try { return Boolean(url && /_(test|ci)$/i.test(new URL(url).pathname.slice(1))); }
   catch { return false; }
 }
 const enabled = process.env.RUN_RELAY_DB_TESTS === '1' && testDatabase(process.env.RELAY_DATABASE_URL);
@@ -175,5 +177,110 @@ const input = (id = randomUUID()): ActionInput => ({ id, branchId, type: 'opaque
     const usage = await store.usage();
     expect(usage.days.some(row => row.day.getTime() === day.getTime())).toBe(true);
     expect(usage.totals.bytesIn).toBeGreaterThanOrEqual(after.bytesIn);
+  });
+
+  it('holds declared photos out of claims until a matching upload commits', async () => {
+    const paired = await db.relayDevice.findUniqueOrThrow({ where: { id: deviceId } });
+    const action: ActionInput = { ...input(), photo: { mime: 'image/png', size: 100 } };
+    expect(await store.enqueue(paired, action)).toMatchObject({ status: 'awaiting_photo' });
+    expect(await store.enqueue(paired, action)).toMatchObject({ created: false, status: 'awaiting_photo' });
+    expect(await store.claim(50)).toEqual([]);
+    expect(await store.actionResults(deviceId, [action.id])).toEqual([
+      expect.objectContaining({ id: action.id, status: 'awaiting_photo' }),
+    ]);
+    await expect(store.putBlob(deviceId, action.id, 'image/png', Buffer.alloc(106))).rejects.toMatchObject({ status: 400 });
+    await expect(store.putBlob(deviceId, action.id, 'image/jpeg', Buffer.alloc(100))).rejects.toMatchObject({ status: 400 });
+    expect(await db.relayBlob.count({ where: { outboxId: action.id } })).toBe(0);
+    expect((await db.relayOutbox.findUniqueOrThrow({ where: { id: action.id } })).status).toBe('awaiting_photo');
+    await store.putBlob(deviceId, action.id, 'image/png', Buffer.alloc(105));
+    expect((await db.relayOutbox.findUniqueOrThrow({ where: { id: action.id } })).status).toBe('pending');
+    // Ready actions retain the existing replacement behavior before a claim.
+    await store.putBlob(deviceId, action.id, 'image/jpeg', Buffer.alloc(20));
+
+    const lower: ActionInput = { ...input(), photo: { mime: 'image/png', size: 100 } };
+    await store.enqueue(paired, lower);
+    await expect(store.putBlob(deviceId, lower.id, 'image/png', Buffer.alloc(94))).rejects.toMatchObject({ status: 400 });
+    await store.putBlob(deviceId, lower.id, 'image/png', Buffer.alloc(95));
+    const ready = await store.claim(50);
+    expect(ready.map(row => row.id).sort()).toEqual([action.id, lower.id].sort());
+    expect(ready.every(row => row.hasBlob)).toBe(true);
+
+    const racing: ActionInput = { ...input(), photo: { mime: 'image/png', size: 100 } };
+    await store.enqueue(paired, racing);
+    const [, claimed] = await Promise.all([
+      store.putBlob(deviceId, racing.id, 'image/png', Buffer.alloc(100)), store.claim(50),
+    ]);
+    expect(claimed.every(row => row.hasBlob)).toBe(true);
+    if (!claimed.length) expect((await store.claim(50))[0]).toMatchObject({ id: racing.id, hasBlob: true });
+  });
+
+  it('fails abandoned photo declarations after seven server-received days', async () => {
+    const paired = await db.relayDevice.findUniqueOrThrow({ where: { id: deviceId } });
+    const old: ActionInput = { ...input(), photo: { mime: 'image/png', size: 100 } };
+    const recent: ActionInput = { ...input(), photo: { mime: 'image/png', size: 100 } };
+    await store.enqueue(paired, old);
+    await store.enqueue(paired, recent);
+    const now = new Date();
+    await db.relayOutbox.update({ where: { id: old.id }, data: { receivedAt: new Date(now.getTime() - 8 * 86400000) } });
+    await store.upkeep(now);
+    expect(await store.actionResults(deviceId, [old.id])).toEqual([
+      expect.objectContaining({ status: 'failed', result: { reason: 'PHOTO_NEVER_ARRIVED' }, resolvedAt: now }),
+    ]);
+    expect(await store.actionResults(deviceId, [recent.id])).toEqual([expect.objectContaining({ status: 'awaiting_photo' })]);
+    await expect(store.putBlob(deviceId, old.id, 'image/png', Buffer.alloc(100))).rejects.toMatchObject({ status: 409 });
+    expect(await store.claim(50)).toEqual([]);
+  });
+
+  it('sends branch-move deletes to A and current upserts to B and A+B without duplicate history', async () => {
+    const id = randomUUID();
+    recordIds.push(id);
+    let sequence = BigInt((await store.workerState()).lastPcSeq);
+    const write = async (branch: string) => store.writeRecords({ pcSeq: (++sequence).toString(), records: [
+      { entity: 'customer', id, branchId: branch, op: 'upsert', data: { name: 'Moved record', balance: 'PC data' } },
+    ] });
+    await write(branchId);
+    const initial = await db.relayRecord.findUniqueOrThrow({ where: { entity_entityId: { entity: 'customer', entityId: id } } });
+    await write(otherBranch);
+    const moved = await db.relayRecord.findUniqueOrThrow({ where: { entity_entityId: { entity: 'customer', entityId: id } } });
+    const fromA = await store.readRecords([branchId], initial.rev.toString(), 500);
+    const fromB = await store.readRecords([otherBranch], initial.rev.toString(), 500);
+    const fromBoth = await store.readRecords([branchId, otherBranch], initial.rev.toString(), 500);
+    expect(fromA.records).toEqual([expect.objectContaining({ id, op: 'delete', data: null, rev: moved.rev.toString() })]);
+    for (const result of [fromB, fromBoth]) {
+      expect(result.records).toEqual([expect.objectContaining({ id, op: 'upsert', data: { name: 'Moved record', balance: 'PC data' }, rev: moved.rev.toString() })]);
+      expect(result.records[0]).not.toHaveProperty('previousBranchIds');
+    }
+    await write(branchId);
+    await write(otherBranch);
+    const repeated = await db.relayRecord.findUniqueOrThrow({ where: { entity_entityId: { entity: 'customer', entityId: id } } });
+    expect([...repeated.previousBranchIds].sort()).toEqual([branchId, otherBranch].sort());
+  });
+
+  it('requires a full resync below the pruned horizon and preserves the horizon on later upkeep', async () => {
+    const id = randomUUID();
+    recordIds.push(id);
+    await store.writeRecords({ pcSeq: (BigInt((await store.workerState()).lastPcSeq) + 1n).toString(), records: [
+      { entity: 'customer', id, branchId, op: 'delete' },
+    ] });
+    const deleted = await db.relayRecord.findUniqueOrThrow({ where: { entity_entityId: { entity: 'customer', entityId: id } } });
+    const now = Date.now();
+    await store.upkeep(new Date(now + 31 * 86400000));
+    const horizon = (await db.relayWorker.findUniqueOrThrow({ where: { id: 1 } })).prunedThroughRev;
+    expect(horizon).toBe(deleted.rev);
+    const app = createRelayApp({ store, workerTokenSha256: createHash('sha256').update('review-worker-secret').digest('hex'), log: () => {} });
+    const secret = 'review-device-secret';
+    await db.relayDevice.update({ where: { id: deviceId }, data: { tokenSha256: createHash('sha256').update(secret).digest('hex') } });
+    const response = await request(app).get('/relay/v1/device/records?after=' + (horizon - 1n).toString()).set('Authorization', 'Bearer ' + secret);
+    expect(response.status).toBe(410);
+    expect(response.body).toEqual({ code: 'RESYNC_REQUIRED' });
+    for (const after of ['0', horizon.toString(), (horizon + 1n).toString()]) {
+      expect((await request(app).get('/relay/v1/device/records?after=' + after).set('Authorization', 'Bearer ' + secret)).status).toBe(200);
+    }
+    const fullCopy = await store.readRecords([branchId], '0', 500);
+    expect(fullCopy.hasMore).toBe(false);
+    expect(BigInt(fullCopy.nextRev)).toBeGreaterThanOrEqual(horizon);
+    await expect(store.readRecords([branchId], fullCopy.nextRev, 500)).resolves.toMatchObject({ hasMore: false });
+    await store.upkeep(new Date(now + 32 * 86400000));
+    expect((await db.relayWorker.findUniqueOrThrow({ where: { id: 1 } })).prunedThroughRev).toBe(horizon);
   });
 });

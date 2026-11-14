@@ -27,6 +27,7 @@ model RelayRecord {
   entity    String
   entityId  String   @map("entity_id") @db.Uuid
   branchId  String?  @map("branch_id") @db.Uuid
+  previousBranchIds String[] @default([]) @map("previous_branch_ids") @db.Uuid
   op        String
   data      Json?
   // The database trigger allocates the sequence value on every insert/update.
@@ -37,6 +38,7 @@ model RelayRecord {
   @@id([entity, entityId])
   @@index([rev])
   @@index([branchId, rev])
+  @@index([previousBranchIds], type: Gin)
   @@map("relay_records")
 }
 
@@ -51,6 +53,8 @@ model RelayOutbox {
   createdAt  DateTime    @map("created_at") @db.Timestamptz(6)
   receivedAt DateTime    @default(now()) @map("received_at") @db.Timestamptz(6)
   status     String      @default("pending")
+  photoMime  String?     @map("photo_mime")
+  photoSize  Int?        @map("photo_size")
   claimedAt  DateTime?   @map("claimed_at") @db.Timestamptz(6)
   attempts   Int         @default(0)
   result     Json?
@@ -90,6 +94,7 @@ model RelayWorker {
   id           Int       @id @default(1)
   lastSeenAt   DateTime? @map("last_seen_at") @db.Timestamptz(6)
   lastPcSeq    String    @default("0") @map("last_pc_seq")
+  prunedThroughRev BigInt @default(0) @map("pruned_through_rev")
   // Durable hourly maintenance throttle, including across process restarts.
   lastUpkeepAt DateTime? @map("last_upkeep_at") @db.Timestamptz(6)
 

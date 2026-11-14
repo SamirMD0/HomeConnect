@@ -122,6 +122,33 @@ describe('isolated relay routes', () => {
     expect((await request(app).post('/relay/v1/device/actions').set('Authorization', deviceAuth).send(action)).status).toBe(409);
   });
 
+  it('accepts a photo declaration and exposes awaiting_photo to the device', async () => {
+    const app = makeApp();
+    const body = { ...action, photo: { mime: 'image/png', size: 100 } };
+    store.enqueue.mockResolvedValue({ created: true, id, status: 'awaiting_photo' });
+    const response = await request(app).post('/relay/v1/device/actions').set('Authorization', deviceAuth).send(body);
+    expect(response.status).toBe(201);
+    expect(response.body.status).toBe('awaiting_photo');
+    expect(store.enqueue).toHaveBeenCalledWith(paired, body);
+    store.actionResults.mockResolvedValue([{ id, status: 'awaiting_photo', result: null }]);
+    expect((await request(app).get('/relay/v1/device/actions?ids=' + id).set('Authorization', deviceAuth)).body)
+      .toEqual([{ id, status: 'awaiting_photo', result: null }]);
+  });
+
+  it.each([{ mime: 'image/gif', size: 100 }, { mime: 'image/png', size: 2097153 }, { mime: 'image/png', size: 0 }])(
+    'rejects invalid photo declarations %j', async photo => {
+      expect((await request(makeApp()).post('/relay/v1/device/actions').set('Authorization', deviceAuth).send({ ...action, photo })).status).toBe(400);
+      expect(store.enqueue).not.toHaveBeenCalled();
+    }
+  );
+
+  it('returns the resync-required response for a cursor below the pruning horizon', async () => {
+    store.readRecords.mockRejectedValue(new RelayError(410, 'RESYNC_REQUIRED', 'Start a full copy.'));
+    const response = await request(makeApp()).get('/relay/v1/device/records?after=5').set('Authorization', deviceAuth);
+    expect(response.status).toBe(410);
+    expect(response.body).toEqual({ code: 'RESYNC_REQUIRED' });
+  });
+
   it('polls only the authenticated device actions', async () => {
     store.actionResults.mockResolvedValue([{ id, status: 'applied', result: { receiptId: id } }]);
     const response = await request(makeApp()).get('/relay/v1/device/actions?ids=' + id).set('Authorization', deviceAuth);

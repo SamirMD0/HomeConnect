@@ -28,6 +28,7 @@ export const actionInput = z.object({
   id: uuid, type: z.string().min(1).max(100), branchId: uuid,
   payload: z.json().refine(value => Buffer.byteLength(JSON.stringify(value), 'utf8') <= 256 * 1024, 'Payload exceeds 256 KB'),
   createdAt: z.iso.datetime({ offset: true }),
+  photo: z.object({ mime: imageMime, size: z.number().int().min(1).max(MAX_BLOB_BYTES) }).optional(),
 });
 export const actionsQuery = z.object({
   ids: z.string().max(3700).transform(value => value.split(','))

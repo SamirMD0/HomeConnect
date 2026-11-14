@@ -174,6 +174,10 @@ export function createRelayApp(options: RelayOptions = {}) {
   app.use((_req, _res, next) => next(new RelayError(404, 'NOT_FOUND', 'Route not found.')));
   const errors: ErrorRequestHandler = (error: unknown, _req, res, _next) => {
     if (error instanceof RelayError) {
+      if (error.code === 'RESYNC_REQUIRED') {
+        res.status(410).json({ code: error.code });
+        return;
+      }
       res.status(error.status).json({ error: { code: error.code, message: error.message } });
       return;
     }
