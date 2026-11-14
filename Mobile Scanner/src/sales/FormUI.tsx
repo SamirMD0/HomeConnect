@@ -1,26 +1,21 @@
-import type { PropsWithChildren } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native';
-import { theme } from '../theme';
+import type { PropsWithChildren, ReactNode } from 'react';
+import { View } from 'react-native';
 import { AppButton } from '../components/AppButton';
 import { StatusBanner } from '../components/StatusBanner';
-import { readStyles } from '../lookup/ReadUI';
-export function FormPage({ title, children }: PropsWithChildren<{ title: string }>) {
+import { FormScreen } from '../ui/FormScreen';
+import { PageTitle } from '../ui/ScreenHeader';
+/** Sales forms: keyboard-safe scroll; `footer` (an ActionBar) rides above the keyboard. */
+export function FormPage({
+  title,
+  subtitle,
+  footer,
+  children,
+}: PropsWithChildren<{ title: string; subtitle?: string; footer?: ReactNode }>) {
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: theme.colors.background }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={110}
-    >
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ padding: 16, paddingBottom: 128, gap: 16 }}
-      >
-        <Text accessibilityRole="header" style={readStyles.title}>
-          {title}
-        </Text>
-        {children}
-      </ScrollView>
-    </KeyboardAvoidingView>
+    <FormScreen footer={footer} contentStyle={{ paddingBottom: footer ? 24 : 128 }}>
+      <PageTitle title={title} subtitle={subtitle} />
+      {children}
+    </FormScreen>
   );
 }
 export function DraftNotice({

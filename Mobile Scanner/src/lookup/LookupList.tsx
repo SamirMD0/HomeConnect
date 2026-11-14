@@ -98,8 +98,8 @@ export function LookupList<T>({
 const styles = StyleSheet.create({
   content: { flexGrow: 1, padding: theme.spacing.lg, paddingBottom: 112, gap: 8 },
   header: { gap: 12, paddingBottom: 12 },
-  title: { fontSize: theme.type.heading, fontWeight: '800', color: theme.colors.text },
-  subtitle: { color: theme.colors.muted, fontSize: 14, lineHeight: 21 },
+  title: { ...theme.text.headline, color: theme.colors.text },
+  subtitle: { ...theme.text.label, fontWeight: '400', color: theme.colors.muted },
   loading: { padding: 32, alignItems: 'center', gap: 12 },
   footer: { paddingVertical: 16 },
 });

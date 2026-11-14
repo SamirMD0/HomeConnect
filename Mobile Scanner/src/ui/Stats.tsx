@@ -34,28 +34,49 @@ export function HeroCard({
       </View>
       <View style={styles.heroEnd}>
         {trend ? <View style={styles.heroTrend}>{trend}</View> : null}
-        {onPress ? <Ionicons name="chevron-forward" size={22} color={theme.colors.onBrand} accessible={false} /> : null}
+        {onPress ? (
+          <Ionicons
+            name="chevron-forward"
+            size={22}
+            color={theme.colors.onBrand}
+            accessible={false}
+          />
+        ) : null}
       </View>
     </>
   );
   return onPress ? (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel ?? `${label}, ${value}${caption ? `. ${caption}` : ''}`}
+      accessibilityLabel={
+        accessibilityLabel ?? `${label}, ${value}${caption ? `. ${caption}` : ''}`
+      }
       onPress={onPress}
       style={({ pressed }) => [styles.hero, pressed && styles.heroPressed]}
     >
       {body}
     </Pressable>
   ) : (
-    <View accessible accessibilityLabel={accessibilityLabel ?? `${label}, ${value}`} style={styles.hero}>
+    <View
+      accessible
+      accessibilityLabel={accessibilityLabel ?? `${label}, ${value}`}
+      style={styles.hero}
+    >
       {body}
     </View>
   );
 }
 
 /** Rounded square with a tinted ground and a line icon. */
-export function IconTile({ icon, tone = 'brand', size = 48 }: { icon: keyof typeof Ionicons.glyphMap; tone?: Tone; size?: number }) {
+export function IconTile({
+  icon,
+  tone = 'brand',
+  size = 48,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  tone?: Tone;
+  size?: number;
+}) {
   const colors = toneColors[tone];
   return (
     <View style={[styles.tile, { width: size, height: size, backgroundColor: colors.bg }]}>
@@ -127,7 +148,11 @@ export function QuickGrid({ actions, columns = 4 }: { actions: QuickAction[]; co
           accessibilityRole="button"
           accessibilityLabel={`${action.label}${action.badge ? `, ${action.badge} waiting` : ''}`}
           onPress={action.onPress}
-          style={({ pressed }) => [styles.cell, { width: `${100 / columns}%` }, pressed && styles.cellPressed]}
+          style={({ pressed }) => [
+            styles.cell,
+            { width: `${100 / columns}%` },
+            pressed && styles.cellPressed,
+          ]}
         >
           <View>
             <IconTile icon={action.icon} tone={action.tone} size={52} />
@@ -178,9 +203,20 @@ const styles = StyleSheet.create({
   rowTitle: { ...theme.text.bodyStrong, color: theme.colors.text },
   rowDetail: { ...theme.text.caption, color: theme.colors.muted },
   rowEnd: { alignItems: 'flex-end', gap: 4 },
-  rowValue: { ...theme.text.bodyStrong, fontWeight: '700', color: theme.colors.text, fontVariant: ['tabular-nums'] },
+  rowValue: {
+    ...theme.text.bodyStrong,
+    fontWeight: '700',
+    color: theme.colors.text,
+    fontVariant: ['tabular-nums'],
+  },
   grid: { flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -4 },
-  cell: { alignItems: 'center', gap: 6, paddingVertical: theme.spacing.sm, paddingHorizontal: 4, borderRadius: theme.radius.md },
+  cell: {
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: 4,
+    borderRadius: theme.radius.md,
+  },
   cellPressed: { backgroundColor: theme.colors.brandSoft },
   cellLabel: { ...theme.text.caption, color: theme.colors.text, textAlign: 'center' },
   count: {

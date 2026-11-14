@@ -24,7 +24,14 @@ import {
 export function DesignPreview() {
   const [period, setPeriod] = useState<'today' | 'yesterday' | 'week'>('today');
   const rows = [
-    { id: '1', name: 'TR-0001', user: 'Sample', cash: '54,870.17', sale: '613,254.00', late: false },
+    {
+      id: '1',
+      name: 'TR-0001',
+      user: 'Sample',
+      cash: '54,870.17',
+      sale: '613,254.00',
+      late: false,
+    },
     { id: '2', name: 'TR-0002', user: 'Sample', cash: '1,200.00', sale: '9,410.50', late: true },
     { id: '3', name: 'TR-0003', user: 'Sample', cash: '0.00', sale: '780.00', late: false },
   ];
@@ -42,10 +49,29 @@ export function DesignPreview() {
       }
     >
       <PageTitle title="Design preview" subtitle="Sample figures only" />
-      <HeroCard label="Total owed" value="$125,689.00" caption="12 of 40 customers" trend={<TrendChip value={15.3} inverted />} />
+      <HeroCard
+        label="Total owed"
+        value="$125,689.00"
+        caption="12 of 40 customers"
+        trend={<TrendChip value={15.3} inverted />}
+      />
       <Section title="Rows">
-        <StatRow icon="cash-outline" tone="success" title="Collected" detail="Today" value="$95,499" chip={<TrendChip value={15.3} />} />
-        <StatRow icon="business-outline" tone="danger" title="Owed to suppliers" detail="Today" value="$12,040" chip={<TrendChip value={-4.2} inverted />} />
+        <StatRow
+          icon="cash-outline"
+          tone="success"
+          title="Collected"
+          detail="Today"
+          value="$95,499"
+          chip={<TrendChip value={15.3} />}
+        />
+        <StatRow
+          icon="business-outline"
+          tone="danger"
+          title="Owed to suppliers"
+          detail="Today"
+          value="$12,040"
+          chip={<TrendChip value={-4.2} inverted />}
+        />
       </Section>
       <Section title="Quick actions">
         <QuickGrid
@@ -57,7 +83,16 @@ export function DesignPreview() {
           ]}
         />
       </Section>
-      <Segmented label="Period" value={period} onChange={setPeriod} options={[{ value: 'today', label: 'Today' }, { value: 'yesterday', label: 'Yesterday' }, { value: 'week', label: 'Week' }]} />
+      <Segmented
+        label="Period"
+        value={period}
+        onChange={setPeriod}
+        options={[
+          { value: 'today', label: 'Today' },
+          { value: 'yesterday', label: 'Yesterday' },
+          { value: 'week', label: 'Week' },
+        ]}
+      />
       <Section title="Badges">
         <View style={styles.wrap}>
           <Badge label="Current" tone="brand" />
@@ -68,9 +103,26 @@ export function DesignPreview() {
         </View>
       </Section>
       <Section title="Fields">
-        <TextField label="PC address" required icon="desktop-outline" placeholder="192.168.1.20" keyboardType="numeric" />
-        <TextField label="Password" required icon="lock-closed-outline" secureTextEntry placeholder="Password" />
-        <TextField label="Amount" error="Enter a positive amount" defaultValue="-5" keyboardType="decimal-pad" />
+        <TextField
+          label="PC address"
+          required
+          icon="desktop-outline"
+          placeholder="192.168.1.20"
+          keyboardType="numeric"
+        />
+        <TextField
+          label="Password"
+          required
+          icon="lock-closed-outline"
+          secureTextEntry
+          placeholder="Password"
+        />
+        <TextField
+          label="Amount"
+          error="Enter a positive amount"
+          defaultValue="-5"
+          keyboardType="decimal-pad"
+        />
       </Section>
       <Section title="Buttons">
         <AppButton label="Primary" onPress={noop} />
@@ -87,8 +139,20 @@ export function DesignPreview() {
           columns={[
             { key: 'name', label: 'Counter', width: 84, render: (row) => row.name },
             { key: 'user', label: 'User', width: 84, render: (row) => row.user },
-            { key: 'cash', label: 'Cash in hand', width: 104, align: 'right', render: (row) => row.cash },
-            { key: 'sale', label: 'Total sale', width: 112, align: 'right', render: (row) => row.sale },
+            {
+              key: 'cash',
+              label: 'Cash in hand',
+              width: 104,
+              align: 'right',
+              render: (row) => row.cash,
+            },
+            {
+              key: 'sale',
+              label: 'Total sale',
+              width: 112,
+              align: 'right',
+              render: (row) => row.sale,
+            },
           ]}
         />
       </Section>

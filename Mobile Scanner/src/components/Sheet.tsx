@@ -17,7 +17,12 @@ export function Sheet({
   title,
   children,
   scrollable = true,
-}: PropsWithChildren<{ visible: boolean; title: string; onClose: () => void; scrollable?: boolean }>) {
+}: PropsWithChildren<{
+  visible: boolean;
+  title: string;
+  onClose: () => void;
+  scrollable?: boolean;
+}>) {
   const { height } = useWindowDimensions();
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
@@ -48,7 +53,11 @@ export function Sheet({
               <Ionicons name="close" size={24} color={theme.colors.text} accessible={false} />
             </Pressable>
           </View>
-          {scrollable ? <ScrollView keyboardShouldPersistTaps="handled">{children}</ScrollView> : <View style={{ flexShrink: 1 }}>{children}</View>}
+          {scrollable ? (
+            <ScrollView keyboardShouldPersistTaps="handled">{children}</ScrollView>
+          ) : (
+            <View style={{ flexShrink: 1 }}>{children}</View>
+          )}
         </SafeAreaView>
       </View>
     </Modal>

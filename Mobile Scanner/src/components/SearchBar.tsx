@@ -4,6 +4,8 @@ export function SearchBar(props: TextInputProps & { label?: string }) {
   return (
     <AppInput
       label="Search"
+      hideLabel
+      icon="search-outline"
       placeholder="Search"
       returnKeyType="search"
       autoCapitalize="none"

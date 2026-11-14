@@ -2,7 +2,7 @@ import { theme } from '../theme';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Image, Modal, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Modal, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { HcApiError } from '../api/hc-client';
 import { clientFrom } from '../api/products-api';
@@ -19,6 +19,8 @@ import { StatusBanner } from '../components/StatusBanner';
 import { receiptQueue, uploadFailureMessage } from '../services/receipt-queue';
 import { prepareReceiptPhoto } from '../services/receipt-photo';
 import { ConnectionSettings } from '../types/scanner.types';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
+import { PageTitle } from '../ui/ScreenHeader';
 
 interface Props {
   connection: ConnectionSettings;
@@ -129,7 +131,9 @@ export function ReceiptCaptureScreen({ connection, token, onDone, onSessionInval
           supplierId: supplier.id,
           supplierPurchaseId: purchase?.supplierReceivingId ?? null,
           // A purchase that received no stock links to its ledger entry (PC 2.3.0+).
-          ...(purchase && !purchase.supplierReceivingId ? { supplierTransactionId: purchase.id } : {}),
+          ...(purchase && !purchase.supplierReceivingId
+            ? { supplierTransactionId: purchase.id }
+            : {}),
           ...(groupLeadId ? { groupLeadId } : {}),
           supplierPurchaseLabel: `${supplier.name} · ${purchase?.referenceNumber ?? 'No purchase yet'}`,
           branchId: selectedBranchHeaders()['X-Branch-Scope'],
@@ -160,8 +164,12 @@ export function ReceiptCaptureScreen({ connection, token, onDone, onSessionInval
     });
   return (
     <SafeAreaView style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>Supplier bill</Text>
+      <KeyboardAwareScrollView
+        bottomOffset={24}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
+        <PageTitle title="Supplier bill" />
         {message && <StatusBanner tone={step === 'done' ? 'info' : 'warning'} message={message} />}
         {busy && <ActivityIndicator accessibilityLabel="Working" />}
         {step === 'supplier' && (
@@ -289,7 +297,7 @@ export function ReceiptCaptureScreen({ connection, token, onDone, onSessionInval
           disabled={busy}
           onPress={onDone}
         />
-      </ScrollView>
+      </KeyboardAwareScrollView>
       <Modal
         visible={camera}
         animationType="slide"

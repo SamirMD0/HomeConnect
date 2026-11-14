@@ -41,8 +41,21 @@ export function Segmented<T extends string>({
 }
 
 const styles = StyleSheet.create({
-  track: { flexDirection: 'row', padding: 4, gap: 4, borderRadius: theme.radius.pill, backgroundColor: theme.colors.field },
-  pill: { flex: 1, minHeight: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12, borderRadius: theme.radius.pill },
+  track: {
+    flexDirection: 'row',
+    padding: 4,
+    gap: 4,
+    borderRadius: theme.radius.pill,
+    backgroundColor: theme.colors.field,
+  },
+  pill: {
+    flex: 1,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+    borderRadius: theme.radius.pill,
+  },
   selected: { backgroundColor: theme.colors.brand },
   text: { ...theme.text.label, color: theme.colors.brandStrong },
   selectedText: { color: theme.colors.onBrand, fontWeight: '700' },

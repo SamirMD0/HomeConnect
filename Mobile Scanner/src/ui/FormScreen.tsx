@@ -34,7 +34,11 @@ export function FormScreen({
  */
 export function ActionBar({ children }: PropsWithChildren) {
   const insets = useSafeAreaInsets();
-  return <View style={[styles.bar, { paddingBottom: Math.max(insets.bottom, theme.spacing.md) }]}>{children}</View>;
+  return (
+    <View style={[styles.bar, { paddingBottom: Math.max(insets.bottom, theme.spacing.md) }]}>
+      {children}
+    </View>
+  );
 }
 /** Wrap the wide button in an ActionBar so it takes the remaining width. */
 export function ActionBarMain({ children }: PropsWithChildren) {

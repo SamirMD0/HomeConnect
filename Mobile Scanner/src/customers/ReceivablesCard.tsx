@@ -1,17 +1,23 @@
 import { useQuery } from '@tanstack/react-query';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { formatMoney } from '@shared/money-format';
 import { getReceivablesSummary } from '../api/receivables-api';
 import { useLookup } from '../lookup/useLookup';
 import { hiddenDashboardValue } from '../lookup/dashboard-privacy';
-import { theme } from '../theme';
+import { Badge } from '../ui/Badge';
+import { HeroCard } from '../ui/Stats';
 
 /**
- * "Receivables: $X owed, Y overdue". Opens the Receivables screen. `hidden`
- * follows the Home dashboard's hide-numbers switch.
+ * Blue hero: total owed by customers, with the overdue amount underneath and
+ * an overdue-customers pill. Opens Receivables. `hidden` follows the
+ * hide-amounts eye on Home.
  */
-export function ReceivablesCard({ onPress, hidden = false }: { onPress: () => void; hidden?: boolean }) {
+export function ReceivablesCard({
+  onPress,
+  hidden = false,
+}: {
+  onPress: () => void;
+  hidden?: boolean;
+}) {
   const { client, key, session } = useLookup();
   const summary = useQuery({
     queryKey: key('receivables-summary'),
@@ -20,40 +26,24 @@ export function ReceivablesCard({ onPress, hidden = false }: { onPress: () => vo
   });
   if (!session.can('sell')) return null;
   const data = summary.data;
-  const owed = data ? (hidden ? hiddenDashboardValue : formatMoney(data.totalOutstanding)) : '';
-  const detail = summary.isError
-    ? 'Could not load. Tap to open.'
-    : !data
-      ? 'Loading…'
-      : `${data.customersWithBalance} owe · ${hidden ? hiddenDashboardValue : formatMoney(data.totalOverdue)} overdue (${data.customersOverdue})`;
+  const money = (value: string) => (hidden ? hiddenDashboardValue : formatMoney(value));
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={data ? `Receivables, ${owed} owed. ${detail}` : 'Receivables'}
+    <HeroCard
+      label="Customers owe"
+      value={data ? money(data.totalOutstanding) : summary.isError ? 'Not loaded' : '…'}
+      caption={
+        summary.isError
+          ? 'Tap to open and retry'
+          : data
+            ? `${money(data.totalOverdue)} overdue · ${data.customersWithBalance} customers`
+            : 'Loading'
+      }
+      trend={
+        data && data.customersOverdue ? (
+          <Badge tone="danger" icon="alert-circle" label={`${data.customersOverdue} late`} />
+        ) : undefined
+      }
       onPress={onPress}
-      style={({ pressed }) => [styles.card, pressed && { opacity: 0.85 }]}
-    >
-      <View style={styles.copy}>
-        <Text style={styles.label}>Receivables</Text>
-        <Text style={styles.value}>{data ? `${owed} owed` : '—'}</Text>
-        <Text style={styles.detail}>{detail}</Text>
-      </View>
-      <Ionicons name="chevron-forward" size={22} color={theme.colors.white} accessible={false} />
-    </Pressable>
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.md,
-    padding: theme.spacing.lg,
-    borderRadius: theme.radius.lg,
-    backgroundColor: theme.colors.brand,
-  },
-  copy: { flex: 1, gap: 2 },
-  label: { fontSize: theme.type.small, fontWeight: '700', color: theme.colors.white, opacity: 0.9 },
-  value: { fontSize: theme.type.title, fontWeight: '800', color: theme.colors.white, fontVariant: ['tabular-nums'] },
-  detail: { fontSize: theme.type.small, color: theme.colors.white, opacity: 0.9 },
-});

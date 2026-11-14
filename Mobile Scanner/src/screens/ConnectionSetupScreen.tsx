@@ -1,7 +1,6 @@
-import { theme } from '../theme';
 import { useState } from 'react';
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { AuthLayout } from '../ui/AuthLayout';
 import type { CompatibilityState } from '../api/system-api';
 import { candidateHosts, findPc } from '../connection/find-pc';
 import { AppButton } from '../components/AppButton';
@@ -18,9 +17,13 @@ interface ConnectionSetupScreenProps {
   onConnected: (settings: ConnectionSettings, compat: CompatibilityState) => void;
 }
 
-export function ConnectionSetupScreen({ initialSettings, onConnected }: ConnectionSetupScreenProps) {
+export function ConnectionSetupScreen({
+  initialSettings,
+  onConnected,
+}: ConnectionSetupScreenProps) {
   const [host, setHost] = useState(initialSettings?.host ?? '');
   const [port, setPort] = useState(String(initialSettings?.port ?? DEFAULT_SCANNER_PORT));
+  const [secondHost, setSecondHost] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   // Manual IP/port is the fallback. Keep it collapsed by default so the first
@@ -53,10 +56,26 @@ export function ConnectionSetupScreen({ initialSettings, onConnected }: Connecti
     }
     setBusy(true);
     setMessage(null);
+    // A typed second address is raced with the first one.
+    let second: string | null = null;
+    if (secondHost.trim()) {
+      const checked = parseConnection(secondHost, port);
+      if (!checked.ok) {
+        setMessage(`Second address: ${checked.message}`);
+        setBusy(false);
+        return;
+      }
+      second = checked.value.host;
+    }
     // Typing the address the phone already knows keeps the PC's other addresses.
-    const known = initialSettings && candidateHosts(initialSettings).includes(validation.value.host);
+    const known =
+      initialSettings && candidateHosts(initialSettings).includes(validation.value.host);
+    const alternates = [
+      ...(known ? candidateHosts(initialSettings) : []),
+      ...(second ? [second] : []),
+    ].filter((item, index, all) => item !== validation.value.host && all.indexOf(item) === index);
     const failure = await connect(
-      known ? { ...validation.value, alternates: candidateHosts(initialSettings) } : validation.value
+      alternates.length ? { ...validation.value, alternates } : validation.value
     );
     if (failure) setMessage(failure);
     setBusy(false);
@@ -79,46 +98,44 @@ export function ConnectionSetupScreen({ initialSettings, onConnected }: Connecti
   };
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <View style={styles.hero}>
-          <View style={styles.logo}>
-            <Ionicons name="storefront-outline" size={40} color={theme.colors.brand} accessible={false} />
-          </View>
-          <Text accessibilityRole="header" style={styles.title}>Home Connect</Text>
-          <Text style={styles.subtitle}>Connect to the shop PC</Text>
-        </View>
-
+    <>
+      <AuthLayout
+        title="Connect to your shop"
+        subtitle="Scan the code on the PC, or type its address"
+      >
         {message && <StatusBanner tone="danger" message={message} />}
         {message && (
           <AppButton
             label={detailsOpen ? 'Hide details' : 'Connection details'}
             icon="pulse-outline"
-            variant="secondary"
+            variant="ghost"
             onPress={() => setDetailsOpen((value) => !value)}
           />
         )}
         {message && detailsOpen && <ConnectionLogPanel limit={12} />}
 
-        <View style={styles.primary}>
-          <AppButton
-            label="Scan PC code"
-            icon="qr-code-outline"
-            onPress={() => { setMessage(null); setQrOpen(true); }}
-            loading={busy && !manualOpen}
-          />
-          <AppButton
-            label={manualOpen ? 'Hide address' : 'Type address'}
-            icon={manualOpen ? 'chevron-up-outline' : 'create-outline'}
-            variant="secondary"
-            onPress={() => setManualOpen((value) => !value)}
-          />
-        </View>
+        <AppButton
+          label="Scan PC code"
+          icon="qr-code-outline"
+          onPress={() => {
+            setMessage(null);
+            setQrOpen(true);
+          }}
+          loading={busy && !manualOpen}
+        />
+        <AppButton
+          label={manualOpen ? 'Hide address' : 'Type address'}
+          icon={manualOpen ? 'chevron-up-outline' : 'create-outline'}
+          variant="secondary"
+          onPress={() => setManualOpen((value) => !value)}
+        />
 
         {manualOpen && (
           <View style={styles.form}>
             <AppInput
               label="PC address"
+              required
+              icon="desktop-outline"
               value={host}
               onChangeText={setHost}
               autoCapitalize="none"
@@ -128,37 +145,33 @@ export function ConnectionSetupScreen({ initialSettings, onConnected }: Connecti
             />
             <AppInput
               label="Port"
+              required
               value={port}
               onChangeText={setPort}
               keyboardType="number-pad"
               maxLength={5}
               placeholder={String(DEFAULT_SCANNER_PORT)}
             />
-            <AppButton label="Connect" icon="link-outline" onPress={() => void testAndContinue()} loading={busy} />
+            <AppInput
+              label="Second address (if the PC has one)"
+              icon="git-branch-outline"
+              value={secondHost}
+              onChangeText={setSecondHost}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="numbers-and-punctuation"
+              hint="Tried at the same time as the first one."
+            />
+            <AppButton label="Connect" onPress={() => void testAndContinue()} loading={busy} />
           </View>
         )}
-      </ScrollView>
+      </AuthLayout>
 
       <QrPairScreen visible={qrOpen} onCancel={() => setQrOpen(false)} onPaired={handlePaired} />
-    </KeyboardAvoidingView>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: theme.colors.background },
-  content: { flexGrow: 1, padding: 22, justifyContent: 'center', gap: 22, backgroundColor: theme.colors.background },
-  hero: { gap: 6, alignItems: 'center' },
-  logo: {
-    width: 76,
-    height: 76,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: theme.colors.brandSoft,
-    marginBottom: 8,
-  },
-  title: { color: theme.colors.text, fontSize: 28, fontWeight: '800' },
-  subtitle: { color: theme.colors.muted, fontSize: 16 },
-  primary: { gap: 10, alignItems: 'stretch' },
-  form: { gap: 17 },
+  form: { gap: 16, marginTop: 8 },
 });

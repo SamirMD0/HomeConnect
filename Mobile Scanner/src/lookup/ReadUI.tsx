@@ -15,26 +15,24 @@ import { EmptyState } from '../components/EmptyState';
 import type { Currency } from '@shared/lookup-contracts';
 import { LOOKUP_PAGE_SIZE } from './pagination';
 export const readStyles = StyleSheet.create({
-  title: { fontSize: 26, fontWeight: '800', color: theme.colors.text },
-  subtitle: { color: theme.colors.muted, fontSize: 14, lineHeight: 21 },
+  title: { ...theme.text.headline, color: theme.colors.text },
+  subtitle: { ...theme.text.label, fontWeight: '400', color: theme.colors.muted },
+  // Grouped facts sit on the quiet blue-grey ground, no border (design system).
   card: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.lg,
-    padding: 16,
-    gap: 10,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surfaceMuted,
+    borderRadius: theme.radius.md,
+    padding: theme.spacing.lg,
+    gap: theme.spacing.md,
   },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 },
-  label: { color: theme.colors.muted, fontSize: 14, flex: 1 },
+  label: { ...theme.text.label, fontWeight: '400', color: theme.colors.muted, flex: 1 },
   value: {
+    ...theme.text.bodyStrong,
     color: theme.colors.text,
-    fontSize: 15,
-    fontWeight: '600',
     flexShrink: 1,
     textAlign: 'right',
   },
-  section: { color: theme.colors.text, fontSize: 20, fontWeight: '700' },
+  section: { ...theme.text.titleSmall, color: theme.colors.text },
 });
 export function ReadScreen({
   children,
@@ -44,9 +42,9 @@ export function ReadScreen({
   return (
     <ScrollView
       contentContainerStyle={{
-        padding: 16,
+        padding: theme.spacing.lg,
         paddingBottom: 112,
-        gap: 16,
+        gap: theme.spacing.lg,
         flexGrow: 1,
         backgroundColor: theme.colors.background,
       }}

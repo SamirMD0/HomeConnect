@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme } from '../theme';
+import { IconTile } from '../ui/Stats';
 export function ListRow({
   title,
   subtitle,
@@ -23,11 +24,7 @@ export function ListRow({
       disabled={!onPress}
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
     >
-      {icon ? (
-        <View style={styles.icon}>
-          <Ionicons name={icon} size={22} color={theme.colors.brand} accessible={false} />
-        </View>
-      ) : null}
+      {icon ? <IconTile icon={icon} size={44} /> : null}
       <View style={styles.copy}>
         <Text style={styles.title}>{title}</Text>
         {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
@@ -40,26 +37,19 @@ export function ListRow({
   );
 }
 const styles = StyleSheet.create({
+  // Rounded row on the quiet ground; lists put 8 dp between rows.
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing.md,
     minHeight: 64,
-    padding: theme.spacing.lg,
-    borderBottomWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surface,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.surfaceMuted,
   },
-  copy: { flex: 1, gap: 4 },
-  icon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: theme.colors.brandSoft,
-  },
-  title: { fontSize: theme.type.body, fontWeight: '600', color: theme.colors.text },
-  subtitle: { fontSize: theme.type.small, color: theme.colors.muted },
+  copy: { flex: 1, gap: 2 },
+  title: { ...theme.text.bodyStrong, color: theme.colors.text },
+  subtitle: { ...theme.text.label, fontWeight: '400', color: theme.colors.muted },
   pressed: { backgroundColor: theme.colors.brandSoft },
 });

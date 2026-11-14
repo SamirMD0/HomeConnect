@@ -11,7 +11,9 @@ function ResultRow({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.row}>
       <Text style={styles.rowLabel}>{label}</Text>
-      <Text selectable style={styles.rowValue}>{value}</Text>
+      <Text selectable style={styles.rowValue}>
+        {value}
+      </Text>
     </View>
   );
 }
@@ -22,7 +24,12 @@ export function ProductResult({ result }: ProductResultProps) {
   }
 
   if (result.status === 'NOT_FOUND' || !result.product) {
-    return <StatusBanner tone="warning" message={`No product found for ${result.normalizedCode ?? 'this code'}`} />;
+    return (
+      <StatusBanner
+        tone="warning"
+        message={`No product found for ${result.normalizedCode ?? 'this code'}`}
+      />
+    );
   }
 
   const product = result.product;
@@ -31,7 +38,9 @@ export function ProductResult({ result }: ProductResultProps) {
       <View style={styles.headingRow}>
         <View style={styles.headingText}>
           <Text style={styles.name}>{product.name}</Text>
-          <Text style={styles.match}>Matched by {result.matchedBy === 'BARCODE' ? 'barcode' : 'SKU'}</Text>
+          <Text style={styles.match}>
+            Matched by {result.matchedBy === 'BARCODE' ? 'barcode' : 'SKU'}
+          </Text>
         </View>
         <View style={[styles.badge, !product.isActive && styles.archivedBadge]}>
           <Text style={[styles.badgeText, !product.isActive && styles.archivedText]}>
@@ -49,12 +58,24 @@ export function ProductResult({ result }: ProductResultProps) {
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.successBorder, borderRadius: 16, padding: 16, gap: 12 },
+  card: {
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.successBorder,
+    borderRadius: 16,
+    padding: 16,
+    gap: 12,
+  },
   headingRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   headingText: { flex: 1, gap: 4 },
   name: { color: theme.colors.text, fontSize: 22, fontWeight: '800' },
   match: { color: theme.colors.muted, fontSize: 12 },
-  badge: { backgroundColor: theme.colors.successSoft, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4 },
+  badge: {
+    backgroundColor: theme.colors.successSoft,
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+  },
   archivedBadge: { backgroundColor: theme.colors.neutralSoft },
   badgeText: { color: theme.colors.success, fontSize: 11, fontWeight: '800' },
   archivedText: { color: theme.colors.muted },

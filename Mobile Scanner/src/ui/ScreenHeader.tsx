@@ -33,7 +33,12 @@ export function ScreenHeader({
               hitSlop={4}
               style={({ pressed }) => [styles.icon, pressed && styles.pressed]}
             >
-              <Ionicons name="chevron-back" size={26} color={theme.colors.text} accessible={false} />
+              <Ionicons
+                name="chevron-back"
+                size={26}
+                color={theme.colors.text}
+                accessible={false}
+              />
             </Pressable>
           ) : null}
         </View>
@@ -59,11 +64,26 @@ export function PageTitle({ title, subtitle }: { title: string; subtitle?: strin
 }
 
 const styles = StyleSheet.create({
-  bar: { backgroundColor: theme.colors.surface, borderBottomWidth: 1, borderColor: theme.colors.border },
-  row: { height: 56, flexDirection: 'row', alignItems: 'center', paddingHorizontal: theme.spacing.xs },
+  bar: {
+    backgroundColor: theme.colors.surface,
+    borderBottomWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  row: {
+    height: 56,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.xs,
+  },
   side: { width: 56, flexDirection: 'row', alignItems: 'center' },
   end: { justifyContent: 'flex-end' },
-  icon: { width: theme.touch, height: theme.touch, alignItems: 'center', justifyContent: 'center', borderRadius: theme.radius.pill },
+  icon: {
+    width: theme.touch,
+    height: theme.touch,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: theme.radius.pill,
+  },
   pressed: { backgroundColor: theme.colors.neutralSoft },
   title: { flex: 1, textAlign: 'center', ...theme.text.titleSmall, color: theme.colors.brand },
   page: { gap: 4 },

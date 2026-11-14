@@ -32,6 +32,7 @@ export function ReportsScreen() {
         header={<SearchBar label="Search reports" value={search} onChangeText={setSearch} />}
         renderItem={(report) => (
           <ListRow
+            icon="bar-chart-outline"
             title={report.title}
             subtitle={report.description}
             onPress={() =>

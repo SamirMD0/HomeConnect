@@ -1,12 +1,16 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Stack, useLocalSearchParams } from 'expo-router';
-import { Text } from 'react-native';
-import { formatBusinessDate } from '@shared/money-format';
+import { formatBusinessDate, formatMoney } from '@shared/money-format';
 import { getCustomerStatement } from '../../api/customers-api';
 import { getSupplierStatement } from '../../api/supplier-lookup-api';
 import { useLookup } from '../useLookup';
-import { Card, Field, PagedRows, ReadScreen, ReadState, readStyles } from '../ReadUI';
+import { Card, Field, ReadScreen, ReadState, readStyles } from '../ReadUI';
+import { Text } from 'react-native';
+import { PageTitle } from '../../ui/ScreenHeader';
+import { HeroCard } from '../../ui/Stats';
+import { DataTable } from '../../ui/DataTable';
+import { EmptyState } from '../../components/EmptyState';
 import { RangeFilter } from '../FilterControls';
 import { humanLabel, monthRange } from '../filters';
 /** Balances and all entry amounts come from the desktop document endpoint. */
@@ -26,39 +30,69 @@ export function StatementScreen({ party }: { party: 'customer' | 'supplier' }) {
     <>
       <Stack.Screen options={{ title: 'Statement of account' }} />
       <ReadScreen refreshing={statement.isRefetching} onRefresh={() => void statement.refetch()}>
-        <Text accessibilityRole="header" style={readStyles.title}>
-          Statement of account
-        </Text>
+        <PageTitle title="Statement of account" subtitle="Amounts in USD unless shown otherwise" />
         <RangeFilter value={range} onChange={setRange} />
         <ReadState query={statement} />
         {data && (
           <>
-            <Card title="USD balances">
-              <Field label="Opening" value={data.openingBalance} money />
-              <Field label="Closing" value={data.closingBalance} money />
-              <Field label="As of" value={formatBusinessDate(data.businessDate)} />
-            </Card>
-            <PagedRows
-              title="Movements"
-              rows={data.entries}
-              rowKey={(entry) => entry.id}
-              render={(entry) => (
-                <Card title={entry.description}>
-                  <Field label="Date" value={formatBusinessDate(entry.date)} />
-                  <Field label="Type" value={humanLabel(entry.type)} />
-                  <Field
-                    label="Amount"
-                    value={entry.originalAmount}
-                    money
-                    currency={entry.currency}
-                  />
-                  <Field label="Balance effect (USD)" value={entry.balanceEffect} money />
-                  <Field label="Running balance (USD)" value={entry.runningBalance} money />
-                  <Field label="Status" value={humanLabel(entry.status)} />
-                  {entry.reference && <Field label="Reference" value={entry.reference} />}
-                </Card>
-              )}
+            <HeroCard
+              label="Closing balance"
+              value={formatMoney(data.closingBalance)}
+              caption={`Opening ${formatMoney(data.openingBalance)} · as of ${formatBusinessDate(data.businessDate)}`}
             />
+            <Text accessibilityRole="header" style={readStyles.section}>
+              Movements
+            </Text>
+            {data.entries.length ? (
+              <DataTable
+                caption="Statement movements"
+                rows={data.entries}
+                rowKey={(entry) => entry.id}
+                alert={(entry) => /VOID|REMOVED|CANCEL/i.test(entry.status)}
+                columns={[
+                  {
+                    key: 'date',
+                    label: 'Date',
+                    width: 92,
+                    render: (entry) => formatBusinessDate(entry.date),
+                  },
+                  {
+                    key: 'what',
+                    label: 'Description',
+                    width: 168,
+                    render: (entry) =>
+                      `${entry.description}${entry.reference ? ` · ${entry.reference}` : ''}\n${humanLabel(entry.type)}`,
+                  },
+                  {
+                    key: 'amount',
+                    label: 'Amount',
+                    width: 104,
+                    align: 'right',
+                    render: (entry) => formatMoney(entry.originalAmount, entry.currency),
+                  },
+                  {
+                    key: 'effect',
+                    label: 'Effect',
+                    width: 96,
+                    align: 'right',
+                    render: (entry) => formatMoney(entry.balanceEffect),
+                  },
+                  {
+                    key: 'balance',
+                    label: 'Balance',
+                    width: 104,
+                    align: 'right',
+                    render: (entry) => formatMoney(entry.runningBalance),
+                  },
+                ]}
+              />
+            ) : (
+              <EmptyState
+                title="No movements"
+                message="Nothing in this period."
+                icon="calendar-outline"
+              />
+            )}
             {data.aging && (
               <Card title="Aging">
                 <Field label="As of" value={formatBusinessDate(data.aging.asOf)} />

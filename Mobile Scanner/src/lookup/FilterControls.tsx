@@ -23,7 +23,8 @@ export function RangeFilter({
     <>
       <AppButton
         label={`${formatBusinessDate(value.from)} – ${formatBusinessDate(value.to)}`}
-        variant="secondary"
+        variant="tonal"
+        icon="calendar-outline"
         onPress={() => {
           setDraft(value);
           setError('');
@@ -70,12 +71,16 @@ export function SelectFilter({
   value,
   options,
   onChange,
+  emptyLabel,
 }: {
   label: string;
   value: string;
   options: { value: string; label: string }[];
   onChange: (value: string) => void;
+  /** Button text when nothing is picked; default "Label: All". */
+  emptyLabel?: string;
 }) {
+  const picked = options.find((option) => option.value === value);
   const [open, setOpen] = useState(false),
     [search, setSearch] = useState(''),
     [limit, setLimit] = useState(25);
@@ -85,8 +90,9 @@ export function SelectFilter({
   return (
     <>
       <AppButton
-        label={`${label}: ${options.find((option) => option.value === value)?.label ?? 'All'}`}
-        variant="secondary"
+        label={picked ? `${label}: ${picked.label}` : (emptyLabel ?? `${label}: All`)}
+        variant="tonal"
+        icon="options-outline"
         onPress={() => {
           setSearch('');
           setLimit(25);

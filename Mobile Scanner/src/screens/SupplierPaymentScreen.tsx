@@ -1,13 +1,10 @@
 import { theme } from '../theme';
 import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { HcApiError } from '../api/hc-client';
 import { clientFrom } from '../api/products-api';
-import {
-  PaymentMethod,
-  recordSupplierPayment,
-} from '../api/supplier-transactions-api';
+import { PaymentMethod, recordSupplierPayment } from '../api/supplier-transactions-api';
 import { listSuppliers, SupplierSummary } from '../api/suppliers-api';
 import { AppButton } from '../components/AppButton';
 import { AppInput } from '../components/AppInput';
@@ -16,6 +13,9 @@ import { selectedBranchHeaders } from '../branches/branch-selection';
 import { receiptQueue, uploadFailureMessage } from '../services/receipt-queue';
 import { prepareReceiptPhoto } from '../services/receipt-photo';
 import { ConnectionSettings } from '../types/scanner.types';
+import { FormScreen } from '../ui/FormScreen';
+import { PageTitle } from '../ui/ScreenHeader';
+import { IconTile } from '../ui/Stats';
 
 interface SupplierPaymentScreenProps {
   connection: ConnectionSettings;
@@ -67,20 +67,24 @@ export function SupplierPaymentScreen({
         else setBanner({ tone: 'danger', message: 'Could not load suppliers' });
       }
     })();
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [client, onSessionInvalid]);
 
   const filteredSuppliers = useMemo(() => {
     const query = filter.trim().toLocaleLowerCase();
     if (!query) return suppliers ?? [];
-    return (suppliers ?? []).filter((row) =>
-      row.name.toLocaleLowerCase().includes(query) || row.phone?.includes(query));
+    return (suppliers ?? []).filter(
+      (row) => row.name.toLocaleLowerCase().includes(query) || row.phone?.includes(query)
+    );
   }, [filter, suppliers]);
 
   const numericAmount = Number(amount);
-  const validAmount = Number.isFinite(numericAmount)
-    && numericAmount > 0
-    && (currency === 'USD' || Number.isInteger(numericAmount));
+  const validAmount =
+    Number.isFinite(numericAmount) &&
+    numericAmount > 0 &&
+    (currency === 'USD' || Number.isInteger(numericAmount));
   const selectedMethod = methods.find((method) => method.value === paymentMethod)!;
 
   const chooseCurrency = (next: Currency) => {
@@ -98,22 +102,37 @@ export function SupplierPaymentScreen({
 
   const addPage = async (source: 'camera' | 'gallery') => {
     try {
-      const access = source === 'camera'
-        ? await ImagePicker.requestCameraPermissionsAsync()
-        : await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const access =
+        source === 'camera'
+          ? await ImagePicker.requestCameraPermissionsAsync()
+          : await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!access.granted) {
-        setBanner({ tone: 'warning', message: source === 'camera' ? 'Allow camera access to photograph the bill' : 'Allow photo access to choose the bill' });
+        setBanner({
+          tone: 'warning',
+          message:
+            source === 'camera'
+              ? 'Allow camera access to photograph the bill'
+              : 'Allow photo access to choose the bill',
+        });
         return;
       }
-      const result = source === 'camera'
-        ? await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 1 })
-        : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsMultipleSelection: true, quality: 1 });
+      const result =
+        source === 'camera'
+          ? await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 1 })
+          : await ImagePicker.launchImageLibraryAsync({
+              mediaTypes: ['images'],
+              allowsMultipleSelection: true,
+              quality: 1,
+            });
       if (result.canceled) return;
       const added: string[] = [];
       for (const photo of result.assets) added.push(await prepareReceiptPhoto(photo));
       setPages((items) => [...items, ...added]);
     } catch (error) {
-      setBanner({ tone: 'danger', message: error instanceof Error ? error.message : 'Could not add the photo' });
+      setBanner({
+        tone: 'danger',
+        message: error instanceof Error ? error.message : 'Could not add the photo',
+      });
     }
   };
 
@@ -142,9 +161,13 @@ export function SupplierPaymentScreen({
       setPages([]);
       await queue.flush(client);
       const left = (await queue.listPending()).filter((entry) => ids.includes(entry.id));
-      setBillMessage(left.length ? left.map(uploadFailureMessage).join(' ') : 'Bill photo attached');
+      setBillMessage(
+        left.length ? left.map(uploadFailureMessage).join(' ') : 'Bill photo attached'
+      );
     } catch (error) {
-      setBillMessage(error instanceof Error ? error.message : 'Bill photo saved on this phone. It will retry.');
+      setBillMessage(
+        error instanceof Error ? error.message : 'Bill photo saved on this phone. It will retry.'
+      );
     }
   };
 
@@ -152,9 +175,8 @@ export function SupplierPaymentScreen({
     if (!validAmount) {
       setBanner({
         tone: 'warning',
-        message: currency === 'LBP'
-          ? 'Enter a positive whole LBP amount'
-          : 'Enter a positive amount',
+        message:
+          currency === 'LBP' ? 'Enter a positive whole LBP amount' : 'Enter a positive amount',
       });
       return;
     }
@@ -182,9 +204,8 @@ export function SupplierPaymentScreen({
       } else {
         setBanner({
           tone: 'danger',
-          message: error instanceof HcApiError
-            ? error.message
-            : 'Could not record payment. Try again',
+          message:
+            error instanceof HcApiError ? error.message : 'Could not record payment. Try again',
         });
       }
     } finally {
@@ -205,10 +226,11 @@ export function SupplierPaymentScreen({
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-      <View style={styles.header}>
-        <Text style={styles.title}>Record supplier payment</Text>
-      </View>
+    <FormScreen>
+      <PageTitle
+        title="Pay supplier"
+        subtitle={supplier && step !== 'PICK_SUPPLIER' ? supplier.name : undefined}
+      />
 
       {banner && <StatusBanner tone={banner.tone} message={banner.message} />}
 
@@ -221,18 +243,26 @@ export function SupplierPaymentScreen({
             onChangeText={setFilter}
             placeholder="Name or phone"
           />
-          {!suppliers ? <ActivityIndicator color={theme.colors.brand} /> : filteredSuppliers.length === 0 ? (
+          {!suppliers ? (
+            <ActivityIndicator color={theme.colors.brand} />
+          ) : filteredSuppliers.length === 0 ? (
             <Text style={styles.empty}>No suppliers found</Text>
-          ) : filteredSuppliers.map((row) => (
-            <Pressable
-              key={row.id}
-              onPress={() => { setSupplier(row); setBanner(null); setStep('DETAILS'); }}
-              style={({ pressed }) => [styles.supplierRow, pressed && styles.pressed]}
-            >
-              <Text style={styles.rowTitle}>{row.name}</Text>
-              {row.phone ? <Text style={styles.rowMeta}>{row.phone}</Text> : null}
-            </Pressable>
-          ))}
+          ) : (
+            filteredSuppliers.map((row) => (
+              <Pressable
+                key={row.id}
+                onPress={() => {
+                  setSupplier(row);
+                  setBanner(null);
+                  setStep('DETAILS');
+                }}
+                style={({ pressed }) => [styles.supplierRow, pressed && styles.pressed]}
+              >
+                <Text style={styles.rowTitle}>{row.name}</Text>
+                {row.phone ? <Text style={styles.rowMeta}>{row.phone}</Text> : null}
+              </Pressable>
+            ))
+          )}
           <AppButton label="Cancel" variant="secondary" onPress={onDone} />
         </View>
       )}
@@ -256,7 +286,9 @@ export function SupplierPaymentScreen({
                 onPress={() => chooseCurrency(value)}
                 style={[styles.segment, currency === value && styles.selected]}
               >
-                <Text style={[styles.choiceText, currency === value && styles.selectedText]}>{value}</Text>
+                <Text style={[styles.choiceText, currency === value && styles.selectedText]}>
+                  {value}
+                </Text>
               </Pressable>
             ))}
           </View>
@@ -268,7 +300,11 @@ export function SupplierPaymentScreen({
                 onPress={() => chooseMethod(method.value)}
                 style={[styles.method, paymentMethod === method.value && styles.selected]}
               >
-                <Text style={[styles.choiceText, paymentMethod === method.value && styles.selectedText]}>{method.label}</Text>
+                <Text
+                  style={[styles.choiceText, paymentMethod === method.value && styles.selectedText]}
+                >
+                  {method.label}
+                </Text>
               </Pressable>
             ))}
           </View>
@@ -297,8 +333,20 @@ export function SupplierPaymentScreen({
             </View>
           ) : null}
           <View style={styles.segmentRow}>
-            <View style={styles.flex}><AppButton label={pages.length ? 'Add page' : 'Take photo'} variant="secondary" onPress={() => void addPage('camera')} /></View>
-            <View style={styles.flex}><AppButton label="Gallery" variant="secondary" onPress={() => void addPage('gallery')} /></View>
+            <View style={styles.flex}>
+              <AppButton
+                label={pages.length ? 'Add page' : 'Take photo'}
+                variant="secondary"
+                onPress={() => void addPage('camera')}
+              />
+            </View>
+            <View style={styles.flex}>
+              <AppButton
+                label="Gallery"
+                variant="secondary"
+                onPress={() => void addPage('gallery')}
+              />
+            </View>
           </View>
           <AppButton label="Review payment" onPress={review} />
           <AppButton label="Back" variant="secondary" onPress={() => setStep('PICK_SUPPLIER')} />
@@ -312,11 +360,25 @@ export function SupplierPaymentScreen({
             <Text style={styles.summaryLabel}>Supplier</Text>
             <Text style={styles.summaryValue}>{supplier.name}</Text>
             <Text style={styles.summaryLabel}>Amount</Text>
-            <Text style={styles.amount}>{currency} {amount}</Text>
+            <Text style={styles.amount}>
+              {currency} {amount}
+            </Text>
             <Text style={styles.summaryLabel}>Method</Text>
             <Text style={styles.summaryValue}>{selectedMethod.label}</Text>
-            {note.trim() ? <><Text style={styles.summaryLabel}>Note</Text><Text style={styles.summaryValue}>{note.trim()}</Text></> : null}
-            {pages.length ? <><Text style={styles.summaryLabel}>Bill photo</Text><Text style={styles.summaryValue}>{pages.length} page{pages.length === 1 ? '' : 's'}</Text></> : null}
+            {note.trim() ? (
+              <>
+                <Text style={styles.summaryLabel}>Note</Text>
+                <Text style={styles.summaryValue}>{note.trim()}</Text>
+              </>
+            ) : null}
+            {pages.length ? (
+              <>
+                <Text style={styles.summaryLabel}>Bill photo</Text>
+                <Text style={styles.summaryValue}>
+                  {pages.length} page{pages.length === 1 ? '' : 's'}
+                </Text>
+              </>
+            ) : null}
           </View>
           <AppButton label="Record payment" onPress={() => void submit()} loading={submitting} />
           <AppButton label="Edit details" variant="secondary" onPress={() => setStep('DETAILS')} />
@@ -325,43 +387,77 @@ export function SupplierPaymentScreen({
 
       {step === 'DONE' && (
         <View style={styles.done}>
-          <Text style={styles.title}>Payment recorded ✓</Text>
-          {billMessage ? <StatusBanner tone={billMessage === 'Bill photo attached' ? 'info' : 'warning'} message={billMessage} /> : null}
+          <IconTile icon="checkmark-circle" tone="success" size={64} />
+          <Text style={styles.title}>Payment recorded</Text>
+          {billMessage ? (
+            <StatusBanner
+              tone={billMessage === 'Bill photo attached' ? 'info' : 'warning'}
+              message={billMessage}
+            />
+          ) : null}
           <AppButton label="Record another" onPress={recordAnother} />
           <AppButton label="Done" variant="secondary" onPress={onDone} />
         </View>
       )}
-    </ScrollView>
+    </FormScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { paddingBottom: 112, padding: 18, gap: 16, backgroundColor: theme.colors.background, flexGrow: 1 },
-  header: { gap: 3 },
-  title: { color: theme.colors.text, fontSize: 24, fontWeight: '900' },
+  title: { ...theme.text.headline, color: theme.colors.text, textAlign: 'center' },
   section: { gap: 12 },
-  step: { color: theme.colors.brand, fontSize: 13, fontWeight: '800' },
+  step: { ...theme.text.label, color: theme.colors.brandStrong },
   empty: { color: theme.colors.muted, textAlign: 'center', paddingVertical: 24 },
-  supplierRow: { padding: 13, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface },
-  pressed: { backgroundColor: theme.colors.neutralSoft },
+  supplierRow: {
+    minHeight: 64,
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.surfaceMuted,
+  },
+  pressed: { backgroundColor: theme.colors.brandSoft },
   rowTitle: { color: theme.colors.text, fontSize: 16, fontWeight: '700' },
   rowMeta: { color: theme.colors.muted, fontSize: 12, marginTop: 3 },
   supplierName: { color: theme.colors.text, fontSize: 20, fontWeight: '800' },
   fieldLabel: { color: theme.colors.muted, fontSize: 14, fontWeight: '700' },
   segmentRow: { flexDirection: 'row', gap: 10 },
-  segment: { flex: 1, padding: 13, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, alignItems: 'center' },
+  segment: {
+    flex: 1,
+    minHeight: 52,
+    justifyContent: 'center',
+    borderRadius: theme.radius.sm,
+    borderWidth: 1.5,
+    borderColor: theme.colors.fieldBorder,
+    backgroundColor: theme.colors.field,
+    alignItems: 'center',
+  },
   selected: { backgroundColor: theme.colors.brand, borderColor: theme.colors.brand },
   choiceText: { color: theme.colors.text, fontWeight: '800', textAlign: 'center' },
   selectedText: { color: theme.colors.surface },
   methodGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  method: { width: '48%', minHeight: 70, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, justifyContent: 'center' },
+  method: {
+    width: '48%',
+    minHeight: 64,
+    padding: 10,
+    borderRadius: theme.radius.md,
+    borderWidth: 1.5,
+    borderColor: theme.colors.fieldBorder,
+    backgroundColor: theme.colors.field,
+    justifyContent: 'center',
+  },
   note: { minHeight: 90, paddingTop: 12, textAlignVertical: 'top' },
-  summary: { padding: 16, gap: 5, borderRadius: 14, borderWidth: 1, borderColor: theme.colors.brandSoft, backgroundColor: theme.colors.surface },
+  summary: {
+    padding: 16,
+    gap: 5,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.surfaceMuted,
+  },
   summaryLabel: { color: theme.colors.muted, fontSize: 12, fontWeight: '700', marginTop: 6 },
   summaryValue: { color: theme.colors.text, fontSize: 16, fontWeight: '700' },
   amount: { color: theme.colors.brand, fontSize: 25, fontWeight: '900' },
   pageRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   pageThumb: { width: 96, height: 128, borderRadius: 10, backgroundColor: theme.colors.border },
   flex: { flex: 1 },
-  done: { flex: 1, minHeight: 400, alignItems: 'stretch', justifyContent: 'center', gap: 12 },
+  done: { flex: 1, minHeight: 400, alignItems: 'center', justifyContent: 'center', gap: 12 },
 });

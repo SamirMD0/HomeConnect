@@ -60,9 +60,12 @@ export function QrPairScreen({ visible, onCancel, onPaired }: QrPairScreenProps)
     return () => sub.remove();
   });
 
-  useEffect(() => () => {
-    if (hintTimer.current) clearTimeout(hintTimer.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (hintTimer.current) clearTimeout(hintTimer.current);
+    },
+    []
+  );
 
   if (!visible) return null;
 
@@ -122,7 +125,12 @@ export function QrPairScreen({ visible, onCancel, onPaired }: QrPairScreenProps)
               onPress={() => setTorch((value) => !value)}
               style={[styles.tool, torch && styles.toolOn]}
             >
-              <Ionicons name={torch ? 'flashlight' : 'flashlight-outline'} size={24} color="#FFFFFF" accessible={false} />
+              <Ionicons
+                name={torch ? 'flashlight' : 'flashlight-outline'}
+                size={24}
+                color="#FFFFFF"
+                accessible={false}
+              />
             </Pressable>
             <Pressable
               accessibilityRole="button"
@@ -131,16 +139,27 @@ export function QrPairScreen({ visible, onCancel, onPaired }: QrPairScreenProps)
               onPress={() => setZoomed((value) => !value)}
               style={[styles.tool, zoomed && styles.toolOn]}
             >
-              <Ionicons name={zoomed ? 'contract-outline' : 'expand-outline'} size={24} color="#FFFFFF" accessible={false} />
+              <Ionicons
+                name={zoomed ? 'contract-outline' : 'expand-outline'}
+                size={24}
+                color="#FFFFFF"
+                accessible={false}
+              />
             </Pressable>
           </View>
         </View>
       ) : (
         <View style={styles.permission}>
           <Ionicons name="camera-outline" size={56} color={theme.colors.muted} accessible={false} />
-          <Text style={styles.permissionText}>{blocked ? 'Camera is blocked' : 'Camera permission needed'}</Text>
+          <Text style={styles.permissionText}>
+            {blocked ? 'Camera is blocked' : 'Camera permission needed'}
+          </Text>
           {blocked ? (
-            <AppButton label="Open settings" icon="settings-outline" onPress={() => void Linking.openSettings()} />
+            <AppButton
+              label="Open settings"
+              icon="settings-outline"
+              onPress={() => void Linking.openSettings()}
+            />
           ) : (
             <AppButton
               label="Allow camera"
@@ -225,6 +244,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border,
   },
-  permissionText: { color: theme.colors.text, fontSize: 18, fontWeight: '700', textAlign: 'center' },
+  permissionText: {
+    color: theme.colors.text,
+    fontSize: 18,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
   actions: { gap: theme.spacing.sm },
 });

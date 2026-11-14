@@ -54,11 +54,17 @@ export function PairingScreen({ connection, onPaired, onChangeConnection }: Pair
   };
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      style={styles.flex}
+    >
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.hero}>
           <Text style={styles.title}>Pair this phone</Text>
-          <Text style={styles.subtitle}>On the PC, open Scanner Hub and press Generate Code. The code works once and expires after five minutes.</Text>
+          <Text style={styles.subtitle}>
+            On the PC, open Scanner Hub and press Generate Code. The code works once and expires
+            after five minutes.
+          </Text>
           <Text style={styles.address}>{scannerBaseUrl(connection)}</Text>
         </View>
 
@@ -92,7 +98,13 @@ export function PairingScreen({ connection, onPaired, onChangeConnection }: Pair
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  content: { flexGrow: 1, padding: 22, justifyContent: 'center', gap: 22, backgroundColor: '#f8fafc' },
+  content: {
+    flexGrow: 1,
+    padding: 22,
+    justifyContent: 'center',
+    gap: 22,
+    backgroundColor: '#f8fafc',
+  },
   hero: { gap: 9 },
   title: { color: '#0f172a', fontSize: 29, fontWeight: '900' },
   subtitle: { color: '#64748b', fontSize: 15, lineHeight: 22 },

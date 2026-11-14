@@ -1,29 +1,37 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { theme } from '../theme';
 import { useState } from 'react';
-import { Alert, Keyboard, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Keyboard } from 'react-native';
 import { login } from '../api/auth-api';
 import { HcApiError } from '../api/hc-client';
 import { AppButton } from '../components/AppButton';
 import { AppInput } from '../components/AppInput';
 import { StatusBanner } from '../components/StatusBanner';
 import { ConnectionSettings } from '../types/scanner.types';
+import { AuthLayout } from '../ui/AuthLayout';
 
 interface LoginScreenProps {
   connection: ConnectionSettings;
   startupMessage: string | null;
-  onLoggedIn: (accessToken: string, user: { id: string; username: string; fullName: string; role: 'ADMIN' | 'EMPLOYEE' }, refreshToken?: string | null) => Promise<void>;
+  onLoggedIn: (
+    accessToken: string,
+    user: { id: string; username: string; fullName: string; role: 'ADMIN' | 'EMPLOYEE' },
+    refreshToken?: string | null
+  ) => Promise<void>;
   onChangeConnection: () => Promise<void>;
 }
 
 type Banner = { tone: 'info' | 'warning' | 'danger'; message: string };
 
-export function LoginScreen({ connection, startupMessage, onLoggedIn, onChangeConnection }: LoginScreenProps) {
+export function LoginScreen({
+  connection,
+  startupMessage,
+  onLoggedIn,
+  onChangeConnection,
+}: LoginScreenProps) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [banner, setBanner] = useState<Banner | null>(
-    startupMessage ? { tone: 'info', message: startupMessage } : null,
+    startupMessage ? { tone: 'info', message: startupMessage } : null
   );
 
   const canSubmit = username.trim().length > 0 && password.length > 0 && !submitting;
@@ -40,7 +48,10 @@ export function LoginScreen({ connection, startupMessage, onLoggedIn, onChangeCo
       if (error instanceof HcApiError && error.kind === 'UNAUTHORIZED') {
         setBanner({ tone: 'danger', message: 'Username or password is wrong. Try again.' });
       } else if (error instanceof HcApiError && error.kind === 'RATE_LIMITED') {
-        setBanner({ tone: 'warning', message: 'Too many attempts. Wait a minute, then try again.' });
+        setBanner({
+          tone: 'warning',
+          message: 'Too many attempts. Wait a minute, then try again.',
+        });
       } else if (error instanceof HcApiError) {
         setBanner({ tone: 'danger', message: error.message });
       } else {
@@ -52,78 +63,54 @@ export function LoginScreen({ connection, startupMessage, onLoggedIn, onChangeCo
   };
 
   const confirmChangeConnection = () => {
-    Alert.alert(
-      'Change PC',
-      'Connect this phone to a different PC?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Change', style: 'destructive', onPress: () => void onChangeConnection() },
-      ],
-    );
+    Alert.alert('Change PC', 'Connect this phone to a different PC?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Change', style: 'destructive', onPress: () => void onChangeConnection() },
+    ]);
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-      <View style={styles.header}>
-        <View style={styles.logo}>
-          <Ionicons name="person-circle-outline" size={44} color={theme.colors.brand} accessible={false} />
-        </View>
-        <Text accessibilityRole="header" style={styles.title}>Sign in</Text>
-        <Text style={styles.subtitle}>
-          <Ionicons name="desktop-outline" size={14} color={theme.colors.muted} /> {connection.host}:{connection.port}
-        </Text>
-      </View>
-
+    <AuthLayout title="Welcome back" subtitle={`Sign in to the shop PC at ${connection.host}`}>
       {banner ? <StatusBanner tone={banner.tone} message={banner.message} /> : null}
-
-      <View style={styles.form}>
-        <AppInput
-          label="Username"
-          value={username}
-          onChangeText={setUsername}
-          autoCapitalize="none"
-          autoCorrect={false}
-          editable={!submitting}
-        />
-        <AppInput
-          label="Password"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          textContentType="password"
-          autoCapitalize="none"
-          autoCorrect={false}
-          editable={!submitting}
-        />
-
-        <AppButton
-          label={submitting ? 'Signing in…' : 'Sign in'}
-          icon="log-in-outline"
-          onPress={handleSubmit}
-          loading={submitting}
-          disabled={!canSubmit}
-        />
-      </View>
-
-      <AppButton label="Change PC" icon="swap-horizontal-outline" variant="secondary" onPress={confirmChangeConnection} />
-    </ScrollView>
+      <AppInput
+        label="Username"
+        required
+        icon="person-outline"
+        value={username}
+        onChangeText={setUsername}
+        autoCapitalize="none"
+        autoCorrect={false}
+        autoComplete="username"
+        returnKeyType="next"
+        editable={!submitting}
+      />
+      <AppInput
+        label="Password"
+        required
+        icon="lock-closed-outline"
+        value={password}
+        onChangeText={setPassword}
+        secureTextEntry
+        textContentType="password"
+        autoComplete="password"
+        autoCapitalize="none"
+        autoCorrect={false}
+        returnKeyType="go"
+        onSubmitEditing={() => void handleSubmit()}
+        editable={!submitting}
+      />
+      <AppButton
+        label={submitting ? 'Signing in…' : 'Sign in'}
+        onPress={handleSubmit}
+        loading={submitting}
+        disabled={!canSubmit}
+      />
+      <AppButton
+        label="Use another PC"
+        icon="swap-horizontal-outline"
+        variant="ghost"
+        onPress={confirmChangeConnection}
+      />
+    </AuthLayout>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flexGrow: 1, justifyContent: 'center', padding: 22, gap: 20, backgroundColor: theme.colors.background },
-  header: { gap: 6, alignItems: 'center' },
-  logo: {
-    width: 76,
-    height: 76,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: theme.colors.brandSoft,
-    marginBottom: 8,
-  },
-  title: { fontSize: 28, fontWeight: '800', color: theme.colors.text },
-  subtitle: { color: theme.colors.muted },
-  subtitleStrong: { fontWeight: '700', color: theme.colors.text },
-  form: { gap: 16 },
-});

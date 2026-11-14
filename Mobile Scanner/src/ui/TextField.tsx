@@ -11,6 +11,8 @@ export interface TextFieldProps extends TextInputProps {
   /** Replaces the hint and turns the border red. */
   error?: string | null;
   icon?: keyof typeof Ionicons.glyphMap;
+  /** Visually hide the label (search boxes); screen readers still read it. */
+  hideLabel?: boolean;
 }
 
 /**
@@ -18,7 +20,20 @@ export interface TextFieldProps extends TextInputProps {
  * the border brand blue; `secureTextEntry` adds a show/hide eye.
  */
 export const TextField = forwardRef<TextInput, TextFieldProps>(function TextField(
-  { label, required, hint, error, icon, secureTextEntry, style, onFocus, onBlur, editable = true, ...props },
+  {
+    label,
+    required,
+    hint,
+    error,
+    icon,
+    hideLabel,
+    secureTextEntry,
+    style,
+    onFocus,
+    onBlur,
+    editable = true,
+    ...props
+  },
   ref
 ) {
   const [focused, setFocused] = useState(false);
@@ -26,10 +41,12 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
   const secure = Boolean(secureTextEntry);
   return (
     <View style={styles.group}>
-      <Text style={styles.label}>
-        {label}
-        {required ? <Text style={styles.required}> *</Text> : null}
-      </Text>
+      {hideLabel ? null : (
+        <Text style={styles.label}>
+          {label}
+          {required ? <Text style={styles.required}> *</Text> : null}
+        </Text>
+      )}
       <View
         style={[
           styles.box,
@@ -38,7 +55,9 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
           !editable && styles.disabled,
         ]}
       >
-        {icon ? <Ionicons name={icon} size={20} color={theme.colors.muted} accessible={false} /> : null}
+        {icon ? (
+          <Ionicons name={icon} size={20} color={theme.colors.muted} accessible={false} />
+        ) : null}
         <TextInput
           ref={ref}
           {...props}
@@ -62,12 +81,19 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
         {secure ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={revealed ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`}
+            accessibilityLabel={
+              revealed ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`
+            }
             onPress={() => setRevealed((value) => !value)}
             hitSlop={8}
             style={styles.eye}
           >
-            <Ionicons name={revealed ? 'eye-outline' : 'eye-off-outline'} size={22} color={theme.colors.muted} accessible={false} />
+            <Ionicons
+              name={revealed ? 'eye-outline' : 'eye-off-outline'}
+              size={22}
+              color={theme.colors.muted}
+              accessible={false}
+            />
           </Pressable>
         ) : null}
       </View>
@@ -100,7 +126,13 @@ const styles = StyleSheet.create({
   focused: { borderColor: theme.colors.brand, backgroundColor: theme.colors.surface },
   errored: { borderColor: theme.colors.danger },
   disabled: { backgroundColor: theme.colors.neutralSoft, borderColor: theme.colors.border },
-  input: { flex: 1, minHeight: 48, ...theme.text.body, color: theme.colors.text, paddingVertical: 10 },
+  input: {
+    flex: 1,
+    minHeight: 48,
+    ...theme.text.body,
+    color: theme.colors.text,
+    paddingVertical: 10,
+  },
   eye: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', marginRight: -8 },
   hint: { ...theme.text.caption, color: theme.colors.muted },
   error: { ...theme.text.caption, color: theme.colors.danger },

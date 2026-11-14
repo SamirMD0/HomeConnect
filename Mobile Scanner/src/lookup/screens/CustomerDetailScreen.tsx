@@ -1,12 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Alert, Linking, Text, View } from 'react-native';
-import { formatBusinessDate } from '@shared/money-format';
+import { Alert, Linking } from 'react-native';
+import { formatBusinessDate, formatMoney } from '@shared/money-format';
 import { getCustomer, getCustomerFinancial } from '../../api/customers-api';
 import { useLookup } from '../useLookup';
-import { Card, Field, PagedRows, ReadScreen, ReadState, readStyles } from '../ReadUI';
-import { ListRow } from '../../components/ListRow';
-import { AppButton } from '../../components/AppButton';
+import { Card, Field, PagedRows, ReadScreen, ReadState } from '../ReadUI';
+import { PageTitle } from '../../ui/ScreenHeader';
+import { HeroCard, QuickGrid, type QuickAction } from '../../ui/Stats';
+import { Badge } from '../../ui/Badge';
 import { contactPhone, humanLabel } from '../filters';
 export function CustomerDetailScreen() {
   const { id = '' } = useLocalSearchParams<{ id: string }>(),
@@ -43,11 +44,71 @@ export function CustomerDetailScreen() {
         <ReadState query={customer} />
         {data && (
           <>
-            <Text accessibilityRole="header" style={readStyles.title}>
-              {data.name}
-            </Text>
-            {session.can('payments.create') && <AppButton label="Take payment" onPress={() => router.push({ pathname: '/(tabs)/sell/collect/[id]', params: { id } })} />}
-            {session.user?.role === 'ADMIN' && <AppButton label="New prepaid item" variant="secondary" onPress={() => router.push({ pathname: '/(tabs)/sell/customer/[id]/prepaid-new', params: { id } })} />}
+            <PageTitle title={data.name} subtitle={data.phone || undefined} />
+            {!data.isActive && <Badge tone="neutral" label="Archived" />}
+            {totals && (
+              <HeroCard
+                label="Balance due"
+                value={formatMoney(totals.totalOutstanding)}
+                caption={
+                  totals.overdueAmount && Number(totals.overdueAmount) > 0
+                    ? `${formatMoney(totals.overdueAmount)} overdue`
+                    : `Next due ${formatBusinessDate(totals.nextDueDate)}`
+                }
+              />
+            )}
+            <QuickGrid
+              actions={[
+                ...(session.can('payments.create')
+                  ? [
+                      {
+                        label: 'Take payment',
+                        icon: 'wallet-outline',
+                        tone: 'success',
+                        onPress: () =>
+                          router.push({ pathname: '/(tabs)/sell/collect/[id]', params: { id } }),
+                      } as QuickAction,
+                    ]
+                  : []),
+                {
+                  label: 'Statement',
+                  icon: 'document-text-outline',
+                  onPress: () =>
+                    router.push({
+                      pathname: '/(tabs)/sell/customer/[id]/statement',
+                      params: { id },
+                    }),
+                },
+                ...(data.phone
+                  ? ([
+                      {
+                        label: 'Call',
+                        icon: 'call-outline',
+                        onPress: () => openContact(`tel:+${contactPhone(data.phone)}`),
+                      },
+                      {
+                        label: 'WhatsApp',
+                        icon: 'logo-whatsapp',
+                        tone: 'success',
+                        onPress: () => openContact(`https://wa.me/${contactPhone(data.phone)}`),
+                      },
+                    ] as QuickAction[])
+                  : []),
+                ...(session.user?.role === 'ADMIN'
+                  ? [
+                      {
+                        label: 'Prepaid item',
+                        icon: 'time-outline',
+                        onPress: () =>
+                          router.push({
+                            pathname: '/(tabs)/sell/customer/[id]/prepaid-new',
+                            params: { id },
+                          }),
+                      } as QuickAction,
+                    ]
+                  : []),
+              ]}
+            />
             <Card title="Contact">
               <Field
                 label="Branch"
@@ -58,21 +119,6 @@ export function CustomerDetailScreen() {
               />
               <Field label="Phone" value={data.phone} />
               <Field label="Address" value={data.address} />
-              <Field label="Status" value={data.isActive ? 'Active' : 'Archived'} />
-              {data.phone && (
-                <View style={{ gap: 8 }}>
-                  <AppButton
-                    label="Call customer"
-                    variant="secondary"
-                    onPress={() => openContact(`tel:+${contactPhone(data.phone)}`)}
-                  />
-                  <AppButton
-                    label="WhatsApp"
-                    variant="secondary"
-                    onPress={() => openContact(`https://wa.me/${contactPhone(data.phone)}`)}
-                  />
-                </View>
-              )}
             </Card>
           </>
         )}
@@ -108,13 +154,6 @@ export function CustomerDetailScreen() {
                 money
               />
             </Card>
-            <ListRow
-              title="Statement of account"
-              icon="document-text-outline"
-              onPress={() =>
-                router.push({ pathname: '/(tabs)/sell/customer/[id]/statement', params: { id } })
-              }
-            />
             <PagedRows
               title="Debts"
               rows={financial.data?.debts ?? []}

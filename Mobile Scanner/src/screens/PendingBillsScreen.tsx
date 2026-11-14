@@ -1,6 +1,6 @@
 import { theme } from '../theme';
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, AppState, Image, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, AppState, Image, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { clientFrom } from '../api/products-api';
 import {
@@ -14,6 +14,8 @@ import { AppButton } from '../components/AppButton';
 import { StatusBanner } from '../components/StatusBanner';
 import { QueuedReceipt, receiptQueue, uploadFailureMessage } from '../services/receipt-queue';
 import { ConnectionSettings } from '../types/scanner.types';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
+import { PageTitle } from '../ui/ScreenHeader';
 
 export function PendingBillsScreen({
   connection,
@@ -70,8 +72,15 @@ export function PendingBillsScreen({
   };
   return (
     <SafeAreaView style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Pending bills</Text>
+      <KeyboardAwareScrollView
+        bottomOffset={24}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
+        <PageTitle
+          title="Unsent bill photos"
+          subtitle="Saved on this phone. They send when the PC is reachable."
+        />
         {message && <StatusBanner tone="warning" message={message} />}
         {changing ? (
           <>
@@ -215,7 +224,7 @@ export function PendingBillsScreen({
           </>
         )}
         <AppButton label="Done" variant="secondary" disabled={busy} onPress={onDone} />
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }

@@ -9,7 +9,11 @@ import { AppInput } from '../components/AppInput';
 import { ProductResult } from '../components/ProductResult';
 import { StatusBanner } from '../components/StatusBanner';
 import { ConnectionSettings, ScanResult } from '../types/scanner.types';
-import { recentSubmission, RecentSubmission, shouldSuppressDuplicate } from '../utils/duplicate-scan';
+import {
+  recentSubmission,
+  RecentSubmission,
+  shouldSuppressDuplicate,
+} from '../utils/duplicate-scan';
 import { prepareScanCode } from '../utils/scan-code';
 
 interface ScannerScreenProps {
@@ -25,7 +29,15 @@ interface ScannerScreenProps {
 
 type Banner = { tone: 'info' | 'warning' | 'danger'; message: string };
 
-const PRODUCT_BARCODE_TYPES: BarcodeType[] = ['ean13', 'ean8', 'upc_a', 'upc_e', 'code128', 'code39', 'codabar'];
+const PRODUCT_BARCODE_TYPES: BarcodeType[] = [
+  'ean13',
+  'ean8',
+  'upc_a',
+  'upc_e',
+  'code128',
+  'code39',
+  'codabar',
+];
 
 export function ScannerScreen({
   connection,
@@ -46,7 +58,9 @@ export function ScannerScreen({
   const [manualCode, setManualCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<ScanResult | null>(null);
-  const [banner, setBanner] = useState<Banner | null>(startupMessage ? { tone: 'warning', message: startupMessage } : null);
+  const [banner, setBanner] = useState<Banner | null>(
+    startupMessage ? { tone: 'warning', message: startupMessage } : null
+  );
   const recentRef = useRef<RecentSubmission | null>(null);
 
   const submitCode = async (rawCode: string) => {
@@ -77,11 +91,17 @@ export function ScannerScreen({
         return;
       }
       if (error instanceof HcApiError && error.kind === 'RATE_LIMITED') {
-        setBanner({ tone: 'warning', message: 'Scans are arriving too quickly. Wait a moment and try again' });
+        setBanner({
+          tone: 'warning',
+          message: 'Scans are arriving too quickly. Wait a moment and try again',
+        });
       } else if (error instanceof HcApiError && error.kind === 'NETWORK') {
         setBanner({ tone: 'danger', message: error.message });
       } else {
-        setBanner({ tone: 'danger', message: 'The server could not process this scan. Try again.' });
+        setBanner({
+          tone: 'danger',
+          message: 'The server could not process this scan. Try again.',
+        });
       }
     } finally {
       setBusy(false);
@@ -102,7 +122,8 @@ export function ScannerScreen({
     try {
       await CameraView.launchScanner({ barcodeTypes: PRODUCT_BARCODE_TYPES });
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'The native barcode scanner could not start.';
+      const message =
+        error instanceof Error ? error.message : 'The native barcode scanner could not start.';
       setBanner({ tone: 'danger', message: `Camera could not start: ${message}` });
     } finally {
       subscription.remove();
@@ -121,7 +142,10 @@ export function ScannerScreen({
     setCameraSession((current) => current + 1);
     setCameraVisible(next.granted);
     if (!next.granted) {
-      setBanner({ tone: 'warning', message: 'Camera access was not granted. Manual entry remains available.' });
+      setBanner({
+        tone: 'warning',
+        message: 'Camera access was not granted. Manual entry remains available.',
+      });
     }
   };
 
@@ -132,7 +156,7 @@ export function ScannerScreen({
 
   const switchCamera = () => {
     setCameraReady(false);
-    setFacing((current) => current === 'back' ? 'front' : 'back');
+    setFacing((current) => (current === 'back' ? 'front' : 'back'));
     setCameraSession((current) => current + 1);
   };
 
@@ -140,9 +164,7 @@ export function ScannerScreen({
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <View style={styles.header}>
         <View style={styles.headerText}>
-          <Text style={styles.eyebrow}>
-            Signed in as {userDisplayName}
-          </Text>
+          <Text style={styles.eyebrow}>Signed in as {userDisplayName}</Text>
           <Text style={styles.backendUrl}>{backendBaseUrl(connection)}</Text>
         </View>
         <View style={styles.connectedDot} />
@@ -154,7 +176,10 @@ export function ScannerScreen({
 
       <Modal
         animationType="slide"
-        onRequestClose={() => { setCameraVisible(false); setCameraReady(false); }}
+        onRequestClose={() => {
+          setCameraVisible(false);
+          setCameraReady(false);
+        }}
         statusBarTranslucent
         visible={cameraVisible && Boolean(permission?.granted)}
       >
@@ -168,11 +193,15 @@ export function ScannerScreen({
               ratio="4:3"
               style={styles.camera}
               barcodeScannerSettings={{ barcodeTypes: PRODUCT_BARCODE_TYPES }}
-              onBarcodeScanned={busy || result ? undefined : ({ data }) => {
-                setCameraVisible(false);
-                setCameraReady(false);
-                void submitCode(data);
-              }}
+              onBarcodeScanned={
+                busy || result
+                  ? undefined
+                  : ({ data }) => {
+                      setCameraVisible(false);
+                      setCameraReady(false);
+                      void submitCode(data);
+                    }
+              }
               onCameraReady={() => setCameraReady(true)}
               onMountError={({ message }) => {
                 setCameraReady(false);
@@ -184,13 +213,20 @@ export function ScannerScreen({
             {cameraReady ? 'Camera ready — point it at a barcode' : 'Starting camera…'}
           </Text>
           {Platform.OS === 'android' && CameraView.isModernBarcodeScannerAvailable && (
-            <AppButton label="Use system scanner" onPress={() => void launchNativeScanner()} variant="secondary" />
+            <AppButton
+              label="Use system scanner"
+              onPress={() => void launchNativeScanner()}
+              variant="secondary"
+            />
           )}
           <AppButton label="Restart camera" onPress={restartCamera} variant="secondary" />
           <AppButton label="Switch camera" onPress={switchCamera} variant="secondary" />
           <AppButton
             label="Close camera"
-            onPress={() => { setCameraVisible(false); setCameraReady(false); }}
+            onPress={() => {
+              setCameraVisible(false);
+              setCameraReady(false);
+            }}
             variant="secondary"
           />
         </View>
@@ -214,22 +250,35 @@ export function ScannerScreen({
           onSubmitEditing={() => void submitCode(manualCode)}
           placeholder="Scan or type a code"
         />
-        <AppButton label="Look up product" onPress={() => void submitCode(manualCode)} loading={busy} />
+        <AppButton
+          label="Look up product"
+          onPress={() => void submitCode(manualCode)}
+          loading={busy}
+        />
       </View>
 
       {result && (
         <View style={styles.resultSection}>
           <ProductResult result={result} />
-          {result.product && onProductDetail && <AppButton label="View product details" onPress={() => onProductDetail(result.product!.id)} />}
-          {result.product && onAddToOrder && <AppButton label="Add to order" onPress={() => onAddToOrder(result.product!.id)} />}
+          {result.product && onProductDetail && (
+            <AppButton
+              label="View product details"
+              onPress={() => onProductDetail(result.product!.id)}
+            />
+          )}
+          {result.product && onAddToOrder && (
+            <AppButton label="Add to order" onPress={() => onAddToOrder(result.product!.id)} />
+          )}
           <AppButton
             label="Scan another"
-            onPress={() => { setResult(null); setBanner(null); }}
+            onPress={() => {
+              setResult(null);
+              setBanner(null);
+            }}
             variant="secondary"
           />
         </View>
       )}
-
     </ScrollView>
   );
 }
@@ -240,12 +289,39 @@ const styles = StyleSheet.create({
   headerText: { flex: 1, gap: 2 },
   eyebrow: { color: theme.colors.brand, fontSize: 14, fontWeight: '700' },
   backendUrl: { color: theme.colors.muted, fontSize: 13 },
-  connectedDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: theme.colors.success, marginTop: 8 },
+  connectedDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: theme.colors.success,
+    marginTop: 8,
+  },
   camera: { flex: 1 },
-  cameraModal: { flex: 1, backgroundColor: theme.colors.text, padding: 18, paddingTop: 48, gap: 12 },
-  cameraModalTitle: { color: theme.colors.surface, fontSize: 20, fontWeight: '900', textAlign: 'center' },
-  cameraModalPreview: { flex: 1, minHeight: 320, overflow: 'hidden', backgroundColor: theme.colors.text },
-  cameraModalStatus: { color: theme.colors.successSoft, fontSize: 13, fontWeight: '700', textAlign: 'center' },
+  cameraModal: {
+    flex: 1,
+    backgroundColor: theme.colors.text,
+    padding: 18,
+    paddingTop: 48,
+    gap: 12,
+  },
+  cameraModalTitle: {
+    color: theme.colors.surface,
+    fontSize: 20,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+  cameraModalPreview: {
+    flex: 1,
+    minHeight: 320,
+    overflow: 'hidden',
+    backgroundColor: theme.colors.text,
+  },
+  cameraModalStatus: {
+    color: theme.colors.successSoft,
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
   dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
   divider: { height: 1, backgroundColor: theme.colors.border, flex: 1 },
   or: { color: theme.colors.muted, fontSize: 10, fontWeight: '800' },
