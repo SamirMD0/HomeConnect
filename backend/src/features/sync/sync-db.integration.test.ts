@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { app } from '../../app';
 import { prisma } from '../../lib/prisma';
 import { branchFixture } from '../../test/branch-fixture';
+import { insertMigrationRow } from '../../test/branch-migration-fixture';
 import { isIsolatedTestDatabase } from '../../test/database';
 import { readChanges } from './sync-feed.service';
 
@@ -13,6 +14,8 @@ const marker = randomUUID();
 const userId = randomUUID();
 const customerId = randomUUID();
 const productIds = [randomUUID(), randomUUID(), randomUUID(), randomUUID()];
+const categoryIds: string[] = [];
+const orderIds: string[] = [];
 let branchId: string;
 let token: string;
 const scope = { mode: 'single' as const, branchIds: [] as string[] };
@@ -34,10 +37,13 @@ const productData = (id: string) => ({ id, sku: `SYNC-${id}`, name: `Sync ${id}`
     await prisma.paymentAllocation.deleteMany({ where: { payment: { createdById: userId } } });
     await prisma.payment.deleteMany({ where: { createdById: userId } });
     await prisma.debt.deleteMany({ where: { createdById: userId } });
+    await prisma.stockMovement.deleteMany({ where: { productId: { in: productIds } } });
+    await prisma.salesOrder.deleteMany({ where: { id: { in: orderIds } } });
     await prisma.product.deleteMany({ where: { id: { in: productIds } } });
+    for (const id of [...categoryIds].reverse()) await prisma.category.deleteMany({ where: { id } });
     await prisma.customer.deleteMany({ where: { id: customerId } });
     await prisma.user.deleteMany({ where: { id: userId } });
-    await prisma.syncChange.deleteMany({ where: { entityId: { in: [userId, customerId, ...productIds] } } });
+    await prisma.syncChange.deleteMany({ where: { entityId: { in: [userId, customerId, ...productIds, ...categoryIds, ...orderIds] } } });
     await prisma.$disconnect();
   }, 30000);
 
@@ -134,6 +140,178 @@ const productData = (id: string) => ({ id, sku: `SYNC-${id}`, name: `Sync ${id}`
     await expectCustomerChange(after);
     await expectEndpointBalance(after, '0.00');
   }, 30000);
+
+  it('records exactly one product change for a sale movement despite three historical orders', async () => {
+    const productId = randomUUID();
+    productIds.push(productId);
+    await prisma.product.create({ data: productData(productId) });
+    for (let index = 0; index < 3; index++) {
+      const id = randomUUID();
+      orderIds.push(id);
+      await insertMigrationRow(prisma, 'sales_orders', { id, branchId, createdById: userId, orderDate: new Date('2020-01-01') });
+      await insertMigrationRow(prisma, 'sales_order_items', {
+        salesOrderId: id, productId, unitPriceExVat: '10.00', vatAmount: '0.00',
+        lineTotalIncVat: '10.00', taxRateSnapshot: '0.000',
+      });
+    }
+    const after = await cursor();
+    await prisma.stockMovement.create({ data: {
+      productId, movementType: 'SALE_FULFILLMENT', quantityChange: -1, quantityBefore: 10, quantityAfter: 9,
+      reason: 'Sync fanout regression', referenceType: 'sales_order', referenceId: orderIds[0], createdById: userId,
+    } });
+    expect(await prisma.syncChange.findMany({ where: { seq: { gt: after } } })).toEqual([
+      expect.objectContaining({ entity: 'product', entityId: productId, op: 'upsert' }),
+    ]);
+    const beforeRename = await cursor();
+    await prisma.product.update({ where: { id: productId }, data: { name: 'Renamed product', sku: `RENAMED-${productId}` } });
+    expect(await prisma.syncChange.findMany({ where: { seq: { gt: beforeRename } } })).toEqual([
+      expect.objectContaining({ entity: 'product', entityId: productId }),
+    ]);
+    const feed = await readChanges(after - 1n, 500, scope);
+    const order = feed.records.find(record => record.entity === 'sales_order');
+    expect(order).toBeDefined();
+    expect(order).not.toHaveProperty('data.items.0.product.stockQuantity');
+    expect(order).not.toHaveProperty('data.items.0.product.costPrice');
+    expect(order).not.toHaveProperty('data.items.0.inventory');
+  }, 30000);
+
+  it('inserts empty categories without product fanout and limits path changes to the subtree', async () => {
+    const root = randomUUID(), child = randomUUID(), grandchild = randomUUID(), sibling = randomUUID();
+    categoryIds.push(root, child, grandchild, sibling);
+    await prisma.category.create({ data: { id: root, name: `Root ${marker}` } });
+    const beforeInsert = await cursor();
+    await prisma.category.create({ data: { id: child, name: 'Child', parentId: root } });
+    expect((await prisma.syncChange.findMany({ where: { seq: { gt: beforeInsert } } })).map(row => [row.entity, row.entityId])).toEqual(
+      expect.arrayContaining([['category', child], ['category', root]])
+    );
+    expect(await prisma.syncChange.count({ where: { seq: { gt: beforeInsert }, entity: 'product' } })).toBe(0);
+    await prisma.category.create({ data: { id: grandchild, name: 'Grandchild', parentId: child } });
+    await prisma.category.create({ data: { id: sibling, name: 'Sibling', parentId: root } });
+    const ids = [randomUUID(), randomUUID(), randomUUID(), randomUUID()];
+    productIds.push(...ids);
+    await prisma.product.createMany({ data: [root, child, grandchild, sibling].map((categoryId, index) => ({
+      ...productData(ids[index]), categoryId,
+    })) });
+    const beforeRename = await cursor();
+    await prisma.category.update({ where: { id: child }, data: { name: 'Renamed child' } });
+    const rows = await prisma.syncChange.findMany({ where: { seq: { gt: beforeRename } } });
+    expect(rows.map(row => [row.entity, row.entityId])).toEqual(expect.arrayContaining([
+      ['category', child], ['category', grandchild], ['product', ids[1]], ['product', ids[2]],
+    ]));
+    expect(rows).toHaveLength(4);
+    const beforeMetadata = await cursor();
+    await prisma.category.update({ where: { id: child }, data: { isActive: false } });
+    expect(await prisma.syncChange.findMany({ where: { seq: { gt: beforeMetadata } } })).toEqual([
+      expect.objectContaining({ entity: 'category', entityId: child }),
+    ]);
+    const beforeMove = await cursor();
+    await prisma.category.update({ where: { id: grandchild }, data: { parentId: sibling } });
+    const moved = await prisma.syncChange.findMany({ where: { seq: { gt: beforeMove } } });
+    expect(moved.map(row => [row.entity, row.entityId])).toEqual(expect.arrayContaining([
+      ['category', grandchild], ['category', child], ['category', sibling], ['product', ids[2]],
+    ]));
+    expect(moved).toHaveLength(4);
+    await prisma.product.update({ where: { id: ids[2] }, data: { categoryId: null } });
+    const beforeDelete = await cursor();
+    await prisma.category.delete({ where: { id: grandchild } });
+    expect(await prisma.syncChange.findMany({ where: { seq: { gt: beforeDelete } } })).toEqual(expect.arrayContaining([
+      expect.objectContaining({ entity: 'category', entityId: grandchild, op: 'delete' }),
+      expect.objectContaining({ entity: 'category', entityId: sibling, op: 'upsert' }),
+    ]));
+    expect(await prisma.syncChange.count({ where: { seq: { gt: beforeDelete }, entity: 'product' } })).toBe(0);
+  }, 30000);
+
+  it('returns busy after the two-second lock timeout and releases its queued exclusive request', async () => {
+    let release!: () => void;
+    let acquired!: () => void;
+    const hold = new Promise<void>(resolve => { release = resolve; });
+    const ready = new Promise<void>(resolve => { acquired = resolve; });
+    const writer = prisma.$transaction(async tx => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock_shared(74103, 1)`;
+      acquired();
+      await hold;
+    }, { timeout: 10000 });
+    await ready;
+    try {
+      const after = await cursor();
+      expect(await readChanges(after, 500, scope)).toEqual({ records: [], nextSeq: after.toString(), hasMore: false, busy: true });
+      const locks = await prisma.$queryRaw<Array<{ waiting: boolean }>>`
+        SELECT EXISTS (SELECT 1 FROM pg_locks WHERE locktype = 'advisory'
+          AND classid = 74103 AND objid = 1 AND mode = 'ExclusiveLock' AND NOT granted) AS waiting`;
+      expect(locks[0].waiting).toBe(false);
+    } finally {
+      release();
+      await writer;
+    }
+  }, 15000);
+
+  it('targets only direct and implicit pricing/tax consumers on relevant changes', async () => {
+    const rollback = new Error('Rollback pricing fixtures');
+    await expect(prisma.$transaction(async tx => {
+      const preset = await insertMigrationRow(tx, 'pricing_presets', { createdById: userId });
+      const otherPreset = await insertMigrationRow(tx, 'pricing_presets', { createdById: userId });
+      const defaultPreset = await insertMigrationRow(tx, 'pricing_presets', { createdById: userId, isDefault: true });
+      const rate = await insertMigrationRow(tx, 'tax_rates', { createdById: userId });
+      const otherRate = await insertMigrationRow(tx, 'tax_rates', { createdById: userId });
+      const profile = await insertMigrationRow(tx, 'tax_profiles', { taxRateId: rate, isDefault: true });
+      const otherProfile = await insertMigrationRow(tx, 'tax_profiles', { taxRateId: otherRate });
+      const ids = [randomUUID(), randomUUID(), randomUUID(), randomUUID()];
+      await tx.product.createMany({ data: [
+        { ...productData(ids[0]), costPrice: '10.00', pricingPresetId: preset, taxProfileId: profile },
+        { ...productData(ids[1]), costPrice: '10.00', pricingPresetId: otherPreset, taxProfileId: otherProfile },
+        { ...productData(ids[2]), costPrice: '10.00' },
+        { ...productData(ids[3]), price: '15.00', taxProfileId: otherProfile },
+      ] });
+      const position = async () => (await tx.syncChange.aggregate({ _max: { seq: true } }))._max.seq ?? 0n;
+      const targets = async (after: bigint) => (await tx.syncChange.findMany({
+        where: { seq: { gt: after }, entity: 'product', entityId: { in: ids } },
+      })).map(row => row.entityId).sort();
+
+      let after = await position();
+      await tx.pricingPreset.update({ where: { id: preset }, data: { profitPercent: '20.00' } });
+      expect(await targets(after)).toEqual([ids[0]]);
+      after = await position();
+      await tx.pricingPreset.update({ where: { id: defaultPreset }, data: { roundingMode: 'NEAREST_1' } });
+      expect(await targets(after)).toEqual([ids[2]]);
+      after = await position();
+      await tx.pricingPreset.update({ where: { id: preset }, data: { updatedAt: new Date(), notes: 'Metadata only' } });
+      expect(await targets(after)).toEqual([]);
+
+      after = await position();
+      await tx.taxProfile.update({ where: { id: profile }, data: { code: `RENAMED-${profile}` } });
+      expect(await targets(after)).toEqual([ids[0], ids[2]].sort());
+      after = await position();
+      await tx.taxProfile.update({ where: { id: profile }, data: { updatedAt: new Date(), name: 'Metadata only' } });
+      expect(await targets(after)).toEqual([]);
+      after = await position();
+      await tx.taxRate.update({ where: { id: rate }, data: { ratePercent: '12.000' } });
+      expect(await targets(after)).toEqual([ids[0], ids[2]].sort());
+      after = await position();
+      await tx.taxRate.update({ where: { id: rate }, data: { name: 'Metadata only' } });
+      expect(await targets(after)).toEqual([]);
+      throw rollback;
+    }, { timeout: 30000 })).rejects.toBe(rollback);
+  }, 35000);
+
+  it('invalidates only the owning branch orders on name/code changes', async () => {
+    const rollback = new Error('Rollback branch fixtures');
+    await expect(prisma.$transaction(async tx => {
+      const otherBranch = await insertMigrationRow(tx, 'branches', { createdById: userId });
+      const otherOrder = await insertMigrationRow(tx, 'sales_orders', { branchId: otherBranch, createdById: userId });
+      let after = (await tx.syncChange.aggregate({ _max: { seq: true } }))._max.seq ?? 0n;
+      await tx.branch.update({ where: { id: branchId }, data: { updatedAt: new Date() } });
+      expect(await tx.syncChange.findMany({ where: { seq: { gt: after } } })).toEqual([
+        expect.objectContaining({ entity: 'branch', entityId: branchId }),
+      ]);
+      after = (await tx.syncChange.aggregate({ _max: { seq: true } }))._max.seq ?? 0n;
+      await tx.branch.update({ where: { id: branchId }, data: { name: `Renamed branch ${marker}` } });
+      const rows = await tx.syncChange.findMany({ where: { seq: { gt: after } } });
+      expect(rows.filter(row => row.entity === 'sales_order' && orderIds.includes(row.entityId)).map(row => row.entityId).sort()).toEqual([...orderIds].sort());
+      expect(rows.filter(row => row.entity === 'sales_order').every(row => row.branchId === branchId)).toBe(true);
+      expect(rows.some(row => row.entityId === otherOrder)).toBe(false);
+      throw rollback;
+    }, { timeout: 30000 })).rejects.toBe(rollback);
+  }, 35000);
 
   it('waits for earlier uncommitted sequences while writers run concurrently and resumes across a rollback gap', async () => {
     const after = await cursor();

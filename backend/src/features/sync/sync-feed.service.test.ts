@@ -98,7 +98,7 @@ describe('sync feed', () => {
   it('passes through the PC financial, order, supplier and bill service results', async () => {
     const cases = [
       ['customer', mocks.customer, { financial: { outstanding: '432.10' } }],
-      ['sales_order', mocks.order, { totalAmount: '95.55' }],
+      ['sales_order', mocks.order, { totalAmount: '95.55', items: [] }],
       ['supplier', mocks.supplier, { balance: '23.45' }],
       ['supplier_bill', mocks.bill, { pageCount: 2, pages: [{ filename: 'photo.jpg' }] }],
     ] as const;
@@ -141,6 +141,49 @@ describe('sync feed', () => {
     mocks.db.syncChange.findMany.mockResolvedValue([change(1)]);
     mocks.product.mockRejectedValue(new Error('Database unavailable'));
     await expect(readChanges(0, 500, scope)).rejects.toThrow('Database unavailable');
+  });
+
+  it.each([
+    { code: '55P03' },
+    { code: 'P2010', meta: { code: '55P03', message: 'canceling statement due to lock timeout' } },
+  ])('returns busy with the exact cursor when the advisory lock times out (%j)', async error => {
+    mocks.db.$executeRaw.mockResolvedValueOnce(0).mockRejectedValueOnce(error);
+    expect(await readChanges(9007199254740993n, 500, scope)).toEqual({
+      records: [], nextSeq: '9007199254740993', hasMore: false, busy: true,
+    });
+    expect(mocks.db.$executeRaw.mock.calls.map(([sql]) => sql.join(''))).toEqual([
+      "SET LOCAL lock_timeout = '2s'", 'SELECT pg_advisory_xact_lock(74103, 1)',
+    ]);
+    expect(mocks.db.syncChange.findMany).not.toHaveBeenCalled();
+    expect(mocks.product).not.toHaveBeenCalled();
+  });
+
+  it('propagates other database failures from the log transaction', async () => {
+    mocks.db.$executeRaw.mockRejectedValue({ code: 'P2010', meta: { code: '42P01' } });
+    await expect(readChanges(0, 500, scope)).rejects.toEqual({ code: 'P2010', meta: { code: '42P01' } });
+  });
+
+  it('keeps order line amounts and names independent of current product stock and price', async () => {
+    mocks.db.syncChange.findMany.mockResolvedValue([change(1, 'sales_order', 'order-1', 'branch-a')]);
+    mocks.document.mockResolvedValue({});
+    const product = { id: 'product-1', name: 'Fan', model: 'F1', sku: 'FAN', barcode: null, isActive: true };
+    mocks.order.mockResolvedValue({
+      id: 'order-1', totalAmount: '20.00',
+      items: [{ id: 'line-1', productId: product.id, unitPrice: '20.00', productNameSnapshot: 'Original fan',
+        product: { ...product, trackStock: true, stockQuantity: 5, lowStockThreshold: 2, costPrice: '9.00' },
+        inventory: { stockQuantity: 5 }, stockFulfillments: [] }],
+    });
+    const first = await readChanges(0, 500, scope);
+    expect(first.records[0]).toMatchObject({ data: { items: [{ product, unitPrice: '20.00', stockFulfillments: [] }] } });
+    expect(first.records[0]).not.toHaveProperty('data.items.0.inventory');
+    expect(first.records[0]).not.toHaveProperty('data.items.0.product.costPrice');
+    mocks.order.mockResolvedValue({
+      id: 'order-1', totalAmount: '20.00',
+      items: [{ id: 'line-1', productId: product.id, unitPrice: '20.00', productNameSnapshot: 'Original fan',
+        product: { ...product, trackStock: false, stockQuantity: 0, lowStockThreshold: 1, costPrice: '15.00' },
+        inventory: { stockQuantity: 0 }, stockFulfillments: [] }],
+    });
+    expect(await readChanges(0, 500, scope)).toEqual(first);
   });
 
   it.each([[-1, 1], [Number.MAX_SAFE_INTEGER + 1, 1], [0, 0], [0, 501], [0, 1.5]])(

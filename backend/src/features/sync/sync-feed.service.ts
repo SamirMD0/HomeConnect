@@ -24,9 +24,23 @@ async function loadRecord(change: SyncChange, scope: BranchScope): Promise<unkno
       return ProductsService.getCatalogRecord(id);
     case 'customer':
       return CustomersService.getCustomerWithFinancial(id, scope);
-    case 'sales_order':
+    case 'sales_order': {
       await assertRecordInScope('salesOrder', id, scope);
-      return { ...await SalesOrdersService.get(id), ...await documentBranch('salesOrder', id) };
+      const order = await SalesOrdersService.get(id);
+      return {
+        ...order,
+        // Phones resolve current stock/prices through product records. Keep the
+        // PC's sale amounts and fulfillment facts, plus convenient product names.
+        items: order.items.map(({ inventory, product, ...item }) => ({
+          ...item,
+          product: product ? {
+            id: product.id, name: product.name, model: product.model,
+            sku: product.sku, barcode: product.barcode, isActive: product.isActive,
+          } : null,
+        })),
+        ...await documentBranch('salesOrder', id),
+      };
+    }
     case 'supplier':
       return SuppliersService.get(id, scope);
     case 'supplier_bill':
@@ -55,9 +69,10 @@ export async function readChanges(afterSeq: bigint | number, limit = 500, scope:
   if (after < 0n || after > 9223372036854775807n || !Number.isInteger(limit) || limit < 1 || limit > 500) {
     throw new ValidationError('Invalid sync cursor or limit');
   }
-  const { changes, next, hasMore } = await prisma.$transaction(async tx => {
+  const batch = await prisma.$transaction(async tx => {
     // Shared producer locks are held through commit. Waiting exclusively here
     // prevents advancing beyond an earlier sequence from an unfinished writer.
+    await tx.$executeRaw`SET LOCAL lock_timeout = '2s'`;
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(74103, 1)`;
     const changes = await tx.syncChange.findMany({
       where: { seq: { gt: after } }, orderBy: { seq: 'asc' }, take: limit,
@@ -67,7 +82,14 @@ export async function readChanges(afterSeq: bigint | number, limit = 500, scope:
       where: { seq: { gt: next } }, select: { seq: true }, orderBy: { seq: 'asc' },
     }));
     return { changes, next, hasMore };
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted, timeout: 30000 });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted, timeout: 30000 }).catch((error: unknown) => {
+    if (isLockTimeout(error)) return null;
+    throw error;
+  });
+  if (batch === null) {
+    return { records: [], nextSeq: after.toString(), hasMore: false, busy: true as const };
+  }
+  const { changes, next, hasMore } = batch;
   const latest = new Map<string, { change: SyncChange; wasInScope: boolean }>();
   for (const change of changes) {
     const key = `${change.entity}:${change.entityId}`;
@@ -97,4 +119,11 @@ export async function readChanges(afterSeq: bigint | number, limit = 500, scope:
   }
   // Decimal strings preserve PostgreSQL BIGSERIAL cursors in JSON and JS clients.
   return { records, nextSeq: next.toString(), hasMore };
+}
+
+function isLockTimeout(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const postgresError = error as { code?: string; meta?: { code?: string } };
+  return postgresError.code === '55P03' ||
+    (postgresError.code === 'P2010' && postgresError.meta?.code === '55P03');
 }
