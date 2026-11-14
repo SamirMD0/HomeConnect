@@ -164,6 +164,15 @@ describe('mobile JWT gateway', () => {
       expect(calls).toBe(before);
     }
   );
+  it.each(['/api/v1/sync', '/api/v1/sync/changes?after=0&limit=500', '/api/v1/%73ync/changes'])(
+    'denies the Phase 1 sync endpoint %s', async (path) => {
+      const before = calls;
+      const response = await request(app).get(path).set('Authorization', 'Bearer jwt');
+      expect(response.status).toBe(403);
+      expect(response.body.error.code).toBe('NOT_AVAILABLE_ON_MOBILE');
+      expect(calls).toBe(before);
+    }
+  );
   it('exposes only GET client compatibility publicly under the system prefix', async () => {
     expect((await request(app).get('/api/v1/system/client-compat')).status).toBe(200);
     expect(

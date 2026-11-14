@@ -365,6 +365,24 @@ export class ProductsService {
     return serializeProduct(product, defaultPreset, viewer?.role === Role.ADMIN, defaultTax);
   }
 
+  /** One catalogue row, with the same inventory metadata as an unfiltered list. */
+  static async getCatalogRecord(id: string) {
+    const product = await ProductsRepository.findCatalogById(id);
+    if (!product) throw new NotFoundError('Product not found');
+    const [defaultPreset, defaultTax] = await Promise.all([
+      ProductsRepository.findActiveDefaultPricingPreset(), defaultTaxProfile(),
+    ]);
+    return {
+      ...serializeProduct(product, defaultPreset, false, defaultTax),
+      exactMatch: false,
+      notInInventory: isProductOutsideInventory({
+        trackStock: product.trackStock,
+        stockQuantity: product.stockQuantity,
+        movementCount: product._count.stockMovements,
+      }),
+    };
+  }
+
   /**
    * Exact-match lookup for a scanned code, used by the PC scanner today and by
    * the phone scanner over the LAN listener later.

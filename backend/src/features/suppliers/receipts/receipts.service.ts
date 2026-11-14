@@ -222,6 +222,21 @@ export async function listUnlinkedBills(scope: BranchScope, limit = 100) {
     rows.map(({ supplier, ...row }) => ({ ...row, supplierName: supplier.name }))
   ).slice(0, take);
 }
+
+/** Stable bill-group identity, including legacy single-page receipts. */
+export async function getUnlinkedBill(id: string, scope: BranchScope) {
+  const rows = await prisma.supplierReceivingReceipt.findMany({
+    where: {
+      ...unlinked, ...activePage, branchId: { in: scope.branchIds },
+      OR: [{ billGroupId: id }, { id, billGroupId: null }],
+    },
+    orderBy: { capturedAt: 'desc' },
+    include: { supplier: { select: { id: true, name: true } } },
+  });
+  return groupPages(
+    rows.map(({ supplier, ...row }) => ({ ...row, supplierName: supplier.name }))
+  )[0] ?? null;
+}
 export async function countUnlinkedBills(scope: BranchScope) {
   const groups = await prisma.supplierReceivingReceipt.groupBy({
     by: ['billGroupId'],

@@ -134,6 +134,14 @@ export class CustomersService {
     return customer;
   }
 
+  static async getCustomerWithFinancial(id: string, scope: BranchScope) {
+    const customer = await this.getCustomer(id, scope);
+    const projections = await ReceivablesService.computeReceivableProjections({
+      scope, customerIds: [id],
+    });
+    return { ...customer, financial: projections.get(id) ?? null };
+  }
+
   static async updateCustomer(id: string, data: { name?: string; phone?: string; address?: string | null; notes?: string | null; creditLimit?: string | null; isActive?: boolean }, scope: BranchScope, actor?: { role: string }) {
     assertCreditLimitPermission(data, actor);
     return runFinancialTransaction(async tx => {

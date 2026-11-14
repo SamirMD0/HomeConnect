@@ -53,6 +53,7 @@ import { brandLogoRoutes } from './features/brand-logo/brand-logo.routes';
 import { featureIconRoutes } from './features/pricing-card/feature-icon/feature-icon.routes';
 import { pricingCardTemplateRoutes } from './features/pricing-card/template/template.routes';
 import { printSnapshotRoutes } from './features/pricing-card/print-snapshot/print-snapshot.routes';
+import { syncRoutes } from './features/sync/sync.routes';
 
 export const app = express();
 
@@ -103,6 +104,7 @@ app.get('/api/v1/health', async (_req, res) => {
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', requireAuth, usersRoutes);
 app.use('/api/v1/branches', requireAuth, branchesRoutes);
+app.use('/api/v1/sync', requireAuth, syncRoutes);
 // Resolve scope once, before every router sharing these prefixes.
 app.use('/api/v1/customers/imports', requireAuth, customerImportRoutes);
 app.use('/api/v1/customers/merges', requireAuth, branchScopeMiddleware, customerMergeRoutes);
