@@ -11,6 +11,8 @@ import { getSalesOrder, listSalesOrders } from '../api/sales-orders-api';
 import { getReceivablesPage } from '../api/receivables-api';
 import { scanLookup } from '../api/products-api';
 import { requestJson } from '../api/hc-client';
+import { customerFinancialListFixture } from '../api/testing/lookup-fixtures';
+import type { LocalDb } from './local-db';
 const client = { baseUrl: 'https://relay.example', token: 'cloud-local-session' };
 const money = '9007199254740993.25';
 const product = { id: 'product', name: 'Desk fan', model: 'F1', sku: 'FAN-001', barcode: '0012345678901', brand: 'Cedar', categoryId: 'child', isActive: true,
@@ -23,8 +25,9 @@ const supplier = { id: 'supplier', branchId: 'a', name: 'Supplier', phone: '9988
 const order = { id: 'order', branchId: 'a', orderNumber: 'SO-1', customerId: customer.id, orderDate: '2026-11-15', totalAmount: money, items: [] };
 const bill = { id: 'bill', branchId: 'a', supplierId: supplier.id, supplierName: supplier.name, note: 'Invoice', capturedAt: '2026-11-16T00:00:00Z', pageCount: 1, pages: [] };
 let source: CloudDataSource;
+let db: LocalDb;
 beforeEach(async () => {
-  const db = await memoryDb();
+  db = await memoryDb();
   await applyRecords(db, 'records', [
     ['product', product], ['customer', customer], ['supplier', supplier], ['sales_order', order], ['supplier_bill', bill],
     ['category', { id: 'root', name: 'Appliances', parentId: null }], ['category', { id: 'child', name: 'Fans', parentId: 'root' }],
@@ -37,6 +40,11 @@ beforeEach(async () => {
 });
 afterEach(() => { setCloudMode(false); configureCloudReader(null); setSelectedBranch(null); vi.unstubAllGlobals(); });
 describe('existing screen APIs backed by phone SQLite', () => {
+  it('reuses the LAN customer balance fixture without changing its projection', async () => {
+    const data = { ...customerFinancialListFixture, branchId: 'a', name: 'LAN fixture', phone: '999999' };
+    await applyRecords(db, 'records', [{ entity: 'customer', id: data.id, branchId: 'a', rev: '2', op: 'upsert', data }]);
+    expect((await listCustomers(client, 'LAN fixture')).items).toEqual([data]);
+  });
   it('returns product list/detail/inventory shapes with exact PC prices and search/filter behavior', async () => {
     expect((await listProducts(client, { search: '001234', categoryId: 'root' })).items).toEqual([product]);
     expect(await getProduct(client, 'product')).toEqual(product);

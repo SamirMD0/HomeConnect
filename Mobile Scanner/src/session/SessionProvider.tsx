@@ -243,9 +243,11 @@ function useSessionState() {
     setConnection(null);
     setCompat(null);
     setError(null);
+    setConnectionNotice(null);
   };
   /** `compat` is passed when the caller already found the PC at this address. */
   const connect = (value: ConnectionSettings, compat?: CompatibilityState) => {
+    setConnectionNotice(null);
     resolvedRef.current = compat ? { connection: value, compat } : null;
     setConnection(value);
     setCompat(null);

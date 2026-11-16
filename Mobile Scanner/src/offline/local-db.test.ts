@@ -1,7 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { memoryDb } from './testing/memory-db';
-import { applyRecords, localDbSize, saveState, stateValue, wipeLocalDb } from './record-store';
+import { applyRecords, localDbSize, pruneOrders, saveState, stateValue, wipeLocalDb } from './record-store';
 describe('phone SQLite schema', () => {
+  it('keeps the ninety-day boundary and prunes only older orders', async () => {
+    const db = await memoryDb();
+    await applyRecords(db, 'records', [
+      { entity: 'sales_order', id: 'boundary', branchId: 'a', op: 'upsert', rev: '1', data: { orderDate: '2026-08-18' } },
+      { entity: 'sales_order', id: 'expired', branchId: 'a', op: 'upsert', rev: '2', data: { orderDate: '2026-08-17' } },
+      { entity: 'customer', id: 'customer', branchId: 'a', op: 'upsert', rev: '3', data: { orderDate: '2020-01-01', financial: { outstanding: '9999999999999.99' } } },
+    ]);
+    await pruneOrders(db, new Date('2026-11-16T12:00:00Z'));
+    expect((await db.query<{ id: string }>('SELECT id FROM records ORDER BY id')).map(row => row.id)).toEqual(['boundary', 'customer']);
+  });
   it('rolls back record and cursor changes together and extracts indexed search fields', async () => {
     const db = await memoryDb();
     const record = { entity: 'product', id: 'p', branchId: null, rev: '9007199254740993', op: 'upsert' as const, data: { name: 'Fan', sku: 'F1', barcode: '123' } };

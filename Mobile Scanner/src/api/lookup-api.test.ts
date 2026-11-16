@@ -28,6 +28,7 @@ import { getReport, reportRequest } from './reports-api';
 import { lookupParams } from './lookup-http';
 import { configureApiSession } from './hc-client';
 import { setSelectedBranch } from '../branches/branch-selection';
+import { customerFinancialListFixture } from './testing/lookup-fixtures';
 const client = { baseUrl: 'http://pc:3011', token: 'access' },
   range = { from: '2026-11-01', to: '2026-11-12' };
 let fetchMock: ReturnType<typeof vi.fn>;
@@ -128,7 +129,7 @@ describe('desktop lookup wire contracts through the LAN client', () => {
     });
   });
   it('includes financial snapshots in the customer list, never one request per row', async () => {
-    const rows = [{ id: 'c', financial: { outstanding: '125.50' } }];
+    const rows = [customerFinancialListFixture];
     await expectGet(
       async () => expect((await listCustomers(client, 'Customer', 2)).items).toEqual(rows),
       '/customers',

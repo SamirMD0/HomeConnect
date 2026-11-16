@@ -44,7 +44,7 @@ export const PairingQrCode: React.FC<PairingQrCodeProps> = ({ url, size = 256, l
   if (error) {
     return (
       <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800">
-        Could not draw the pairing QR ({error}). Phones can still enter the address manually.
+        {label ? 'Could not draw this pairing code. Close it and try pairing again.' : `Could not draw the pairing QR (${error}). Phones can still enter the address manually.`}
       </p>
     );
   }

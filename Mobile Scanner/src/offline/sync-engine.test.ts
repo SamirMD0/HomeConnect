@@ -9,16 +9,16 @@ const page = (records: CloudRecord[], nextRev: string, hasMore = false, snapshot
 const failure = (status: number, code: string) => new Response(JSON.stringify({ code }), { status });
 describe('offline relay sync with real in-memory SQLite', () => {
   it('keeps old data visible while a fresh full copy downloads, then swaps atomically', async () => {
-    const db = await memoryDb(); await applyRecords(db, 'records', [row('old')]);
+    const db = await memoryDb(); await applyRecords(db, 'records', [row('old')]); await saveState(db, 'cursor', '99');
     let release!: (value: Response) => void, reached!: () => void;
     const waiting = new Promise<void>(resolve => { reached = resolve; });
     const fetcher = vi.fn().mockResolvedValueOnce(page([row('new')], '1', true, '5'))
       .mockImplementationOnce(() => { reached(); return new Promise<Response>(resolve => { release = resolve; }); })
       .mockResolvedValue(page([], '6'));
     const engine = new SyncEngine(db, pairing, { fetch: fetcher });
-    const running = engine.sync(); await waiting;
+    const running = engine.sync(true); await waiting;
     expect(await db.query('SELECT id FROM records')).toEqual([{ id: 'old' }]);
-    expect(await stateValue(db, 'cursor')).toBeNull();
+    expect(await stateValue(db, 'cursor')).toBe('99');
     release(page([row('second', '6')], '6', false, '5')); await running;
     expect(await db.query('SELECT id FROM records ORDER BY id')).toEqual([{ id: 'new' }, { id: 'second' }]);
     expect(await stateValue(db, 'cursor')).toBe('6');
@@ -69,6 +69,7 @@ describe('offline relay sync with real in-memory SQLite', () => {
     expect(await db.query('SELECT * FROM records')).toEqual([]);
     expect(await stateValue(db, 'cursor')).toBeNull();
     expect(revoked).toHaveBeenCalledOnce();
+    expect(revoked).toHaveBeenCalledWith('This phone was removed by the shop.');
     expect(engine.getStatus().error).toBe('This phone was removed by the shop.');
   });
   it('joins concurrent sync triggers and never restores data after unpair', async () => {

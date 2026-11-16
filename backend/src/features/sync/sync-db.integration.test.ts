@@ -92,10 +92,13 @@ const productData = (id: string) => ({ id, sku: `SYNC-${id}`, name: `Sync ${id}`
       .set('Authorization', 'Bearer ' + jwt.sign({ userId, role: 'EMPLOYEE' }, process.env.JWT_SECRET!));
     expect(response.status).toBe(200);
     const product = response.body.data.find((row: { id: string }) => row.id === productIds[0]);
+    const inventory = await request(app).get(`/api/v1/products/${productIds[0]}/inventory`)
+      .set('Authorization', 'Bearer ' + jwt.sign({ userId, role: 'EMPLOYEE' }, process.env.JWT_SECRET!));
+    expect(inventory.status).toBe(200);
     const feed = await readChanges(after, 500, scope);
     const record = feed.records.find(row => row.id === productIds[0]);
     expect(JSON.parse(JSON.stringify(record))).toEqual({
-      entity: 'product', id: productIds[0], branchId: null, op: 'upsert', data: { ...product, exactMatch: false },
+      entity: 'product', id: productIds[0], branchId: null, op: 'upsert', data: { ...product, exactMatch: false, inventory: inventory.body.data },
     });
     expect(JSON.stringify(record)).not.toContain('private image bytes');
     expect(record).not.toHaveProperty('data.image.data');

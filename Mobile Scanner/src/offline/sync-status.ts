@@ -4,6 +4,10 @@ let engine: SyncEngine | null = null;
 let status: SyncStatus = { syncing: false, lastSyncAt: null, error: null };
 let unsubscribe: (() => void) | undefined;
 const listeners = new Set<() => void>();
+export function syncInitializationError() {
+  status = { syncing: false, lastSyncAt: null, error: 'Could not open phone data. Restart the app and try again.' };
+  for (const listener of listeners) listener();
+}
 export function currentSyncEngine() { return engine; }
 export function setSyncEngine(value: SyncEngine | null) {
   unsubscribe?.(); engine = value;

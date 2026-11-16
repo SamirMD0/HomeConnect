@@ -14,7 +14,7 @@ export class SyncEngine {
   private listeners = new Set<() => void>();
   private status: SyncStatus = { syncing: false, lastSyncAt: null, error: null };
   constructor(private readonly db: LocalDb, private readonly pairing: CloudPairing,
-    private readonly options: { fetch?: typeof fetch; now?: () => Date; onChanged?: () => void; onRevoked?: () => void } = {}) {}
+    private readonly options: { fetch?: typeof fetch; now?: () => Date; onChanged?: () => void; onRevoked?: (message: string) => void } = {}) {}
   getStatus = () => this.status;
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };
   private publish(value: Partial<SyncStatus>) { this.status = { ...this.status, ...value }; for (const listener of this.listeners) listener(); }
@@ -115,10 +115,12 @@ export class SyncEngine {
     } catch (error) {
       if (error instanceof RelayError && error.status === 401) {
         this.cancelled = true;
-        await wipeLocalDb(this.db);
-        this.publish({ lastSyncAt: null, error: error.code === 'DEVICE_REVOKED' ? 'This phone was removed by the shop.' : 'Pair this phone again from the shop PC.' });
-        // Do not await a callback that may join this flight while clearing the session.
-        this.options.onRevoked?.();
+        try { await wipeLocalDb(this.db); }
+        finally {
+          this.publish({ lastSyncAt: null, error: error.code === 'DEVICE_REVOKED' ? 'This phone was removed by the shop.' : 'Pair this phone again from the shop PC.' });
+          // Do not await a callback that may join this flight while clearing the session.
+          this.options.onRevoked?.(this.status.error!);
+        }
       } else if (!(error instanceof Cancelled) && !this.cancelled) {
         this.publish({ error: 'Could not sync. Your saved data is available. Check your internet connection and try again.' });
       }
