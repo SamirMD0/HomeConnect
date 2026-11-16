@@ -3,7 +3,7 @@ const secure = vi.hoisted(() => ({ getItemAsync: vi.fn(), setItemAsync: vi.fn(),
 vi.mock('expo-secure-store', () => secure);
 import { clearCloudPairing, loadCloudPairing, saveCloudPairing } from './cloud-storage';
 import type { CloudPairing } from './cloud-pairing';
-const pairing: CloudPairing = { v: 1, relay: 'https://relay.example', deviceId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', userId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', userName: 'Mira', token: 'x'.repeat(43), branchIds: ['cccccccc-cccc-4ccc-8ccc-cccccccccccc'] };
+const pairing: CloudPairing = { v: 1, relay: 'https://relay.example', deviceId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', userId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', userName: 'Mira', role: 'EMPLOYEE', token: 'x'.repeat(43), branchIds: ['cccccccc-cccc-4ccc-8ccc-cccccccccccc'] };
 describe('device-only cloud pairing storage', () => {
   beforeEach(() => vi.clearAllMocks());
   it('saves and restores the user and device token only through SecureStore', async () => {
@@ -19,5 +19,11 @@ describe('device-only cloud pairing storage', () => {
     secure.getItemAsync.mockResolvedValue('{invalid');
     expect(await loadCloudPairing()).toBeNull();
     expect(secure.deleteItemAsync).toHaveBeenCalledOnce();
+  });
+  it('persists a refreshed role and an empty branch grant without reviving an old scope', async () => {
+    const refreshed = { ...pairing, role: 'ADMIN' as const, branchIds: [] };
+    await saveCloudPairing(refreshed);
+    secure.getItemAsync.mockResolvedValue(secure.setItemAsync.mock.calls[0]![1]);
+    expect(await loadCloudPairing()).toEqual(refreshed);
   });
 });

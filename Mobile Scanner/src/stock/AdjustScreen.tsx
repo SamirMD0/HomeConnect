@@ -135,7 +135,7 @@ export function AdjustScreen() {
               />
             )}
             <AppButton
-              label="Save change"
+              cloudWrite label="Save change"
               loading={saving}
               disabled={before === undefined || !quantity || !reason.trim() || (guarded && !password)}
               onPress={() => void save()}

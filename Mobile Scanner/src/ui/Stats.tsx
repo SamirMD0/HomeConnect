@@ -1,5 +1,5 @@
 import { cloudMode } from '../offline/cloud-mode';
-import { CLOUD_WRITE_NOTE, isCloudWriteLabel } from '../offline/cloud-policy';
+import { CLOUD_WRITE_NOTE } from '../offline/cloud-policy';
 import type { ReactNode } from 'react';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -138,6 +138,7 @@ export interface QuickAction {
   tone?: Tone;
   /** Count shown on the tile, e.g. pending bills. */
   badge?: number;
+  cloudWrite?: boolean;
 }
 
 /** Four-column grid of icon tiles with short labels. */
@@ -150,12 +151,12 @@ export function QuickGrid({ actions, columns = 4 }: { actions: QuickAction[]; co
           accessibilityRole="button"
           accessibilityLabel={`${action.label}${action.badge ? `, ${action.badge} waiting` : ''}`}
           onPress={action.onPress}
-          disabled={cloudMode() && isCloudWriteLabel(action.label)}
-          accessibilityState={{ disabled: cloudMode() && isCloudWriteLabel(action.label) }}
-          accessibilityHint={cloudMode() && isCloudWriteLabel(action.label) ? CLOUD_WRITE_NOTE : undefined}
+          disabled={cloudMode() && Boolean(action.cloudWrite)}
+          accessibilityState={{ disabled: cloudMode() && Boolean(action.cloudWrite) }}
+          accessibilityHint={cloudMode() && action.cloudWrite ? CLOUD_WRITE_NOTE : undefined}
           style={({ pressed }) => [
             styles.cell,
-            cloudMode() && isCloudWriteLabel(action.label) && { opacity: 0.45 },
+            cloudMode() && action.cloudWrite && { opacity: 0.45 },
             { width: `${100 / columns}%` },
             pressed && styles.cellPressed,
           ]}
@@ -173,7 +174,7 @@ export function QuickGrid({ actions, columns = 4 }: { actions: QuickAction[]; co
           </Text>
         </Pressable>
       ))}
-      {cloudMode() && actions.some(action => isCloudWriteLabel(action.label)) && <Text style={{ width: '100%', color: theme.colors.muted, fontSize: 12 }}>{CLOUD_WRITE_NOTE}</Text>}
+      {cloudMode() && actions.some(action => action.cloudWrite) && <Text style={{ width: '100%', color: theme.colors.muted, fontSize: 12 }}>{CLOUD_WRITE_NOTE}</Text>}
     </View>
   );
 }

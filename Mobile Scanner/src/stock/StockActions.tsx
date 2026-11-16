@@ -17,13 +17,13 @@ export function StockActions() {
       <ListRow
         title="Receive goods"
         icon="cube-outline"
-        onPress={() => router.push('/(tabs)/stock/receive')}
+        cloudWrite onPress={() => router.push('/(tabs)/stock/receive')}
       />
       {session.user?.role === 'ADMIN' && (
         <ListRow
           title="Stock count"
           icon="clipboard-outline"
-          onPress={() => router.push('/(tabs)/stock/count')}
+          cloudWrite onPress={() => router.push('/(tabs)/stock/count')}
         />
       )}
     </View>

@@ -3,6 +3,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme } from '../theme';
 import { IconTile } from '../ui/Stats';
+import { cloudMode } from '../offline/cloud-mode';
+import { CLOUD_WRITE_NOTE } from '../offline/cloud-policy';
 export function ListRow({
   title,
   subtitle,
@@ -10,6 +12,7 @@ export function ListRow({
   trailing,
   icon,
   leading,
+  cloudWrite = false,
 }: {
   title: string;
   subtitle?: string;
@@ -19,18 +22,23 @@ export function ListRow({
   icon?: keyof typeof Ionicons.glyphMap;
   /** Any element before the text, e.g. a product photo. */
   leading?: ReactNode;
+  cloudWrite?: boolean;
 }) {
+  const cloudDisabled = cloudMode() && cloudWrite;
   return (
     <Pressable
       accessibilityRole={onPress ? 'button' : undefined}
       onPress={onPress}
-      disabled={!onPress}
-      style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+      disabled={!onPress || cloudDisabled}
+      accessibilityState={{ disabled: !onPress || cloudDisabled }}
+      accessibilityHint={cloudDisabled ? CLOUD_WRITE_NOTE : undefined}
+      style={({ pressed }) => [styles.row, cloudDisabled && { opacity: 0.5 }, pressed && styles.pressed]}
     >
       {leading ?? (icon ? <IconTile icon={icon} size={44} /> : null)}
       <View style={styles.copy}>
         <Text style={styles.title}>{title}</Text>
         {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+        {cloudDisabled && <Text style={styles.subtitle}>{CLOUD_WRITE_NOTE}</Text>}
       </View>
       {trailing}
       {onPress && (

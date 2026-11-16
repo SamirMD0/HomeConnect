@@ -199,11 +199,11 @@ export function BillsInboxScreen() {
 
             {session.mode === 'cloud' ? <Text style={readStyles.subtitle}>Coming soon over the cloud. Use the shop Wi-Fi</Text> : mode === 'menu' ? (
               <>
-                <AppButton label="Link to a purchase" onPress={() => setMode('purchase')} />
-                <AppButton label="Link to a payment" variant="secondary" onPress={() => setMode('payment')} />
+                <AppButton cloudWrite label="Link to a purchase" onPress={() => setMode('purchase')} />
+                <AppButton cloudWrite label="Link to a payment" variant="secondary" onPress={() => setMode('payment')} />
                 {session.can('supplierInvoices.write') && (
                   <AppButton
-                    label="Create purchase from this bill"
+                    cloudWrite label="Create purchase from this bill"
                     variant="secondary"
                     onPress={() => {
                       const bill = selected;
@@ -217,14 +217,14 @@ export function BillsInboxScreen() {
                 )}
                 <View style={{ flexDirection: 'row', gap: 8 }}>
                   <View style={{ flex: 1 }}>
-                    <AppButton label="Add page" variant="secondary" loading={saving === 'add-page'} onPress={() => void addPage(selected)} />
+                    <AppButton cloudWrite label="Add page" variant="secondary" loading={saving === 'add-page'} onPress={() => void addPage(selected)} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <AppButton label="Retake page" variant="secondary" loading={saving === 'replace'} onPress={() => void replacePage()} />
+                    <AppButton cloudWrite label="Retake page" variant="secondary" loading={saving === 'replace'} onPress={() => void replacePage()} />
                   </View>
                 </View>
                 {canDeleteBill(selected, session.user) ? (
-                  <AppButton label="Delete" variant="secondary" loading={saving === 'delete'} onPress={confirmDelete} />
+                  <AppButton cloudWrite label="Delete" variant="secondary" loading={saving === 'delete'} onPress={confirmDelete} />
                 ) : null}
               </>
             ) : mode === 'purchase' ? (
@@ -238,7 +238,7 @@ export function BillsInboxScreen() {
                   ?.filter((purchase) => purchase.status !== 'REMOVED')
                   .map((purchase) => (
                     <ListRow
-                      key={purchase.id}
+                      cloudWrite key={purchase.id}
                       title={purchase.receiptNumber ? `Invoice ${purchase.receiptNumber}` : purchase.description}
                       subtitle={`${formatBusinessDate(purchase.transactionDate)} · ${formatMoney(purchase.amount, purchase.currency)}${saving === purchase.id ? ' · Linking…' : ''}`}
                       onPress={
@@ -264,7 +264,7 @@ export function BillsInboxScreen() {
                 ) : null}
                 {payments.data?.map((payment) => (
                   <ListRow
-                    key={payment.id}
+                    cloudWrite key={payment.id}
                     title={formatMoney(payment.amount, payment.currency as Currency | undefined)}
                     subtitle={`${formatBusinessDate(payment.transactionDate)} · ${payment.description}${saving === payment.id ? ' · Linking…' : ''}`}
                     onPress={

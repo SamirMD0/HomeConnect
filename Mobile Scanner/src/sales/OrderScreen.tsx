@@ -156,7 +156,7 @@ export function OrderScreen() {
               }
             />
             <AppButton
-              label="Start another order"
+              cloudWrite label="Start another order"
               variant="secondary"
               onPress={() =>
                 void draft.discard().catch((err: Error) => draft.setError(err.message))
@@ -185,7 +185,7 @@ export function OrderScreen() {
                 {draft.session.can('customers.create') && (
                   <AppButton
                     disabled={locked}
-                    label="Create customer"
+                    cloudWrite label="Create customer"
                     variant="secondary"
                     onPress={() => setPicker('create')}
                   />
@@ -346,21 +346,21 @@ export function OrderScreen() {
             </View>
             {locked ? (
               <AppButton
-                label="Retry original submission"
+                cloudWrite label="Retry original submission"
                 loading={draft.mutation.isPending}
                 onPress={() => submit(false)}
               />
             ) : (
               <>
                 <AppButton
-                  label="Save draft on PC"
+                  cloudWrite label="Save draft on PC"
                   variant="secondary"
                   loading={draft.mutation.isPending}
                   disabled={adding || creating}
                   onPress={() => submit(true)}
                 />
                 <AppButton
-                  label="Confirm order"
+                  cloudWrite label="Confirm order"
                   loading={draft.mutation.isPending}
                   disabled={adding || creating}
                   onPress={() => submit(false)}
@@ -420,7 +420,7 @@ export function OrderScreen() {
                 />
               ))}
               <AppButton
-                label="Save customer"
+                cloudWrite label="Save customer"
                 loading={creating}
                 onPress={() => {
                   let payload;

@@ -90,7 +90,7 @@ export function PendingBillsScreen({
                 <Text>Choose a supplier for this older saved bill.</Text>
                 {suppliers.map((supplier) => (
                   <AppButton
-                    key={supplier.id}
+                    cloudWrite key={supplier.id}
                     label={supplier.name}
                     disabled={busy}
                     variant="secondary"
@@ -110,7 +110,7 @@ export function PendingBillsScreen({
             )}
             {changing.supplierId && (
               <AppButton
-                label="No purchase yet"
+                cloudWrite label="No purchase yet"
                 disabled={busy}
                 onPress={() =>
                   void run(() =>
@@ -126,7 +126,7 @@ export function PendingBillsScreen({
               .filter((row) => row.supplierReceivingId)
               .map((row) => (
                 <AppButton
-                  key={row.id}
+                  cloudWrite key={row.id}
                   label={`Ref # ${row.referenceNumber ?? row.id.slice(0, 8)}`}
                   disabled={busy}
                   variant="secondary"
@@ -168,7 +168,7 @@ export function PendingBillsScreen({
                     <Text>Switch to the original server for this bill and branch to retry.</Text>
                   )}
                   <AppButton
-                    label="Retry"
+                    cloudWrite label="Retry"
                     disabled={busy || item.status === 'uploading' || otherScope}
                     onPress={() =>
                       void run(async () => {
@@ -183,7 +183,7 @@ export function PendingBillsScreen({
                   />
                   {item.status === 'blocked' && (
                     <AppButton
-                      label="Change purchase"
+                      cloudWrite label="Change purchase"
                       variant="secondary"
                       disabled={busy || otherScope}
                       onPress={() =>
@@ -200,7 +200,7 @@ export function PendingBillsScreen({
                     />
                   )}
                   <AppButton
-                    label="Delete"
+                    cloudWrite label="Delete"
                     variant="danger"
                     disabled={busy || item.status === 'uploading'}
                     onPress={() =>

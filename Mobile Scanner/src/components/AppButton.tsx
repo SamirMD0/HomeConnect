@@ -2,7 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { ActivityIndicator, Pressable, StyleSheet, Text, type ViewStyle } from 'react-native';
 import { theme } from '../theme';
 import { cloudMode } from '../offline/cloud-mode';
-import { CLOUD_WRITE_NOTE, isCloudWriteLabel } from '../offline/cloud-policy';
+import { CLOUD_WRITE_NOTE } from '../offline/cloud-policy';
 
 /**
  * - primary: the one filled action on a screen (brand blue).
@@ -18,6 +18,7 @@ interface AppButtonProps {
   label: string;
   onPress: () => void;
   disabled?: boolean;
+  cloudWrite?: boolean;
   loading?: boolean;
   variant?: ButtonVariant;
   /** Filled red for danger (action bars); default is the soft danger style. */
@@ -34,6 +35,7 @@ export function AppButton({
   label,
   onPress,
   disabled = false,
+  cloudWrite = false,
   loading = false,
   variant = 'primary',
   solid = false,
@@ -41,7 +43,7 @@ export function AppButton({
   icon,
   iconOnly = false,
 }: AppButtonProps) {
-  const cloudDisabled = cloudMode() && isCloudWriteLabel(label);
+  const cloudDisabled = cloudMode() && cloudWrite;
   const unavailable = disabled || loading || cloudDisabled;
   const onFill = filled.has(variant) || (variant === 'danger' && solid);
   const ink = onFill

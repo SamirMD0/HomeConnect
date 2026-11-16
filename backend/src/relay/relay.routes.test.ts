@@ -12,7 +12,7 @@ const deviceSecret = 'device-test-secret';
 const id = '11111111-1111-4111-8111-111111111111';
 const branchId = '22222222-2222-4222-8222-222222222222';
 const otherBranch = '33333333-3333-4333-8333-333333333333';
-const paired = { id, userId: otherBranch, userName: 'Owner', branchIds: [branchId], name: 'Phone',
+const paired = { id, userId: otherBranch, userName: 'Owner', role: 'EMPLOYEE', branchIds: [branchId], name: 'Phone',
   tokenSha256: hash(deviceSecret), lastSeenAt: new Date(), revokedAt: null, createdAt: new Date() };
 const action = { id, type: 'take_payment', branchId, payload: { amount: '19.99' }, createdAt: new Date().toISOString() };
 const store = {
@@ -82,6 +82,33 @@ describe('isolated relay routes', () => {
     const response = await request(makeApp()).get('/relay/v1/device/records').set('Authorization', deviceAuth);
     expect(response.status).toBe(401);
     expect(response.body.error.code).toBe('DEVICE_REVOKED');
+  });
+
+  it('returns only the current authenticated device identity, role and branches', async () => {
+    const app = makeApp();
+    expect((await request(app).get('/relay/v1/device/me').set('Authorization', workerAuth)).status).toBe(401);
+    const first = await request(app).get('/relay/v1/device/me').set('Authorization', deviceAuth);
+    expect(first.status).toBe(200);
+    expect(first.body).toEqual({ deviceId: id, userId: paired.userId, userName: paired.userName, role: 'EMPLOYEE', branchIds: [branchId] });
+    expect(first.headers['cache-control']).toBe('no-store');
+    store.findDevice.mockResolvedValue({ ...paired, role: 'ADMIN', branchIds: [otherBranch] });
+    expect((await request(app).get('/relay/v1/device/me').set('Authorization', deviceAuth)).body).toEqual({
+      deviceId: id, userId: paired.userId, userName: paired.userName, role: 'ADMIN', branchIds: [otherBranch],
+    });
+    store.findDevice.mockResolvedValue({ ...paired, revokedAt: new Date() });
+    expect((await request(app).get('/relay/v1/device/me').set('Authorization', deviceAuth)).body.error.code).toBe('DEVICE_REVOKED');
+  });
+
+  it('validates roles on worker device registration', async () => {
+    const registration = { id, userId: paired.userId, userName: paired.userName, branchIds: paired.branchIds,
+      name: paired.name, tokenSha256: paired.tokenSha256 };
+    const app = makeApp();
+    store.registerDevice.mockResolvedValue({ id, role: 'ADMIN' });
+    expect((await request(app).post('/relay/v1/worker/devices').set('Authorization', workerAuth).send({ ...registration, role: 'ADMIN' })).status).toBe(200);
+    expect(store.registerDevice).toHaveBeenCalledWith({ ...registration, role: 'ADMIN' });
+    store.registerDevice.mockClear();
+    expect((await request(app).post('/relay/v1/worker/devices').set('Authorization', workerAuth).send({ ...registration, role: 'MANAGER' })).status).toBe(400);
+    expect(store.registerDevice).not.toHaveBeenCalled();
   });
 
   it('scopes records to stored device branches and preserves bigint cursors', async () => {
@@ -245,7 +272,7 @@ describe('isolated relay routes', () => {
     store.usage.mockResolvedValue({ days: [], totals: { bytesIn: 9007199254740993n } });
     store.claim.mockResolvedValue([{ id, hasBlob: true }]);
     expect((await request(app).post('/relay/v1/worker/devices').set('Authorization', workerAuth).send(registration)).status).toBe(200);
-    expect(store.registerDevice).toHaveBeenCalledWith(registration);
+    expect(store.registerDevice).toHaveBeenCalledWith({ ...registration, role: 'EMPLOYEE' });
     expect((await request(app).get('/relay/v1/worker/devices').set('Authorization', workerAuth)).body).toEqual([{ id, name: 'Phone' }]);
     expect((await request(app).post(`/relay/v1/worker/devices/${id}/revoke`).set('Authorization', workerAuth)).status).toBe(200);
     expect((await request(app).get('/relay/v1/worker/state').set('Authorization', workerAuth)).body.lastPcSeq).toBe('55');

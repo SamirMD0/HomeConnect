@@ -22,14 +22,15 @@ describe('admin cloud phone pairing', () => {
     mocks.branches.mockResolvedValue([{ id: branchId, name: 'Main' }]);
     mocks.relay.mockResolvedValue([]);
   });
-  it('returns a one-time QR and registers only the SHA-256 token hash', async () => {
+  it.each(['ADMIN', 'EMPLOYEE'])('registers the current %s role and only the SHA-256 token hash', async role => {
+    mocks.user.mockResolvedValue({ id: userId, fullName: 'Shop user', role });
     const response = await request(app).post('/worker/devices').set('Authorization', auth()).send({ userId, branchIds: [branchId], name: 'Counter phone' });
     expect(response.status).toBe(201);
     expect(response.headers['cache-control']).toBe('no-store');
     const qr = response.body.data;
-    expect(qr).toEqual({ v: 1, relay: 'https://relay.example.com', deviceId: expect.any(String), token: expect.any(String), userId, userName: 'Shop user', branchIds: [branchId] });
+    expect(qr).toEqual({ v: 1, relay: 'https://relay.example.com', deviceId: expect.any(String), token: expect.any(String), userId, userName: 'Shop user', role, branchIds: [branchId] });
     expect(Buffer.from(qr.token, 'base64url')).toHaveLength(32);
-    expect(mocks.relay).toHaveBeenCalledWith('/devices', { id: qr.deviceId, userId, userName: 'Shop user', branchIds: [branchId], name: 'Counter phone', tokenSha256: createHash('sha256').update(qr.token).digest('hex') });
+    expect(mocks.relay).toHaveBeenCalledWith('/devices', { id: qr.deviceId, userId, userName: 'Shop user', role, branchIds: [branchId], name: 'Counter phone', tokenSha256: createHash('sha256').update(qr.token).digest('hex') });
     expect(JSON.stringify(mocks.relay.mock.calls)).not.toContain(qr.token);
   });
   it('cannot pair branches outside the selected user grants', async () => {

@@ -1,0 +1,2 @@
+ALTER TABLE relay_devices ADD COLUMN role text NOT NULL DEFAULT 'EMPLOYEE'
+  CHECK (role IN ('ADMIN', 'EMPLOYEE'));

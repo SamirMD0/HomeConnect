@@ -32,6 +32,7 @@ export function HomeScreen() {
           {
             label: 'New order',
             icon: 'cart-outline' as const,
+            cloudWrite: true,
             onPress: () => router.push('/(tabs)/sell/new-order'),
           },
         ]
@@ -42,6 +43,7 @@ export function HomeScreen() {
           {
             label: 'Pay supplier',
             icon: 'card-outline' as const,
+            cloudWrite: true,
             onPress: () => router.push('/(tabs)/suppliers/payment'),
           },
         ]
@@ -56,6 +58,7 @@ export function HomeScreen() {
           {
             label: 'Bill photo',
             icon: 'camera-outline' as const,
+            cloudWrite: true,
             onPress: () => router.push('/(tabs)/suppliers/bill'),
           },
         ]
@@ -63,6 +66,7 @@ export function HomeScreen() {
     {
       label: 'Payment',
       icon: 'wallet-outline',
+      cloudWrite: true,
       onPress: () => router.push('/(tabs)/sell/payment'),
     },
     // Counting corrects stock totals (admin-only on the PC); employees get receiving.
@@ -70,11 +74,13 @@ export function HomeScreen() {
       ? {
           label: 'Count',
           icon: 'clipboard-outline',
+          cloudWrite: true,
           onPress: () => router.push('/(tabs)/stock/count'),
         }
       : {
           label: 'Receive',
           icon: 'cube-outline',
+          cloudWrite: true,
           onPress: () => router.push('/(tabs)/stock/receive'),
         },
   ];
@@ -86,6 +92,7 @@ export function HomeScreen() {
       icon: 'cloud-upload-outline',
       tone: pendingCount ? 'warning' : 'neutral',
       badge: pendingCount,
+      cloudWrite: true,
       onPress: () => router.push('/(tabs)/suppliers/pending-bills'),
     });
   const name = session.user?.fullName || session.user?.username || '';

@@ -153,6 +153,11 @@ export function createRelayApp(options: RelayOptions = {}) {
       next();
     } catch (error) { next(error); }
   }, rateLimit(120, now), countBody, express.json({ limit: MAX_BLOB_BYTES }));
+  device.get('/me', validate(emptyInput, 'query'), (_req, res) => {
+    const paired = res.locals.device as RelayDevice;
+    res.set('Cache-Control', 'no-store').json({ deviceId: paired.id, userId: paired.userId,
+      userName: paired.userName, role: paired.role, branchIds: paired.branchIds });
+  });
   device.get('/records', validate(recordsQuery, 'query'), async (_req, res) => {
     const query = res.locals.query as z.infer<typeof recordsQuery>;
     const paired = res.locals.device as RelayDevice;

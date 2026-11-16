@@ -252,7 +252,7 @@ export function ReceiptCaptureScreen({ connection, token, onDone, onSessionInval
               </View>
             ))}
             <AppButton
-              label="Take photo"
+              cloudWrite label="Take photo"
               disabled={busy}
               onPress={() =>
                 void run(async () => {
@@ -264,7 +264,7 @@ export function ReceiptCaptureScreen({ connection, token, onDone, onSessionInval
               }
             />
             <AppButton
-              label="Choose from gallery"
+              cloudWrite label="Choose from gallery"
               variant="secondary"
               disabled={busy}
               onPress={() => void gallery()}
@@ -278,7 +278,7 @@ export function ReceiptCaptureScreen({ connection, token, onDone, onSessionInval
               editable={!busy}
             />
             <AppButton
-              label={`Upload ${pages.length} page(s)`}
+              cloudWrite label={`Upload ${pages.length} page(s)`}
               disabled={!pages.length}
               loading={busy}
               onPress={() => void upload()}
@@ -318,7 +318,7 @@ export function ReceiptCaptureScreen({ connection, token, onDone, onSessionInval
           />
           <View style={styles.content}>
             <AppButton
-              label="Capture page"
+              cloudWrite label="Capture page"
               disabled={!ready}
               loading={busy}
               onPress={() => void take()}

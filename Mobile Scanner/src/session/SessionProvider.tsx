@@ -95,12 +95,16 @@ function useSessionState() {
   const [restoreRevision, setRestoreRevision] = useState(0);
   const signOut = useCallback(async (notice?: string) => {
     if (cloudRef.current) {
-      await clearCloudPairing();
       try { await wipeCloudData(); }
       finally {
-        setCloudMode(false); setCloud(null); setCloudUser(null); setCloudBranches([]); setCloudBranchId(null);
-        setConnection(null); setCompat(null); setError(null); setConnectionNotice(notice ?? null);
-        await clearQueryCache();
+        // Join any in-flight /me save before deleting the credential, so a late
+        // profile write cannot restore the pairing after sign-out.
+        try { await clearCloudPairing(); }
+        finally {
+          setCloudMode(false); setCloud(null); setCloudUser(null); setCloudBranches([]); setCloudBranchId(null);
+          setConnection(null); setCompat(null); setError(null); setConnectionNotice(notice ?? null);
+          await clearQueryCache();
+        }
       }
       return;
     }
@@ -280,8 +284,14 @@ function useSessionState() {
     branch: cloud ? cloudBranch : branch,
     connectionNotice,
     connectCloud,
+    updateCloudPairing: (pairing: CloudPairing) => {
+      cloudRef.current = pairing;
+      setCloud(pairing); setCloudUser(pairedUser(pairing));
+      setCloudBranchId(current => current && pairing.branchIds.includes(current) ? current : pairing.branchIds[0] ?? null);
+      setCloudBranches(current => pairing.branchIds.map((id, index) => current.find(branch => branch.id === id) ?? { id, name: `Branch ${index + 1}` }));
+    },
     updateCloudIdentity: (current: AuthenticatedUser | null, branches: MobileBranch[]) => {
-      if (current) setCloudUser(current);
+      if (current && cloudRef.current) setCloudUser(pairedUser(cloudRef.current, current));
       if (cloudRef.current) setCloudBranches(cloudRef.current.branchIds.map((id, index) => branches.find(branch => branch.id === id) ?? { id, name: `Branch ${index + 1}` }));
     },
     error,

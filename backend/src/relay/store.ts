@@ -4,7 +4,7 @@ import type { ActionInput, DeviceInput, RecordsInput, ResultInput } from './inpu
 
 const json = (value: Prisma.JsonValue) => value === null ? Prisma.JsonNull : value;
 const devicePublic = {
-  id: true, userId: true, userName: true, branchIds: true, name: true,
+  id: true, userId: true, userName: true, role: true, branchIds: true, name: true,
   createdAt: true, lastSeenAt: true, revokedAt: true,
 } satisfies Prisma.RelayDeviceSelect;
 
@@ -182,7 +182,8 @@ export class RelayStore {
   }
 
   registerDevice(input: DeviceInput) {
-    return this.db.relayDevice.upsert({ where: { id: input.id }, create: input, update: input, select: devicePublic });
+    const data = { ...input, role: input.role ?? 'EMPLOYEE' };
+    return this.db.relayDevice.upsert({ where: { id: input.id }, create: data, update: data, select: devicePublic });
   }
 
   async revokeDevice(id: string) {

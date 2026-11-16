@@ -5,7 +5,7 @@ const options = { keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY
 export async function loadCloudPairing() {
   const saved = await SecureStore.getItemAsync(key, options);
   if (!saved) return null;
-  const pairing = parseCloudPairing(saved);
+  const pairing = parseCloudPairing(saved, true);
   if (!pairing) await SecureStore.deleteItemAsync(key, options);
   return pairing;
 }

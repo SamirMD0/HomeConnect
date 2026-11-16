@@ -348,7 +348,7 @@ export function SupplierPaymentScreen({
               />
             </View>
           </View>
-          <AppButton label="Review payment" onPress={review} />
+          <AppButton cloudWrite label="Review payment" onPress={review} />
           <AppButton label="Back" variant="secondary" onPress={() => setStep('PICK_SUPPLIER')} />
         </View>
       )}
@@ -380,7 +380,7 @@ export function SupplierPaymentScreen({
               </>
             ) : null}
           </View>
-          <AppButton label="Record payment" onPress={() => void submit()} loading={submitting} />
+          <AppButton cloudWrite label="Record payment" onPress={() => void submit()} loading={submitting} />
           <AppButton label="Edit details" variant="secondary" onPress={() => setStep('DETAILS')} />
         </View>
       )}
@@ -395,7 +395,7 @@ export function SupplierPaymentScreen({
               message={billMessage}
             />
           ) : null}
-          <AppButton label="Record another" onPress={recordAnother} />
+          <AppButton cloudWrite label="Record another" onPress={recordAnother} />
           <AppButton label="Done" variant="secondary" onPress={onDone} />
         </View>
       )}
