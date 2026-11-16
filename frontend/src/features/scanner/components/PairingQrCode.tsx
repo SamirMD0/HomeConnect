@@ -13,6 +13,7 @@ export interface PairingQrCodeProps {
    */
   url: string;
   size?: number;
+  label?: string;
 }
 
 /**
@@ -23,7 +24,7 @@ export interface PairingQrCodeProps {
  * Printing keeps the QR crisp because it is drawn at the canvas's intrinsic
  * resolution rather than scaled from CSS.
  */
-export const PairingQrCode: React.FC<PairingQrCodeProps> = ({ url, size = 256 }) => {
+export const PairingQrCode: React.FC<PairingQrCodeProps> = ({ url, size = 256, label }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,7 +51,7 @@ export const PairingQrCode: React.FC<PairingQrCodeProps> = ({ url, size = 256 })
 
   return (
     <div className="inline-flex flex-col items-center gap-1 rounded-lg border border-slate-200 bg-white p-2">
-      <canvas ref={canvasRef} width={size} height={size} className="block" aria-label={`Scanner Hub pairing QR for ${url}`} />
+      <canvas ref={canvasRef} width={size} height={size} className="block" aria-label={label ?? `Scanner Hub pairing QR for ${url}`} />
       <span className="font-mono text-[10px] text-slate-500">Scan from the phone / امسح من الهاتف</span>
     </div>
   );
