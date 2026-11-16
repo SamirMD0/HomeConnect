@@ -6,7 +6,7 @@ import { createRelayClient, type RelayDevice } from './client';
 import { RelayError } from './errors';
 import {
   actionsQuery, blobInput, claimInput, deviceInput, emptyInput, idInput, imageMime, MAX_BLOB_BYTES,
-  recordsInput, recordsQuery, resultInput, actionInput,
+  recordsInput, recordsQuery, resultInput, actionInput, snapshotBeginInput, snapshotPageInput, snapshotFinishInput,
 } from './inputs';
 import { RelayStore } from './store';
 
@@ -107,6 +107,15 @@ export function createRelayApp(options: RelayOptions = {}) {
   });
   worker.get('/state', validate(emptyInput, 'query'), async (_req, res) => { res.json(await store.workerState()); });
   worker.post('/outbox/claim', validate(claimInput, 'body'), async (_req, res) => { res.json(await store.claim(res.locals.body.limit)); });
+  worker.post('/snapshot/begin', validate(snapshotBeginInput, 'body'), async (_req, res) => {
+    res.json(await store.beginSnapshot(res.locals.body));
+  });
+  worker.post('/snapshot/page', validate(snapshotPageInput, 'body'), async (_req, res) => {
+    res.json(await store.snapshotPage(res.locals.body));
+  });
+  worker.post('/snapshot/finish', validate(snapshotFinishInput, 'body'), async (_req, res) => {
+    res.json(await store.finishSnapshot(res.locals.body.snapshotId));
+  });
   worker.get('/outbox/:id/blob', validate(idInput, 'params'), async (_req, res) => {
     const blob = await store.getBlob(res.locals.params.id);
     res.type(blob.mime).send(blob.bytes);

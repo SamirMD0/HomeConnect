@@ -28,6 +28,7 @@ const filterDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must use YYYY-M
 });
 export const supplierDueDateSchema = z.preprocess(emptyToNull, filterDate.nullable().optional());
 const values = {
+  idempotencyKey: z.string().uuid().optional(),
   type: z.nativeEnum(SupplierTransactionType), direction: z.nativeEnum(SupplierTransactionDirection).optional(),
   amount, currency: z.nativeEnum(Currency).default(Currency.USD), paymentMethod: z.nativeEnum(SupplierPaymentMethod).nullable().optional(),
   transactionDate: date, dueDate: supplierDueDateSchema, description: userTextSchema({ field: 'Description', min: 3, max: 500 }),

@@ -91,6 +91,9 @@ model RelayUsage {
 }
 
 model RelayWorker {
+  snapshotId String? @map("snapshot_id") @db.Uuid
+  snapshotPcSeq String? @map("snapshot_pc_seq")
+  completedSnapshotId String? @map("completed_snapshot_id") @db.Uuid
   id           Int       @id @default(1)
   lastSeenAt   DateTime? @map("last_seen_at") @db.Timestamptz(6)
   lastPcSeq    String    @default("0") @map("last_pc_seq")
@@ -99,4 +102,15 @@ model RelayWorker {
   lastUpkeepAt DateTime? @map("last_upkeep_at") @db.Timestamptz(6)
 
   @@map("relay_worker")
+}
+
+model RelaySnapshotRecord {
+  snapshotId String @map("snapshot_id") @db.Uuid
+  entity String
+  entityId String @map("entity_id") @db.Uuid
+  branchId String? @map("branch_id") @db.Uuid
+  op String
+  data Json?
+  @@id([snapshotId, entity, entityId])
+  @@map("relay_snapshot_records")
 }

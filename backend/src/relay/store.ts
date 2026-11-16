@@ -43,6 +43,7 @@ export class RelayStore {
       // Serializes worker batches before any revision is allocated.
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(74104, 1)`;
       const state = await tx.relayWorker.findUniqueOrThrow({ where: { id: 1 } });
+      if (state.snapshotId) throw new RelayError(409, 'SNAPSHOT_IN_PROGRESS', 'Finish the snapshot first.');
       if (BigInt(input.pcSeq) < BigInt(state.lastPcSeq)) {
         throw new RelayError(409, 'STALE_PC_CURSOR', 'The relay already holds a newer PC cursor.');
       }
@@ -58,6 +59,56 @@ export class RelayStore {
       }
       await tx.relayWorker.update({ where: { id: 1 }, data: { lastPcSeq: input.pcSeq, lastSeenAt: new Date() } });
       return { stored: input.records.length, lastPcSeq: input.pcSeq };
+    }, { timeout: 30000 });
+  }
+
+  beginSnapshot(input: { snapshotId: string; pcSeq: string; expectedPcSeq: string }) {
+    return this.db.$transaction(async tx => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(74104, 1)`;
+      const state = await tx.relayWorker.findUniqueOrThrow({ where: { id: 1 } });
+      if (state.completedSnapshotId === input.snapshotId) return { completed: true };
+      if (state.snapshotId === input.snapshotId) return { completed: false };
+      if (state.lastPcSeq !== input.expectedPcSeq) throw new RelayError(409, 'SNAPSHOT_CONFLICT', 'Restart the snapshot.');
+      await tx.relaySnapshotRecord.deleteMany({});
+      await tx.relayWorker.update({ where: { id: 1 }, data: { snapshotId: input.snapshotId, snapshotPcSeq: input.pcSeq } });
+      return { completed: false };
+    });
+  }
+
+  snapshotPage(input: { snapshotId: string; records: RecordsInput['records'] }) {
+    return this.db.$transaction(async tx => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(74104, 1)`;
+      const state = await tx.relayWorker.findUniqueOrThrow({ where: { id: 1 } });
+      if (state.snapshotId !== input.snapshotId) throw new RelayError(409, 'SNAPSHOT_CONFLICT', 'Restart the snapshot.');
+      const records = JSON.stringify(input.records);
+      await tx.$executeRaw`INSERT INTO relay_snapshot_records (snapshot_id, entity, entity_id, branch_id, op, data)
+        SELECT ${input.snapshotId}::uuid, x.entity, x.id::uuid, x."branchId"::uuid, x.op,
+          CASE WHEN x.op = 'delete' THEN NULL ELSE x.data END
+        FROM jsonb_to_recordset(${records}::jsonb) AS x(entity text, id text, "branchId" text, op text, data jsonb)
+        ON CONFLICT (snapshot_id, entity, entity_id) DO UPDATE SET branch_id = EXCLUDED.branch_id, op = EXCLUDED.op, data = EXCLUDED.data`;
+      return { stored: input.records.length };
+    });
+  }
+
+  finishSnapshot(snapshotId: string) {
+    return this.db.$transaction(async tx => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(74104, 1)`;
+      const state = await tx.relayWorker.findUniqueOrThrow({ where: { id: 1 } });
+      if (state.completedSnapshotId === snapshotId) return { completed: true };
+      if (state.snapshotId !== snapshotId || state.snapshotPcSeq === null) throw new RelayError(409, 'SNAPSHOT_CONFLICT', 'Restart the snapshot.');
+      // Old records remain readable until this transaction publishes every page.
+      await tx.$executeRaw`UPDATE relay_records r SET op = 'delete', data = NULL, pc_seq = ${state.snapshotPcSeq}
+        WHERE r.op <> 'delete' AND NOT EXISTS (SELECT 1 FROM relay_snapshot_records s
+          WHERE s.snapshot_id = ${snapshotId}::uuid AND s.entity = r.entity AND s.entity_id = r.entity_id)`;
+      await tx.$executeRaw`INSERT INTO relay_records (entity, entity_id, branch_id, op, data, pc_seq)
+        SELECT entity, entity_id, branch_id, op, data, ${state.snapshotPcSeq} FROM relay_snapshot_records
+        WHERE snapshot_id = ${snapshotId}::uuid ORDER BY entity, entity_id
+        ON CONFLICT (entity, entity_id) DO UPDATE SET branch_id = EXCLUDED.branch_id, op = EXCLUDED.op,
+          data = EXCLUDED.data, pc_seq = EXCLUDED.pc_seq`;
+      await tx.relayWorker.update({ where: { id: 1 }, data: { lastPcSeq: state.snapshotPcSeq,
+        snapshotId: null, snapshotPcSeq: null, completedSnapshotId: snapshotId, lastSeenAt: new Date() } });
+      await tx.relaySnapshotRecord.deleteMany({ where: { snapshotId } });
+      return { completed: true };
     }, { timeout: 30000 });
   }
 

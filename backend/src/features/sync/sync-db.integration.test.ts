@@ -79,7 +79,7 @@ const productData = (id: string) => ({ id, sku: `SYNC-${id}`, name: `Sync ${id}`
     ]);
     expect(rows[1].seq).toBe(rows[0].seq + 1n);
     expect(rows[2].seq).toBe(rows[1].seq + 1n);
-    expect((await readChanges(after, 500, scope)).records).toContainEqual({ entity: 'product', id: productIds[0], op: 'delete' });
+    expect((await readChanges(after, 500, scope)).records).toContainEqual({ entity: 'product', id: productIds[0], branchId: null, op: 'delete' });
   }, 30000);
 
   it('returns the current catalog list shape and image metadata without loading image bytes', async () => {
@@ -95,7 +95,7 @@ const productData = (id: string) => ({ id, sku: `SYNC-${id}`, name: `Sync ${id}`
     const feed = await readChanges(after, 500, scope);
     const record = feed.records.find(row => row.id === productIds[0]);
     expect(JSON.parse(JSON.stringify(record))).toEqual({
-      entity: 'product', id: productIds[0], op: 'upsert', data: { ...product, exactMatch: false },
+      entity: 'product', id: productIds[0], branchId: null, op: 'upsert', data: { ...product, exactMatch: false },
     });
     expect(JSON.stringify(record)).not.toContain('private image bytes');
     expect(record).not.toHaveProperty('data.image.data');

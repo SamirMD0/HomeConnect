@@ -1,3 +1,4 @@
+import { prisma } from '../../../lib/prisma';
 import { writeBranch, type BranchScope } from '../../branches/branch-scope';
 import { assertRecordInScope } from '../../branches/parent-branch';
 import { Currency, Prisma, SupplierAuditAction, SupplierAuditRecordType, SupplierTransactionStatus } from '@prisma/client';
@@ -11,7 +12,7 @@ import { assertSupplierAdmin } from '../authorization/supplier-policy';
 import { resolveSupplierDirection, supplierTransactionSnapshot, changedSnapshot } from '../domain/supplier-domain';
 import { SupplierMutationUser, SupplierRequestContext } from '../domain/supplier-types';
 import { SuppliersRepository } from '../suppliers/suppliers.repository';
-import { SupplierTransactionsRepository } from './supplier-transactions.repository';
+import { SupplierTransactionsRepository, supplierTransactionInclude } from './supplier-transactions.repository';
 import { CreateSupplierTransactionInput, SupplierLedgerQueryInput, SupplierTransactionActionInput, SupplierTransactionListQueryInput, UpdateSupplierTransactionInput } from './supplier-transactions.validator';
 
 export class SupplierTransactionsService {
@@ -23,6 +24,10 @@ export class SupplierTransactionsService {
     const direction = resolveSupplierDirection(input.type, input.direction);
     const transactionDate = businessDateToPrisma(input.transactionDate);
     return runFinancialTransaction(async (tx) => {
+      if (input.idempotencyKey) {
+        const previous = await tx.supplierTransaction.findUnique({ where: { idempotencyKey: input.idempotencyKey }, include: supplierTransactionInclude });
+        if (previous) return replaySupplierPayment(previous, supplierId, input, user.userId, scope);
+      }
       const supplier = await SuppliersRepository.findById(supplierId, tx);
       if (!supplier) throw new NotFoundError('Supplier not found');
       await assertRecordInScope('supplier', supplierId, scope, tx);
@@ -30,10 +35,16 @@ export class SupplierTransactionsService {
       if (!supplier.isActive) throw new AppError('Archived suppliers cannot receive new transactions', 409, 'SUPPLIER_ARCHIVED');
       await validateReceivingLink(supplierId, input, tx);
       const exchangeRate = await ExchangeRatesService.snapshotFor(currency, transactionDate, tx);
-      const transaction = await SupplierTransactionsRepository.create({ supplierId, supplierReceivingId: input.supplierReceivingId ?? null, type: input.type, direction, paymentMethod: input.paymentMethod ?? null, amount, currency, exchangeRate, baseAmount: toBaseAmount(amount, currency, exchangeRate, Prisma.Decimal.ROUND_HALF_UP), transactionDate, dueDate: input.dueDate ? businessDateToPrisma(input.dueDate) : null, description: input.description, reference: input.reference ?? null, notes: input.notes ?? null, createdById: user.userId }, tx);
+      const transaction = await SupplierTransactionsRepository.create({ ...(input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : {}), supplierId, supplierReceivingId: input.supplierReceivingId ?? null, type: input.type, direction, paymentMethod: input.paymentMethod ?? null, amount, currency, exchangeRate, baseAmount: toBaseAmount(amount, currency, exchangeRate, Prisma.Decimal.ROUND_HALF_UP), transactionDate, dueDate: input.dueDate ? businessDateToPrisma(input.dueDate) : null, description: input.description, reference: input.reference ?? null, notes: input.notes ?? null, createdById: user.userId }, tx);
       const actor = await loadActor(user.userId, tx);
       await writeSupplierAudit({ recordType: SupplierAuditRecordType.SUPPLIER_TRANSACTION, recordId: transaction.id, supplierId, supplierTransactionId: transaction.id, action: SupplierAuditAction.CREATE, changedById: user.userId, changedByName: actor.fullName, changedByUsername: actor.username, reason: 'Supplier transaction created', beforeValues: {}, afterValues: supplierTransactionSnapshot(transaction), requestId: context.requestId, ipAddress: context.ipAddress }, tx);
       return serializeTransaction(transaction);
+    }).catch(async error => {
+      if (input.idempotencyKey && error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        const previous = await prisma.supplierTransaction.findUnique({ where: { idempotencyKey: input.idempotencyKey }, include: supplierTransactionInclude });
+        if (previous) return replaySupplierPayment(previous, supplierId, input, user.userId, scope);
+      }
+      throw error;
     });
   }
 
@@ -130,4 +141,18 @@ function serializeTransaction(t: NonNullable<Awaited<ReturnType<typeof SupplierT
     dueDate: t.dueDate ? prismaDateToBusinessDate(t.dueDate) : null,
     supplierReceiving: t.supplierReceiving ? { ...t.supplierReceiving, receivedOn: prismaDateToBusinessDate(t.supplierReceiving.receivedOn) } : null,
   };
+}
+
+function replaySupplierPayment(previous: NonNullable<Awaited<ReturnType<typeof SupplierTransactionsRepository.findById>>>, supplierId: string, input: CreateSupplierTransactionInput, userId: string, scope: BranchScope) {
+  if (previous.supplierId !== supplierId || previous.createdById !== userId || !scope.branchIds.includes(previous.branchId) ||
+    previous.type !== input.type || previous.currency !== (input.currency ?? 'USD') ||
+    !previous.amount.equals(input.amount) || prismaDateToBusinessDate(previous.transactionDate) !== input.transactionDate ||
+    previous.paymentMethod !== (input.paymentMethod ?? null) || previous.description !== input.description ||
+    previous.notes !== (input.notes ?? null) || previous.reference !== (input.reference ?? null) ||
+    previous.supplierReceivingId !== (input.supplierReceivingId ?? null) ||
+    previous.direction !== resolveSupplierDirection(input.type, input.direction) ||
+    (previous.dueDate ? prismaDateToBusinessDate(previous.dueDate) : null) !== (input.dueDate ?? null)) {
+    throw new AppError('This payment identifier was already used for another transaction.', 409, 'IDEMPOTENCY_CONFLICT');
+  }
+  return serializeTransaction(previous);
 }

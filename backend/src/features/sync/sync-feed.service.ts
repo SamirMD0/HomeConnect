@@ -13,10 +13,10 @@ import { SuppliersService } from '../suppliers/suppliers/suppliers.service';
 import { getUnlinkedBill } from '../suppliers/receipts/receipts.service';
 
 export type SyncRecord =
-  | { entity: string; id: string; op: 'delete' }
-  | { entity: string; id: string; op: 'upsert'; data: unknown };
+  | { entity: string; id: string; branchId: string | null; op: 'delete' }
+  | { entity: string; id: string; branchId: string | null; op: 'upsert'; data: unknown };
 
-async function loadRecord(change: SyncChange, scope: BranchScope): Promise<unknown | null> {
+async function loadRecord(change: Pick<SyncChange, 'entity' | 'entityId'>, scope: BranchScope): Promise<unknown | null> {
   const id = change.entityId;
   switch (change.entity) {
     case 'product':
@@ -61,7 +61,22 @@ async function loadRecord(change: SyncChange, scope: BranchScope): Promise<unkno
   }
 }
 
-export async function readChanges(afterSeq: bigint | number, limit = 500, scope: BranchScope) {
+// Snapshot and delta deliberately share the PC's existing read projections.
+export async function buildSyncRecord(change: Pick<SyncChange, 'entity' | 'entityId' | 'branchId'>, scope: BranchScope): Promise<SyncRecord | null> {
+  try {
+    const data = await loadRecord(change, scope);
+    if (data === null) return null;
+    const ownBranch = (data as { branchId?: string }).branchId;
+    const branchId = ['product', 'category', 'user'].includes(change.entity) ? null :
+      change.entity === 'branch' ? change.entityId : ownBranch ?? change.branchId;
+    return { entity: change.entity, id: change.entityId, branchId, op: 'upsert', data };
+  } catch (error) {
+    if (error instanceof NotFoundError) return null;
+    throw error;
+  }
+}
+
+export async function readChanges(afterSeq: bigint | number, limit = 500, scope: BranchScope, options: { deadline?: number; system?: boolean } = {}) {
   if (typeof afterSeq === 'number' && !Number.isSafeInteger(afterSeq)) {
     throw new ValidationError('after must be a safe integer or bigint');
   }
@@ -90,6 +105,11 @@ export async function readChanges(afterSeq: bigint | number, limit = 500, scope:
     return { records: [], nextSeq: after.toString(), hasMore: false, busy: true as const };
   }
   const { changes, next, hasMore } = batch;
+  if (options.system) {
+    // A branch can be created after the worker initially resolves its scope.
+    // Include ownership observed in this committed batch before projecting it.
+    scope = { mode: 'all', branchIds: [...new Set([...scope.branchIds, ...changes.flatMap(row => row.branchId ? [row.branchId] : [])])] };
+  }
   const latest = new Map<string, { change: SyncChange; wasInScope: boolean }>();
   for (const change of changes) {
     const key = `${change.entity}:${change.entityId}`;
@@ -100,15 +120,18 @@ export async function readChanges(afterSeq: bigint | number, limit = 500, scope:
   }
   const records: SyncRecord[] = [];
   for (const { change, wasInScope } of latest.values()) {
-    const tombstone = { entity: change.entity, id: change.entityId, op: 'delete' as const };
+    if (options.deadline !== undefined && Date.now() >= options.deadline) {
+      return { records: [], nextSeq: after.toString(), hasMore: false, busy: true as const };
+    }
+    const tombstone = { entity: change.entity, id: change.entityId, branchId: change.branchId, op: 'delete' as const };
     if (change.op === 'delete') {
       if (wasInScope) records.push(tombstone);
       continue;
     }
     try {
-      const data = await loadRecord(change, scope);
-      if (data !== null) {
-        records.push({ entity: change.entity, id: change.entityId, op: 'upsert', data });
+      const record = await buildSyncRecord(change, scope);
+      if (record !== null) {
+        records.push(record);
       } else if (wasInScope) {
         records.push(tombstone);
       }

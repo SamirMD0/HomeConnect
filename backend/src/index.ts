@@ -11,6 +11,7 @@ import { stopLanListener } from './features/scanner/lan-listener';
 import { assertHostedModeEnv } from './lib/hosted-mode-preflight';
 import { prisma } from './lib/prisma';
 import { seedDefaultCategories } from './features/categories/category-defaults';
+import { syncWorker } from './features/sync/worker/worker-scheduler';
 
 const PORT = process.env.PORT || 3001;
 const HOST = process.env.HOST || (process.env.NODE_ENV === 'production' ? '0.0.0.0' : '127.0.0.1');
@@ -25,6 +26,7 @@ const startServer = async () => {
       logger.info(`Server running on http://${HOST}:${PORT}`);
       if (process.env.HOSTED_MODE !== 'true') {
         BackupScheduler.start();
+        syncWorker.start();
       } else {
         logger.info('BackupScheduler skipped: HOSTED_MODE=true');
       }
@@ -36,6 +38,7 @@ const startServer = async () => {
     });
 
     const shutdown = async (signal: string) => {
+      syncWorker.stop();
       logger.info(`Server shutting down from ${signal}`);
       if (process.env.HOSTED_MODE !== 'true') {
         BackupScheduler.stop();

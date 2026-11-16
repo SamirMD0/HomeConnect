@@ -337,4 +337,25 @@ const input = (id = randomUUID()): ActionInput => ({ id, branchId, type: 'opaque
     expect(BigInt(restarted.snapshotHorizon!)).toBeGreaterThan(BigInt(first.snapshotHorizon!));
     expect(restarted.hasMore).toBe(false);
   });
+
+  it('stages an idempotent full replacement and atomically removes records absent after a PC restore', async () => {
+    const oldId = randomUUID(), newId = randomUUID(), snapshotId = randomUUID();
+    recordIds.push(oldId, newId);
+    const before = (BigInt((await store.workerState()).lastPcSeq) + 1n).toString();
+    await store.writeRecords({ pcSeq: before, records: [{ entity: 'customer', id: oldId, branchId, op: 'upsert', data: { name: 'Old' } }] });
+    expect(await store.beginSnapshot({ snapshotId, pcSeq: '2', expectedPcSeq: before })).toEqual({ completed: false });
+    const page = { snapshotId, records: [{ entity: 'customer', id: newId, branchId: otherBranch, op: 'upsert' as const, data: { name: 'Restored' } }] };
+    await store.snapshotPage(page);
+    await store.snapshotPage(page);
+    expect(await db.relayRecord.findUnique({ where: { entity_entityId: { entity: 'customer', entityId: newId } } })).toBeNull();
+    const oldRev = (await db.relayRecord.findUniqueOrThrow({ where: { entity_entityId: { entity: 'customer', entityId: oldId } } })).rev;
+    await store.finishSnapshot(snapshotId);
+    await store.finishSnapshot(snapshotId);
+    expect((await store.workerState()).lastPcSeq).toBe('2');
+    const recordsA = await store.readRecords([branchId], oldRev.toString(), 500);
+    expect(recordsA.records).toContainEqual(expect.objectContaining({ id: oldId, op: 'delete', data: null }));
+    const recordsB = await store.readRecords([otherBranch], '0', 500);
+    expect(recordsB.records).toContainEqual(expect.objectContaining({ id: newId, op: 'upsert', data: { name: 'Restored' } }));
+    expect(await store.beginSnapshot({ snapshotId, pcSeq: '2', expectedPcSeq: before })).toEqual({ completed: true });
+  });
 });
