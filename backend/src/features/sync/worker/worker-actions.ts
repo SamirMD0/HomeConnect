@@ -53,7 +53,9 @@ function keyFields(data: Record<string, any>, actionId: string): Prisma.InputJso
     if (typeof data[key] === 'string' || typeof data[key] === 'number') result[key] = data[key];
   }
   if (Array.isArray(data.payments)) {
-    result.payments = data.payments.filter((p: any) => p.idempotencyKey === actionId).map((p: any) => ({ id: p.id, idempotencyKey: actionId }));
+    const payments = data.payments.filter((p: any) => p.idempotencyKey === actionId).map((p: any) => ({ id: p.id, idempotencyKey: actionId }));
+    result.payments = payments;
+    if (payments[0]) result.id = payments[0].id;
   }
   return result;
 }

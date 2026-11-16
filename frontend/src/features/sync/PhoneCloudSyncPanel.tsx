@@ -12,6 +12,7 @@ export function PhoneCloudSyncPanel() {
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [dirty, setDirty] = useState(false);
   useEffect(() => {
     let mounted = true;
     const refresh = () => api.get('/sync/worker').then(response => {
@@ -33,7 +34,7 @@ export function PhoneCloudSyncPanel() {
         openingStart: status.openingStart, openingEnd: status.openingEnd,
         ...(secret ? { workerSecret: secret } : {}),
       });
-      setStatus(response.data.data); setSecret(''); setMessage('Cloud sync settings saved.');
+      setStatus(response.data.data); setSecret(''); setDirty(false); setMessage('Cloud sync settings saved.');
     } catch { setError('Could not save. Check the relay address, secret and opening hours, then try again.'); }
     finally { setPending(false); }
   }
@@ -49,7 +50,7 @@ export function PhoneCloudSyncPanel() {
     <p className="mt-1 text-sm text-slate-500">Sync phone records and queued actions while the shop PC is running.</p>
     {error && <p role="alert" className="mt-3 text-sm text-red-700">{error}</p>}
     <p role="status" className="mt-3 text-sm text-slate-700">{message || (!status && !error ? 'Loading sync settings…' : '')}</p>
-    {status && <form onSubmit={event => void save(event)} className="mt-4 space-y-4">
+    {status && <form onSubmit={event => void save(event)} onChange={() => setDirty(true)} className="mt-4 space-y-4">
       <label className="flex min-h-11 items-center gap-3 text-sm font-medium text-slate-900">
         <input type="checkbox" checked={status.enabled} onChange={event => setStatus({ ...status, enabled: event.target.checked })} /> Enable phone cloud sync
       </label>
@@ -72,8 +73,9 @@ export function PhoneCloudSyncPanel() {
       {status.lastError && <p role="status" className="text-sm text-amber-800">{status.lastError}</p>}
       <div className="flex flex-wrap gap-3">
         <button disabled={pending} className="min-h-11 rounded-md bg-brand-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50">{pending ? 'Please wait…' : 'Save sync settings'}</button>
-        <button type="button" disabled={pending || !status.enabled || !status.secretConfigured} onClick={() => void runNow()} className="min-h-11 rounded-md border border-brand-600 px-4 py-2 text-sm font-medium text-brand-700 hover:bg-brand-50 disabled:opacity-50">Sync now</button>
+        <button type="button" disabled={pending || dirty || !status.enabled || !status.secretConfigured} onClick={() => void runNow()} className="min-h-11 rounded-md border border-brand-600 px-4 py-2 text-sm font-medium text-brand-700 hover:bg-brand-50 disabled:opacity-50">Sync now</button>
       </div>
+      {dirty && <p className="text-sm text-slate-500">Save your changes before syncing.</p>}
     </form>}
   </section>;
 }

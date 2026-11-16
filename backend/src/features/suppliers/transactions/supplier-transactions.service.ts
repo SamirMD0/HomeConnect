@@ -147,7 +147,11 @@ function replaySupplierPayment(previous: NonNullable<Awaited<ReturnType<typeof S
   if (previous.supplierId !== supplierId || previous.createdById !== userId || !scope.branchIds.includes(previous.branchId) ||
     previous.type !== input.type || previous.currency !== (input.currency ?? 'USD') ||
     !previous.amount.equals(input.amount) || prismaDateToBusinessDate(previous.transactionDate) !== input.transactionDate ||
-    previous.paymentMethod !== (input.paymentMethod ?? null)) {
+    previous.paymentMethod !== (input.paymentMethod ?? null) || previous.description !== input.description ||
+    previous.notes !== (input.notes ?? null) || previous.reference !== (input.reference ?? null) ||
+    previous.supplierReceivingId !== (input.supplierReceivingId ?? null) ||
+    previous.direction !== resolveSupplierDirection(input.type, input.direction) ||
+    (previous.dueDate ? prismaDateToBusinessDate(previous.dueDate) : null) !== (input.dueDate ?? null)) {
     throw new AppError('This payment identifier was already used for another transaction.', 409, 'IDEMPOTENCY_CONFLICT');
   }
   return serializeTransaction(previous);

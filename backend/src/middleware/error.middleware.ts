@@ -43,7 +43,7 @@ export const errorHandler = (
       logBackendError({
         method: req.method,
         path: req.path,
-        query: req.query,
+        query: req.header('X-Sync-Action') ? {} : req.query,
         status: err.statusCode,
         errorCode: err.code,
         message: err.message,
@@ -67,7 +67,7 @@ export const errorHandler = (
   logBackendError({
     method: req.method,
     path: req.path,
-    query: req.query,
+    query: req.header('X-Sync-Action') ? {} : req.query,
     status: 500,
     errorCode: 'INTERNAL_ERROR',
     message: err.message,

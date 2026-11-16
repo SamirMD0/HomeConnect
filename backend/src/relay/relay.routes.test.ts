@@ -20,6 +20,7 @@ const store = {
   writeRecords: vi.fn(), workerState: vi.fn(), claim: vi.fn(), getBlob: vi.fn(), saveResult: vi.fn(),
   registerDevice: vi.fn(), revokeDevice: vi.fn(), devices: vi.fn(), usage: vi.fn(),
   readRecords: vi.fn(), enqueue: vi.fn(), putBlob: vi.fn(), actionResults: vi.fn(),
+  beginSnapshot: vi.fn(), snapshotPage: vi.fn(), finishSnapshot: vi.fn(),
 };
 const log = vi.fn();
 const makeApp = (now?: () => number) => createRelayApp({ store: store as unknown as RelayStore,
@@ -28,6 +29,21 @@ const workerAuth = 'Bearer ' + workerSecret;
 const deviceAuth = 'Bearer ' + deviceSecret;
 
 describe('isolated relay routes', () => {
+  it('authenticates all snapshot replacement operations as worker-only', async () => {
+    const app = makeApp();
+    const operations = [
+      ['/snapshot/begin', { snapshotId: id, pcSeq: '2', expectedPcSeq: '50' }, store.beginSnapshot],
+      ['/snapshot/page', { snapshotId: id, records: [] }, store.snapshotPage],
+      ['/snapshot/finish', { snapshotId: id }, store.finishSnapshot],
+    ] as const;
+    for (const [path, body, method] of operations) {
+      expect((await request(app).post('/relay/v1/worker' + path).set('Authorization', deviceAuth).send(body)).status).toBe(401);
+      expect(method).not.toHaveBeenCalled();
+      method.mockResolvedValue({ completed: true });
+      expect((await request(app).post('/relay/v1/worker' + path).set('Authorization', workerAuth).send(body)).status).toBe(200);
+      expect(method).toHaveBeenCalledWith(path === '/snapshot/finish' ? id : body);
+    }
+  });
   beforeEach(() => {
     vi.resetAllMocks();
     store.countUsage.mockResolvedValue(1);

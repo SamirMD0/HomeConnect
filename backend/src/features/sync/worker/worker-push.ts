@@ -15,7 +15,6 @@ export function businessClock(now = new Date()) {
 }
 
 export async function pushRecords(state: SyncWorkerState, relay: Pick<WorkerRelay, 'request'>, deadline: number, deps = defaults): Promise<boolean> {
-  const scope = await deps.scope();
   try {
     if (!state.snapshotDone) {
       let progress = state.snapshotProgress as unknown as Snapshot | null;
@@ -31,9 +30,10 @@ export async function pushRecords(state: SyncWorkerState, relay: Pick<WorkerRela
       }
       const started = await relay.request('/snapshot/begin', { snapshotId: progress.id, pcSeq: progress.seq, expectedPcSeq: progress.expected });
       if (!started.completed) {
+        const scope = await deps.scope();
         while (progress.entity < snapshotEntities.length) {
           if (Date.now() >= deadline) return false;
-          const page = await deps.page(snapshotEntities[progress.entity], progress.after, progress.cutoff, scope);
+          const page = await deps.page(snapshotEntities[progress.entity], progress.after, progress.cutoff, scope, deadline);
           await relay.request('/snapshot/page', { snapshotId: progress.id, records: page.records });
           progress = { ...progress, entity: progress.entity + (page.done ? 1 : 0), after: page.done ? '' : page.after };
           await deps.save({ snapshotProgress: { ...progress } });
@@ -43,9 +43,10 @@ export async function pushRecords(state: SyncWorkerState, relay: Pick<WorkerRela
       await deps.save({ snapshotDone: true, lastPushedSeq: progress.seq, snapshotProgress: Prisma.DbNull });
       state = { ...state, snapshotDone: true, lastPushedSeq: progress.seq, snapshotProgress: null };
     }
+    const scope = await deps.scope();
     for (let batch = 0; batch < 20; batch++) {
       if (Date.now() >= deadline) return false;
-      const changes = await deps.feed(BigInt(state.lastPushedSeq), 500, scope);
+      const changes = await deps.feed(BigInt(state.lastPushedSeq), 500, scope, { deadline, system: true });
       if ('busy' in changes && changes.busy) return false;
       if (changes.nextSeq !== state.lastPushedSeq || changes.records.length > 0) {
         await relay.request('/records', { pcSeq: changes.nextSeq, records: changes.records });
@@ -74,7 +75,7 @@ export async function refreshCustomerDates(state: SyncWorkerState, relay: Pick<W
   const saved = state.snapshotProgress as { date?: string; after?: string } | null;
   let after = saved?.date === today ? saved.after ?? '' : '';
   while (Date.now() < deadline) {
-    const page = await deps.page('customer', after, '', scope);
+    const page = await deps.page('customer', after, '', scope, deadline);
     const records = page.records.filter(record => record.op === 'upsert' &&
       !new Prisma.Decimal((record.data as { financial: { outstanding: string } }).financial.outstanding).isZero());
     if (records.length) await relay.request('/records', { pcSeq: state.lastPushedSeq, records });

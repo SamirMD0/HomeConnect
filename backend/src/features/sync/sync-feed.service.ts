@@ -76,7 +76,7 @@ export async function buildSyncRecord(change: Pick<SyncChange, 'entity' | 'entit
   }
 }
 
-export async function readChanges(afterSeq: bigint | number, limit = 500, scope: BranchScope) {
+export async function readChanges(afterSeq: bigint | number, limit = 500, scope: BranchScope, options: { deadline?: number; system?: boolean } = {}) {
   if (typeof afterSeq === 'number' && !Number.isSafeInteger(afterSeq)) {
     throw new ValidationError('after must be a safe integer or bigint');
   }
@@ -105,6 +105,11 @@ export async function readChanges(afterSeq: bigint | number, limit = 500, scope:
     return { records: [], nextSeq: after.toString(), hasMore: false, busy: true as const };
   }
   const { changes, next, hasMore } = batch;
+  if (options.system) {
+    // A branch can be created after the worker initially resolves its scope.
+    // Include ownership observed in this committed batch before projecting it.
+    scope = { mode: 'all', branchIds: [...new Set([...scope.branchIds, ...changes.flatMap(row => row.branchId ? [row.branchId] : [])])] };
+  }
   const latest = new Map<string, { change: SyncChange; wasInScope: boolean }>();
   for (const change of changes) {
     const key = `${change.entity}:${change.entityId}`;
@@ -115,6 +120,9 @@ export async function readChanges(afterSeq: bigint | number, limit = 500, scope:
   }
   const records: SyncRecord[] = [];
   for (const { change, wasInScope } of latest.values()) {
+    if (options.deadline !== undefined && Date.now() >= options.deadline) {
+      return { records: [], nextSeq: after.toString(), hasMore: false, busy: true as const };
+    }
     const tombstone = { entity: change.entity, id: change.entityId, branchId: change.branchId, op: 'delete' as const };
     if (change.op === 'delete') {
       if (wasInScope) records.push(tombstone);

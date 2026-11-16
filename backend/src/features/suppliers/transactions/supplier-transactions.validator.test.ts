@@ -15,6 +15,11 @@ describe('supplier payable due dates', () => {
   });
 });
 describe('supplier transaction validation', () => {
+  it('accepts a durable action UUID and rejects invalid idempotency keys', () => {
+    const idempotencyKey = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    expect(createSupplierTransactionSchema.parse({ ...valid, idempotencyKey }).idempotencyKey).toBe(idempotencyKey);
+    expect(() => createSupplierTransactionSchema.parse({ ...valid, idempotencyKey: 'bad-key' })).toThrow();
+  });
   it('accepts decimal strings and bilingual descriptions', () => {
     expect(createSupplierTransactionSchema.parse({ ...valid, description: 'مكيفات مستلمة' }).amount).toBe('500.00');
   });

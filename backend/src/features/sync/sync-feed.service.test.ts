@@ -95,6 +95,25 @@ describe('sync feed', () => {
     expect((await readChanges(0, 500, scope)).records).toEqual([{ entity: 'customer', id: 'moved', branchId: 'branch-b', op: 'delete' }]);
   });
 
+  it('takes branch metadata from the current entity rather than an old invalidation', async () => {
+    mocks.db.syncChange.findMany.mockResolvedValue([change(1, 'customer', 'moved', 'branch-a')]);
+    mocks.customer.mockResolvedValue({ id: 'moved', branchId: 'branch-b', financial: {} });
+    const records = (await readChanges(0, 500, { mode: 'all', branchIds: ['branch-a', 'branch-b'] })).records;
+    expect(records[0]).toMatchObject({ branchId: 'branch-b', op: 'upsert' });
+  });
+
+  it('includes newly created branches in worker batches without widening ordinary callers', async () => {
+    mocks.db.syncChange.findMany.mockResolvedValue([change(1, 'customer', 'new', 'branch-b')]);
+    mocks.customer.mockImplementation(async (_id, requested) => {
+      if (!requested.branchIds.includes('branch-b')) throw new NotFoundError();
+      return { id: 'new', branchId: 'branch-b' };
+    });
+    expect((await readChanges(0, 500, scope)).records).toEqual([]);
+    expect((await readChanges(0, 500, scope, { system: true })).records).toEqual([
+      { entity: 'customer', id: 'new', branchId: 'branch-b', op: 'upsert', data: { id: 'new', branchId: 'branch-b' } },
+    ]);
+  });
+
   it('passes through the PC financial, order, supplier and bill service results', async () => {
     const cases = [
       ['customer', mocks.customer, { financial: { outstanding: '432.10' } }],

@@ -25,6 +25,13 @@ describe('worker settings', () => {
     expect(response.body.data.secretConfigured).toBe(true);
     expect(JSON.stringify(response.body)).not.toMatch(/private-ciphertext|workerSecret/);
   });
+  it('redacts database failures before passing them to HTTP error logging', async () => {
+    mocks.upsert.mockRejectedValueOnce(new Error('private-ciphertext plaintext-secret'));
+    const response = await request(app).get('/worker').set('Authorization', auth());
+    expect(response.status).toBe(503);
+    expect(response.body.error.code).toBe('SYNC_SETTINGS_UNAVAILABLE');
+    expect(JSON.stringify(response.body)).not.toMatch(/private-ciphertext|plaintext-secret/);
+  });
   it.each(['http://example.com', 'https://user:password@example.com', 'https://example.com/?secret=bad'])('rejects unsafe relay address %s', async relayUrl => {
     expect((await request(app).put('/worker').set('Authorization', auth()).send({ ...settings, relayUrl })).status).toBe(400);
     expect(mocks.update).not.toHaveBeenCalled();

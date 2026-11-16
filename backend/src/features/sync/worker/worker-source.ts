@@ -21,7 +21,7 @@ export async function systemScope(): Promise<BranchScope> {
   return { mode: 'all', branchIds: (await prisma.branch.findMany({ select: { id: true } })).map(branch => branch.id) };
 }
 
-export async function sourcePage(entity: string, after: string, cutoff: string, scope: BranchScope) {
+export async function sourcePage(entity: string, after: string, cutoff: string, scope: BranchScope, deadline = Infinity) {
   const base = { where: { id: { gt: after || undefined } }, orderBy: { id: 'asc' as const }, take: 200 };
   const selected = { id: true, branchId: true } as const;
   let rows: { id: string; branchId?: string | null; billGroupId?: string | null }[];
@@ -40,14 +40,21 @@ export async function sourcePage(entity: string, after: string, cutoff: string, 
   }
   const records = [];
   const seen = new Set<string>();
+  let processed = 0;
+  let lastId = after;
   for (const row of rows) {
+    if (Date.now() >= deadline) break;
+    processed++; lastId = row.id;
     const id = entity === 'supplier_bill' ? row.billGroupId ?? row.id : row.id;
     if (seen.has(id)) continue;
     seen.add(id);
-    const record = await buildSyncRecord({ entity, entityId: id, branchId: row.branchId ?? null }, scope);
+    const owner = entity === 'branch' ? id : row.branchId;
+    const rowScope = owner && !scope.branchIds.includes(owner)
+      ? { mode: 'all' as const, branchIds: [...scope.branchIds, owner] } : scope;
+    const record = await buildSyncRecord({ entity, entityId: id, branchId: row.branchId ?? null }, rowScope);
     if (record) records.push(record);
   }
-  return { records, after: rows.at(-1)?.id ?? after, done: rows.length < 200 };
+  return { records, after: lastId, done: processed === rows.length && rows.length < 200 };
 }
 
-export const saveProgress = (data: Prisma.SyncWorkerStateUpdateInput) => prisma.syncWorkerState.update({ where: { id: 1 }, data });
+export const saveProgress = async (data: Prisma.SyncWorkerStateUpdateInput) => prisma.syncWorkerState.update({ where: { id: 1 }, data });

@@ -22,6 +22,7 @@ describe('worker push', () => {
     state.snapshotDone = false;
     await run();
     expect(deps.cursor.mock.invocationCallOrder[0]).toBeLessThan(deps.page.mock.invocationCallOrder[0]);
+    expect(deps.cursor.mock.invocationCallOrder[0]).toBeLessThan(deps.scope.mock.invocationCallOrder[0]);
     expect(request).toHaveBeenCalledWith('/snapshot/begin', expect.objectContaining({ pcSeq: '10', expectedPcSeq: '100' }));
     expect(deps.page.mock.calls.map(call => call[0])).toEqual(['product', 'customer', 'supplier', 'supplier_bill', 'branch', 'category', 'user', 'sales_order']);
     expect(deps.save).toHaveBeenCalledWith(expect.objectContaining({ snapshotDone: true, lastPushedSeq: '10' }));

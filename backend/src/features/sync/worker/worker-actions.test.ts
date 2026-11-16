@@ -80,6 +80,17 @@ describe('apply phone actions through the PC API', () => {
       expect(JSON.parse(options.body)).toEqual({ amount: '10.00', paymentDate: '2026-11-16', paymentMethod: 'CASH', idempotencyKey: actionId });
     }
   });
+  it('returns the created payment ID rather than the debt or plan ID', async () => {
+    action.type = 'customer_payment.create';
+    action.payload = { targetType: 'DEBT', targetId, amount: '10.00', paymentDate: '2026-11-16', paymentMethod: 'CASH' };
+    deps.fetch.mockResolvedValue(response(201, { data: { id: targetId, payments: [
+      { id: 'older-payment', idempotencyKey: 'unrelated' }, { id: 'created-payment', idempotencyKey: actionId },
+    ] } }));
+    await run();
+    expect(deps.remember).toHaveBeenCalledWith(action, { status: 'applied', result: {
+      id: 'created-payment', payments: [{ id: 'created-payment', idempotencyKey: actionId }],
+    } });
+  });
   it('uploads the photo with receipt and bill-group idempotency headers', async () => {
     action.type = 'supplier_bill.upload';
     action.payload = { supplierId: targetId, billGroupId: userId, note: 'Invoice' };
