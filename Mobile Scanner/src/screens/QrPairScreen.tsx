@@ -7,6 +7,7 @@ import { StatusBanner } from '../components/StatusBanner';
 import { theme } from '../theme';
 import { ConnectionSettings } from '../types/scanner.types';
 import { parsePairingPayload } from '../utils/pairing-payload';
+import { parseCloudPairing, type CloudPairing } from '../offline/cloud-pairing';
 
 /**
  * Full-screen QR pairing view drawn inside the current screen (not a Modal):
@@ -19,9 +20,10 @@ interface QrPairScreenProps {
   visible: boolean;
   onCancel: () => void;
   onPaired: (settings: ConnectionSettings) => void;
+  onCloudPaired?: (pairing: CloudPairing) => void;
 }
 
-export function QrPairScreen({ visible, onCancel, onPaired }: QrPairScreenProps) {
+export function QrPairScreen({ visible, onCancel, onPaired, onCloudPaired }: QrPairScreenProps) {
   const [permission, requestPermission, getPermission] = useCameraPermissions();
   const [session, setSession] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -79,6 +81,8 @@ export function QrPairScreen({ visible, onCancel, onPaired }: QrPairScreenProps)
 
   const handleScan = ({ data }: { data: string }) => {
     if (consumed.current) return;
+    const cloud = parseCloudPairing(data);
+    if (cloud && onCloudPaired) { consumed.current = true; onCloudPaired(cloud); return; }
     const parsed = parsePairingPayload(data);
     if (!parsed) {
       // Another QR in view (or a half-read one): say so briefly and keep scanning.

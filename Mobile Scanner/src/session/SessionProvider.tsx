@@ -30,8 +30,23 @@ import type { ConnectionSettings } from '../types/scanner.types';
 import { can, type Permission } from '../permissions/can';
 import { TokenSession } from './token-session';
 import { registerForegroundSession } from './foreground-session';
+import { loadCloudPairing, saveCloudPairing, clearCloudPairing } from '../offline/cloud-storage';
+import { pairedUser, type CloudPairing } from '../offline/cloud-pairing';
+import { setCloudMode, wipeCloudData } from '../offline/cloud-mode';
+import { setSelectedBranch, type MobileBranch } from '../branches/branch-selection';
 
 function useSessionState() {
+  const [cloud, setCloud] = useState<CloudPairing | null>(null);
+  const cloudRef = useRef(cloud); cloudRef.current = cloud;
+  const [cloudUser, setCloudUser] = useState<AuthenticatedUser | null>(null);
+  const [cloudBranches, setCloudBranches] = useState<MobileBranch[]>([]);
+  const [cloudBranchId, setCloudBranchId] = useState<string | null>(null);
+  const [connectionNotice, setConnectionNotice] = useState<string | null>(null);
+  const enterCloud = (pairing: CloudPairing) => {
+    setCloudMode(true); setCloud(pairing); setCloudUser(pairedUser(pairing));
+    setCloudBranches(pairing.branchIds.map((id, index) => ({ id, name: `Branch ${index + 1}` })));
+    setCloudBranchId(pairing.branchIds[0]!);
+  };
   const [restoring, setRestoring] = useState(true);
   const [connection, setConnection] = useState<ConnectionSettings | null>(null);
   const connectionRef = useRef(connection);
@@ -78,7 +93,17 @@ function useSessionState() {
       });
   }, [switchTo]);
   const [restoreRevision, setRestoreRevision] = useState(0);
-  const signOut = useCallback(async () => {
+  const signOut = useCallback(async (notice?: string) => {
+    if (cloudRef.current) {
+      await clearCloudPairing();
+      try { await wipeCloudData(); }
+      finally {
+        setCloudMode(false); setCloud(null); setCloudUser(null); setCloudBranches([]); setCloudBranchId(null);
+        setConnection(null); setCompat(null); setError(null); setConnectionNotice(notice ?? null);
+        await clearQueryCache();
+      }
+      return;
+    }
     const clearing = credentials.signOut(connectionRef.current);
     setUser(null);
     setUserVerified(false);
@@ -98,6 +123,8 @@ function useSessionState() {
     void (async () => {
       try {
         await requireSecureStorage();
+        const savedCloud = await loadCloudPairing();
+        if (savedCloud) { if (active) enterCloud(savedCloud); return; }
         const [savedConnection, savedUser] = await Promise.all([
           loadConnection(),
           loadAuthUser(),
@@ -183,10 +210,22 @@ function useSessionState() {
     };
   }, [connection, token, signOut, revision]);
   const branch = useBranchSession(
-    compat && !compat.blocked ? connection : null,
+    !cloud && compat && !compat.blocked ? connection : null,
     user && userVerified ? token : null,
     signOut
   );
+  useEffect(() => { if (cloud) setSelectedBranch(cloudBranchId); }, [cloud, cloudBranchId]);
+  const cloudBranch = {
+    selected: cloudBranches.find(item => item.id === cloudBranchId) ?? null,
+    branches: cloudBranches, busy: false, error: null,
+    choose: async (value: MobileBranch) => { if (!cloud?.branchIds.includes(value.id)) return; await clearQueryCache(); setCloudBranchId(value.id); },
+    switchBranch: async () => { setCloudBranchId(null); setSelectedBranch(null); await clearQueryCache(); },
+    retry: () => {},
+  };
+  const connectCloud = async (pairing: CloudPairing) => {
+    await signOut(); await wipeCloudData(); await clearQueryCache();
+    await saveCloudPairing(pairing); setConnection(null); setCompat(null); setError(null); setConnectionNotice(null); enterCloud(pairing);
+  };
   const login = async (
     accessToken: string,
     current: AuthenticatedUser,
@@ -212,7 +251,7 @@ function useSessionState() {
     setCompat(null);
     setError(null);
   };
-  const phase = restoring
+  const phase = cloud ? (cloudBranch.selected ? 'ready' : 'branch') : restoring
     ? 'restoring'
     : error
       ? 'error'
@@ -231,10 +270,18 @@ function useSessionState() {
                   : 'ready';
   return {
     phase,
-    connection,
-    token,
-    user,
-    branch,
+    mode: cloud ? 'cloud' as const : 'lan' as const,
+    cloudPairing: cloud,
+    connection: cloud ? { host: new URL(cloud.relay).hostname, port: 443, mode: 'cloud' as const, relay: cloud.relay } : connection,
+    token: cloud ? 'cloud-local-session' : token,
+    user: cloud ? cloudUser : user,
+    branch: cloud ? cloudBranch : branch,
+    connectionNotice,
+    connectCloud,
+    updateCloudIdentity: (current: AuthenticatedUser | null, branches: MobileBranch[]) => {
+      if (current) setCloudUser(current);
+      if (cloudRef.current) setCloudBranches(cloudRef.current.branchIds.map((id, index) => branches.find(branch => branch.id === id) ?? { id, name: `Branch ${index + 1}` }));
+    },
     error,
     offline,
     warning: compat?.warning ?? null,
@@ -251,7 +298,7 @@ function useSessionState() {
     },
     retry: () =>
       connection ? setRevision((value) => value + 1) : setRestoreRevision((value) => value + 1),
-    can: (permission: Permission) => can(permission, user),
+    can: (permission: Permission) => can(permission, cloud ? cloudUser : user),
   };
 }
 type Session = ReturnType<typeof useSessionState>;

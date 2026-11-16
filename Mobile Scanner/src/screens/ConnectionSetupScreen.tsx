@@ -13,15 +13,19 @@ import { ConnectionSettings } from '../types/scanner.types';
 import { DEFAULT_SCANNER_PORT, parseConnection } from '../utils/scanner-url';
 import { QrPairScreen } from './QrPairScreen';
 import { ConnectionLogPanel } from '../connection/ConnectionLogPanel';
+import type { CloudPairing } from '../offline/cloud-pairing';
 
 interface ConnectionSetupScreenProps {
   initialSettings: ConnectionSettings | null;
   onConnected: (settings: ConnectionSettings, compat: CompatibilityState) => void;
+  onCloudPaired?: (pairing: CloudPairing) => Promise<void>;
+  notice?: string | null;
 }
 
 export function ConnectionSetupScreen({
   initialSettings,
   onConnected,
+  onCloudPaired, notice,
 }: ConnectionSetupScreenProps) {
   const [host, setHost] = useState(initialSettings?.host ?? '');
   const [port, setPort] = useState(String(initialSettings?.port ?? DEFAULT_SCANNER_PORT));
@@ -102,6 +106,7 @@ export function ConnectionSetupScreen({
   return (
     <>
       <AuthLayout title="Connect">
+        {notice && <StatusBanner tone="warning" message={notice} />}
         {message && <StatusBanner tone="danger" message={message} />}
         {message && (
           <Button variant="ghost" size="sm" onPress={() => setDetailsOpen((value) => !value)}>
@@ -171,7 +176,10 @@ export function ConnectionSetupScreen({
         )}
       </AuthLayout>
 
-      <QrPairScreen visible={qrOpen} onCancel={() => setQrOpen(false)} onPaired={handlePaired} />
+      <QrPairScreen visible={qrOpen} onCancel={() => setQrOpen(false)} onPaired={handlePaired} onCloudPaired={pairing => {
+        setQrOpen(false);
+        void onCloudPaired?.(pairing).catch(() => setMessage('Could not securely pair this phone. Please try again.'));
+      }} />
     </>
   );
 }

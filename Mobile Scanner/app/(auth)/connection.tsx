@@ -6,7 +6,7 @@ export default function Connection() {
   const session = useSession();
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <ConnectionSetupScreen initialSettings={session.connection} onConnected={session.connect} />
+      <ConnectionSetupScreen initialSettings={session.connection} onConnected={session.connect} onCloudPaired={session.connectCloud} notice={session.connectionNotice} />
     </SafeAreaView>
   );
 }

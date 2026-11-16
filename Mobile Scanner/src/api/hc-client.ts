@@ -1,3 +1,4 @@
+import { cloudMode, cloudRequest } from '../offline/cloud-mode';
 import { handleBranchRejection, selectedBranchHeaders } from '../branches/branch-selection';
 import { ApiFailure, ApiSuccess, ConnectionSettings } from '../types/scanner.types';
 import { accessTokenNeedsRefresh } from '../utils/jwt-expiry';
@@ -116,6 +117,7 @@ function errorKind(status: number): HcApiErrorKind {
 }
 
 export function backendBaseUrl(connection: ConnectionSettings): string {
+  if (connection.mode === 'cloud' && connection.relay) return connection.relay;
   const normalisedHost = connection.host.replace(/^https?:\/\//i, '').replace(/\/+$/, '');
   const port = connection.port === 443 ? '' : `:${connection.port}`;
   const scheme = connection.port === 443 ? 'https' : 'http';
@@ -178,6 +180,7 @@ export async function requestJson<T>(
   skipRecovery = false,
   onResponse?: (response: Response) => void
 ): Promise<T> {
+  if (cloudMode()) return cloudRequest<T>(url, init);
   const recovery = sessionRecovery;
   const sentToken = (init.headers as Record<string, string> | undefined)?.Authorization?.slice(7);
   const belongsToSession = Boolean(
