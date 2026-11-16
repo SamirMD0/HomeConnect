@@ -13,6 +13,9 @@ const record = z.object({
   branchId: uuid.nullable(), op: z.enum(['upsert', 'delete']), data: z.json().optional(),
 }).refine(value => value.op === 'delete' || value.data !== undefined, 'Upserts require data');
 export const recordsInput = z.object({ pcSeq: cursor, records: z.array(record).max(500) });
+export const snapshotBeginInput = z.object({ snapshotId: uuid, pcSeq: cursor, expectedPcSeq: cursor });
+export const snapshotPageInput = z.object({ snapshotId: uuid, records: z.array(record).max(200) });
+export const snapshotFinishInput = z.object({ snapshotId: uuid });
 export const claimInput = z.object({ limit: z.number().int().min(1).max(50).default(50) });
 export const resultInput = z.object({ status: z.enum(['applied', 'refused', 'failed']), result: z.json() });
 export const deviceInput = z.object({
