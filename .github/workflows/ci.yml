@@ -45,6 +45,7 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://homeconnect:ci_local_password@localhost:5432/homeconnect_ci_phase4_phase5_phase6
+      RELAY_DATABASE_URL: postgresql://homeconnect:ci_local_password@localhost:5432/homeconnect_relay_ci
       # Required at startup. A CI-only value; never a real secret.
       JWT_SECRET: ci_only_jwt_secret_not_used_outside_ci
       JWT_REFRESH_SECRET: ci_only_jwt_refresh_secret_not_used_outside_ci
@@ -67,6 +68,13 @@ jobs:
 
       - name: Apply migrations
         run: npx prisma migrate deploy --schema backend/prisma/schema.prisma
+
+      - name: Prepare isolated relay test database
+        run: |
+          docker exec ${{ job.services.postgres.id }} createdb -U homeconnect homeconnect_relay_ci
+          npm run relay:generate
+          npm run relay:migrate:deploy
+          npm run relay:typecheck
 
       - name: Emit backend declarations for frontend project references
         # tsconfig.json uses project references into tsconfig.server.json
