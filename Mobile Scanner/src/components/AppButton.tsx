@@ -1,6 +1,8 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { ActivityIndicator, Pressable, StyleSheet, Text, type ViewStyle } from 'react-native';
 import { theme } from '../theme';
+import { cloudMode } from '../offline/cloud-mode';
+import { CLOUD_WRITE_NOTE, isCloudWriteLabel } from '../offline/cloud-policy';
 
 /**
  * - primary: the one filled action on a screen (brand blue).
@@ -39,7 +41,8 @@ export function AppButton({
   icon,
   iconOnly = false,
 }: AppButtonProps) {
-  const unavailable = disabled || loading;
+  const cloudDisabled = cloudMode() && isCloudWriteLabel(label);
+  const unavailable = disabled || loading || cloudDisabled;
   const onFill = filled.has(variant) || (variant === 'danger' && solid);
   const ink = onFill
     ? theme.colors.onBrand
@@ -49,9 +52,10 @@ export function AppButton({
         ? theme.colors.brandStrong
         : theme.colors.text;
   return (
-    <Pressable
+    <><Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
+      accessibilityHint={cloudDisabled ? CLOUD_WRITE_NOTE : undefined}
       accessibilityState={{ disabled: unavailable, busy: loading }}
       disabled={unavailable}
       onPress={onPress}
@@ -71,7 +75,7 @@ export function AppButton({
         <Ionicons name={icon} size={iconOnly ? 22 : 20} color={ink} accessible={false} />
       ) : null}
       {iconOnly ? null : <Text style={[styles.label, { color: ink }]}>{label}</Text>}
-    </Pressable>
+    </Pressable>{cloudDisabled && <Text style={{ color: theme.colors.muted, fontSize: 12 }}>{CLOUD_WRITE_NOTE}</Text>}</>
   );
 }
 

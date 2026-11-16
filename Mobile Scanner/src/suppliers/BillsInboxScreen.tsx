@@ -197,7 +197,7 @@ export function BillsInboxScreen() {
             {selected.note ? <Text style={readStyles.subtitle}>{selected.note}</Text> : null}
             {sheetError ? <StatusBanner tone="danger" message={sheetError} /> : null}
 
-            {mode === 'menu' ? (
+            {session.mode === 'cloud' ? <Text style={readStyles.subtitle}>Coming soon over the cloud. Use the shop Wi-Fi</Text> : mode === 'menu' ? (
               <>
                 <AppButton label="Link to a purchase" onPress={() => setMode('purchase')} />
                 <AppButton label="Link to a payment" variant="secondary" onPress={() => setMode('payment')} />

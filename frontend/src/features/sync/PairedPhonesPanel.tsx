@@ -10,6 +10,7 @@ export function PairedPhonesPanel() {
   const selected = choices.find(user => user.id === userId);
   const loadDevices = async () => setDevices((await api.get('/sync/worker/devices')).data.data);
   useEffect(() => { void api.get('/sync/worker/devices/options').then(response => setChoices(response.data.data)).catch(() => setError('Could not load users.')); }, []);
+  useEffect(() => { void loadDevices().catch(() => setError('Could not load paired phones.')); }, []);
   useEffect(() => { if (!qr) return; const timer = setTimeout(() => setQr(null), 5 * 60000); return () => clearTimeout(timer); }, [qr]);
   const pair = async () => {
     setBusy(true); setError(''); setQr(null);

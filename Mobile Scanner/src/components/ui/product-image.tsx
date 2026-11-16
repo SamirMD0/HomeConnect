@@ -19,18 +19,18 @@ export interface ProductImageSource {
  * photo, or when it fails, a quiet box icon keeps rows aligned.
  */
 export function ProductImage({ product, size = 48, className }: { product: ProductImageSource; size?: number; className?: string }) {
-  const { client, key } = useLookup();
+  const { client, key, session } = useLookup();
   const [failed, setFailed] = useState(false);
   const uploaded = Boolean(product.image);
   const photo = useQuery({
     queryKey: key('product-image', { id: product.id, v: product.image?.updatedAt ?? '' }),
     queryFn: () => fetchAuthedImage(client, `/products/${encodeURIComponent(product.id)}/image`),
-    enabled: uploaded,
+    enabled: uploaded && session.mode !== 'cloud',
     staleTime: Infinity,
     gcTime: 10 * 60_000,
     retry: 1,
   });
-  const uri = uploaded ? photo.data : (product.imageUrl ?? undefined);
+  const uri = session.mode === 'cloud' ? undefined : uploaded ? photo.data : (product.imageUrl ?? undefined);
   const frame = cn('items-center justify-center overflow-hidden rounded-lg border border-border bg-slate-50', className);
   if (!uri || failed)
     return (

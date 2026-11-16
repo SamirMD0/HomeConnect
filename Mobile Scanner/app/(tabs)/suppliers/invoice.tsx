@@ -1,3 +1,4 @@
+import { CloudWriteGuard } from '../../../src/offline/CloudWriteGuard';
 import { useMemo } from 'react';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { FeatureScreen } from '../../../src/navigation/FeatureScreen';
@@ -9,10 +10,10 @@ export default function Feature() {
     () => (billId && billBranchId && supplierId ? { billId, billBranchId, supplierId } : undefined),
     [billId, billBranchId, supplierId]
   );
-  return (
+  return (<CloudWriteGuard>
     <>
       <Stack.Screen options={{ title: fromBill ? 'Purchase from bill' : 'Supplier invoice' }} />
       <FeatureScreen feature="invoice" fromBill={fromBill} />
     </>
-  );
+  </CloudWriteGuard>);
 }

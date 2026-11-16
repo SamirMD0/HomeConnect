@@ -5,6 +5,8 @@ import { EmptyState } from '../components/EmptyState';
 import { ErrorState } from '../components/ErrorState';
 import { theme } from '../theme';
 import type { ReadPage } from '@shared/lookup-contracts';
+import { cloudMode } from '../offline/cloud-mode';
+import { requestCloudSync } from '../offline/sync-status';
 
 export interface ListQuery<T> {
   data?: { pages: ReadPage<T>[] };
@@ -79,7 +81,7 @@ export function LookupList<T>({
         )
       }
       refreshing={query.isFetching && !query.isPending && !query.isFetchingNextPage}
-      onRefresh={() => void query.refetch()}
+      onRefresh={() => void (async () => { if (cloudMode()) await requestCloudSync(); await query.refetch(); })()}
       ListFooterComponent={
         query.hasNextPage ? (
           <View style={styles.footer}>

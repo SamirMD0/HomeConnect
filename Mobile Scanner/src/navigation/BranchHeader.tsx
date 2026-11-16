@@ -17,6 +17,7 @@ import { Select } from '../components/ui/select';
 import { Text } from '../components/ui/text';
 import { useSession } from '../session/SessionProvider';
 import { ActionBell } from '../ui/ActionBell';
+import { SyncLine } from '../offline/SyncLine';
 
 function initials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -54,7 +55,7 @@ export function BranchHeader({ menu = true }: { menu?: boolean }) {
 
   return (
     <GlassPanel style={{ paddingTop: insets.top, borderBottomWidth: 1 }}>
-      <View className="h-16 flex-row items-center gap-2 px-3">
+      <View className="min-h-16 flex-row items-center gap-2 px-3 py-1">
         <View accessible accessibilityLabel="Home Connect" className="h-10 w-10 items-center justify-center rounded-xl bg-primary">
           <Store size={22} color="#ffffff" />
         </View>
@@ -79,6 +80,7 @@ export function BranchHeader({ menu = true }: { menu?: boolean }) {
               </Text>
             </View>
           )}
+          {session.mode === 'cloud' && <SyncLine />}
         </View>
         {menu ? <ActionBell /> : null}
         {menu ? (
@@ -106,7 +108,7 @@ export function BranchHeader({ menu = true }: { menu?: boolean }) {
       </View>
       {network.isConnected === false || session.offline ? (
         <View className="px-3 pb-2">
-          <StatusBanner tone="warning" message="Offline. Reconnect to the shop Wi-Fi." />
+          <StatusBanner tone="warning" message={session.mode === 'cloud' ? 'Offline. Showing saved phone data.' : 'Offline. Reconnect to the shop Wi-Fi.'} />
         </View>
       ) : null}
       {session.warning ? (

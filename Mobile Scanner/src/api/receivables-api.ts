@@ -71,7 +71,7 @@ const fetchReceivables = (client: AuthedClient, filters: ReceivablesFilters, pag
   });
 
 export type ReceivablesPage = ReadPage<ReceivableItem> & {
-  summary: ReceivablesSummary;
+  summary: ReceivablesSummary | null;
   tierCounts: ReceivablesResponse['tierCounts'];
 };
 /** One page of customers who owe money, plus totals for the current filters. */
@@ -93,5 +93,7 @@ export async function getReceivablesPage(
 
 /** Totals only, for the Home card: one row is the smallest page the PC returns. */
 export async function getReceivablesSummary(client: AuthedClient): Promise<ReceivablesSummary> {
-  return (await fetchReceivables(client, {}, 1, 1)).summary;
+  const summary = (await fetchReceivables(client, {}, 1, 1)).summary;
+  if (!summary) throw new Error('Receivables totals are available on the shop Wi-Fi.');
+  return summary;
 }

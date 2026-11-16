@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SettingsPage } from './SettingsPage';
+import { PairingQrCode } from '../../features/scanner/components/PairingQrCode';
 
 const { authMock } = vi.hoisted(() => ({
   authMock: {
@@ -38,6 +39,11 @@ vi.mock('../../features/branches/BranchesPanel', () => ({
 }));
 
 describe('SettingsPage', () => {
+  it('keeps a cloud pairing token out of QR accessibility text and rendered HTML', () => {
+    const html = renderToStaticMarkup(<PairingQrCode url={JSON.stringify({ token: 'one-time-private-token' })} label="Cloud phone pairing QR" />);
+    expect(html).toContain('Cloud phone pairing QR');
+    expect(html).not.toContain('one-time-private-token');
+  });
   beforeEach(() => {
     authMock.user = { id: 'admin', username: 'admin', fullName: 'Admin', role: 'ADMIN' };
   });

@@ -180,7 +180,7 @@ export async function requestJson<T>(
   skipRecovery = false,
   onResponse?: (response: Response) => void
 ): Promise<T> {
-  if (cloudMode()) return cloudRequest<T>(url, init);
+  if (cloudMode()) return cloudRequest<T>(url, { ...init, headers: { ...selectedBranchHeaders(), ...init.headers } });
   const recovery = sessionRecovery;
   const sentToken = (init.headers as Record<string, string> | undefined)?.Authorization?.slice(7);
   const belongsToSession = Boolean(

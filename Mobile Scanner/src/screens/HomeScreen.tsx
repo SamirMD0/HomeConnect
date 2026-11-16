@@ -1,7 +1,8 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { RefreshControl, ScrollView, StyleSheet } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, Text } from 'react-native';
+import { requestCloudSync } from '../offline/sync-status';
 import { useSession } from '../session/SessionProvider';
 import { backendBaseUrl } from '../api/hc-client';
 import { receiptQueue } from '../services/receipt-queue';
@@ -21,6 +22,7 @@ export function HomeScreen() {
       branchId: session.branch.selected?.id ?? '',
     }),
     queryFn: () => receiptQueue().listPending(),
+    enabled: session.mode !== 'cloud',
     refetchInterval: 3000,
   });
   const actions: QuickAction[] = [
@@ -95,6 +97,7 @@ export function HomeScreen() {
           refreshing={pending.isRefetching}
           tintColor={theme.colors.brand}
           onRefresh={() => {
+            if (session.mode === 'cloud') { void requestCloudSync(); return; }
             setRefreshRevision((value) => value + 1);
             void pending.refetch();
           }}
@@ -103,7 +106,7 @@ export function HomeScreen() {
     >
       <PageTitle title={`Hello, ${name.split(' ')[0]}`} subtitle={session.branch.selected?.name} />
       <QuickGrid actions={grid} />
-      <DashboardPanel refreshRevision={refreshRevision} />
+      {session.mode === 'cloud' ? <Text style={{ color: theme.colors.muted }}>Home figures are available on the shop Wi-Fi.</Text> : <DashboardPanel refreshRevision={refreshRevision} />}
     </ScrollView>
   );
 }

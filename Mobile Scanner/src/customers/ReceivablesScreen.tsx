@@ -106,7 +106,7 @@ export function ReceivablesScreen() {
       }
       header={
         <>
-          {summary ? <Totals summary={summary} /> : null}
+          {session.mode !== 'cloud' && summary ? <Totals summary={summary} /> : null}
           <SearchBar
             label="Search customers"
             placeholder="Name or phone"

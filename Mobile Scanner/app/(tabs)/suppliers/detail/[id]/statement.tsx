@@ -1,3 +1,4 @@
+import { CloudWifiGuard } from '../../../../../src/offline/CloudWriteGuard';
 import { useLocalSearchParams } from 'expo-router';
 import { useSession } from '../../../../../src/session/SessionProvider';
 import { SupplierStatementScreen } from '../../../../../src/screens/SupplierStatementScreen';
@@ -5,7 +6,7 @@ export default function SupplierStatement() {
   const { id = '' } = useLocalSearchParams<{ id: string }>(),
     session = useSession();
   if (!session.connection || !session.token) return null;
-  return (
+  return (<CloudWifiGuard>
     <SupplierStatementScreen
       supplierId={id}
       connection={session.connection}
@@ -13,5 +14,5 @@ export default function SupplierStatement() {
       onDone={() => {}}
       onSessionInvalid={() => session.invalidateToken(session.token!)}
     />
-  );
+  </CloudWifiGuard>);
 }
