@@ -24,6 +24,7 @@ import { BranchHeader } from '../src/navigation/BranchHeader';
 import { UpdateBanner } from '../src/updates/UpdateBanner';
 import { ConnectionLogPanel } from '../src/connection/ConnectionLogPanel';
 import { useState } from 'react';
+import { CloudSyncRuntime } from '../src/offline/CloudSyncRuntime';
 function Navigation() {
   const session = useSession();
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -116,6 +117,7 @@ export default function RootLayout() {
       <KeyboardProvider>
         <QueryProvider>
           <SessionProvider>
+            <CloudSyncRuntime />
             <GlassBackdrop>
               <Navigation />
               <UpdateBanner />
