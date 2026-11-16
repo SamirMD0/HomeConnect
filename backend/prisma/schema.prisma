@@ -2186,3 +2186,29 @@ model SyncChange {
   @@index([changedAt])
   @@map("sync_changes")
 }
+
+model SyncWorkerState {
+  id                    Int       @id @default(1)
+  enabled               Boolean   @default(false)
+  relayUrl              String?   @map("relay_url")
+  workerSecretEncrypted String?   @map("worker_secret_encrypted")
+  openingStart          DateTime  @default(dbgenerated("'07:00:00'::time")) @map("opening_start") @db.Time
+  openingEnd            DateTime  @default(dbgenerated("'22:00:00'::time")) @map("opening_end") @db.Time
+  lastPushedSeq         String    @default("0") @map("last_pushed_seq")
+  snapshotDone          Boolean   @default(false) @map("snapshot_done")
+  snapshotProgress      Json?     @map("snapshot_progress")
+  lastCycleAt           DateTime? @map("last_cycle_at") @db.Timestamptz(6)
+  lastSuccessAt         DateTime? @map("last_success_at") @db.Timestamptz(6)
+  lastError             String?   @map("last_error")
+  lastDateRefresh       DateTime? @map("last_date_refresh") @db.Date
+  @@map("sync_worker_state")
+}
+
+model SyncAppliedAction {
+  actionId  String   @id @map("action_id") @db.Uuid
+  type      String
+  status    String
+  result    Json
+  appliedAt DateTime @default(now()) @map("applied_at") @db.Timestamptz(6)
+  @@map("sync_applied_actions")
+}

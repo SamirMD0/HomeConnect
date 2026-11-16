@@ -7,6 +7,7 @@ import { BusinessSettingsPanel } from '../../features/documents/components/Busin
 import { BranchesPanel } from '../../features/branches/BranchesPanel';
 import { useAuth } from '../../hooks/useAuth';
 import { UpdateSettingsPanel } from '../../features/updates/UpdateSettingsPanel';
+import { PhoneCloudSyncPanel } from '../../features/sync/PhoneCloudSyncPanel';
 
 export const SettingsPage: React.FC = () => {
   const { user } = useAuth();
@@ -37,6 +38,8 @@ export const SettingsPage: React.FC = () => {
       <BusinessSettingsPanel />
 
       <BranchesPanel />
+
+      <PhoneCloudSyncPanel />
 
       <ExchangeRatePanel />
 

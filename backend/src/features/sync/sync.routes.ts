@@ -4,6 +4,7 @@ import { branchScopeMiddleware } from '../../middleware/branch-scope.middleware'
 import { requireRole } from '../../middleware/role.middleware';
 import { validate } from '../../middleware/validate.middleware';
 import { readChanges } from './sync-feed.service';
+import { workerRoutes } from './worker/worker.routes';
 
 const changesQuery = z.object({
   after: z.string().regex(/^\d+$/).default('0').transform(value => BigInt(value))
@@ -12,6 +13,7 @@ const changesQuery = z.object({
 });
 
 export const syncRoutes = Router();
+syncRoutes.use('/worker', workerRoutes);
 syncRoutes.use(requireRole(['ADMIN']), branchScopeMiddleware);
 syncRoutes.get('/changes', validate(changesQuery, 'query'), async (req, res, next) => {
   try {

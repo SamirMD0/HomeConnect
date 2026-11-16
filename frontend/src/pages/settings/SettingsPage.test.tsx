@@ -51,6 +51,7 @@ describe('SettingsPage', () => {
     expect(html).toContain('Exchange rate panel rendered');
     expect(html).toContain('Business settings panel rendered');
     expect(html).toContain('Branches panel rendered');
+    expect(html).toContain('Phone cloud sync');
   });
 
   it('hides backup and maintenance controls from non-admin users', () => {
@@ -64,5 +65,6 @@ describe('SettingsPage', () => {
     expect(html).not.toContain('Exchange rate panel rendered');
     expect(html).not.toContain('Business settings panel rendered');
     expect(html).not.toContain('Branches panel rendered');
+    expect(html).not.toContain('Phone cloud sync');
   });
 });
