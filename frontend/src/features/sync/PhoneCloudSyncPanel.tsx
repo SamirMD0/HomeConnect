@@ -14,6 +14,15 @@ export function PhoneCloudSyncPanel() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [dirty, setDirty] = useState(false);
+  const [generated,setGenerated]=useState<{secret:string;sha256:string}|null>(null);
+  useEffect(()=>{if(!generated)return;const timer=setTimeout(()=>setGenerated(null),5*60000);return()=>clearTimeout(timer);},[generated]);
+  async function createSecret(){
+    if(status?.secretConfigured&&!window.confirm('Replace the worker secret? Cloud sync will wait until you update RELAY_WORKER_TOKEN_SHA256 on Render.'))return;
+    setPending(true);setError('');setGenerated(null);setMessage('');
+    try{const response=await api.post('/sync/worker/secret',{});setGenerated(response.data.data);setSecret('');setStatus(previous=>previous?{...previous,secretConfigured:true}:previous);setMessage('Worker secret saved securely. Copy it now; it cannot be shown again.');}
+    catch{setError('Could not create a worker secret. Please try again.');}finally{setPending(false);}
+  }
+  async function copy(value:string,label:string){try{await navigator.clipboard.writeText(value);setMessage(`${label} copied.`);}catch{setError('Copy failed. Select the value and copy it manually.');}}
   useEffect(() => {
     let mounted = true;
     const refresh = () => api.get('/sync/worker').then(response => {
@@ -51,6 +60,16 @@ export function PhoneCloudSyncPanel() {
     <p className="mt-1 text-sm text-slate-500">Sync phone records and queued actions while the shop PC is running.</p>
     {error && <p role="alert" className="mt-3 text-sm text-red-700">{error}</p>}
     <p role="status" className="mt-3 text-sm text-slate-700">{message || (!status && !error ? 'Loading sync settings…' : '')}</p>
+    {status&&<div className="mt-4 space-y-3">
+      <button type="button" disabled={pending} onClick={()=>void createSecret()} className="min-h-11 rounded-md border border-brand-600 px-4 py-2 text-sm font-medium text-brand-700 disabled:opacity-50">Create worker secret</button>
+      {generated&&<div role="region" aria-label="New worker secret" className="space-y-3 rounded-md border border-slate-200 bg-slate-50 p-4">
+        <p className="text-sm text-slate-700">Save the secret in your password manager. This view closes in five minutes; closing it removes the displayed secret.</p>
+        <label className="block text-sm font-medium text-slate-700">Worker secret (shown once)<input readOnly value={generated.secret} className="mt-1 block min-h-11 w-full rounded-md border border-slate-300 px-3 font-mono text-sm" autoComplete="off" spellCheck={false}/></label>
+        <button type="button" onClick={()=>void copy(generated.secret,'Worker secret')} className="min-h-11 rounded-md border border-slate-300 px-3 text-sm">Copy worker secret</button>
+        <label className="block text-sm font-medium text-slate-700">SHA-256 for Render: RELAY_WORKER_TOKEN_SHA256<input readOnly value={generated.sha256} className="mt-1 block min-h-11 w-full rounded-md border border-slate-300 px-3 font-mono text-sm" autoComplete="off" spellCheck={false}/></label>
+        <div className="flex flex-wrap gap-3"><button type="button" onClick={()=>void copy(generated.sha256,'SHA-256')} className="min-h-11 rounded-md border border-slate-300 px-3 text-sm">Copy SHA-256</button><button type="button" onClick={()=>setGenerated(null)} className="min-h-11 rounded-md border border-slate-300 px-3 text-sm">Close secret</button></div>
+      </div>}
+    </div>}
     {status && <form onSubmit={event => void save(event)} onChange={() => setDirty(true)} className="mt-4 space-y-4">
       <label className="flex min-h-11 items-center gap-3 text-sm font-medium text-slate-900">
         <input type="checkbox" checked={status.enabled} onChange={event => setStatus({ ...status, enabled: event.target.checked })} /> Enable phone cloud sync
