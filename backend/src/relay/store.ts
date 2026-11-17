@@ -253,7 +253,17 @@ export class RelayStore {
     });
     const result=[];let bytes=0;
     for(const {type,branchId,...row}of rows){
-      const item=branchIds&&!branchIds.includes(branchId)?{...row,status:'refused',result:{code:'BRANCH_ACCESS_DENIED',message:'This phone no longer has access to this branch.'}}:role!=='ADMIN'&&type==='report.request'?{...row,status:'refused',result:{code:'FORBIDDEN',message:'Only administrators can view this result.'}}:row;
+      let item = row;
+      if (branchIds && !branchIds.includes(branchId)) {
+        item = { ...row, status: 'refused', result: { code: 'BRANCH_ACCESS_DENIED', message: 'This phone no longer has access to this branch.' } };
+      } else if (role !== 'ADMIN' && type === 'report.request') {
+        const refusal = row.result && typeof row.result === 'object' && !Array.isArray(row.result) ? row.result : null;
+        // Pending is not a PC refusal. Preserve the eventual PC message, never report data.
+        if (['awaiting_photo', 'pending', 'claimed'].includes(row.status)) item = { ...row, result: null };
+        else if (row.status === 'refused' && typeof refusal?.code === 'string' && typeof refusal.message === 'string') {
+          item = { ...row, result: { code: refusal.code, message: refusal.message } };
+        } else item = { ...row, status: 'refused', result: { code: 'FORBIDDEN', message: 'Only administrators can view this result.' } };
+      }
       const size=Buffer.byteLength(JSON.stringify(item),'utf8');if(result.length&&bytes+size>1792*1024)continue;
       result.push(item);bytes+=size;
     }

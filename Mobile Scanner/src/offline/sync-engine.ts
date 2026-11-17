@@ -9,7 +9,7 @@ import {
   type CloudRecord,
 } from './record-store';
 import { OutboxSender, RelayRequestError } from './outbox-sender';
-import { ownerKey } from './outbox';
+import { ownerKey, type PhotoFiles } from './outbox';
 export interface SyncStatus {
   syncing: boolean;
   lastSyncAt: string | null;
@@ -47,6 +47,7 @@ export class SyncEngine {
       onBeforeUserChanged?: () => Promise<void>;
       onPairingChanged?: (pairing: CloudPairing) => Promise<void>;
       securityStatus?: (pairing: CloudPairing) => Promise<{ pinSet: boolean; lastUnlockAt: string | null }>;
+      files?: PhotoFiles;
     } = {}
   ) {}
   getStatus = () => this.status;
@@ -241,7 +242,7 @@ export class SyncEngine {
         this.db,
         ownerKey(this.pairing),
         (path, init) => this.get(path, init),
-        { now: this.options.now }
+        { now: this.options.now, files: this.options.files }
       ).sync();
       this.active();
       if (
