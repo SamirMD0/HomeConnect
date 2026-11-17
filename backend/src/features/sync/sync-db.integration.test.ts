@@ -59,8 +59,12 @@ const productData = (id: string) => ({ id, sku: `SYNC-${id}`, name: `Sync ${id}`
     const customer = response.body.data.find((row: { id: string }) => row.id === customerId);
     expect(customer.financial.outstanding).toBe(outstanding);
     const feed = await readChanges(after, 500, scope);
+    const financialSummary = await request(app).get(`/api/v1/customers/${customerId}/financial-summary`)
+      .query({ includeCancelled: 'false', includePayments: 'false', debtLimit: 100, planLimit: 100 })
+      .set('Authorization', `Bearer ${token}`).set('X-Branch-Scope', branchId);
+    expect(financialSummary.status).toBe(200);
     expect(feed.records.find(row => row.entity === 'customer' && row.id === customerId)).toMatchObject({
-      op: 'upsert', data: { financial: customer.financial },
+      op: 'upsert', data: { financial: customer.financial, financialSummary: financialSummary.body.data },
     });
     const inspection = await request(app).get('/api/v1/sync/changes').query({ after: after.toString(), limit: 500 })
       .set('Authorization', `Bearer ${token}`).set('X-Branch-Scope', branchId);
