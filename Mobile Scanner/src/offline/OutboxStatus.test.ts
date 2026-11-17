@@ -31,6 +31,11 @@ beforeEach(() => {
   state.recordArrived = false;
 });
 describe('saved cloud action presentation', () => {
+  it('opens a payment receipt only after the PC has returned it in an applied result',()=>{
+    state.row={...state.row,type:'customer_payment.create',result:JSON.stringify({id:'p',receipt:{payment:{id:'p'}}})};
+    expect(renderToStaticMarkup(createElement(OutboxStatus,{id:'action'}))).not.toContain('View and share receipt');
+    state.row.local_status='applied';expect(renderToStaticMarkup(createElement(OutboxStatus,{id:'action'}))).toContain('View and share receipt');
+  });
   it('does not offer an order receipt before both PC confirmation and its synced record', () => {
     expect(renderToStaticMarkup(createElement(OutboxStatus, { id: 'action' }))).not.toContain(
       'View saved order'

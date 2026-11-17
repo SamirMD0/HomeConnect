@@ -11,16 +11,22 @@ import { AppButton } from '../components/AppButton';
 import { StatusBanner } from '../components/StatusBanner';
 import { formatBusinessDate } from '@shared/money-format';
 import { exportPaymentReceipt } from './receipt-export';
+import { cloudReceipt } from '../offline/cloud-figures';
+import { ownerKey } from '../offline/outbox';
+import { openLocalDb } from '../offline/expo-db';
+import { FigureUpdated } from '../offline/figure-ui';
 export function ReceiptScreen() {
-  const { id = '' } = useLocalSearchParams<{ id: string }>(),
-    { client, key } = useLookup();
+  const { id = '',actionId } = useLocalSearchParams<{ id: string;actionId?:string }>(),
+    { client, key,session } = useLookup();
+  const stored=()=>cloudReceiptDb();
+  async function cloudReceiptDb(){if(!session.cloudPairing||!session.branch.selected)throw new Error('Pair this phone and select a branch.');return cloudReceipt(await openLocalDb(),ownerKey(session.cloudPairing),session.branch.selected.id,id,actionId);}
   const receipt = useQuery({
     queryKey: key('payment-receipt', { id }),
-    queryFn: () => getPaymentReceipt(client, id),
+    queryFn: () => session.mode==='cloud'?stored().then(value=>({...value.payment,cloudUpdatedAt:value.updatedAt}) as Awaited<ReturnType<typeof getPaymentReceipt>>):getPaymentReceipt(client, id),
   });
   const business = useQuery({
-    queryKey: key('receipt-business'),
-    queryFn: () => getReceiptBusiness(client),
+    queryKey: key('receipt-business',session.mode==='cloud'?{id,actionId}:undefined),
+    queryFn: () => session.mode==='cloud'?stored().then(value=>value.business as Awaited<ReturnType<typeof getReceiptBusiness>>):getReceiptBusiness(client),
   });
   const [busy, setBusy] = useState(false),
     [error, setError] = useState('');
@@ -63,6 +69,8 @@ export function ReceiptScreen() {
         </Text>
         <ReadState query={receipt} />
         <ReadState query={business} />
+        {session.mode==='cloud'&&<StatusBanner tone="info" message="PC receipt saved when the payment was applied. Later changes can be checked on the shop Wi-Fi."/>}
+        <FigureUpdated at={(receipt.data as {cloudUpdatedAt?:string}|undefined)?.cloudUpdatedAt}/>
         {error && <StatusBanner tone="danger" message={error} />}
         {data && (
           <>
