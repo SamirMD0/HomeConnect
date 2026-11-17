@@ -40,7 +40,7 @@ export async function pushRecords(state: SyncWorkerState, relay: Pick<WorkerRela
         }
         await relay.request('/snapshot/finish', { snapshotId: progress.id });
       }
-      await deps.save({ snapshotDone: true, lastPushedSeq: progress.seq, snapshotProgress: Prisma.DbNull });
+      await deps.save({ snapshotDone: true, lastPushedSeq: progress.seq, snapshotProgress: Prisma.DbNull, figureSnapshots: {} });
       state = { ...state, snapshotDone: true, lastPushedSeq: progress.seq, snapshotProgress: null };
     }
     const scope = await deps.scope();

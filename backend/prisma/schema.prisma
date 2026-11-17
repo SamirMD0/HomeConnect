@@ -2188,6 +2188,7 @@ model SyncChange {
 }
 
 model SyncWorkerState {
+  figureSnapshots       Json      @default("{}") @map("figure_snapshots")
   id                    Int       @id @default(1)
   enabled               Boolean   @default(false)
   relayUrl              String?   @map("relay_url")
