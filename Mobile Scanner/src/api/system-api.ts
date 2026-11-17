@@ -9,7 +9,7 @@ import { compareVersions } from '../utils/version';
  * work for the basics but show a warning.
  */
 /** PC 2.3.0 added bill pages, payment links, replace and delete. */
-export const REQUIRED_API_VERSION = '2.3.0';
+export const REQUIRED_API_VERSION = '2.4.0';
 export interface CompatibilityState {
   blocked: boolean;
   warning: string | null;
