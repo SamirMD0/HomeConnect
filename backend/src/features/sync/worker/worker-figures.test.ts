@@ -17,6 +17,7 @@ describe('budgeted PC figure snapshots',()=>{
     expect(relay.request).toHaveBeenCalledTimes(4);const records=relay.request.mock.calls.map(([,body])=>body.records[0]);
     expect(records.every(row=>row.minRole===null&&row.branchId==='branch')).toBe(true);
     expect(records[0].data.response.source).toBe(deps.read.mock.calls[0][0]);
+    expect(records[0].id).toBe(snapshotId('dashboard|branch|today'));
     expect(snapshotId('dashboard|branch|today')).toMatch(/^[\da-f]{8}-[\da-f]{4}-5[\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/);
   });
   it('does no work without changes, throttles to fifteen minutes, and ignores volatile generation timestamps when hashing',async()=>{

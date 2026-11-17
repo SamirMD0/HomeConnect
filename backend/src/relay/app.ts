@@ -183,7 +183,7 @@ export function createRelayApp(options: RelayOptions = {}) {
   });
   device.get('/actions', validate(actionsQuery, 'query'), async (_req, res) => {
     const paired = res.locals.device as RelayDevice;
-    res.json(await store.actionResults(paired.id, res.locals.query.ids, paired.role));
+    res.json(await store.actionResults(paired.id, res.locals.query.ids, paired.role,paired.branchIds,paired.userId));
   });
   app.use('/relay/v1/device', device);
   app.use((_req, _res, next) => next(new RelayError(404, 'NOT_FOUND', 'Route not found.')));

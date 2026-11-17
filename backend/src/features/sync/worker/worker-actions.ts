@@ -4,6 +4,8 @@ import { z } from 'zod';
 import { prisma } from '../../../lib/prisma';
 import { requireSecretEnv } from '../../../lib/env';
 import { WorkerRelay, CycleExpired } from './relay-client';
+import { pcRead,PcReadError } from './pc-read';
+import { readReport,reportDefinition,REPORT_LIMIT } from './report-read';
 
 export interface ClaimedAction {
   id: string; type: string; userId: string; branchId: string; payload: unknown; attempts: number; hasBlob: boolean;
@@ -18,7 +20,7 @@ const defaults = {
   })),
 };
 export type ActionDependencies = typeof defaults;
-const supported = new Set(['customer_payment.create', 'sales_order.create', 'supplier_payment.create', 'supplier_bill.upload']);
+const supported = new Set(['customer_payment.create', 'sales_order.create', 'supplier_payment.create', 'supplier_bill.upload','report.request']);
 const id = z.string().uuid();
 const object = z.record(z.string(), z.unknown());
 
@@ -71,6 +73,23 @@ export async function applyAction(action: ClaimedAction, relay: Pick<WorkerRelay
   if (!supported.has(action.type)) { await remember({ status: 'refused', result: { reason: 'UNSUPPORTED_ACTION' } }); return; }
   const user = await deps.user(action.userId);
   if (!user || !user.isActive || user.deletedAt) { await remember({ status: 'refused', result: { reason: 'USER_INACTIVE' } }); return; }
+  if(action.type==='report.request'){
+    let input:{reportId:string;filters:{period:'thisMonth'|'lastMonth'|'today'|'thisWeek'|'custom';from?:string;to?:string;month?:string}};
+    try{
+      input=z.object({reportId:z.string(),filters:z.object({period:z.enum(['thisMonth','lastMonth','today','thisWeek','custom']),from:z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),to:z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),month:z.string().regex(/^\d{4}-\d{2}$/).optional()}).strict()}).strict().parse(action.payload);
+      reportDefinition(input.reportId);
+    }catch{await remember({status:'refused',result:{code:'VALIDATION_ERROR',message:'Choose a valid report and filters.'}});return;}
+    try{
+      const result=await readReport(input.reportId,input.filters,path=>pcRead(path,action.branchId,user,deadline,deps.fetch));
+      if(result.tooLarge||Buffer.byteLength(JSON.stringify(result),'utf8')>REPORT_LIMIT){await remember({status:'refused',result:{code:'REPORT_TOO_LARGE',message:'Open this report on the shop Wi-Fi.'}});return;}
+      await remember({status:'applied',result:JSON.parse(JSON.stringify({report:result,reportId:input.reportId,filters:input.filters,updatedAt:new Date().toISOString()}))});
+    }catch(error){
+      if(error instanceof CycleExpired)throw error;
+      if(error instanceof PcReadError&&error.status>=400&&error.status<500)await remember({status:'refused',result:{code:error.code,message:error.pcMessage}});
+      else if(action.attempts>=5)await report({status:'failed',result:{reason:'PC_ERROR'}});
+    }
+    return;
+  }
   let request: ReturnType<typeof actionRequest>;
   try { request = actionRequest(action); }
   catch {
@@ -106,7 +125,18 @@ export async function applyAction(action: ClaimedAction, relay: Pick<WorkerRelay
     if (action.attempts >= 5) await report({ status: 'failed', result: { reason: 'PC_ERROR' } });
     return;
   }
-  if (response.ok) await remember({ status: 'applied', result: keyFields(data.data ?? {}, action.id) });
+  if (response.ok) {
+    const result={...keyFields(data.data??{},action.id)};
+    if(action.type==='customer_payment.create'&&typeof result.id==='string'){
+      try{
+        const payment=await pcRead(`/payments/${encodeURIComponent(result.id)}/receipt`,action.branchId,user,deadline,deps.fetch);
+        const settings=await pcRead('/business-settings',action.branchId,user,deadline,deps.fetch);
+        const business=Object.fromEntries(['shopName','address','phone','email','taxNumber'].map(key=>[key,settings[key]??null]));
+        result.receipt=JSON.parse(JSON.stringify({payment,business,updatedAt:new Date().toISOString()}));
+      }catch(error){if(error instanceof CycleExpired)throw error;if(action.attempts>=5)await report({status:'failed',result:{reason:'PC_ERROR'}});return;}
+    }
+    await remember({ status: 'applied', result });
+  }
   else if (response.status >= 400 && response.status < 500) {
     await remember({ status: 'refused', result: {
       code: typeof data.error?.code === 'string' ? data.error.code : 'PC_REFUSED',

@@ -49,7 +49,7 @@ export class RelayStore {
       }
       for (const record of input.records) {
         const data = {
-          minRole: record.minRole ?? null,
+          minRole: ['report','user'].includes(record.entity)?'ADMIN':record.minRole ?? null,
           branchId: record.branchId, op: record.op, pcSeq: input.pcSeq,
           data: record.op === 'delete' ? Prisma.DbNull : json(record.data!),
         };
@@ -83,7 +83,7 @@ export class RelayStore {
       if (state.snapshotId !== input.snapshotId) throw new RelayError(409, 'SNAPSHOT_CONFLICT', 'Restart the snapshot.');
       const records = JSON.stringify(input.records);
       await tx.$executeRaw`INSERT INTO relay_snapshot_records (snapshot_id, entity, entity_id, branch_id, min_role, op, data)
-        SELECT ${input.snapshotId}::uuid, x.entity, x.id::uuid, x."branchId"::uuid, x."minRole", x.op,
+        SELECT ${input.snapshotId}::uuid, x.entity, x.id::uuid, x."branchId"::uuid, CASE WHEN x.entity IN ('report','user') THEN 'ADMIN' ELSE x."minRole" END, x.op,
           CASE WHEN x.op = 'delete' THEN NULL ELSE x.data END
         FROM jsonb_to_recordset(${records}::jsonb) AS x(entity text, id text, "branchId" text, "minRole" text, op text, data jsonb)
         ON CONFLICT (snapshot_id, entity, entity_id) DO UPDATE SET branch_id = EXCLUDED.branch_id, min_role = EXCLUDED.min_role, op = EXCLUDED.op, data = EXCLUDED.data`;
@@ -126,21 +126,25 @@ export class RelayStore {
         where: { rev: { gt: BigInt(after) }, OR: [
           { branchId: null }, { branchId: { in: branchIds } }, { previousBranchIds: { hasSome: branchIds } },
         ] },
-        orderBy: { rev: 'asc' }, take: limit + 1,
+        orderBy: { rev: 'asc' }, take: Math.min(limit,25) + 1,
       });
       return { rows, horizon: state.prunedThroughRev };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
-    const records = rows.slice(0, limit);
-    const hasMore = rows.length > limit;
-    const lastRev = records.at(-1)?.rev ?? BigInt(after);
+    const records=[];let bytes=0;
+    for(const {entityId,previousBranchIds,...row} of rows){
+      const visible=(row.branchId===null||branchIds.includes(row.branchId))&&(row.minRole!=='ADMIN'||options.role==='ADMIN');
+      const record={...row,id:entityId,rev:row.rev.toString(),op:visible?row.op:'delete',data:visible?row.data:null};
+      const size=Buffer.byteLength(JSON.stringify(record),'utf8');
+      if(records.length>=limit||records.length>=25||records.length>0&&bytes+size>1792*1024)break;
+      records.push(record);bytes+=size;
+    }
+    const hasMore = rows.length > records.length;
+    const lastRev = BigInt(records.at(-1)?.rev ?? after);
     // A completed full copy can advance over pruned revisions without skipping
     // any remaining visible records, even if its newest live row is older.
     const nextRev = !hasMore && horizon > lastRev ? horizon : lastRev;
     return {
-      records: records.map(({ entityId, previousBranchIds, ...row }) => {
-        const visible = (row.branchId === null || branchIds.includes(row.branchId)) && (row.minRole !== 'ADMIN' || options.role === 'ADMIN');
-        return { ...row, id: entityId, rev: row.rev.toString(), op: visible ? row.op : 'delete', data: visible ? row.data : null };
-      }),
+      records,
       nextRev: nextRev.toString(), hasMore,
       ...(options.fullCopy ? { snapshotHorizon: horizon.toString() } : {}),
     };
@@ -236,12 +240,17 @@ export class RelayStore {
     });
   }
 
-  async actionResults(deviceId: string, ids: string[], role='EMPLOYEE') {
+  async actionResults(deviceId: string, ids: string[], role='EMPLOYEE', branchIds?:string[], userId?:string) {
     const rows=await this.db.relayOutbox.findMany({
-      where: { deviceId, id: { in: ids } }, select: { id: true, type: true, status: true, result: true, resolvedAt: true },
+      where: { deviceId, ...(userId?{userId}:{}), id: { in: ids } }, select: { id: true, type: true, branchId:true, status: true, result: true, resolvedAt: true },
     });
-    return rows.map(({type,...row})=>role!=='ADMIN'&&type==='report.request'
-      ? {...row,status:'refused',result:{code:'FORBIDDEN',message:'Only administrators can view this result.'}}:row);
+    const result=[];let bytes=0;
+    for(const {type,branchId,...row}of rows){
+      const item=branchIds&&!branchIds.includes(branchId)?{...row,status:'refused',result:{code:'BRANCH_ACCESS_DENIED',message:'This phone no longer has access to this branch.'}}:role!=='ADMIN'&&type==='report.request'?{...row,status:'refused',result:{code:'FORBIDDEN',message:'Only administrators can view this result.'}}:row;
+      const size=Buffer.byteLength(JSON.stringify(item),'utf8');if(result.length&&bytes+size>1792*1024)continue;
+      result.push(item);bytes+=size;
+    }
+    return result;
   }
 
   countUsage(input: RequestUsage) {

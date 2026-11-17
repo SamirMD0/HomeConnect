@@ -141,7 +141,7 @@ describe('isolated relay routes', () => {
     ] };
     expect((await request(makeApp()).post('/relay/v1/worker/records').set('Authorization', workerAuth).send(body)).body)
       .toEqual({ stored: 2, lastPcSeq: '42' });
-    expect(store.writeRecords).toHaveBeenCalledWith(body);
+    expect(store.writeRecords).toHaveBeenCalledWith({...body, records:body.records.map(record=>({...record,minRole:null}))});
   });
 
   it('uses the paired user and denies an action outside its branches', async () => {
@@ -215,7 +215,7 @@ describe('isolated relay routes', () => {
     store.actionResults.mockResolvedValue([{ id, status: 'applied', result: { receiptId: id } }]);
     const response = await request(makeApp()).get('/relay/v1/device/actions?ids=' + id).set('Authorization', deviceAuth);
     expect(response.status).toBe(200);
-    expect(store.actionResults).toHaveBeenCalledWith(paired.id, [id], paired.role);
+    expect(store.actionResults).toHaveBeenCalledWith(paired.id, [id], paired.role, paired.branchIds, paired.userId);
   });
 
   it('validates batch and action payload size before storage', async () => {

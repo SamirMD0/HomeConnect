@@ -39,7 +39,7 @@ export async function loadFigure(task:Task,date:string,read:(path:string)=>Promi
   }
   return readReport(task.reportId!,{period:task.period==='currentMonth'?'thisMonth':task.period,month:date.slice(0,7)} as ReportFilters,read);
 }
-export async function pushFigures(state:SyncWorkerState,relay:Pick<WorkerRelay,'request'>,deadline:number,deps=defaults,reports=false){
+export async function pushFigures(state:SyncWorkerState,relay:Pick<WorkerRelay,'request'>,deadline:number,deps=defaults,reports=true){
   const now=deps.now(),date=deps.date();
   let saved={hashes:{},...(state.figureSnapshots as unknown as FigureState|undefined)};
   let run=saved.run?.date===date?saved.run:undefined;

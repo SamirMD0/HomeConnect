@@ -12,7 +12,8 @@ const record = z.object({
   minRole: z.literal('ADMIN').nullable().optional(),
   entity: z.string().min(1).max(100), id: uuid,
   branchId: uuid.nullable(), op: z.enum(['upsert', 'delete']), data: z.json().optional(),
-}).refine(value => value.op === 'delete' || value.data !== undefined, 'Upserts require data');
+}).refine(value => value.op === 'delete' || value.data !== undefined, 'Upserts require data')
+  .transform(value=>({...value,minRole:['report','user'].includes(value.entity)?'ADMIN' as const:value.minRole??null}));
 export const recordsInput = z.object({ pcSeq: cursor, records: z.array(record).max(500) });
 export const snapshotBeginInput = z.object({ snapshotId: uuid, pcSeq: cursor, expectedPcSeq: cursor });
 export const snapshotPageInput = z.object({ snapshotId: uuid, records: z.array(record).max(200) });
@@ -43,7 +44,7 @@ export const actionsQuery = z.object({
   ids: z.string().max(3700).transform(value => value.split(','))
     .pipe(z.array(uuid).min(1).max(100)),
 });
-export type RecordsInput = z.infer<typeof recordsInput>;
+export type RecordsInput = z.input<typeof recordsInput>;
 export type DeviceInput = z.input<typeof deviceInput>;
 export type ActionInput = z.infer<typeof actionInput>;
 export type ResultInput = z.infer<typeof resultInput>;

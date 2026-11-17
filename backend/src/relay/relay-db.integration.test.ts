@@ -22,6 +22,18 @@ const input = (id = randomUUID()): ActionInput => ({ id, branchId, type: 'opaque
 (enabled ? describe : describe.skip)('relay storage on its isolated database', () => {
   let db: RelayClient;
   let store: RelayStore;
+  it('filters ADMIN projections in deltas/full copies and returns deletes after downgrade',async()=>{
+    const seq=(BigInt((await store.workerState()).lastPcSeq)+1n).toString();
+    await store.writeRecords({pcSeq:seq,records:[{entity:'report',id:recordIds[3],branchId,minRole:'ADMIN',op:'upsert',data:{secret:'report-only'}}]});
+    for(const fullCopy of [false,true]){
+      expect((await store.readRecords([branchId],'0',500,{role:'EMPLOYEE',fullCopy})).records.find(row=>row.id===recordIds[3])).toMatchObject({op:'delete',data:null});
+      expect((await store.readRecords([branchId],'0',500,{role:'ADMIN',fullCopy})).records.find(row=>row.id===recordIds[3])).toMatchObject({op:'upsert',data:{secret:'report-only'}});
+    }
+    // A completed role-change full copy replaces the prior administrator cache.
+    const downgraded=await store.readRecords([branchId],'0',500,{role:'EMPLOYEE',fullCopy:true});
+    expect(JSON.stringify(downgraded)).not.toContain('report-only');
+    await db.relayRecord.deleteMany({where:{entity:'report',entityId:recordIds[3]}});
+  });
   beforeAll(async () => {
     db = createRelayClient();
     store = new RelayStore(db);
