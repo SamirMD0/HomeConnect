@@ -1,6 +1,6 @@
 import type { LocalDb } from './local-db';
 import { archiveOutbox, photoFiles } from './outbox';
-export interface CloudRecord { entity: string; id: string; branchId: string | null; rev: string; op: 'upsert' | 'delete'; data: unknown }
+export interface CloudRecord { entity: string; id: string; branchId: string | null; minRole?: 'ADMIN' | null; rev: string; op: 'upsert' | 'delete'; data: unknown }
 export type RecordTable = 'records' | 'staging_records';
 export const stateValue = async (db: LocalDb, key: string) => (await db.query<{ value: string }>('SELECT value FROM sync_state WHERE key = ?', [key]))[0]?.value ?? null;
 export const saveState = (db: LocalDb, key: string, value: string) => db.exec('INSERT INTO sync_state(key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value', [key, value]);
@@ -11,10 +11,10 @@ export async function applyRecords(db: LocalDb, table: RecordTable, records: Clo
     const name = typeof data.name === 'string' ? data.name : '';
     const code = [data.sku, data.barcode, data.code, data.orderNumber].filter(value => typeof value === 'string').join(' ');
     const phone = typeof data.phone === 'string' ? data.phone : '';
-    await db.exec(`INSERT INTO ${table}(entity,id,branch_id,rev,data,name,code,phone) VALUES (?,?,?,?,?,?,?,?)
-      ON CONFLICT(entity,id) DO UPDATE SET branch_id=excluded.branch_id, rev=excluded.rev, data=excluded.data,
+    await db.exec(`INSERT INTO ${table}(entity,id,branch_id,rev,data,name,code,phone,min_role) VALUES (?,?,?,?,?,?,?,?,?)
+      ON CONFLICT(entity,id) DO UPDATE SET branch_id=excluded.branch_id, min_role=excluded.min_role, rev=excluded.rev, data=excluded.data,
       name=excluded.name, code=excluded.code, phone=excluded.phone`,
-    [record.entity, record.id, record.branchId, record.rev, JSON.stringify(data), name, code, phone]);
+    [record.entity, record.id, record.branchId, record.rev, JSON.stringify(data), name, code, phone, record.minRole ?? null]);
   }
 }
 export async function wipeLocalDb(db: LocalDb) {

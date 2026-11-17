@@ -15,7 +15,7 @@ vi.mock('@expo/vector-icons/Ionicons', () => ({ default: () => null }));
 vi.mock('../ui/ScreenHeader', () => ({
   PageTitle: ({ title }: { title: string }) => createElement('h1', {}, title),
 }));
-vi.mock('expo-router', () => ({ useFocusEffect: (work: () => void) => work() }));
+vi.mock('expo-router', () => ({ useRouter: () => ({push:vi.fn()}), useFocusEffect: (work: () => void) => work() }));
 vi.mock('@tanstack/react-query', () => ({
   useQueryClient: () => ({ invalidateQueries: vi.fn() }),
 }));

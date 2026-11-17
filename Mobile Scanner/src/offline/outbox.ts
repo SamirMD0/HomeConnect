@@ -1,6 +1,7 @@
 import type { LocalDb } from './local-db';
 
 export type ActionType =
+  | 'report.request'
   | 'sales_order.create'
   | 'customer_payment.create'
   | 'supplier_payment.create'

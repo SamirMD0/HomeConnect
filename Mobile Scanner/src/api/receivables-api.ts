@@ -25,6 +25,7 @@ export interface ReceivablesSummary {
   totalOverdue: string;
 }
 export interface ReceivablesResponse {
+  cloudSnapshot?: { updatedAt: string };
   businessDate: string;
   summary: ReceivablesSummary;
   tierCounts: Record<ReceivableTier, number>;
@@ -39,7 +40,14 @@ export interface ReceivablesFilters {
 }
 
 /** Worst first, like the PC filter chips. */
-export const receivableTierOrder: ReceivableTier[] = ['CRITICAL', 'SEVERE', 'LATE', 'WATCH', 'CURRENT', 'NO_ACTIVITY'];
+export const receivableTierOrder: ReceivableTier[] = [
+  'CRITICAL',
+  'SEVERE',
+  'LATE',
+  'WATCH',
+  'CURRENT',
+  'NO_ACTIVITY',
+];
 export const receivableTierLabels: Record<ReceivableTier, string> = {
   CRITICAL: 'Critical',
   SEVERE: 'Severe',
@@ -64,13 +72,22 @@ export function receivablesQuery(filters: ReceivablesFilters, page: number, limi
   params.set('limit', String(limit));
   return params.toString();
 }
-const fetchReceivables = (client: AuthedClient, filters: ReceivablesFilters, page: number, limit: number) =>
-  requestJson<ReceivablesResponse>(`${client.baseUrl}/api/v1/receivables?${receivablesQuery(filters, page, limit)}`, {
-    method: 'GET',
-    headers: authedHeaders(client),
-  });
+const fetchReceivables = (
+  client: AuthedClient,
+  filters: ReceivablesFilters,
+  page: number,
+  limit: number
+) =>
+  requestJson<ReceivablesResponse>(
+    `${client.baseUrl}/api/v1/receivables?${receivablesQuery(filters, page, limit)}`,
+    {
+      method: 'GET',
+      headers: authedHeaders(client),
+    }
+  );
 
 export type ReceivablesPage = ReadPage<ReceivableItem> & {
+  cloudSnapshot?: { updatedAt: string };
   summary: ReceivablesSummary | null;
   tierCounts: ReceivablesResponse['tierCounts'];
 };
@@ -87,13 +104,19 @@ export async function getReceivablesPage(
     items: data.items,
     nextPage: page < data.pagination.totalPages ? page + 1 : undefined,
     summary: data.summary,
+    cloudSnapshot: data.cloudSnapshot,
     tierCounts: data.tierCounts,
   };
 }
 
 /** Totals only, for the Home card: one row is the smallest page the PC returns. */
-export async function getReceivablesSummary(client: AuthedClient): Promise<ReceivablesSummary> {
-  const summary = (await fetchReceivables(client, {}, 1, 1)).summary;
-  if (!summary) throw new Error('Receivables totals are available on the shop Wi-Fi.');
-  return summary;
+export async function getReceivablesSummary(
+  client: AuthedClient
+): Promise<ReceivablesSummary & { snapshotUpdatedAt?: string }> {
+  const data = await fetchReceivables(client, {}, 1, 1);
+  const summary = data.summary;
+  if (!summary) throw new Error('Waiting for the first figures from the shop PC');
+  return data.cloudSnapshot
+    ? { ...summary, snapshotUpdatedAt: data.cloudSnapshot.updatedAt }
+    : summary;
 }

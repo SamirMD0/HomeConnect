@@ -62,9 +62,9 @@ describe('sync feed', () => {
     const result = await readChanges(0, 500, scope);
     expect(mocks.product).toHaveBeenCalledTimes(1);
     expect(result.records).toEqual([
-      { entity: 'category', id: 'category-1', branchId: null, op: 'upsert', data: { id: 'category-1' } },
-      { entity: 'product', id: 'product-1', branchId: null, op: 'upsert', data: { id: 'product-1', pricing: { cashPrice: '123.45' }, image: { byteSize: 500 } } },
-      { entity: 'product', id: 'removed', branchId: null, op: 'delete' },
+      { minRole: null, entity: 'category', id: 'category-1', branchId: null, op: 'upsert', data: { id: 'category-1' } },
+      { minRole: null, entity: 'product', id: 'product-1', branchId: null, op: 'upsert', data: { id: 'product-1', pricing: { cashPrice: '123.45' }, image: { byteSize: 500 } } },
+      { minRole: null, entity: 'product', id: 'removed', branchId: null, op: 'delete' },
     ]);
     expect(result.nextSeq).toBe('4');
   });
@@ -78,10 +78,10 @@ describe('sync feed', () => {
     mocks.bill.mockResolvedValue(null);
     mocks.product.mockRejectedValue(new NotFoundError());
     expect((await readChanges(0n, 500, scope)).records).toEqual([
-      { entity: 'customer', id: 'soft', branchId: 'branch-a', op: 'delete' },
-      { entity: 'supplier_bill', id: 'linked', branchId: 'branch-a', op: 'delete' },
-      { entity: 'product', id: 'missing', branchId: null, op: 'delete' },
-      { entity: 'user', id: 'hard', branchId: null, op: 'delete' },
+      { minRole: null, entity: 'customer', id: 'soft', branchId: 'branch-a', op: 'delete' },
+      { minRole: null, entity: 'supplier_bill', id: 'linked', branchId: 'branch-a', op: 'delete' },
+      { minRole: null, entity: 'product', id: 'missing', branchId: null, op: 'delete' },
+      { minRole: 'ADMIN', entity: 'user', id: 'hard', branchId: null, op: 'delete' },
     ]);
   });
 
@@ -109,7 +109,7 @@ describe('sync feed', () => {
     expect((await readChanges(0, 500, newScope)).records[0].op).toBe('upsert');
     expect(mocks.customer).toHaveBeenCalledWith('moved', newScope);
     mocks.customer.mockRejectedValue(new NotFoundError());
-    expect((await readChanges(0, 500, scope)).records).toEqual([{ entity: 'customer', id: 'moved', branchId: 'branch-b', op: 'delete' }]);
+    expect((await readChanges(0, 500, scope)).records).toEqual([{ minRole: null, entity: 'customer', id: 'moved', branchId: 'branch-b', op: 'delete' }]);
   });
 
   it('takes branch metadata from the current entity rather than an old invalidation', async () => {
@@ -127,7 +127,7 @@ describe('sync feed', () => {
     });
     expect((await readChanges(0, 500, scope)).records).toEqual([]);
     expect((await readChanges(0, 500, scope, { system: true })).records).toEqual([
-      { entity: 'customer', id: 'new', branchId: 'branch-b', op: 'upsert', data: { id: 'new', branchId: 'branch-b' } },
+      { minRole: null, entity: 'customer', id: 'new', branchId: 'branch-b', op: 'upsert', data: { id: 'new', branchId: 'branch-b' } },
     ]);
   });
 
@@ -143,7 +143,7 @@ describe('sync feed', () => {
       mocks.db.syncChange.findMany.mockResolvedValue([change(1, entity, 'id', 'branch-a')]);
       mock.mockResolvedValue(data);
       const expected = entity === 'sales_order' ? { ...data, branch: { name: 'Main' }, showBranchLine: true } : data;
-      expect((await readChanges(0, 500, scope)).records).toEqual([{ entity, id: 'id', branchId: 'branch-a', op: 'upsert', data: expected }]);
+      expect((await readChanges(0, 500, scope)).records).toEqual([{ minRole: null, entity, id: 'id', branchId: 'branch-a', op: 'upsert', data: expected }]);
     }
   });
 
@@ -166,7 +166,7 @@ describe('sync feed', () => {
       const stored = { ...user, password: 'secret', refreshToken: 'token', failedLoginAttempts: 3 };
       return Object.fromEntries(Object.keys(select).map(key => [key, stored[key as keyof typeof stored]]));
     });
-    expect((await readChanges(0, 500, scope)).records[0]).toEqual({ entity: 'user', id: 'user-1', branchId: null, op: 'upsert', data: user });
+    expect((await readChanges(0, 500, scope)).records[0]).toEqual({ minRole: 'ADMIN', entity: 'user', id: 'user-1', branchId: null, op: 'upsert', data: user });
     expect(mocks.db.user.findUnique).toHaveBeenCalledWith({
       where: { id: 'user-1', deletedAt: null },
       select: { id: true, username: true, fullName: true, role: true, isActive: true },

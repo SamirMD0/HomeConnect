@@ -117,13 +117,7 @@ export function HomeScreen() {
     >
       <PageTitle title={`Hello, ${name.split(' ')[0]}`} subtitle={session.branch.selected?.name} />
       <QuickGrid actions={grid} />
-      {session.mode === 'cloud' ? (
-        <Text style={{ color: theme.colors.muted }}>
-          Home figures are available on the shop Wi-Fi.
-        </Text>
-      ) : (
-        <DashboardPanel refreshRevision={refreshRevision} />
-      )}
+      <DashboardPanel refreshRevision={refreshRevision} />
     </ScrollView>
   );
 }

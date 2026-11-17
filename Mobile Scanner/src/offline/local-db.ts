@@ -9,7 +9,7 @@ const columns =
 export async function initializeLocalDb(db: LocalDb) {
   const version =
     (await db.query<{ user_version: number }>('PRAGMA user_version'))[0]?.user_version ?? 0;
-  if (version > 2) throw new Error('Update the app to open this phone database.');
+  if (version > 3) throw new Error('Update the app to open this phone database.');
   if (version === 0)
     await db.transaction(async (tx) => {
       await tx.exec(`CREATE TABLE records (${columns}); CREATE TABLE staging_records (${columns});
@@ -32,5 +32,17 @@ export async function initializeLocalDb(db: LocalDb) {
       UNIQUE(owner,submission_key));
       CREATE INDEX outbox_owner_status ON outbox(owner,local_status);
       PRAGMA user_version = 2;`);
+    });
+  if (version < 3)
+    await db.transaction(async (tx) => {
+      await tx.exec(`ALTER TABLE records ADD COLUMN min_role TEXT;
+      ALTER TABLE staging_records ADD COLUMN min_role TEXT;
+      DELETE FROM records WHERE entity IN ('user','report');
+      DELETE FROM staging_records WHERE entity IN ('user','report');
+      PRAGMA user_version=3;`);
+      if (version > 0)
+        await tx.exec(
+          "INSERT INTO sync_state(key,value) VALUES ('fullCopyInProgress','true') ON CONFLICT(key) DO UPDATE SET value='true'"
+        );
     });
 }

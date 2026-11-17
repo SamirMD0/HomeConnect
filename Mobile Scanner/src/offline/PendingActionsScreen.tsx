@@ -10,6 +10,7 @@ import { actionMessage, dismissAction } from './outbox';
 import { openLocalDb } from './expo-db';
 import { requestCloudSync } from './sync-status';
 import { useOutbox } from './useOutbox';
+import { ActionResultLink } from './OutboxStatus';
 export function PendingActionsScreen({ archivesOnly = false }: { archivesOnly?: boolean }) {
   const rows = useOutbox(archivesOnly),
     client = useQueryClient();
@@ -62,6 +63,7 @@ export function PendingActionsScreen({ archivesOnly = false }: { archivesOnly?: 
             }
             message={actionMessage(row)}
           />
+          <ActionResultLink row={row}/>
           {['refused', 'failed'].includes(row.local_status) && (
             <AppButton
               label="Dismiss"

@@ -25,6 +25,7 @@ model RelayDevice {
 }
 
 model RelayRecord {
+  minRole String? @map("min_role")
   entity    String
   entityId  String   @map("entity_id") @db.Uuid
   branchId  String?  @map("branch_id") @db.Uuid
@@ -106,6 +107,7 @@ model RelayWorker {
 }
 
 model RelaySnapshotRecord {
+  minRole String? @map("min_role")
   snapshotId String @map("snapshot_id") @db.Uuid
   entity String
   entityId String @map("entity_id") @db.Uuid

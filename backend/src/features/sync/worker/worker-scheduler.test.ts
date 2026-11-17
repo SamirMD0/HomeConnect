@@ -3,7 +3,7 @@ import type { SyncWorkerState } from '@prisma/client';
 import { SyncWorkerScheduler, syncInterval, type SchedulerDependencies } from './worker-scheduler';
 import { RelayFailure } from './relay-client';
 
-const deps = { state: vi.fn(), withLock: vi.fn(), save: vi.fn(), push: vi.fn(), refresh: vi.fn(), apply: vi.fn(), relay: vi.fn() };
+const deps = { state: vi.fn(), withLock: vi.fn(), save: vi.fn(), push: vi.fn(), refresh: vi.fn(), figures: vi.fn(), apply: vi.fn(), relay: vi.fn() };
 let scheduler: SyncWorkerScheduler;
 const state = { enabled: true, relayUrl: 'https://relay.example', workerSecretEncrypted: 'private-ciphertext',
   openingStart: new Date('1970-01-01T07:00:00Z'), openingEnd: new Date('1970-01-01T22:00:00Z'), snapshotDone: true } as SyncWorkerState;

@@ -115,7 +115,7 @@ describe('isolated relay routes', () => {
     const response = await request(makeApp()).get('/relay/v1/device/records?after=9007199254740993&limit=1&branchId=' + otherBranch)
       .set('Authorization', deviceAuth);
     expect(response.status).toBe(200);
-    expect(store.readRecords).toHaveBeenCalledWith([branchId], '9007199254740993', 1, undefined);
+    expect(store.readRecords).toHaveBeenCalledWith([branchId], '9007199254740993', 1, { role: 'EMPLOYEE' });
     expect(store.touchDevice).not.toHaveBeenCalled();
   });
 
@@ -141,7 +141,7 @@ describe('isolated relay routes', () => {
     ] };
     expect((await request(makeApp()).post('/relay/v1/worker/records').set('Authorization', workerAuth).send(body)).body)
       .toEqual({ stored: 2, lastPcSeq: '42' });
-    expect(store.writeRecords).toHaveBeenCalledWith(body);
+    expect(store.writeRecords).toHaveBeenCalledWith({...body, records:body.records.map(record=>({...record,minRole:null}))});
   });
 
   it('uses the paired user and denies an action outside its branches', async () => {
@@ -198,10 +198,10 @@ describe('isolated relay routes', () => {
     const first = await request(app).get('/relay/v1/device/records?after=0&fullCopy=true&limit=1').set('Authorization', deviceAuth);
     expect(first.status).toBe(200);
     expect(first.body.snapshotHorizon).toBe('100');
-    expect(store.readRecords).toHaveBeenLastCalledWith([branchId], '0', 1, { fullCopy: true, snapshotHorizon: undefined });
+    expect(store.readRecords).toHaveBeenLastCalledWith([branchId], '0', 1, { role: 'EMPLOYEE', fullCopy: true, snapshotHorizon: undefined });
     const next = await request(app).get('/relay/v1/device/records?after=3&fullCopy=true&snapshotHorizon=100&limit=1').set('Authorization', deviceAuth);
     expect(next.status).toBe(200);
-    expect(store.readRecords).toHaveBeenLastCalledWith([branchId], '3', 1, { fullCopy: true, snapshotHorizon: '100' });
+    expect(store.readRecords).toHaveBeenLastCalledWith([branchId], '3', 1, { role: 'EMPLOYEE', fullCopy: true, snapshotHorizon: '100' });
   });
 
   it.each(['after=1&fullCopy=true', 'snapshotHorizon=1', 'fullCopy=invalid', 'after=1&fullCopy=true&snapshotHorizon=-1'])(
@@ -215,7 +215,7 @@ describe('isolated relay routes', () => {
     store.actionResults.mockResolvedValue([{ id, status: 'applied', result: { receiptId: id } }]);
     const response = await request(makeApp()).get('/relay/v1/device/actions?ids=' + id).set('Authorization', deviceAuth);
     expect(response.status).toBe(200);
-    expect(store.actionResults).toHaveBeenCalledWith(paired.id, [id]);
+    expect(store.actionResults).toHaveBeenCalledWith(paired.id, [id], paired.role, paired.branchIds, paired.userId);
   });
 
   it('validates batch and action payload size before storage', async () => {

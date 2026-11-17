@@ -9,4 +9,8 @@ export interface DashboardFilters {
   includeArchived?: boolean;
 }
 export const getDashboard = (client: AuthedClient, filters: DashboardFilters) =>
-  lookupGet<DashboardRead>(client, '/dashboard/overview', filters);
+  lookupGet<DashboardRead & { cloudMissing?: boolean; cloudSnapshot?: { updatedAt: string } }>(
+    client,
+    '/dashboard/overview',
+    filters
+  );

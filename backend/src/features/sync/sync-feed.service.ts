@@ -16,8 +16,8 @@ import { customerFinancialSummaryQuerySchema } from '../financial/customer-summa
 import { InventoryService } from '../inventory/inventory.service';
 
 export type SyncRecord =
-  | { entity: string; id: string; branchId: string | null; op: 'delete' }
-  | { entity: string; id: string; branchId: string | null; op: 'upsert'; data: unknown };
+  | { entity: string; id: string; branchId: string | null; minRole?: 'ADMIN' | null; op: 'delete' }
+  | { entity: string; id: string; branchId: string | null; minRole?: 'ADMIN' | null; op: 'upsert'; data: unknown };
 
 async function loadRecord(change: Pick<SyncChange, 'entity' | 'entityId'>, scope: BranchScope): Promise<unknown | null> {
   const id = change.entityId;
@@ -78,7 +78,7 @@ export async function buildSyncRecord(change: Pick<SyncChange, 'entity' | 'entit
     const ownBranch = (data as { branchId?: string }).branchId;
     const branchId = ['product', 'category', 'user'].includes(change.entity) ? null :
       change.entity === 'branch' ? change.entityId : ownBranch ?? change.branchId;
-    return { entity: change.entity, id: change.entityId, branchId, op: 'upsert', data };
+    return { entity: change.entity, id: change.entityId, branchId, minRole: change.entity === 'user' ? 'ADMIN' : null, op: 'upsert', data };
   } catch (error) {
     if (error instanceof NotFoundError) return null;
     throw error;
@@ -132,7 +132,7 @@ export async function readChanges(afterSeq: bigint | number, limit = 500, scope:
     if (options.deadline !== undefined && Date.now() >= options.deadline) {
       return { records: [], nextSeq: after.toString(), hasMore: false, busy: true as const };
     }
-    const tombstone = { entity: change.entity, id: change.entityId, branchId: change.branchId, op: 'delete' as const };
+    const tombstone = { entity: change.entity, id: change.entityId, branchId: change.branchId, minRole: change.entity === 'user' ? 'ADMIN' as const : null, op: 'delete' as const };
     if (change.op === 'delete') {
       if (wasInScope) records.push(tombstone);
       continue;

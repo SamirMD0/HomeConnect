@@ -8,6 +8,8 @@ import { branchFixture } from '../../test/branch-fixture';
 import { insertMigrationRow } from '../../test/branch-migration-fixture';
 import { isIsolatedTestDatabase } from '../../test/database';
 import { readChanges } from './sync-feed.service';
+import { pushFigures,type FigureDependencies } from './worker/worker-figures';
+import type { SyncWorkerState } from '@prisma/client';
 
 const enabled = process.env.RUN_SYNC_DB_TESTS === '1' && isIsolatedTestDatabase(process.env.DATABASE_URL);
 const marker = randomUUID();
@@ -23,6 +25,23 @@ const cursor = async () => (await prisma.syncChange.aggregate({ _max: { seq: tru
 const productData = (id: string) => ({ id, sku: `SYNC-${id}`, name: `Sync ${id}`, model: 'Sync test', createdById: userId });
 
 (enabled ? describe : describe.skip)('sync triggers and PC financial feed on an isolated database', () => {
+  it('publishes the exact PC route data for dashboard, receivables and two reports',async()=>{
+    const responses=new Map<string,any>(),published:any[]=[];
+    const date='2026-11-17';
+    const tasks=[{entity:'dashboard',branchId,period:'today'},{entity:'receivables_summary',branchId},{entity:'report',branchId,period:'today',reportId:'sales-summary'},{entity:'report',branchId,period:'thisMonth',reportId:'customers-paid'}];
+    const state={lastPushedSeq:'1',openingStart:new Date('1970-01-01T00:00Z'),openingEnd:new Date('1970-01-01T00:00Z'),figureSnapshots:{hashes:{},run:{date,seq:'1',startedAt:new Date().toISOString(),index:0,tasks}}} as unknown as SyncWorkerState;
+    const deps={now:()=>new Date(),date:()=>date,scope:async()=>scope,save:async()=>state,admin:async()=>({id:userId,role:'ADMIN'}),read:async(path:string)=>{
+      const response=await request(app).get('/api/v1'+path).set('Authorization','Bearer '+token).set('X-Branch-Scope',branchId);
+      expect(response.status).toBe(200);responses.set(path,response.body.data);return response.body.data;
+    }};
+    await pushFigures(state,{request:async(_path:string,body:any)=>{published.push(...body.records);}},Date.now()+60000,deps as unknown as FigureDependencies,true);
+    expect(published).toHaveLength(4);
+    expect(published[0].data.response).toEqual(responses.get('/dashboard/overview?range=today&includeArchived=false'));
+    const totals=responses.get('/receivables?onlyWithBalance=true&sortBy=outstanding&sortOrder=desc&page=1&limit=1');
+    expect(published[1].data.response).toEqual({summary:totals.summary,tierCounts:totals.tierCounts});
+    expect(published[2].data.response).toEqual(responses.get('/reports/sales/summary?period=today'));
+    expect(published[3].data.response).toEqual(responses.get('/reports/customers/paid?period=thisMonth'));
+  },60000);
   beforeAll(async () => {
     branchId = await branchFixture(prisma);
     scope.branchIds = [branchId];
@@ -83,7 +102,7 @@ const productData = (id: string) => ({ id, sku: `SYNC-${id}`, name: `Sync ${id}`
     ]);
     expect(rows[1].seq).toBe(rows[0].seq + 1n);
     expect(rows[2].seq).toBe(rows[1].seq + 1n);
-    expect((await readChanges(after, 500, scope)).records).toContainEqual({ entity: 'product', id: productIds[0], branchId: null, op: 'delete' });
+    expect((await readChanges(after, 500, scope)).records).toContainEqual({ entity: 'product', id: productIds[0], branchId: null, minRole:null, op: 'delete' });
   }, 30000);
 
   it('returns the current catalog list shape and image metadata without loading image bytes', async () => {
@@ -102,7 +121,7 @@ const productData = (id: string) => ({ id, sku: `SYNC-${id}`, name: `Sync ${id}`
     const feed = await readChanges(after, 500, scope);
     const record = feed.records.find(row => row.id === productIds[0]);
     expect(JSON.parse(JSON.stringify(record))).toEqual({
-      entity: 'product', id: productIds[0], branchId: null, op: 'upsert', data: { ...product, exactMatch: false, inventory: inventory.body.data },
+      entity: 'product', id: productIds[0], branchId: null, minRole:null, op: 'upsert', data: { ...product, exactMatch: false, inventory: inventory.body.data },
     });
     expect(JSON.stringify(record)).not.toContain('private image bytes');
     expect(record).not.toHaveProperty('data.image.data');

@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { FigureUpdated } from '../offline/figure-ui';
+import { FIRST_FIGURES } from '../offline/cloud-figures';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -62,7 +64,7 @@ const more = [
  * is remembered on this phone.
  */
 export function DashboardPanel({ refreshRevision }: { refreshRevision: number }) {
-  const { client, key } = useLookup();
+  const { client, key, session } = useLookup();
   const router = useRouter();
   const [hidden, setHidden] = useState(true),
     [range, setRange] = useState(monthRange),
@@ -129,16 +131,22 @@ export function DashboardPanel({ refreshRevision }: { refreshRevision: number })
           { value: 'month', label: 'Month' },
         ]}
       />
-      <SelectFilter
-        label="Period"
-        emptyLabel="Quarter, year or custom dates"
-        value={quick ? '' : period}
-        options={more}
-        onChange={(value) => setPeriod(value as DashboardFilters['range'])}
-      />
-      {period === 'custom' && <RangeFilter value={range} onChange={setRange} />}
+      {session.mode !== 'cloud' && (
+        <SelectFilter
+          label="Period"
+          emptyLabel="Quarter, year or custom dates"
+          value={quick ? '' : period}
+          options={more}
+          onChange={(value) => setPeriod(value as DashboardFilters['range'])}
+        />
+      )}
+      {period === 'custom' && session.mode !== 'cloud' && (
+        <RangeFilter value={range} onChange={setRange} />
+      )}
       <ReadState query={dashboard} />
-      {dashboard.data && (
+      {dashboard.data?.cloudMissing && <Text>{FIRST_FIGURES}</Text>}
+      <FigureUpdated at={dashboard.data?.cloudSnapshot?.updatedAt} />
+      {dashboard.data && !dashboard.data.cloudMissing && (
         <>
           <Text style={styles.range}>
             {formatBusinessDate(dashboard.data.meta.range.from)} –{' '}

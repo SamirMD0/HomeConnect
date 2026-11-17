@@ -144,10 +144,17 @@ describe('offline relay sync with real in-memory SQLite', () => {
     expect(fetcher.mock.calls.map(([url]) => new URL(String(url)).pathname)).toEqual([
       '/relay/v1/device/me',
       '/relay/v1/device/records',
+      '/relay/v1/device/records',
       '/relay/v1/device/me',
+      '/relay/v1/device/records',
       '/relay/v1/device/records',
     ]);
     expect(changed.mock.calls.map(([next]) => next.role)).toEqual(['ADMIN', 'EMPLOYEE']);
+    expect(
+      fetcher.mock.calls.filter(
+        ([url]) => new URL(String(url)).searchParams.get('fullCopy') === 'true'
+      )
+    ).toHaveLength(2);
     expect(
       changed.mock.calls.map(([next]) => can('supplierPayments.write', pairedUser(next)))
     ).toEqual([true, false]);

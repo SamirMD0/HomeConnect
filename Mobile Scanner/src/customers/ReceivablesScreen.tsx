@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, Text } from 'react-native';
+import { FigureUpdated } from '../offline/figure-ui';
 import { formatMoney } from '@shared/money-format';
 import {
   getReceivablesPage,
@@ -106,7 +107,17 @@ export function ReceivablesScreen() {
       }
       header={
         <>
-          {session.mode !== 'cloud' && summary ? <Totals summary={summary} /> : null}
+          {session.mode === 'cloud' && <Text>Branch totals · all customers</Text>}
+          <FigureUpdated
+            at={
+              (receivables.data?.pages[0] as ReceivablesPage | undefined)?.cloudSnapshot?.updatedAt
+            }
+          />
+          {summary ? (
+            <Totals summary={summary} />
+          ) : session.mode === 'cloud' ? (
+            <Text>Waiting for the first figures from the shop PC</Text>
+          ) : null}
           <SearchBar
             label="Search customers"
             placeholder="Name or phone"

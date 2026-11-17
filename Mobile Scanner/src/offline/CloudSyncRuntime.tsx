@@ -51,7 +51,7 @@ export function CloudSyncRuntime() {
         await saveState(db, 'deviceId', pairing.deviceId);
       }
       if (!active || owner !== generation) return;
-      const source = new CloudDataSource(db, pairing.branchIds);
+      const source = new CloudDataSource(db, pairing.branchIds, pairing.role, ownerKey(pairing));
       configureOutbox(pairing);
       configureCloudReader((url, init) => source.read(url, init));
       // Cached reads become available before a sleeping/offline relay is contacted.
@@ -82,7 +82,7 @@ export function CloudSyncRuntime() {
           if (!active || owner !== generation) throw new Error('Cloud session changed');
           currentPairing = next;
           configureOutbox(next);
-          const nextSource = new CloudDataSource(db, next.branchIds);
+          const nextSource = new CloudDataSource(db, next.branchIds, next.role, ownerKey(next));
           configureCloudReader((url, init) => nextSource.read(url, init));
           await clearQueryCache();
           if (!active || owner !== generation) throw new Error('Cloud session changed');

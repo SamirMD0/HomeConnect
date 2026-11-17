@@ -11,6 +11,23 @@ let action: ClaimedAction;
 const response = (status: number, data: unknown) => new Response(JSON.stringify(data), { status });
 const run = () => applyAction(action, { request }, Date.now() + 10000, deps as ActionDependencies);
 describe('apply phone actions through the PC API', () => {
+  it('requests reports through the real user route and retains the PC refusal for staff',async()=>{
+    action.type='report.request';action.payload={reportId:'sales-summary',filters:{period:'lastMonth'}};
+    deps.user.mockResolvedValue({id:userId,role:'EMPLOYEE',isActive:true});deps.fetch.mockResolvedValue(response(403,{error:{code:'FORBIDDEN',message:'Access denied. Required role: ADMIN'}}));await run();
+    expect(deps.fetch.mock.calls[0][1].method).toBeUndefined();expect(jwt.verify(deps.fetch.mock.calls[0][1].headers.Authorization.slice(7),process.env.JWT_SECRET!)).toMatchObject({role:'EMPLOYEE'});
+    expect(request).toHaveBeenLastCalledWith(expect.any(String),{status:'refused',result:{code:'FORBIDDEN',message:'Access denied. Required role: ADMIN'}});
+  });
+  it('returns PC report data and refuses oversized on-demand reports',async()=>{
+    action.type='report.request';action.payload={reportId:'sales-summary',filters:{period:'lastMonth'}};
+    deps.fetch.mockResolvedValue(response(200,{data:{rows:[{amount:'123.45'}]}}));await run();expect(request).toHaveBeenLastCalledWith(expect.any(String),expect.objectContaining({status:'applied',result:expect.objectContaining({report:{rows:[{amount:'123.45'}]}})}));
+    deps.fetch.mockResolvedValue(response(200,{data:{rows:[{value:'x'.repeat(1536*1024)}]}}));await run();expect(request).toHaveBeenLastCalledWith(expect.any(String),{status:'refused',result:{code:'REPORT_TOO_LARGE',message:'Open this report on the shop Wi-Fi.'}});
+  });
+  it('includes the PC payment receipt with only the business fields used for sharing',async()=>{
+    action.type='customer_payment.create';action.payload={targetType:'DEBT',targetId,amount:'20.00'};
+    deps.fetch.mockImplementation(async(url:string)=>response(200,{data:url.endsWith('/receipt')?{id:targetId,totalAmount:'20.00'}:url.endsWith('/business-settings')?{shopName:'Shop',address:'Address',phone:'1',email:'a@b',taxNumber:'VAT',logoDataUrl:'secret-large-image',privateField:'secret'}:{payments:[{id:targetId,idempotencyKey:actionId}]}}));
+    await run();expect(request).toHaveBeenLastCalledWith(expect.any(String),expect.objectContaining({status:'applied',result:expect.objectContaining({receipt:expect.objectContaining({payment:{id:targetId,totalAmount:'20.00'},business:{shopName:'Shop',address:'Address',phone:'1',email:'a@b',taxNumber:'VAT'}})})}));
+    expect(JSON.stringify(request.mock.calls)).not.toContain('secret-large-image');
+  });
   beforeEach(() => {
     vi.resetAllMocks();
     action = { id: actionId, userId, branchId: targetId, type: 'supplier_payment.create', attempts: 1, hasBlob: false,
@@ -75,7 +92,7 @@ describe('apply phone actions through the PC API', () => {
     for (const targetType of ['DEBT', 'INSTALLMENT_PLAN']) {
       action.payload = { targetType, targetId, amount: '10.00', paymentDate: '2026-11-16', paymentMethod: 'CASH' };
       await run();
-      const [url, options] = deps.fetch.mock.calls.at(-1)!;
+      const [url, options] = deps.fetch.mock.calls.filter(([,options]) => options.method === 'POST').at(-1)!;
       expect(url).toContain(targetType === 'DEBT' ? '/debts/' : '/installment-plans/');
       expect(JSON.parse(options.body)).toEqual({ amount: '10.00', paymentDate: '2026-11-16', paymentMethod: 'CASH', idempotencyKey: actionId });
     }
@@ -83,12 +100,12 @@ describe('apply phone actions through the PC API', () => {
   it('returns the created payment ID rather than the debt or plan ID', async () => {
     action.type = 'customer_payment.create';
     action.payload = { targetType: 'DEBT', targetId, amount: '10.00', paymentDate: '2026-11-16', paymentMethod: 'CASH' };
-    deps.fetch.mockResolvedValue(response(201, { data: { id: targetId, payments: [
+    deps.fetch.mockImplementation(async () => response(201, { data: { id: targetId, payments: [
       { id: 'older-payment', idempotencyKey: 'unrelated' }, { id: 'created-payment', idempotencyKey: actionId },
     ] } }));
     await run();
     expect(deps.remember).toHaveBeenCalledWith(action, { status: 'applied', result: {
-      id: 'created-payment', payments: [{ id: 'created-payment', idempotencyKey: actionId }],
+      receipt: expect.any(Object), id: 'created-payment', payments: [{ id: 'created-payment', idempotencyKey: actionId }],
     } });
   });
   it('uploads the photo with receipt and bill-group idempotency headers', async () => {

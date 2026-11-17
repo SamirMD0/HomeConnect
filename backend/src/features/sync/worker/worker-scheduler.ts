@@ -8,6 +8,7 @@ import { businessClock, isOpening, pushRecords, refreshCustomerDates } from './w
 import { applyClaimedActions } from './worker-actions';
 import { snapshotCursor, sourcePage, systemScope } from './worker-source';
 import { readChanges } from '../sync-feed.service';
+import { pushFigures } from './worker-figures';
 
 let lockClient: PrismaClient | undefined;
 async function withWorkerLock(work: () => Promise<void>) {
@@ -28,7 +29,7 @@ const defaults = {
   save: (data: Prisma.SyncWorkerStateUpdateInput, state?: SyncWorkerState) => prisma.syncWorkerState.updateMany({
     where: { id: 1, ...(state ? { enabled: true, relayUrl: state.relayUrl, workerSecretEncrypted: state.workerSecretEncrypted } : {}) }, data,
   }),
-  push: pushRecords, refresh: refreshCustomerDates, apply: applyClaimedActions,
+  push: pushRecords, refresh: refreshCustomerDates, figures: pushFigures, apply: applyClaimedActions,
   relay: (state: SyncWorkerState, deadline: number) => new WorkerRelay(state.relayUrl!, decryptWorkerSecret(state.workerSecretEncrypted!), deadline),
 };
 export type SchedulerDependencies = typeof defaults;
@@ -91,6 +92,7 @@ export class SyncWorkerScheduler {
         state = await this.deps.state();
         if (!state.enabled || state.relayUrl !== config.relayUrl || state.workerSecretEncrypted !== config.workerSecretEncrypted) return;
         if (caughtUp && state.snapshotDone) await this.deps.refresh(state, relay, deadline - 15000, sources);
+        if (caughtUp && state.snapshotDone && Date.now()<deadline-15000) await this.deps.figures(state,relay,deadline-15000);
         if (Date.now() < deadline) await this.deps.apply(relay, deadline);
         await save({ ...(caughtUp ? { lastSuccessAt: new Date() } : {}), lastError: null });
         this.failures = 0;
