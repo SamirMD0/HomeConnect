@@ -95,6 +95,6 @@ These are release-day checks, not steps performed by the Phase 8 implementation.
 
 **Rollback/pause**
 
-- [ ] On the PC, uncheck **Enable phone cloud sync** and **Save sync settings**. This stops the PC worker; cached phone reads, relay traffic and already queued actions are not erased by that switch.
-- [ ] Switch each phone to its shop-Wi-Fi connection and sign in normally. Check cloud Waiting work on the PC before recreating it over Wi-Fi. Keep the APK/local data until unsent work is reconciled; do not uninstall as a rollback.
+- [ ] On the PC, uncheck **Enable phone cloud sync** and **Save sync settings**. This pauses future PC worker cycles; an in-flight action may still finish. Cached phone reads, relay traffic and already queued actions are not erased by that switch.
+- [ ] Switch each phone to its shop-Wi-Fi connection and sign in normally. Do not recreate waiting or uncertain cloud actions over Wi-Fi; they can still apply when cloud sync resumes. Reconcile them on the PC first. Keep the APK/local data until unsent work is reconciled; do not uninstall as a rollback.
 - [ ] If a phone must lose cloud access, use **Revoke** while relay access remains available, then sync it and check retained summaries. Leave additive PC/relay migrations in place.
