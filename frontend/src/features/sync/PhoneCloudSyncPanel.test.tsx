@@ -1,7 +1,5 @@
-// @vitest-environment jsdom
 import { act } from 'react';
-import { createRoot } from 'react-dom/client';
-import { beforeEach, describe, it, expect, vi } from 'vitest';
+import { beforeAll, afterAll, beforeEach, describe, it, expect, vi } from 'vitest';
 const mock = vi.hoisted(() => ({
   get: vi.fn(),
   post: vi.fn(),
@@ -12,6 +10,31 @@ const mock = vi.hoisted(() => ({
 vi.mock('../../services/api', () => ({ api: mock }));
 vi.mock('./PairedPhonesPanel', () => ({ PairedPhonesPanel: () => null }));
 import { PhoneCloudSyncPanel } from './PhoneCloudSyncPanel';
+let dom: { window: Window & typeof globalThis };
+let createRoot: typeof import('react-dom/client').createRoot;
+beforeAll(async () => {
+  // Loading jsdom before the worker handshake can exceed its timeout on Windows.
+  const moduleName = 'jsdom';
+  const { JSDOM } = await import(moduleName);
+  dom = new JSDOM('<!doctype html><html><body></body></html>', { url: 'http://localhost' });
+  for (const name of [
+    'window',
+    'document',
+    'navigator',
+    'Node',
+    'HTMLElement',
+    'HTMLInputElement',
+    'Event',
+    'MouseEvent',
+  ] as const)
+    vi.stubGlobal(name, dom.window[name]);
+  vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+  ({ createRoot } = await import('react-dom/client'));
+}, 120000);
+afterAll(() => {
+  dom?.window.close();
+  vi.unstubAllGlobals();
+});
 beforeEach(() => {
   vi.clearAllMocks();
   mock.configured = false;
@@ -31,7 +54,6 @@ beforeEach(() => {
   mock.post.mockResolvedValue({
     data: { data: { secret: 'a'.repeat(64), sha256: 'b'.repeat(64) } },
   });
-  Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   Object.defineProperty(navigator, 'clipboard', {
     configurable: true,
     value: { writeText: mock.copy },
