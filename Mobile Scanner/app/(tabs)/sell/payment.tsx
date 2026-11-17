@@ -1,8 +1,9 @@
+import { CloudWriteGuard } from '../../../src/offline/CloudWriteGuard';
 import { Stack, useRouter } from 'expo-router';
 import { EmptyState } from '../../../src/components/EmptyState';
 export default function Upcoming() {
   const router = useRouter();
-  return (
+  return (<CloudWriteGuard>
     <>
       <Stack.Screen options={{ title: 'Take payment' }} />
       <EmptyState
@@ -11,5 +12,5 @@ export default function Upcoming() {
         action={{ label: 'Scan a product', onPress: () => router.push('/scan') }}
       />
     </>
-  );
+  </CloudWriteGuard>);
 }

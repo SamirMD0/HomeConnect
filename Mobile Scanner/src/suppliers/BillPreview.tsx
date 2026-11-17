@@ -9,13 +9,15 @@ import { theme } from '../theme';
 
 /** A bill photo loaded with the login header (never a token in the URL). Tap to enlarge. */
 export function BillPreview({ bill, compact = false }: { bill: Pick<BillRead, 'id' | 'branchId'> & Partial<BillRead>; compact?: boolean }) {
-  const { client, key } = useLookup();
+  const { client, key, session } = useLookup();
   const [large, setLarge] = useState(!compact);
   const image = useQuery({
     queryKey: key('bill-image', { id: bill.id }),
     queryFn: () => getBillImage(client, bill as BillRead),
     gcTime: 60_000,
+    enabled: session.mode !== 'cloud',
   });
+  if (session.mode === 'cloud') return <Text style={{ color: theme.colors.muted }}>Photo available on the shop Wi-Fi</Text>;
   return (
     <View style={{ gap: 8 }}>
       <ReadState query={image} />

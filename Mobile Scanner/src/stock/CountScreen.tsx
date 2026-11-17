@@ -214,7 +214,7 @@ export function CountScreen() {
         ))}
 
         {finished ? (
-          <AppButton label="Start a new count" onPress={() => void draft.restart()} />
+          <AppButton cloudWrite label="Start a new count" onPress={() => void draft.restart()} />
         ) : (
           <>
             <AppInput
@@ -238,7 +238,7 @@ export function CountScreen() {
               autoCorrect={false}
             />
             <AppButton
-              label={toSend ? `Submit ${toSend} correction${toSend === 1 ? '' : 's'}` : 'Nothing to submit'}
+              cloudWrite label={toSend ? `Submit ${toSend} correction${toSend === 1 ? '' : 's'}` : 'Nothing to submit'}
               loading={submitting}
               disabled={!toSend || !password || !form.reason.trim()}
               onPress={() => void submit()}

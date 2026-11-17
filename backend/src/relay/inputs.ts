@@ -20,6 +20,7 @@ export const claimInput = z.object({ limit: z.number().int().min(1).max(50).defa
 export const resultInput = z.object({ status: z.enum(['applied', 'refused', 'failed']), result: z.json() });
 export const deviceInput = z.object({
   id: uuid, userId: uuid, userName: z.string().min(1).max(200),
+  role: z.enum(['ADMIN', 'EMPLOYEE']).default('EMPLOYEE'),
   branchIds: z.array(uuid).max(100), name: z.string().min(1).max(200),
   tokenSha256: z.string().regex(/^[0-9a-f]{64}$/),
 });
@@ -42,6 +43,6 @@ export const actionsQuery = z.object({
     .pipe(z.array(uuid).min(1).max(100)),
 });
 export type RecordsInput = z.infer<typeof recordsInput>;
-export type DeviceInput = z.infer<typeof deviceInput>;
+export type DeviceInput = z.input<typeof deviceInput>;
 export type ActionInput = z.infer<typeof actionInput>;
 export type ResultInput = z.infer<typeof resultInput>;

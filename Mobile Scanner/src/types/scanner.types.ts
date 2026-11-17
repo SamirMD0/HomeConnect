@@ -1,4 +1,6 @@
 export interface ConnectionSettings {
+  mode?: 'lan' | 'cloud';
+  relay?: string;
   host: string;
   port: number;
   /**

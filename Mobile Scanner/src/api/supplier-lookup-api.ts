@@ -1,3 +1,4 @@
+import { cloudMode } from '../offline/cloud-mode';
 import type {
   SupplierRead,
   PurchaseRead,
@@ -44,6 +45,7 @@ export const listBills = (
   lookupGet<BillRead[]>(client, `/suppliers/${encodeURIComponent(supplierId)}/bills`, { linked });
 
 export async function getBillImage(client: AuthedClient, bill: BillRead): Promise<string> {
+  if (cloudMode()) throw new Error('Photo available on the shop Wi-Fi');
   let token = await prepareApiSession(client.baseUrl);
   if (!token) throw new HcApiError('Please sign in again.', 'UNAUTHORIZED', 401);
   const url = `${client.baseUrl}/api/v1/supplier-bills/${encodeURIComponent(bill.id)}/image`;

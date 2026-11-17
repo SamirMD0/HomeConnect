@@ -18,7 +18,7 @@ export default function Scan() {
         router.replace({ pathname: '/(tabs)/stock/product/[id]', params: { id } })
       }
       onAddToOrder={
-        session.can('orders.create')
+        session.mode !== 'cloud' && session.can('orders.create')
           ? (id) =>
               router.replace({
                 pathname: '/(tabs)/sell/new-order',

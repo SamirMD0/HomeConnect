@@ -40,6 +40,19 @@ const input = (id = randomUUID()): ActionInput => ({ id, branchId, type: 'opaque
     await db.$disconnect();
   });
 
+  it('defaults legacy registrations to EMPLOYEE and persists role/branch changes on re-registration', async () => {
+    expect((await store.devices()).find(row => row.id === deviceId)).toMatchObject({ role: 'EMPLOYEE' });
+    try {
+      const updated = await store.registerDevice({ ...device, role: 'ADMIN', branchIds: [otherBranch] });
+      expect(updated).toMatchObject({ role: 'ADMIN', branchIds: [otherBranch] });
+      const app = createRelayApp({ store, workerTokenSha256: createHash('sha256').update('worker-fixture').digest('hex') });
+      const me = await request(app).get('/relay/v1/device/me').set('Authorization', 'Bearer ' + deviceId);
+      expect(me.status).toBe(200);
+      expect(me.body).toEqual({ deviceId, userId, userName: device.userName, role: 'ADMIN', branchIds: [otherBranch] });
+      expect(me.body).not.toHaveProperty('tokenSha256');
+    } finally { await store.registerDevice(device); }
+  });
+
   it('allocates increasing revisions on inserts/updates and scopes global, branch and delete records', async () => {
     await store.writeRecords({ pcSeq: pcSeq.toString(), records: [
       { entity: 'product', id: recordIds[0], branchId: null, op: 'upsert', data: { price: 'opaque' } },

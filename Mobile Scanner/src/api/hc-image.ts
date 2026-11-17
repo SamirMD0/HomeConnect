@@ -1,3 +1,4 @@
+import { cloudMode } from '../offline/cloud-mode';
 import { authedHeaders, HcApiError, prepareApiSession, refreshApiSession, type AuthedClient } from './hc-client';
 
 /**
@@ -6,6 +7,7 @@ import { authedHeaders, HcApiError, prepareApiSession, refreshApiSession, type A
  * the URL. A 401 refreshes the session once and retries.
  */
 export async function fetchAuthedImage(client: AuthedClient, path: string, branchId?: string): Promise<string> {
+  if (cloudMode()) throw new Error('Photo available on the shop Wi-Fi');
   let token = await prepareApiSession(client.baseUrl);
   if (!token) throw new HcApiError('Please sign in again.', 'UNAUTHORIZED', 401);
   const url = `${client.baseUrl}/api/v1${path}`;

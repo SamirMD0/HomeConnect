@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
     syncChange: { findMany: vi.fn(), findFirst: vi.fn() },
     branch: { findFirst: vi.fn() }, user: { findUnique: vi.fn() },
   },
-  product: vi.fn(), customer: vi.fn(), order: vi.fn(), supplier: vi.fn(),
+  inventory: vi.fn(), financialSummary: vi.fn(), product: vi.fn(), customer: vi.fn(), order: vi.fn(), supplier: vi.fn(),
   bill: vi.fn(), category: vi.fn(), guard: vi.fn(), document: vi.fn(),
 }));
 vi.mock('../../lib/prisma', () => ({ prisma: mocks.db }));
@@ -19,6 +19,9 @@ vi.mock('../categories/categories.service', () => ({ CategoriesService: { get: m
 vi.mock('../branches/parent-branch', () => ({ assertRecordInScope: mocks.guard }));
 vi.mock('../documents/document-branch', () => ({ documentBranch: mocks.document }));
 
+vi.mock('../inventory/inventory.service', () => ({ InventoryService: { getProductInventory: mocks.inventory } }));
+vi.mock('../financial/customer-summary/customer-financial-summary.service', () => ({ CustomerFinancialSummaryService: { getCustomerFinancialSummary: mocks.financialSummary } }));
+
 import { readChanges } from './sync-feed.service';
 import { NotFoundError } from '../../lib/errors';
 
@@ -28,6 +31,17 @@ const change = (seq: number, entity = 'product', entityId = 'product-1', branchI
 });
 
 describe('sync feed', () => {
+  it('carries PC-owned customer financial detail and inventory detail unchanged', async () => {
+    mocks.db.syncChange.findMany.mockResolvedValue([change(1, 'customer', 'c', 'branch-a'), change(2, 'product', 'p')]);
+    mocks.customer.mockResolvedValue({ id: 'c', branchId: 'branch-a', financial: { outstanding: '9007199254740993.25' } });
+    const financialSummary = { summary: { totalOutstanding: '9007199254740993.25' }, debts: [{ remainingBalance: '17.03' }] };
+    const inventory = { product: { stockQuantity: 7 }, recentMovements: [], onboardingStatus: 'ONBOARDED' };
+    mocks.financialSummary.mockResolvedValue(financialSummary);
+    mocks.inventory.mockResolvedValue(inventory);
+    const feed = await readChanges(0, 500, scope);
+    expect(feed.records[0]).toMatchObject({ data: { financialSummary } });
+    expect(feed.records[1]).toMatchObject({ data: { inventory } });
+  });
   beforeEach(() => {
     vi.resetAllMocks();
     mocks.db.$transaction.mockImplementation(async operation => operation(mocks.db));

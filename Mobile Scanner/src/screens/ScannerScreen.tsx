@@ -267,7 +267,7 @@ export function ScannerScreen({
             />
           )}
           {result.product && onAddToOrder && (
-            <AppButton label="Add to order" onPress={() => onAddToOrder(result.product!.id)} />
+            <AppButton cloudWrite label="Add to order" onPress={() => onAddToOrder(result.product!.id)} />
           )}
           <AppButton
             label="Scan another"

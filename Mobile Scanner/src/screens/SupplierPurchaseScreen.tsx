@@ -422,7 +422,7 @@ export function SupplierPurchaseScreen({
             multiline
             maxLength={2000}
           />
-          <AppButton label="Review invoice" onPress={() => void review()} loading={reviewing} />
+          <AppButton cloudWrite label="Review invoice" onPress={() => void review()} loading={reviewing} />
           <AppButton
             label="Change supplier"
             variant="secondary"
@@ -483,7 +483,7 @@ export function SupplierPurchaseScreen({
             </Pressable>
           ) : null}
           <AppButton
-            label="Record invoice"
+            cloudWrite label="Record invoice"
             onPress={() => void submit()}
             loading={submitting}
             disabled={duplicateReceipt && !duplicateConfirmed}
@@ -517,7 +517,7 @@ export function SupplierPurchaseScreen({
               A bill photo can be attached from Supplier bill or the bills inbox
             </Text>
           ) : null}
-          {!fromBill && <AppButton label="Record another" onPress={recordAnother} />}
+          {!fromBill && <AppButton cloudWrite label="Record another" onPress={recordAnother} />}
           <AppButton label="Done" variant="secondary" onPress={onDone} />
         </View>
       )}

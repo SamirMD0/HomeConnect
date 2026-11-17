@@ -12,6 +12,7 @@ model RelayDevice {
   id          String    @id @db.Uuid
   userId      String    @map("user_id") @db.Uuid
   userName    String    @map("user_name")
+  role        String    @default("EMPLOYEE")
   branchIds   String[]  @map("branch_ids") @db.Uuid
   name        String
   tokenSha256 String    @unique @map("token_sha256")

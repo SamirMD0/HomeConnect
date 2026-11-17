@@ -93,7 +93,7 @@ export function PaymentScreen() {
               />
             )}
             <AppButton
-              label="Take another payment"
+              cloudWrite label="Take another payment"
               variant="secondary"
               onPress={() =>
                 void draft.discard().catch((failure: Error) => draft.setError(failure.message))
@@ -155,7 +155,7 @@ export function PaymentScreen() {
                     <Card title={target.description}>
                       <Field label="Remaining" value={target.remainingBalance} money />
                       <AppButton
-                        label={`Pay ${target.description}`}
+                        cloudWrite label={`Pay ${target.description}`}
                         disabled={locked}
                         onPress={() => {
                           draft.edit({
@@ -237,7 +237,7 @@ export function PaymentScreen() {
               />
             </View>
             <AppButton
-              label={locked ? 'Retry original payment' : 'Record payment'}
+              cloudWrite label={locked ? 'Retry original payment' : 'Record payment'}
               loading={draft.mutation.isPending}
               disabled={!form.targetId}
               onPress={submit}

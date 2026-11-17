@@ -12,7 +12,7 @@ import { PagedRows, ReadScreen, ReadState, readStyles } from '../ReadUI';
 import { SelectFilter } from '../FilterControls';
 export function BillsScreen() {
   const { id = '' } = useLocalSearchParams<{ id: string }>(),
-    { client, key } = useLookup();
+    { client, key, session } = useLookup();
   const [linked, setLinked] = useState<'all' | 'true' | 'false'>('all'),
     [selected, setSelected] = useState<BillRead | null>(null);
   const bills = useQuery({
@@ -22,7 +22,7 @@ export function BillsScreen() {
   const image = useQuery({
     queryKey: key('bill-image', { id: selected?.id }),
     queryFn: () => getBillImage(client, selected!),
-    enabled: Boolean(selected),
+    enabled: Boolean(selected) && session.mode !== 'cloud',
     gcTime: 0,
   });
   return (
@@ -58,7 +58,7 @@ export function BillsScreen() {
       </ReadScreen>
       <Sheet title="Bill photo" visible={Boolean(selected)} onClose={() => setSelected(null)}>
         <View style={{ padding: 16, gap: 12 }}>
-          <ReadState query={image} />
+          {session.mode === 'cloud' ? <Text style={readStyles.subtitle}>Photo available on the shop Wi-Fi</Text> : <ReadState query={image} />}
           {image.data && (
             <Image
               accessibilityLabel="Supplier bill photo"

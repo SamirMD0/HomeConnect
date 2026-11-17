@@ -11,6 +11,9 @@ import { ProductsService } from '../service/products/products.service';
 import { SalesOrdersService } from '../sales/sales-orders/sales-orders.service';
 import { SuppliersService } from '../suppliers/suppliers/suppliers.service';
 import { getUnlinkedBill } from '../suppliers/receipts/receipts.service';
+import { CustomerFinancialSummaryService } from '../financial/customer-summary/customer-financial-summary.service';
+import { customerFinancialSummaryQuerySchema } from '../financial/customer-summary/customer-financial-summary.validator';
+import { InventoryService } from '../inventory/inventory.service';
 
 export type SyncRecord =
   | { entity: string; id: string; branchId: string | null; op: 'delete' }
@@ -19,11 +22,15 @@ export type SyncRecord =
 async function loadRecord(change: Pick<SyncChange, 'entity' | 'entityId'>, scope: BranchScope): Promise<unknown | null> {
   const id = change.entityId;
   switch (change.entity) {
-    case 'product':
+    case 'product': {
       // The catalogue and inventory are global in the current PC application.
-      return ProductsService.getCatalogRecord(id);
-    case 'customer':
-      return CustomersService.getCustomerWithFinancial(id, scope);
+      const product = await ProductsService.getCatalogRecord(id);
+      return { ...product, inventory: await InventoryService.getProductInventory(id) };
+    }
+    case 'customer': {
+      const customer = await CustomersService.getCustomerWithFinancial(id, scope);
+      return { ...customer, financialSummary: await CustomerFinancialSummaryService.getCustomerFinancialSummary(id, customerFinancialSummaryQuerySchema.parse({})) };
+    }
     case 'sales_order': {
       await assertRecordInScope('salesOrder', id, scope);
       const order = await SalesOrdersService.get(id);

@@ -9,6 +9,13 @@ export class WorkerRelay {
     private readonly deadline: number, private readonly fetcher: typeof fetch = fetch) {}
 
   async request(path: string, body?: unknown, raw = false): Promise<any> {
+    // Detail projections can make a count-bounded batch exceed the relay's 2 MB limit.
+    const batch = body as { records?: unknown[] } | undefined;
+    if (batch?.records && batch.records.length > 1 && Buffer.byteLength(JSON.stringify(body), 'utf8') > 1500000) {
+      const middle = Math.ceil(batch.records.length / 2);
+      await this.request(path, { ...batch, records: batch.records.slice(0, middle) });
+      return this.request(path, { ...batch, records: batch.records.slice(middle) });
+    }
     const remaining = this.deadline - Date.now();
     if (remaining <= 0) throw new CycleExpired();
     const timeout = Math.min(remaining, this.first ? 75000 : 20000);

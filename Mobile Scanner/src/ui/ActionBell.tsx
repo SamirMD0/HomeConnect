@@ -42,7 +42,7 @@ export function ActionBell() {
   const overdue = useQuery({
     queryKey: key('receivables-summary'),
     queryFn: () => getReceivablesSummary(client),
-    enabled: canCustomers,
+    enabled: canCustomers && session.mode !== 'cloud',
   });
   const pending = useQuery({
     queryKey: queryKeys.pendingBills({
@@ -51,6 +51,7 @@ export function ActionBell() {
       branchId: session.branch.selected?.id ?? '',
     }),
     queryFn: () => receiptQueue().listPending(),
+    enabled: session.mode !== 'cloud',
     refetchInterval: 15_000,
   });
   const items: Item[] = [

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../services/api';
+import { PairedPhonesPanel } from './PairedPhonesPanel';
 
 interface Status {
   enabled: boolean; relayUrl: string | null; secretConfigured: boolean;
@@ -77,5 +78,6 @@ export function PhoneCloudSyncPanel() {
       </div>
       {dirty && <p className="text-sm text-slate-500">Save your changes before syncing.</p>}
     </form>}
+    {status?.secretConfigured && status.relayUrl && <PairedPhonesPanel />}
   </section>;
 }

@@ -120,7 +120,7 @@ export function ReceiveScreen() {
             tone="success"
             message={`Saved on the PC${record.result.referenceNumber ? ` · Ref ${record.result.referenceNumber}` : ''}. Shared stock has been increased.`}
           />
-          <AppButton label="Receive more goods" onPress={() => void draft.restart()} />
+          <AppButton cloudWrite label="Receive more goods" onPress={() => void draft.restart()} />
         </FormPage>
       </>
     );
@@ -180,7 +180,7 @@ export function ReceiveScreen() {
         <DraftNotice locked={locked} error="" onDiscard={() => void draft.restart()} />
         {banner ? <StatusBanner tone={banner.tone} message={banner.message} /> : null}
         {locked ? (
-          <AppButton label="Retry saving" loading={submitting} onPress={() => void submit()} />
+          <AppButton cloudWrite label="Retry saving" loading={submitting} onPress={() => void submit()} />
         ) : current ? (
           <>
             <ListRow
@@ -237,7 +237,7 @@ export function ReceiveScreen() {
               </Card>
             ))}
             <AppButton
-              label="Save receiving"
+              cloudWrite label="Save receiving"
               loading={submitting}
               disabled={!current.lines.length}
               onPress={() => void submit()}

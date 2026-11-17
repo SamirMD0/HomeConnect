@@ -98,7 +98,7 @@ export function PrepaidCreateScreen() {
               />
             ))}
             {pending.data && pending.data.length === 0 ? <Text style={readStyles.subtitle}>No pending items for this customer.</Text> : null}
-            <AppButton label="It is not there: send again" variant="secondary" onPress={() => setUncertain(false)} />
+            <AppButton cloudWrite label="It is not there: send again" variant="secondary" onPress={() => setUncertain(false)} />
             <AppButton label="It is there: finish" onPress={() => setSaved(form.itemName.trim())} />
           </>
         ) : (
@@ -107,7 +107,7 @@ export function PrepaidCreateScreen() {
             <AppInput label="Full price (USD)" value={form.fullAmount} onChangeText={set('fullAmount')} keyboardType="decimal-pad" />
             <AppInput label="Paid now (USD)" value={form.paymentAmount} onChangeText={set('paymentAmount')} keyboardType="decimal-pad" />
             <AppInput label="Notes (optional)" value={form.notes} onChangeText={set('notes')} maxLength={1000} />
-            <AppButton label="Save prepaid item" loading={saving} onPress={() => void submit()} />
+            <AppButton cloudWrite label="Save prepaid item" loading={saving} onPress={() => void submit()} />
           </>
         )}
       </FormPage>
