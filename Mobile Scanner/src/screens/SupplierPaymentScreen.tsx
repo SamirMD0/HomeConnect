@@ -447,8 +447,17 @@ export function SupplierPaymentScreen({
               message={billMessage}
             />
           ) : null}
-          <AppButton label="Record another" onPress={recordAnother} />
-          <AppButton label="Done" variant="secondary" onPress={onDone} />
+          <AppButton
+            label="Record another"
+            disabled={Boolean(cloudId) && submitting}
+            onPress={recordAnother}
+          />
+          <AppButton
+            label="Done"
+            variant="secondary"
+            disabled={Boolean(cloudId) && submitting}
+            onPress={onDone}
+          />
         </View>
       )}
     </FormScreen>

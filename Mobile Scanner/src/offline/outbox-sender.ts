@@ -123,6 +123,10 @@ export class OutboxSender {
                 [payload.billGroupId]
               )
             )[0];
+            if (lead && ['refused', 'failed'].includes(lead.local_status)) {
+              await this.status(row, 'failed', { reason: 'BILL_GROUP_FAILED' });
+              continue;
+            }
             if (lead && lead.local_status !== 'applied') continue;
           }
           const body = await this.request('/actions', {
