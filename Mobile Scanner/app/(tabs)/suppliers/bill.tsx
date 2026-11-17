@@ -1,11 +1,12 @@
-import { CloudWriteGuard } from '../../../src/offline/CloudWriteGuard';
 import { Stack } from 'expo-router';
 import { FeatureScreen } from '../../../src/navigation/FeatureScreen';
 export default function Feature() {
-  return (<CloudWriteGuard>
+  return (
     <>
-      <Stack.Screen options={{ title: 'Supplier bill' }} />
-      <FeatureScreen feature="bill" />
+      <>
+        <Stack.Screen options={{ title: 'Supplier bill' }} />
+        <FeatureScreen feature="bill" />
+      </>
     </>
-  </CloudWriteGuard>);
+  );
 }

@@ -7,6 +7,7 @@ import { SupplierPurchaseScreen } from '../screens/SupplierPurchaseScreen';
 import { SupplierPaymentScreen } from '../screens/SupplierPaymentScreen';
 import { can, type Permission } from '../permissions/can';
 import { theme } from '../theme';
+import { PendingActionsScreen } from '../offline/PendingActionsScreen';
 export type SupplierFeature = 'bill' | 'pending-bills' | 'invoice' | 'payment';
 const permissions: Record<SupplierFeature, Permission> = {
   bill: 'supplierBills.capture',
@@ -19,9 +20,16 @@ export interface InvoiceFromBill {
   billBranchId: string;
   supplierId: string;
 }
-export function FeatureScreen({ feature, fromBill }: { feature: SupplierFeature; fromBill?: InvoiceFromBill }) {
+export function FeatureScreen({
+  feature,
+  fromBill,
+}: {
+  feature: SupplierFeature;
+  fromBill?: InvoiceFromBill;
+}) {
   const session = useSession();
   const router = useRouter();
+  if (feature === 'pending-bills' && session.mode === 'cloud') return <PendingActionsScreen />;
   if (!session.connection || !session.token || !can(permissions[feature], session.user))
     return <Redirect href="/(tabs)/suppliers" />;
   const props = {
@@ -32,7 +40,10 @@ export function FeatureScreen({ feature, fromBill }: { feature: SupplierFeature;
   };
   if (feature === 'invoice')
     return (
-      <SafeAreaView edges={['bottom']} style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      <SafeAreaView
+        edges={['bottom']}
+        style={{ flex: 1, backgroundColor: theme.colors.background }}
+      >
         <SupplierPurchaseScreen {...props} fromBill={fromBill} />
       </SafeAreaView>
     );

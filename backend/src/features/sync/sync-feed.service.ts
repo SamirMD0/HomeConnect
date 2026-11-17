@@ -29,7 +29,9 @@ async function loadRecord(change: Pick<SyncChange, 'entity' | 'entityId'>, scope
     }
     case 'customer': {
       const customer = await CustomersService.getCustomerWithFinancial(id, scope);
-      return { ...customer, financialSummary: await CustomerFinancialSummaryService.getCustomerFinancialSummary(id, customerFinancialSummaryQuerySchema.parse({})) };
+      return { ...customer, financialSummary: await CustomerFinancialSummaryService.getCustomerFinancialSummary(id, customerFinancialSummaryQuerySchema.parse({
+        includeCancelled: 'false', includePayments: 'false', debtLimit: 100, planLimit: 100,
+      })) };
     }
     case 'sales_order': {
       await assertRecordInScope('salesOrder', id, scope);

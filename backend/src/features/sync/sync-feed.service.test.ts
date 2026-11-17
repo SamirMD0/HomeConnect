@@ -40,6 +40,9 @@ describe('sync feed', () => {
     mocks.inventory.mockResolvedValue(inventory);
     const feed = await readChanges(0, 500, scope);
     expect(feed.records[0]).toMatchObject({ data: { financialSummary } });
+    expect(mocks.financialSummary).toHaveBeenCalledWith('c', {
+      includeCancelled: false, includePayments: false, debtLimit: 100, planLimit: 100, paymentLimit: 20,
+    });
     expect(feed.records[1]).toMatchObject({ data: { inventory } });
   });
   beforeEach(() => {

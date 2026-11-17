@@ -21,6 +21,11 @@ const tables = [
 ];
 
 describe('sync change log migration', () => {
+  it.each(['debts', 'installment_plans', 'installments', 'payments', 'payment_allocations'])('invalidates the customer payment targets for %s writes', table => {
+    const body = sql.split(`CREATE FUNCTION sync_capture_${table}()`)[1].split('$$;')[0];
+    expect(body).toContain("'customer'");
+    expect(body).toContain('customerId');
+  });
   it('adds an independent append-only log without rewriting business data', () => {
     const statements = sql.replace(/--[^\n]*/g, '');
     expect(statements).not.toMatch(/\b(?:DROP|RENAME|TRUNCATE|ALTER|DELETE\s+FROM|UPDATE\s+\w+\s+SET)\b/i);

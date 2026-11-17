@@ -26,26 +26,27 @@ export function SupplierShortcuts() {
         <ListRow
           title="Supplier bill"
           icon="camera-outline"
-          cloudWrite onPress={() => router.push('/(tabs)/suppliers/bill')}
+          onPress={() => router.push('/(tabs)/suppliers/bill')}
         />
       )}
       <ListRow
-        title="Pending uploads"
+        title={session.mode === 'cloud' ? 'Waiting for the shop PC' : 'Pending uploads'}
         icon="cloud-upload-outline"
-        cloudWrite onPress={() => router.push('/(tabs)/suppliers/pending-bills')}
+        onPress={() => router.push('/(tabs)/suppliers/pending-bills')}
       />
       {session.can('supplierInvoices.write') && (
         <ListRow
           title="Supplier invoice"
           icon="document-text-outline"
-          cloudWrite onPress={() => router.push('/(tabs)/suppliers/invoice')}
+          cloudWrite
+          onPress={() => router.push('/(tabs)/suppliers/invoice')}
         />
       )}
       {session.can('supplierPayments.write') && (
         <ListRow
           title="Supplier payment"
           icon="wallet-outline"
-          cloudWrite onPress={() => router.push('/(tabs)/suppliers/payment')}
+          onPress={() => router.push('/(tabs)/suppliers/payment')}
         />
       )}
     </View>

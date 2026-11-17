@@ -14,7 +14,7 @@ export function setSyncEngine(value: SyncEngine | null) {
   const publish = () => { status = value?.getStatus() ?? { syncing: false, lastSyncAt: null, error: null }; for (const listener of listeners) listener(); };
   unsubscribe = value?.subscribe(publish); publish();
 }
-export const requestCloudSync = (fullCopy = false) => engine?.sync(fullCopy) ?? Promise.resolve();
+export const requestCloudSync = (fullCopy = false) => (fullCopy ? engine?.sync(true) : engine?.request()) ?? Promise.resolve();
 export function useSyncStatus() {
   return useSyncExternalStore(listener => { listeners.add(listener); return () => { listeners.delete(listener); }; }, () => status, () => status);
 }

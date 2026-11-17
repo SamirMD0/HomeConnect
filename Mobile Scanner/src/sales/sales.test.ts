@@ -46,6 +46,13 @@ function desktopObject(
   );
 }
 const key = 'f680f926-c96c-46b7-8fb1-0c16742d1ab1';
+it('closing a cloud form on revocation prevents late edits and submissions from restoring its payload',async()=>{
+  const slots:(string|null)[]=[null,null];
+  const store=await DraftStore.open({read:async slot=>slots[slot]!,write:async(slot,value)=>{slots[slot]=value;}},'cloud-session',()=>({amount:'10.00'}),()=>key);
+  await store.close();
+  await expect(store.edit({amount:'20.00'})).rejects.toThrow('pairing changed');
+  await expect(store.submit(form=>form,async()=>({id:'never'}))).rejects.toThrow('pairing changed');
+});
 const orderForm = () => ({
   ...initialOrder(),
   customerId: 'customer',

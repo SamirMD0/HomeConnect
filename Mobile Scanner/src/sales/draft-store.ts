@@ -18,6 +18,13 @@ export class DraftStore<F, P, R> {
   private queue: Promise<void> = Promise.resolve();
   private flight: Promise<R> | null = null;
   private listeners = new Set<() => void>();
+  private closed = false;
+  async close() {
+    this.closed = true;
+    await this.flight?.catch(() => {});
+    await this.queue.catch(() => {});
+    this.listeners.clear();
+  }
   private constructor(
     private storage: DraftStorage,
     public current: DraftRecord<F, P, R>
@@ -86,6 +93,10 @@ export class DraftStore<F, P, R> {
     };
   };
   private persist(next: DraftRecord<F, P, R>): Promise<void> {
+    if (this.closed)
+      return Promise.reject(
+        new Error('This phone pairing changed. Open Waiting to check saved actions.')
+      );
     const snapshot = { ...next, revision: this.current.revision + 1 };
     this.current = snapshot;
     this.listeners.forEach((listener) => listener());

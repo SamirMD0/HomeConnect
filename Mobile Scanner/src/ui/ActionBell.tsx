@@ -13,6 +13,7 @@ import { countUnlinkedBills } from '../suppliers/bills-inbox';
 import { theme } from '../theme';
 import { IconTile } from './Stats';
 import type { Tone } from './Badge';
+import { useOutbox } from '../offline/useOutbox';
 
 interface Item {
   key: string;
@@ -31,6 +32,7 @@ export function ActionBell() {
   const router = useRouter();
   const { client, key, session } = useLookup();
   const [open, setOpen] = useState(false);
+  const outbox = useOutbox();
   const canSuppliers = session.can('suppliers.read');
   const canCustomers = session.can('sell');
   const bills = useQuery({
@@ -83,8 +85,8 @@ export function ActionBell() {
       key: 'pending',
       icon: 'cloud-upload-outline',
       tone: 'warning',
-      title: 'Bill photos not sent yet',
-      count: pending.data?.length ?? 0,
+      title: session.mode === 'cloud' ? 'Waiting for the shop PC' : 'Bill photos not sent yet',
+      count: session.mode === 'cloud' ? outbox.count : (pending.data?.length ?? 0),
       href: '/(tabs)/suppliers/pending-bills',
     },
   ];

@@ -1,6 +1,11 @@
 import { theme } from '../theme';
 import * as ImagePicker from 'expo-image-picker';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { randomUUID } from 'expo-crypto';
+import { cloudMode } from '../offline/cloud-mode';
+import { enqueueCloudAction } from '../offline/outbox-runtime';
+import { OutboxStatus } from '../offline/OutboxStatus';
+import { supplierPaymentAction, supplierBillAction } from '../offline/action-payloads';
 import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { HcApiError } from '../api/hc-client';
 import { clientFrom } from '../api/products-api';
@@ -54,6 +59,9 @@ export function SupplierPaymentScreen({
   const [submitting, setSubmitting] = useState(false);
   const [pages, setPages] = useState<string[]>([]);
   const [billMessage, setBillMessage] = useState<string | null>(null);
+  const submissionKey = useRef<string | null>(null);
+  const [cloudId, setCloudId] = useState<string | null>(null);
+  const cloudBillGroup = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     let active = true;
@@ -189,6 +197,37 @@ export function SupplierPaymentScreen({
     setSubmitting(true);
     setBanner(null);
     try {
+      if (cloudMode()) {
+        submissionKey.current ??= randomUUID();
+        const action = await enqueueCloudAction({
+          type: 'supplier_payment.create',
+          submissionKey: submissionKey.current,
+          payload: supplierPaymentAction({
+            supplierId: supplier.id,
+            amount: numericAmount,
+            currency,
+            paymentMethod,
+            note,
+          }),
+          summary: `Supplier payment ${currency} ${amount} · ${supplier.name}`,
+        });
+        setCloudId(action.id);
+        setStep('DONE');
+        for (const uri of pages) {
+          const bill = await enqueueCloudAction({
+            type: 'supplier_bill.upload',
+            submissionKey: `${submissionKey.current}:${uri}`,
+            payload: supplierBillAction(supplier.id, undefined, cloudBillGroup.current),
+            summary: `Bill photo · ${supplier.name}`,
+            photo: { uri, mime: 'image/jpeg' },
+          });
+          cloudBillGroup.current ??= bill.id;
+          setPages((items) => items.filter((page) => page !== uri));
+        }
+        if (cloudBillGroup.current)
+          setBillMessage('Bill photos saved separately. Link them to the payment on the shop PC.');
+        return;
+      }
       const payment = await recordSupplierPayment(client, {
         supplierId: supplier.id,
         amount: numericAmount,
@@ -214,6 +253,9 @@ export function SupplierPaymentScreen({
   };
 
   const recordAnother = () => {
+    submissionKey.current = null;
+    cloudBillGroup.current = undefined;
+    setCloudId(null);
     setSupplier(null);
     setAmount('');
     setCurrency('USD');
@@ -348,7 +390,7 @@ export function SupplierPaymentScreen({
               />
             </View>
           </View>
-          <AppButton cloudWrite label="Review payment" onPress={review} />
+          <AppButton label="Review payment" onPress={review} />
           <AppButton label="Back" variant="secondary" onPress={() => setStep('PICK_SUPPLIER')} />
         </View>
       )}
@@ -380,23 +422,42 @@ export function SupplierPaymentScreen({
               </>
             ) : null}
           </View>
-          <AppButton cloudWrite label="Record payment" onPress={() => void submit()} loading={submitting} />
+          <AppButton label="Record payment" onPress={() => void submit()} loading={submitting} />
           <AppButton label="Edit details" variant="secondary" onPress={() => setStep('DETAILS')} />
         </View>
       )}
 
       {step === 'DONE' && (
         <View style={styles.done}>
-          <IconTile icon="checkmark-circle" tone="success" size={64} />
-          <Text style={styles.title}>Payment recorded</Text>
+          {!cloudId && <IconTile icon="checkmark-circle" tone="success" size={64} />}
+          <Text style={styles.title}>
+            {cloudId ? 'Saved. Waiting for the shop PC' : 'Payment recorded'}
+          </Text>
+          {cloudId && <OutboxStatus id={cloudId} />}
+          {cloudId && pages.length > 0 && (
+            <AppButton
+              label="Save remaining bill photos"
+              loading={submitting}
+              onPress={() => void submit()}
+            />
+          )}
           {billMessage ? (
             <StatusBanner
               tone={billMessage === 'Bill photo attached' ? 'info' : 'warning'}
               message={billMessage}
             />
           ) : null}
-          <AppButton cloudWrite label="Record another" onPress={recordAnother} />
-          <AppButton label="Done" variant="secondary" onPress={onDone} />
+          <AppButton
+            label="Record another"
+            disabled={Boolean(cloudId) && submitting}
+            onPress={recordAnother}
+          />
+          <AppButton
+            label="Done"
+            variant="secondary"
+            disabled={Boolean(cloudId) && submitting}
+            onPress={onDone}
+          />
         </View>
       )}
     </FormScreen>

@@ -18,6 +18,8 @@ import { FormPage, DraftNotice } from './FormUI';
 import { useSalesDraft } from './useSalesDraft';
 import { buildCustomerPayload, buildOrderPayload } from './payloads';
 import type { OrderForm, OrderPayload } from './contracts';
+import { enqueueCloudAction } from '../offline/outbox-runtime';
+import { OutboxStatus } from '../offline/OutboxStatus';
 
 export function OrderScreen() {
   const draft = useSalesDraft<OrderForm, OrderPayload>('order'),
@@ -101,7 +103,19 @@ export function OrderScreen() {
   const submit = (asDraft: boolean) =>
     draft.mutation.mutate({
       build: (value, key) => buildOrderPayload(value, key, asDraft),
-      send: async (payload) => ({ kind: 'order', order: await createOrder(draft.client, payload) }),
+      send: async (payload, original) => {
+        if (draft.session.mode === 'cloud') {
+          const action = await enqueueCloudAction({
+            type: 'sales_order.create',
+            submissionKey: payload.idempotencyKey,
+            branchId: draft.scope.branchId,
+            payload: { ...payload },
+            summary: `Order · ${original.customerName || 'Walk-in'}`,
+          });
+          return { kind: 'queued', actionId: action.id };
+        }
+        return { kind: 'order', order: await createOrder(draft.client, payload) };
+      },
     });
   const result = draft.record?.result;
   return (
@@ -110,6 +124,18 @@ export function OrderScreen() {
       <FormPage title={result ? 'Order saved' : 'New order'}>
         {!draft.record && (
           <Text style={readStyles.subtitle}>{draft.error || 'Loading saved form…'}</Text>
+        )}
+        {result?.kind === 'queued' && (
+          <>
+            <OutboxStatus id={result.actionId} />
+            <AppButton
+              label="Start another order"
+              variant="secondary"
+              onPress={() =>
+                void draft.discard().catch((err: Error) => draft.setError(err.message))
+              }
+            />
+          </>
         )}
         {result?.kind === 'order' && (
           <>
@@ -156,7 +182,7 @@ export function OrderScreen() {
               }
             />
             <AppButton
-              cloudWrite label="Start another order"
+              label="Start another order"
               variant="secondary"
               onPress={() =>
                 void draft.discard().catch((err: Error) => draft.setError(err.message))
@@ -185,7 +211,8 @@ export function OrderScreen() {
                 {draft.session.can('customers.create') && (
                   <AppButton
                     disabled={locked}
-                    cloudWrite label="Create customer"
+                    cloudWrite
+                    label="Create customer"
                     variant="secondary"
                     onPress={() => setPicker('create')}
                   />
@@ -346,21 +373,21 @@ export function OrderScreen() {
             </View>
             {locked ? (
               <AppButton
-                cloudWrite label="Retry original submission"
+                label="Retry original submission"
                 loading={draft.mutation.isPending}
                 onPress={() => submit(false)}
               />
             ) : (
               <>
                 <AppButton
-                  cloudWrite label="Save draft on PC"
+                  label="Save draft on PC"
                   variant="secondary"
                   loading={draft.mutation.isPending}
                   disabled={adding || creating}
                   onPress={() => submit(true)}
                 />
                 <AppButton
-                  cloudWrite label="Confirm order"
+                  label="Confirm order"
                   loading={draft.mutation.isPending}
                   disabled={adding || creating}
                   onPress={() => submit(false)}
@@ -420,7 +447,8 @@ export function OrderScreen() {
                 />
               ))}
               <AppButton
-                cloudWrite label="Save customer"
+                cloudWrite
+                label="Save customer"
                 loading={creating}
                 onPress={() => {
                   let payload;

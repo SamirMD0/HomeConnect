@@ -9,6 +9,10 @@ import type { SalesResult } from './contracts';
 export function useSalesDraft<F, P>(kind: 'order' | 'payment', customerId = '') {
   const lookup = useLookup(),
     { server, userId, branchId } = lookup.scope;
+  const cloud = lookup.session.mode === 'cloud';
+  const draftServer = cloud
+    ? JSON.stringify([server, lookup.session.cloudPairing?.deviceId])
+    : server;
   const queryClient = useQueryClient();
   const [store, setStore] = useState<DraftStore<F, P, SalesResult> | null>(null),
     [error, setError] = useState(''),
@@ -19,7 +23,7 @@ export function useSalesDraft<F, P>(kind: 'order' | 'payment', customerId = '') 
       unsubscribe: (() => void) | undefined;
     setStore(null);
     setError('');
-    void openDraft({ server, userId, branchId }, kind, customerId)
+    void openDraft({ server: draftServer, userId, branchId }, kind, customerId, cloud)
       .then((opened) => {
         if (!active) return;
         const typed = opened as unknown as DraftStore<F, P, SalesResult>;
@@ -33,7 +37,7 @@ export function useSalesDraft<F, P>(kind: 'order' | 'payment', customerId = '') 
       active = false;
       unsubscribe?.();
     };
-  }, [server, userId, branchId, kind, customerId, revision]);
+  }, [draftServer, cloud, userId, branchId, kind, customerId, revision]);
   const mutation = useMutation({
     mutationFn: async (action: {
       build: (form: F, key: string) => P;
@@ -60,7 +64,10 @@ export function useSalesDraft<F, P>(kind: 'order' | 'payment', customerId = '') 
   const discard = async () => {
     if (!store) return;
     await store.discard();
-    forgetDraft(lookup.scope, kind === 'order' ? kind : `${kind}:${customerId}`);
+    forgetDraft(
+      { ...lookup.scope, server: draftServer },
+      kind === 'order' ? kind : `${kind}:${customerId}`
+    );
     setRevision((value) => value + 1);
     mutation.reset();
   };

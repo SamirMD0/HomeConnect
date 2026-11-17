@@ -63,7 +63,6 @@ export function CustomerDetailScreen() {
                   ? [
                       {
                         label: 'Take payment',
-                        cloudWrite: true,
                         icon: 'wallet-outline',
                         tone: 'success',
                         onPress: () =>

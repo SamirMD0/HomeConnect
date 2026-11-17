@@ -1,4 +1,5 @@
 import type { LocalDb } from './local-db';
+import { archiveOutbox, photoFiles } from './outbox';
 export interface CloudRecord { entity: string; id: string; branchId: string | null; rev: string; op: 'upsert' | 'delete'; data: unknown }
 export type RecordTable = 'records' | 'staging_records';
 export const stateValue = async (db: LocalDb, key: string) => (await db.query<{ value: string }>('SELECT value FROM sync_state WHERE key = ?', [key]))[0]?.value ?? null;
@@ -17,7 +18,12 @@ export async function applyRecords(db: LocalDb, table: RecordTable, records: Clo
   }
 }
 export async function wipeLocalDb(db: LocalDb) {
-  await db.transaction(async tx => { await tx.exec('DELETE FROM records; DELETE FROM staging_records; DELETE FROM sync_state;'); });
+  const photos = await db.transaction(async tx => {
+    const paths = await archiveOutbox(tx);
+    await tx.exec('DELETE FROM records; DELETE FROM staging_records; DELETE FROM sync_state;');
+    return paths;
+  });
+  for (const path of photos) { try { await photoFiles.remove(path); } catch { /* An inaccessible file cannot restore credentials or the redacted payload. */ } }
   await db.exec('VACUUM');
 }
 export async function localDbSize(db: LocalDb) {
