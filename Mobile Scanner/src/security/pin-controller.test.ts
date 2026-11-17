@@ -132,6 +132,31 @@ describe('phone PIN protection', () => {
     f.biometric.mockResolvedValue(true);
     expect(await pin.unlockBiometric()).toBe(true);
   });
+  it('cannot apply a stale PIN check after the background timer has locked the phone', async () => {
+    const f = fixture(),
+      pin = f.create();
+    await pin.load();
+    await pin.setup('1234', '1234');
+    pin.lock();
+    let finish: (value: string) => void = () => {};
+    let started = false;
+    f.derive.mockImplementationOnce(
+      () =>
+        new Promise<string>((resolve) => {
+          finish = resolve;
+          started = true;
+        })
+    );
+    const attempt = pin.unlockPin('1234');
+    await vi.waitFor(() => expect(started).toBe(true));
+    pin.appState('background');
+    f.tick(5 * 60000);
+    pin.appState('active');
+    finish('a'.repeat(64));
+    await expect(attempt).rejects.toThrow('locked while checking');
+    expect(pin.getState().phase).toBe('locked');
+    expect(await pin.unlockPin('1234')).toBe(true);
+  });
   it('requires the old PIN to change the hash and never applies a late credential write after stopping', async () => {
     const f = fixture(),
       pin = f.create();

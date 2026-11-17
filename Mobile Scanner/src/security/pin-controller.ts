@@ -57,7 +57,7 @@ export class PinController {
   private writes: Promise<unknown> = Promise.resolve();
   private closed = false;
   private backgroundAt: number | null = null;
-  private authenticatedAt = 0;
+  private lockEpoch = 0;
   constructor(
     readonly owner: string,
     private deps: PinDependencies
@@ -117,6 +117,7 @@ export class PinController {
     });
   setup = (pin: string, again: string) =>
     this.serial(async () => {
+      const epoch = this.lockEpoch;
       if (this.state.phase !== 'setup') throw new Error('A PIN is already set.');
       if (!validPin(pin)) throw new Error('Use a 4–6 digit PIN.');
       if (pin !== again) throw new Error('The PINs do not match.');
@@ -134,10 +135,10 @@ export class PinController {
         minutes: 5,
         lastUnlockAt: new Date(this.now()).toISOString(),
       });
-      this.authenticatedAt = this.now();
-      this.emit({ phase: 'unlocked' });
+      this.emit({ phase: epoch === this.lockEpoch ? 'unlocked' : 'locked' });
     });
   private async verify(pin: string, unlock: boolean) {
+    const epoch = this.lockEpoch;
     const record = this.state.record;
     if (!record) throw new Error('Create a PIN first.');
     if (record.failedCount >= 10) {
@@ -163,6 +164,8 @@ export class PinController {
       if (failedCount >= 10) await this.erase(TOO_MANY_PINS);
       return false;
     }
+    if (unlock && epoch !== this.lockEpoch)
+      throw new Error('The phone locked while checking. Enter your PIN again.');
     await this.persist({
       ...record,
       failedCount: 0,
@@ -170,7 +173,8 @@ export class PinController {
       lastUnlockAt: unlock ? new Date(this.now()).toISOString() : record.lastUnlockAt,
     });
     if (unlock) {
-      this.authenticatedAt = this.now();
+      if (epoch !== this.lockEpoch)
+        throw new Error('The phone locked while checking. Enter your PIN again.');
       this.emit({ phase: 'unlocked', error: null });
     }
     return true;
@@ -190,16 +194,18 @@ export class PinController {
   unlockBiometric = () =>
     this.serial(async () => {
       if (!this.state.record?.biometric) return false;
+      const epoch = this.lockEpoch;
       const success = await this.deps.biometric();
       this.active();
       if (!success) return false;
+      if (epoch !== this.lockEpoch) return false;
       await this.persist({
         ...this.state.record,
         failedCount: 0,
         lockedUntil: 0,
         lastUnlockAt: new Date(this.now()).toISOString(),
       });
-      this.authenticatedAt = this.now();
+      if (epoch !== this.lockEpoch) return false;
       this.emit({ phase: 'unlocked' });
       return true;
     });
@@ -223,15 +229,18 @@ export class PinController {
     }
     const expired =
       this.backgroundAt !== null &&
-      this.now() - this.backgroundAt >= (this.state.record?.minutes ?? 5) * 60000 &&
-      this.authenticatedAt <= this.backgroundAt;
+      this.now() - this.backgroundAt >= (this.state.record?.minutes ?? 5) * 60000;
+    if (expired) this.lockEpoch++;
     this.backgroundAt = null;
     this.emit({
       hidden: false,
       ...(expired && this.state.phase === 'unlocked' ? { phase: 'locked' as const } : {}),
     });
   };
-  lock = () => this.emit({ phase: this.state.record ? 'locked' : 'setup' });
+  lock = () => {
+    this.lockEpoch++;
+    this.emit({ phase: this.state.record ? 'locked' : 'setup' });
+  };
   private async erase(message: string) {
     this.emit({ phase: 'wiping' });
     await this.deps.wipe(message);

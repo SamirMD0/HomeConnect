@@ -109,6 +109,7 @@ export function SecurityProvider({ children }: PropsWithChildren) {
           setOffering(true);
           try {
             await matched.setup(pin, again);
+            if (matched.getState().phase !== 'unlocked') setOffering(false);
           } catch (error) {
             setOffering(false);
             throw error;
