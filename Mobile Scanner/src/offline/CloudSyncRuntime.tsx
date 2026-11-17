@@ -4,7 +4,8 @@ import NetInfo from '@react-native-community/netinfo';
 import { useSession } from '../session/SessionProvider';
 import { clearQueryCache, queryClient } from '../query/client';
 import { saveCloudPairing } from './cloud-storage';
-import { openLocalDb } from './expo-db';
+import { openLocalDb, deleteLocalDb } from './expo-db';
+import { stopLocalSecurity, securityStatus } from '../security/runtime';
 import { onCloudWipe, configureCloudReader } from './cloud-mode';
 import { wipeLocalDb, saveState, stateValue } from './record-store';
 import { CloudDataSource } from './data-source';
@@ -21,13 +22,14 @@ let starting: Promise<void> | undefined;
 // Also registered before first pairing, so changing users cannot reuse an old cache.
 onCloudWipe(async () => {
   generation++;
+  await stopLocalSecurity();
   configureOutbox(null);
   await waitForOutboxSaves();
   const current = currentSyncEngine();
   await current?.stop();
   await starting?.catch(() => {});
   await wipeCloudDrafts();
-  await wipeLocalDb(await openLocalDb());
+  await deleteLocalDb();
 });
 export function CloudSyncRuntime() {
   const session = useSession();
@@ -73,6 +75,7 @@ export function CloudSyncRuntime() {
           );
       };
       engine = new SyncEngine(db, pairing, {
+        securityStatus: current => securityStatus(ownerKey(current)),
         onBeforeUserChanged: async () => {
           configureOutbox(null);
           await waitForOutboxSaves();

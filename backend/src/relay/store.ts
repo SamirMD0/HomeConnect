@@ -4,6 +4,7 @@ import type { ActionInput, DeviceInput, RecordsInput, ResultInput } from './inpu
 
 const json = (value: Prisma.JsonValue) => value === null ? Prisma.JsonNull : value;
 const devicePublic = {
+  pinSet: true, lastUnlockAt: true,
   id: true, userId: true, userName: true, role: true, branchIds: true, name: true,
   createdAt: true, lastSeenAt: true, revokedAt: true,
 } satisfies Prisma.RelayDeviceSelect;
@@ -17,6 +18,12 @@ export interface RequestUsage {
 
 export class RelayStore {
   constructor(private readonly db: RelayClient) {}
+  deviceStatus(id: string, input: { pinSet: boolean; lastUnlockAt: string | null }) {
+    return this.db.relayDevice.updateMany({
+      where: { id, revokedAt: null },
+      data: { pinSet: input.pinSet, lastUnlockAt: input.lastUnlockAt ? new Date(input.lastUnlockAt) : null },
+    });
+  }
 
   findDevice(tokenSha256: string) {
     return this.db.relayDevice.findUnique({ where: { tokenSha256 } });

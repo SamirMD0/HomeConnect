@@ -51,7 +51,7 @@ describe('durable phone outbox', () => {
     expect(uuid).toHaveBeenCalledTimes(1);
     expect(JSON.parse(saved.payload).idempotencyKey).toBe('one-id');
     expect((await db.query<{ user_version: number }>('PRAGMA user_version'))[0]?.user_version).toBe(
-      3
+      4
     );
   });
   it('copies the photo first and retains it until applied or refused, including failed actions', async () => {

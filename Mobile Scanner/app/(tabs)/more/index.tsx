@@ -10,6 +10,7 @@ import { AppUpdateRow } from '../../../src/updates/AppUpdateRow';
 import { Badge } from '../../../src/ui/Badge';
 import { IconTile } from '../../../src/ui/Stats';
 import { CloudDataSettings } from '../../../src/offline/CloudDataSettings';
+import {SecuritySettings} from '../../../src/security/SecuritySettings';
 
 function Group({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -88,6 +89,7 @@ export default function More() {
       </Group>
 
       {session.mode === 'cloud' && <CloudDataSettings />}
+      {session.mode === 'cloud' && <SecuritySettings />}
       <AppButton
         label="Sign out"
         icon="log-out-outline"

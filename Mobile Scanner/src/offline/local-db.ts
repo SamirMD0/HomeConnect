@@ -9,7 +9,7 @@ const columns =
 export async function initializeLocalDb(db: LocalDb) {
   const version =
     (await db.query<{ user_version: number }>('PRAGMA user_version'))[0]?.user_version ?? 0;
-  if (version > 3) throw new Error('Update the app to open this phone database.');
+  if (version > 4) throw new Error('Update the app to open this phone database.');
   if (version === 0)
     await db.transaction(async (tx) => {
       await tx.exec(`CREATE TABLE records (${columns}); CREATE TABLE staging_records (${columns});
@@ -45,4 +45,7 @@ export async function initializeLocalDb(db: LocalDb) {
           "INSERT INTO sync_state(key,value) VALUES ('fullCopyInProgress','true') ON CONFLICT(key) DO UPDATE SET value='true'"
         );
     });
+  if(version<4)await db.transaction(async tx=>{await tx.exec(`CREATE TABLE cloud_photos(id TEXT PRIMARY KEY,bytes BLOB NOT NULL);
+    CREATE TABLE cloud_drafts(name TEXT PRIMARY KEY,value TEXT NOT NULL);
+    PRAGMA user_version=4;`);});
 }

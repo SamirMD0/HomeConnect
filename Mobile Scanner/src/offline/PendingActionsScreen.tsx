@@ -11,6 +11,7 @@ import { openLocalDb } from './expo-db';
 import { requestCloudSync } from './sync-status';
 import { useOutbox } from './useOutbox';
 import { ActionResultLink } from './OutboxStatus';
+import {summaryArchive} from '../security/summary-archive';
 export function PendingActionsScreen({ archivesOnly = false }: { archivesOnly?: boolean }) {
   const rows = useOutbox(archivesOnly),
     client = useQueryClient();
@@ -71,7 +72,8 @@ export function PendingActionsScreen({ archivesOnly = false }: { archivesOnly?: 
               onPress={() => {
                 void (async () => {
                   try {
-                    await dismissAction(await openLocalDb(), row.id);
+                    if(row.archived===2)await summaryArchive.dismiss(row.id);
+                    else await dismissAction(await openLocalDb(), row.id);
                     await client.invalidateQueries({ queryKey: ['cloud-outbox'] });
                   } catch (failure) {
                     setError((failure as Error).message);

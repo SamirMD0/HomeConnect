@@ -46,6 +46,15 @@ function recordEngine(...[db, device, options = {}]: ConstructorParameters<typeo
 }
 
 describe('offline relay sync with real in-memory SQLite', () => {
+  it('reports only PIN readiness and last unlock before reading records, independently of the data gate',async()=>{
+    const db=await memoryDb();const calls:string[]=[],metadata={pinSet:true,lastUnlockAt:'2026-11-17T12:00:00.000Z'};
+    const engine=recordEngine(db,pairing,{securityStatus:async()=>metadata,fetch:async(url,init)=>{
+      const path=new URL(String(url)).pathname;calls.push(path);
+      if(path.endsWith('/status')){expect(init?.method).toBe('POST');expect(JSON.parse(String(init?.body))).toEqual(metadata);return new Response('{"ok":true}');}
+      return page([],'0');
+    }});
+    await engine.sync();expect(calls[0]).toBe('/relay/v1/device/status');expect(calls).toContain('/relay/v1/device/records');
+  });
   it('polls applied actions before pulling their authoritative created records', async () => {
     const db = await memoryDb();
     await saveState(db, 'cursor', '1');

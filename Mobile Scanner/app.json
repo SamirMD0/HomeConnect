@@ -61,7 +61,18 @@
       ],
       "expo-router",
       "expo-font",
-      "expo-sqlite"
+      [
+        "expo-sqlite",
+        {
+          "useSQLCipher": true
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Allow Home Connect to unlock your paired shop account with Face ID."
+        }
+      ]
     ],
     "extra": {
       "eas": {

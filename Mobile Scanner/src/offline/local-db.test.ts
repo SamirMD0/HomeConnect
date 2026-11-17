@@ -12,7 +12,7 @@ import {
 describe('phone SQLite schema', () => {
   it('migrates version one in place, preserving records and the cursor', async () => {
     const db = await memoryDb();
-    await db.exec('DROP TABLE outbox; PRAGMA user_version=1');
+    await db.exec('DROP TABLE outbox; DROP TABLE cloud_photos; DROP TABLE cloud_drafts; PRAGMA user_version=1');
     await saveState(db, 'cursor', '9007199254740993');
     await applyRecords(db, 'records', [
       {

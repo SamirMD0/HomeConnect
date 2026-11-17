@@ -20,7 +20,7 @@ export async function applyRecords(db: LocalDb, table: RecordTable, records: Clo
 export async function wipeLocalDb(db: LocalDb) {
   const photos = await db.transaction(async tx => {
     const paths = await archiveOutbox(tx);
-    await tx.exec('DELETE FROM records; DELETE FROM staging_records; DELETE FROM sync_state;');
+    await tx.exec('DELETE FROM records; DELETE FROM staging_records; DELETE FROM sync_state; DELETE FROM cloud_photos; DELETE FROM cloud_drafts;');
     return paths;
   });
   for (const path of photos) { try { await photoFiles.remove(path); } catch { /* An inaccessible file cannot restore credentials or the redacted payload. */ } }

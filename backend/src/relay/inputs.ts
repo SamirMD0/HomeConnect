@@ -6,6 +6,10 @@ export const MAX_BLOB_BYTES = 2 * 1024 * 1024;
 export const blobInput = z.custom<Buffer>(value => Buffer.isBuffer(value) && value.length > 0 && value.length <= MAX_BLOB_BYTES);
 export const imageMime = z.enum(['image/jpeg', 'image/png', 'image/webp']);
 export const emptyInput = z.object({});
+export const deviceStatusInput = z.object({
+  pinSet: z.boolean(),
+  lastUnlockAt: z.iso.datetime({ offset: true }).nullable(),
+}).strict();
 export const idInput = z.object({ id: uuid });
 export const cursor = z.string().max(64).regex(/^\d+$/);
 const record = z.object({
@@ -25,7 +29,7 @@ export const deviceInput = z.object({
   role: z.enum(['ADMIN', 'EMPLOYEE']).default('EMPLOYEE'),
   branchIds: z.array(uuid).max(100), name: z.string().min(1).max(200),
   tokenSha256: z.string().regex(/^[0-9a-f]{64}$/),
-});
+}).strict();
 export const recordsQuery = z.object({
   after: cursor.default('0').refine(value => BigInt(value) <= 9223372036854775807n),
   limit: z.coerce.number().int().min(1).max(500).default(500),

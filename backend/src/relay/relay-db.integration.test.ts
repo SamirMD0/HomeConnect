@@ -41,6 +41,13 @@ const input = (id = randomUUID()): ActionInput => ({
 (enabled ? describe : describe.skip)('relay storage on its isolated database', () => {
   let db: RelayClient;
   let store: RelayStore;
+  it('stores device security metadata and includes it in the PC device list',async()=>{
+    const lastUnlockAt='2026-11-17T12:00:00.000Z';
+    await store.deviceStatus(deviceId,{pinSet:true,lastUnlockAt});
+    expect((await store.devices()).find(row=>row.id===deviceId)).toMatchObject({pinSet:true,lastUnlockAt:new Date(lastUnlockAt)});
+    await store.deviceStatus(deviceId,{pinSet:false,lastUnlockAt:null});
+    expect((await store.devices()).find(row=>row.id===deviceId)).toMatchObject({pinSet:false,lastUnlockAt:null});
+  });
   it('filters ADMIN projections in deltas/full copies and returns deletes after downgrade', async () => {
     const seq = (BigInt((await store.workerState()).lastPcSeq) + 1n).toString();
     await store.writeRecords({
