@@ -10,4 +10,5 @@ export async function cloudRequest<T>(url: string, init: RequestInit): Promise<T
   return await reader(url, init) as T;
 }
 export const onCloudWipe = (clean: () => Promise<void>) => { cleaners.add(clean); return () => { cleaners.delete(clean); }; };
-export const wipeCloudData = async () => { for (const clean of cleaners) await clean(); };
+let wipeFlight:Promise<void>|null=null;
+export const wipeCloudData = () => wipeFlight??=(async()=>{for(const clean of cleaners)await clean();})().finally(()=>{wipeFlight=null;});

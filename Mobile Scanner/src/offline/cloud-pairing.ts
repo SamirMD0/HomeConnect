@@ -24,7 +24,7 @@ export function parseCloudPairing(value: string, allowEmptyBranches = false): Cl
       ...profile };
   } catch { return null; }
 }
-// TODO Phase 7: require device PIN/biometric unlock before exposing this paired identity.
+// SecurityGate requires PIN setup/unlock before rendering any paired data.
 export const pairedUser = (pairing: CloudPairing, cached?: AccountUser | null): AccountUser => ({
   id: pairing.userId, username: cached?.id === pairing.userId ? cached.username : pairing.userName,
   fullName: pairing.userName, role: pairing.role,

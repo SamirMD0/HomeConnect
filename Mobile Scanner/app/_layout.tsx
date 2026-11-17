@@ -25,6 +25,8 @@ import { UpdateBanner } from '../src/updates/UpdateBanner';
 import { ConnectionLogPanel } from '../src/connection/ConnectionLogPanel';
 import { useState } from 'react';
 import { CloudSyncRuntime } from '../src/offline/CloudSyncRuntime';
+import {SecurityProvider} from '../src/security/SecurityProvider';
+import {SecurityGate} from '../src/security/SecurityGate';
 function Navigation() {
   const session = useSession();
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -117,13 +119,17 @@ export default function RootLayout() {
       <KeyboardProvider>
         <QueryProvider>
           <SessionProvider>
+            <SecurityProvider>
             <CloudSyncRuntime />
+            <SecurityGate>
             <GlassBackdrop>
               <Navigation />
               <UpdateBanner />
             </GlassBackdrop>
             <StatusBar style="dark" />
             <PortalHost />
+            </SecurityGate>
+            </SecurityProvider>
           </SessionProvider>
         </QueryProvider>
       </KeyboardProvider>
