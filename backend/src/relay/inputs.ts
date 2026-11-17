@@ -9,6 +9,7 @@ export const emptyInput = z.object({});
 export const idInput = z.object({ id: uuid });
 export const cursor = z.string().max(64).regex(/^\d+$/);
 const record = z.object({
+  minRole: z.literal('ADMIN').nullable().optional(),
   entity: z.string().min(1).max(100), id: uuid,
   branchId: uuid.nullable(), op: z.enum(['upsert', 'delete']), data: z.json().optional(),
 }).refine(value => value.op === 'delete' || value.data !== undefined, 'Upserts require data');

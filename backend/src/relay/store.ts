@@ -49,6 +49,7 @@ export class RelayStore {
       }
       for (const record of input.records) {
         const data = {
+          minRole: record.minRole ?? null,
           branchId: record.branchId, op: record.op, pcSeq: input.pcSeq,
           data: record.op === 'delete' ? Prisma.DbNull : json(record.data!),
         };
@@ -81,11 +82,11 @@ export class RelayStore {
       const state = await tx.relayWorker.findUniqueOrThrow({ where: { id: 1 } });
       if (state.snapshotId !== input.snapshotId) throw new RelayError(409, 'SNAPSHOT_CONFLICT', 'Restart the snapshot.');
       const records = JSON.stringify(input.records);
-      await tx.$executeRaw`INSERT INTO relay_snapshot_records (snapshot_id, entity, entity_id, branch_id, op, data)
-        SELECT ${input.snapshotId}::uuid, x.entity, x.id::uuid, x."branchId"::uuid, x.op,
+      await tx.$executeRaw`INSERT INTO relay_snapshot_records (snapshot_id, entity, entity_id, branch_id, min_role, op, data)
+        SELECT ${input.snapshotId}::uuid, x.entity, x.id::uuid, x."branchId"::uuid, x."minRole", x.op,
           CASE WHEN x.op = 'delete' THEN NULL ELSE x.data END
-        FROM jsonb_to_recordset(${records}::jsonb) AS x(entity text, id text, "branchId" text, op text, data jsonb)
-        ON CONFLICT (snapshot_id, entity, entity_id) DO UPDATE SET branch_id = EXCLUDED.branch_id, op = EXCLUDED.op, data = EXCLUDED.data`;
+        FROM jsonb_to_recordset(${records}::jsonb) AS x(entity text, id text, "branchId" text, "minRole" text, op text, data jsonb)
+        ON CONFLICT (snapshot_id, entity, entity_id) DO UPDATE SET branch_id = EXCLUDED.branch_id, min_role = EXCLUDED.min_role, op = EXCLUDED.op, data = EXCLUDED.data`;
       return { stored: input.records.length };
     });
   }
@@ -100,11 +101,11 @@ export class RelayStore {
       await tx.$executeRaw`UPDATE relay_records r SET op = 'delete', data = NULL, pc_seq = ${state.snapshotPcSeq}
         WHERE r.op <> 'delete' AND NOT EXISTS (SELECT 1 FROM relay_snapshot_records s
           WHERE s.snapshot_id = ${snapshotId}::uuid AND s.entity = r.entity AND s.entity_id = r.entity_id)`;
-      await tx.$executeRaw`INSERT INTO relay_records (entity, entity_id, branch_id, op, data, pc_seq)
-        SELECT entity, entity_id, branch_id, op, data, ${state.snapshotPcSeq} FROM relay_snapshot_records
+      await tx.$executeRaw`INSERT INTO relay_records (entity, entity_id, branch_id, min_role, op, data, pc_seq)
+        SELECT entity, entity_id, branch_id, min_role, op, data, ${state.snapshotPcSeq} FROM relay_snapshot_records
         WHERE snapshot_id = ${snapshotId}::uuid ORDER BY entity, entity_id
         ON CONFLICT (entity, entity_id) DO UPDATE SET branch_id = EXCLUDED.branch_id, op = EXCLUDED.op,
-          data = EXCLUDED.data, pc_seq = EXCLUDED.pc_seq`;
+          min_role = EXCLUDED.min_role, data = EXCLUDED.data, pc_seq = EXCLUDED.pc_seq`;
       await tx.relayWorker.update({ where: { id: 1 }, data: { lastPcSeq: state.snapshotPcSeq,
         snapshotId: null, snapshotPcSeq: null, completedSnapshotId: snapshotId, lastSeenAt: new Date() } });
       await tx.relaySnapshotRecord.deleteMany({ where: { snapshotId } });
@@ -112,7 +113,7 @@ export class RelayStore {
     }, { timeout: 30000 });
   }
 
-  async readRecords(branchIds: string[], after: string, limit: number, options: { fullCopy?: boolean; snapshotHorizon?: string } = {}) {
+  async readRecords(branchIds: string[], after: string, limit: number, options: { fullCopy?: boolean; snapshotHorizon?: string; role?: string } = {}) {
     const { rows, horizon } = await this.db.$transaction(async tx => {
       const state = await tx.relayWorker.findUniqueOrThrow({ where: { id: 1 }, select: { prunedThroughRev: true } });
       const revision = BigInt(after);
@@ -137,7 +138,7 @@ export class RelayStore {
     const nextRev = !hasMore && horizon > lastRev ? horizon : lastRev;
     return {
       records: records.map(({ entityId, previousBranchIds, ...row }) => {
-        const visible = row.branchId === null || branchIds.includes(row.branchId);
+        const visible = (row.branchId === null || branchIds.includes(row.branchId)) && (row.minRole !== 'ADMIN' || options.role === 'ADMIN');
         return { ...row, id: entityId, rev: row.rev.toString(), op: visible ? row.op : 'delete', data: visible ? row.data : null };
       }),
       nextRev: nextRev.toString(), hasMore,
@@ -235,10 +236,12 @@ export class RelayStore {
     });
   }
 
-  actionResults(deviceId: string, ids: string[]) {
-    return this.db.relayOutbox.findMany({
-      where: { deviceId, id: { in: ids } }, select: { id: true, status: true, result: true, resolvedAt: true },
+  async actionResults(deviceId: string, ids: string[], role='EMPLOYEE') {
+    const rows=await this.db.relayOutbox.findMany({
+      where: { deviceId, id: { in: ids } }, select: { id: true, type: true, status: true, result: true, resolvedAt: true },
     });
+    return rows.map(({type,...row})=>role!=='ADMIN'&&type==='report.request'
+      ? {...row,status:'refused',result:{code:'FORBIDDEN',message:'Only administrators can view this result.'}}:row);
   }
 
   countUsage(input: RequestUsage) {

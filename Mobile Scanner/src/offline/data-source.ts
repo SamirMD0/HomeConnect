@@ -12,14 +12,14 @@ const decimalCompare = (left: string, right: string) => {
 
 /** Existing API paths/shapes, backed solely by PC-owned JSON in SQLite. */
 export class CloudDataSource {
-  constructor(private readonly db: LocalDb, private readonly branchIds: string[]) {}
+  constructor(private readonly db: LocalDb, private readonly branchIds: string[], private readonly role='EMPLOYEE') {}
   async read(url: string, init: RequestInit = {}): Promise<any> {
     if ((init.method ?? 'GET').toUpperCase() !== 'GET') throw new Error('Coming soon over the cloud. Use the shop Wi-Fi');
     const parsed = new URL(url), path = parsed.pathname.replace(/^\/api\/v1/, ''), q = parsed.searchParams;
     const selected = new Headers(init.headers).get('X-Branch-Scope');
     if (selected && !this.branchIds.includes(selected)) throw new Error('This branch is not paired with this phone.');
     const branches = selected ? [selected] : this.branchIds;
-    const scope = `(branch_id IS NULL OR branch_id IN (${branches.map(() => '?').join(',') || 'NULL'}))`;
+    const scope = `(branch_id IS NULL OR branch_id IN (${branches.map(() => '?').join(',') || 'NULL'}))${this.role==='ADMIN'?'':" AND (min_role IS NULL OR min_role<>'ADMIN')"}`;
     const query = async (entity: string, where = '', values: SqlValue[] = [], order = 'name COLLATE NOCASE,id', limit?: number, offset = 0) => {
       const rows = await this.db.query<{ data: string }>(`SELECT data FROM records WHERE entity=? AND ${scope}${where ? ' AND (' + where + ')' : ''} ORDER BY ${order}${limit === undefined ? '' : ' LIMIT ? OFFSET ?'}`,
         [entity, ...branches, ...values, ...(limit === undefined ? [] : [limit, offset])]);

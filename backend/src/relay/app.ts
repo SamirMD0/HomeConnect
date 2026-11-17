@@ -161,7 +161,7 @@ export function createRelayApp(options: RelayOptions = {}) {
   device.get('/records', validate(recordsQuery, 'query'), async (_req, res) => {
     const query = res.locals.query as z.infer<typeof recordsQuery>;
     const paired = res.locals.device as RelayDevice;
-    const options = query.fullCopy ? { fullCopy: true, snapshotHorizon: query.snapshotHorizon } : undefined;
+    const options = { role: paired.role, ...(query.fullCopy ? { fullCopy: true, snapshotHorizon: query.snapshotHorizon } : {}) };
     res.json(await store.readRecords(paired.branchIds, query.after, query.limit, options));
   });
   device.post('/actions', validate(actionInput, 'body'), async (_req, res) => {
@@ -183,7 +183,7 @@ export function createRelayApp(options: RelayOptions = {}) {
   });
   device.get('/actions', validate(actionsQuery, 'query'), async (_req, res) => {
     const paired = res.locals.device as RelayDevice;
-    res.json(await store.actionResults(paired.id, res.locals.query.ids));
+    res.json(await store.actionResults(paired.id, res.locals.query.ids, paired.role));
   });
   app.use('/relay/v1/device', device);
   app.use((_req, _res, next) => next(new RelayError(404, 'NOT_FOUND', 'Route not found.')));

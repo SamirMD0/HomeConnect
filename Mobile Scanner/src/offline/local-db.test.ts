@@ -24,6 +24,7 @@ describe('phone SQLite schema', () => {
         data: { name: 'Rami' },
       },
     ]);
+    await db.exec('ALTER TABLE records DROP COLUMN min_role; ALTER TABLE staging_records DROP COLUMN min_role');
     await initializeLocalDb(db);
     await initializeLocalDb(db);
     expect(await stateValue(db, 'cursor')).toBe('9007199254740993');
