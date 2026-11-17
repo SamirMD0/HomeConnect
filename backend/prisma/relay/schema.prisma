@@ -9,6 +9,8 @@ datasource db {
 }
 
 model RelayDevice {
+  pinSet       Boolean   @default(false) @map("pin_set")
+  lastUnlockAt DateTime? @map("last_unlock_at") @db.Timestamptz(6)
   id          String    @id @db.Uuid
   userId      String    @map("user_id") @db.Uuid
   userName    String    @map("user_name")

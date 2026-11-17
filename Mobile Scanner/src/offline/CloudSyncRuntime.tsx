@@ -4,8 +4,8 @@ import NetInfo from '@react-native-community/netinfo';
 import { useSession } from '../session/SessionProvider';
 import { clearQueryCache, queryClient } from '../query/client';
 import { saveCloudPairing } from './cloud-storage';
-import { openLocalDb,deleteLocalDb } from './expo-db';
-import {stopLocalSecurity} from '../security/runtime';
+import { openLocalDb, deleteLocalDb } from './expo-db';
+import { stopLocalSecurity, securityStatus } from '../security/runtime';
 import { onCloudWipe, configureCloudReader } from './cloud-mode';
 import { wipeLocalDb, saveState, stateValue } from './record-store';
 import { CloudDataSource } from './data-source';
@@ -75,6 +75,7 @@ export function CloudSyncRuntime() {
           );
       };
       engine = new SyncEngine(db, pairing, {
+        securityStatus: current => securityStatus(ownerKey(current)),
         onBeforeUserChanged: async () => {
           configureOutbox(null);
           await waitForOutboxSaves();

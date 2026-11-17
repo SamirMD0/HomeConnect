@@ -18,7 +18,7 @@ const action = { id, type: 'take_payment', branchId, payload: { amount: '19.99' 
 const store = {
   findDevice: vi.fn(), touchDevice: vi.fn(), touchWorker: vi.fn(), upkeep: vi.fn(), countUsage: vi.fn(),
   writeRecords: vi.fn(), workerState: vi.fn(), claim: vi.fn(), getBlob: vi.fn(), saveResult: vi.fn(),
-  registerDevice: vi.fn(), revokeDevice: vi.fn(), devices: vi.fn(), usage: vi.fn(),
+  registerDevice: vi.fn(), revokeDevice: vi.fn(), devices: vi.fn(), usage: vi.fn(), deviceStatus:vi.fn(),
   readRecords: vi.fn(), enqueue: vi.fn(), putBlob: vi.fn(), actionResults: vi.fn(),
   beginSnapshot: vi.fn(), snapshotPage: vi.fn(), finishSnapshot: vi.fn(),
 };
@@ -61,6 +61,20 @@ describe('isolated relay routes', () => {
     expect((await request(app).get('/relay/v1/health/')).status).toBe(200);
     expect((await request(app).head('/relay/v1/health')).status).toBe(200);
     for (const method of Object.values(store)) expect(method).not.toHaveBeenCalled();
+  });
+
+  it('accepts only non-secret security metadata from an authenticated device',async()=>{
+    const app=makeApp(),body={pinSet:true,lastUnlockAt:'2026-11-17T12:00:00.000Z'};
+    expect((await request(app).post('/relay/v1/device/status').send(body)).status).toBe(401);
+    expect((await request(app).post('/relay/v1/device/status').set('Authorization',workerAuth).send(body)).status).toBe(401);
+    expect(store.deviceStatus).not.toHaveBeenCalled();
+    expect((await request(app).post('/relay/v1/device/status').set('Authorization',deviceAuth).send(body)).status).toBe(200);
+    expect(store.deviceStatus).toHaveBeenCalledWith(id,body);store.deviceStatus.mockClear();
+    for(const forbidden of ['pin','hash','salt','iterations','userId']){
+      expect((await request(app).post('/relay/v1/device/status').set('Authorization',deviceAuth).send({...body,[forbidden]:'secret'})).status).toBe(400);
+    }
+    for(const invalid of [{pinSet:'yes',lastUnlockAt:null},{pinSet:true,lastUnlockAt:'yesterday'}])expect((await request(app).post('/relay/v1/device/status').set('Authorization',deviceAuth).send(invalid)).status).toBe(400);
+    expect(store.deviceStatus).not.toHaveBeenCalled();
   });
 
   it.each([undefined, 'Bearer wrong', deviceAuth])('rejects worker authentication %s', async authorization => {

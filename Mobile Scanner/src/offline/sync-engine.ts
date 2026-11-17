@@ -46,6 +46,7 @@ export class SyncEngine {
       onRevoked?: (message: string) => void;
       onBeforeUserChanged?: () => Promise<void>;
       onPairingChanged?: (pairing: CloudPairing) => Promise<void>;
+      securityStatus?: (pairing: CloudPairing) => Promise<{ pinSet: boolean; lastUnlockAt: string | null }>;
     } = {}
   ) {}
   getStatus = () => this.status;
@@ -232,6 +233,10 @@ export class SyncEngine {
     this.publish({ syncing: true, error: null });
     try {
       await this.refreshProfile();
+      if (this.options.securityStatus) await this.get('/status', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(await this.options.securityStatus(this.pairing)),
+      });
       await new OutboxSender(
         this.db,
         ownerKey(this.pairing),

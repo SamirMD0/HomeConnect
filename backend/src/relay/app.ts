@@ -9,6 +9,7 @@ import {
   blobInput,
   claimInput,
   deviceInput,
+  deviceStatusInput,
   emptyInput,
   idInput,
   imageMime,
@@ -230,6 +231,11 @@ export function createRelayApp(options: RelayOptions = {}) {
         role: paired.role,
         branchIds: paired.branchIds,
       });
+  });
+  device.post('/status', validate(deviceStatusInput, 'body'), async (_req, res) => {
+    const paired = res.locals.device as RelayDevice;
+    await store.deviceStatus(paired.id, res.locals.body);
+    res.json({ ok: true });
   });
   device.get('/records', validate(recordsQuery, 'query'), async (_req, res) => {
     const query = res.locals.query as z.infer<typeof recordsQuery>;
