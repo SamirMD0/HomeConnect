@@ -5,6 +5,38 @@ import { OutboxSender, RelayRequestError } from './outbox-sender';
 const files: PhotoFiles = {copy:vi.fn(async()=>({path:'document/photo',size:5})),read:vi.fn(async()=>new Blob(['photo'])),remove:vi.fn(async()=>{})};
 const input = {owner:'device:user',submissionKey:'draft',type:'sales_order.create' as ActionType,branchId:'branch',summary:'Order · Rami',payload:{items:[{productId:'p'}],idempotencyKey:'draft'}};
 describe('cloud outbox sender using real SQLite and a fake relay',()=>{
+  it('recovers a lost blob response after the PC has already claimed it',async()=>{
+    const db=await memoryDb();await saveAction(db,{...input,type:'supplier_bill.upload',photo:{uri:'cache',mime:'image/jpeg'}},{uuid:()=> 'photo',files});
+    let now=10000;let uploaded=false;const put=vi.fn();
+    const request=vi.fn(async(path:string,init?:RequestInit)=>{
+      if(init?.method==='POST')return{status:'awaiting_photo'};
+      if(init?.method==='PUT'){uploaded=true;put();throw Error('Response lost after upload');}
+      return[{id:'photo',status:uploaded?'claimed':'awaiting_photo'}];
+    });
+    const sender=new OutboxSender(db,input.owner,request,{files,now:()=>new Date(now)});
+    await sender.sync();now+=2000;await sender.sync();
+    expect(put).toHaveBeenCalledOnce();expect((await listOutbox(db))[0]?.local_status).toBe('claimed');
+  });
+  it('sends later bill pages only after the first page is applied',async()=>{
+    const db=await memoryDb();
+    await saveAction(db,{...input,type:'supplier_bill.upload',payload:{supplierId:'s'},photo:{uri:'cache',mime:'image/jpeg'}},{uuid:()=> 'lead',files});
+    await saveAction(db,{...input,submissionKey:'page2',type:'supplier_bill.upload',payload:{supplierId:'s',billGroupId:'lead'},photo:{uri:'cache2',mime:'image/jpeg'}},{uuid:()=> 'page2',files});
+    let leadApplied=false;const sent:string[]=[];
+    const request=async(path:string,init?:RequestInit)=>{
+      if(init?.method==='POST'){sent.push(JSON.parse(String(init.body)).id);return{status:'awaiting_photo'};}
+      if(init?.method==='PUT')return{};
+      return[{id:'lead',status:leadApplied?'applied':'pending',result:leadApplied?{id:'lead'}:null}];
+    };
+    const sender=new OutboxSender(db,input.owner,request,{files});await sender.sync();expect(sent).toEqual(['lead']);
+    leadApplied=true;await sender.sync();await sender.sync();expect(sent).toEqual(['lead','page2']);
+  });
+  it('doubles network backoff without blocking local Save',async()=>{
+    const db=await memoryDb();await saveAction(db,input,{uuid:()=> 'action'});let now=10000;
+    const offline=vi.fn(async()=>{throw Error('offline');});const sender=new OutboxSender(db,input.owner,offline,{now:()=>new Date(now)});
+    await sender.sync();expect((await listOutbox(db))[0]?.next_attempt_at).toBe(12000);
+    now=12000;await sender.sync();expect((await listOutbox(db))[0]?.next_attempt_at).toBe(16000);
+    now=15000;await sender.sync();expect(offline).toHaveBeenCalledTimes(2);
+  });
   it('sends only durable actions, with the same ID after a lost response and a process restart',async()=>{
     const db=await memoryDb(); await saveAction(db,input,{uuid:()=> 'stable'});
     let now=10000; const bodies: any[]=[];

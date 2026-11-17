@@ -13,20 +13,22 @@ import { initialOrder, initialPayment } from './payloads';
 export type OrderStore = DraftStore<OrderForm, OrderPayload, SalesResult>;
 export type PaymentStore = DraftStore<PaymentForm, PaymentPayload, SalesResult>;
 const stores = new Map<string, Promise<OrderStore | PaymentStore>>();
+const cloudStores = new Set<string>();
 export function draftScope(scope: QueryScope, kind: string) {
   return JSON.stringify([scope.server, scope.userId, scope.branchId, kind]);
 }
 export async function openDraft(
   scope: QueryScope,
   kind: 'order' | 'payment',
-  customerId = ''
+  customerId = '',
+  cloud = false
 ): Promise<OrderStore | PaymentStore> {
   const identity = draftScope(scope, kind === 'order' ? kind : `${kind}:${customerId}`);
   const existing = stores.get(identity);
   if (existing) return existing;
   const opening = (async () => {
     if (!FileSystem.documentDirectory) throw new Error('Device storage is unavailable.');
-    const directory = `${FileSystem.documentDirectory}sales-drafts-v1/`;
+    const directory = `${FileSystem.documentDirectory}${cloud ? 'cloud-sales-drafts-v1' : 'sales-drafts-v1'}/`;
     await FileSystem.makeDirectoryAsync(directory, { intermediates: true });
     const digest = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, identity);
     const storage = {
@@ -54,11 +56,26 @@ export async function openDraft(
         );
   })();
   stores.set(identity, opening);
+  if (cloud) cloudStores.add(identity);
   void opening.catch(() => {
     if (stores.get(identity) === opening) stores.delete(identity);
   });
   return opening;
 }
 export function forgetDraft(scope: QueryScope, kind: string) {
-  stores.delete(draftScope(scope, kind));
+  const identity = draftScope(scope, kind);
+  stores.delete(identity);
+  cloudStores.delete(identity);
+}
+export async function wipeCloudDrafts() {
+  for (const identity of cloudStores) {
+    const store = await stores.get(identity)?.catch(() => null);
+    await store?.close();
+    stores.delete(identity);
+  }
+  cloudStores.clear();
+  if (FileSystem.documentDirectory)
+    await FileSystem.deleteAsync(`${FileSystem.documentDirectory}cloud-sales-drafts-v1/`, {
+      idempotent: true,
+    });
 }

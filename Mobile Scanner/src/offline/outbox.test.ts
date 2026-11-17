@@ -1,10 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
 import { memoryDb } from './testing/memory-db';
 import { applyRecords, wipeLocalDb } from './record-store';
-import { actionMessage, cleanOutbox, listOutbox, REVOKED_MESSAGE, saveAction, type PhotoFiles, type SaveAction } from './outbox';
+import { actionMessage, cleanOutbox, dismissAction, listOutbox, REVOKED_MESSAGE, saveAction, type PhotoFiles, type SaveAction } from './outbox';
 const input: SaveAction = { owner:'device:user',submissionKey:'draft',type:'sales_order.create',branchId:'a',payload:{items:[],idempotencyKey:'draft'},summary:'Order · Rami' };
 const files: PhotoFiles = { copy:vi.fn(async () => ({path:'documents/bill.jpg',size:123})),read:vi.fn(async () => new Blob(['photo'])),remove:vi.fn(async () => {}) };
 describe('durable phone outbox', () => {
+  it('lets the user dismiss failed photos while retaining their files until confirmation or unpairing',async()=>{
+    const db=await memoryDb();await saveAction(db,{...input,type:'supplier_bill.upload',photo:{uri:'cache',mime:'image/jpeg'}},{uuid:()=> 'failed-photo',files});
+    await db.exec("UPDATE outbox SET local_status='failed'");await dismissAction(db,'failed-photo');
+    expect(await listOutbox(db)).toEqual([]);expect(await db.query('SELECT photo_path FROM outbox')).toEqual([{photo_path:'documents/bill.jpg'}]);
+  });
   it('creates its ID only on Save, survives a crash and deduplicates the form acknowledgement gap', async () => {
     const db = await memoryDb(), uuid = vi.fn(() => 'one-id');
     expect(uuid).not.toHaveBeenCalled();
@@ -43,5 +48,10 @@ describe('durable phone outbox', () => {
     }
     await cleanOutbox(db,files,new Date(now.getTime()+86399999)); expect(await listOutbox(db)).toHaveLength(3);
     await cleanOutbox(db,files,new Date(now.getTime()+86400000)); expect((await listOutbox(db)).map(row=>row.id).sort()).toEqual(['failed','refused']);
+    const uuid=vi.fn(()=> 'must-not-generate');
+    const recovered=await saveAction(db,{...input,submissionKey:'applied'},{uuid});
+    expect(recovered.id).toBe('applied');expect(recovered.local_status).toBe('applied');expect(uuid).not.toHaveBeenCalled();
+    await dismissAction(db,'refused');
+    expect((await saveAction(db,{...input,submissionKey:'refused'},{uuid})).id).toBe('refused');expect(uuid).not.toHaveBeenCalled();
   });
 });

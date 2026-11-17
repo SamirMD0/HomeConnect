@@ -19,7 +19,6 @@ export default function Customers() {
           {
             label: 'New order',
             icon: 'cart-outline' as const,
-            cloudWrite: true,
             onPress: () => router.push('/(tabs)/sell/new-order'),
           },
         ]
@@ -30,7 +29,6 @@ export default function Customers() {
       label: 'Payment',
       icon: 'wallet-outline',
       tone: 'success',
-      cloudWrite: true,
       onPress: () => router.push('/(tabs)/sell/payment'),
     },
   ];

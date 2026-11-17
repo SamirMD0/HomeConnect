@@ -13,6 +13,9 @@ import { useSalesDraft } from './useSalesDraft';
 import { buildPaymentPayload } from './payloads';
 import { FormPage, DraftNotice } from './FormUI';
 import type { PaymentForm, PaymentPayload } from './contracts';
+import { enqueueCloudAction } from '../offline/outbox-runtime';
+import { OutboxStatus } from '../offline/OutboxStatus';
+import { customerPaymentAction } from '../offline/action-payloads';
 export function PaymentScreen() {
   const { id = '' } = useLocalSearchParams<{ id: string }>(),
     router = useRouter();
@@ -40,6 +43,16 @@ export function PaymentScreen() {
     draft.mutation.mutate({
       build: buildPaymentPayload,
       send: async (payload, original) => {
+        if (draft.session.mode === 'cloud') {
+          const action = await enqueueCloudAction({
+            type: 'customer_payment.create',
+            submissionKey: payload.idempotencyKey,
+            branchId: draft.scope.branchId,
+            payload: customerPaymentAction(original, payload),
+            summary: `Payment ${payload.amount} · ${original.customerName || 'Customer'}`,
+          });
+          return { kind: 'queued', actionId: action.id };
+        }
         const result = await recordPayment(draft.client, original, payload);
         const paymentId =
           result.payments.find((payment) => payment.idempotencyKey === payload.idempotencyKey)
@@ -62,6 +75,18 @@ export function PaymentScreen() {
       <FormPage title={saved ? 'Payment saved' : 'Take payment'}>
         {!draft.record && (
           <Text style={readStyles.subtitle}>{draft.error || 'Loading saved form…'}</Text>
+        )}
+        {saved?.kind === 'queued' && (
+          <>
+            <OutboxStatus id={saved.actionId} />
+            <AppButton
+              label="Take another payment"
+              variant="secondary"
+              onPress={() =>
+                void draft.discard().catch((failure: Error) => draft.setError(failure.message))
+              }
+            />
+          </>
         )}
         {saved?.kind === 'payment' && (
           <>
@@ -93,7 +118,7 @@ export function PaymentScreen() {
               />
             )}
             <AppButton
-              cloudWrite label="Take another payment"
+              label="Take another payment"
               variant="secondary"
               onPress={() =>
                 void draft.discard().catch((failure: Error) => draft.setError(failure.message))
@@ -155,7 +180,7 @@ export function PaymentScreen() {
                     <Card title={target.description}>
                       <Field label="Remaining" value={target.remainingBalance} money />
                       <AppButton
-                        cloudWrite label={`Pay ${target.description}`}
+                        label={`Pay ${target.description}`}
                         disabled={locked}
                         onPress={() => {
                           draft.edit({
@@ -237,7 +262,7 @@ export function PaymentScreen() {
               />
             </View>
             <AppButton
-              cloudWrite label={locked ? 'Retry original payment' : 'Record payment'}
+              label={locked ? 'Retry original payment' : 'Record payment'}
               loading={draft.mutation.isPending}
               disabled={!form.targetId}
               onPress={submit}

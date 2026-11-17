@@ -71,5 +71,6 @@ export interface PaymentResult {
   payments: { id: string; idempotencyKey: string | null }[];
 }
 export type SalesResult =
+  | { kind: 'queued'; actionId: string }
   | { kind: 'order'; order: SalesOrderRead }
   | { kind: 'payment'; customerId: string; paymentId: string | null };

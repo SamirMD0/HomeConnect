@@ -21,6 +21,11 @@ import { prepareReceiptPhoto } from '../services/receipt-photo';
 import { ConnectionSettings } from '../types/scanner.types';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { PageTitle } from '../ui/ScreenHeader';
+import { randomUUID } from 'expo-crypto';
+import { cloudMode } from '../offline/cloud-mode';
+import { enqueueCloudAction } from '../offline/outbox-runtime';
+import { OutboxStatus } from '../offline/OutboxStatus';
+import { supplierBillAction } from '../offline/action-payloads';
 
 interface Props {
   connection: ConnectionSettings;
@@ -45,6 +50,9 @@ export function ReceiptCaptureScreen({ connection, token, onDone, onSessionInval
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView>(null);
   const action = useRef(false);
+  const captureKey = useRef<string | null>(null);
+  const groupId = useRef<string | undefined>(undefined);
+  const [cloudIds, setCloudIds] = useState<string[]>([]);
   async function failure(error: unknown) {
     setMessage(error instanceof Error ? error.message : 'Could not finish this action.');
     if (error instanceof HcApiError && error.kind === 'UNAUTHORIZED') await onSessionInvalid();
@@ -63,7 +71,7 @@ export function ReceiptCaptureScreen({ connection, token, onDone, onSessionInval
     };
   }, [client]);
   useEffect(() => {
-    if (!supplier) return;
+    if (!supplier || cloudMode()) return;
     let active = true;
     setBusy(true);
     void listSupplierPurchases(client, supplier.id)
@@ -120,6 +128,24 @@ export function ReceiptCaptureScreen({ connection, token, onDone, onSessionInval
   const upload = () =>
     run(async () => {
       if (!supplier || !pages.length) return;
+      if (cloudMode()) {
+        captureKey.current ??= randomUUID();
+        for (const uri of pages) {
+          const entry = await enqueueCloudAction({
+            type: 'supplier_bill.upload',
+            submissionKey: `${captureKey.current}:${uri}`,
+            payload: supplierBillAction(supplier.id, note, groupId.current),
+            summary: `Bill photo · ${supplier.name}`,
+            photo: { uri, mime: 'image/jpeg' },
+          });
+          groupId.current ??= entry.id;
+          setCloudIds((ids) => [...ids, entry.id]);
+          setPages((items) => items.filter((page) => page !== uri));
+        }
+        setMessage('Saved. Waiting for the shop PC');
+        setStep('done');
+        return;
+      }
       const queue = receiptQueue();
       const ids: string[] = [];
       // Every page of this capture is one bill: later pages name the first.
@@ -171,6 +197,9 @@ export function ReceiptCaptureScreen({ connection, token, onDone, onSessionInval
       >
         <PageTitle title="Supplier bill" />
         {message && <StatusBanner tone={step === 'done' ? 'info' : 'warning'} message={message} />}
+        {cloudIds.map((id) => (
+          <OutboxStatus key={id} id={id} />
+        ))}
         {busy && <ActivityIndicator accessibilityLabel="Working" />}
         {step === 'supplier' && (
           <>
@@ -191,7 +220,7 @@ export function ReceiptCaptureScreen({ connection, token, onDone, onSessionInval
                   variant="secondary"
                   onPress={() => {
                     setSupplier(item);
-                    setStep('purchase');
+                    setStep(cloudMode() ? 'pages' : 'purchase');
                     setMessage(null);
                   }}
                 />
@@ -252,7 +281,7 @@ export function ReceiptCaptureScreen({ connection, token, onDone, onSessionInval
               </View>
             ))}
             <AppButton
-              cloudWrite label="Take photo"
+              label="Take photo"
               disabled={busy}
               onPress={() =>
                 void run(async () => {
@@ -264,7 +293,7 @@ export function ReceiptCaptureScreen({ connection, token, onDone, onSessionInval
               }
             />
             <AppButton
-              cloudWrite label="Choose from gallery"
+              label="Choose from gallery"
               variant="secondary"
               disabled={busy}
               onPress={() => void gallery()}
@@ -278,16 +307,16 @@ export function ReceiptCaptureScreen({ connection, token, onDone, onSessionInval
               editable={!busy}
             />
             <AppButton
-              cloudWrite label={`Upload ${pages.length} page(s)`}
+              label={`Upload ${pages.length} page(s)`}
               disabled={!pages.length}
               loading={busy}
               onPress={() => void upload()}
             />
             <AppButton
-              label="Change purchase"
+              label={cloudMode() ? 'Change supplier' : 'Change purchase'}
               variant="secondary"
               disabled={busy}
-              onPress={() => setStep('purchase')}
+              onPress={() => setStep(cloudMode() ? 'supplier' : 'purchase')}
             />
           </>
         )}
@@ -318,7 +347,7 @@ export function ReceiptCaptureScreen({ connection, token, onDone, onSessionInval
           />
           <View style={styles.content}>
             <AppButton
-              cloudWrite label="Capture page"
+              label="Capture page"
               disabled={!ready}
               loading={busy}
               onPress={() => void take()}
