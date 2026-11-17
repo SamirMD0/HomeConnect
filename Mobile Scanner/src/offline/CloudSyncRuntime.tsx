@@ -10,6 +10,7 @@ import { CloudDataSource } from './data-source';
 import type { AccountUser } from '@shared/mobile-contracts';
 import { SyncEngine } from './sync-engine';
 import { currentSyncEngine, setSyncEngine, syncInitializationError } from './sync-status';
+import { configureOutbox, waitForOutboxSaves } from './outbox-runtime';
 
 let generation = 0;
 let starting: Promise<void> | undefined;
@@ -17,6 +18,8 @@ let starting: Promise<void> | undefined;
 // Also registered before first pairing, so changing users cannot reuse an old cache.
 onCloudWipe(async () => {
   generation++;
+  configureOutbox(null);
+  await waitForOutboxSaves();
   const current = currentSyncEngine();
   await current?.stop();
   await starting?.catch(() => {});
@@ -38,6 +41,7 @@ export function CloudSyncRuntime() {
       if (await stateValue(db, 'deviceId') !== pairing.deviceId) { await wipeLocalDb(db); await saveState(db, 'deviceId', pairing.deviceId); }
       if (!active || owner !== generation) return;
       const source = new CloudDataSource(db, pairing.branchIds);
+      configureOutbox(pairing);
       configureCloudReader((url, init) => source.read(url, init));
       // Cached reads become available before a sleeping/offline relay is contacted.
       void queryClient.invalidateQueries();
@@ -50,6 +54,7 @@ export function CloudSyncRuntime() {
         onPairingChanged: async next => {
           if (!active || owner !== generation) throw new Error('Cloud session changed');
           currentPairing = next;
+          configureOutbox(next);
           const nextSource = new CloudDataSource(db, next.branchIds);
           configureCloudReader((url, init) => nextSource.read(url, init));
           await clearQueryCache();

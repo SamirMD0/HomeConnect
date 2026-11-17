@@ -1,9 +1,11 @@
 import { parseDeviceProfile, type CloudPairing } from './cloud-pairing';
 import type { LocalDb } from './local-db';
 import { applyRecords, pruneOrders, saveState, stateValue, wipeLocalDb, type CloudRecord } from './record-store';
+import { OutboxSender, RelayRequestError } from './outbox-sender';
+import { ownerKey } from './outbox';
 export interface SyncStatus { syncing: boolean; lastSyncAt: string | null; error: string | null }
 interface Page { records: CloudRecord[]; nextRev: string; hasMore: boolean; snapshotHorizon?: string }
-class RelayError extends Error { constructor(readonly status: number, readonly code?: string) { super('Relay request failed'); } }
+const RelayError = RelayRequestError;
 class Cancelled extends Error {}
 const cursor = (value: unknown): value is string => typeof value === 'string' && /^\d+$/.test(value) && value.length <= 20;
 export class SyncEngine {
@@ -11,6 +13,7 @@ export class SyncEngine {
   private cancelled = false;
   private controller: AbortController | null = null;
   private first = true;
+  private again = false;
   private listeners = new Set<() => void>();
   private status: SyncStatus = { syncing: false, lastSyncAt: null, error: null };
   constructor(private readonly db: LocalDb, private pairing: CloudPairing,
@@ -22,9 +25,12 @@ export class SyncEngine {
   sync = (fullCopy = false): Promise<void> => {
     if (this.cancelled) return Promise.resolve();
     if (this.flight) return this.flight;
-    this.flight = this.run(fullCopy).finally(() => { this.flight = null; });
+    this.flight = (async () => {
+      do { this.again = false; await this.run(fullCopy); fullCopy = false; } while (this.again && !this.cancelled);
+    })().finally(() => { this.flight = null; });
     return this.flight;
   };
+  request = (): Promise<void> => { if (this.flight) this.again = true; return this.sync(); };
   async stopAndWipe() {
     await this.stop();
     await wipeLocalDb(this.db);
@@ -32,13 +38,13 @@ export class SyncEngine {
   }
   async stop() { this.cancelled = true; this.controller?.abort(); await this.flight?.catch(() => {}); }
   private active() { if (this.cancelled) throw new Cancelled(); }
-  private async get(path: string): Promise<any> {
+  private async get(path: string, init?: RequestInit): Promise<any> {
     this.active();
     const controller = new AbortController(); this.controller = controller;
     const timer = setTimeout(() => controller.abort(), this.first ? 75000 : 20000); this.first = false;
     try {
       const response = await (this.options.fetch ?? fetch)(`${this.pairing.relay}/relay/v1/device${path}`, {
-        headers: { Authorization: `Bearer ${this.pairing.token}` }, signal: controller.signal, redirect: 'error',
+        ...init, headers: { ...init?.headers, Authorization: `Bearer ${this.pairing.token}` }, signal: controller.signal, redirect: 'error',
       });
       const body = await response.json(); this.active();
       if (!response.ok) throw new RelayError(response.status, body.code ?? body.error?.code);
@@ -118,6 +124,8 @@ export class SyncEngine {
     this.first = true; this.publish({ syncing: true, error: null });
     try {
       await this.refreshProfile();
+      await new OutboxSender(this.db, ownerKey(this.pairing), (path, init) => this.get(path, init), { now: this.options.now }).sync();
+      this.active();
       if (force || !(await stateValue(this.db, 'cursor')) || await stateValue(this.db, 'fullCopyInProgress') === 'true') await this.fullCopy();
       let recoveries = 0;
       while (true) {

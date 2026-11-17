@@ -28,7 +28,7 @@ export const photoFiles: PhotoFiles = {
     }
     return { path, size: info.size };
   },
-  async read(path) { const { File } = await import('expo-file-system'); return new Blob([await new File(path).arrayBuffer()]); },
+  async read(path) { const { File } = await import('expo-file-system'); return new Blob([await new File(path).bytes()]); },
   async remove(path) { const fs = await import('expo-file-system/legacy'); await fs.deleteAsync(path, { idempotent: true }); },
 };
 export const FAILED_MESSAGE = 'The shop PC could not apply this. Check it on the PC before trying again.';
