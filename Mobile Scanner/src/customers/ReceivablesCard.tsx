@@ -5,6 +5,8 @@ import { useLookup } from '../lookup/useLookup';
 import { hiddenDashboardValue } from '../lookup/dashboard-privacy';
 import { Badge } from '../ui/Badge';
 import { HeroCard } from '../ui/Stats';
+import { FIRST_FIGURES } from '../offline/cloud-figures';
+import { FigureUpdated } from '../offline/figure-ui';
 
 /**
  * Blue hero: total owed by customers, with the overdue amount underneath and
@@ -28,22 +30,27 @@ export function ReceivablesCard({
   const data = summary.data;
   const money = (value: string) => (hidden ? hiddenDashboardValue : formatMoney(value));
   return (
-    <HeroCard
-      label="Customers owe"
-      value={data ? money(data.totalOutstanding) : summary.isError ? 'Not loaded' : '…'}
-      caption={
-        summary.isError
-          ? 'Tap to open and retry'
-          : data
-            ? `${money(data.totalOverdue)} overdue · ${data.customersWithBalance} customers`
-            : 'Loading'
-      }
-      trend={
-        data && data.customersOverdue ? (
-          <Badge tone="danger" icon="alert-circle" label={`${data.customersOverdue} late`} />
-        ) : undefined
-      }
-      onPress={onPress}
-    />
+    <>
+      <HeroCard
+        label="Customers owe"
+        value={data ? money(data.totalOutstanding) : summary.isError ? 'Not loaded' : '…'}
+        caption={
+          summary.isError
+            ? session.mode === 'cloud'
+              ? FIRST_FIGURES
+              : 'Tap to open and retry'
+            : data
+              ? `${money(data.totalOverdue)} overdue · ${data.customersWithBalance} customers`
+              : 'Loading'
+        }
+        trend={
+          data && data.customersOverdue ? (
+            <Badge tone="danger" icon="alert-circle" label={`${data.customersOverdue} late`} />
+          ) : undefined
+        }
+        onPress={onPress}
+      />
+      <FigureUpdated at={data?.snapshotUpdatedAt} />
+    </>
   );
 }

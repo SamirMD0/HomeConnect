@@ -2,11 +2,12 @@ import { useQuery } from '@tanstack/react-query';
 import { useSession } from '../session/SessionProvider';
 import { openLocalDb } from './expo-db';
 import { cleanOutbox, listOutbox, ownerKey, unfinished } from './outbox';
-export function useOutbox(archivesOnly = false) {
+export function useOutbox(archivesOnly = false, enabled = true) {
   const pairing = useSession().cloudPairing;
   const owner = pairing ? ownerKey(pairing) : undefined;
   const query = useQuery({
     queryKey: ['cloud-outbox', archivesOnly ? 'archives' : (owner ?? 'unpaired')],
+    enabled,
     queryFn: async () => {
       const db = await openLocalDb();
       await cleanOutbox(db);

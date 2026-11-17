@@ -11,7 +11,13 @@ const mocks = vi.hoisted(() => ({
 vi.mock('./expo-db', () => ({ openLocalDb: mocks.open }));
 vi.mock('./sync-status', () => ({ requestCloudSync: mocks.sync }));
 vi.mock('expo-crypto', () => ({ randomUUID: mocks.uuid }));
-import { configureOutbox, enqueueCloudAction, waitForOutboxSaves } from './outbox-runtime';
+import {
+  configureOutbox,
+  enqueueCloudAction,
+  enqueueCloudReport,
+  waitForOutboxSaves,
+} from './outbox-runtime';
+import { setSelectedBranch } from '../branches/branch-selection';
 const pairing: CloudPairing = {
   v: 1,
   deviceId: 'device',
@@ -28,6 +34,22 @@ afterEach(async () => {
   vi.clearAllMocks();
 });
 describe('screen Save integration', () => {
+  it('queues report.request once through the durable outbox even across screen reopens', async () => {
+    const db = await memoryDb();
+    mocks.open.mockResolvedValue(db);
+    configureOutbox(pairing);
+    setSelectedBranch('branch');
+    mocks.sync.mockResolvedValue(undefined);
+    const first = await enqueueCloudReport('sales-summary', { period: 'lastMonth' }),
+      second = await enqueueCloudReport('sales-summary', { period: 'lastMonth' });
+    expect(first.id).toBe(second.id);
+    expect(JSON.parse(first.payload)).toEqual({
+      reportId: 'sales-summary',
+      filters: { period: 'lastMonth' },
+    });
+    expect(await listOutbox(db)).toHaveLength(1);
+    setSelectedBranch(null);
+  });
   it('commits to SQLite before requesting any network work, without waiting for the relay', async () => {
     const db = await memoryDb();
     mocks.open.mockResolvedValue(db);

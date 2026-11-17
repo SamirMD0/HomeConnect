@@ -126,10 +126,15 @@ export class SyncEngine {
     const branchesChanged =
       JSON.stringify([...old.branchIds].sort()) !== JSON.stringify([...profile.branchIds].sort());
     const userChanged = old.userId !== profile.userId;
-    if(old.role==='ADMIN'&&profile.role!=='ADMIN')await this.db.transaction(async tx=>{
-      await tx.exec("DELETE FROM records WHERE min_role='ADMIN'; DELETE FROM staging_records WHERE min_role='ADMIN';");
-      await tx.exec("UPDATE outbox SET result=NULL,local_status='refused',last_error='Only administrators can view reports.' WHERE type='report.request'");
-    });
+    if (old.role === 'ADMIN' && profile.role !== 'ADMIN')
+      await this.db.transaction(async (tx) => {
+        await tx.exec(
+          "DELETE FROM records WHERE min_role='ADMIN'; DELETE FROM staging_records WHERE min_role='ADMIN';"
+        );
+        await tx.exec(
+          "UPDATE outbox SET result=NULL,local_status='refused',last_error='Only administrators can view reports.' WHERE type='report.request' AND archived=0 AND dismissed=0"
+        );
+      });
     if (userChanged) {
       await this.options.onBeforeUserChanged?.();
       this.active();
@@ -137,7 +142,8 @@ export class SyncEngine {
       await saveState(this.db, 'deviceId', profile.deviceId);
       this.publish({ lastSyncAt: null });
     }
-    if (branchesChanged || userChanged || old.role !== profile.role) await saveState(this.db, 'fullCopyInProgress', 'true');
+    if (branchesChanged || userChanged || old.role !== profile.role)
+      await saveState(this.db, 'fullCopyInProgress', 'true');
     if (
       branchesChanged ||
       userChanged ||

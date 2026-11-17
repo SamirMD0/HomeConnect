@@ -33,11 +33,16 @@ export async function initializeLocalDb(db: LocalDb) {
       CREATE INDEX outbox_owner_status ON outbox(owner,local_status);
       PRAGMA user_version = 2;`);
     });
-  if(version<3)await db.transaction(async tx=>{
-    await tx.exec(`ALTER TABLE records ADD COLUMN min_role TEXT;
+  if (version < 3)
+    await db.transaction(async (tx) => {
+      await tx.exec(`ALTER TABLE records ADD COLUMN min_role TEXT;
       ALTER TABLE staging_records ADD COLUMN min_role TEXT;
-      UPDATE records SET min_role='ADMIN' WHERE entity IN ('user','report');
-      UPDATE staging_records SET min_role='ADMIN' WHERE entity IN ('user','report');
+      DELETE FROM records WHERE entity IN ('user','report');
+      DELETE FROM staging_records WHERE entity IN ('user','report');
       PRAGMA user_version=3;`);
-  });
+      if (version > 0)
+        await tx.exec(
+          "INSERT INTO sync_state(key,value) VALUES ('fullCopyInProgress','true') ON CONFLICT(key) DO UPDATE SET value='true'"
+        );
+    });
 }

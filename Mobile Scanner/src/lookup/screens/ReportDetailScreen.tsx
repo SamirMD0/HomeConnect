@@ -1,4 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useOutbox } from '../../offline/useOutbox';
+import { OutboxStatus } from '../../offline/OutboxStatus';
+import { enqueueCloudReport } from '../../offline/outbox-runtime';
+import { FIRST_FIGURES, reportKey } from '../../offline/cloud-figures';
+import { FigureUpdated } from '../../offline/figure-ui';
+import { StatusBanner } from '../../components/StatusBanner';
 import { useQuery } from '@tanstack/react-query';
 import { Redirect, Stack, useLocalSearchParams } from 'expo-router';
 import { Alert, Text, View } from 'react-native';
@@ -41,7 +47,10 @@ function RecordFields({
   return (
     <View style={{ gap: 10 }}>
       {Object.entries(data)
-        .filter(([key]) => visibleReportField(key))
+        .filter(
+          ([key]) =>
+            visibleReportField(key) && !['cloudSnapshot', 'cloudMissing', 'tooLarge'].includes(key)
+        )
         .map(([key, value]) => {
           if (Array.isArray(value))
             return (
@@ -139,7 +148,7 @@ function sliceOf(definition: (typeof REPORT_CATALOG)[number]) {
  * are complete.
  */
 export function ReportDetailScreen() {
-  const { id = '' } = useLocalSearchParams<{ id: string }>(),
+  const { id = '', requestId } = useLocalSearchParams<{ id: string; requestId?: string }>(),
     { client, key, session } = useLookup();
   const definition = REPORT_CATALOG.find((report) => report.id === id);
   const months = recentMonths();
@@ -148,12 +157,52 @@ export function ReportDetailScreen() {
     [month, setMonth] = useState(months[0]!.value),
     [exporting, setExporting] = useState(false);
   const filters = { period, ...range, month };
+  const outbox = useOutbox(false, session.mode === 'cloud');
+  const [requested, setRequested] = useState<{ id: string; key: string } | undefined>(),
+    [requesting, setRequesting] = useState(false),
+    [requestError, setRequestError] = useState('');
+  const restored = useRef('');
+  const matching = outbox.data?.find((row) => {
+    if (
+      row.archived ||
+      row.type !== 'report.request' ||
+      row.branch_id !== session.branch.selected?.id
+    )
+      return false;
+    try {
+      const payload = JSON.parse(row.payload);
+      return (
+        payload.reportId && reportKey(payload.reportId, payload.filters) === reportKey(id, filters)
+      );
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    if (!requestId || restored.current === requestId) return;
+    const row = outbox.data?.find((row) => row.id === requestId);
+    if (!row) return;
+    try {
+      const payload = JSON.parse(row.payload);
+      setPeriod(payload.filters.period);
+      if (payload.filters.month) setMonth(payload.filters.month);
+      if (payload.filters.from && payload.filters.to)
+        setRange({ from: payload.filters.from, to: payload.filters.to });
+      restored.current = requestId;
+    } catch {}
+  }, [requestId, outbox.data]);
   const legacy = Boolean(definition?.kind.startsWith('legacy'));
   const report = useQuery({
     queryKey: key('report', { id, ...filters }),
     queryFn: async () => {
       const first = await getReport(client, definition!, filters, 1);
-      if (!legacy || !first.pagination || first.pagination.totalPages <= 1) return first;
+      if (
+        session.mode === 'cloud' ||
+        !legacy ||
+        !first.pagination ||
+        first.pagination.totalPages <= 1
+      )
+        return first;
       // Older monthly reports are paged on the PC; gather every page (max 40).
       const items = [...((first.items ?? first.rows ?? []) as Record<string, unknown>[])];
       for (let page = 2; page <= Math.min(first.pagination.totalPages, 40); page++) {
@@ -164,10 +213,14 @@ export function ReportDetailScreen() {
     },
     enabled: Boolean(definition) && session.can('reports.read'),
   });
+  useEffect(() => {
+    if (session.mode === 'cloud' && matching?.local_status === 'applied') void report.refetch();
+  }, [session.mode, matching?.local_status, matching?.id]);
   if (!session.can('reports.read')) return <Redirect href="/(tabs)/more" />;
   if (!definition) return <Redirect href="/(tabs)/more/reports" />;
 
   const slice = sliceOf(definition);
+  const automaticSnapshot=(definition.kind==='rows'&&['today','thisMonth'].includes(period))||(legacy&&month===months[0]!.value);
   const columns = reportColumns(slice);
   const data = report.data;
   const rows = (data?.rows ?? data?.items) as Record<string, unknown>[] | undefined;
@@ -192,7 +245,10 @@ export function ReportDetailScreen() {
         summary: figures,
         columns,
         rows,
-        generatedAt: new Date(),
+        generatedAt:
+          session.mode === 'cloud' && data?.cloudSnapshot
+            ? new Date((data.cloudSnapshot as { updatedAt: string }).updatedAt)
+            : new Date(),
       });
     } catch (error) {
       Alert.alert('Could not export', error instanceof Error ? error.message : 'Try again.');
@@ -213,7 +269,13 @@ export function ReportDetailScreen() {
             <UiText className="text-sm text-slate-600">{periodLabel}</UiText>
           </View>
           {tabular ? (
-            <Button variant="outline" size="sm" loading={exporting} disabled={!rows?.length} onPress={() => void exportPdf()}>
+            <Button
+              variant="outline"
+              size="sm"
+              loading={exporting}
+              disabled={!rows?.length}
+              onPress={() => void exportPdf()}
+            >
               <FileDown size={18} color="#1B2124" />
               <UiText>PDF</UiText>
             </Button>
@@ -230,8 +292,49 @@ export function ReportDetailScreen() {
         )}
 
         <ReadState query={report} />
+        <FigureUpdated
+          at={(data?.cloudSnapshot as { updatedAt?: string } | undefined)?.updatedAt}
+        />
+        {session.mode === 'cloud' && Boolean(data?.cloudMissing) && (
+          <Text>
+            {automaticSnapshot
+              ? FIRST_FIGURES
+              : 'Request this period from the shop PC.'}
+          </Text>
+        )}
+        {Boolean(data?.tooLarge) && (
+          <StatusBanner
+            tone="warning"
+            message="Open this report on the shop Wi-Fi or request it."
+          />
+        )}
+        {session.mode === 'cloud' && (Boolean(data?.cloudMissing) || Boolean(data?.tooLarge)) && (
+          <Button
+            loading={requesting}
+            disabled={Boolean(matching)}
+            onPress={() => {
+              setRequesting(true);
+              setRequestError('');
+              void enqueueCloudReport(id, filters)
+                .then((row) => setRequested({ id: row.id, key: reportKey(id, filters) }))
+                .catch((error) => setRequestError(error.message))
+                .finally(() => setRequesting(false));
+            }}
+          >
+            <UiText>Request from the shop PC</UiText>
+          </Button>
+        )}
+        {requestError && <StatusBanner tone="warning" message={requestError} />}
+        {session.mode === 'cloud' &&
+          (matching?.id || requested?.key === reportKey(id, filters)) && (
+            <OutboxStatus id={matching?.id ?? requested!.id} />
+          )}
         {data && hero ? (
-          <HeroCard label={hero.label} value={hero.text} caption={rows ? `${rows.length} rows` : undefined} />
+          <HeroCard
+            label={hero.label}
+            value={hero.text}
+            caption={rows ? `${rows.length} rows` : undefined}
+          />
         ) : null}
         {data && rest.length ? (
           <View className="flex-row flex-wrap gap-2">
@@ -268,7 +371,7 @@ export function ReportDetailScreen() {
         ) : null}
 
         {/* Review and analysis reports have no table: their figures, formatted. */}
-        {data && !tabular ? (
+        {data && !data.cloudMissing && !data.tooLarge && !tabular ? (
           data.summary ? (
             <Card title="Summary">
               <RecordFields data={data.summary as Record<string, unknown>} reportId={id} />
