@@ -14,7 +14,6 @@ import { DEFAULT_SCANNER_PORT, parseConnection } from '../utils/scanner-url';
 import { QrPairScreen } from './QrPairScreen';
 import { ConnectionLogPanel } from '../connection/ConnectionLogPanel';
 import type { CloudPairing } from '../offline/cloud-pairing';
-import { PendingActionsScreen } from '../offline/PendingActionsScreen';
 import { useOutbox } from '../offline/useOutbox';
 
 interface ConnectionSetupScreenProps {
@@ -41,7 +40,6 @@ export function ConnectionSetupScreen({
   const [qrOpen, setQrOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const archives = useOutbox(true);
-  const [showUnsent, setShowUnsent] = useState(false);
 
   const connect = async (settings: ConnectionSettings): Promise<string | null> => {
     let found;
@@ -112,16 +110,7 @@ export function ConnectionSetupScreen({
     <>
       <AuthLayout title="Connect">
         {notice && <StatusBanner tone="warning" message={notice} />}
-        {!!archives.data?.length && (
-          <Button variant="outline" onPress={() => setShowUnsent((value) => !value)}>
-            <Text>
-              {showUnsent
-                ? 'Hide saved summaries'
-                : `Not sent · ${archives.data.length} saved summaries`}
-            </Text>
-          </Button>
-        )}
-        {showUnsent && <PendingActionsScreen archivesOnly />}
+        {!!archives.data?.length && <Text>{archives.data.length} saved action summaries will be available after pairing and PIN unlock.</Text>}
         {message && <StatusBanner tone="danger" message={message} />}
         {message && (
           <Button variant="ghost" size="sm" onPress={() => setDetailsOpen((value) => !value)}>

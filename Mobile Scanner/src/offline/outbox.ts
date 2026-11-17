@@ -1,4 +1,5 @@
 import type { LocalDb } from './local-db';
+import {copyEncryptedPhoto,readEncryptedPhoto,removeEncryptedPhoto} from './encrypted-photos';
 
 export type ActionType =
   | 'report.request'
@@ -23,6 +24,7 @@ export interface OutboxRow {
   created_at: string;
   updated_at: string;
   attempts: number;
+  dismissed?:number;
   last_error: string | null;
   summary: string;
   next_attempt_at: number;
@@ -35,26 +37,14 @@ export interface PhotoFiles {
 }
 export const photoFiles: PhotoFiles = {
   async copy(source, id, mime) {
-    const fs = await import('expo-file-system/legacy');
-    if (!fs.documentDirectory) throw new Error('Photo storage is unavailable.');
-    const dir = `${fs.documentDirectory}cloud-outbox/`;
-    await fs.makeDirectoryAsync(dir, { intermediates: true });
-    const path = `${dir}${id}.${mime === 'image/png' ? 'png' : mime === 'image/webp' ? 'webp' : 'jpg'}`;
-    await fs.copyAsync({ from: source, to: path });
-    const info = await fs.getInfoAsync(path);
-    if (!info.exists || !info.size || info.size > 2 * 1024 * 1024) {
-      await fs.deleteAsync(path, { idempotent: true });
-      throw new Error('Choose a photo smaller than 2 MB.');
-    }
-    return { path, size: info.size };
+    return copyEncryptedPhoto(await(await import('./expo-db')).openLocalDb(),source,id);
   },
   async read(path) {
-    const { File } = await import('expo-file-system');
-    return new Blob([await new File(path).bytes()]);
+    return readEncryptedPhoto(await(await import('./expo-db')).openLocalDb(),path);
   },
   async remove(path) {
-    const fs = await import('expo-file-system/legacy');
-    await fs.deleteAsync(path, { idempotent: true });
+    if(path.startsWith('cipher-photo:'))await removeEncryptedPhoto(await(await import('./expo-db')).openLocalDb(),path);
+    else await(await import('expo-file-system/legacy')).deleteAsync(path,{idempotent:true});
   },
 };
 export const FAILED_MESSAGE =
@@ -104,7 +94,7 @@ export async function saveAction(
   input: SaveAction,
   options: { uuid?: () => string; now?: () => Date; files?: PhotoFiles } = {}
 ) {
-  return db.transaction(async (tx) => {
+  const saved=await db.transaction(async (tx) => {
     const existing = (
       await tx.query<OutboxRow>('SELECT * FROM outbox WHERE owner=? AND submission_key=?', [
         input.owner,
@@ -118,7 +108,7 @@ export async function saveAction(
       throw new Error('Choose a JPEG, PNG or WebP photo.');
     if (input.type === 'supplier_bill.upload' && !input.photo)
       throw new Error('A bill photo is required.');
-    const photo = input.photo ? await files.copy(input.photo.uri, id, input.photo.mime) : null;
+    const photo = input.photo ? options.files?await files.copy(input.photo.uri,id,input.photo.mime):await copyEncryptedPhoto(tx,input.photo.uri,id) : null;
     const now = (options.now ?? (() => new Date()))().toISOString();
     const payload = { ...input.payload };
     if (input.type === 'sales_order.create' || input.type === 'customer_payment.create')
@@ -143,6 +133,8 @@ export async function saveAction(
     );
     return (await tx.query<OutboxRow>('SELECT * FROM outbox WHERE id=?', [id]))[0]!;
   });
+  if(input.photo&&!options.files)await(await import('../security/capture-cache')).removeCapturedSource(input.photo.uri).catch(()=>{});
+  return saved;
 }
 export async function cleanOutbox(db: LocalDb, files = photoFiles, now = new Date()) {
   for (const row of await listOutbox(db)) {

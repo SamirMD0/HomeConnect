@@ -10,6 +10,7 @@ import type {
 } from './contracts';
 import type { QueryScope } from '../query/keys';
 import { initialOrder, initialPayment } from './payloads';
+import {openLocalDb} from '../offline/expo-db';
 export type OrderStore = DraftStore<OrderForm, OrderPayload, SalesResult>;
 export type PaymentStore = DraftStore<PaymentForm, PaymentPayload, SalesResult>;
 const stores = new Map<string, Promise<OrderStore | PaymentStore>>();
@@ -29,9 +30,13 @@ export async function openDraft(
   const opening = (async () => {
     if (!FileSystem.documentDirectory) throw new Error('Device storage is unavailable.');
     const directory = `${FileSystem.documentDirectory}${cloud ? 'cloud-sales-drafts-v1' : 'sales-drafts-v1'}/`;
-    await FileSystem.makeDirectoryAsync(directory, { intermediates: true });
+    if(!cloud)await FileSystem.makeDirectoryAsync(directory, { intermediates: true });
     const digest = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, identity);
-    const storage = {
+    const local=cloud?await openLocalDb():null;
+    const storage = local?{
+      read:async(slot:0|1)=>(await local.query<{value:string}>('SELECT value FROM cloud_drafts WHERE name=?',[`${digest}.${slot}.json`]))[0]?.value??null,
+      write:(slot:0|1,value:string)=>local.exec('INSERT INTO cloud_drafts(name,value) VALUES (?,?) ON CONFLICT(name) DO UPDATE SET value=excluded.value',[`${digest}.${slot}.json`,value]),
+    }:{
       read: async (slot: 0 | 1) => {
         const uri = `${directory}${digest}.${slot}.json`;
         return (await FileSystem.getInfoAsync(uri)).exists
