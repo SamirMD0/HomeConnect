@@ -127,6 +127,9 @@ export async function loadFigure(task: Task, date: string, read: (path: string) 
     read
   );
 }
+/** Figures per relay request. The relay allows the worker 120 requests a minute, and a
+ * shop has about 58 figures per branch, so one request per figure hit that limit. */
+export const FIGURE_BATCH = 20;
 export async function pushFigures(
   state: SyncWorkerState,
   relay: Pick<WorkerRelay, 'request'>,
@@ -164,9 +167,23 @@ export async function pushFigures(
   }
   const admin = await deps.admin();
   if (!admin) return;
-  while (run.index < run.tasks.length) {
+  // Progress and hashes are saved only after the relay acknowledges a batch, so work
+  // cut off by the time budget is simply recomputed next cycle.
+  let pending: { key: string; hash: string; record: Record<string, unknown> }[] = [];
+  let index = run.index;
+  const flush = async () => {
+    if (pending.length) {
+      await relay.request('/records', { pcSeq: state.lastPushedSeq, records: pending.map((item) => item.record) });
+      for (const item of pending) saved.hashes[item.key] = item.hash;
+      pending = [];
+    }
+    run = { ...run!, index };
+    saved = { ...saved, run };
+    await deps.save({ figureSnapshots: saved as unknown as Prisma.InputJsonValue });
+  };
+  while (index < run.tasks.length) {
     if (deps.now().getTime() >= deadline || deps.date() !== date) return;
-    const task: Task = run.tasks[run.index];
+    const task: Task = run.tasks[index];
     const key = [task.entity, task.branchId, task.reportId, task.period].filter(Boolean).join('|');
     const response = await loadFigure(task, date, (path) =>
       deps.read(path, task.branchId, admin, deadline)
@@ -179,30 +196,26 @@ export async function pushFigures(
     const hash = createHash('sha256')
       .update(stableJson({ businessDate: date, response: value }))
       .digest('hex');
-    if (hash !== saved.hashes[key]) {
-      await relay.request('/records', {
-        pcSeq: state.lastPushedSeq,
-        records: [
-          {
-            entity: task.entity,
-            id: snapshotId(key),
-            branchId: task.branchId,
-            minRole: task.entity === 'report' ? 'ADMIN' : null,
-            op: 'upsert',
-            data: {
-              ...task,
-              businessDate: date,
-              updatedAt: deps.now().toISOString(),
-              response: value,
-            },
+    if (hash !== saved.hashes[key])
+      pending.push({
+        key,
+        hash,
+        record: {
+          entity: task.entity,
+          id: snapshotId(key),
+          branchId: task.branchId,
+          minRole: task.entity === 'report' ? 'ADMIN' : null,
+          op: 'upsert',
+          data: {
+            ...task,
+            businessDate: date,
+            updatedAt: deps.now().toISOString(),
+            response: value,
           },
-        ],
+        },
       });
-      saved.hashes[key] = hash;
-    }
-    run = { ...run, index: run.index + 1 };
-    saved = { ...saved, run };
-    await deps.save({ figureSnapshots: saved as unknown as Prisma.InputJsonValue });
+    index++;
+    if (pending.length >= FIGURE_BATCH || index % FIGURE_BATCH === 0 || index === run.tasks.length) await flush();
   }
   const { run: done, ...rest } = saved;
   await deps.save({

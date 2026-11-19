@@ -53,8 +53,10 @@ describe('budgeted PC figure snapshots', () => {
       '/dashboard/overview?range=month&includeArchived=false',
       '/receivables?onlyWithBalance=true&sortBy=outstanding&sortOrder=desc&page=1&limit=1',
     ]);
-    expect(relay.request).toHaveBeenCalledTimes(4);
-    const records = relay.request.mock.calls.map(([, body]) => body.records[0]);
+    // One batched request instead of one per figure (the relay allows 120 a minute).
+    expect(relay.request).toHaveBeenCalledTimes(1);
+    const records: { minRole: string | null; branchId: string; id: string; data: { response: { source: string } } }[] = relay.request.mock.calls[0][1].records;
+    expect(records).toHaveLength(4);
     expect(records.every((row) => row.minRole === null && row.branchId === 'branch')).toBe(true);
     expect(records[0].data.response.source).toBe(deps.read.mock.calls[0][0]);
     expect(records[0].id).toBe(snapshotId('dashboard|branch|today'));
@@ -86,18 +88,39 @@ describe('budgeted PC figure snapshots', () => {
     date = '2026-11-18';
     clock = Date.parse('2026-11-17T22:05:00Z');
     await run();
-    expect(relay.request).toHaveBeenCalledTimes(4);
-  });
-  it('persists progress after acknowledgement and resumes after the time budget', async () => {
-    relay.request.mockImplementation(async () => {
-      clock += 1000;
-    });
-    await run(clock + 1000);
     expect(relay.request).toHaveBeenCalledTimes(1);
-    expect((state.figureSnapshots as any).run.index).toBe(1);
+    expect(relay.request.mock.calls[0][1].records).toHaveLength(4);
+  });
+  it('persists progress only after a batch is acknowledged and resumes after the time budget', async () => {
+    deps.read.mockImplementation(async (path: string) => {
+      clock += 1000;
+      return { source: path };
+    });
+    await run(clock + 2500);
+    // Cut off mid-batch: nothing was sent, so no progress or hash is saved.
+    expect(relay.request).not.toHaveBeenCalled();
+    expect((state.figureSnapshots as any).run.index).toBe(0);
     await run(Infinity);
-    expect(relay.request).toHaveBeenCalledTimes(4);
+    expect(relay.request).toHaveBeenCalledTimes(1);
+    expect(relay.request.mock.calls[0][1].records).toHaveLength(4);
     expect((state.figureSnapshots as any).run).toBeUndefined();
+  });
+  it("keeps a whole shop's figures far under the relay's 120 requests a minute", async () => {
+    deps.scope.mockResolvedValue({ branchIds: ['b1', 'b2', 'b3', 'b4'] });
+    await run(Infinity, true);
+    const sent = relay.request.mock.calls.reduce((sum, [, body]) => sum + body.records.length, 0);
+    expect(sent).toBeGreaterThan(200);
+    expect(relay.request.mock.calls.length).toBeLessThanOrEqual(Math.ceil(sent / 20) + 1);
+    expect(relay.request.mock.calls.every(([, body]) => body.records.length <= 20)).toBe(true);
+  });
+  it('does not save a batch the relay refused, so it is sent again next cycle', async () => {
+    relay.request.mockRejectedValueOnce(new Error('relay down'));
+    await expect(run()).rejects.toThrow('relay down');
+    expect((state.figureSnapshots as any).hashes ?? {}).toEqual({});
+    expect((state.figureSnapshots as any).run.index).toBe(0);
+    await run();
+    expect(relay.request).toHaveBeenCalledTimes(2);
+    expect(relay.request.mock.calls[1][1].records).toHaveLength(4);
   });
   it('publishes a small ADMIN stub for a report over 1.5 MB', async () => {
     state.figureSnapshots = {
