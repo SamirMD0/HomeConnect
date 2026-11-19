@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { requireRole } from '../../../middleware/role.middleware';
 import { validate } from '../../../middleware/validate.middleware';
-import { workerSettingsSchema, saveWorkerSettings, workerStatus } from './worker-settings';
+import { workerSettingsSchema, saveWorkerSettings, workerStatus, createWorkerSecret } from './worker-settings';
 import { requestWorkerCycle } from './worker-control';
 import { AppError } from '../../../lib/errors';
 import { z } from 'zod';
@@ -12,6 +12,10 @@ const safeSettingsError = (error: unknown) => error instanceof AppError ? error 
 
 export const workerRoutes = Router();
 workerRoutes.use(requireRole(['ADMIN']));
+workerRoutes.post('/secret', validate(z.object({}).strict()), async (_req, res, next) => {
+  try { res.set('Cache-Control', 'no-store').json({ success: true, data: await createWorkerSecret() }); }
+  catch (error) { next(safeSettingsError(error)); }
+});
 workerRoutes.get('/devices/options', async (_req, res, next) => {
   try { res.json({ success: true, data: await pairingOptions() }); } catch (error) { next(safeSettingsError(error)); }
 });

@@ -106,4 +106,40 @@ describe('relay record visibility', () => {
       report: { secret: 'money' },
     });
   });
+  it('waits for the PC to refuse staff reports, preserves its exact message and strips all other result data', async () => {
+    const rows = [
+      { id: 'pending', branchId: 'a', type: 'report.request', status: 'pending', result: null },
+      {
+        id: 'refused',
+        branchId: 'a',
+        type: 'report.request',
+        status: 'refused',
+        result: {
+          code: 'FORBIDDEN',
+          message: 'The exact PC refusal.',
+          report: { secret: 'money' },
+        },
+      },
+    ];
+    const findMany = vi.fn(async () => rows);
+    const store = new RelayStore({ relayOutbox: { findMany } } as unknown as RelayClient);
+    expect(
+      await store.actionResults('device', ['pending', 'refused'], 'EMPLOYEE', ['a'], 'user')
+    ).toEqual([
+      { id: 'pending', status: 'pending', result: null },
+      {
+        id: 'refused',
+        status: 'refused',
+        result: { code: 'FORBIDDEN', message: 'The exact PC refusal.' },
+      },
+    ]);
+    const denied = await store.actionResults('device', ['refused'], 'EMPLOYEE', ['b'], 'user');
+    expect(JSON.stringify(denied)).not.toContain('exact PC');
+    expect(JSON.stringify(denied)).not.toContain('money');
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ deviceId: 'device', userId: 'user' }),
+      })
+    );
+  });
 });

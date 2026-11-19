@@ -1,4 +1,5 @@
 import { Prisma } from '@prisma/client';
+import { createHash, randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import { prisma } from '../../../lib/prisma';
 import { ValidationError } from '../../../lib/errors';
@@ -18,6 +19,12 @@ export const workerSettingsSchema = z.object({
 }).strict();
 
 export const workerState = () => prisma.syncWorkerState.upsert({ where: { id: 1 }, create: { id: 1 }, update: {} });
+export async function createWorkerSecret() {
+  const secret = randomBytes(32).toString('hex');
+  await workerState();
+  await prisma.syncWorkerState.update({ where: { id: 1 }, data: { workerSecretEncrypted: encryptWorkerSecret(secret) } });
+  return { secret, sha256: createHash('sha256').update(secret).digest('hex') };
+}
 const time = (date: Date) => date.toISOString().slice(11, 16);
 export async function workerStatus() {
   const state = await workerState();

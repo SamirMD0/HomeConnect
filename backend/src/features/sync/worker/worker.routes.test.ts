@@ -8,6 +8,7 @@ import { requireAuth } from '../../../middleware/auth.middleware';
 import { errorHandler } from '../../../middleware/error.middleware';
 import { workerRoutes } from './worker.routes';
 import { decryptWorkerSecret, encryptWorkerSecret } from './worker-secret';
+import {createHash} from 'node:crypto';
 
 const app = express().use(express.json()).use('/worker', requireAuth, workerRoutes).use(errorHandler);
 const auth = (role = 'ADMIN') => 'Bearer ' + jwt.sign({ userId: 'user', role }, process.env.JWT_SECRET!);
@@ -24,6 +25,14 @@ describe('worker settings', () => {
     expect(response.status).toBe(200);
     expect(response.body.data.secretConfigured).toBe(true);
     expect(JSON.stringify(response.body)).not.toMatch(/private-ciphertext|workerSecret/);
+  });
+  it('creates a strong secret once, saves only encrypted bytes and returns its exact SHA-256',async()=>{
+    const response=await request(app).post('/worker/secret').set('Authorization',auth()).send({});expect(response.status).toBe(200);expect(response.headers['cache-control']).toBe('no-store');
+    const{secret,sha256}=response.body.data;expect(secret).toMatch(/^[0-9a-f]{64}$/);expect(sha256).toBe(createHash('sha256').update(secret).digest('hex'));
+    expect(decryptWorkerSecret(mocks.update.mock.calls[0][0].data.workerSecretEncrypted)).toBe(secret);
+    const later=await request(app).get('/worker').set('Authorization',auth());expect(JSON.stringify(later.body)).not.toContain(secret);
+    expect((await request(app).post('/worker/secret').set('Authorization',auth('EMPLOYEE')).send({})).status).toBe(403);
+    expect((await request(app).post('/worker/secret').set('Authorization',auth()).send({pin:'no'})).status).toBe(400);
   });
   it('redacts database failures before passing them to HTTP error logging', async () => {
     mocks.upsert.mockRejectedValueOnce(new Error('private-ciphertext plaintext-secret'));
