@@ -41,7 +41,7 @@ services:
     region: frankfurt
     branch: main
     autoDeploy: false
-    buildCommand: npm ci && npm run relay:generate && npm run relay:migrate:deploy && npm run relay:build
+    buildCommand: npm ci --include=dev && npm run relay:generate && npm run relay:migrate:deploy && npm run relay:build
     startCommand: npm run relay:start
     healthCheckPath: /relay/v1/health
     envVars:
