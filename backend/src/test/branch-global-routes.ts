@@ -167,6 +167,17 @@ export const globalRouteGroups = [
   "GET /api/v1/business-settings",
   "PUT /api/v1/business-settings"
 ] },
+  { group: "sync/worker", reason: "Admin-only shop-PC cloud worker settings, phone pairing and relay usage; the worker reads every branch.", routes: [
+  "POST /api/v1/sync/worker/secret",
+  "GET /api/v1/sync/worker/devices/options",
+  "GET /api/v1/sync/worker/devices",
+  "POST /api/v1/sync/worker/devices",
+  "POST /api/v1/sync/worker/devices/:id/revoke",
+  "GET /api/v1/sync/worker/usage",
+  "GET /api/v1/sync/worker",
+  "PUT /api/v1/sync/worker",
+  "POST /api/v1/sync/worker/run-now"
+] },
   { group: 'scanner', reason: 'Global product-scanner sessions only; JWT supplier gateway requests use their destination scope.', routes: [
   "POST /api/v1/scanner/pairing-code",
   "POST /api/v1/scanner/lan/enable",

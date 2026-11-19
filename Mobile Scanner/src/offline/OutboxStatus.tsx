@@ -5,7 +5,7 @@ import { StatusBanner } from '../components/StatusBanner';
 import { AppButton } from '../components/AppButton';
 import { actionMessage,type OutboxRow } from './outbox';
 import { useOutbox } from './useOutbox';
-import { requestCloudSync } from './sync-status';
+import { refreshFromUser } from './sync-status';
 import { openLocalDb } from './expo-db';
 export function ActionResultLink({row}:{row:OutboxRow}){
   const router=useRouter();if(row.local_status!=='applied'||row.archived)return null;
@@ -19,7 +19,7 @@ export function OutboxStatus({ id }: { id: string }) {
     router = useRouter(),
     row = query.data?.find((item) => item.id === id);
   useEffect(() => {
-    void requestCloudSync();
+    void refreshFromUser();
   }, [id]);
   let result: Record<string, unknown> = {};
   try {

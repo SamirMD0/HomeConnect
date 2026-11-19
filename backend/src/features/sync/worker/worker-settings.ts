@@ -16,6 +16,8 @@ export const workerSettingsSchema = z.object({
   workerSecret: z.string().min(1).max(4096).optional(),
   openingStart: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/),
   openingEnd: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/),
+  // Optional so an older Settings screen keeps working; the column defaults to 15.
+  syncMinutes: z.union([z.literal(10), z.literal(15), z.literal(30)]).optional(),
 }).strict();
 
 export const workerState = () => prisma.syncWorkerState.upsert({ where: { id: 1 }, create: { id: 1 }, update: {} });
@@ -31,6 +33,7 @@ export async function workerStatus() {
   return {
     enabled: state.enabled, relayUrl: state.relayUrl, secretConfigured: Boolean(state.workerSecretEncrypted),
     openingStart: time(state.openingStart), openingEnd: time(state.openingEnd),
+    syncMinutes: state.syncMinutes,
     lastPushedSeq: state.lastPushedSeq, snapshotDone: state.snapshotDone,
     lastCycleAt: state.lastCycleAt, lastSuccessAt: state.lastSuccessAt, lastError: state.lastError,
   };
@@ -45,6 +48,7 @@ export async function saveWorkerSettings(input: z.infer<typeof workerSettingsSch
     enabled: input.enabled, relayUrl: input.relayUrl,
     openingStart: new Date(`1970-01-01T${input.openingStart}:00.000Z`),
     openingEnd: new Date(`1970-01-01T${input.openingEnd}:00.000Z`),
+    ...(input.syncMinutes ? { syncMinutes: input.syncMinutes } : {}),
     ...(input.workerSecret ? { workerSecretEncrypted: encryptWorkerSecret(input.workerSecret) } : {}),
     ...(previous.relayUrl !== input.relayUrl ? { snapshotDone: false, snapshotProgress: Prisma.DbNull, lastPushedSeq: '0' } : {}),
   } });

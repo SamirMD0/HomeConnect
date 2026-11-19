@@ -94,6 +94,23 @@ describe('click-only worker secret setup', () => {
       );
       expect(host.querySelector('[aria-label="New worker secret"]')).toBeNull();
     }));
+  it('reads the cloud usage estimate once when sync is set up, and warns when it is high', async () => {
+    mock.get.mockImplementation(async (url: string) => url === '/sync/worker/usage'
+      ? { data: { data: { monthToDateCuHours: 70, projectedMonthCuHours: 90, freeCuHours: 100, warn: true } } }
+      : { data: { data: { enabled: true, relayUrl: 'https://relay.example.com', secretConfigured: true, openingStart: '07:00', openingEnd: '22:00', lastSuccessAt: null, lastError: null } } });
+    await withPanel(async (host) => {
+      await act(async () => undefined);
+      expect(mock.get.mock.calls.filter(([url]) => url === '/sync/worker/usage')).toHaveLength(1);
+      expect(host.textContent).toContain('about 70 of 100 hours so far, heading for about 90 (estimate)');
+      expect(host.querySelector('[role="alert"]')?.textContent).toContain('Cloud use is high');
+    });
+  });
+  it('does not wake the cloud for usage before sync is set up', async () =>
+    withPanel(async (host) => {
+      await act(async () => undefined);
+      expect(mock.get).not.toHaveBeenCalledWith('/sync/worker/usage');
+      expect(host.textContent).not.toContain('Cloud usage');
+    }));
   it('confirms replacement before rotating an already saved secret', async () => {
     mock.configured = true;
     vi.spyOn(window, 'confirm').mockReturnValue(false);

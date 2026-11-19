@@ -2195,6 +2195,8 @@ model SyncWorkerState {
   workerSecretEncrypted String?   @map("worker_secret_encrypted")
   openingStart          DateTime  @default(dbgenerated("'07:00:00'::time")) @map("opening_start") @db.Time
   openingEnd            DateTime  @default(dbgenerated("'22:00:00'::time")) @map("opening_end") @db.Time
+  /// Minutes between syncs during opening hours: 10, 15 (default) or 30.
+  syncMinutes           Int       @default(15) @map("sync_minutes")
   lastPushedSeq         String    @default("0") @map("last_pushed_seq")
   snapshotDone          Boolean   @default(false) @map("snapshot_done")
   snapshotProgress      Json?     @map("snapshot_progress")

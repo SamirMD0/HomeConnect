@@ -1,5 +1,6 @@
 import { Prisma, type RelayClient, type RelayDevice, type RelayOutbox } from './client';
 import { RelayError } from './errors';
+import { estimateUsage } from './usage-estimate';
 import type { ActionInput, DeviceInput, RecordsInput, ResultInput } from './inputs';
 
 const json = (value: Prisma.JsonValue) => value === null ? Prisma.JsonNull : value;
@@ -271,13 +272,17 @@ export class RelayStore {
   }
 
   countUsage(input: RequestUsage) {
+    // The request's minute of the UTC day feeds the Neon compute estimate.
     return this.db.$executeRaw`
-      INSERT INTO relay_usage (day, requests, bytes_in, bytes_out, records_written, actions_received)
-      VALUES ((now() AT TIME ZONE 'UTC')::date, 1, ${BigInt(input.bytesIn)}, ${BigInt(input.bytesOut)}, ${input.recordsWritten}, ${input.actionsReceived})
+      INSERT INTO relay_usage (day, requests, bytes_in, bytes_out, records_written, actions_received, active_minutes)
+      VALUES ((now() AT TIME ZONE 'UTC')::date, 1, ${BigInt(input.bytesIn)}, ${BigInt(input.bytesOut)}, ${input.recordsWritten}, ${input.actionsReceived},
+        ARRAY[(EXTRACT(HOUR FROM now() AT TIME ZONE 'UTC') * 60 + EXTRACT(MINUTE FROM now() AT TIME ZONE 'UTC'))::int])
       ON CONFLICT (day) DO UPDATE SET requests = relay_usage.requests + 1,
         bytes_in = relay_usage.bytes_in + EXCLUDED.bytes_in, bytes_out = relay_usage.bytes_out + EXCLUDED.bytes_out,
         records_written = relay_usage.records_written + EXCLUDED.records_written,
-        actions_received = relay_usage.actions_received + EXCLUDED.actions_received`;
+        actions_received = relay_usage.actions_received + EXCLUDED.actions_received,
+        active_minutes = CASE WHEN EXCLUDED.active_minutes[1] = ANY(relay_usage.active_minutes)
+          THEN relay_usage.active_minutes ELSE relay_usage.active_minutes || EXCLUDED.active_minutes END`;
   }
 
   async usage() {
@@ -293,7 +298,9 @@ export class RelayStore {
       bytesOut: sum.bytesOut + day.bytesOut, recordsWritten: sum.recordsWritten + day.recordsWritten,
       actionsReceived: sum.actionsReceived + day.actionsReceived,
     }), { requests: 0, bytesIn: 0n, bytesOut: 0n, recordsWritten: 0, actionsReceived: 0 });
-    return { days, totals };
+    const estimate = estimateUsage(days.map((day) => ({ day: day.day, activeSlots: day.activeMinutes })), new Date());
+    // The per-minute lists are only an input to the estimate; keep the reply small.
+    return { days: days.map(({ activeMinutes: _minutes, ...day }) => day), totals, estimate };
   }
 
   upkeep(now = new Date()) {

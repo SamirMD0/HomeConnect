@@ -15,7 +15,7 @@ import { EmptyState } from '../components/EmptyState';
 import type { Currency } from '@shared/lookup-contracts';
 import { LOOKUP_PAGE_SIZE } from './pagination';
 import { cloudMode } from '../offline/cloud-mode';
-import { requestCloudSync } from '../offline/sync-status';
+import { refreshFromUser } from '../offline/sync-status';
 export const readStyles = StyleSheet.create({
   title: { ...theme.text.headline, color: theme.colors.text },
   subtitle: { ...theme.text.label, fontWeight: '400', color: theme.colors.muted },
@@ -57,7 +57,7 @@ export function ReadScreen({
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
-          onRefresh={() => void (async () => { if (cloudMode()) await requestCloudSync(); onRefresh(); })()}
+          onRefresh={() => void (async () => { if (cloudMode()) await refreshFromUser(); onRefresh(); })()}
           tintColor={theme.colors.brand}
         />
       }

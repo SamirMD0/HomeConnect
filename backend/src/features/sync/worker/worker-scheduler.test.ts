@@ -31,10 +31,18 @@ describe('worker scheduling and isolation', () => {
     expect(vi.getTimerCount()).toBe(0);
   });
   it('uses the required cadence, including overnight opening hours', () => {
-    expect(syncInterval(state, '08:00')).toBe(600000);
+    // 15 minutes by default (Neon free plan budget), hourly outside opening hours.
+    expect(syncInterval(state, '08:00')).toBe(900000);
     expect(syncInterval(state, '02:00')).toBe(3600000);
     expect(syncInterval(state, '06:55')).toBe(300000);
-    expect(syncInterval({ ...state, openingStart: state.openingEnd, openingEnd: state.openingStart }, '23:00')).toBe(600000);
+    expect(syncInterval({ ...state, openingStart: state.openingEnd, openingEnd: state.openingStart }, '23:00')).toBe(900000);
+  });
+  it('follows the Sync every setting, and falls back to 15 minutes on any other value', () => {
+    expect(syncInterval({ ...state, syncMinutes: 10 }, '08:00')).toBe(600000);
+    expect(syncInterval({ ...state, syncMinutes: 15 }, '08:00')).toBe(900000);
+    expect(syncInterval({ ...state, syncMinutes: 30 }, '08:00')).toBe(1800000);
+    expect(syncInterval({ ...state, syncMinutes: 5 }, '08:00')).toBe(900000);
+    expect(syncInterval({ ...state, syncMinutes: 30 }, '02:00')).toBe(3600000);
   });
   it('only starts one cycle in process and only works inside the database lock', async () => {
     let release!: () => void;

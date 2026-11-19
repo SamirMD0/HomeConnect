@@ -4,8 +4,10 @@ import { PairedPhonesPanel } from './PairedPhonesPanel';
 
 interface Status {
   enabled: boolean; relayUrl: string | null; secretConfigured: boolean;
-  openingStart: string; openingEnd: string; lastSuccessAt: string | null; lastError: string | null;
+  openingStart: string; openingEnd: string; syncMinutes?: 10 | 15 | 30; lastSuccessAt: string | null; lastError: string | null;
 }
+
+interface UsageEstimate { monthToDateCuHours: number; projectedMonthCuHours: number; freeCuHours: number; warn: boolean }
 
 export function PhoneCloudSyncPanel() {
   const [status, setStatus] = useState<Status | null>(null);
@@ -15,6 +17,15 @@ export function PhoneCloudSyncPanel() {
   const [error, setError] = useState('');
   const [dirty, setDirty] = useState(false);
   const [generated,setGenerated]=useState<{secret:string;sha256:string}|null>(null);
+  const [usage, setUsage] = useState<UsageEstimate | null>(null);
+  // Read once per visit: every relay call wakes the free-plan database.
+  const usageReady = Boolean(status?.enabled && status.relayUrl && status.secretConfigured);
+  useEffect(() => {
+    if (!usageReady) return;
+    let mounted = true;
+    api.get('/sync/worker/usage').then(response => { if (mounted) setUsage(response.data.data ?? null); }).catch(() => undefined);
+    return () => { mounted = false; };
+  }, [usageReady]);
   useEffect(()=>{if(!generated)return;const timer=setTimeout(()=>setGenerated(null),5*60000);return()=>clearTimeout(timer);},[generated]);
   async function createSecret(){
     if(status?.secretConfigured&&!window.confirm('Replace the worker secret? Cloud sync will wait until you update RELAY_WORKER_TOKEN_SHA256 on Render.'))return;
@@ -42,6 +53,7 @@ export function PhoneCloudSyncPanel() {
       const response = await api.put('/sync/worker', {
         enabled: status.enabled, relayUrl: status.relayUrl || null,
         openingStart: status.openingStart, openingEnd: status.openingEnd,
+        syncMinutes: status.syncMinutes ?? 15,
         ...(secret ? { workerSecret: secret } : {}),
       });
       setStatus(response.data.data); setSecret(''); setDirty(false); setMessage('Cloud sync settings saved.');
@@ -88,9 +100,19 @@ export function PhoneCloudSyncPanel() {
         <label className="text-sm font-medium text-slate-700">Closing time
           <input type="time" required className={input} value={status.openingEnd} onChange={event => setStatus({ ...status, openingEnd: event.target.value })} />
         </label>
+        <label className="text-sm font-medium text-slate-700">Sync every
+          <select className={input} value={status.syncMinutes ?? 15} onChange={event => { setStatus({ ...status, syncMinutes: Number(event.target.value) as 10 | 15 | 30 }); setDirty(true); }} aria-describedby="sync-every-help">
+            <option value={10}>10 minutes</option>
+            <option value={15}>15 minutes</option>
+            <option value={30}>30 minutes</option>
+          </select>
+          <span id="sync-every-help" className="mt-1 block text-xs font-normal text-slate-500">During opening hours. Every hour when closed. Less often uses less of the free cloud plan.</span>
+        </label>
       </div>
       <p className="text-sm text-slate-600">Last sync: {status.lastSuccessAt ? new Date(status.lastSuccessAt).toLocaleString() : 'Never'}</p>
       {status.lastError && <p role="status" className="text-sm text-amber-800">{status.lastError}</p>}
+      {usage && <p className="text-sm text-slate-600">Cloud usage this month: about {usage.monthToDateCuHours} of {usage.freeCuHours} hours so far, heading for about {usage.projectedMonthCuHours} (estimate).</p>}
+      {usage?.warn && <p role="alert" className="text-sm text-amber-800">Cloud use is high. Sync less often or check Neon's dashboard.</p>}
       <div className="flex flex-wrap gap-3">
         <button disabled={pending} className="min-h-11 rounded-md bg-brand-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50">{pending ? 'Please wait…' : 'Save sync settings'}</button>
         <button type="button" disabled={pending || dirty || !status.enabled || !status.secretConfigured} onClick={() => void runNow()} className="min-h-11 rounded-md border border-brand-600 px-4 py-2 text-sm font-medium text-brand-700 hover:bg-brand-50 disabled:opacity-50">Sync now</button>

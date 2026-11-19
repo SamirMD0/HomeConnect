@@ -49,6 +49,8 @@ const scopedPrefixes: { prefix: string; parentGuard?: unknown }[] = [
   { prefix: '/api/v1/reports' },
   { prefix: '/api/v1/dashboard' },
   { prefix: '/api/v1/products/:productId/service-jobs' },
+  // Admin change feed for the shop-PC worker; branchScopeMiddleware runs first.
+  { prefix: '/api/v1/sync/changes' },
 ];
 
 // D3: stock counts, movements and onboarding stay global. New inventory routes
@@ -164,6 +166,7 @@ describe('branch-scope route coverage registry (Phase 3D)', () => {
       '/api/v1/reports',
       '/api/v1/dashboard',
       '/api/v1/products/:productId/service-jobs',
+      '/api/v1/sync/changes',
     ]);
     expect(
       routes.filter((route) => route.path.startsWith('/api/v1/customers')).length

@@ -13,8 +13,9 @@ import type { AccountUser } from '@shared/mobile-contracts';
 import { SyncEngine } from './sync-engine';
 import { currentSyncEngine, setSyncEngine, syncInitializationError } from './sync-status';
 import { configureOutbox, waitForOutboxSaves } from './outbox-runtime';
-import { listOutbox, ownerKey, unfinished } from './outbox';
+import { listOutbox, ownerKey } from './outbox';
 import { wipeCloudDrafts } from '../sales/draft-files';
+import { outboxWakeReason } from './outbox-wake';
 
 let generation = 0;
 let starting: Promise<void> | undefined;
@@ -118,6 +119,9 @@ export function CloudSyncRuntime() {
       if (state.isConnected && AppState.currentState === 'active') void engine?.sync();
     });
     let checking = false;
+    // Foreground only. Sending unsent actions may retry every 30 s; actions
+    // already on the relay only need their PC result, checked every 5 min.
+    const wake = { lastSendWakeAt: 0, lastResultCheckAt: Date.now() };
     const retry = setInterval(() => {
       if (
         checking ||
@@ -131,14 +135,15 @@ export function CloudSyncRuntime() {
       void openLocalDb()
         .then((db) => listOutbox(db, ownerKey(currentPairing)))
         .then((rows) => {
-          if (
-            active &&
-            owner === generation &&
-            rows.some(
-              (row) => !row.archived && unfinished(row) && row.next_attempt_at <= Date.now()
-            )
-          )
-            void engine?.sync();
+          if (!active || owner !== generation) return;
+          const lastSync = engine?.getStatus().lastSyncAt;
+          if (lastSync) wake.lastResultCheckAt = Math.max(wake.lastResultCheckAt, Date.parse(lastSync));
+          const now = Date.now();
+          const reason = outboxWakeReason(rows, now, wake);
+          if (!reason) return;
+          if (reason === 'send') wake.lastSendWakeAt = now;
+          else wake.lastResultCheckAt = now;
+          void engine?.sync();
         })
         .catch(() => {})
         .finally(() => {

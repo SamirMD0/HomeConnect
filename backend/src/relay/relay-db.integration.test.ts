@@ -357,6 +357,15 @@ const input = (id = randomUUID()): ActionInput => ({
     const usage = await store.usage();
     expect(usage.days.some((row) => row.day.getTime() === day.getTime())).toBe(true);
     expect(usage.totals.bytesIn).toBeGreaterThanOrEqual(after.bytesIn);
+    // The request's UTC minute is recorded once, however many requests share it.
+    expect(after.activeMinutes.length).toBeGreaterThan(0);
+    await store.countUsage({ bytesIn: 0, bytesOut: 0, recordsWritten: 0, actionsReceived: 0 });
+    const again = await db.relayUsage.findUniqueOrThrow({ where: { day } });
+    expect(new Set(again.activeMinutes).size).toBe(again.activeMinutes.length);
+    expect(usage.estimate).toMatchObject({ freeCuHours: 100 });
+    // One active minute is 0.025 CU-hours, which rounds to 0.0; the estimator has its own tests.
+    expect(usage.estimate.monthToDateCuHours).toBeGreaterThanOrEqual(0);
+    expect(usage.days[0]).not.toHaveProperty('activeMinutes');
   });
 
   it('holds declared photos out of claims until a matching upload commits', async () => {

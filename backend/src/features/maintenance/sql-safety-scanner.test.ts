@@ -93,6 +93,13 @@ describe('sql safety scanner — allows legitimate repair SQL', () => {
     expect(scanSqlForUnsafeStatements(`UPDATE products SET "labelBarcodeSource" = 'AUTO' WHERE "labelBarcodeSource" = 'SKU';`).safe).toBe(false);
   });
 
+  it('allows only the cloud worker snapshot bookmark reset', () => {
+    expect(scanSqlForUnsafeStatements(`UPDATE sync_worker_state SET snapshot_done = false, snapshot_progress = NULL WHERE id = 1;`).safe).toBe(true);
+    expect(scanSqlForUnsafeStatements(`UPDATE sync_worker_state SET snapshot_done=false,snapshot_progress=NULL;`).safe).toBe(true);
+    expect(scanSqlForUnsafeStatements(`UPDATE sync_worker_state SET snapshot_done = false, last_pushed_seq = 0;`).safe).toBe(false);
+    expect(scanSqlForUnsafeStatements(`UPDATE customers SET snapshot_done = false, snapshot_progress = NULL;`).safe).toBe(false);
+  });
+
   it('allows only the reviewed product VAT presentation preference flip', () => {
     const safe = `UPDATE "products" SET "priceIncludesVat" = true WHERE "priceIncludesVat" = false;`;
     expect(scanSqlForUnsafeStatements(safe).safe).toBe(true);

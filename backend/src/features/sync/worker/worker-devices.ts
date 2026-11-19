@@ -35,4 +35,9 @@ export async function pairDevice(input: z.infer<typeof pairDeviceSchema>) {
   return { v: 1 as const, relay: url, deviceId, token, userId: user.id, userName: user.fullName, role: user.role, branchIds: input.branchIds };
 }
 export async function pairedDevices() { return (await configuredRelay()).client.request('/devices'); }
+/** The relay's Neon usage estimate. Called only when the Settings panel opens (each call wakes Neon). */
+export async function relayUsageEstimate() {
+  const usage = await (await configuredRelay()).client.request('/usage') as { estimate?: unknown };
+  return usage.estimate ?? null;
+}
 export async function revokeDevice(id: string) { return (await configuredRelay()).client.request(`/devices/${id}/revoke`, {}); }
