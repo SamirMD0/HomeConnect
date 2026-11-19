@@ -120,7 +120,7 @@ type Metric = { scenario: string; requests: number; bytesIn: number; bytesOut: n
         [];
       for (const entity of snapshotEntities) {
         let after = '';
-        while (true) {
+        for (;;) {
           const page = await sourcePage(entity, after, cutoff.toISOString(), {
             mode: 'all',
             branchIds: [branchId],
