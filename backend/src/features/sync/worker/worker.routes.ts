@@ -5,7 +5,7 @@ import { workerSettingsSchema, saveWorkerSettings, workerStatus, createWorkerSec
 import { requestWorkerCycle } from './worker-control';
 import { AppError } from '../../../lib/errors';
 import { z } from 'zod';
-import { pairDeviceSchema, pairDevice, pairedDevices, pairingOptions, revokeDevice } from './worker-devices';
+import { pairDeviceSchema, pairDevice, pairedDevices, pairingOptions, relayUsageEstimate, revokeDevice } from './worker-devices';
 
 const safeSettingsError = (error: unknown) => error instanceof AppError ? error :
   new AppError('Cloud sync settings are unavailable. Please try again.', 503, 'SYNC_SETTINGS_UNAVAILABLE');
@@ -27,6 +27,9 @@ workerRoutes.post('/devices', validate(pairDeviceSchema), async (req, res, next)
 });
 workerRoutes.post('/devices/:id/revoke', validate(z.object({ id: z.string().uuid() }), 'params'), async (req, res, next) => {
   try { res.json({ success: true, data: await revokeDevice(String(req.params.id)) }); } catch (error) { next(safeSettingsError(error)); }
+});
+workerRoutes.get('/usage', async (_req, res, next) => {
+  try { res.set('Cache-Control', 'no-store').json({ success: true, data: await relayUsageEstimate() }); } catch (error) { next(safeSettingsError(error)); }
 });
 workerRoutes.get('/', async (_req, res, next) => {
   try { res.json({ success: true, data: await workerStatus() }); } catch (error) { next(safeSettingsError(error)); }

@@ -23,7 +23,7 @@ vi.mock('./useOutbox', () => ({
   useOutbox: () => ({ data: state.rows, isPending: false, error: null, refetch: vi.fn() }),
 }));
 vi.mock('./expo-db', () => ({ openLocalDb: vi.fn() }));
-vi.mock('./sync-status', () => ({ requestCloudSync: state.sync }));
+vi.mock('./sync-status', () => ({ requestCloudSync: state.sync, refreshFromUser: state.sync }));
 import { PendingActionsScreen } from './PendingActionsScreen';
 beforeEach(() => {
   state.rows = [];

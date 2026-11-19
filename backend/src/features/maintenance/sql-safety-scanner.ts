@@ -69,6 +69,13 @@ const BOOKKEEPING_TABLE = /^\s*UPDATE\s+"?_prisma_migrations"?\s/i;
 const PRODUCT_LABEL_AUTO_BACKFILL = /^\s*UPDATE\s+"?products"?\s+SET\s+"?labelBarcodeSource"?\s*=\s*''\s+WHERE\s+"?labelBarcodeSource"?\s*=\s*''\s+AND\s+"?barcode"?\s+IS\s+NOT\s+NULL\s*$/i;
 const PRODUCT_LABEL_AUTO_VALUES = /\bSET\s+"?labelBarcodeSource"?\s*=\s*'AUTO'\s+WHERE\s+"?labelBarcodeSource"?\s*=\s*'SKU'\s+AND\s+"?barcode"?\s+IS\s+NOT\s+NULL\b/i;
 const PRODUCT_VAT_INCLUSIVE_BACKFILL = /^\s*UPDATE\s+"?products"?\s+SET\s+"?priceIncludesVat"?\s*=\s*true\s+WHERE\s+"?priceIncludesVat"?\s*=\s*false\s*$/i;
+/**
+ * Cloud sync migrations 20261116100000, 20261117090000 and 20261117121000 reset
+ * the shop-PC worker's own snapshot bookmark so it pushes a fresh full copy to
+ * the relay. sync_worker_state is worker bookkeeping, not business data. Exact
+ * shape only: these two columns, false/NULL, optionally the singleton row.
+ */
+const SYNC_WORKER_SNAPSHOT_RESET = /^\s*UPDATE\s+"?sync_worker_state"?\s+SET\s+"?snapshot_done"?\s*=\s*false\s*,\s*"?snapshot_progress"?\s*=\s*NULL(?:\s+WHERE\s+"?id"?\s*=\s*1)?\s*$/i;
 
 /**
  * Migration 20260920200000_update_legacy_template_visuals. The two seeded legacy
@@ -258,6 +265,8 @@ function isPermittedUpdate(cleaned: string, original: string): boolean {
   // price presentation preference. Historical order/purchase snapshots and
   // monetary totals are deliberately outside this exact allow-list.
   if (PRODUCT_VAT_INCLUSIVE_BACKFILL.test(cleaned)) return true;
+  // Worker snapshot bookmark reset for cloud sync; see SYNC_WORKER_SNAPSHOT_RESET.
+  if (SYNC_WORKER_SNAPSHOT_RESET.test(cleaned)) return true;
   // Seeded legacy template appearance parity — pinned to two seeded ids.
   if (LEGACY_TEMPLATE_PARITY_SHAPE.test(cleaned) && LEGACY_TEMPLATE_PARITY_VALUES.every((rule) => rule.test(original))) return true;
   // Curated feature marks — pinned to all and only the 17 shipped codes.

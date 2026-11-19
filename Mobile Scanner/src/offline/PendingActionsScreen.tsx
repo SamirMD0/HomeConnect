@@ -8,7 +8,7 @@ import { StatusBanner } from '../components/StatusBanner';
 import { theme } from '../theme';
 import { actionMessage, dismissAction } from './outbox';
 import { openLocalDb } from './expo-db';
-import { requestCloudSync } from './sync-status';
+import { refreshFromUser } from './sync-status';
 import { useOutbox } from './useOutbox';
 import { ActionResultLink } from './OutboxStatus';
 import {summaryArchive} from '../security/summary-archive';
@@ -20,7 +20,7 @@ export function PendingActionsScreen({ archivesOnly = false }: { archivesOnly?: 
   const refresh = async () => {
     setRefreshing(true);
     try {
-      if (!archivesOnly) await requestCloudSync();
+      if (!archivesOnly) await refreshFromUser();
       await rows.refetch();
     } finally {
       setRefreshing(false);
@@ -28,7 +28,7 @@ export function PendingActionsScreen({ archivesOnly = false }: { archivesOnly?: 
   };
   useFocusEffect(
     useCallback(() => {
-      if (!archivesOnly) void requestCloudSync();
+      if (!archivesOnly) void refreshFromUser();
     }, [archivesOnly])
   );
   return (

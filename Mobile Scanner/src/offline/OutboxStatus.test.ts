@@ -18,7 +18,7 @@ vi.mock('expo-router', () => ({ useRouter: () => ({ push: state.push }) }));
 vi.mock('@tanstack/react-query', () => ({ useQuery: () => ({ data: state.recordArrived }) }));
 vi.mock('./useOutbox', () => ({ useOutbox: () => ({ data: [state.row] }) }));
 vi.mock('./expo-db', () => ({ openLocalDb: vi.fn() }));
-vi.mock('./sync-status', () => ({ requestCloudSync: vi.fn() }));
+vi.mock('./sync-status', () => ({ requestCloudSync: vi.fn(), refreshFromUser: vi.fn() }));
 import { OutboxStatus } from './OutboxStatus';
 beforeEach(() => {
   state.row = {

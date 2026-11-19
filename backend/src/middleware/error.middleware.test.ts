@@ -16,7 +16,7 @@ vi.mock('../lib/logger', () => ({
 }));
 
 function requestFor(path: string): Request {
-  return { method: 'GET', path, query: {} } as unknown as Request;
+  return { method: 'GET', path, query: {}, header: () => undefined } as unknown as Request;
 }
 
 function responseSpy(): Response {

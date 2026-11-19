@@ -35,7 +35,8 @@ const defaults = {
 export type SchedulerDependencies = typeof defaults;
 export function syncInterval(state: SyncWorkerState, clock = businessClock()) {
   const start = state.openingStart.toISOString().slice(11, 16), end = state.openingEnd.toISOString().slice(11, 16);
-  if (isOpening(start, end, clock)) return 10 * 60000;
+  // Every relay call wakes the Neon free-plan database: 15 minutes by default.
+  if (isOpening(start, end, clock)) return ([10, 15, 30].includes(state.syncMinutes) ? state.syncMinutes : 15) * 60000;
   const minutes = (value: string) => Number(value.slice(0, 2)) * 60 + Number(value.slice(3));
   const untilOpen = (minutes(start) - minutes(clock) + 1440) % 1440;
   return Math.min(60, untilOpen || 60) * 60000;

@@ -43,7 +43,7 @@ IDs are UUIDv5 in the URL namespace over `dashboard|branchId|period`, `receivabl
 
 After primary records/date refresh and before action processing, the worker spends its remaining figure budget, reserving fifteen seconds for actions. Home and receivables tasks for every branch precede report tasks. Completed tasks and hashes are saved after relay acknowledgement. The next cycle resumes the saved task index. Source requests use the cycle deadline and the existing twenty-second per-call abort limit. Already running PC SQL remains cooperative; an HTTP abort cannot cancel arbitrary underlying service work.
 
-A new run starts inside opening hours only when sync_changes has advanced past the run's captured PC cursor and at least fifteen minutes have elapsed since its start. The first cycle on a new business date can run even outside opening hours and without a cursor change. An incomplete run resumes across cycles; one that crosses a business-date boundary restarts for the new date. With the existing ten-minute worker cadence, normal changing-day refreshes occur about every twenty minutes; fifteen minutes is a minimum separation, not a latency promise.
+A new run starts inside opening hours only when sync_changes has advanced past the run's captured PC cursor and at least fifteen minutes have elapsed since its start. The first cycle on a new business date can run even outside opening hours and without a cursor change. An incomplete run resumes across cycles; one that crosses a business-date boundary restarts for the new date. With the ten-minute worker cadence of the original build, normal changing-day refreshes occur about every twenty minutes (the default is now fifteen minutes, so about every thirty); fifteen minutes is a minimum separation, not a latency promise.
 
 Sorted JSON is SHA-256 hashed, including businessDate and the response. Volatile metadata generation timestamps are excluded from the hash, while the pushed response remains intact. updatedAt is not hashed. Unchanged hashes produce no relay record write. Completed runs save lastSeq, lastDate and lastAt. Primary snapshot replacement clears figure state because replacement removes the old figure records as well; all figure hashes must then be republished. Network failures before acknowledgement leave progress retryable.
 
@@ -66,6 +66,27 @@ Home removes the cloud Wi-Fi placeholder and reads its three preset snapshots. L
 Reports use snapshots for today/thisMonth and the current legacy month. Other selections offer Request from the shop PC, with the ordinary outbox status and PC refusal reason. Applied results feed the existing tables and PDF export. Waiting links reopen the requested report/filter or its payment receipt. Missing automatic snapshots say Waiting for the first figures from the shop PC. Too-large reports direct the user to shop Wi-Fi. Last updated and PDF snapshot timestamps come from stored PC values, never the phone's current time. Report menus and reads remain admin-only. Stock, prepaid, customer creation and supplier-invoice cloud write guards remain intact.
 
 ## Neon estimate and limits
+
+### After the post-phase fixes (2026-11-19)
+
+These replace the original estimate below, which is kept for the record.
+
+- The worker now syncs every **15 minutes** during opening hours by default. Settings → Phone cloud sync → **Sync every** offers 10, 15 or 30 minutes. It stays hourly outside opening hours.
+- The phone no longer polls every 15 seconds while an action waits. Only actions not yet sent (queued, or waiting for a photo) retry, at least 30 seconds apart. Actions the relay has accepted check for results at most every 5 minutes, and only while the app is open. Pull-to-refresh is limited to once per 30 seconds. Nothing polls in the background.
+- The Neon compute is fixed at 0.25 CU with a 5-minute suspend (`docs/setup/CLOUD_RELAY_SETUP.md`).
+- The relay records which minutes of each UTC day had a database request (`relay_usage.active_minutes`). It counts each active minute plus the 5-minute suspend delay, merges overlaps, and multiplies by 0.25 CU. `GET /relay/v1/worker/usage` returns the month-to-date figure and a straight-line projection. PC Settings shows "Cloud usage this month: about X of 100" and warns from 80 % projected. It reads this once per visit, because each read wakes Neon.
+
+Estimate with these settings (07:00–22:00, 0.25 CU):
+
+| Traffic case | Awake time/day | CU-hours/day | 30-day estimate |
+| --- | --- | --- | --- |
+| Worker every 15 minutes while open | 60 wakes × 6 minutes = 6 hours | 1.5 | 45 |
+| Hourly worker outside opening | 9 wakes × 6 minutes = 0.9 hours | 0.225 | about 7 |
+| An open phone checking a waiting action all day | up to 15 more wakes/hour between worker wakes, at most | up to about 1.5 more | up to about 45 more |
+
+A quiet shop comes to about **50 CU-hours a month**. A phone left open with a waiting action all day adds more, but results usually arrive within one worker cycle, after which checks stop. Syncing every 30 minutes halves the worker part. The PC's usage line is an estimate; Neon's dashboard is the real figure.
+
+### Original estimate (before the fixes)
 
 Checked 2026-11-17: Neon currently measures the Free allocation as **100 CU-hours per project per month**, with 1 GB database storage and suspension after five idle minutes. CU-hours are capacity × active wall-clock hours; they are not identical to the plan document's informal “hours.” [Neon pricing](https://neon.com/pricing) and [Neon's current Free-plan announcement](https://neon.com/blog/neon-free-plan-1-gb-per-project).
 

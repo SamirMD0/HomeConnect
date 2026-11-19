@@ -90,6 +90,8 @@ model RelayUsage {
   bytesOut        BigInt   @default(0) @map("bytes_out")
   recordsWritten  Int      @default(0) @map("records_written")
   actionsReceived Int      @default(0) @map("actions_received")
+  /// Minutes of the UTC day (0–1439) with a database request (usage estimate).
+  activeMinutes   Int[]    @default([]) @map("active_minutes")
 
   @@map("relay_usage")
 }
