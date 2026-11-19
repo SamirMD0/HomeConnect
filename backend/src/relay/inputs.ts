@@ -1,6 +1,8 @@
 import { z } from 'zod';
 
-const uuid = z.string().uuid().transform(value => value.toLowerCase());
+// UUID-shaped, not strictly RFC 4122: PostgreSQL accepts any 8-4-4-4-12 hex id,
+// and real shop data has branch ids whose variant digit is not 8, 9, a or b.
+const uuid = z.guid().transform(value => value.toLowerCase());
 
 export const MAX_BLOB_BYTES = 2 * 1024 * 1024;
 export const blobInput = z.custom<Buffer>(value => Buffer.isBuffer(value) && value.length > 0 && value.length <= MAX_BLOB_BYTES);

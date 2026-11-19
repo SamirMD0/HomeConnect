@@ -21,7 +21,8 @@ const defaults = {
 };
 export type ActionDependencies = typeof defaults;
 const supported = new Set(['customer_payment.create', 'sales_order.create', 'supplier_payment.create', 'supplier_bill.upload','report.request']);
-const id = z.string().uuid();
+// PC record ids are UUID-shaped but not always RFC 4122 (see relay/inputs.ts).
+const id = z.guid();
 const object = z.record(z.string(), z.unknown());
 
 function actionRequest(action: ClaimedAction) {

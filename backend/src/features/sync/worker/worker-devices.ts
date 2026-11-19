@@ -7,9 +7,10 @@ import { workerState, relayUrlSchema } from './worker-settings';
 import { decryptWorkerSecret } from './worker-secret';
 import { WorkerRelay } from './relay-client';
 
+// z.guid(): shop ids are UUID-shaped but not always RFC 4122 (see relay/inputs.ts).
 export const pairDeviceSchema = z.object({
-  userId: z.string().uuid(), name: z.string().trim().min(1).max(200),
-  branchIds: z.array(z.string().uuid()).min(1).max(100).refine(ids => new Set(ids).size === ids.length),
+  userId: z.guid(), name: z.string().trim().min(1).max(200),
+  branchIds: z.array(z.guid()).min(1).max(100).refine(ids => new Set(ids).size === ids.length),
 }).strict();
 async function configuredRelay() {
   const state = await workerState();

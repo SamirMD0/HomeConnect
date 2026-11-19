@@ -18,8 +18,11 @@ export function PhoneCloudSyncPanel() {
   const [dirty, setDirty] = useState(false);
   const [generated,setGenerated]=useState<{secret:string;sha256:string}|null>(null);
   const [usage, setUsage] = useState<UsageEstimate | null>(null);
+  // What the PC has saved, not what is being typed: relay calls need saved settings.
+  const [saved, setSaved] = useState<Status | null>(null);
+  const relayReady = Boolean(saved?.relayUrl && saved.secretConfigured);
   // Read once per visit: every relay call wakes the free-plan database.
-  const usageReady = Boolean(status?.enabled && status.relayUrl && status.secretConfigured);
+  const usageReady = Boolean(relayReady && saved?.enabled);
   useEffect(() => {
     if (!usageReady) return;
     let mounted = true;
@@ -37,6 +40,7 @@ export function PhoneCloudSyncPanel() {
   useEffect(() => {
     let mounted = true;
     const refresh = () => api.get('/sync/worker').then(response => {
+      if (mounted) setSaved(response.data.data);
       if (mounted) setStatus(previous => previous ? {
         ...previous, lastSuccessAt: response.data.data.lastSuccessAt, lastError: response.data.data.lastError,
       } : response.data.data);
@@ -56,7 +60,7 @@ export function PhoneCloudSyncPanel() {
         syncMinutes: status.syncMinutes ?? 15,
         ...(secret ? { workerSecret: secret } : {}),
       });
-      setStatus(response.data.data); setSecret(''); setDirty(false); setMessage('Cloud sync settings saved.');
+      setStatus(response.data.data); setSaved(response.data.data); setSecret(''); setDirty(false); setMessage('Cloud sync settings saved.');
     } catch { setError('Could not save. Check the relay address, secret and opening hours, then try again.'); }
     finally { setPending(false); }
   }
@@ -119,6 +123,6 @@ export function PhoneCloudSyncPanel() {
       </div>
       {dirty && <p className="text-sm text-slate-500">Save your changes before syncing.</p>}
     </form>}
-    {status?.secretConfigured && status.relayUrl && <PairedPhonesPanel />}
+    {relayReady && <PairedPhonesPanel />}
   </section>;
 }

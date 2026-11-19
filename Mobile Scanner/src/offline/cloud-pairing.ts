@@ -2,7 +2,8 @@ import type { AccountUser } from '@shared/mobile-contracts';
 export type CloudRole = 'ADMIN' | 'EMPLOYEE';
 export interface CloudPairing { v: 1; relay: string; deviceId: string; token: string; userId: string; userName: string; role: CloudRole; branchIds: string[] }
 export type DeviceProfile = Pick<CloudPairing, 'deviceId' | 'userId' | 'userName' | 'role' | 'branchIds'>;
-const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+// UUID-shaped, not strictly RFC 4122: shop branch ids can have any version/variant digit.
+const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export function parseDeviceProfile(value: unknown): DeviceProfile | null {
   if (!value || typeof value !== 'object') return null;
   const data = value as DeviceProfile;

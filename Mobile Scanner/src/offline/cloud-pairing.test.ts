@@ -17,7 +17,11 @@ describe('cloud QR connection mode', () => {
       role: 'EMPLOYEE', username: 'shop', fullName: pairing.userName,
     });
   });
-  it.each([{ role: 'MANAGER' }, { role: null }, { role: 'admin' }, { relay: 'http://relay.example.com' }, { relay: 'https://user:secret@relay.example.com' }, { token: 'short' }, { branchIds: [] }, { v: 2 }])('rejects malformed pairing data %j', change => {
+  it('accepts shop ids that are UUID-shaped but not RFC 4122', () => {
+    const parsed = parseCloudPairing(JSON.stringify({ ...value, branchIds: ['de9fa656-1fa7-579a-0c16-63cd6cbbed95'] }));
+    expect(parsed?.branchIds).toEqual(['de9fa656-1fa7-579a-0c16-63cd6cbbed95']);
+  });
+  it.each([{ branchIds: ['not-a-uuid'] }, { branchIds: ['de9fa656-1fa7-579a-0c16-63cd6cbbed9'] }, { role: 'MANAGER' }, { role: null }, { role: 'admin' }, { relay: 'http://relay.example.com' }, { relay: 'https://user:secret@relay.example.com' }, { token: 'short' }, { branchIds: [] }, { v: 2 }])('rejects malformed pairing data %j', change => {
     expect(parseCloudPairing(JSON.stringify({ ...value, ...change }))).toBeNull();
   });
 });

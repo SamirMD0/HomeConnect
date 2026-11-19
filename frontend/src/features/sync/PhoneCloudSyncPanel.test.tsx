@@ -8,7 +8,7 @@ const mock = vi.hoisted(() => ({
   configured: false,
 }));
 vi.mock('../../services/api', () => ({ api: mock }));
-vi.mock('./PairedPhonesPanel', () => ({ PairedPhonesPanel: () => null }));
+vi.mock('./PairedPhonesPanel', () => ({ PairedPhonesPanel: () => 'Paired phones list' }));
 import { PhoneCloudSyncPanel } from './PhoneCloudSyncPanel';
 let dom: { window: Window & typeof globalThis };
 let createRoot: typeof import('react-dom/client').createRoot;
@@ -103,6 +103,21 @@ describe('click-only worker secret setup', () => {
       expect(mock.get.mock.calls.filter(([url]) => url === '/sync/worker/usage')).toHaveLength(1);
       expect(host.textContent).toContain('about 70 of 100 hours so far, heading for about 90 (estimate)');
       expect(host.querySelector('[role="alert"]')?.textContent).toContain('Cloud use is high');
+    });
+  });
+  it('loads paired phones only after the relay address is saved, not while it is typed', async () => {
+    // A saved secret but no saved relay: the old panel appeared as soon as an address was typed.
+    mock.configured = true;
+    await withPanel(async (host) => {
+      await act(async () => undefined);
+      expect(host.textContent).not.toContain('Paired phones list');
+      const relay = host.querySelector('input[type="url"]') as HTMLInputElement;
+      const setValue = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!;
+      await act(async () => { setValue.call(relay, 'https://relay.example.com'); relay.dispatchEvent(new window.Event('input', { bubbles: true })); });
+      expect(host.textContent).not.toContain('Paired phones list');
+      mock.put.mockResolvedValue({ data: { data: { enabled: false, relayUrl: 'https://relay.example.com', secretConfigured: true, openingStart: '07:00', openingEnd: '22:00', lastSuccessAt: null, lastError: null } } });
+      await click(host, 'Save sync settings');
+      expect(host.textContent).toContain('Paired phones list');
     });
   });
   it('does not wake the cloud for usage before sync is set up', async () =>
