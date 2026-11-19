@@ -1,6 +1,25 @@
+import { transformWithOxc } from 'vite';
 import { defineConfig } from 'vitest/config';
 
+// The cloud end-to-end test imports phone sources. Their tsconfig extends
+// expo/tsconfig.base, which CI never installs, so compile them with inline
+// options instead of the phone tsconfig.
+const phoneSource = /[\\/]Mobile Scanner[\\/].*\.tsx?$/;
+
 export default defineConfig({
+  oxc: { exclude: [phoneSource] },
+  plugins: [
+    {
+      name: 'phone-sources-without-expo-tsconfig',
+      enforce: 'pre',
+      transform(code, id) {
+        if (!phoneSource.test(id)) return null;
+        return transformWithOxc(code, id, {
+          tsconfig: { compilerOptions: { target: 'ES2022', useDefineForClassFields: true, jsx: 'react-jsx' } },
+        } as Parameters<typeof transformWithOxc>[2]);
+      },
+    },
+  ],
   test: {
     include: ['backend/**/*.test.{ts,tsx}', 'frontend/src/**/*.test.{ts,tsx}', 'desktop/**/*.test.{ts,tsx}', 'scripts/**/*.test.{ts,tsx}'],
     // `logs/` holds captured browser-check artifacts, including bundled Chrome
