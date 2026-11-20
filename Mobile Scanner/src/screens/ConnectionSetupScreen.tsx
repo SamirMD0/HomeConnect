@@ -190,9 +190,12 @@ export function ConnectionSetupScreen({
         onPaired={handlePaired}
         onCloudPaired={(pairing) => {
           setQrOpen(false);
-          void onCloudPaired?.(pairing).catch(() =>
-            setMessage('Could not securely pair this phone. Please try again.')
-          );
+          void onCloudPaired?.(pairing).catch((error: unknown) => {
+            // Show the phone's own reason: a generic message gave nothing to act on.
+            const reason = error instanceof Error && error.message ? ` (${error.message.slice(0, 200)})` : '';
+            console.error('Cloud pairing failed', error);
+            setMessage(`Could not securely pair this phone${reason}. Please try again.`);
+          });
         }}
       />
     </>
