@@ -45,6 +45,22 @@ describe('outbox wake rules (protect the Neon free plan)', () => {
     expect(RESULT_CHECK_MS).toBe(5 * 60_000);
   });
 
+  it('checks every 15 s just after a send, every minute up to 10 min, then every 5 min', () => {
+    const sentAt = (age: number) => row('pending', { updated_at: new Date(T - age).toISOString() });
+    const due = (age: number, sinceCheck: number) =>
+      outboxWakeReason([sentAt(age)], T, { lastSendWakeAt: 0, lastResultCheckAt: T - sinceCheck });
+    expect(due(30_000, 15_000)).toBe('results');
+    expect(due(30_000, 10_000)).toBeNull();
+    expect(due(5 * 60_000, 15_000)).toBeNull();
+    expect(due(5 * 60_000, 60_000)).toBe('results');
+    expect(due(20 * 60_000, 60_000)).toBeNull();
+    expect(due(20 * 60_000, RESULT_CHECK_MS)).toBe('results');
+    // The newest waiting action sets the pace.
+    expect(
+      outboxWakeReason([sentAt(20 * 60_000), sentAt(10_000)], T, { lastSendWakeAt: 0, lastResultCheckAt: T - 15_000 })
+    ).toBe('results');
+  });
+
   it('does nothing for finished, archived or empty outboxes', () => {
     const state = { lastSendWakeAt: 0, lastResultCheckAt: 0 };
     expect(outboxWakeReason([], T, state)).toBeNull();

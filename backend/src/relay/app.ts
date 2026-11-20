@@ -32,6 +32,10 @@ export interface RelayOptions {
   now?: () => number;
 }
 
+/** How long the PC's wait request may stay open (Render allows far longer). */
+const waitQuery = z.object({
+  timeoutMs: z.coerce.number().int().min(1000).max(50000).default(25000),
+});
 const digest = (token: string) => createHash('sha256').update(token).digest();
 const tokenFrom = (authorization: string | undefined) =>
   /^Bearer ([^\s]+)$/.exec(authorization ?? '')?.[1];
@@ -90,7 +94,9 @@ export function createRelayApp(options: RelayOptions = {}) {
     const started = now();
     const path = req.path;
     res.on('finish', () => {
-      log({ method: req.method, path, status: res.statusCode, ms: Math.max(0, now() - started) });
+      // The PC's wait requests repeat all day; log only when they fail.
+      if (!res.locals.quiet || res.statusCode >= 400)
+        log({ method: req.method, path, status: res.statusCode, ms: Math.max(0, now() - started) });
       // Health polling must allow the database to remain asleep.
       if (res.locals.health) return;
       void store
@@ -109,14 +115,61 @@ export function createRelayApp(options: RelayOptions = {}) {
     res.json({ ok: true });
   });
 
+  const workerAuth: RequestHandler = (req, _res, next) => {
+    const token = tokenFrom(req.headers.authorization);
+    if (!token || !timingSafeEqual(digest(token), expected))
+      return next(new RelayError(401, 'UNAUTHORIZED', 'Worker authentication required.'));
+    next();
+  };
+
+  /*
+   * Wake signal for the shop PC, held in memory only. The PC keeps one long
+   * request open here during opening hours; a phone action (or Refresh) answers
+   * it at once, so a payment reaches the PC in seconds instead of at the next
+   * 15-minute cycle. This route never touches the database, so waiting costs
+   * no Neon compute. `actions` starts true: after a relay restart the PC checks once.
+   */
+  const pending = { actions: true, refresh: false };
+  const waiters = new Set<() => void>();
+  const wakeWorker = (kind: 'actions' | 'refresh') => {
+    pending[kind] = true;
+    for (const waiter of [...waiters]) waiter();
+  };
+  app.get(
+    '/relay/v1/worker-wait',
+    workerAuth,
+    rateLimit(30, now),
+    validate(waitQuery, 'query'),
+    (_req, res) => {
+      res.locals.health = true;
+      res.locals.quiet = true;
+      let done = false;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        waiters.delete(finish);
+        if (res.writableEnded || res.destroyed) return;
+        const body = { ...pending };
+        pending.actions = false;
+        pending.refresh = false;
+        res.set('Cache-Control', 'no-store').json(body);
+      };
+      const timer = setTimeout(finish, res.locals.query.timeoutMs);
+      res.on('close', () => {
+        // The PC hung up first: keep the signal for its next request.
+        done = true;
+        clearTimeout(timer);
+        waiters.delete(finish);
+      });
+      if (pending.actions || pending.refresh) return finish();
+      waiters.add(finish);
+    }
+  );
+
   const worker = express.Router();
   worker.use(
-    (req, _res, next) => {
-      const token = tokenFrom(req.headers.authorization);
-      if (!token || !timingSafeEqual(digest(token), expected))
-        return next(new RelayError(401, 'UNAUTHORIZED', 'Worker authentication required.'));
-      next();
-    },
+    workerAuth,
     rateLimit(120, now),
     countBody,
     express.json({ limit: MAX_BLOB_BYTES })
@@ -252,6 +305,7 @@ export function createRelayApp(options: RelayOptions = {}) {
       throw new RelayError(403, 'BRANCH_ACCESS_DENIED', 'Branch access denied.');
     const result = await store.enqueue(paired, res.locals.body);
     res.locals.actionsReceived = result.created ? 1 : 0;
+    wakeWorker('actions');
     res.status(result.created ? 201 : 200).json({ id: result.id, status: result.status });
   });
   device.put(
@@ -272,8 +326,15 @@ export function createRelayApp(options: RelayOptions = {}) {
       const paired = res.locals.device as RelayDevice;
       const mime = imageMime.parse(req.headers['content-type']!.split(';')[0].trim().toLowerCase());
       res.json(await store.putBlob(paired.id, res.locals.params.id, mime, res.locals.body));
+      // A bill photo completes its action: the PC can claim it now.
+      wakeWorker('actions');
     }
   );
+  // Pull-to-refresh: ask the shop PC to send fresh data now, not at its next cycle.
+  device.post('/refresh', validate(emptyInput.default({}), 'body'), (_req, res) => {
+    wakeWorker('refresh');
+    res.json({ ok: true });
+  });
   device.get('/actions', validate(actionsQuery, 'query'), async (_req, res) => {
     const paired = res.locals.device as RelayDevice;
     res.json(

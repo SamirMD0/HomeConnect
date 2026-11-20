@@ -82,6 +82,25 @@ export class SyncEngine {
     if (this.flight) this.again = true;
     return this.sync();
   };
+  /**
+   * Ask the shop PC, through the relay, to send fresh data now instead of at
+   * its next 15-minute cycle. Fire and forget: the next sync collects it.
+   */
+  askPcForFreshData = async (): Promise<boolean> => {
+    if (this.cancelled) return false;
+    try {
+      const response = await (this.options.fetch ?? fetch)(`${this.pairing.relay}/relay/v1/device/refresh`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${this.pairing.token}`, 'Content-Type': 'application/json' },
+        body: '{}',
+        redirect: 'error',
+        signal: AbortSignal.timeout(20000),
+      });
+      return response.ok;
+    } catch {
+      return false;
+    }
+  };
   async stopAndWipe() {
     await this.stop();
     await wipeLocalDb(this.db);

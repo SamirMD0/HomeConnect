@@ -67,6 +67,50 @@ export class SyncWorkerScheduler {
     // The handler returns before any database/network work begins.
     setImmediate(() => void this.cycle());
   }
+  /**
+   * A phone sent something: apply it now, then send the changed records back,
+   * without moving the regular cycle. Woken by the relay's wait signal.
+   */
+  quick() {
+    if (this.stopped || process.env.HOSTED_MODE === 'true') return;
+    // A running full cycle may have claimed before the action arrived: run again after it.
+    if (this.running) { this.queuedQuick = true; return; }
+    setImmediate(() => void this.quickCycle());
+  }
+  private queuedQuick = false;
+  async quickCycle() {
+    if (this.running || this.stopped || process.env.HOSTED_MODE === 'true') return;
+    this.running = true;
+    try {
+      let state = await this.deps.state();
+      if (!state.enabled || !state.relayUrl || !state.workerSecretEncrypted) return;
+      await this.deps.withLock(async () => {
+        state = await this.deps.state();
+        if (!state.enabled || !state.relayUrl || !state.workerSecretEncrypted) return;
+        const config = state;
+        const deadline = Date.now() + 60000;
+        const save = async (data: Prisma.SyncWorkerStateUpdateInput) => {
+          if ((await this.deps.save(data, config)).count === 0) throw new CycleExpired();
+          return this.deps.state();
+        };
+        const relay = this.deps.relay(state, deadline);
+        await this.deps.apply(relay, deadline - 15000);
+        // The applied payment changed balances: send them while the phone waits.
+        if (state.snapshotDone && Date.now() < deadline - 15000) {
+          const sources = { cursor: snapshotCursor, page: sourcePage, scope: systemScope, save, feed: readChanges };
+          await this.deps.push(state, relay, deadline - 10000, sources);
+        }
+      });
+    } catch {
+      // The regular cycle retries and reports errors; a quick pass stays silent.
+    } finally {
+      this.running = false;
+      if (!this.stopped) {
+        if (this.queued) { this.queued = false; this.request(); }
+        else if (this.queuedQuick) { this.queuedQuick = false; this.quick(); }
+      }
+    }
+  }
   async cycle() {
     if (this.running || this.stopped || process.env.HOSTED_MODE === 'true') return;
     this.running = true;
@@ -112,9 +156,12 @@ export class SyncWorkerScheduler {
       this.running = false;
       if (!this.stopped) {
         if (this.queued) { this.queued = false; this.request(); }
-        else if (delay > 0) {
-          this.timer = setTimeout(() => this.request(), delay);
-          this.timer.unref();
+        else {
+          if (delay > 0) {
+            this.timer = setTimeout(() => this.request(), delay);
+            this.timer.unref();
+          }
+          if (this.queuedQuick) { this.queuedQuick = false; this.quick(); }
         }
       }
     }

@@ -47,12 +47,15 @@ export class OutboxSender {
   }
   private async status(row: OutboxRow, status: ActionStatus, result?: unknown) {
     if (!statuses.has(status)) throw new Error('Invalid action status');
+    // updated_at moves only when the status changes: an unchanged "pending"
+    // must age, or the fast result checks (outbox-wake) would never slow down.
     await this.db.exec(
-      'UPDATE outbox SET local_status=?,result=?,updated_at=?,attempts=0,next_attempt_at=0,last_error=? WHERE id=? AND archived=0',
+      'UPDATE outbox SET updated_at=CASE WHEN local_status=? THEN updated_at ELSE ? END,local_status=?,result=?,attempts=0,next_attempt_at=0,last_error=? WHERE id=? AND archived=0',
       [
         status,
-        result == null ? null : JSON.stringify(result),
         this.now().toISOString(),
+        status,
+        result == null ? null : JSON.stringify(result),
         status === 'failed' ? FAILED_MESSAGE : null,
         row.id,
       ]

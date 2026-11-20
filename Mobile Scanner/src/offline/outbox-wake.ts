@@ -8,6 +8,15 @@ import type { OutboxRow } from './outbox';
 export const SEND_RETRY_MIN_MS = 30_000;
 export const RESULT_CHECK_MS = 5 * 60_000;
 export const MANUAL_REFRESH_MIN_MS = 30_000;
+/**
+ * Right after a send the shop PC is woken through the relay and usually
+ * answers within seconds, and Neon is awake anyway: check every 15 s for the
+ * first 2 minutes, every minute up to 10 minutes, then back to every 5.
+ */
+export const FRESH_RESULT_CHECK_MS = 15_000;
+export const RECENT_RESULT_CHECK_MS = 60_000;
+const FRESH_FOR_MS = 2 * 60_000;
+const RECENT_FOR_MS = 10 * 60_000;
 
 /** Not on the relay yet: the phone must send these. */
 const NOT_SENT = new Set(['queued', 'awaiting_photo']);
@@ -34,9 +43,18 @@ export function outboxWakeReason(rows: OutboxRow[], now: number, state: WakeStat
   const live = rows.filter((row) => !row.archived);
   const sendDue = live.some((row) => NOT_SENT.has(row.local_status) && row.next_attempt_at <= now);
   if (sendDue && now - state.lastSendWakeAt >= SEND_RETRY_MIN_MS) return 'send';
-  const waiting = live.some((row) => WAITING_FOR_PC.has(row.local_status));
-  if (waiting && now - state.lastResultCheckAt >= RESULT_CHECK_MS) return 'results';
+  const waiting = live.filter((row) => WAITING_FOR_PC.has(row.local_status));
+  if (waiting.length && now - state.lastResultCheckAt >= resultCheckEvery(waiting, now)) return 'results';
   return null;
+}
+
+/** Newest wait first: an action sent seconds ago is checked far more often. */
+function resultCheckEvery(waiting: OutboxRow[], now: number) {
+  const newest = Math.max(...waiting.map((row) => Date.parse(row.updated_at ?? '') || 0));
+  const age = now - newest;
+  if (age < FRESH_FOR_MS) return FRESH_RESULT_CHECK_MS;
+  if (age < RECENT_FOR_MS) return RECENT_RESULT_CHECK_MS;
+  return RESULT_CHECK_MS;
 }
 
 /** Pull-to-refresh and opening the Waiting list: at most one sync per 30 s. */
