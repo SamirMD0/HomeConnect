@@ -959,6 +959,180 @@ const http = (method: 'get' | 'patch' | 'post', path: string, body?: object) => 
     });
   });
 
+  describe('trial balance compared with earlier files', () => {
+    /** A trial balance like the old system prints: accounts at zero are left out. */
+    const trialBalance = (accounts: Array<[string, string, number]>) => {
+      const total = accounts.reduce((sum, [, , balance]) => sum + balance, 0);
+      return [
+        'Trial Balance,By Date,Account,Name,Curr,Total Debit,Total Credit,Balance Debit,Balance Credit',
+        ...accounts.map(
+          ([code, name, balance]) => code + ',' + name + ',USD,' + balance + ',0,' + balance + ',0'
+        ),
+        'Debit,Credit,Balance,Totals :,' + total + ',0,' + total,
+      ].join(',');
+    };
+    const accountCustomer = async (accountCode: string) =>
+      (
+        await db.customerImportAccount.findUniqueOrThrow({
+          where: { branchId_accountCode: { branchId: a, accountCode } },
+        })
+      ).customerId;
+
+    it('a customer the trial balance no longer lists is settled to zero by default; manual customers are not listed', async () => {
+      const first = await create(
+        trialBalance([
+          ['4110000001', 'Stays', 300],
+          ['4110000002', 'Paid Off', 95],
+        ])
+      );
+      expect(first.missing).toEqual([]);
+      await commit(first.id, [], password);
+      const paidOff = await accountCustomer('4110000002');
+      const manual = await customer('Shop Customer', '70111222');
+      await db.debt.create({
+        data: {
+          customerId: manual.id,
+          branchId: a,
+          description: 'Manual sale',
+          originalAmount: '40',
+          baseOriginalAmount: '40',
+          dueDate: new Date('2027-01-01'),
+          createdById: owner,
+        },
+      });
+      const draft = await create(trialBalance([['4110000001', 'Stays', 300]]));
+      expect(draft.missing).toHaveLength(1);
+      expect(draft.missing[0]).toMatchObject({
+        customerId: paidOff,
+        accountCode: '4110000002',
+        owed: [{ currency: 'USD', amount: '95.00' }],
+        lastSeen: { balance: '95.00', currency: 'USD' },
+        activitySinceLastImport: false,
+        decision: 'SETTLE',
+      });
+      expect(draft.planned).toMatchObject({ settledMissing: 1, settledMissingTotalUsd: '95.00' });
+      expect(draft.planned.branchTotals[0]).toMatchObject({
+        paymentUsd: '95.00',
+        settledMissingUsd: '95.00',
+        openBeforeUsd: '435.00',
+        openAfterUsd: '340.00',
+      });
+      await expect(commit(draft.id)).rejects.toMatchObject({ statusCode: 400 });
+      expect(await commit(draft.id, [], password)).toMatchObject({
+        settledMissing: 1,
+        settledMissingTotalUsd: '95.00',
+      });
+      expect(await outstanding(paidOff)).toBe('0.00');
+      expect(await outstanding(manual.id)).toBe('40.00');
+      expect(await outstanding(await accountCustomer('4110000001'))).toBe('300.00');
+      const payment = await db.payment.findFirstOrThrow({ where: { customerId: paidOff } });
+      expect(payment).toMatchObject({ paymentMethod: 'OTHER' });
+      expect(payment.idempotencyKey).toContain('customer-import:' + draft.id + ':m:');
+      // Once settled, the next file does not list them again.
+      expect((await create(trialBalance([['4110000001', 'Stays', 300]]))).missing).toEqual([]);
+    });
+
+    it('keeps a missing customer with HomeConnect activity unless chosen, and honours a saved choice', async () => {
+      const first = await create(
+        trialBalance([
+          ['4110000001', 'Stays', 300],
+          ['4110000002', 'Paid Here', 95],
+        ])
+      );
+      await commit(first.id, [], password);
+      const paidHere = await accountCustomer('4110000002');
+      const debt = await db.debt.findFirstOrThrow({ where: { customerId: paidHere } });
+      await DebtsService.recordDebtPayment(
+        debt.id,
+        { amount: '15', currency: 'USD', paymentDate: '2026-10-29', paymentMethod: 'CASH' },
+        actor as never,
+        { mode: 'single', branchIds: [a] }
+      );
+      const draft = await create(trialBalance([['4110000001', 'Stays', 300]]));
+      expect(draft.missing[0]).toMatchObject({
+        activitySinceLastImport: true,
+        decision: 'KEEP',
+        owed: [{ currency: 'USD', amount: '80.00' }],
+      });
+      expect(draft.planned.settledMissing).toBe(0);
+      expect(await commit(draft.id)).toMatchObject({ settledMissing: 0 });
+      expect(await outstanding(paidHere)).toBe('80.00');
+      const chosen = await create(trialBalance([['4110000001', 'Stays', 300]]));
+      const saved = await CustomerImportService.updateDraft(
+        chosen.id,
+        { missing: [{ customerId: paidHere, action: 'SETTLE' }] },
+        actor
+      );
+      expect(saved.missing[0].decision).toBe('SETTLE');
+      await expect(
+        CustomerImportService.updateDraft(
+          chosen.id,
+          { missing: [{ customerId: randomUUID(), action: 'SETTLE' }] },
+          actor
+        )
+      ).rejects.toMatchObject({ code: 'CUSTOMER_IMPORT_STALE' });
+      expect(await commit(chosen.id, [], password)).toMatchObject({ settledMissing: 1 });
+      expect(await outstanding(paidHere)).toBe('0.00');
+    });
+
+    it('a balance changed in HomeConnect after preview makes a settle stale and writes nothing', async () => {
+      const first = await create(
+        trialBalance([
+          ['4110000001', 'Stays', 300],
+          ['4110000002', 'Paid Off', 95],
+        ])
+      );
+      await commit(first.id, [], password);
+      const paidOff = await accountCustomer('4110000002');
+      const draft = await create(trialBalance([['4110000001', 'Stays', 300]]));
+      const debt = await db.debt.findFirstOrThrow({ where: { customerId: paidOff } });
+      await DebtsService.recordDebtPayment(
+        debt.id,
+        { amount: '5', currency: 'USD', paymentDate: '2026-10-29', paymentMethod: 'CASH' },
+        actor as never,
+        { mode: 'single', branchIds: [a] }
+      );
+      await expect(commit(draft.id, [], password)).rejects.toMatchObject({
+        code: 'CUSTOMER_IMPORT_STALE',
+      });
+      expect(await outstanding(paidOff)).toBe('90.00');
+    });
+
+    it('a file that has not changed since the last import is an old difference, not a conflict, until applied once', async () => {
+      const first = await create(trialBalance([['4110000146', 'Repeat Customer', 400]]));
+      await commit(first.id, [], password);
+      const id = await accountCustomer('4110000146');
+      const debt = await db.debt.findFirstOrThrow({ where: { customerId: id } });
+      await DebtsService.recordDebtPayment(
+        debt.id,
+        { amount: '50', currency: 'USD', paymentDate: '2026-10-29', paymentMethod: 'CASH' },
+        actor as never,
+        { mode: 'single', branchIds: [a] }
+      );
+      // The old system moved to 380 after the payment here: news, so it is checked.
+      const changed = await create(trialBalance([['4110000146', 'Repeat Customer', 380]]));
+      const changedKinds = changed.rows[0].conflicts.map((item) => item.kind);
+      expect(changedKinds).toContain('BALANCE_ACTIVITY');
+      expect(changedKinds).not.toContain('BALANCE_OLD_GAP');
+      await commit(changed.id);
+      expect(await outstanding(id)).toBe('350.00');
+      // The next file still says 380: nothing new happened in the old system.
+      // Another day's printout: the same balance, so a different file.
+      const same = await create(trialBalance([['4110000146', 'Repeat Customer M', 380]]));
+      const kinds = same.rows[0].conflicts.map((item) => item.kind);
+      expect(kinds).toContain('BALANCE_OLD_GAP');
+      expect(kinds).not.toContain('BALANCE_ACTIVITY');
+      expect(same.rows[0].balance).toMatchObject({ kind: 'INCREASE', difference: '30.00' });
+      expect(same.rows[0].decision.skipOpeningBalance).toBe(true);
+      expect(same.planned.balanceIncreases).toBe(0);
+      await commit(same.id, [{ ...same.rows[0].decision, skipOpeningBalance: false }], password);
+      expect(await outstanding(id)).toBe('380.00');
+      const settled = await create(trialBalance([['4110000146', 'Repeat Customer', 380]]));
+      expect(settled.rows[0].balance.kind).toBe('NONE');
+      expect(settled.rows[0].conflicts.map((item) => item.kind)).not.toContain('BALANCE_OLD_GAP');
+    });
+  });
+
   it('all endpoints are ADMIN-only even when the employee has branch access; unknown decision rows are rejected', async () => {
     const draft = await create('Name,Phone\nAli,03123456');
     await expect(commit(draft.id, [{ rowNumber: 999, action: 'SKIP' }])).rejects.toMatchObject({

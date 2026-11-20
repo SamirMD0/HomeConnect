@@ -18,8 +18,9 @@ import {
   importNeedsResolution,
   rowsChangedFirst,
   customerImportSteps,
+  missingSettleTotalUsd,
 } from './CustomerCsvImportDialog';
-import type { CustomerImportPreview } from '../api/customer-import.api';
+import type { CustomerImportPreview, MissingCustomer } from '../api/customer-import.api';
 
 const preview: CustomerImportPreview = {
   id: 'draft',
@@ -97,6 +98,7 @@ function render(
       onFile={vi.fn()}
       onMapping={vi.fn()}
       onDecision={vi.fn()}
+      onMissing={vi.fn()}
       onPassword={vi.fn()}
       onDueDate={vi.fn()}
       onRowBranches={vi.fn()}
@@ -430,6 +432,84 @@ describe('grouped preview, deposits and branch totals', () => {
         conflicts: [{ kind: 'MAIN_BRANCH_MATCH', message: 'Also in Main', blocking: false }],
       })
     ).toBe('conflict');
+  });
+  it('puts an unchanged old-system balance under Old difference, not Conflict, until applied', () => {
+    const gap = {
+      ...update,
+      balance: {
+        kind: 'INCREASE' as const,
+        current: '350.00',
+        file: '380.00',
+        difference: '30.00',
+      },
+      conflicts: [
+        ...update.conflicts,
+        { kind: 'BALANCE_OLD_GAP', message: 'No change in the old system', blocking: false },
+      ],
+      decision: { ...update.decision, skipOpeningBalance: true },
+    };
+    expect(rowGroup(gap)).toBe('gap');
+    expect(rowGroup({ ...gap, decision: { ...gap.decision, skipOpeningBalance: false } })).toBe(
+      'gap'
+    );
+    const html = render(3, { preview: { ...preview, rows: [gap] } });
+    expect(html).toContain('Old difference');
+    expect(html).not.toContain('>Conflict<');
+  });
+  it('lists customers missing from the file with what settling them pays', () => {
+    const missing: MissingCustomer[] = [
+      {
+        customerId: 'x',
+        name: 'علاء',
+        branchId: 'a',
+        branchName: 'فرع بيروت',
+        accountCode: '4110001340',
+        owed: [{ currency: 'USD', amount: '95.00' }],
+        lastSeen: {
+          fileName: 'CUSTOMER-DEBTS.csv',
+          date: '2026-11-19',
+          balance: '95.00',
+          currency: 'USD',
+        },
+        activitySinceLastImport: false,
+        decision: 'SETTLE',
+      },
+      {
+        customerId: 'y',
+        name: 'محمد حنان',
+        branchId: 'a',
+        branchName: 'فرع بيروت',
+        accountCode: null,
+        owed: [{ currency: 'USD', amount: '85.00' }],
+        lastSeen: null,
+        activitySinceLastImport: true,
+        decision: 'KEEP',
+      },
+    ];
+    expect(missingSettleTotalUsd(missing)).toBe('95.00');
+    const html = render(4, { preview: { ...preview, missing } });
+    expect(html).toContain('Not in this file (2)');
+    expect(html).toContain('1 to settle');
+    expect(html).toContain('2026-11-19');
+    expect(html).toContain('No account number');
+    expect(html).toContain('Activity in HomeConnect since the last import');
+    expect(html).toContain('aria-label="Settle علاء to zero"');
+    const confirm = render(5, {
+      preview: {
+        ...preview,
+        missing,
+        planned: { ...preview.planned, settledMissing: 1, settledMissingTotalUsd: '95.00' },
+      },
+    });
+    expect(confirm).toContain('Not in this file (1)');
+    expect(confirm).toContain('aria-label="Account password"');
+    expect(
+      renderToStaticMarkup(
+        <CustomerImportSummary
+          result={{ ...preview.planned, settledMissing: 1, settledMissingTotalUsd: '95.00' }}
+        />
+      )
+    ).toContain('Not in file, settled');
   });
   it('colors each group and offers a filter for it', () => {
     const html = render(3, {

@@ -44,6 +44,21 @@ const decisionsSchema = z
     (rows) => new Set(rows.map((row) => row.rowNumber)).size === rows.length,
     'Each row may have only one decision'
   );
+/** What happens to a customer who owes in HomeConnect but is not in the trial balance. */
+const missingDecisionsSchema = z
+  .array(
+    z
+      .object({
+        customerId: databaseUuidSchema('Invalid customer ID'),
+        action: z.enum(['SETTLE', 'KEEP']),
+      })
+      .strict()
+  )
+  .max(MAX_CUSTOMER_IMPORT_ROWS)
+  .refine(
+    (items) => new Set(items.map((item) => item.customerId)).size === items.length,
+    'Each customer may have only one choice'
+  );
 export const createCustomerImportSchema = z
   .object({
     branchId: databaseUuidSchema('Invalid destination branch ID'),
@@ -58,6 +73,7 @@ export const updateCustomerImportSchema = z
   .object({
     columnMapping: columnMappingSchema.optional(),
     decisions: decisionsSchema.optional(),
+    missing: missingDecisionsSchema.optional(),
     rowBranches: z
       .array(
         z
@@ -77,12 +93,14 @@ export const updateCustomerImportSchema = z
     (value) =>
       value.columnMapping !== undefined ||
       value.decisions !== undefined ||
+      value.missing !== undefined ||
       value.rowBranches !== undefined,
     'Supply mapping, decisions or branches'
   );
 export const commitCustomerImportSchema = z
   .object({
     decisions: decisionsSchema,
+    missing: missingDecisionsSchema.optional(),
     accountPassword: z.string().min(1).optional(),
     dueDate: z
       .string()

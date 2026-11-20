@@ -148,6 +148,193 @@ const SIMILAR_NAME_MIN_LENGTH = 5;
 const similarName = (a: string, b: string) =>
   a !== b && Math.min(a.length, b.length) >= SIMILAR_NAME_MIN_LENGTH && withinOneEdit(a, b);
 
+/** How many earlier committed imports are read to find an account's last file balance. */
+const PREVIOUS_FILE_LOOKBACK = 60;
+export interface PreviousFileBalance {
+  balance: string;
+  currency: 'USD' | 'LBP';
+  fileName: string;
+  committedAt: Date;
+}
+/**
+ * The balance each account had in the newest earlier committed file. A trial balance that
+ * still says the same thing is not news from the old system, whatever HomeConnect shows.
+ */
+export async function loadPreviousFileBalances(draftId: string, branchIds: string[], tx: Client) {
+  const found = new Map<string, PreviousFileBalance>();
+  const previous = await tx.customerImport.findMany({
+    where: {
+      status: 'COMMITTED',
+      id: { not: draftId },
+      committedAt: { not: null },
+      branchId: { in: branchIds },
+    },
+    select: { branchId: true, fileName: true, committedAt: true, rows: true, columnMapping: true },
+    orderBy: { committedAt: 'desc' },
+    take: PREVIOUS_FILE_LOOKBACK,
+  });
+  for (const item of previous) {
+    let parsed: ReturnType<typeof mapCustomerRows>;
+    try {
+      parsed = mapCustomerRows(
+        item.rows as unknown as CsvDocument,
+        item.columnMapping as ColumnMapping
+      );
+    } catch {
+      continue;
+    }
+    for (const row of parsed) {
+      const key = previousFileKey(item.branchId, row.accountCode);
+      if (row.accountCode && row.hasBalance && !row.issues.length && !found.has(key))
+        found.set(key, {
+          balance: fileMoney(row.openingBalance, row.currency),
+          currency: row.currency,
+          fileName: item.fileName,
+          committedAt: item.committedAt!,
+        });
+    }
+  }
+  return found;
+}
+function fileMoney(value: string, currency: 'USD' | 'LBP') {
+  try {
+    return moneyToApiString(parseMoney(value || '0', currency), currency);
+  } catch {
+    return value || '0';
+  }
+}
+/** A branch's own import first, then the import holding the whole file. */
+const previousFileKey = (branchId: string, accountCode: string) => branchId + ':' + accountCode;
+const previousFileFor = (
+  balances: Map<string, PreviousFileBalance>,
+  branchIds: string[],
+  accountCode: string
+) =>
+  branchIds.map((branchId) => balances.get(previousFileKey(branchId, accountCode))).find(Boolean);
+const sameFileBalance = (
+  previous: PreviousFileBalance | undefined,
+  row: { openingBalance: string; currency: 'USD' | 'LBP' }
+) => {
+  if (!previous || previous.currency !== row.currency) return false;
+  try {
+    return parseMoney(previous.balance, row.currency).equals(
+      parseMoney(row.openingBalance || '0', row.currency)
+    );
+  } catch {
+    return false;
+  }
+};
+const shortDate = (value: Date) => value.toISOString().slice(0, 10);
+
+export type MissingDecision = 'SETTLE' | 'KEEP';
+/**
+ * Customers an earlier import brought in who still owe in HomeConnect but are not in this
+ * trial balance. The old system leaves out accounts at zero, so a customer who paid in full
+ * simply disappears from the file; settling records that payment here.
+ */
+async function findMissingCustomers({
+  document,
+  rows,
+  previousFileBalances,
+  branchName,
+  draftBranchId,
+  tx,
+}: {
+  document: CsvDocument;
+  rows: Array<{ branchId: string; status: string; matches: Array<{ id: string }> }>;
+  previousFileBalances: Map<string, PreviousFileBalance>;
+  branchName: (id: string) => string;
+  draftBranchId: string;
+  tx: Client;
+}) {
+  // Only a full trial balance says anything about the accounts it leaves out.
+  if (document.format !== 'TRIAL_BALANCE') return [];
+  const covered = [
+    ...new Set(rows.filter((row) => row.status !== 'INVALID').map((row) => row.branchId)),
+  ];
+  if (!covered.length) return [];
+  const inFile = [...new Set(rows.flatMap((row) => row.matches.map((match) => match.id)))];
+  const candidates = await tx.customer.findMany({
+    where: {
+      branchId: { in: covered },
+      deletedAt: null,
+      id: { notIn: inFile },
+      OR: [
+        { importAccounts: { some: {} } },
+        { debts: { some: { sourceCustomerImportId: { not: null } } } },
+      ],
+    },
+    select: {
+      id: true,
+      name: true,
+      branchId: true,
+      importAccounts: { select: { accountCode: true }, orderBy: { accountCode: 'asc' } },
+    },
+    orderBy: { name: 'asc' },
+  });
+  const balances = await loadCustomerBalances(
+    candidates.map((customer) => customer.id),
+    tx
+  );
+  return candidates.flatMap((customer) => {
+    const state = balances.get(customer.id);
+    if (!state?.obligations.length) return [];
+    const owed = (['USD', 'LBP'] as const).flatMap((currency) => {
+      const items = state.obligations.filter((item) => item.currency === currency);
+      return items.length
+        ? [
+            {
+              currency,
+              amount: moneyToApiString(
+                sumMoney(
+                  items.map((item) => item.remaining),
+                  currency
+                ),
+                currency
+              ),
+            },
+          ]
+        : [];
+    });
+    const accountCodes = customer.importAccounts.map((account) => account.accountCode);
+    const seen = accountCodes
+      .map((code) =>
+        previousFileFor(previousFileBalances, [customer.branchId, draftBranchId], code)
+      )
+      .filter((item): item is PreviousFileBalance => Boolean(item))
+      .sort((left, right) => right.committedAt.getTime() - left.committedAt.getTime())[0];
+    const decision: MissingDecision =
+      document.missingDecisions?.[customer.id] ??
+      // A sale or payment taken here since the last import may be newer than the old system.
+      (state.activitySinceLastImport ? 'KEEP' : 'SETTLE');
+    return [
+      {
+        customerId: customer.id,
+        name: customer.name,
+        branchId: customer.branchId,
+        branchName: branchName(customer.branchId),
+        accountCode: accountCodes[0] ?? null,
+        owed,
+        lastSeen: seen
+          ? {
+              fileName: seen.fileName,
+              date: shortDate(seen.committedAt),
+              balance: seen.balance,
+              currency: seen.currency,
+            }
+          : null,
+        activitySinceLastImport: state.activitySinceLastImport,
+        decision,
+        fingerprint: JSON.stringify([
+          customer.branchId,
+          state.obligations.map((item) => [item.id, item.remaining.toFixed(2)]),
+          state.activitySinceLastImport,
+        ]),
+      },
+    ];
+  });
+}
+
 export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
   const document = draft.rows as unknown as CsvDocument;
   const mapping = draft.columnMapping as ColumnMapping;
@@ -373,6 +560,11 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
     matched.filter(({ matches }) => matches.length === 1).map(({ matches }) => matches[0].id),
     tx
   );
+  const previousFileBalances = await loadPreviousFileBalances(
+    draft.id,
+    [...new Set([draft.branchId, ...branches.keys()])],
+    tx
+  );
   const supplied = new Map(
     ((draft.decisions ?? []) as unknown as CustomerImportDecision[]).map((decision) => [
       decision.rowNumber,
@@ -513,8 +705,28 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
           'This customer has open balances in another currency; the balance will not be changed',
         blocking: false,
       });
+    // The old system still says what it said last time: the difference is old, not news.
+    const previousFile = row.accountCode
+      ? previousFileFor(previousFileBalances, [row.branchId, draft.branchId], row.accountCode)
+      : undefined;
+    const oldGap =
+      matches.length === 1 &&
+      (MONEY_CHANGES as readonly string[]).includes(balance.kind) &&
+      sameFileBalance(previousFile, row);
+    if (oldGap)
+      conflicts.push({
+        kind: 'BALANCE_OLD_GAP',
+        message:
+          'No change in the old system since ' +
+          previousFile!.fileName +
+          ' (' +
+          shortDate(previousFile!.committedAt) +
+          '); HomeConnect has differed since then. Tick "Apply this change" to settle it once.',
+        blocking: false,
+      });
     // An older file looks like an increase after a payment taken in HomeConnect.
     const stale =
+      !oldGap &&
       Boolean(state?.activitySinceLastImport) &&
       (balance.kind === 'INCREASE' || balance.kind === 'NEW');
     if (stale)
@@ -541,7 +753,7 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
                   row[field] !== undefined &&
                   !(field === 'name' && matchedBy === 'NAME')
               ),
-              ...(stale ? { skipOpeningBalance: true } : {}),
+              ...(stale || oldGap ? { skipOpeningBalance: true } : {}),
             }
           : { rowNumber: row.rowNumber, action: 'CREATE' };
     const fingerprint = JSON.stringify([
@@ -573,6 +785,14 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
       decision: supplied.get(row.rowNumber) ?? defaultDecision,
       fingerprint,
     };
+  });
+  const missing = await findMissingCustomers({
+    document,
+    rows,
+    previousFileBalances,
+    branchName,
+    draftBranchId: draft.branchId,
+    tx,
   });
   const summary = {
     total: rows.length,
@@ -620,6 +840,8 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
       newDebt: Prisma.Decimal;
       increase: Prisma.Decimal;
       payment: Prisma.Decimal;
+      /** Part of payment: customers no longer in the file, settled to zero. */
+      settled: Prisma.Decimal;
       deposit: Prisma.Decimal;
     }
   >();
@@ -638,6 +860,7 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
       newDebt: zero(),
       increase: zero(),
       payment: zero(),
+      settled: zero(),
       deposit: zero(),
     };
     perBranch.set(row.branchId, line);
@@ -668,6 +891,19 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
       totals.DEPOSIT.count++;
       totals.DEPOSIT.usd = totals.DEPOSIT.usd.plus(amount);
       line.deposit = line.deposit.plus(amount);
+    }
+  }
+  const settleTotal = { count: 0, usd: zero() };
+  for (const item of missing) {
+    if (item.decision !== 'SETTLE') continue;
+    let amount = zero();
+    for (const owed of item.owed) amount = amount.plus(await usd(owed.amount, owed.currency));
+    settleTotal.count++;
+    settleTotal.usd = settleTotal.usd.plus(amount);
+    const line = perBranch.get(item.branchId);
+    if (line) {
+      line.payment = line.payment.plus(amount);
+      line.settled = line.settled.plus(amount);
     }
   }
   // What each branch's customers owe in HomeConnect now, on the same basis as the balances above.
@@ -714,6 +950,7 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
         newDebtUsd: line.newDebt.toFixed(2),
         increaseUsd: line.increase.toFixed(2),
         paymentUsd: line.payment.toFixed(2),
+        settledMissingUsd: line.settled.toFixed(2),
         depositUsd: line.deposit.toFixed(2),
         netDebtChangeUsd: net.toFixed(2),
         openBeforeUsd: before.toFixed(2),
@@ -733,6 +970,8 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
     balancePaymentTotalUsd: totals.DECREASE.usd.toFixed(2),
     deposits: totals.DEPOSIT.count,
     depositTotalUsd: totals.DEPOSIT.usd.toFixed(2),
+    settledMissing: settleTotal.count,
+    settledMissingTotalUsd: settleTotal.usd.toFixed(2),
     branchTotals,
     dueDateRequired: rows.some((row) => addsDebt(row) && !row.dueDate),
   };
@@ -751,6 +990,7 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
       name: branch.name,
     })),
     rows,
+    missing,
     summary,
     previousCommittedImport:
       previousImports.get(draft.branchId) ??
@@ -760,10 +1000,17 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
   };
 }
 type Preview = Awaited<ReturnType<typeof buildCustomerImportPreview>>;
-function validateDecisions(preview: Preview, decisions: CustomerImportDecision[]) {
+function validateDecisions(
+  preview: Preview,
+  decisions: CustomerImportDecision[],
+  missing: Array<{ customerId: string }> = []
+) {
   const rowNumbers = new Set(preview.rows.map((row) => row.rowNumber));
   if (decisions.some((decision) => !rowNumbers.has(decision.rowNumber)))
     throw new ValidationError('Decision refers to a row outside this import');
+  const listed = new Set(preview.missing.map((item) => item.customerId));
+  if (missing.some((item) => !listed.has(item.customerId)))
+    throw stale('A customer missing from the file is no longer listed.');
 }
 async function saveSnapshot(draft: Draft, tx: Client) {
   const preview = await buildCustomerImportPreview(draft, tx);
@@ -775,6 +1022,12 @@ async function saveSnapshot(draft: Draft, tx: Client) {
       rows: json({
         ...document,
         snapshot: Object.fromEntries(preview.rows.map((row) => [row.rowNumber, row.fingerprint])),
+        missingDecisions: Object.fromEntries(
+          preview.missing.map((item) => [item.customerId, item.decision])
+        ),
+        missingSnapshot: Object.fromEntries(
+          preview.missing.map((item) => [item.customerId, item.fingerprint])
+        ),
       }),
     },
   });
@@ -837,6 +1090,12 @@ export class CustomerImportService {
       const decisions = (
         values.decisions ?? ((existing.decisions ?? []) as unknown as CustomerImportDecision[])
       ).filter((decision) => !moved.has(decision.rowNumber));
+      const missingDecisions = values.missing
+        ? {
+            ...document.missingDecisions,
+            ...Object.fromEntries(values.missing.map((item) => [item.customerId, item.action])),
+          }
+        : document.missingDecisions;
       const draft = await tx.customerImport.update({
         where: { id, branchId: existing.branchId },
         data: {
@@ -851,10 +1110,14 @@ export class CustomerImportService {
               }
             : {}),
           ...(values.decisions || values.rowBranches ? { decisions: json(decisions) } : {}),
+          ...(values.missing && !values.rowBranches
+            ? { rows: json({ ...document, missingDecisions }) }
+            : {}),
           ...(values.rowBranches
             ? {
                 rows: json({
                   ...document,
+                  missingDecisions,
                   // JSON drops the undefined entries, returning those rows to their own branch.
                   rowBranches: {
                     ...document.rowBranches,
@@ -868,7 +1131,7 @@ export class CustomerImportService {
         },
       });
       const preview = await saveSnapshot(draft, tx);
-      validateDecisions(preview, values.decisions ?? []);
+      validateDecisions(preview, values.decisions ?? [], values.missing ?? []);
       return { ...preview, branch };
     });
   }
@@ -884,7 +1147,7 @@ export class CustomerImportService {
         const { draft } = await findDraft(id, actor, tx);
         if (draft.status === 'COMMITTED') return draft.result;
         const preview = await buildCustomerImportPreview(draft, tx);
-        validateDecisions(preview, values.decisions);
+        validateDecisions(preview, values.decisions, values.missing ?? []);
         const supplied = new Map(
           values.decisions.map((decision) => [decision.rowNumber, decision])
         );
@@ -931,14 +1194,26 @@ export class CustomerImportService {
               'UPDATE must target the sole matching customer in the destination branch'
             );
         }
+        const missingChoice = new Map(
+          (values.missing ?? []).map((item) => [item.customerId, item.action])
+        );
+        const settling = preview.missing.filter(
+          (item) => (missingChoice.get(item.customerId) ?? item.decision) === 'SETTLE'
+        );
+        for (const item of settling)
+          if (document.missingSnapshot?.[item.customerId] !== item.fingerprint)
+            throw stale('Balance changed for ' + item.name + ', who is not in the file.');
         const acting = rows.filter((row) => row.decision.action !== 'SKIP');
         // The destination check covers revocation and deactivation since the preview.
-        for (const branchId of new Set(acting.map((row) => row.branchId)))
+        for (const branchId of new Set([
+          ...acting.map((row) => row.branchId),
+          ...settling.map((item) => item.branchId),
+        ]))
           assertImportDestination(await checkedBranch(branchId, actor, tx));
         if (rows.some((row) => addsDebt(row) && !row.dueDate) && !values.dueDate)
           throw new ValidationError('Choose a due date for the new debts');
         const defaultDueDate = values.dueDate ? parseBusinessDate(values.dueDate) : null;
-        if (rows.some(changesMoney)) {
+        if (rows.some(changesMoney) || settling.length) {
           if (!values.accountPassword)
             throw new ValidationError('Account password is required for balance changes');
           await verifyAdminPassword(
@@ -1003,6 +1278,8 @@ export class CustomerImportService {
           balancePaymentTotalUsd: '0.00',
           deposits: 0,
           depositTotalUsd: '0.00',
+          settledMissing: 0,
+          settledMissingTotalUsd: '0.00',
         };
         let depositTotal = new Prisma.Decimal(0);
         let openingTotal = new Prisma.Decimal(0);
@@ -1308,6 +1585,84 @@ export class CustomerImportService {
           }
           reportRow(row, reasons.join('; ') + ' in ' + row.branchName);
         }
+        // Customers the trial balance no longer lists paid in full in the old system.
+        const settledBalances = await loadCustomerBalances(
+          settling.map((item) => item.customerId),
+          tx
+        );
+        let settledTotal = new Prisma.Decimal(0);
+        for (const item of settling) {
+          const scope = { mode: 'single' as const, branchIds: [item.branchId] };
+          const paid: string[] = [];
+          for (const obligation of settledBalances.get(item.customerId)?.obligations ?? []) {
+            const rate = await ExchangeRatesService.snapshotFor(
+              obligation.currency,
+              new Date(),
+              tx
+            );
+            const input = {
+              amount: moneyToApiString(obligation.remaining, obligation.currency),
+              currency: obligation.currency,
+              paymentDate: today,
+              paymentMethod: 'OTHER' as const,
+              reference,
+              idempotencyKey: IMPORT_PAYMENT_KEY_PREFIX + id + ':m:' + obligation.id,
+            };
+            if (obligation.kind === 'DEBT')
+              await DebtsService.recordDebtPaymentInTransaction(
+                tx,
+                obligation.id,
+                input,
+                actor,
+                scope
+              );
+            else
+              await InstallmentPlansService.recordPlanPaymentInTransaction(
+                tx,
+                obligation.id,
+                input,
+                actor,
+                scope
+              );
+            settledTotal = settledTotal.plus(
+              toBaseAmount(
+                obligation.remaining,
+                obligation.currency,
+                rate,
+                Prisma.Decimal.ROUND_HALF_UP
+              )
+            );
+            paid.push(input.amount + ' ' + obligation.currency);
+          }
+          await tx.activityLog.create({
+            data: {
+              branchId: item.branchId,
+              userId: actor.userId,
+              action: 'CUSTOMER_IMPORT_BALANCE_PAYMENT',
+              entityType: 'Customer',
+              entityId: item.customerId,
+              details: {
+                customerImportId: id,
+                missingFromFile: true,
+                accountCode: item.accountCode,
+                lastSeenFile: item.lastSeen?.fileName ?? null,
+                amounts: paid,
+              },
+              ipAddress: context.ipAddress,
+            },
+          });
+          summary.settledMissing++;
+          const cells = document.headers.map(() => '');
+          const mapping = draft.columnMapping as ColumnMapping;
+          if (mapping.accountCode != null) cells[mapping.accountCode] = item.accountCode ?? '';
+          if (mapping.name != null) cells[mapping.name] = item.name;
+          report.push([
+            '',
+            ...cells,
+            'Not in file: settled ' + paid.join(', ') + ' in ' + item.branchName,
+          ]);
+        }
+        summary.settledMissingTotalUsd = settledTotal.toFixed(2);
         summary.openingDebtTotalUsd = openingTotal.toFixed(2);
         summary.balanceIncreaseTotalUsd = increaseTotal.toFixed(2);
         summary.balancePaymentTotalUsd = paymentTotal.toFixed(2);

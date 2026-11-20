@@ -29,6 +29,10 @@ export interface CsvDocument {
   snapshot?: Record<number, string>;
   /** Branches chosen in the preview, by row number. Commit reads these, never client input. */
   rowBranches?: Record<number, string>;
+  /** Choices for customers the trial balance no longer lists, by customer ID. */
+  missingDecisions?: Record<string, 'SETTLE' | 'KEEP'>;
+  /** Fingerprints of those customers' balances when the preview was saved. */
+  missingSnapshot?: Record<string, string>;
 }
 const aliases: Record<CustomerImportField, string[]> = {
   name: ['name', 'customer name', 'الاسم'],

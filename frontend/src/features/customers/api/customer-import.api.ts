@@ -59,6 +59,8 @@ export interface ImportBranchTotal {
   newDebtUsd: string;
   increaseUsd: string;
   paymentUsd: string;
+  /** Part of paymentUsd: customers no longer in the file, settled to zero. */
+  settledMissingUsd?: string;
   depositUsd: string;
   netDebtChangeUsd: string;
   openBeforeUsd: string;
@@ -87,9 +89,32 @@ export interface CustomerImportResult {
   balancePaymentTotalUsd: string;
   deposits?: number;
   depositTotalUsd?: string;
+  /** Customers no longer in the trial balance whose HomeConnect debt was settled. */
+  settledMissing?: number;
+  settledMissingTotalUsd?: string;
   branchTotals?: ImportBranchTotal[];
   dueDateRequired?: boolean;
   reportCsv?: string;
+}
+export type MissingDecision = 'SETTLE' | 'KEEP';
+/**
+ * A customer an earlier import brought in who still owes in HomeConnect but is not in this
+ * trial balance. The old system leaves out accounts at zero, so they most likely paid in full.
+ */
+export interface MissingCustomer {
+  customerId: string;
+  name: string;
+  branchId: string;
+  branchName: string;
+  accountCode: string | null;
+  owed: Array<{ currency: 'USD' | 'LBP'; amount: string }>;
+  lastSeen: { fileName: string; date: string; balance: string; currency: 'USD' | 'LBP' } | null;
+  activitySinceLastImport: boolean;
+  decision: MissingDecision;
+}
+export interface MissingChoice {
+  customerId: string;
+  action: MissingDecision;
 }
 export interface CustomerImportPreview {
   id: string;
@@ -133,6 +158,8 @@ export interface CustomerImportPreview {
     mainMatches?: MainBranchMatch[];
     decision: CustomerImportDecision;
   }>;
+  /** Older drafts predate this list. */
+  missing?: MissingCustomer[];
   result: CustomerImportResult | null;
 }
 const base = '/customers/imports';
@@ -145,6 +172,7 @@ export const customerImportsApi = {
     data: {
       columnMapping?: ImportMapping;
       decisions?: CustomerImportDecision[];
+      missing?: MissingChoice[];
       rowBranches?: RowBranch[];
     }
   ) => (await api.patch<{ data: CustomerImportPreview }>(base + '/' + id, data)).data.data,
@@ -152,11 +180,13 @@ export const customerImportsApi = {
     id: string,
     decisions: CustomerImportDecision[],
     accountPassword?: string,
-    dueDate?: string
+    dueDate?: string,
+    missing?: MissingChoice[]
   ) =>
     (
       await api.post<{ data: CustomerImportResult }>(base + '/' + id + '/commit', {
         decisions,
+        ...(missing?.length ? { missing } : {}),
         ...(accountPassword ? { accountPassword } : {}),
         ...(dueDate ? { dueDate } : {}),
       })

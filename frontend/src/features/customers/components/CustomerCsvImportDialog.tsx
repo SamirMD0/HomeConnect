@@ -6,6 +6,7 @@ import {
   Check,
   CircleSlash,
   Eye,
+  History,
   MinusCircle,
   PlusCircle,
   RefreshCw,
@@ -28,6 +29,8 @@ import {
   type CustomerImportPreview,
   type CustomerImportResult,
   type ImportBranchTotal,
+  type MissingCustomer,
+  type MissingDecision,
 } from '../api/customer-import.api';
 
 export const customerImportSteps = [
@@ -76,6 +79,7 @@ interface WizardProps {
   onFile: (file: File | null) => void;
   onMapping: (mapping: ImportMapping) => void;
   onDecision: (decision: CustomerImportDecision) => void;
+  onMissing: (customerId: string, action: MissingDecision) => void;
   onPassword: (password: string) => void;
   onDueDate: (dueDate: string) => void;
   onRowBranches: (rowNumbers: number[], branchId: string | null) => void;
@@ -136,7 +140,7 @@ export function rowsChangedFirst<T extends { balance: BalanceChange; rowNumber: 
  * account or phone is an update, not a conflict: the conflict group holds only
  * rows that need a person to decide or check something.
  */
-export type RowGroup = 'conflict' | 'invalid' | 'new' | 'update' | 'unchanged' | 'skipped';
+export type RowGroup = 'conflict' | 'invalid' | 'gap' | 'new' | 'update' | 'unchanged' | 'skipped';
 const DECIDE_KINDS = new Set([
   'BRANCH_AMBIGUOUS',
   'FILE_ACCOUNT',
@@ -157,6 +161,9 @@ const needsDecision = (row: PreviewRow) =>
   row.matches.length > 1 || row.conflicts.some((conflict) => DECIDE_KINDS.has(conflict.kind));
 const needsCheck = (row: PreviewRow) =>
   row.conflicts.some((conflict) => CHECK_KINDS.has(conflict.kind));
+/** The old system has not changed since the last import, yet HomeConnect differs from it. */
+const isOldGap = (row: PreviewRow) =>
+  row.conflicts.some((conflict) => conflict.kind === 'BALANCE_OLD_GAP');
 const changesMoneyOnRow = (row: PreviewRow) =>
   row.decision.action !== 'SKIP' &&
   !row.decision.skipOpeningBalance &&
@@ -165,6 +172,7 @@ export function rowGroup(row: PreviewRow): RowGroup {
   if (row.status === 'INVALID') return 'invalid';
   if (needsDecision(row) || needsCheck(row)) return 'conflict';
   if (row.decision.action === 'SKIP') return 'skipped';
+  if (isOldGap(row)) return 'gap';
   if (row.decision.action === 'CREATE') return 'new';
   return changesMoneyOnRow(row) ? 'update' : 'unchanged';
 }
@@ -194,6 +202,15 @@ const GROUPS: Array<{
     icon: <XCircle />,
     tint: 'bg-red-50/80',
     dot: 'bg-red-500',
+  },
+  {
+    id: 'gap',
+    label: 'Old difference',
+    hint: 'The old system has not changed these customers since the last import, but HomeConnect differs from it. Nothing changes unless you tick "Apply this change"; do it once to bring them in line.',
+    tone: 'neutral',
+    icon: <History />,
+    tint: 'bg-violet-50/60',
+    dot: 'bg-violet-400',
   },
   {
     id: 'new',
@@ -277,7 +294,127 @@ export function rowsPerBranch(preview: CustomerImportPreview) {
 }
 export function importChangesMoney(result: CustomerImportResult): boolean {
   return Boolean(
-    result.openingDebts || result.balanceIncreases || result.balancePayments || result.deposits
+    result.openingDebts ||
+    result.balanceIncreases ||
+    result.balancePayments ||
+    result.deposits ||
+    result.settledMissing
+  );
+}
+/** What a missing customer owes, in every currency. */
+export function missingOwedText(item: MissingCustomer): string {
+  return item.owed.map((owed) => rowMoney(owed.amount, owed.currency)).join(' + ');
+}
+/** USD settled for the customers ticked to settle. */
+export function missingSettleTotalUsd(missing: MissingCustomer[]): string {
+  const cents = missing
+    .filter((item) => item.decision === 'SETTLE')
+    .flatMap((item) => item.owed.filter((owed) => owed.currency === 'USD'))
+    .reduce((sum, owed) => sum + Math.round(Number(owed.amount) * 100), 0);
+  return (cents / 100).toFixed(2);
+}
+
+/**
+ * Customers who owe in HomeConnect but are no longer in the trial balance. The old system
+ * leaves out accounts at zero, so they most likely paid in full there.
+ */
+export function MissingFromFile({
+  missing,
+  editable,
+  busy,
+  onChange,
+}: {
+  missing: MissingCustomer[];
+  editable: boolean;
+  busy: boolean;
+  onChange: (customerId: string, action: MissingDecision) => void;
+}) {
+  if (!missing.length) return null;
+  const settling = missing.filter((item) => item.decision === 'SETTLE').length;
+  return (
+    <section
+      aria-labelledby="missing-heading"
+      className="space-y-2 rounded-xl border border-violet-200 bg-violet-50/50 p-4"
+    >
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h4 id="missing-heading" className="text-base font-semibold text-slate-900">
+          Not in this file ({missing.length})
+        </h4>
+        <p className="text-sm text-slate-700" role="status">
+          {settling} to settle · {formatMoney(missingSettleTotalUsd(missing))}
+        </p>
+      </div>
+      <p className="text-sm text-slate-700">
+        These customers still owe in HomeConnect but the trial balance no longer lists them. The old
+        system leaves out accounts at zero, so they most likely paid in full. Settling records a
+        payment (method Other) that brings them to zero. Customers with activity in HomeConnect
+        since the last import stay as they are unless you tick them.
+      </p>
+      <div className="max-h-72 overflow-auto rounded-lg border border-violet-200 bg-white">
+        <table className="w-full min-w-[40rem] text-left text-sm">
+          <thead className="sticky top-0 bg-slate-50 text-xs font-semibold text-slate-600">
+            <tr>
+              <th scope="col" className="px-3 py-2">
+                Customer
+              </th>
+              <th scope="col" className="px-3 py-2">
+                Branch
+              </th>
+              <th scope="col" className="px-3 py-2">
+                Owes in HomeConnect
+              </th>
+              <th scope="col" className="px-3 py-2">
+                Last in a file
+              </th>
+              <th scope="col" className="px-3 py-2">
+                Settle to zero
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {missing.map((item) => (
+              <tr key={item.customerId} className="border-t border-slate-100 align-top">
+                <td className="px-3 py-2">
+                  <span dir="auto" className="font-medium text-slate-900">
+                    {item.name}
+                  </span>
+                  <span className="block text-xs text-slate-500">
+                    {item.accountCode ? 'Account: ' + item.accountCode : 'No account number'}
+                  </span>
+                </td>
+                <td className="px-3 py-2" dir="auto">
+                  {item.branchName}
+                </td>
+                <td className="px-3 py-2 font-medium tabular-nums">{missingOwedText(item)}</td>
+                <td className="px-3 py-2 text-xs text-slate-600">
+                  {item.lastSeen
+                    ? item.lastSeen.date +
+                      ' · ' +
+                      rowMoney(item.lastSeen.balance, item.lastSeen.currency)
+                    : 'Not found in recent files'}
+                  {item.activitySinceLastImport && (
+                    <span className="block font-medium text-amber-800">
+                      Activity in HomeConnect since the last import
+                    </span>
+                  )}
+                </td>
+                <td className="px-3 py-2">
+                  <input
+                    type="checkbox"
+                    aria-label={'Settle ' + item.name + ' to zero'}
+                    checked={item.decision === 'SETTLE'}
+                    disabled={!editable || busy}
+                    onChange={(event) =>
+                      onChange(item.customerId, event.target.checked ? 'SETTLE' : 'KEEP')
+                    }
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 export function importNeedsResolution(preview: CustomerImportPreview): boolean {
@@ -321,6 +458,12 @@ export function CustomerImportSummary({ result }: { result: CustomerImportResult
     ['Balance increases total USD', '$' + result.balanceIncreaseTotalUsd],
     ['Customers paying down', result.balancePayments],
     ['Payments total USD', '$' + result.balancePaymentTotalUsd],
+    ...(result.settledMissing
+      ? ([
+          ['Not in file, settled', result.settledMissing],
+          ['Settled total USD', '$' + (result.settledMissingTotalUsd ?? '0.00')],
+        ] as Array<[string, string | number]>)
+      : []),
     ...(result.deposits !== undefined
       ? ([
           ['Deposits', result.deposits],
@@ -360,6 +503,7 @@ export function totalOfBranches(lines: ImportBranchTotal[]): ImportBranchTotal {
     newDebtUsd: add((line) => line.newDebtUsd),
     increaseUsd: add((line) => line.increaseUsd),
     paymentUsd: add((line) => line.paymentUsd),
+    settledMissingUsd: add((line) => line.settledMissingUsd ?? '0.00'),
     depositUsd: add((line) => line.depositUsd),
     netDebtChangeUsd: add((line) => line.netDebtChangeUsd),
     openBeforeUsd: add((line) => line.openBeforeUsd),
@@ -453,8 +597,9 @@ export function BranchReconciliation({ lines }: { lines: ImportBranchTotal[] }) 
       </div>
       <p className="text-xs text-slate-500">
         &quot;Owed now&quot; is what every active customer in the branch owes in HomeConnect,
-        including customers not in this file. Compare &quot;Owed after import&quot; with the old
-        system&apos;s total for that branch.
+        including customers not in this file. Payments include customers settled because the file no
+        longer lists them. Compare &quot;Owed after import&quot; with the old system&apos;s total
+        for that branch.
       </p>
     </section>
   );
@@ -1066,6 +1211,12 @@ export function CustomerImportWizard(props: WizardProps) {
               </tbody>
             </table>
           </div>
+          <MissingFromFile
+            missing={preview.missing ?? []}
+            editable={step === 4}
+            busy={props.busy}
+            onChange={props.onMissing}
+          />
           {step === 4 && unresolved && (
             <p role="alert" className="text-sm font-medium text-amber-800">
               Skip invalid rows, choose one row per account or phone in each branch, and choose a
@@ -1081,6 +1232,12 @@ export function CustomerImportWizard(props: WizardProps) {
             <BranchReconciliation lines={preview.planned.branchTotals} />
           ) : null}
           <MainBranchCheck rows={preview.rows} />
+          <MissingFromFile
+            missing={(preview.missing ?? []).filter((item) => item.decision === 'SETTLE')}
+            editable={false}
+            busy={props.busy}
+            onChange={props.onMissing}
+          />
           <p className="text-xs text-slate-500">
             LBP amounts use the current exchange rate at commit. Payments count as money received
             today, with payment method Other. Deposits count as cash received today and appear on
@@ -1155,6 +1312,8 @@ export function CustomerImportWizard(props: WizardProps) {
     </div>
   );
 }
+const missingChoices = (preview: CustomerImportPreview) =>
+  (preview.missing ?? []).map((item) => ({ customerId: item.customerId, action: item.decision }));
 function CustomerImportSession({ onClose }: { onClose: () => void }) {
   const scope = useContext(BranchScopeContext);
   const guard = useCreateGuard();
@@ -1218,6 +1377,7 @@ function CustomerImportSession({ onClose }: { onClose: () => void }) {
         setPreview(
           await customerImportsApi.update(preview.id, {
             decisions: preview.rows.map((row) => row.decision),
+            ...(preview.missing?.length ? { missing: missingChoices(preview) } : {}),
           })
         );
       if (step === 5 && preview) {
@@ -1226,7 +1386,8 @@ function CustomerImportSession({ onClose }: { onClose: () => void }) {
             preview.id,
             preview.rows.map((row) => row.decision),
             password,
-            preview.planned.dueDateRequired ? dueDate : undefined
+            preview.planned.dueDateRequired ? dueDate : undefined,
+            missingChoices(preview)
           )
         );
         setPassword('');
@@ -1290,6 +1451,18 @@ function CustomerImportSession({ onClose }: { onClose: () => void }) {
                     ...current,
                     rows: current.rows.map((row) =>
                       row.rowNumber === decision.rowNumber ? { ...row, decision } : row
+                    ),
+                  }
+                : current
+            )
+          }
+          onMissing={(customerId, action) =>
+            setPreview((current) =>
+              current
+                ? {
+                    ...current,
+                    missing: current.missing?.map((item) =>
+                      item.customerId === customerId ? { ...item, decision: action } : item
                     ),
                   }
                 : current
