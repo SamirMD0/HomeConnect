@@ -3,6 +3,10 @@ import { RelayError } from './errors';
 import { estimateUsage } from './usage-estimate';
 import type { ActionInput, DeviceInput, RecordsInput, ResultInput } from './inputs';
 
+/** One records page stays under ~1.75 MB (relay body limit 2 MB). */
+const PAGE_BYTES = 1792 * 1024;
+/** JSON keys, ids and revision around each record's data. */
+const RECORD_OVERHEAD_BYTES = 256;
 const json = (value: Prisma.JsonValue) => value === null ? Prisma.JsonNull : value;
 const devicePublic = {
   pinSet: true, lastUnlockAt: true,
@@ -122,7 +126,7 @@ export class RelayStore {
   }
 
   async readRecords(branchIds: string[], after: string, limit: number, options: { fullCopy?: boolean; snapshotHorizon?: string; role?: string } = {}) {
-    const { rows, horizon } = await this.db.$transaction(async tx => {
+    const page = await this.db.$transaction(async tx => {
       const state = await tx.relayWorker.findUniqueOrThrow({ where: { id: 1 }, select: { prunedThroughRev: true } });
       const revision = BigInt(after);
       const invalidSnapshot = options.fullCopy && revision > 0n &&
@@ -130,23 +134,40 @@ export class RelayStore {
       if (invalidSnapshot || (!options.fullCopy && revision > 0n && revision < state.prunedThroughRev)) {
         throw new RelayError(410, 'RESYNC_REQUIRED', 'Start a full copy from revision zero.');
       }
-      const rows = await tx.relayRecord.findMany({
-        where: { rev: { gt: BigInt(after) }, OR: [
-          { branchId: null }, { branchId: { in: branchIds } }, { previousBranchIds: { hasSome: branchIds } },
-        ] },
-        orderBy: { rev: 'asc' }, take: Math.min(limit,25) + 1,
+      const scope = { OR: [
+        { branchId: null }, { branchId: { in: branchIds } }, { previousBranchIds: { hasSome: branchIds } },
+      ] };
+      // Sizes first, so a page can hold up to `limit` small records while a
+      // few large reports still never load more than one page's worth into
+      // memory. (A fixed 25-record cap made a full copy take ~100 round trips.)
+      const sized = await tx.$queryRaw<{ rev: bigint; size: number | bigint | null }[]>`
+        SELECT rev, octet_length(data::text) AS size FROM relay_records
+        WHERE rev > ${BigInt(after)} AND (branch_id IS NULL OR branch_id = ANY(${branchIds}::uuid[])
+          OR previous_branch_ids && ${branchIds}::uuid[])
+        ORDER BY rev ASC LIMIT ${limit + 1}`;
+      let budget = 0, count = 0;
+      for (const row of sized.slice(0, limit)) {
+        const size = Number(row.size ?? 0) + RECORD_OVERHEAD_BYTES;
+        if (count > 0 && budget + size > PAGE_BYTES) break;
+        budget += size;
+        count++;
+      }
+      const rows = count === 0 ? [] : await tx.relayRecord.findMany({
+        where: { rev: { gt: BigInt(after), lte: sized[count - 1].rev }, ...scope },
+        orderBy: { rev: 'asc' }, take: count,
       });
-      return { rows, horizon: state.prunedThroughRev };
+      return { rows, more: sized.length > count, horizon: state.prunedThroughRev };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
+    const { rows, more, horizon } = page;
     const records=[];let bytes=0;
     for(const {entityId,previousBranchIds,...row} of rows){
       const visible=(row.branchId===null||branchIds.includes(row.branchId))&&(row.minRole!=='ADMIN'||options.role==='ADMIN');
       const record={...row,id:entityId,rev:row.rev.toString(),op:visible?row.op:'delete',data:visible?row.data:null};
       const size=Buffer.byteLength(JSON.stringify(record),'utf8');
-      if(records.length>=limit||records.length>=25||records.length>0&&bytes+size>1792*1024)break;
+      if(records.length>=limit||records.length>0&&bytes+size>PAGE_BYTES)break;
       records.push(record);bytes+=size;
     }
-    const hasMore = rows.length > records.length;
+    const hasMore = more || rows.length > records.length;
     const lastRev = BigInt(records.at(-1)?.rev ?? after);
     // A completed full copy can advance over pruned revisions without skipping
     // any remaining visible records, even if its newest live row is older.

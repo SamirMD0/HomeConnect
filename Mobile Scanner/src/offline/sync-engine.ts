@@ -163,8 +163,14 @@ export class SyncEngine {
       await saveState(this.db, 'deviceId', profile.deviceId);
       this.publish({ lastSyncAt: null });
     }
-    if (branchesChanged || userChanged || old.role !== profile.role)
+    if (branchesChanged || userChanged || old.role !== profile.role) {
       await saveState(this.db, 'fullCopyInProgress', 'true');
+      await saveState(
+        this.db,
+        'fullCopyReason',
+        userChanged ? 'user' : branchesChanged ? 'branches' : 'role'
+      );
+    }
     if (
       branchesChanged ||
       userChanged ||
@@ -178,9 +184,11 @@ export class SyncEngine {
       this.pairing = next;
     }
   }
-  private async page(after: string, fullCopy = false, horizon?: string): Promise<Page> {
+  private async page(after: string, fullCopy = false, horizon?: string, why?: string): Promise<Page> {
     const query = new URLSearchParams({ after, limit: '500' });
     if (fullCopy) query.set('fullCopy', 'true');
+    // Diagnostics only: the relay ignores it; its request log shows it.
+    if (why) query.set('why', why);
     if (horizon !== undefined) query.set('snapshotHorizon', horizon);
     const body = await this.get(`/records?${query}`);
     if (
@@ -208,7 +216,7 @@ export class SyncEngine {
     }
     return body;
   }
-  private async fullCopy() {
+  private async fullCopy(why: string) {
     for (let restart = 0; restart < 3; restart++) {
       this.active();
       await this.db.transaction(async (tx) => {
@@ -220,7 +228,12 @@ export class SyncEngine {
         horizon: string | undefined;
       try {
         while (true) {
-          const page = await this.page(after, true, horizon);
+          const page = await this.page(
+            after,
+            true,
+            horizon,
+            after === '0' ? `${why}-${restart}` : undefined
+          );
           this.active();
           if (horizon !== undefined && horizon !== page.snapshotHorizon)
             throw new RelayError(410, 'RESYNC_REQUIRED');
@@ -239,6 +252,7 @@ export class SyncEngine {
           );
           await saveState(tx, 'cursor', after);
           await saveState(tx, 'fullCopyInProgress', 'false');
+          await tx.exec("DELETE FROM sync_state WHERE key='fullCopyReason'");
         });
         this.options.onChanged?.();
         return;
@@ -264,12 +278,12 @@ export class SyncEngine {
         { now: this.options.now, files: this.options.files }
       ).sync();
       this.active();
-      if (
-        force ||
-        !(await stateValue(this.db, 'cursor')) ||
-        (await stateValue(this.db, 'fullCopyInProgress')) === 'true'
-      )
-        await this.fullCopy();
+      const noCursor = !(await stateValue(this.db, 'cursor'));
+      const unfinished = (await stateValue(this.db, 'fullCopyInProgress')) === 'true';
+      if (force || noCursor || unfinished) {
+        const tagged = await stateValue(this.db, 'fullCopyReason');
+        await this.fullCopy(force ? 'forced' : (tagged ?? (noCursor ? 'no-cursor' : 'unfinished')));
+      }
       let recoveries = 0;
       while (true) {
         const after = (await stateValue(this.db, 'cursor')) ?? '0';
@@ -278,7 +292,7 @@ export class SyncEngine {
           page = await this.page(after);
         } catch (error) {
           if (error instanceof RelayError && error.status === 410 && recoveries++ < 3) {
-            await this.fullCopy();
+            await this.fullCopy('resync');
             continue;
           }
           throw error;

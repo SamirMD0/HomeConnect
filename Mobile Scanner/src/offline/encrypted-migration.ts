@@ -82,6 +82,7 @@ export async function migratePlainDb(db: LocalDb, io: MigrationIo) {
           draft.value,
         ]);
       await saveState(tx, 'fullCopyInProgress', 'true');
+      await saveState(tx, 'fullCopyReason', 'migration');
       await saveState(tx, 'cipherLegacyPhotos', JSON.stringify(oldPhotos));
       await saveState(tx, MARKER, 'true');
     });

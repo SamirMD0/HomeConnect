@@ -411,3 +411,29 @@ describe('offline relay sync with real in-memory SQLite', () => {
     expect(JSON.parse(records[0]!.data).totalAmount).toBe('9007199254740993.25');
   });
 });
+
+describe('full copy reason tag (diagnostics in the relay log)', () => {
+  const run = async (db: Awaited<ReturnType<typeof memoryDb>>, device: CloudPairing) => {
+    const urls: URL[] = [];
+    const engine = recordEngine(db, device, {
+      fetch: async (url) => {
+        const parsed = new URL(String(url));
+        urls.push(parsed);
+        return parsed.pathname.endsWith('/records') ? page([], '5') : new Response('{"ok":true}');
+      },
+    });
+    await engine.sync();
+    return urls.filter((url) => url.pathname.endsWith('/records')).map((url) => url.searchParams.get('why'));
+  };
+  it('names why a full copy started, then stops once the copy is done', async () => {
+    const db = await memoryDb();
+    expect(await run(db, pairing)).toEqual(['no-cursor-0', null]);
+    expect(await run(db, pairing)).toEqual([null]);
+    await saveState(db, 'fullCopyInProgress', 'true');
+    await saveState(db, 'fullCopyReason', 'device');
+    expect((await run(db, pairing))[0]).toBe('device-0');
+    expect(await stateValue(db, 'fullCopyReason')).toBeNull();
+    await saveState(db, 'fullCopyInProgress', 'true');
+    expect((await run(db, pairing))[0]).toBe('unfinished-0');
+  });
+});

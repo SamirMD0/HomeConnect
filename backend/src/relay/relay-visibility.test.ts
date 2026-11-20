@@ -19,6 +19,7 @@ describe('relay record visibility', () => {
   it('bounds pages by bytes without skipping the next large report', async () => {
     const tx = {
       relayWorker: { findUniqueOrThrow: async () => ({ prunedThroughRev: 0n }) },
+      $queryRaw: async () => [1n, 2n].map((rev) => ({ rev, size: 1200 * 1024 + 20 })),
       relayRecord: {
         findMany: async () =>
           [1n, 2n].map((rev) => ({
@@ -40,6 +41,44 @@ describe('relay record visibility', () => {
     expect(page.records).toHaveLength(1);
     expect(page.nextRev).toBe('1');
     expect(page.hasMore).toBe(true);
+  });
+  it('fills a page with up to 500 small records and loads only what fits', async () => {
+    const all = Array.from({ length: 900 }, (_, index) => BigInt(index + 1));
+    const product = (rev: bigint) => ({
+      entity: 'product', entityId: String(rev), branchId: null, previousBranchIds: [], rev,
+      op: 'upsert', minRole: null, data: { name: 'Fan' },
+    });
+    const findMany = vi.fn(async ({ take }: { take: number }) => all.slice(0, take).map(product));
+    const tx = {
+      relayWorker: { findUniqueOrThrow: async () => ({ prunedThroughRev: 0n }) },
+      $queryRaw: vi.fn(async () => all.slice(0, 501).map((rev) => ({ rev, size: 40 }))),
+      relayRecord: { findMany },
+    };
+    const store = new RelayStore({ $transaction: async (work: any) => work(tx) } as unknown as RelayClient);
+    const page = await store.readRecords(['a'], '0', 500, { role: 'EMPLOYEE' });
+    expect(page.records).toHaveLength(500);
+    expect(page.nextRev).toBe('500');
+    expect(page.hasMore).toBe(true);
+    expect(findMany).toHaveBeenCalledWith(expect.objectContaining({ take: 500 }));
+
+    // Large rows: only those that fit the page budget are loaded at all.
+    tx.$queryRaw.mockResolvedValueOnce(all.slice(0, 501).map((rev) => ({ rev, size: 400 * 1024 })));
+    findMany.mockClear();
+    const big = await store.readRecords(['a'], '0', 500, { role: 'EMPLOYEE' });
+    expect(findMany).toHaveBeenCalledWith(expect.objectContaining({ take: 4 }));
+    expect(big.hasMore).toBe(true);
+  });
+  it('returns an empty last page without loading rows', async () => {
+    const findMany = vi.fn();
+    const tx = {
+      relayWorker: { findUniqueOrThrow: async () => ({ prunedThroughRev: 0n }) },
+      $queryRaw: async () => [],
+      relayRecord: { findMany },
+    };
+    const store = new RelayStore({ $transaction: async (work: any) => work(tx) } as unknown as RelayClient);
+    const page = await store.readRecords(['a'], '42', 500, { role: 'EMPLOYEE' });
+    expect(page).toMatchObject({ records: [], nextRev: '42', hasMore: false });
+    expect(findMany).not.toHaveBeenCalled();
   });
   it.each([false, true])(
     'never returns admin data to staff (fullCopy=%s), retaining delete revisions',
@@ -68,6 +107,7 @@ describe('relay record visibility', () => {
       ];
       const tx = {
         relayWorker: { findUniqueOrThrow: vi.fn(async () => ({ prunedThroughRev: 0n })) },
+        $queryRaw: vi.fn(async () => rows.map((row) => ({ rev: row.rev, size: 30 }))),
         relayRecord: { findMany: vi.fn(async () => rows) },
       };
       const store = new RelayStore({

@@ -52,6 +52,7 @@ export function CloudSyncRuntime() {
       if ((await stateValue(db, 'deviceId')) !== pairing.deviceId) {
         await wipeLocalDb(db);
         await saveState(db, 'deviceId', pairing.deviceId);
+        await saveState(db, 'fullCopyReason', 'device');
       }
       if (!active || owner !== generation) return;
       const source = new CloudDataSource(db, pairing.branchIds, pairing.role, ownerKey(pairing));
