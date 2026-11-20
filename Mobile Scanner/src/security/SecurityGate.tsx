@@ -162,9 +162,11 @@ function BiometricOffer() {
         </>
       )}
       {!!error && <StatusBanner tone="warning" message={error} />}
+      {/* Always a clear way forward: "Use PIN" as an outlined button read as no button at all. */}
       <AppButton
-        label="Use PIN"
-        variant="secondary"
+        label={available ? 'Continue with PIN only' : 'Continue'}
+        variant={available ? 'secondary' : 'primary'}
+        icon="arrow-forward"
         disabled={busy}
         onPress={security.finishOffer}
       />
