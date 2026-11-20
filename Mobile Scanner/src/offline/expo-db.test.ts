@@ -7,7 +7,8 @@ const mock = vi.hoisted(() => ({
   native: { execAsync: vi.fn(), runAsync: vi.fn(), getAllAsync: vi.fn(), closeAsync: vi.fn() },
 }));
 vi.mock('expo-sqlite', () => ({
-  defaultDatabaseDirectory: 'file://SQLite',
+  // Real Android value: a plain path, not a file:// URI.
+  defaultDatabaseDirectory: '/data/user/0/com.homeconnect.mobilescanner/files/SQLite',
   openDatabaseAsync: vi.fn(async () => mock.native),
   deleteDatabaseAsync: vi.fn(async (name: string) => {
     mock.order.push(`delete:${name}`);
@@ -17,8 +18,14 @@ vi.mock('expo-sqlite', () => ({
 vi.mock('expo-file-system/legacy', () => ({
   documentDirectory: 'file://documents/',
   cacheDirectory: 'file://cache/',
-  getInfoAsync: async (path: string) => ({ exists: mock.files.has(path.split('/').at(-1)!) }),
-  deleteAsync: vi.fn(),
+  // Like the native legacy API: plain paths are rejected, only file:// URIs work.
+  getInfoAsync: async (path: string) => {
+    if (!path.startsWith('file://')) throw new Error(`Location '${path}' isn't readable.`);
+    return { exists: mock.files.has(path.split('/').at(-1)!) };
+  },
+  deleteAsync: vi.fn(async (path: string) => {
+    if (!path.startsWith('file://')) throw new Error(`Location '${path}' isn't deletable.`);
+  }),
   readDirectoryAsync: async () => [],
 }));
 vi.mock('expo-crypto', () => ({ getRandomBytes: (n: number) => new Uint8Array(n).fill(7) }));
@@ -142,6 +149,21 @@ describe('keyed native database', () => {
     mock.secrets.delete('db-key');
     await expect(openLocalDb()).rejects.toThrow('key is missing');
     expect(mock.secrets.has('db-key')).toBe(false);
+  });
+  it('turns the plain Android database folder into file:// URIs', async () => {
+    const { databaseFileUri } = await import('./expo-db');
+    expect(databaseFileUri('/data/user/0/app/files/SQLite', 'a.db')).toBe('file:///data/user/0/app/files/SQLite/a.db');
+    expect(databaseFileUri('/data/user/0/app/files/SQLite/', 'a.db-wal')).toBe('file:///data/user/0/app/files/SQLite/a.db-wal');
+    expect(databaseFileUri('file:///data/x/SQLite', 'a.db')).toBe('file:///data/x/SQLite/a.db');
+  });
+  it('deletes the database sidecar files by file:// URI (first cloud pairing on Android)', async () => {
+    const fs = await import('expo-file-system/legacy');
+    const { deleteLocalDb } = await import('./expo-db');
+    mock.files.clear();
+    await deleteLocalDb();
+    const deleted = vi.mocked(fs.deleteAsync).mock.calls.map(([path]) => path);
+    expect(deleted.filter((path) => path.includes('/SQLite/')).length).toBeGreaterThanOrEqual(3);
+    expect(deleted.every((path) => path.startsWith('file://'))).toBe(true);
   });
   it('can wipe a never-opened or already-deleted database without native missing-file errors', async () => {
     const { deleteLocalDb } = await import('./expo-db');

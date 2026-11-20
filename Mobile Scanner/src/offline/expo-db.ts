@@ -68,13 +68,22 @@ export async function verifyCipher(
   await native.execAsync(`PRAGMA key = "x'${key}'"`);
   await native.getAllAsync('SELECT count(*) FROM sqlite_master');
 }
+/**
+ * expo-sqlite reports its folder as a plain path on Android ("/data/user/0/…/SQLite"),
+ * but the legacy file API needs a file:// URI: with a plain path deleteAsync throws
+ * and getInfoAsync always reports "missing".
+ */
+export function databaseFileUri(directory: string, name: string) {
+  const base = directory.replace(/\/+$/, '');
+  return `${/^[a-z][a-z0-9+.-]*:/i.test(base) ? base : `file://${base}`}/${name}`;
+}
 export async function nativeMigrationIo(): Promise<MigrationIo> {
   const sqlite = await import('expo-sqlite'),
     fs = await import('expo-file-system/legacy');
   const drafts = `${fs.documentDirectory}cloud-sales-drafts-v1/`;
   return {
     exists: async () =>
-      (await fs.getInfoAsync(`${sqlite.defaultDatabaseDirectory}/${PLAIN_DB}`)).exists,
+      (await fs.getInfoAsync(databaseFileUri(sqlite.defaultDatabaseDirectory, PLAIN_DB))).exists,
     openPlain: async () =>
       serialDatabase(await sqlite.openDatabaseAsync(PLAIN_DB, { useNewConnection: true })),
     deletePlain: () => removeDatabaseFiles(PLAIN_DB),
@@ -98,7 +107,7 @@ export async function nativeMigrationIo(): Promise<MigrationIo> {
 async function removeDatabaseFiles(name: string) {
   const sqlite = await import('expo-sqlite'),
     fs = await import('expo-file-system/legacy');
-  const path = `${sqlite.defaultDatabaseDirectory}/${name}`;
+  const path = databaseFileUri(sqlite.defaultDatabaseDirectory, name);
   // Native deleteDatabaseAsync throws for an absent file and does not remove sidecars.
   if ((await fs.getInfoAsync(path)).exists) await sqlite.deleteDatabaseAsync(name);
   for (const suffix of ['-wal', '-shm', '-journal'])
@@ -113,7 +122,7 @@ export function openLocalDb(): Promise<PhoneDb> {
       fs = await import('expo-file-system/legacy');
     let key = await secretStorage.get(DB_KEY);
     if (!key) {
-      if ((await fs.getInfoAsync(`${sqlite.defaultDatabaseDirectory}/${CIPHER_DB}`)).exists)
+      if ((await fs.getInfoAsync(databaseFileUri(sqlite.defaultDatabaseDirectory, CIPHER_DB))).exists)
         throw new Error('The phone encryption key is missing. Saved data has not been removed.');
       key = Array.from((await import('expo-crypto')).getRandomBytes(32), (byte) =>
         byte.toString(16).padStart(2, '0')
@@ -148,8 +157,8 @@ export async function deleteLocalDb() {
     fs = await import('expo-file-system/legacy');
   const exists =
     Boolean(opened) ||
-    (await fs.getInfoAsync(`${sqlite.defaultDatabaseDirectory}/${CIPHER_DB}`)).exists ||
-    (await fs.getInfoAsync(`${sqlite.defaultDatabaseDirectory}/${PLAIN_DB}`)).exists;
+    (await fs.getInfoAsync(databaseFileUri(sqlite.defaultDatabaseDirectory, CIPHER_DB))).exists ||
+    (await fs.getInfoAsync(databaseFileUri(sqlite.defaultDatabaseDirectory, PLAIN_DB))).exists;
   const db = exists ? await openLocalDb() : null;
   wiping = true;
   try {
