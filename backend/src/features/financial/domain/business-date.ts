@@ -36,7 +36,11 @@ export function prismaDateToBusinessDate(input: Date): BusinessDate {
   const year = input.getUTCFullYear();
   const month = input.getUTCMonth() + 1;
   const day = input.getUTCDate();
-  return parseBusinessDate(formatDateParts(year, month, day));
+  const formatted = formatDateParts(year, month, day);
+  // Parts read from a valid Date always form a real calendar date; only check the rest.
+  return Number.isNaN(input.getTime()) || year < 1 || year > 9999
+    ? parseBusinessDate(formatted)
+    : formatted;
 }
 
 export function compareBusinessDates(left: string, right: string): -1 | 0 | 1 {
@@ -117,7 +121,27 @@ function cachedFormatter(
   return formatter;
 }
 
+/**
+ * Every timezone offset in use is a whole number of quarter hours and changes on a
+ * quarter hour, so all instants in the same UTC quarter hour share one business date.
+ */
+const QUARTER_HOUR_MS = 15 * 60 * 1000;
+const MAX_CACHED_QUARTERS = 20_000;
+const businessDateByQuarter = new Map<string, BusinessDate>();
+
 export function timestampToBusinessDate(timezone: string, timestamp: Date): BusinessDate {
+  const time = timestamp.getTime();
+  if (Number.isNaN(time)) return formatBusinessDate(timezone, timestamp);
+  const key = timezone + '|' + Math.floor(time / QUARTER_HOUR_MS);
+  const cached = businessDateByQuarter.get(key);
+  if (cached) return cached;
+  const value = formatBusinessDate(timezone, timestamp);
+  if (businessDateByQuarter.size >= MAX_CACHED_QUARTERS) businessDateByQuarter.clear();
+  businessDateByQuarter.set(key, value);
+  return value;
+}
+
+function formatBusinessDate(timezone: string, timestamp: Date): BusinessDate {
   const formatter = cachedFormatter(dateFormatters, timezone, {
     year: 'numeric',
     month: '2-digit',

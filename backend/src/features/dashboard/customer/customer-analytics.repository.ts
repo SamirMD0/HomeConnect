@@ -4,6 +4,7 @@ import { businessDateToPrisma } from '../../financial';
 import { prisma } from '../../../lib/prisma';
 import { addDays } from '../shared/dashboard-range';
 import type { ResolvedDashboardRange } from '../dashboard.types';
+import { scopeKey, sharedLoad } from '../shared/shared-load';
 
 const allocationInclude = {
   include: { payment: { select: { voidedAt: true, paymentDate: true, currency: true, exchangeRate: true } } },
@@ -38,7 +39,20 @@ export interface CustomerAnalyticsRecords {
 }
 
 export class CustomerAnalyticsRepository {
-  static async load(
+  static load(
+    range: ResolvedDashboardRange,
+    historyFrom: string,
+    includeArchived: boolean,
+    scope: BranchScope
+  ): Promise<CustomerAnalyticsRecords> {
+    return sharedLoad(
+      'customer-analytics',
+      [range.from, range.to, historyFrom, includeArchived, scopeKey(scope)],
+      () => this.read(range, historyFrom, includeArchived, scope)
+    );
+  }
+
+  private static async read(
     range: ResolvedDashboardRange,
     historyFrom: string,
     includeArchived: boolean, scope: BranchScope

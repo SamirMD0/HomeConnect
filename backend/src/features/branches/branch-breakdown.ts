@@ -15,21 +15,25 @@ export async function withBranchBreakdown<T extends object>(
   scope: BranchScope,
   calculate: (scope: BranchScope) => Promise<T>
 ): Promise<BranchAggregate<T>> {
-  const total = await calculate(scope);
-  if (scope.branchIds.length <= 1) return total;
-  const branches = await prisma.branch.findMany({
-    where: { id: { in: scope.branchIds } },
-    select: { id: true, code: true, name: true },
-    orderBy: { code: 'asc' },
-  });
-  const branchBreakdown = await Promise.all(
-    branches.map(async (branch) => ({
-      ...(await calculate({ mode: 'single', branchIds: [branch.id] })),
-      branchId: branch.id,
-      branchCode: branch.code,
-      branchName: branch.name,
-    }))
-  );
+  if (scope.branchIds.length <= 1) return calculate(scope);
+  // The total and each branch are independent, so they run side by side.
+  const breakdown = prisma.branch
+    .findMany({
+      where: { id: { in: scope.branchIds } },
+      select: { id: true, code: true, name: true },
+      orderBy: { code: 'asc' },
+    })
+    .then((branches) =>
+      Promise.all(
+        branches.map(async (branch) => ({
+          ...(await calculate({ mode: 'single', branchIds: [branch.id] })),
+          branchId: branch.id,
+          branchCode: branch.code,
+          branchName: branch.name,
+        }))
+      )
+    );
+  const [total, branchBreakdown] = await Promise.all([calculate(scope), breakdown]);
   return { ...total, branchBreakdown };
 }
 

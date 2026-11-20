@@ -1,7 +1,13 @@
 import { prisma } from '../../../lib/prisma';
+import { sharedLoad } from '../shared/shared-load';
 
 export class ProductAnalyticsRepository {
-  static async load() {
+  /** Products are shop-wide, so every branch and card shares one read. */
+  static load() {
+    return sharedLoad('product-analytics', [], () => this.read());
+  }
+
+  private static async read() {
     const [products, presets] = await Promise.all([
       prisma.product.findMany({
         select: {
