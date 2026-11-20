@@ -1,5 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { ActivityIndicator, Pressable, StyleSheet, Text, type ViewStyle } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, type ViewStyle } from 'react-native';
+import { Pressable } from '../ui/Pressable';
 import { theme } from '../theme';
 import { cloudMode } from '../offline/cloud-mode';
 import { CLOUD_WRITE_NOTE } from '../offline/cloud-policy';

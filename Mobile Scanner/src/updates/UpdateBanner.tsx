@@ -1,6 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, AppState, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, AppState, StyleSheet, Text, View } from 'react-native';
+import { Pressable } from '../ui/Pressable';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Updates from 'expo-updates';
 import { theme } from '../theme';
@@ -38,7 +39,13 @@ export function UpdateBanner() {
   }, []);
 
   useEffect(() => {
-    if (isUpdatePending) setDismissed(false);
+    if (!isUpdatePending) return;
+    setDismissed(false);
+    // Ask outright; the banner stays as a reminder if they choose Later.
+    Alert.alert('Update ready', 'Restart Home Connect now to finish the update?', [
+      { text: 'Later', style: 'cancel', onPress: () => setDismissed(true) },
+      { text: 'Restart', onPress: () => void Updates.reloadAsync() },
+    ]);
   }, [isUpdatePending]);
 
   const state = updateBannerState({ enabled: Updates.isEnabled, isDownloading, isUpdatePending, progress: downloadProgress });

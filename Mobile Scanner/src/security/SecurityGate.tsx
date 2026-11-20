@@ -55,6 +55,12 @@ function PinForm({ setup = false }: { setup?: boolean }) {
       setBusy(false);
     }
   };
+  const blocked = Boolean(wait) || !pin || (setup && !again);
+  // The keyboard's Done key submits too, so a typed PIN never just sits there.
+  const submit = () => {
+    if (blocked) return;
+    void run(() => (setup ? security.setup(pin, again) : security.controller!.unlockPin(pin)));
+  };
   return (
     <AuthLayout title={setup ? 'Create your PIN' : 'Unlock Home Connect'}>
       {setup && <Text>Choose a 4–6 digit PIN for this phone.</Text>}
@@ -64,6 +70,8 @@ function PinForm({ setup = false }: { setup?: boolean }) {
         value={pin}
         onChangeText={setPin}
         editable={!busy}
+        returnKeyType={setup ? 'next' : 'done'}
+        onSubmitEditing={setup ? undefined : submit}
       />
       {setup && (
         <AppInput
@@ -72,6 +80,8 @@ function PinForm({ setup = false }: { setup?: boolean }) {
           value={again}
           onChangeText={setAgain}
           editable={!busy}
+          returnKeyType="done"
+          onSubmitEditing={submit}
         />
       )}
       {!!error && <StatusBanner tone="warning" message={error} />}
@@ -79,10 +89,8 @@ function PinForm({ setup = false }: { setup?: boolean }) {
       <AppButton
         label={setup ? 'Save PIN' : 'Unlock'}
         loading={busy}
-        disabled={Boolean(wait) || !pin || (setup && !again)}
-        onPress={() =>
-          void run(() => (setup ? security.setup(pin, again) : security.controller!.unlockPin(pin)))
-        }
+        disabled={blocked}
+        onPress={submit}
       />
       {!setup && lock.record?.biometric && (
         <AppButton

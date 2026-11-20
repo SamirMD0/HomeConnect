@@ -124,11 +124,12 @@ export default function RootLayout() {
             <SecurityGate>
             <GlassBackdrop>
               <Navigation />
-              <UpdateBanner />
             </GlassBackdrop>
             <StatusBar style="dark" />
             <PortalHost />
             </SecurityGate>
+            {/* Above the lock: it shows no shop data, and a locked phone must still be told to restart. */}
+            <UpdateBanner />
             </SecurityProvider>
           </SessionProvider>
         </QueryProvider>

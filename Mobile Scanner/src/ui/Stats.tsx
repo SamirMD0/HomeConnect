@@ -2,7 +2,8 @@ import { cloudMode } from '../offline/cloud-mode';
 import { CLOUD_WRITE_NOTE } from '../offline/cloud-policy';
 import type { ReactNode } from 'react';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { Pressable } from './Pressable';
 import { theme } from '../theme';
 import { toneColors, type Tone } from './Badge';
 
