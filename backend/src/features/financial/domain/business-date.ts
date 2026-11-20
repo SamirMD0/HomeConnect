@@ -75,8 +75,7 @@ export function businessDateStartInstant(
   // moment except the ambiguous hour of a DST fall-back, and the report
   // boundary is not that hour.
   const guess = Date.UTC(year, month - 1, day);
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: timezone,
+  const parts = cachedFormatter(timestampFormatters, timezone, {
     hour12: false,
     year: 'numeric',
     month: '2-digit',
@@ -99,9 +98,27 @@ export function businessDateStartInstant(
   return new Date(guess - offsetMs);
 }
 
+/**
+ * Building an Intl.DateTimeFormat costs far more than using one, and reports convert
+ * thousands of timestamps per request, so one formatter is kept per timezone.
+ */
+const dateFormatters = new Map<string, Intl.DateTimeFormat>();
+const timestampFormatters = new Map<string, Intl.DateTimeFormat>();
+function cachedFormatter(
+  cache: Map<string, Intl.DateTimeFormat>,
+  timezone: string,
+  options: Intl.DateTimeFormatOptions
+): Intl.DateTimeFormat {
+  let formatter = cache.get(timezone);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat('en-US', { ...options, timeZone: timezone });
+    cache.set(timezone, formatter);
+  }
+  return formatter;
+}
+
 export function timestampToBusinessDate(timezone: string, timestamp: Date): BusinessDate {
-  const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: timezone,
+  const formatter = cachedFormatter(dateFormatters, timezone, {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',

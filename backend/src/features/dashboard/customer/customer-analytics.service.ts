@@ -123,7 +123,7 @@ export class CustomerAnalyticsService {
       result.topDebtors = [...byCustomer.entries()]
         .map(([customerId, value]) => ({
           customerId,
-          ...branchFields(openItems.find(item => item.customer.id === customerId) ?? {}),
+          ...branchFields(value.first),
           customerName: value.customer.name,
           phone: value.customer.phone,
           outstanding: moneyToApiString(value.amount),
@@ -235,10 +235,15 @@ function buildAgeDistribution(items: OpenItem[], businessDate: string): Customer
 }
 
 function groupOutstanding(items: OpenItem[]) {
-  const grouped = new Map<string, { customer: OpenItem['customer']; amount: Decimal }>();
+  // Keeps each customer's first open item, so its branch is known without searching again.
+  const grouped = new Map<string, { customer: OpenItem['customer']; first: OpenItem; amount: Decimal }>();
   for (const item of items) {
     const existing = grouped.get(item.customer.id);
-    grouped.set(item.customer.id, { customer: item.customer, amount: sumMoney([existing?.amount ?? ZERO_MONEY, item.remaining]) });
+    grouped.set(item.customer.id, {
+      customer: item.customer,
+      first: existing?.first ?? item,
+      amount: sumMoney([existing?.amount ?? ZERO_MONEY, item.remaining]),
+    });
   }
   return grouped;
 }
