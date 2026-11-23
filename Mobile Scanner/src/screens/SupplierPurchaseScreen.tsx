@@ -12,6 +12,9 @@ import {
   recordSupplierPurchase,
 } from '../api/supplier-purchases-api';
 import { listSuppliers, SupplierSummary } from '../api/suppliers-api';
+import { cloudMode } from '../offline/cloud-mode';
+import { enqueueCloudAction } from '../offline/outbox-runtime';
+import { OutboxStatus } from '../offline/OutboxStatus';
 import { AppButton } from '../components/AppButton';
 import { AppInput } from '../components/AppInput';
 import { StatusBanner } from '../components/StatusBanner';
@@ -78,6 +81,8 @@ export function SupplierPurchaseScreen({
   const [duplicateConfirmed, setDuplicateConfirmed] = useState(false);
   const [created, setCreated] = useState<RecordedSupplierPurchase | null>(null);
   const [billResult, setBillResult] = useState<{ linked: boolean; message: string } | null>(null);
+  /** Over the cloud: the queued action, shown until the PC answers. */
+  const [queued, setQueued] = useState<string | null>(null);
   const idempotencyKey = useRef(newKey());
 
   useEffect(() => {
@@ -157,7 +162,7 @@ export function SupplierPurchaseScreen({
     setBanner(null);
     setDuplicateConfirmed(false);
     try {
-      const check = receiptNumber.trim()
+      const check = receiptNumber.trim() && !cloudMode()
         ? await checkSupplierReceipt(client, supplier.id, receiptNumber.trim())
         : { duplicate: false };
       setDuplicateReceipt(check.duplicate);
@@ -216,6 +221,18 @@ export function SupplierPurchaseScreen({
     setSubmitting(true);
     setBanner(null);
     try {
+      if (cloudMode()) {
+        // The saved idempotency key is the PC's repeat protection; a bill is attached on the PC.
+        const action = await enqueueCloudAction({
+          type: 'supplier_purchase.create',
+          submissionKey: body.idempotencyKey,
+          payload: { ...body, ...(fromBill && fromBill.supplierId === supplier.id ? { billId: fromBill.billId } : {}) },
+          summary: `Purchase · ${supplier.name} · ${currency} ${billedTotal}`,
+        });
+        setQueued(action.id);
+        setStep('DONE');
+        return;
+      }
       const purchase = await recordSupplierPurchase(client, body);
       setCreated(purchase);
       if (fromBill)
@@ -422,7 +439,7 @@ export function SupplierPurchaseScreen({
             multiline
             maxLength={2000}
           />
-          <AppButton cloudWrite label="Review invoice" onPress={() => void review()} loading={reviewing} />
+          <AppButton label="Review invoice" onPress={() => void review()} loading={reviewing} />
           <AppButton
             label="Change supplier"
             variant="secondary"
@@ -483,7 +500,7 @@ export function SupplierPurchaseScreen({
             </Pressable>
           ) : null}
           <AppButton
-            cloudWrite label="Record invoice"
+            label="Record invoice"
             onPress={() => void submit()}
             loading={submitting}
             disabled={duplicateReceipt && !duplicateConfirmed}
@@ -499,6 +516,17 @@ export function SupplierPurchaseScreen({
         </View>
       )}
 
+      {step === 'DONE' && queued && (
+        <View style={styles.done}>
+          <Text style={styles.title}>Purchase saved</Text>
+          {receiptNumber.trim() ? (
+            <Text style={styles.muted}>The shop PC checks invoice {receiptNumber.trim()} for duplicates when it records it</Text>
+          ) : null}
+          <OutboxStatus id={queued} />
+          {!fromBill && <AppButton label="Record another" onPress={() => { setQueued(null); recordAnother(); }} />}
+          <AppButton label="Done" variant="secondary" onPress={onDone} />
+        </View>
+      )}
       {step === 'DONE' && created && (
         <View style={styles.done}>
           <IconTile icon="checkmark-circle" tone="success" size={64} />
@@ -517,7 +545,7 @@ export function SupplierPurchaseScreen({
               A bill photo can be attached from Supplier bill or the bills inbox
             </Text>
           ) : null}
-          {!fromBill && <AppButton cloudWrite label="Record another" onPress={recordAnother} />}
+          {!fromBill && <AppButton label="Record another" onPress={recordAnother} />}
           <AppButton label="Done" variant="secondary" onPress={onDone} />
         </View>
       )}

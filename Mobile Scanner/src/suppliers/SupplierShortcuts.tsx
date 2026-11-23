@@ -38,7 +38,6 @@ export function SupplierShortcuts() {
         <ListRow
           title="Supplier invoice"
           icon="document-text-outline"
-          cloudWrite
           onPress={() => router.push('/(tabs)/suppliers/invoice')}
         />
       )}

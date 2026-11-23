@@ -17,6 +17,8 @@ import { ReadScreen, ReadState, readStyles } from '../lookup/ReadUI';
 import { queryKeys } from '../query/keys';
 import { prepareReceiptPhoto } from '../services/receipt-photo';
 import { BillPreview } from './BillPreview';
+import { QuickGrid, type QuickAction } from '../ui/Stats';
+import { enqueueCloudAction } from '../offline/outbox-runtime';
 import {
   billPages,
   canDeleteBill,
@@ -77,6 +79,24 @@ export function BillsInboxScreen() {
     setSheetError(null);
   };
   const refresh = () => queryClient.invalidateQueries({ queryKey: queryKeys.scope(scope) });
+  const cloud = session.mode === 'cloud';
+  /** Over the cloud every bill action is queued for the shop PC, in the bill's branch. */
+  const queue = async (
+    bill: InboxBill,
+    type: 'supplier_bill.link' | 'supplier_bill.delete' | 'supplier_bill.replace' | 'supplier_bill.upload',
+    payload: Record<string, unknown>,
+    summary: string,
+    photo?: string
+  ) =>
+    enqueueCloudAction({
+      type,
+      branchId: bill.branchId,
+      submissionKey: (await import('expo-crypto')).randomUUID(),
+      payload,
+      summary: `${summary} · ${bill.supplierName}`,
+      ...(photo ? { photo: { uri: photo, mime: 'image/jpeg' } } : {}),
+    });
+  const sent = 'Sent to the shop PC. Open Waiting for the result.';
 
   /** Run one sheet action; on success close the sheet and show `done`. */
   const act = async (id: string, work: () => Promise<unknown>, done: string) => {
@@ -101,6 +121,11 @@ export function BillsInboxScreen() {
       async () => {
         const uri = await takePhoto();
         if (!uri) throw new Error('No photo taken.');
+        if (cloud) {
+          await queue(bill, 'supplier_bill.upload',
+            { supplierId: bill.supplierId, billGroupId: bill.billGroupId ?? bill.id }, 'Bill page', uri);
+          return;
+        }
         await uploadReceipt(client, {
           supplierPurchaseId: null,
           supplierId: bill.supplierId,
@@ -109,7 +134,7 @@ export function BillsInboxScreen() {
           billGroupId: bill.billGroupId ?? bill.id,
         });
       },
-      'Page added to the bill.'
+      cloud ? sent : 'Page added to the bill.'
     );
 
   const replacePage = () =>
@@ -119,11 +144,19 @@ export function BillsInboxScreen() {
       async () => {
         const uri = await takePhoto();
         if (!uri) throw new Error('No photo taken.');
+        if (cloud && selected) {
+          await queue(selected, 'supplier_bill.replace', { billId: page.id }, 'Retaken bill page', uri);
+          return;
+        }
         await replaceBillPage(client, page, uri);
       },
-      'Page replaced. The old photo is kept on the PC.'
+      cloud ? sent : 'Page replaced. The old photo is kept on the PC.'
     );
 
+  const remove = (whole: boolean) => () =>
+    cloud && selected
+      ? queue(selected, 'supplier_bill.delete', { billId: page!.id, wholeBill: whole }, whole ? 'Delete bill' : 'Delete bill page')
+      : deleteBill(client, page!, whole);
   const confirmDelete = () => {
     if (!selected || !page) return;
     const many = pages.length > 1;
@@ -136,18 +169,58 @@ export function BillsInboxScreen() {
           ? [
               {
                 text: `Page ${pageIndex + 1} only`,
-                onPress: () => void act('delete', () => deleteBill(client, page, false), 'Page deleted.'),
+                onPress: () => void act('delete', remove(false), cloud ? sent : 'Page deleted.'),
               },
             ]
           : []),
         {
           text: many ? 'Whole bill' : 'Delete',
           style: 'destructive' as const,
-          onPress: () => void act('delete', () => deleteBill(client, page, true), 'Bill deleted.'),
+          onPress: () => void act('delete', remove(true), cloud ? sent : 'Bill deleted.'),
         },
       ]
     );
   };
+
+  /** One bill, four icons: purchase, link, page, delete (decided 2026-11-23). */
+  const billActions = (bill: InboxBill): QuickAction[] => [
+    ...(session.can('supplierInvoices.write')
+      ? [{
+          label: 'Purchase',
+          icon: 'document-text-outline' as const,
+          onPress: () => {
+            close();
+            router.push({
+              pathname: '/(tabs)/suppliers/invoice',
+              params: { billId: bill.id, billBranchId: bill.branchId, supplierId: bill.supplierId },
+            });
+          },
+        }]
+      : []),
+    {
+      label: 'Link',
+      icon: 'link-outline',
+      onPress: () =>
+        Alert.alert('Link this bill to', undefined, [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'A payment', onPress: () => setMode('payment') },
+          { text: 'A purchase', onPress: () => setMode('purchase') },
+        ]),
+    },
+    {
+      label: 'Page',
+      icon: 'camera-outline',
+      onPress: () =>
+        Alert.alert('Bill pages', 'Photograph a new page, or retake the page shown.', [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Retake this page', onPress: () => void replacePage() },
+          { text: 'Add a page', onPress: () => void addPage(bill) },
+        ]),
+    },
+    ...(canDeleteBill(bill, session.user)
+      ? [{ label: 'Delete', icon: 'trash-outline' as const, tone: 'danger' as const, onPress: confirmDelete }]
+      : []),
+  ];
 
   return (
     <>
@@ -197,35 +270,10 @@ export function BillsInboxScreen() {
             {selected.note ? <Text style={readStyles.subtitle}>{selected.note}</Text> : null}
             {sheetError ? <StatusBanner tone="danger" message={sheetError} /> : null}
 
-            {session.mode === 'cloud' ? <Text style={readStyles.subtitle}>Coming soon over the cloud. Use the shop Wi-Fi</Text> : mode === 'menu' ? (
+            {mode === 'menu' ? (
               <>
-                <AppButton cloudWrite label="Link to a purchase" onPress={() => setMode('purchase')} />
-                <AppButton cloudWrite label="Link to a payment" variant="secondary" onPress={() => setMode('payment')} />
-                {session.can('supplierInvoices.write') && (
-                  <AppButton
-                    cloudWrite label="Create purchase from this bill"
-                    variant="secondary"
-                    onPress={() => {
-                      const bill = selected;
-                      close();
-                      router.push({
-                        pathname: '/(tabs)/suppliers/invoice',
-                        params: { billId: bill.id, billBranchId: bill.branchId, supplierId: bill.supplierId },
-                      });
-                    }}
-                  />
-                )}
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                  <View style={{ flex: 1 }}>
-                    <AppButton cloudWrite label="Add page" variant="secondary" loading={saving === 'add-page'} onPress={() => void addPage(selected)} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <AppButton cloudWrite label="Retake page" variant="secondary" loading={saving === 'replace'} onPress={() => void replacePage()} />
-                  </View>
-                </View>
-                {canDeleteBill(selected, session.user) ? (
-                  <AppButton cloudWrite label="Delete" variant="secondary" loading={saving === 'delete'} onPress={confirmDelete} />
-                ) : null}
+                <QuickGrid actions={billActions(selected)} />
+                {saving ? <Text style={readStyles.subtitle}>Working…</Text> : null}
               </>
             ) : mode === 'purchase' ? (
               <>
@@ -238,7 +286,7 @@ export function BillsInboxScreen() {
                   ?.filter((purchase) => purchase.status !== 'REMOVED')
                   .map((purchase) => (
                     <ListRow
-                      cloudWrite key={purchase.id}
+                      key={purchase.id}
                       title={purchase.receiptNumber ? `Invoice ${purchase.receiptNumber}` : purchase.description}
                       subtitle={`${formatBusinessDate(purchase.transactionDate)} · ${formatMoney(purchase.amount, purchase.currency)}${saving === purchase.id ? ' · Linking…' : ''}`}
                       onPress={
@@ -247,8 +295,10 @@ export function BillsInboxScreen() {
                           : () =>
                               void act(
                                 purchase.id,
-                                () => linkBillToPurchase(client, selected, purchase),
-                                `Bill from ${selected.supplierName} linked to the purchase.`
+                                () => cloud
+                                  ? queue(selected, 'supplier_bill.link', { billId: selected.id, transactionId: purchase.id }, 'Link bill to purchase')
+                                  : linkBillToPurchase(client, selected, purchase),
+                                cloud ? sent : `Bill from ${selected.supplierName} linked to the purchase.`
                               )
                       }
                     />
@@ -264,7 +314,7 @@ export function BillsInboxScreen() {
                 ) : null}
                 {payments.data?.map((payment) => (
                   <ListRow
-                    cloudWrite key={payment.id}
+                    key={payment.id}
                     title={formatMoney(payment.amount, payment.currency as Currency | undefined)}
                     subtitle={`${formatBusinessDate(payment.transactionDate)} · ${payment.description}${saving === payment.id ? ' · Linking…' : ''}`}
                     onPress={
@@ -273,8 +323,10 @@ export function BillsInboxScreen() {
                         : () =>
                             void act(
                               payment.id,
-                              () => linkBillToEntry(client, selected, payment.id),
-                              `Bill from ${selected.supplierName} linked to the payment.`
+                              () => cloud
+                                ? queue(selected, 'supplier_bill.link', { billId: selected.id, transactionId: payment.id }, 'Link bill to payment')
+                                : linkBillToEntry(client, selected, payment.id),
+                              cloud ? sent : `Bill from ${selected.supplierName} linked to the payment.`
                             )
                     }
                   />

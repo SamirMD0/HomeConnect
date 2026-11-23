@@ -12,7 +12,10 @@ import { Card, Field, ReadState, readStyles } from '../lookup/ReadUI';
 import { queryKeys } from '../query/keys';
 import { FormPage } from '../sales/FormUI';
 import { postMovement } from './stock-api';
+import { enqueueCloudAction } from '../offline/outbox-runtime';
+import { OutboxStatus } from '../offline/OutboxStatus';
 import {
+  buildCloudMovementPayload,
   buildMovementPayload,
   englishMessage,
   guardedMovementTypes,
@@ -48,19 +51,40 @@ export function AdjustScreen() {
     [note, setNote] = useState(''),
     [password, setPassword] = useState(''),
     [saving, setSaving] = useState(false),
-    [banner, setBanner] = useState<Banner>(null);
+    [banner, setBanner] = useState<Banner>(null),
+    [queued, setQueued] = useState<string | null>(null);
+  const cloud = session.mode === 'cloud';
 
   const before = inventory.data?.product.stockQuantity;
-  const guarded = guardedMovementTypes.includes(type);
+  // Over the cloud an admin phone's PIN confirms guarded changes.
+  const guarded = guardedMovementTypes.includes(type) && !cloud;
   const parsed = /^\d+$/.test(quantity.trim()) ? Number(quantity) : null;
   const after = before !== undefined && parsed !== null ? movementAfter(type, before, parsed) : null;
 
   const save = async () => {
-    if (before === undefined) return;
+    if (!cloud && before === undefined) return;
     setSaving(true);
     setBanner(null);
+    if (cloud) {
+      try {
+        const payload = buildCloudMovementPayload({ productId: id, type, quantity, reason, note });
+        const action = await enqueueCloudAction({
+          type: 'stock_movement.create',
+          submissionKey: (await import('expo-crypto')).randomUUID(),
+          payload,
+          summary: `Stock · ${movementLabels[type]} ${payload.quantity} · ${product.data?.name ?? 'Product'}`,
+        });
+        setQueued(action.id);
+        setQuantity('');
+      } catch (error) {
+        setBanner({ tone: 'danger', message: error instanceof Error ? error.message : 'Could not save.' });
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
     try {
-      const payload = buildMovementPayload({ type, quantity, expectedBefore: before, reason, note, password });
+      const payload = buildMovementPayload({ type, quantity, expectedBefore: before!, reason, note, password });
       const result = await postMovement(client, id, payload);
       setPassword('');
       setQuantity('');
@@ -94,11 +118,12 @@ export function AdjustScreen() {
         <ReadState query={inventory} />
         {before !== undefined && (
           <Card title="Shared stock · all branches">
-            <Field label="Now on the PC" value={before} />
+            <Field label={cloud ? "On the PC at last sync" : "Now on the PC"} value={before} />
             {after !== null && <Field label="After this change" value={after} />}
           </Card>
         )}
         {banner ? <StatusBanner tone={banner.tone} message={banner.message} /> : null}
+        {queued ? <OutboxStatus id={queued} /> : null}
         {tracked === false ? (
           <StatusBanner tone="warning" message="This product does not track stock." />
         ) : (
@@ -135,9 +160,9 @@ export function AdjustScreen() {
               />
             )}
             <AppButton
-              cloudWrite label="Save change"
+              label={queued ? 'Save another change' : 'Save change'}
               loading={saving}
-              disabled={before === undefined || !quantity || !reason.trim() || (guarded && !password)}
+              disabled={(!cloud && before === undefined) || !quantity || !reason.trim() || (guarded && !password)}
               onPress={() => void save()}
             />
           </>

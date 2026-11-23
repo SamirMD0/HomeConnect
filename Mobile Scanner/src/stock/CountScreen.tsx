@@ -16,6 +16,8 @@ import { theme } from '../theme';
 import { ScanPanel } from './ScanPanel';
 import { QuantityStepper } from './QuantityStepper';
 import { currentStock, postMovement, productForCode } from './stock-api';
+import { enqueueCloudAction } from '../offline/outbox-runtime';
+import { buildCloudMovementPayload } from './stock-logic';
 import { useStockDraft, type CountStore } from './stock-drafts';
 import {
   addCountScan,
@@ -49,6 +51,8 @@ export function CountScreen() {
   const { client, scope, session } = useLookup();
   const queryClient = useQueryClient();
   const draft = useStockDraft<CountStore>(scope, 'count');
+  // Over the cloud the admin phone's PIN confirms the count; no password.
+  const cloud = session.mode === 'cloud';
   const [banner, setBanner] = useState<Banner>(null),
     [password, setPassword] = useState(''),
     [submitting, setSubmitting] = useState(false),
@@ -99,6 +103,31 @@ export function CountScreen() {
     setSubmitting(true);
     setBanner(null);
     let saved = 0;
+    if (cloud) {
+      try {
+        for (const line of linesToSubmit(form)) {
+          const latest = store.current.form!;
+          const payload = buildCloudMovementPayload({
+            productId: line.productId, type: 'STOCK_COUNT', quantity: String(line.counted),
+            reason: latest.reason, note: latest.note,
+          });
+          await enqueueCloudAction({
+            type: 'stock_movement.create',
+            submissionKey: (await import('expo-crypto')).randomUUID(),
+            payload,
+            summary: `Stock count · ${line.name} → ${line.counted}`,
+          });
+          await update((f) => markLine(f, line.productId, { status: 'done', message: 'Sent to the shop PC. Open Waiting for its result.' }));
+          saved += 1;
+        }
+        setBanner({ tone: 'success', message: `${saved} correction${saved === 1 ? '' : 's'} sent to the shop PC.` });
+      } catch (error) {
+        setBanner({ tone: 'danger', message: error instanceof Error ? error.message : 'Could not send the count.' });
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
     try {
       for (const line of linesToSubmit(form)) {
         const latest = store.current.form!;
@@ -214,7 +243,7 @@ export function CountScreen() {
         ))}
 
         {finished ? (
-          <AppButton cloudWrite label="Start a new count" onPress={() => void draft.restart()} />
+          <AppButton label="Start a new count" onPress={() => void draft.restart()} />
         ) : (
           <>
             <AppInput
@@ -229,18 +258,20 @@ export function CountScreen() {
               maxLength={2000}
               onChangeText={(note) => void update((f) => ({ ...f, note }))}
             />
-            <AppInput
-              label="Your account password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
+            {!cloud && (
+              <AppInput
+                label="Your account password"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            )}
             <AppButton
-              cloudWrite label={toSend ? `Submit ${toSend} correction${toSend === 1 ? '' : 's'}` : 'Nothing to submit'}
+              label={toSend ? `Submit ${toSend} correction${toSend === 1 ? '' : 's'}` : 'Nothing to submit'}
               loading={submitting}
-              disabled={!toSend || !password || !form.reason.trim()}
+              disabled={!toSend || (!cloud && !password) || !form.reason.trim()}
               onPress={() => void submit()}
             />
             {summary.total > 0 && summary.submitted === 0 && (

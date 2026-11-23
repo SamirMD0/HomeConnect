@@ -17,6 +17,8 @@ import { ProductPicker } from '../sales/ProductPicker';
 import { ScanPanel } from './ScanPanel';
 import { QuantityStepper } from './QuantityStepper';
 import { createReceiving, productForCode, receivingDuplicateCheck } from './stock-api';
+import { enqueueCloudAction } from '../offline/outbox-runtime';
+import { OutboxStatus } from '../offline/OutboxStatus';
 import { useStockDraft, type ReceiveStore } from './stock-drafts';
 import {
   addReceiveScan,
@@ -27,6 +29,12 @@ import {
   type ReceiveForm,
 } from './stock-logic';
 
+/** A cloud receiving is queued for the PC; its stored result names the action. */
+const queuedId = (result: unknown) =>
+  result && typeof (result as { queuedActionId?: unknown }).queuedActionId === 'string'
+    ? (result as { queuedActionId: string }).queuedActionId
+    : null;
+
 type Banner = { tone: 'success' | 'warning' | 'danger'; message: string } | null;
 
 /**
@@ -36,7 +44,8 @@ type Banner = { tone: 'success' | 'warning' | 'danger'; message: string } | null
  * returns the same receiving instead of adding the stock twice.
  */
 export function ReceiveScreen() {
-  const { client, key, scope } = useLookup();
+  const { client, key, scope, session } = useLookup();
+  const cloud = session.mode === 'cloud';
   const queryClient = useQueryClient();
   const draft = useStockDraft<ReceiveStore>(scope, 'receive');
   const [banner, setBanner] = useState<Banner>(null),
@@ -56,7 +65,8 @@ export function ReceiveScreen() {
   const duplicate = useQuery({
     queryKey: key('receiving-duplicate', { supplierId: form?.supplierId, reference }),
     queryFn: () => receivingDuplicateCheck(client, form!.supplierId, reference),
-    enabled: Boolean(form?.supplierId && reference),
+    // Over the cloud the PC checks the reference itself when it applies the receiving.
+    enabled: Boolean(form?.supplierId && reference) && !cloud,
   });
 
   const update = async (change: (current: ReceiveForm) => ReceiveForm) => {
@@ -89,7 +99,17 @@ export function ReceiveScreen() {
     try {
       await store.submit(
         (current, idempotencyKey) => buildReceivingPayload(current, idempotencyKey, localDate()),
-        (payload) => createReceiving(client, payload)
+        async (payload) => {
+          if (!cloud) return createReceiving(client, payload);
+          // The saved idempotency key doubles as the action's submission key.
+          const action = await enqueueCloudAction({
+            type: 'stock_receiving.create',
+            submissionKey: payload.idempotencyKey,
+            payload: { ...payload },
+            summary: `Receiving · ${payload.items.length} product${payload.items.length === 1 ? '' : 's'}${payload.referenceNumber ? ` · Ref ${payload.referenceNumber}` : ''}`,
+          });
+          return { queuedActionId: action.id } as unknown as Awaited<ReturnType<typeof createReceiving>>;
+        }
       );
       void queryClient.invalidateQueries({ queryKey: queryKeys.scope(scope) });
     } catch (error) {
@@ -115,12 +135,16 @@ export function ReceiveScreen() {
     return (
       <>
         <Stack.Screen options={{ title: 'Receive goods' }} />
-        <FormPage title="Goods received">
-          <StatusBanner
-            tone="success"
-            message={`Saved on the PC${record.result.referenceNumber ? ` · Ref ${record.result.referenceNumber}` : ''}. Shared stock has been increased.`}
-          />
-          <AppButton cloudWrite label="Receive more goods" onPress={() => void draft.restart()} />
+        <FormPage title={queuedId(record.result) ? 'Receiving saved' : 'Goods received'}>
+          {queuedId(record.result) ? (
+            <OutboxStatus id={queuedId(record.result)!} />
+          ) : (
+            <StatusBanner
+              tone="success"
+              message={`Saved on the PC${record.result.referenceNumber ? ` · Ref ${record.result.referenceNumber}` : ''}. Shared stock has been increased.`}
+            />
+          )}
+          <AppButton label="Receive more goods" onPress={() => void draft.restart()} />
         </FormPage>
       </>
     );
@@ -180,7 +204,7 @@ export function ReceiveScreen() {
         <DraftNotice locked={locked} error="" onDiscard={() => void draft.restart()} />
         {banner ? <StatusBanner tone={banner.tone} message={banner.message} /> : null}
         {locked ? (
-          <AppButton cloudWrite label="Retry saving" loading={submitting} onPress={() => void submit()} />
+          <AppButton label="Retry saving" loading={submitting} onPress={() => void submit()} />
         ) : current ? (
           <>
             <ListRow
@@ -237,7 +261,7 @@ export function ReceiveScreen() {
               </Card>
             ))}
             <AppButton
-              cloudWrite label="Save receiving"
+              label="Save receiving"
               loading={submitting}
               disabled={!current.lines.length}
               onPress={() => void submit()}

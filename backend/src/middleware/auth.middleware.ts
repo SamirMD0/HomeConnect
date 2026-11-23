@@ -15,6 +15,12 @@ declare global {
       user?: {
         userId: string;
         role: string;
+        /**
+         * Set only in tokens the PC's own cloud worker signs for a paired
+         * phone's action: the phone was unlocked with its PIN. Login tokens
+         * never carry it.
+         */
+        pinConfirmed?: boolean;
       };
     }
   }
@@ -31,7 +37,7 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
 
   let decoded: { userId: string; role: string };
   try {
-    decoded = jwt.verify(token, JWT_SECRET) as { userId: string; role: string };
+    decoded = jwt.verify(token, JWT_SECRET) as { userId: string; role: string; pinConfirmed?: boolean };
   } catch {
     return next(new AuthenticationError('Invalid or expired token'));
   }

@@ -20,12 +20,21 @@ const defaults = {
   })),
 };
 export type ActionDependencies = typeof defaults;
-const supported = new Set(['customer_payment.create', 'sales_order.create', 'supplier_payment.create', 'supplier_bill.upload','report.request']);
+const supported = new Set(['customer_payment.create', 'sales_order.create', 'supplier_payment.create', 'supplier_bill.upload','report.request',
+  'stock_movement.create', 'stock_receiving.create', 'supplier_purchase.create', 'prepaid.create',
+  'supplier_bill.link', 'supplier_bill.delete', 'supplier_bill.replace']);
 // PC record ids are UUID-shaped but not always RFC 4122 (see relay/inputs.ts).
 const id = z.guid();
 const object = z.record(z.string(), z.unknown());
 
-function actionRequest(action: ClaimedAction) {
+type PcRequest = {
+  path: string; body: unknown; method?: 'POST' | 'PATCH' | 'DELETE';
+  /** The action's photo is the body: a new bill page (upload) or a retaken one (replace). */
+  bill?: { billGroupId?: string; upload: boolean };
+  /** After a purchase from a bill: attach that bill to the new purchase. */
+  linkBillId?: string;
+};
+function actionRequest(action: ClaimedAction): PcRequest {
   const payload = object.parse(action.payload);
   const body: Record<string, unknown> = { ...payload, idempotencyKey: action.id };
   switch (action.type) {
@@ -41,10 +50,39 @@ function actionRequest(action: ClaimedAction) {
       if (payment.type !== 'SUPPLIER_PAYMENT') throw new Error('Only supplier payments are supported.');
       return { path: `/suppliers/${id.parse(supplierId)}/transactions`, body: payment };
     }
+    case 'stock_movement.create': {
+      // The PC finds an earlier write by this reference (repeat protection).
+      const { productId, accountPassword: _never, idempotencyKey: _key, ...movement } = body;
+      return { path: `/products/${id.parse(productId)}/stock-movements`,
+        body: { ...movement, referenceType: 'SYNC_ACTION', referenceId: action.id } };
+    }
+    case 'stock_receiving.create': return { path: '/inventory/receivings', body };
+    case 'supplier_purchase.create': {
+      const { supplierId, billId, ...purchase } = body;
+      return { path: `/suppliers/${id.parse(supplierId)}/purchases`, body: purchase,
+        ...(billId === undefined ? {} : { linkBillId: id.parse(billId) }) };
+    }
+    case 'supplier_bill.link': {
+      // A purchase or a payment: the PC routes a purchase with stock to its receiving.
+      const link = z.object({ billId: id, transactionId: id }).strict().parse(payload);
+      return { path: `/supplier-bills/${link.billId}`, method: 'PATCH', body: { supplierTransactionId: link.transactionId } };
+    }
+    case 'supplier_bill.delete': {
+      const remove = z.object({ billId: id, wholeBill: z.boolean() }).strict().parse(payload);
+      return { path: `/supplier-bills/${remove.billId}?bill=${remove.wholeBill}`, method: 'DELETE', body: undefined };
+    }
+    case 'supplier_bill.replace': {
+      const page = z.object({ billId: id }).strict().parse(payload);
+      return { path: `/supplier-bills/${page.billId}/replace`, bill: { upload: false }, body: undefined };
+    }
+    case 'prepaid.create': {
+      const { customerId, ...prepaid } = body;
+      return { path: `/customers/${id.parse(customerId)}/prepaid-purchases`, body: prepaid };
+    }
     case 'supplier_bill.upload': {
       const bill = z.object({ supplierId: id, note: z.string().max(2000).optional(), billGroupId: id.optional() }).strict().parse(payload);
       return { path: `/suppliers/${bill.supplierId}/bills${bill.note ? '?note=' + encodeURIComponent(bill.note) : ''}`,
-        bill, body: undefined };
+        bill: { billGroupId: bill.billGroupId, upload: true }, body: undefined };
     }
     default: throw new Error('Unsupported action');
   }
@@ -55,6 +93,13 @@ function keyFields(data: Record<string, any>, actionId: string): Prisma.InputJso
   for (const key of ['id', 'orderNumber', 'referenceNumber', 'supplierId', 'customerId', 'currency', 'totalAmount', 'amount', 'transactionDate', 'status', 'billGroupId']) {
     if (typeof data[key] === 'string' || typeof data[key] === 'number') result[key] = data[key];
   }
+  // Stock moves answer { changed, message, product, movement }.
+  if (data.movement && typeof data.movement.id === 'string') result.id = data.movement.id;
+  if (data.product && typeof data.product.stockQuantity === 'number') {
+    result.productId = data.product.id;
+    result.stockQuantity = data.product.stockQuantity;
+  }
+  if (data.changed === false && typeof data.message === 'string') result.message = data.message;
   if (Array.isArray(data.payments)) {
     const payments = data.payments.filter((p: any) => p.idempotencyKey === actionId).map((p: any) => ({ id: p.id, idempotencyKey: actionId }));
     result.payments = payments;
@@ -91,13 +136,15 @@ export async function applyAction(action: ClaimedAction, relay: Pick<WorkerRelay
     }
     return;
   }
-  let request: ReturnType<typeof actionRequest>;
+  let request: PcRequest;
   try { request = actionRequest(action); }
   catch {
     await remember({ status: 'refused', result: { code: 'VALIDATION_ERROR', message: 'The queued action has invalid fields or is missing its target.' } }); return;
   }
   const headers: Record<string, string> = {
-    Authorization: 'Bearer ' + jwt.sign({ userId: user.id, role: user.role }, requireSecretEnv('JWT_SECRET'), { expiresIn: '2m' }),
+    // pinConfirmed: the paired phone was unlocked with its PIN. Only this
+    // worker signs it; it stands in for the password on admin stock changes.
+    Authorization: 'Bearer ' + jwt.sign({ userId: user.id, role: user.role, pinConfirmed: true }, requireSecretEnv('JWT_SECRET'), { expiresIn: '2m' }),
     'X-Branch-Scope': action.branchId, 'X-Sync-Action': action.id,
     'Content-Type': 'application/json',
   };
@@ -109,7 +156,7 @@ export async function applyAction(action: ClaimedAction, relay: Pick<WorkerRelay
       await remember({ status: 'refused', result: { code: 'INVALID_PHOTO', message: 'The bill photo format or size is invalid.' } }); return;
     }
     headers['Content-Type'] = blob.mime;
-    headers['X-Receipt-Id'] = action.id;
+    if (request.bill.upload) headers['X-Receipt-Id'] = action.id;
     if (request.bill.billGroupId) headers['X-Bill-Group'] = request.bill.billGroupId;
     body = blob.bytes;
   }
@@ -119,7 +166,7 @@ export async function applyAction(action: ClaimedAction, relay: Pick<WorkerRelay
   let data: any;
   try {
     response = await deps.fetch(`http://127.0.0.1:${Number(process.env.PORT || 3001)}/api/v1${request.path}`, {
-      method: 'POST', headers, body, redirect: 'error', signal: AbortSignal.timeout(Math.min(20000, remaining)),
+      method: request.method ?? 'POST', headers, body: request.body === undefined && !request.bill ? undefined : body, redirect: 'error', signal: AbortSignal.timeout(Math.min(20000, remaining)),
     });
     data = await response.json();
   } catch {
@@ -128,6 +175,20 @@ export async function applyAction(action: ClaimedAction, relay: Pick<WorkerRelay
   }
   if (response.ok) {
     const result={...keyFields(data.data??{},action.id)};
+    if (request.linkBillId && typeof result.id === 'string') {
+      // Best effort, as on the phone over Wi-Fi: the purchase stands either way.
+      try {
+        const linked = await deps.fetch(`http://127.0.0.1:${Number(process.env.PORT || 3001)}/api/v1/supplier-bills/${request.linkBillId}`, {
+          method: 'PATCH', headers, body: JSON.stringify({ supplierTransactionId: result.id }), redirect: 'error',
+          signal: AbortSignal.timeout(Math.max(1000, Math.min(20000, deadline - Date.now()))),
+        });
+        result.billLinked = linked.ok;
+        if (!linked.ok) result.billMessage = 'The purchase was saved, but the bill could not be attached. It stays in the bills inbox.';
+      } catch {
+        result.billLinked = false;
+        result.billMessage = 'The purchase was saved, but the bill could not be attached. It stays in the bills inbox.';
+      }
+    }
     if(action.type==='customer_payment.create'&&typeof result.id==='string'){
       try{
         const payment=await pcRead(`/payments/${encodeURIComponent(result.id)}/receipt`,action.branchId,user,deadline,deps.fetch);

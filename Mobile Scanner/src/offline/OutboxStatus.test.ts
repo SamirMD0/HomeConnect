@@ -50,7 +50,7 @@ describe('saved cloud action presentation', () => {
       'View saved order'
     );
   });
-  it('shows a PC refusal and keeps payment receipts explicitly on shop Wi-Fi', () => {
+  it('shows a PC refusal without promising a receipt', () => {
     state.row = {
       ...state.row,
       type: 'customer_payment.create',
@@ -59,7 +59,27 @@ describe('saved cloud action presentation', () => {
     };
     const html = renderToStaticMarkup(createElement(OutboxStatus, { id: 'action' }));
     expect(html).toContain('Only 2 left in stock');
-    expect(html).toContain('Payment receipts are available on the shop Wi-Fi');
+    expect(html).not.toContain('receipt appears here');
+    expect(html).not.toContain('shop Wi-Fi');
     expect(html).not.toContain('View and share receipt');
+  });
+
+  it('says the receipt arrives with the PC result while a payment waits', () => {
+    state.row = { ...state.row, type: 'customer_payment.create', local_status: 'pending', result: null };
+    const html = renderToStaticMarkup(createElement(OutboxStatus, { id: 'action' }));
+    expect(html).toContain('The receipt appears here as soon as the shop PC records the payment.');
+    expect(html).toContain('Open Waiting list');
+  });
+
+  it('shows the new stock level and a bill that could not be attached', () => {
+    state.row = {
+      ...state.row,
+      type: 'supplier_purchase.create',
+      local_status: 'applied',
+      result: JSON.stringify({ id: 'p', stockQuantity: 12, billLinked: false, billMessage: 'It stays in the bills inbox.' }),
+    };
+    const html = renderToStaticMarkup(createElement(OutboxStatus, { id: 'action' }));
+    expect(html).toContain('Stock on the PC is now 12.');
+    expect(html).toContain('It stays in the bills inbox.');
   });
 });

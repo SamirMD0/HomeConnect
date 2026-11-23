@@ -92,6 +92,32 @@ export function buildMovementPayload(input: {
   };
 }
 
+/**
+ * The same change, queued for the shop PC over the cloud. No expectedBefore:
+ * the phone's copy can be minutes old, so the PC applies the change to its
+ * own current stock (a count sets the total). No password: an admin phone's
+ * PIN confirms it, and the PC still refuses staff for guarded changes.
+ */
+export function buildCloudMovementPayload(input: {
+  productId: string;
+  type: MovementType;
+  quantity: string;
+  reason: string;
+  note: string;
+}) {
+  const quantity = parseWholeQuantity(input.quantity, input.type === 'STOCK_COUNT');
+  const reason = input.reason.trim();
+  if (!reason) throw new Error('Reason is required.');
+  if (reason.length > 1000) throw new Error('Reason is too long.');
+  return {
+    productId: input.productId,
+    movementType: input.type,
+    quantity,
+    reason,
+    note: input.note.trim() || null,
+  };
+}
+
 /** Server messages are bilingual ("English / Arabic"); the app is English-only. */
 export function englishMessage(message: string): string {
   return (message.split(' / ')[0] ?? message).trim();

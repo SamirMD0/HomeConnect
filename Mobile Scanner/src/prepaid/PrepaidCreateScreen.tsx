@@ -5,6 +5,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { formatMoney } from '@shared/money-format';
 import { HcApiError } from '../api/hc-client';
 import { getCustomer } from '../api/customers-api';
+import { enqueueCloudAction } from '../offline/outbox-runtime';
+import { OutboxStatus } from '../offline/OutboxStatus';
 import { AppButton } from '../components/AppButton';
 import { AppInput } from '../components/AppInput';
 import { EmptyState } from '../components/EmptyState';
@@ -32,7 +34,8 @@ export function PrepaidCreateScreen() {
     [saving, setSaving] = useState(false),
     [error, setError] = useState(''),
     [uncertain, setUncertain] = useState(false),
-    [saved, setSaved] = useState<string | null>(null);
+    [saved, setSaved] = useState<string | null>(null),
+    [queued, setQueued] = useState<string | null>(null);
   const inFlight = useRef(false);
   const pending = useQuery({
     queryKey: key('prepaid', { customerId, check: true }),
@@ -56,6 +59,17 @@ export function PrepaidCreateScreen() {
     inFlight.current = true;
     setSaving(true);
     try {
+      if (session.mode === 'cloud') {
+        // The action id is the PC's repeat-protection key: it is never created twice.
+        const action = await enqueueCloudAction({
+          type: 'prepaid.create',
+          submissionKey: (await import('expo-crypto')).randomUUID(),
+          payload: { customerId, ...payload },
+          summary: `Prepaid · ${payload.itemName} · ${customer.data?.name ?? 'Customer'}`,
+        });
+        setQueued(action.id);
+        return;
+      }
       await createPrepaid(client, customerId, payload);
       setSaved(payload.itemName);
       await queryClient.invalidateQueries({ queryKey: queryKeys.scope(scope) });
@@ -69,6 +83,13 @@ export function PrepaidCreateScreen() {
     }
   };
 
+  if (queued)
+    return (
+      <FormPage title="Prepaid item saved">
+        <OutboxStatus id={queued} />
+        <AppButton label="Done" onPress={() => router.back()} />
+      </FormPage>
+    );
   if (saved)
     return (
       <FormPage title="Prepaid item saved">
@@ -98,7 +119,7 @@ export function PrepaidCreateScreen() {
               />
             ))}
             {pending.data && pending.data.length === 0 ? <Text style={readStyles.subtitle}>No pending items for this customer.</Text> : null}
-            <AppButton cloudWrite label="It is not there: send again" variant="secondary" onPress={() => setUncertain(false)} />
+            <AppButton label="It is not there: send again" variant="secondary" onPress={() => setUncertain(false)} />
             <AppButton label="It is there: finish" onPress={() => setSaved(form.itemName.trim())} />
           </>
         ) : (
@@ -107,7 +128,7 @@ export function PrepaidCreateScreen() {
             <AppInput label="Full price (USD)" value={form.fullAmount} onChangeText={set('fullAmount')} keyboardType="decimal-pad" />
             <AppInput label="Paid now (USD)" value={form.paymentAmount} onChangeText={set('paymentAmount')} keyboardType="decimal-pad" />
             <AppInput label="Notes (optional)" value={form.notes} onChangeText={set('notes')} maxLength={1000} />
-            <AppButton cloudWrite label="Save prepaid item" loading={saving} onPress={() => void submit()} />
+            <AppButton label="Save prepaid item" loading={saving} onPress={() => void submit()} />
           </>
         )}
       </FormPage>

@@ -98,7 +98,6 @@ export function CustomerDetailScreen() {
                   ? [
                       {
                         label: 'Prepaid item',
-                        cloudWrite: true,
                         icon: 'time-outline',
                         onPress: () =>
                           router.push({

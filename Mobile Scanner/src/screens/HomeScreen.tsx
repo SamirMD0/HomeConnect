@@ -76,13 +76,11 @@ export function HomeScreen() {
       ? {
           label: 'Count',
           icon: 'clipboard-outline',
-          cloudWrite: true,
           onPress: () => router.push('/(tabs)/stock/count'),
         }
       : {
           label: 'Receive',
           icon: 'cube-outline',
-          cloudWrite: true,
           onPress: () => router.push('/(tabs)/stock/receive'),
         },
   ];

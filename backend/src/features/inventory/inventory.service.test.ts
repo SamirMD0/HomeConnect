@@ -1,7 +1,7 @@
 import { Role, StockMovementType } from '@prisma/client';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { repository, verifyAdminPassword, tx } = vi.hoisted(() => ({
+const { repository, verifyAdminPassword, verifyAdminByPhonePin, tx } = vi.hoisted(() => ({
   repository: {
     findProduct: vi.fn(),
     hasOpeningBalance: vi.fn(),
@@ -14,11 +14,12 @@ const { repository, verifyAdminPassword, tx } = vi.hoisted(() => ({
     stockIntegrity: vi.fn(),
   },
   verifyAdminPassword: vi.fn(),
-  tx: {},
+  verifyAdminByPhonePin: vi.fn(),
+  tx: { stockMovement: { findFirst: vi.fn() } },
 }));
 
 vi.mock('./inventory.repository', () => ({ InventoryRepository: repository }));
-vi.mock('../../lib/admin-verification', () => ({ verifyAdminPassword }));
+vi.mock('../../lib/admin-verification', () => ({ verifyAdminPassword, verifyAdminByPhonePin }));
 vi.mock('../financial/infrastructure/transaction', () => ({
   runFinancialTransaction: vi.fn((operation: (client: unknown) => unknown) => operation(tx)),
 }));
@@ -264,6 +265,36 @@ describe('inventory service', () => {
     await expect(InventoryService.removeStock(productId, {
       quantity: 1, reason: 'Stock correction', accountPassword: '',
     }, user)).rejects.toThrow('Account password is required');
+  });
+
+  it('lets a PIN-confirmed admin phone correct stock without the password, audited as the phone', async () => {
+    const phone = { ...user, pinConfirmed: true };
+    repository.findProduct.mockResolvedValue(productOf(10));
+    repository.hasOpeningBalance.mockResolvedValue({ id: 'opening' });
+    repository.compareAndSetQuantity.mockResolvedValue({ count: 1 });
+    repository.createMovement.mockResolvedValue({ id: 'movement' });
+    await InventoryService.correctStockCount(productId, { targetTotal: 8, reason: 'Phone count' }, phone);
+    expect(verifyAdminByPhonePin).toHaveBeenCalledWith(user.userId, expect.objectContaining({ action: 'CORRECT_STOCK_COUNT' }), tx);
+    expect(verifyAdminPassword).not.toHaveBeenCalled();
+    // A PIN-confirmed staff phone is still refused; a normal login still needs the password.
+    await expect(InventoryService.removeStock(productId, { quantity: 1, reason: 'Phone removal' }, { ...employee, pinConfirmed: true }))
+      .rejects.toMatchObject({ statusCode: 403 });
+    await expect(InventoryService.removeStock(productId, { quantity: 1, reason: 'Phone removal' }, user))
+      .rejects.toThrow('Account password is required');
+  });
+
+  it('returns the earlier movement when a cloud action is applied twice', async () => {
+    const earlier = { id: 'first-movement' };
+    tx.stockMovement.findFirst.mockResolvedValueOnce(earlier);
+    repository.findProduct.mockResolvedValue(productOf(11));
+    const actionId = '33333333-3333-4333-8333-333333333333';
+    const result = await InventoryService.addStock(productId, {
+      quantity: 1, reason: 'Phone add', referenceType: 'SYNC_ACTION', referenceId: actionId,
+    }, employee);
+    expect(result).toMatchObject({ changed: true, movement: earlier });
+    expect(tx.stockMovement.findFirst).toHaveBeenCalledWith({ where: { productId, referenceType: 'SYNC_ACTION', referenceId: actionId } });
+    expect(repository.compareAndSetQuantity).not.toHaveBeenCalled();
+    expect(repository.createMovement).not.toHaveBeenCalled();
   });
 
   it.each([0, -1, 1.5, 1_000_000])('rejects invalid movement quantity %s before reaching PostgreSQL', async (quantity) => {

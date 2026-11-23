@@ -30,11 +30,8 @@ export const stockMovementSchema = z.object({
   if (input.movementType !== StockMovementType.STOCK_COUNT && input.quantity === 0) {
     context.addIssue({ code: 'custom', path: ['quantity'], message: 'Quantity must be greater than zero' });
   }
-  const guarded: StockMovementType[] = [StockMovementType.MANUAL_REMOVE, StockMovementType.STOCK_COUNT, StockMovementType.DAMAGE_LOSS];
-  if (guarded.includes(input.movementType)
-      && !input.accountPassword) {
-    context.addIssue({ code: 'custom', path: ['accountPassword'], message: 'Account password is required' });
-  }
+  // The service requires the account password for removals, counts and
+  // damage, except on a paired admin phone's PIN-confirmed cloud action.
 });
 
 export const verifyOpeningCountSchema = z.object({

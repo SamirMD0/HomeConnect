@@ -42,6 +42,8 @@ export const createPrepaidPurchaseSchema = z
     paymentAmount: moneyStringSchema,
     fullAmount: moneyStringSchema,
     notes: userTextSchema({ field: 'Notes', max: 1000 }).optional().nullable(),
+    /** A phone's cloud action id: the same prepaid item is never created twice. */
+    idempotencyKey: z.string().trim().max(128, 'Idempotency key is too long').optional().nullable(),
   })
   .superRefine((input, context) => {
     const paymentCents = moneyToCents(input.paymentAmount);

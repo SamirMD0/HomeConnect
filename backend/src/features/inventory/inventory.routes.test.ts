@@ -149,11 +149,17 @@ describe('inventory routes', () => {
     expect(service[method as keyof typeof service]).toHaveBeenCalledTimes(1);
   });
 
-  it('rejects guarded actions without a password and rejects reserved or zero-change types', async () => {
+  it('leaves the password rule to the service and rejects reserved or zero-change types', async () => {
     const url = `/api/v1/products/${productId}/stock-movements`;
+    // The service requires the password unless a paired admin phone's PIN
+    // confirmed the cloud action (inventory.service.test covers both).
+    service.removeStock.mockResolvedValueOnce({ changed: true });
     expect((await request(app).post(url).set('Authorization', as(admin)).send({
       movementType: StockMovementType.MANUAL_REMOVE, quantity: 1, reason: 'Correction',
-    })).status).toBe(400);
+    })).status).toBe(201);
+    expect(service.removeStock).toHaveBeenLastCalledWith(
+      productId, expect.objectContaining({ accountPassword: undefined }), expect.anything(), expect.anything()
+    );
     expect((await request(app).post(url).set('Authorization', as(admin)).send({
       movementType: StockMovementType.PURCHASE_RECEIPT, quantity: 1, reason: 'Not wired',
     })).status).toBe(400);

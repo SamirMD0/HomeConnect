@@ -281,6 +281,34 @@ describe('DebtsService', () => {
     });
   });
 
+  it('returns the existing prepaid item when a phone action is applied twice', async () => {
+    const prepaidDebt = makeDebt({ kind: DebtKind.PREPAID_PURCHASE, originalAmount: new Decimal('400.00'),
+      paymentAllocations: [makeAllocation('100.00')], status: DebtStatus.PARTIALLY_PAID });
+    const findUnique = vi.fn().mockResolvedValue({ customerId: customer.id, allocations: [{ debtId: prepaidDebt.id }] });
+    Object.assign(tx, { payment: { findUnique } });
+    repositoryMock.findActiveCustomerById.mockResolvedValue(customer);
+    repositoryMock.findDebtById.mockResolvedValue(prepaidDebt);
+    const input = { itemName: 'Air conditioner', paymentAmount: '100.00', fullAmount: '400.00', idempotencyKey: 'action-1' };
+    await expect(DebtsService.createPrepaidPurchase(customer.id, input, adminUser)).resolves.toMatchObject({ id: prepaidDebt.id });
+    expect(findUnique).toHaveBeenCalledWith(expect.objectContaining({ where: { idempotencyKey: 'action-1' } }));
+    expect(repositoryMock.createDebt).not.toHaveBeenCalled();
+    expect(repositoryMock.createPayment).not.toHaveBeenCalled();
+
+    // The same key on another customer's payment is refused, not reused.
+    findUnique.mockResolvedValueOnce({ customerId: 'someone-else', allocations: [{ debtId: prepaidDebt.id }] });
+    await expect(DebtsService.createPrepaidPurchase(customer.id, input, adminUser)).rejects.toThrow('already used');
+
+    // A first-time key is stored on the prepaid payment.
+    findUnique.mockResolvedValueOnce(null);
+    repositoryMock.createDebt.mockResolvedValue(prepaidDebt);
+    repositoryMock.createPayment.mockResolvedValue(makeAllocation('100.00').payment);
+    repositoryMock.createDebtPaymentAllocation.mockResolvedValue(makeAllocation('100.00'));
+    repositoryMock.updateDebtStatus.mockResolvedValue(prepaidDebt);
+    await DebtsService.createPrepaidPurchase(customer.id, input, adminUser);
+    expect(repositoryMock.createPayment).toHaveBeenCalledWith(tx, expect.objectContaining({ idempotencyKey: 'action-1' }));
+    delete (tx as { payment?: unknown }).payment;
+  });
+
   it('does not mark a prepaid purchase overdue', async () => {
     repositoryMock.findDebtById.mockResolvedValue(makeDebt({
       kind: DebtKind.PREPAID_PURCHASE,

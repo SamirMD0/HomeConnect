@@ -76,6 +76,41 @@ export async function verifyAdminPassword(
   }, tx);
 }
 
+/**
+ * A paired admin phone, unlocked with its PIN, stands in for the account
+ * password on a cloud action (decided 2026-11-23). The phone never sends or
+ * stores the password; the audit log records the attempt as `paired-phone`.
+ */
+export async function verifyAdminByPhonePin(
+  userId: string,
+  context: AdminPasswordContext,
+  tx?: Prisma.TransactionClient
+): Promise<void> {
+  const now = Date.now();
+  const phone = { ...context, ipAddress: 'paired-phone' };
+  const user = await (tx ?? prisma).user.findUnique({
+    where: { id: userId },
+    select: { role: true, deletedAt: true, isActive: true },
+  });
+  if (!user || user.deletedAt || !user.isActive) {
+    await recordFailure(userId, now, phone, tx);
+    throw new AuthenticationError('This account can no longer confirm changes');
+  }
+  if (user.role !== Role.ADMIN) {
+    await recordFailure(userId, now, phone, tx);
+    throw new AuthorizationError(
+      `Only administrators can perform ${context.domainLabel ?? 'financial corrections'}`
+    );
+  }
+  await recordAttempt({
+    userId,
+    attemptedAt: now,
+    outcome: AdminVerificationOutcome.SUCCESS,
+    action: context.action,
+    ipAddress: phone.ipAddress,
+  }, tx);
+}
+
 export function resetAdminPasswordAttemptsForTests(): void {
   attempts.length = 0;
 }

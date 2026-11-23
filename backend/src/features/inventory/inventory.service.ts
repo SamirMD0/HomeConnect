@@ -1,6 +1,6 @@
 import { Prisma, Role, StockMovementType } from '@prisma/client';
 import { randomUUID } from 'crypto';
-import { verifyAdminPassword } from '../../lib/admin-verification';
+import { verifyAdminByPhonePin, verifyAdminPassword } from '../../lib/admin-verification';
 import { AuthorizationError, NotFoundError, ValidationError } from '../../lib/errors';
 import { runFinancialTransaction } from '../financial/infrastructure/transaction';
 import { deriveProductStockStatus } from '../service/products/product-stock';
@@ -32,6 +32,8 @@ import {
   normalizeRequiredReason,
 } from './inventory.validator';
 
+/** referenceType a cloud worker sets on a phone action's stock movement; referenceId is the action id. */
+export const SYNC_ACTION_REFERENCE = 'SYNC_ACTION';
 const ONBOARDING_REQUIRED =
   'This product needs a verified opening count before stock actions / يحتاج هذا المنتج جردًا مؤكدًا قبل حركات المخزون';
 const COUNT_MATCHES =
@@ -324,9 +326,22 @@ async function mutate(
   assertExpectedBefore(input.expectedBefore);
   if (spec.direction === 'COUNT') assertStockCountTarget(input.quantity);
   else assertMovementQuantity(input.quantity);
-  if (spec.requiresAdmin && !input.accountPassword) throw new ValidationError('Account password is required');
+  const byPhonePin = spec.requiresAdmin && !input.accountPassword && user.pinConfirmed === true;
+  if (spec.requiresAdmin && !input.accountPassword && !byPhonePin) throw new ValidationError('Account password is required');
+  // A phone's cloud action carries its action id here: applying it twice
+  // (a PC restart between writing and reporting) returns the first result.
+  const syncAction = input.referenceType === SYNC_ACTION_REFERENCE ? normalizeOptionalText(input.referenceId) : null;
 
   return runFinancialTransaction(async (tx) => {
+    if (syncAction) {
+      const earlier = await tx.stockMovement.findFirst({
+        where: { productId, referenceType: SYNC_ACTION_REFERENCE, referenceId: syncAction },
+      });
+      if (earlier) {
+        const current = await InventoryRepository.findProduct(productId, tx);
+        return { changed: true as const, message: null, product: current!, movement: earlier };
+      }
+    }
     const product = await InventoryRepository.findProduct(productId, tx);
     if (!product) throw new NotFoundError('Product not found');
     if (!product.trackStock) {
@@ -355,13 +370,15 @@ async function mutate(
       );
     }
     if (spec.requiresAdmin) {
-      await verifyAdminPassword(user.userId, input.accountPassword!, {
+      const check = {
         action: spec.action,
         recordType: 'PRODUCT',
         recordId: productId,
         ipAddress: context.ipAddress,
         domainLabel: 'inventory stock changes',
-      }, tx);
+      };
+      if (byPhonePin) await verifyAdminByPhonePin(user.userId, check, tx);
+      else await verifyAdminPassword(user.userId, input.accountPassword!, check, tx);
     }
 
     if (spec.direction === 'COUNT' && change === 0) {

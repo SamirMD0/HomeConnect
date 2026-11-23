@@ -10,6 +10,10 @@ import { documentBranch } from '../documents/document-branch';
 import { ProductsService } from '../service/products/products.service';
 import { SalesOrdersService } from '../sales/sales-orders/sales-orders.service';
 import { SuppliersService } from '../suppliers/suppliers/suppliers.service';
+import { SupplierPurchasesService } from '../suppliers/purchases/supplier-purchases.service';
+import { supplierPurchaseListSchema } from '../suppliers/purchases/supplier-purchases.validator';
+import { SupplierTransactionsService } from '../suppliers/transactions/supplier-transactions.service';
+import { supplierTransactionListQuerySchema } from '../suppliers/transactions/supplier-transactions.validator';
 import { getUnlinkedBill } from '../suppliers/receipts/receipts.service';
 import { CustomerFinancialSummaryService } from '../financial/customer-summary/customer-financial-summary.service';
 import { customerFinancialSummaryQuerySchema } from '../financial/customer-summary/customer-financial-summary.validator';
@@ -50,8 +54,23 @@ async function loadRecord(change: Pick<SyncChange, 'entity' | 'entityId'>, scope
         ...await documentBranch('salesOrder', id),
       };
     }
-    case 'supplier':
-      return SuppliersService.get(id, scope);
+    case 'supplier': {
+      // Recent purchases and payments ride on the supplier record, so a phone
+      // away from the shop can link a bill to one. Every purchase, payment or
+      // receiving already re-sends its supplier (sync_capture_supplier_*).
+      const [supplier, purchases, transactions] = await Promise.all([
+        SuppliersService.get(id, scope),
+        SupplierPurchasesService.listForSupplier(id, supplierPurchaseListSchema.parse({ page: 1, pageSize: RECENT_SUPPLIER_ENTRIES }), scope),
+        SupplierTransactionsService.listForSupplier(id, supplierTransactionListQuerySchema.parse({ page: 1, pageSize: 100 }), scope),
+      ]);
+      return {
+        ...supplier,
+        recentPurchases: purchases.items,
+        recentPayments: transactions.items
+          .filter((row: { type: string; status: string }) => row.type === 'SUPPLIER_PAYMENT' && row.status === 'ACTIVE')
+          .slice(0, RECENT_SUPPLIER_ENTRIES),
+      };
+    }
     case 'supplier_bill':
       return getUnlinkedBill(id, scope);
     case 'branch':
@@ -69,6 +88,9 @@ async function loadRecord(change: Pick<SyncChange, 'entity' | 'entityId'>, scope
       throw new Error(`Unsupported sync entity ${change.entity}`);
   }
 }
+
+/** Per supplier, on the phone: enough to link a bill, small enough for the free relay. */
+const RECENT_SUPPLIER_ENTRIES = 30;
 
 // Snapshot and delta deliberately share the PC's existing read projections.
 export async function buildSyncRecord(change: Pick<SyncChange, 'entity' | 'entityId' | 'branchId'>, scope: BranchScope): Promise<SyncRecord | null> {

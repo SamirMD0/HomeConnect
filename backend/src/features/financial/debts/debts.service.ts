@@ -159,8 +159,24 @@ export class DebtsService {
       throw new ValidationError('Payment cannot exceed the full amount');
     }
     const businessDate = todayInBusinessTimezone();
+    const idempotencyKey = input.idempotencyKey?.trim() || null;
 
     return runFinancialTransaction(async (tx) => {
+      if (idempotencyKey) {
+        // The prepaid payment carries the key (payments.idempotency_key is unique).
+        const earlier = await tx.payment.findUnique({
+          where: { idempotencyKey },
+          select: { customerId: true, allocations: { select: { debtId: true } } },
+        });
+        const earlierDebt = earlier?.allocations[0]?.debtId;
+        if (earlier) {
+          if (earlier.customerId !== customerId || !earlierDebt)
+            throw new ValidationError('This request id was already used for another payment.');
+          const existing = await DebtsRepository.findDebtById(earlierDebt, tx);
+          if (!existing) throw new NotFoundError('Prepaid purchase not found');
+          return this.toDebtView(existing);
+        }
+      }
       const debt = await DebtsRepository.createDebt({
         customerId,
         description: input.itemName,
@@ -183,7 +199,7 @@ export class DebtsService {
         paymentMethod: PaymentMethod.CASH,
         reference: null,
         notes: null,
-        idempotencyKey: null,
+        idempotencyKey,
         createdById: user.userId,
       });
 

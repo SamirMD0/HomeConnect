@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
     syncChange: { findMany: vi.fn(), findFirst: vi.fn() },
     branch: { findFirst: vi.fn() }, user: { findUnique: vi.fn() },
   },
-  inventory: vi.fn(), financialSummary: vi.fn(), product: vi.fn(), customer: vi.fn(), order: vi.fn(), supplier: vi.fn(),
+  inventory: vi.fn(), financialSummary: vi.fn(), product: vi.fn(), customer: vi.fn(), order: vi.fn(), supplier: vi.fn(), purchases: vi.fn(), transactions: vi.fn(),
   bill: vi.fn(), category: vi.fn(), guard: vi.fn(), document: vi.fn(),
 }));
 vi.mock('../../lib/prisma', () => ({ prisma: mocks.db }));
@@ -14,6 +14,8 @@ vi.mock('../service/products/products.service', () => ({ ProductsService: { getC
 vi.mock('../../services/customers.service', () => ({ CustomersService: { getCustomerWithFinancial: mocks.customer } }));
 vi.mock('../sales/sales-orders/sales-orders.service', () => ({ SalesOrdersService: { get: mocks.order } }));
 vi.mock('../suppliers/suppliers/suppliers.service', () => ({ SuppliersService: { get: mocks.supplier } }));
+vi.mock('../suppliers/purchases/supplier-purchases.service', () => ({ SupplierPurchasesService: { listForSupplier: mocks.purchases } }));
+vi.mock('../suppliers/transactions/supplier-transactions.service', () => ({ SupplierTransactionsService: { listForSupplier: mocks.transactions } }));
 vi.mock('../suppliers/receipts/receipts.service', () => ({ getUnlinkedBill: mocks.bill }));
 vi.mock('../categories/categories.service', () => ({ CategoriesService: { get: mocks.category } }));
 vi.mock('../branches/parent-branch', () => ({ assertRecordInScope: mocks.guard }));
@@ -139,10 +141,19 @@ describe('sync feed', () => {
       ['supplier_bill', mocks.bill, { pageCount: 2, pages: [{ filename: 'photo.jpg' }] }],
     ] as const;
     mocks.document.mockResolvedValue({ branch: { name: 'Main' }, showBranchLine: true });
+    mocks.purchases.mockResolvedValue({ items: [{ id: 'p1' }] });
+    mocks.transactions.mockResolvedValue({ items: [
+      { id: 'pay', type: 'SUPPLIER_PAYMENT', status: 'ACTIVE' },
+      { id: 'removed', type: 'SUPPLIER_PAYMENT', status: 'REMOVED' },
+      { id: 'debt', type: 'SUPPLIER_PURCHASE', status: 'ACTIVE' },
+    ] });
     for (const [entity, mock, data] of cases) {
       mocks.db.syncChange.findMany.mockResolvedValue([change(1, entity, 'id', 'branch-a')]);
       mock.mockResolvedValue(data);
-      const expected = entity === 'sales_order' ? { ...data, branch: { name: 'Main' }, showBranchLine: true } : data;
+      const expected = entity === 'sales_order' ? { ...data, branch: { name: 'Main' }, showBranchLine: true }
+        // Only active payments are offered for linking a bill.
+        : entity === 'supplier' ? { ...data, recentPurchases: [{ id: 'p1' }], recentPayments: [{ id: 'pay', type: 'SUPPLIER_PAYMENT', status: 'ACTIVE' }] }
+        : data;
       expect((await readChanges(0, 500, scope)).records).toEqual([{ minRole: null, entity, id: 'id', branchId: 'branch-a', op: 'upsert', data: expected }]);
     }
   });

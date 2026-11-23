@@ -119,4 +119,90 @@ describe('apply phone actions through the PC API', () => {
       'Content-Type': 'image/png', 'X-Receipt-Id': actionId, 'X-Bill-Group': userId,
     } });
   });
+  describe('phase 3 cloud actions', () => {
+    const productId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+    const sent = () => {
+      const [url, options] = deps.fetch.mock.calls[0];
+      return { url: String(url), body: JSON.parse(options.body), token: jwt.verify(options.headers.Authorization.slice(7), process.env.JWT_SECRET!) as jwt.JwtPayload };
+    };
+    it('posts a stock movement tagged with the action id, never a password, as a PIN-confirmed user', async () => {
+      action.type = 'stock_movement.create';
+      action.payload = { productId, movementType: 'STOCK_COUNT', quantity: 7, reason: 'Shelf count', accountPassword: 'leaked' };
+      deps.fetch.mockResolvedValue(response(201, { data: { changed: true, product: { id: productId, stockQuantity: 7 }, movement: { id: targetId } } }));
+      await run();
+      const { url, body, token } = sent();
+      expect(url).toMatch(new RegExp(`/api/v1/products/${productId}/stock-movements$`));
+      expect(body).toEqual({ movementType: 'STOCK_COUNT', quantity: 7, reason: 'Shelf count', referenceType: 'SYNC_ACTION', referenceId: actionId });
+      expect(token).toMatchObject({ userId, pinConfirmed: true });
+      expect(deps.remember).toHaveBeenCalledWith(action, { status: 'applied', result: { id: targetId, productId, stockQuantity: 7 } });
+    });
+    it('routes receiving, purchases and prepaid items with the action as idempotency key', async () => {
+      const cases = [
+        ['stock_receiving.create', { supplierId: targetId, lines: [] }, '/inventory/receivings'],
+        ['supplier_purchase.create', { supplierId: targetId, lines: [] }, `/suppliers/${targetId}/purchases`],
+        ['prepaid.create', { customerId: targetId, itemName: 'Fridge', paymentAmount: '10.00', fullAmount: '50.00' }, `/customers/${targetId}/prepaid-purchases`],
+      ] as const;
+      for (const [type, payload, path] of cases) {
+        deps.fetch.mockClear();
+        action.type = type;
+        action.payload = payload;
+        await run();
+        const { url, body } = sent();
+        expect(url.endsWith('/api/v1' + path)).toBe(true);
+        expect(body.idempotencyKey).toBe(actionId);
+        if (type !== 'stock_receiving.create') expect(body.supplierId ?? body.customerId).toBeUndefined();
+      }
+    });
+    const billId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+    it('links, deletes and retakes bill pages with the right PC method', async () => {
+      action.type = 'supplier_bill.link';
+      action.payload = { billId, transactionId: targetId };
+      await run();
+      let [url, options] = deps.fetch.mock.calls[0];
+      expect([String(url).endsWith(`/supplier-bills/${billId}`), options.method, JSON.parse(options.body)]).toEqual([true, 'PATCH', { supplierTransactionId: targetId }]);
+
+      deps.fetch.mockClear();
+      action.type = 'supplier_bill.delete';
+      action.payload = { billId, wholeBill: true };
+      await run();
+      [url, options] = deps.fetch.mock.calls[0];
+      expect([String(url).endsWith(`/supplier-bills/${billId}?bill=true`), options.method, options.body]).toEqual([true, 'DELETE', undefined]);
+
+      deps.fetch.mockClear();
+      request.mockImplementation(async (path: string) => path.endsWith('/blob') ? { mime: 'image/jpeg', bytes: new ArrayBuffer(8) } : {});
+      action.type = 'supplier_bill.replace';
+      action.payload = { billId };
+      await run();
+      [url, options] = deps.fetch.mock.calls[0];
+      expect(String(url).endsWith(`/supplier-bills/${billId}/replace`)).toBe(true);
+      expect(options.headers['Content-Type']).toBe('image/jpeg');
+      expect(options.headers['X-Receipt-Id']).toBeUndefined();
+    });
+    it('records a purchase from a bill, then attaches that bill to it', async () => {
+      action.type = 'supplier_purchase.create';
+      action.payload = { supplierId: targetId, billId, lines: [] };
+      deps.fetch.mockResolvedValueOnce(response(201, { data: { id: productId, supplierId: targetId } }))
+        .mockResolvedValueOnce(response(200, { data: {} }));
+      await run();
+      expect(JSON.parse(deps.fetch.mock.calls[0][1].body).billId).toBeUndefined();
+      const [url, options] = deps.fetch.mock.calls[1];
+      expect([String(url).endsWith(`/supplier-bills/${billId}`), options.method, JSON.parse(options.body)]).toEqual([true, 'PATCH', { supplierTransactionId: productId }]);
+      expect(deps.remember).toHaveBeenCalledWith(action, { status: 'applied', result: expect.objectContaining({ id: productId, billLinked: true }) });
+    });
+    it('keeps the purchase applied when attaching the bill fails', async () => {
+      action.type = 'supplier_purchase.create';
+      action.payload = { supplierId: targetId, billId, lines: [] };
+      deps.fetch.mockResolvedValueOnce(response(201, { data: { id: productId } }))
+        .mockResolvedValueOnce(response(409, { error: { code: 'CONFLICT' } }));
+      await run();
+      expect(deps.remember).toHaveBeenCalledWith(action, { status: 'applied', result: expect.objectContaining({ billLinked: false }) });
+    });
+    it('refuses a stock movement without a valid product id', async () => {
+      action.type = 'stock_movement.create';
+      action.payload = { productId: 'nope', movementType: 'MANUAL_ADD', quantity: 1, reason: 'x' };
+      await run();
+      expect(deps.fetch).not.toHaveBeenCalled();
+      expect(request).toHaveBeenLastCalledWith(expect.any(String), expect.objectContaining({ status: 'refused' }));
+    });
+  });
 });

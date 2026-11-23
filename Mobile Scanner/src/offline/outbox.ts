@@ -6,7 +6,14 @@ export type ActionType =
   | 'sales_order.create'
   | 'customer_payment.create'
   | 'supplier_payment.create'
-  | 'supplier_bill.upload';
+  | 'supplier_bill.upload'
+  | 'stock_movement.create'
+  | 'stock_receiving.create'
+  | 'supplier_purchase.create'
+  | 'prepaid.create'
+  | 'supplier_bill.link'
+  | 'supplier_bill.delete'
+  | 'supplier_bill.replace';
 export type ActionStatus =
   'queued' | 'sent' | 'awaiting_photo' | 'pending' | 'claimed' | 'applied' | 'refused' | 'failed';
 export interface OutboxRow {

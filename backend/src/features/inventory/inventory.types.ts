@@ -22,6 +22,8 @@ export const RESERVED_STOCK_MOVEMENT_TYPES = [
 export interface InventoryUser {
   userId: string;
   role: Role | string;
+  /** A paired admin phone's cloud action: its PIN replaces the account password. */
+  pinConfirmed?: boolean;
 }
 
 export interface InventoryRequestContext {
@@ -39,7 +41,8 @@ export interface StockMovementBaseInput {
 }
 
 export interface GuardedStockMovementInput extends StockMovementBaseInput {
-  accountPassword: string;
+  /** Required unless a paired admin phone's PIN confirmed the cloud action. */
+  accountPassword?: string;
 }
 
 export interface StockCountInput extends Omit<GuardedStockMovementInput, 'quantity'> {

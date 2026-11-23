@@ -112,7 +112,7 @@ export function ProductDetailScreen() {
                 <Field label="Reorder level" value={stock.product.lowStockThreshold} />
                 {stock.product.trackStock && (
                   <AppButton
-                    cloudWrite label="Adjust stock"
+                    label="Adjust stock"
                     variant="secondary"
                     onPress={() =>
                       router.push({ pathname: '/(tabs)/stock/adjust/[id]', params: { id } })

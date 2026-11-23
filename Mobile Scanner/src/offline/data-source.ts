@@ -148,6 +148,18 @@ export class CloudDataSource {
       }
       return data;
     }
+    // Recent purchases and active payments come with the supplier record
+    // (PC 2.4.6+), so a bill can be linked away from the shop.
+    const ledger = /^\/suppliers\/([^/]+)\/(purchases|transactions)$/.exec(path);
+    if (ledger) {
+      const record = (await detail('supplier', decodeURIComponent(ledger[1]!))) as {
+        recentPurchases?: unknown[];
+        recentPayments?: unknown[];
+      };
+      const rows = ledger[2] === 'purchases' ? record.recentPurchases : record.recentPayments;
+      if (!rows) throw unavailable();
+      return rows;
+    }
     const supplier = /^\/suppliers\/([^/]+)(\/bills)?$/.exec(path);
     if (supplier) {
       if (supplier[2])

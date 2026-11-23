@@ -57,11 +57,20 @@ export function OutboxStatus({ id }: { id: string }) {
         }
         message={row ? actionMessage(row) : 'Saved. Open Waiting for this action’s status.'}
       />
-      {row?.type === 'customer_payment.create' && !result.receipt && (
+      {row?.type === 'customer_payment.create' && !result.receipt && row.local_status !== 'refused' && row.local_status !== 'failed' && (
         <StatusBanner
           tone="info"
-          message="Payment receipts are available on the shop Wi-Fi after the PC applies the payment."
+          message="The receipt appears here as soon as the shop PC records the payment."
         />
+      )}
+      {row?.local_status === 'applied' && typeof result.stockQuantity === 'number' && (
+        <StatusBanner tone="success" message={`Stock on the PC is now ${result.stockQuantity}.`} />
+      )}
+      {row?.local_status === 'applied' && typeof result.message === 'string' && (
+        <StatusBanner tone="info" message={result.message.split(' / ')[0]!} />
+      )}
+      {row?.local_status === 'applied' && result.billLinked === false && typeof result.billMessage === 'string' && (
+        <StatusBanner tone="warning" message={result.billMessage} />
       )}
       {row&&<ActionResultLink row={row}/>}
       {row?.local_status === 'applied' && row.type === 'sales_order.create' && !order.data && (
@@ -76,7 +85,7 @@ export function OutboxStatus({ id }: { id: string }) {
         />
       )}
       <AppButton
-        label="Waiting for the shop PC"
+        label="Open Waiting list"
         variant="secondary"
         onPress={() => router.push('/(tabs)/suppliers/pending-bills')}
       />
