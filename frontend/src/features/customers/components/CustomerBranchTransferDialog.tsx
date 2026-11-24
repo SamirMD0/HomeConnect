@@ -124,10 +124,16 @@ export const CustomerBranchTransferDialog: React.FC<CustomerBranchTransferDialog
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
             <div className="space-y-1">
               <p>Past reports for the old branch will no longer include this customer's sales, payments and debts.</p>
-              {preview.data.importAccounts.length > 0 && (
+              {preview.data.importAccounts.some((account) => account.followsCustomer !== false) && (
                 <p>
-                  The link to trial-balance account {preview.data.importAccounts.map((account) => account.accountCode).join(', ')} stays
-                  with the old branch and will be removed. Re-importing that trial balance there would treat the account as new.
+                  Trial-balance account {preview.data.importAccounts.filter((account) => account.followsCustomer !== false).map((account) => account.accountCode).join(', ')}{' '}
+                  moves with the customer, so the next import still recognises them by account number.
+                </p>
+              )}
+              {preview.data.importAccounts.some((account) => account.followsCustomer === false) && (
+                <p>
+                  Account {preview.data.importAccounts.filter((account) => account.followsCustomer === false).map((account) => account.accountCode).join(', ')}{' '}
+                  already belongs to another customer in the destination branch, so this customer&apos;s link to it is removed.
                 </p>
               )}
             </div>

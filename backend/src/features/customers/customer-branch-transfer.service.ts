@@ -22,13 +22,15 @@ export type MovedCounts = Record<MovedTable, number>;
 export interface DetachedImportAccount {
   accountCode: string;
   sourceCustomerImportId: string;
+  /** False when the destination branch already gives this account number to another customer. */
+  followsCustomer?: boolean;
 }
 
 export interface BranchTransferPreview {
   customer: { id: string; name: string; phone: string; branchId: string };
   toBranch: { id: string; code: string; name: string };
   counts: MovedCounts;
-  /** Trial-balance account links tied to the old branch's import; removed by the transfer. */
+  /** Trial-balance account links; each follows the customer unless the destination already uses it. */
   importAccounts: DetachedImportAccount[];
   /** Set when the transfer cannot run; the UI shows it instead of the confirm button. */
   blocker: { code: string; message: string } | null;
@@ -83,8 +85,19 @@ export class CustomerBranchTransferService {
     await tx.$executeRawUnsafe(`SET LOCAL homeconnect.branch_transfer = 'on'`);
     await tx.$executeRawUnsafe('SET CONSTRAINTS ALL DEFERRED');
 
-    // The import-account link cascades with the customer but must stay in its
-    // import's branch, so it cannot follow. Remove it and keep it in the audit.
+    // An import-account link must point to an import in its own branch, so it is
+    // removed here and re-created in the destination once the customer has moved.
+    const links = await tx.customerImportAccount.findMany({
+      where: { customerId: input.customerId },
+      select: {
+        accountCode: true,
+        sourceCustomerImportId: true,
+        createdById: true,
+        createdAt: true,
+        sourceCustomerImport: { select: { fileName: true, fileHash: true, columnMapping: true, committedAt: true } },
+      },
+      orderBy: { accountCode: 'asc' },
+    });
     await tx.$executeRaw`DELETE FROM "customer_import_accounts" WHERE "customerId" = ${input.customerId}::uuid`;
 
     // Children before parents: each row's own link check is deferred to
@@ -116,6 +129,12 @@ export class CustomerBranchTransferService {
     const serviceJobs = await tx.$executeRaw`
       UPDATE "service_jobs" SET "branchId" = ${to}::uuid WHERE "customerId" = ${id}::uuid`;
     await tx.$executeRaw`UPDATE "customers" SET "branchId" = ${to}::uuid WHERE "id" = ${id}::uuid`;
+    const { kept, detached } = await reattachImportAccounts(tx, links, {
+      customerId: id,
+      fromBranchId,
+      toBranchId: to,
+      actorId: input.actor.userId,
+    });
     const moved: MovedCounts = {
       sales_orders: salesOrders,
       sales_returns: salesReturns,
@@ -139,7 +158,8 @@ export class CustomerBranchTransferService {
           fromBranchId,
           toBranchId: to,
           moved,
-          detachedImportAccounts: plan.importAccounts,
+          keptImportAccounts: kept,
+          detachedImportAccounts: detached,
         } as unknown as Prisma.InputJsonObject,
       },
     });
@@ -147,8 +167,92 @@ export class CustomerBranchTransferService {
     // Surfaces any missed row as a clear error here instead of a COMMIT failure.
     await tx.$executeRawUnsafe('SET CONSTRAINTS ALL IMMEDIATE');
     await tx.$executeRawUnsafe(`SET LOCAL homeconnect.branch_transfer = 'off'`);
-    return { customerId: id, fromBranchId, toBranchId: to, moved, detachedImportAccounts: plan.importAccounts };
+    return { customerId: id, fromBranchId, toBranchId: to, moved, keptImportAccounts: kept, detachedImportAccounts: detached };
   }
+}
+
+type MovingLink = {
+  accountCode: string;
+  sourceCustomerImportId: string;
+  createdById: string;
+  createdAt: Date;
+  sourceCustomerImport: { fileName: string; fileHash: string; columnMapping: Prisma.JsonValue; committedAt: Date | null };
+};
+
+/**
+ * Re-creates the customer's trial-balance account links in the destination branch, so
+ * the next import still recognises them by account number. Each link points to the
+ * destination's import of the same file when there is one; otherwise to a stand-in
+ * import record carrying that file's name, hash and commit time, so "last imported"
+ * stays as it was. An account number the destination already gives to another
+ * customer cannot follow and is reported as detached.
+ */
+async function reattachImportAccounts(
+  tx: Prisma.TransactionClient,
+  links: MovingLink[],
+  move: { customerId: string; fromBranchId: string; toBranchId: string; actorId: string }
+) {
+  const kept: DetachedImportAccount[] = [];
+  const detached: DetachedImportAccount[] = [];
+  const holders = new Map<string, string>();
+  for (const link of links) {
+    const taken = await tx.customerImportAccount.findUnique({
+      where: { branchId_accountCode: { branchId: move.toBranchId, accountCode: link.accountCode } },
+      select: { customerId: true },
+    });
+    if (taken && taken.customerId !== move.customerId) {
+      detached.push({ accountCode: link.accountCode, sourceCustomerImportId: link.sourceCustomerImportId, followsCustomer: false });
+      continue;
+    }
+    let holder = holders.get(link.sourceCustomerImportId);
+    if (!holder) {
+      const source = link.sourceCustomerImport;
+      const sameFile = await tx.customerImport.findFirst({
+        where: { branchId: move.toBranchId, fileHash: source.fileHash, status: 'COMMITTED' },
+        orderBy: { committedAt: 'desc' },
+        select: { id: true },
+      });
+      holder =
+        sameFile?.id ??
+        (
+          await tx.customerImport.create({
+            data: {
+              branchId: move.toBranchId,
+              fileName: source.fileName,
+              fileHash: source.fileHash,
+              status: 'COMMITTED',
+              columnMapping: (source.columnMapping ?? {}) as Prisma.InputJsonValue,
+              rows: { headers: [], records: [] },
+              result: {
+                branchTransfer: {
+                  customerId: move.customerId,
+                  fromBranchId: move.fromBranchId,
+                  sourceCustomerImportId: link.sourceCustomerImportId,
+                },
+              },
+              createdById: move.actorId,
+              committedById: move.actorId,
+              committedAt: source.committedAt ?? new Date(),
+            },
+            select: { id: true },
+          })
+        ).id;
+      holders.set(link.sourceCustomerImportId, holder);
+    }
+    if (!taken)
+      await tx.customerImportAccount.create({
+        data: {
+          branchId: move.toBranchId,
+          accountCode: link.accountCode,
+          customerId: move.customerId,
+          sourceCustomerImportId: holder,
+          createdById: link.createdById,
+          createdAt: link.createdAt,
+        },
+      });
+    kept.push({ accountCode: link.accountCode, sourceCustomerImportId: holder, followsCustomer: true });
+  }
+  return { kept, detached };
 }
 
 async function inspect(db: Db, customerId: string, toBranchId: string): Promise<BranchTransferPreview> {
@@ -161,11 +265,20 @@ async function inspect(db: Db, customerId: string, toBranchId: string): Promise<
   if (!toBranch) throw new NotFoundError('Branch not found / الفرع غير موجود');
 
   const counts = await countHistory(db, customerId);
-  const importAccounts = await db.customerImportAccount.findMany({
+  const links = await db.customerImportAccount.findMany({
     where: { customerId },
     select: { accountCode: true, sourceCustomerImportId: true },
     orderBy: { accountCode: 'asc' },
   });
+  const taken = new Set(
+    (
+      await db.customerImportAccount.findMany({
+        where: { branchId: toBranchId, accountCode: { in: links.map((link) => link.accountCode) }, customerId: { not: customerId } },
+        select: { accountCode: true },
+      })
+    ).map((link) => link.accountCode)
+  );
+  const importAccounts = links.map((link) => ({ ...link, followsCustomer: !taken.has(link.accountCode) }));
 
   let blocker: BranchTransferPreview['blocker'] = null;
   if (toBranch.id === customer.branchId) {

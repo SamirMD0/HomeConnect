@@ -156,6 +156,7 @@ async function debtTotals(customerId: string) {
   });
 
   it('moves the customer and their whole history to the destination branch, leaving amounts unchanged', async () => {
+    await db.customerImport.update({ where: { id: rows['customer_imports:x'] }, data: { status: 'COMMITTED', committedAt: stamp } });
     const before = await debtTotals(rows['customers:x']);
     const response = await transfer(rows['customers:x'], { toBranchId: b });
     expect(response.status, JSON.stringify(response.body)).toBe(200);
@@ -168,11 +169,72 @@ async function debtTotals(customerId: string) {
       expect(branch, key).toBe(key.endsWith(':control') ? a : b);
     }
     expect(await debtTotals(rows['customers:x'])).toBe(before);
-    // The import-account link cannot follow (it belongs to the old branch's import): removed and audited.
-    expect(await db.customerImportAccount.count({ where: { customerId: rows['customers:x'] } })).toBe(0);
-    expect(response.body.data.detachedImportAccounts).toEqual([{ accountCode: accountCode, sourceCustomerImportId: rows['customer_imports:x'] }]);
+    // The account link follows the customer, held by a stand-in import in the destination
+    // that keeps the original file and commit time, so the next import still matches by account.
+    const links = await db.customerImportAccount.findMany({
+      where: { customerId: rows['customers:x'] },
+      include: { sourceCustomerImport: true },
+    });
+    const source = await db.customerImport.findUniqueOrThrow({ where: { id: rows['customer_imports:x'] } });
+    expect(links).toHaveLength(1);
+    expect(links[0]).toMatchObject({ branchId: b, accountCode });
+    expect(links[0].sourceCustomerImport).toMatchObject({
+      branchId: b,
+      status: 'COMMITTED',
+      fileHash: source.fileHash,
+      fileName: source.fileName,
+      committedAt: stamp,
+    });
+    expect(response.body.data.detachedImportAccounts).toEqual([]);
+    expect(response.body.data.keptImportAccounts).toEqual([
+      { accountCode, sourceCustomerImportId: links[0].sourceCustomerImportId, followsCustomer: true },
+    ]);
     const audit = await db.activityLog.findFirst({ where: { action: 'CUSTOMER_BRANCH_TRANSFERRED', entityId: rows['customers:x'] } });
     expect(audit?.details).toMatchObject({ fromBranchId: a, toBranchId: b, moved: { payments: 2 } });
+  });
+
+  it('reuses the destination import of the same file, and leaves an account the destination already uses', async () => {
+    const source = await db.customerImport.findUniqueOrThrow({ where: { id: rows['customer_imports:x'] } });
+    const sameFile = await db.customerImport.create({
+      data: {
+        branchId: b,
+        fileName: source.fileName,
+        fileHash: source.fileHash,
+        status: 'COMMITTED',
+        columnMapping: {},
+        rows: { headers: [], records: [] },
+        createdById: admin,
+        committedAt: new Date(),
+      },
+    });
+    const otherCode = accountCode + '9';
+    await db.customerImportAccount.create({
+      data: { branchId: a, accountCode: otherCode, customerId: rows['customers:x'], sourceCustomerImportId: source.id, createdById: admin },
+    });
+    const holder = await db.customer.create({ data: { branchId: b, createdBy: admin, name: 'Holder ' + otherCode, phone: '' } });
+    await db.customerImportAccount.create({
+      data: { branchId: b, accountCode: otherCode, customerId: holder.id, sourceCustomerImportId: sameFile.id, createdById: admin },
+    });
+    const preview = await request(app)
+      .get(`/api/v1/customers/${rows['customers:x']}/branch-transfer/preview?toBranchId=${b}`)
+      .set('Authorization', 'Bearer ' + tokens.admin)
+      .set('X-Branch-Scope', 'all');
+    expect(preview.body.data.importAccounts).toEqual([
+      { accountCode, sourceCustomerImportId: source.id, followsCustomer: true },
+      { accountCode: otherCode, sourceCustomerImportId: source.id, followsCustomer: false },
+    ]);
+    const response = await transfer(rows['customers:x'], { toBranchId: b });
+    expect(response.status, JSON.stringify(response.body)).toBe(200);
+    expect(response.body.data.keptImportAccounts).toEqual([
+      { accountCode, sourceCustomerImportId: sameFile.id, followsCustomer: true },
+    ]);
+    expect(response.body.data.detachedImportAccounts).toEqual([
+      { accountCode: otherCode, sourceCustomerImportId: source.id, followsCustomer: false },
+    ]);
+    expect(
+      await db.customerImportAccount.findUniqueOrThrow({ where: { branchId_accountCode: { branchId: b, accountCode: otherCode } } })
+    ).toMatchObject({ customerId: holder.id });
+    expect(await db.customerImport.count({ where: { branchId: b } })).toBe(1);
   });
 
   it('previews what would move without changing anything', async () => {
@@ -181,7 +243,7 @@ async function debtTotals(customerId: string) {
       .set('Authorization', 'Bearer ' + tokens.admin)
       .set('X-Branch-Scope', 'all');
     expect(response.status, JSON.stringify(response.body)).toBe(200);
-    expect(response.body.data).toMatchObject({ blocker: null, counts: { payments: 2, sales_returns: 2 }, importAccounts: [{ accountCode: accountCode }] });
+    expect(response.body.data).toMatchObject({ blocker: null, counts: { payments: 2, sales_returns: 2 }, importAccounts: [{ accountCode: accountCode, followsCustomer: true }] });
     expect(await branchOf('customers', rows['customers:x'])).toBe(a);
   });
 

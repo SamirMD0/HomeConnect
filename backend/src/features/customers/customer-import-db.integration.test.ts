@@ -8,6 +8,7 @@ import { app } from '../../app';
 import { prisma } from '../../lib/prisma';
 import { isIsolatedTestDatabase } from '../../test/database';
 import { CustomerImportService } from './customer-import.service';
+import { CustomerBranchTransferService } from './customer-branch-transfer.service';
 import { DebtsService } from '../financial/debts/debts.service';
 import { CustomerFinancialSummaryService } from '../financial/customer-summary/customer-financial-summary.service';
 import { customerFinancialSummaryQuerySchema } from '../financial/customer-summary/customer-financial-summary.validator';
@@ -1096,6 +1097,22 @@ const http = (method: 'get' | 'patch' | 'post', path: string, body?: object) => 
         code: 'CUSTOMER_IMPORT_STALE',
       });
       expect(await outstanding(paidOff)).toBe('90.00');
+    });
+
+    it('a customer moved to another branch after import is still matched by account number', async () => {
+      const first = await create(trialBalance([['4110000777', 'Moved Customer', 120]]));
+      await commit(first.id, [], password);
+      const id = await accountCustomer('4110000777');
+      await CustomerBranchTransferService.transfer({ customerId: id, toBranchId: b, actor });
+      expect(
+        await db.customerImportAccount.findUniqueOrThrow({
+          where: { branchId_accountCode: { branchId: b, accountCode: '4110000777' } },
+        })
+      ).toMatchObject({ customerId: id });
+      const next = await create(trialBalance([['4110000777', 'Moved Customer', 120]]));
+      expect(next.rows[0]).toMatchObject({ branchId: b, matchedBy: 'ACCOUNT', matches: [{ id }] });
+      expect(next.rows[0].balance.kind).toBe('NONE');
+      expect(next.missing).toEqual([]);
     });
 
     it('a file that has not changed since the last import is an old difference, not a conflict, until applied once', async () => {

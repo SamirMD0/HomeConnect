@@ -165,7 +165,8 @@ export interface CustomerBranchTransferPreview {
   customer: { id: string; name: string; phone: string; branchId: string };
   toBranch: { id: string; code: string; name: string };
   counts: CustomerBranchTransferCounts;
-  importAccounts: Array<{ accountCode: string; sourceCustomerImportId: string }>;
+  /** followsCustomer is false when the destination branch already uses that account number. */
+  importAccounts: Array<{ accountCode: string; sourceCustomerImportId: string; followsCustomer?: boolean }>;
   blocker: { code: string; message: string } | null;
 }
 
@@ -174,5 +175,6 @@ export interface CustomerBranchTransferResult {
   fromBranchId: string;
   toBranchId: string;
   moved: CustomerBranchTransferCounts;
+  keptImportAccounts?: Array<{ accountCode: string; sourceCustomerImportId: string }>;
   detachedImportAccounts: Array<{ accountCode: string; sourceCustomerImportId: string }>;
 }
