@@ -206,7 +206,7 @@ const GROUPS: Array<{
   {
     id: 'gap',
     label: 'Old difference',
-    hint: 'The old system has not changed these customers since the last import, but HomeConnect differs from it. Nothing changes unless you tick "Apply this change"; do it once to bring them in line.',
+    hint: 'The old system has not changed these customers since the last import, but HomeConnect differs from it. The old system wins: they are set to the file balance.',
     tone: 'neutral',
     icon: <History />,
     tint: 'bg-violet-50/60',
@@ -347,8 +347,8 @@ export function MissingFromFile({
       <p className="text-sm text-slate-700">
         These customers still owe in HomeConnect but the trial balance no longer lists them. The old
         system leaves out accounts at zero, so they most likely paid in full. Settling records a
-        payment (method Other) that brings them to zero. Customers with activity in HomeConnect
-        since the last import stay as they are unless you tick them.
+        payment (method Other) that brings them to zero. The old system wins, so all are ticked;
+        if one shows activity in HomeConnect, enter that payment or sale in the old system too.
       </p>
       <div className="max-h-72 overflow-auto rounded-lg border border-violet-200 bg-white">
         <table className="w-full min-w-[40rem] text-left text-sm">
@@ -470,6 +470,12 @@ export function CustomerImportSummary({ result }: { result: CustomerImportResult
           ['Deposits total USD', '$' + (result.depositTotalUsd ?? '0.00')],
         ] as Array<[string, string | number]>)
       : []),
+    ...(result.depositsUsed
+      ? ([
+          ['Deposits used', result.depositsUsed],
+          ['Deposits used total USD', '$' + (result.depositUsedTotalUsd ?? '0.00')],
+        ] as Array<[string, string | number]>)
+      : []),
   ];
   return (
     <dl className="grid grid-cols-2 gap-x-6 gap-y-3 rounded-xl border border-slate-200 bg-slate-50/70 p-4 text-sm sm:grid-cols-4">
@@ -553,7 +559,7 @@ export function BranchReconciliation({ lines }: { lines: ImportBranchTotal[] }) 
         <h4 id="branch-totals-heading" className="text-base font-semibold text-slate-900">
           Totals by branch
         </h4>
-        <p className="text-xs text-slate-500">USD. Skipped rows are left out.</p>
+        <p className="text-xs text-slate-500">USD. File columns cover every valid row; changes leave out skipped rows.</p>
       </div>
       <div className="overflow-x-auto rounded-xl border border-slate-200">
         <table className="w-full min-w-[52rem] text-[13px]">

@@ -89,6 +89,8 @@ export interface CustomerImportResult {
   balancePaymentTotalUsd: string;
   deposits?: number;
   depositTotalUsd?: string;
+  depositsUsed?: number;
+  depositUsedTotalUsd?: string;
   /** Customers no longer in the trial balance whose HomeConnect debt was settled. */
   settledMissing?: number;
   settledMissingTotalUsd?: string;

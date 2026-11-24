@@ -614,7 +614,7 @@ const http = (method: 'get' | 'patch' | 'post', path: string, body?: object) => 
       await commit(draft.id);
       expect(await db.payment.count({ where: { customerId: id } })).toBe(0);
     });
-    it('an older file after a HomeConnect payment defaults to no money change but can be applied', async () => {
+    it('the old system wins over a HomeConnect payment it does not show yet, and says so', async () => {
       const id = await imported('200');
       const debt = await db.debt.findFirstOrThrow({ where: { customerId: id } });
       await DebtsService.recordDebtPayment(
@@ -627,14 +627,23 @@ const http = (method: 'get' | 'patch' | 'post', path: string, body?: object) => 
         create('Name,Phone,Opening balance,Notes\nAli,03123456,200,' + note);
       const draft = await editedFile('first');
       expect(draft.rows[0].balance).toMatchObject({ kind: 'INCREASE', difference: '50.00' });
-      expect(draft.rows[0].decision.skipOpeningBalance).toBe(true);
-      expect(draft.rows[0].conflicts.map((item) => item.kind)).toContain('BALANCE_ACTIVITY');
-      expect(draft.planned.balanceIncreases).toBe(0);
-      await commit(draft.id);
-      expect(await outstanding(id)).toBe('150.00');
-      const again = await editedFile('second');
-      await commit(again.id, [{ ...again.rows[0].decision, skipOpeningBalance: false }], password);
+      expect(draft.rows[0].decision.skipOpeningBalance).toBeUndefined();
+      const warning = draft.rows[0].conflicts.find((item) => item.kind === 'OLD_SYSTEM_WINS');
+      expect(warning).toMatchObject({ blocking: false });
+      expect(warning?.message).toContain('150.00');
+      expect(draft.planned.balanceIncreases).toBe(1);
+      await commit(draft.id, undefined, password);
       expect(await outstanding(id)).toBe('200.00');
+      // Choosing to keep HomeConnect's figure is still possible, row by row.
+      await DebtsService.recordDebtPayment(
+        debt.id,
+        { amount: '20', currency: 'USD', paymentDate: '2026-10-29', paymentMethod: 'CASH' },
+        actor as never,
+        { mode: 'single', branchIds: [a] }
+      );
+      const again = await editedFile('second');
+      await commit(again.id, [{ ...again.rows[0].decision, skipOpeningBalance: true }]);
+      expect(await outstanding(id)).toBe('180.00');
     });
     it('a lower balance pays oldest first across a debt and an installment plan, with exact totals', async () => {
       const id = (await customer('Ali', '03123456')).id;
@@ -967,7 +976,10 @@ const http = (method: 'get' | 'patch' | 'post', path: string, body?: object) => 
       return [
         'Trial Balance,By Date,Account,Name,Curr,Total Debit,Total Credit,Balance Debit,Balance Credit',
         ...accounts.map(
-          ([code, name, balance]) => code + ',' + name + ',USD,' + balance + ',0,' + balance + ',0'
+          ([code, name, balance]) =>
+            balance < 0
+              ? code + ',' + name + ',USD,0,' + -balance + ',0,' + -balance
+              : code + ',' + name + ',USD,' + balance + ',0,' + balance + ',0'
         ),
         'Debit,Credit,Balance,Totals :,' + total + ',0,' + total,
       ].join(',');
@@ -1033,7 +1045,7 @@ const http = (method: 'get' | 'patch' | 'post', path: string, body?: object) => 
       expect((await create(trialBalance([['4110000001', 'Stays', 300]]))).missing).toEqual([]);
     });
 
-    it('keeps a missing customer with HomeConnect activity unless chosen, and honours a saved choice', async () => {
+    it('settles a missing customer even with HomeConnect activity, and honours a saved keep', async () => {
       const first = await create(
         trialBalance([
           ['4110000001', 'Stays', 300],
@@ -1052,19 +1064,20 @@ const http = (method: 'get' | 'patch' | 'post', path: string, body?: object) => 
       const draft = await create(trialBalance([['4110000001', 'Stays', 300]]));
       expect(draft.missing[0]).toMatchObject({
         activitySinceLastImport: true,
-        decision: 'KEEP',
+        decision: 'SETTLE',
         owed: [{ currency: 'USD', amount: '80.00' }],
       });
-      expect(draft.planned.settledMissing).toBe(0);
+      expect(draft.planned.settledMissing).toBe(1);
+      const kept = await CustomerImportService.updateDraft(
+        draft.id,
+        { missing: [{ customerId: paidHere, action: 'KEEP' }] },
+        actor
+      );
+      expect(kept.missing[0].decision).toBe('KEEP');
       expect(await commit(draft.id)).toMatchObject({ settledMissing: 0 });
       expect(await outstanding(paidHere)).toBe('80.00');
       const chosen = await create(trialBalance([['4110000001', 'Stays', 300]]));
-      const saved = await CustomerImportService.updateDraft(
-        chosen.id,
-        { missing: [{ customerId: paidHere, action: 'SETTLE' }] },
-        actor
-      );
-      expect(saved.missing[0].decision).toBe('SETTLE');
+      expect(chosen.missing[0].decision).toBe('SETTLE');
       await expect(
         CustomerImportService.updateDraft(
           chosen.id,
@@ -1115,7 +1128,103 @@ const http = (method: 'get' | 'patch' | 'post', path: string, body?: object) => 
       expect(next.missing).toEqual([]);
     });
 
-    it('a file that has not changed since the last import is an old difference, not a conflict, until applied once', async () => {
+    it('a credit the old system no longer shows marks the held deposit used; the net balance matches', async () => {
+      const first = await create(trialBalance([['4110000500', 'Deposit Customer', -200]]));
+      await commit(first.id, [], password);
+      const id = await accountCustomer('4110000500');
+      // The credit was used against purchases there; the account now owes 155 net.
+      const draft = await create(trialBalance([['4110000500', 'Deposit Customer', 155]]));
+      expect(draft.rows[0].balance).toMatchObject({
+        kind: 'NEW',
+        file: '155.00',
+        deposit: { kind: 'LOWER', current: '200.00', file: '0.00' },
+      });
+      expect(draft.rows[0].conflicts.find((item) => item.kind === 'DEPOSIT_USED')).toMatchObject({
+        blocking: false,
+      });
+      expect(draft.planned).toMatchObject({ depositsUsed: 1, depositUsedTotalUsd: '200.00' });
+      expect(await commit(draft.id, undefined, password)).toMatchObject({
+        depositsUsed: 1,
+        depositUsedTotalUsd: '200.00',
+        openingDebts: 1,
+      });
+      expect(await outstanding(id)).toBe('155.00');
+      const deposits = await db.prepaidPurchase.findMany({ where: { debt: { customerId: id } } });
+      expect(deposits.map((item) => item.status)).toEqual(['DELIVERED']);
+      const again = await create(trialBalance([['4110000500', 'Deposit Customer M', 155]]));
+      expect(again.rows[0].balance).toMatchObject({ kind: 'NONE', deposit: { kind: 'NONE' } });
+    });
+
+    it('a smaller credit uses the old deposit and holds the rest anew', async () => {
+      const first = await create(trialBalance([['4110000501', 'Part Deposit', -200]]));
+      await commit(first.id, [], password);
+      const id = await accountCustomer('4110000501');
+      const draft = await create(trialBalance([['4110000501', 'Part Deposit', -50]]));
+      await commit(draft.id, undefined, password);
+      const deposits = await db.prepaidPurchase.findMany({
+        where: { debt: { customerId: id } },
+        include: { debt: true },
+        orderBy: { createdAt: 'asc' },
+      });
+      expect(deposits.map((item) => [item.status, item.debt.originalAmount.toFixed(2)])).toEqual([
+        ['DELIVERED', '200.00'],
+        ['PENDING', '50.00'],
+      ]);
+      const again = await create(trialBalance([['4110000501', 'Part Deposit M', -50]]));
+      expect(again.rows[0].balance.deposit.kind).toBe('NONE');
+    });
+
+    it('a same-name customer who lost their account number is relinked by account, not asked about', async () => {
+      const first = await create(trialBalance([['4110000600', 'Lost Link', 90]]));
+      await commit(first.id, [], password);
+      const id = await accountCustomer('4110000600');
+      await db.customerImportAccount.deleteMany({ where: { accountCode: '4110000600' } });
+      const draft = await create(trialBalance([['4110000600', 'Lost Link', 90]]));
+      expect(draft.rows[0]).toMatchObject({
+        status: 'READY',
+        matchedBy: 'NAME',
+        decision: { action: 'UPDATE', targetCustomerId: id },
+      });
+      expect(draft.rows[0].conflicts.map((item) => item.kind)).toEqual(['ACCOUNT_RELINK']);
+      await commit(draft.id);
+      expect(await accountCustomer('4110000600')).toBe(id);
+    });
+
+    it('a new account in a staging import is placed in the branch chosen for it, with its account', async () => {
+      const home = await create(trialBalance([['4110000700', 'Lives In B', 50]]), b);
+      await commit(home.id, [], password);
+      const draft = await create(
+        trialBalance([
+          ['4110000700', 'Lives In B', 50],
+          ['4110000701', 'Brand New', 70],
+        ])
+      );
+      const fresh = draft.rows.find((row) => row.accountCode === '4110000701')!;
+      expect(fresh.decision.action).toBe('SKIP');
+      expect(fresh.conflicts.find((item) => item.kind === 'BRANCH_AMBIGUOUS')?.message).toContain(
+        'New account'
+      );
+      const placed = await CustomerImportService.updateDraft(
+        draft.id,
+        { rowBranches: [{ rowNumber: fresh.rowNumber, branchId: b }] },
+        actor
+      );
+      const row = placed.rows.find((item) => item.accountCode === '4110000701')!;
+      expect(row).toMatchObject({ branchId: b, decision: { action: 'CREATE' } });
+      await commit(
+        draft.id,
+        placed.rows.map((item) => item.decision),
+        password
+      );
+      const link = await db.customerImportAccount.findUniqueOrThrow({
+        where: { branchId_accountCode: { branchId: b, accountCode: '4110000701' } },
+        include: { customer: true },
+      });
+      expect(link.customer).toMatchObject({ branchId: b, name: 'Brand New' });
+      expect(await db.customer.count({ where: { branchId: a } })).toBe(0);
+    });
+
+    it('the old system wins whether its balance is news or unchanged since the last file', async () => {
       const first = await create(trialBalance([['4110000146', 'Repeat Customer', 400]]));
       await commit(first.id, [], password);
       const id = await accountCustomer('4110000146');
@@ -1126,27 +1235,24 @@ const http = (method: 'get' | 'patch' | 'post', path: string, body?: object) => 
         actor as never,
         { mode: 'single', branchIds: [a] }
       );
-      // The old system moved to 380 after the payment here: news, so it is checked.
+      // The old system moved to 380 after the payment here: the file wins.
       const changed = await create(trialBalance([['4110000146', 'Repeat Customer', 380]]));
-      const changedKinds = changed.rows[0].conflicts.map((item) => item.kind);
-      expect(changedKinds).toContain('BALANCE_ACTIVITY');
-      expect(changedKinds).not.toContain('BALANCE_OLD_GAP');
-      await commit(changed.id);
+      expect(changed.rows[0].conflicts.map((item) => item.kind)).toContain('OLD_SYSTEM_WINS');
+      // Kept here once by choice, so HomeConnect still differs from an unchanged file.
+      await commit(changed.id, [{ ...changed.rows[0].decision, skipOpeningBalance: true }]);
       expect(await outstanding(id)).toBe('350.00');
-      // The next file still says 380: nothing new happened in the old system.
-      // Another day's printout: the same balance, so a different file.
+      // Another day's printout with the same balance: still wins by default, no tick needed.
       const same = await create(trialBalance([['4110000146', 'Repeat Customer M', 380]]));
-      const kinds = same.rows[0].conflicts.map((item) => item.kind);
-      expect(kinds).toContain('BALANCE_OLD_GAP');
-      expect(kinds).not.toContain('BALANCE_ACTIVITY');
+      const warning = same.rows[0].conflicts.find((item) => item.kind === 'OLD_SYSTEM_WINS');
+      expect(warning?.message).toContain('No change in the old system');
       expect(same.rows[0].balance).toMatchObject({ kind: 'INCREASE', difference: '30.00' });
-      expect(same.rows[0].decision.skipOpeningBalance).toBe(true);
-      expect(same.planned.balanceIncreases).toBe(0);
-      await commit(same.id, [{ ...same.rows[0].decision, skipOpeningBalance: false }], password);
+      expect(same.rows[0].decision.skipOpeningBalance).toBeUndefined();
+      expect(same.planned.balanceIncreases).toBe(1);
+      await commit(same.id, undefined, password);
       expect(await outstanding(id)).toBe('380.00');
       const settled = await create(trialBalance([['4110000146', 'Repeat Customer', 380]]));
       expect(settled.rows[0].balance.kind).toBe('NONE');
-      expect(settled.rows[0].conflicts.map((item) => item.kind)).not.toContain('BALANCE_OLD_GAP');
+      expect(settled.rows[0].conflicts.map((item) => item.kind)).not.toContain('OLD_SYSTEM_WINS');
     });
   });
 

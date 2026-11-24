@@ -119,7 +119,9 @@ const changesDebt = (row: MoneyRow) =>
   applies(row) && (MONEY_CHANGES as readonly string[]).includes(row.balance.kind);
 /** A credit balance in the file, recorded as a deposit held for the customer. */
 const addsDeposit = (row: MoneyRow) => applies(row) && row.balance.deposit.kind === 'ADD';
-const changesMoney = (row: MoneyRow) => changesDebt(row) || addsDeposit(row);
+/** The file shows less credit than the deposits an import holds: they were used there. */
+const usesDeposit = (row: MoneyRow) => applies(row) && row.balance.deposit.kind === 'LOWER';
+const changesMoney = (row: MoneyRow) => changesDebt(row) || addsDeposit(row) || usesDeposit(row);
 const addsDebt = (row: MoneyRow) => changesDebt(row) && row.balance.kind !== 'DECREASE';
 const absoluteDifference = (row: { balance: { difference: string }; currency: 'USD' | 'LBP' }) =>
   parseMoney(row.balance.difference, row.currency).abs();
@@ -303,10 +305,9 @@ async function findMissingCustomers({
       )
       .filter((item): item is PreviousFileBalance => Boolean(item))
       .sort((left, right) => right.committedAt.getTime() - left.committedAt.getTime())[0];
-    const decision: MissingDecision =
-      document.missingDecisions?.[customer.id] ??
-      // A sale or payment taken here since the last import may be newer than the old system.
-      (state.activitySinceLastImport ? 'KEEP' : 'SETTLE');
+    // The old system wins: an account it no longer lists is at zero there. Activity taken
+    // here since the last import is shown, so it can be entered in the old system.
+    const decision: MissingDecision = document.missingDecisions?.[customer.id] ?? 'SETTLE';
     return [
       {
         customerId: customer.id,
@@ -463,19 +464,26 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
         (!row.accountCode || !(customer.importAccounts ?? []).length)
       );
     });
-  const placed = parsed.map((row) => {
+  const existingFor = (row: (typeof parsed)[number]) => {
+    const accountHits = (row.accountCode && byAccount.get(row.accountCode)) || [];
+    const phoneHits = (row.phoneKey && byPhone.get(row.phoneKey)) || [];
+    return accountHits.length ? accountHits : phoneHits.length ? phoneHits : sameName(row);
+  };
+  const known = parsed.map(existingFor);
+  // The file's known customers all live in other branches: the import's own branch is a
+  // staging place, not a home. A new account then needs a real branch, chosen per row,
+  // instead of being parked there and moved later.
+  const stagingDestination =
+    branches.size > 1 &&
+    known.some((found) => found.length > 0) &&
+    !known.some((found) => found.some((customer) => customer.branchId === draft.branchId));
+  const placed = parsed.map((row, index) => {
     const chosen = document.rowBranches?.[row.rowNumber];
     const named = row.branchValue ? namedBranches.get(branchKey(row.branchValue)) : undefined;
     if (chosen && !branches.has(chosen)) row.issues.push('The selected branch is not available');
     if (row.branchValue && !named && !chosen)
       row.issues.push('Branch "' + row.branchValue + '" was not found');
-    const accountHits = (row.accountCode && byAccount.get(row.accountCode)) || [];
-    const phoneHits = (row.phoneKey && byPhone.get(row.phoneKey)) || [];
-    const existing = accountHits.length
-      ? accountHits
-      : phoneHits.length
-        ? phoneHits
-        : sameName(row);
+    const existing = known[index];
     const homes = [...new Set(existing.map((customer) => customer.branchId))];
     const home =
       homes.length === 1
@@ -484,7 +492,8 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
           ? draft.branchId
           : null;
     // A Branch column places new customers only; known customers stay in their own branch.
-    const decided = chosen ?? (existing.length ? home : (named ?? home));
+    const newAccount = stagingDestination && !existing.length && !named && !chosen;
+    const decided = newAccount ? null : (chosen ?? (existing.length ? home : (named ?? home)));
     const elsewhere = Boolean(chosen && homes.length && !homes.includes(chosen));
     const toMove =
       elsewhere && existing.length === 1 && !existing[0].deletedAt ? existing[0] : null;
@@ -492,6 +501,7 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
       ...row,
       branchId: decided ?? draft.branchId,
       ambiguous: !decided || (elsewhere && !toMove),
+      newAccount,
       chosenBranch: Boolean(chosen),
       toMove,
       existingBranches: homes,
@@ -577,8 +587,9 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
     if (row.ambiguous)
       conflicts.push({
         kind: 'BRANCH_AMBIGUOUS',
-        message:
-          'This customer exists in several branches; choose a branch where they already are, or skip',
+        message: row.newAccount
+          ? 'New account: choose the branch this customer belongs to'
+          : 'This customer exists in several branches; choose a branch where they already are, or skip',
         blocking: true,
       });
     if ((accountCounts.get(row.branchId + row.accountCode) ?? 0) > 1)
@@ -608,6 +619,18 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
           'Will move from ' +
           branchName(row.toMove!.branchId) +
           ' with their debts, payments and history',
+        blocking: false,
+      });
+    else if (matchedBy === 'NAME' && matches.length === 1 && row.accountCode)
+      // The account number is the identity. A same-name customer with no account number
+      // of their own is this account (typically a customer whose link was lost in a move):
+      // relink them instead of asking, so the next import finds them by account again.
+      conflicts.push({
+        kind: 'ACCOUNT_RELINK',
+        message:
+          'Same name and no account number yet: account ' +
+          row.accountCode +
+          ' will be linked to this customer',
         blocking: false,
       });
     else if (matchedBy)
@@ -687,15 +710,17 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
       matches.length > 1 ? { ...row, hasBalance: false } : row,
       state
     );
+    // The old system keeps one net balance per account: a credit it no longer shows was
+    // used against purchases there, so the held deposit is used up here too.
     if (balance.deposit.kind === 'LOWER')
       conflicts.push({
-        kind: 'DEPOSIT_LOWER',
+        kind: 'DEPOSIT_USED',
         message:
-          'File deposit ' +
-          balance.deposit.file +
-          ' is lower than the imported deposit held (' +
+          'Deposit ' +
           balance.deposit.current +
-          '); refund or use it on the Deposits page',
+          ' held here is now ' +
+          balance.deposit.file +
+          ' in the old system; it will be marked as used',
         blocking: false,
       });
     if (balance.kind === 'CURRENCY_MISMATCH')
@@ -705,41 +730,43 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
           'This customer has open balances in another currency; the balance will not be changed',
         blocking: false,
       });
-    // The old system still says what it said last time: the difference is old, not news.
+    // The old system is the book of record for imported branches: its balance always wins.
+    // A difference HomeConnect made on its own (a payment or sale not yet typed into the
+    // old system) is undone here and named, so it can be entered there.
     const previousFile = row.accountCode
       ? previousFileFor(previousFileBalances, [row.branchId, draft.branchId], row.accountCode)
       : undefined;
-    const oldGap =
+    const homeConnectOnly =
       matches.length === 1 &&
       (MONEY_CHANGES as readonly string[]).includes(balance.kind) &&
-      sameFileBalance(previousFile, row);
-    if (oldGap)
+      (sameFileBalance(previousFile, row) || Boolean(state?.activitySinceLastImport));
+    if (homeConnectOnly)
       conflicts.push({
-        kind: 'BALANCE_OLD_GAP',
+        kind: 'OLD_SYSTEM_WINS',
         message:
-          'No change in the old system since ' +
-          previousFile!.fileName +
-          ' (' +
-          shortDate(previousFile!.committedAt) +
-          '); HomeConnect has differed since then. Tick "Apply this change" to settle it once.',
+          (sameFileBalance(previousFile, row)
+            ? 'No change in the old system since ' +
+              previousFile!.fileName +
+              ' (' +
+              shortDate(previousFile!.committedAt) +
+              '), but HomeConnect shows ' +
+              balance.current
+            : 'HomeConnect activity since the last import; HomeConnect shows ' +
+              balance.current) +
+          '. The old system wins: set to ' +
+          balance.file +
+          '. Enter any payment taken here in the old system too.',
         blocking: false,
       });
-    // An older file looks like an increase after a payment taken in HomeConnect.
-    const stale =
-      !oldGap &&
-      Boolean(state?.activitySinceLastImport) &&
-      (balance.kind === 'INCREASE' || balance.kind === 'NEW');
-    if (stale)
-      conflicts.push({
-        kind: 'BALANCE_ACTIVITY',
-        message: 'Activity since last import; check that this file is newer',
-        blocking: false,
-      });
+    // Re-uploading a file already imported: rows that already agree stay untouched.
+    const alreadyImported =
+      previousImports.has(row.branchId) &&
+      matches.length === 1 &&
+      matchedBy !== 'NAME' &&
+      balance.kind === 'NONE' &&
+      balance.deposit.kind === 'NONE';
     const defaultDecision: CustomerImportDecision =
-      row.issues.length ||
-      row.ambiguous ||
-      (previousImports.has(row.branchId) && matches.length) ||
-      matches.length > 1
+      row.issues.length || row.ambiguous || matches.length > 1 || alreadyImported
         ? { rowNumber: row.rowNumber, action: 'SKIP' }
         : matches.length === 1
           ? {
@@ -753,7 +780,6 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
                   row[field] !== undefined &&
                   !(field === 'name' && matchedBy === 'NAME')
               ),
-              ...(stale || oldGap ? { skipOpeningBalance: true } : {}),
             }
           : { rowNumber: row.rowNumber, action: 'CREATE' };
     const fingerprint = JSON.stringify([
@@ -764,7 +790,13 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
       Boolean(state?.activitySinceLastImport),
       (state?.deposits ?? []).map((item) => [item.id, item.held.toFixed(2)]),
     ]);
-    const { ambiguous: _ambiguous, toMove: _toMove, existingBranches, ...fields } = row;
+    const {
+      ambiguous: _ambiguous,
+      newAccount: _newAccount,
+      toMove: _toMove,
+      existingBranches,
+      ...fields
+    } = row;
     return {
       ...fields,
       branchName: branchName(row.branchId),
@@ -806,6 +838,7 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
     INCREASE: { count: 0, usd: zero() },
     DECREASE: { count: 0, usd: zero() },
     DEPOSIT: { count: 0, usd: zero() },
+    DEPOSIT_USED: { count: 0, usd: zero() },
   };
   const rates = new Map<'USD' | 'LBP', Prisma.Decimal>();
   const rateFor = async (currency: 'USD' | 'LBP') => {
@@ -867,16 +900,18 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
     line.rows++;
     if (row.status === 'INVALID') line.invalid++;
     if (row.status === 'CONFLICT') line.conflicts++;
+    // What the file says covers every valid row, skipped or not, so it can be compared
+    // with what the branch owes after the import.
+    if (row.status !== 'INVALID' && row.balance.kind !== 'NO_INFO') {
+      line.fileDebt = line.fileDebt.plus(await usd(row.openingBalance, row.currency));
+      line.fileDeposit = line.fileDeposit.plus(await usd(row.deposit, row.currency));
+    }
     if (row.decision.action === 'SKIP') {
       line.skipped++;
       continue;
     }
     if (row.decision.action === 'CREATE') line.created++;
     else line.updated++;
-    if (row.balance.kind !== 'NO_INFO') {
-      line.fileDebt = line.fileDebt.plus(await usd(row.openingBalance, row.currency));
-      line.fileDeposit = line.fileDeposit.plus(await usd(row.deposit, row.currency));
-    }
     if (changesDebt(row)) {
       const amount = await usd(row.balance.difference, row.currency);
       const total = totals[row.balance.kind as 'NEW' | 'INCREASE' | 'DECREASE'];
@@ -891,6 +926,18 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
       totals.DEPOSIT.count++;
       totals.DEPOSIT.usd = totals.DEPOSIT.usd.plus(amount);
       line.deposit = line.deposit.plus(amount);
+    }
+    if (usesDeposit(row)) {
+      totals.DEPOSIT_USED.count++;
+      totals.DEPOSIT_USED.usd = totals.DEPOSIT_USED.usd.plus(
+        await usd(row.balance.deposit.current, row.currency)
+      );
+      const kept = await usd(row.balance.deposit.file, row.currency);
+      if (kept.greaterThan(0)) {
+        totals.DEPOSIT.count++;
+        totals.DEPOSIT.usd = totals.DEPOSIT.usd.plus(kept);
+        line.deposit = line.deposit.plus(kept);
+      }
     }
   }
   const settleTotal = { count: 0, usd: zero() };
@@ -970,6 +1017,8 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
     balancePaymentTotalUsd: totals.DECREASE.usd.toFixed(2),
     deposits: totals.DEPOSIT.count,
     depositTotalUsd: totals.DEPOSIT.usd.toFixed(2),
+    depositsUsed: totals.DEPOSIT_USED.count,
+    depositUsedTotalUsd: totals.DEPOSIT_USED.usd.toFixed(2),
     settledMissing: settleTotal.count,
     settledMissingTotalUsd: settleTotal.usd.toFixed(2),
     branchTotals,
@@ -1260,7 +1309,9 @@ export class CustomerImportService {
         }
         const balances = await loadCustomerBalances(
           rows
-            .filter((row) => changesDebt(row) && row.balance.kind === 'DECREASE')
+            .filter(
+              (row) => (changesDebt(row) && row.balance.kind === 'DECREASE') || usesDeposit(row)
+            )
             .map((row) => row.decision.targetCustomerId!),
           tx
         );
@@ -1278,10 +1329,13 @@ export class CustomerImportService {
           balancePaymentTotalUsd: '0.00',
           deposits: 0,
           depositTotalUsd: '0.00',
+          depositsUsed: 0,
+          depositUsedTotalUsd: '0.00',
           settledMissing: 0,
           settledMissingTotalUsd: '0.00',
         };
         let depositTotal = new Prisma.Decimal(0);
+        let depositUsedTotal = new Prisma.Decimal(0);
         let openingTotal = new Prisma.Decimal(0);
         let increaseTotal = new Prisma.Decimal(0);
         let paymentTotal = new Prisma.Decimal(0);
@@ -1500,8 +1554,63 @@ export class CustomerImportService {
               }
             }
           }
-          if (addsDeposit(row)) {
-            const amount = parseMoney(row.balance.deposit.difference, row.currency);
+          if (usesDeposit(row)) {
+            const used = (balances.get(customerId)?.deposits ?? []).filter(
+              (held) => held.currency === row.currency
+            );
+            for (const held of used) {
+              const prepaid = await tx.prepaidPurchase.findUnique({
+                where: { debtId: held.id },
+                select: { id: true, status: true },
+              });
+              if (!prepaid || prepaid.status !== 'PENDING')
+                throw stale('A deposit changed for row ' + row.rowNumber + '.');
+              await PrepaidRepository.markDelivered(tx, prepaid.id, {
+                deliveredAt: businessDateToPrisma(today),
+                deliveredById: actor.userId,
+                deliveryNotes: ('Used in the previous system (import ' + draft.fileName + ')').slice(
+                  0,
+                  1000
+                ),
+                remainderDebtId: null,
+              });
+              await tx.activityLog.create({
+                data: {
+                  branchId: row.branchId,
+                  userId: actor.userId,
+                  action: 'CUSTOMER_IMPORT_DEPOSIT_USED',
+                  entityType: 'Customer',
+                  entityId: customerId,
+                  details: {
+                    customerImportId: id,
+                    rowNumber: row.rowNumber,
+                    depositDebtId: held.id,
+                    amount: held.held.toString(),
+                    currency: row.currency,
+                  },
+                  ipAddress: context.ipAddress,
+                },
+              });
+              depositUsedTotal = depositUsedTotal.plus(toBase(held.held));
+            }
+            summary.depositsUsed++;
+            reasons.push(
+              'Deposit ' +
+                row.balance.deposit.current +
+                ' to ' +
+                row.balance.deposit.file +
+                ' ' +
+                row.currency
+            );
+          }
+          // After using the old deposits, what the file still shows as credit is held anew.
+          const depositToHold = addsDeposit(row)
+            ? row.balance.deposit.difference
+            : usesDeposit(row)
+              ? row.balance.deposit.file
+              : '0';
+          if (parseMoney(depositToHold, row.currency).greaterThan(0)) {
+            const amount = parseMoney(depositToHold, row.currency);
             const baseAmount = toBase(amount);
             const note = (
               'Deposit carried over from the previous system (import ' +
@@ -1581,7 +1690,8 @@ export class CustomerImportService {
             });
             summary.deposits++;
             depositTotal = depositTotal.plus(baseAmount);
-            reasons.push('Deposit ' + row.balance.deposit.difference + ' ' + row.currency);
+            if (addsDeposit(row))
+              reasons.push('Deposit ' + row.balance.deposit.difference + ' ' + row.currency);
           }
           reportRow(row, reasons.join('; ') + ' in ' + row.branchName);
         }
@@ -1667,6 +1777,7 @@ export class CustomerImportService {
         summary.balanceIncreaseTotalUsd = increaseTotal.toFixed(2);
         summary.balancePaymentTotalUsd = paymentTotal.toFixed(2);
         summary.depositTotalUsd = depositTotal.toFixed(2);
+        summary.depositUsedTotalUsd = depositUsedTotal.toFixed(2);
         const result = {
           ...summary,
           ...(childImportIds.length ? { childImportIds } : {}),
