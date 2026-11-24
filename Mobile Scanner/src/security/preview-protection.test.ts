@@ -9,16 +9,19 @@ vi.mock('react-native', () => ({ Platform: { OS: 'ios' } }));
 vi.mock('expo-screen-capture', () => capture);
 import { protectCloudPreview } from './preview-protection';
 describe('native preview protection', () => {
-  it('keeps protection during pairing handover and releases only after the final lease', async () => {
+  it('allows screenshots and hides the iOS app switcher until the final lease ends', async () => {
     const first = await protectCloudPreview(),
       second = await protectCloudPreview();
-    const keys = capture.preventScreenCaptureAsync.mock.calls.map((call) => call[0]);
-    expect(keys[0]).not.toBe(keys[1]);
+    // Screenshots stay allowed by the owner's decision (2026-11-24).
+    expect(capture.preventScreenCaptureAsync).not.toHaveBeenCalled();
+    expect(capture.enableAppSwitcherProtectionAsync).toHaveBeenCalledOnce();
     await first();
     expect(capture.disableAppSwitcherProtectionAsync).not.toHaveBeenCalled();
     await second();
     expect(capture.disableAppSwitcherProtectionAsync).toHaveBeenCalledOnce();
-    expect(capture.allowScreenCaptureAsync.mock.calls.map((call) => call[0])).toEqual(keys);
+    const keys = capture.allowScreenCaptureAsync.mock.calls.map((call) => call[0]);
+    expect(keys).toHaveLength(2);
+    expect(keys[0]).not.toBe(keys[1]);
     await second();
     expect(capture.disableAppSwitcherProtectionAsync).toHaveBeenCalledOnce();
   });
