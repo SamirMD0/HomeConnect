@@ -22,6 +22,7 @@ import { AppButton } from '../src/components/AppButton';
 import { theme } from '../src/theme';
 import { BranchHeader } from '../src/navigation/BranchHeader';
 import { UpdateBanner } from '../src/updates/UpdateBanner';
+import { UpdateAlerts } from '../src/updates/UpdateAlerts';
 import { ConnectionLogPanel } from '../src/connection/ConnectionLogPanel';
 import { useState } from 'react';
 import { CloudSyncRuntime } from '../src/offline/CloudSyncRuntime';
@@ -125,6 +126,7 @@ export default function RootLayout() {
             <GlassBackdrop>
               <Navigation />
             </GlassBackdrop>
+            <UpdateAlerts />
             <StatusBar style="dark" />
             <PortalHost />
             </SecurityGate>

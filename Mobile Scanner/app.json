@@ -2,7 +2,7 @@
   "expo": {
     "name": "Home Connect",
     "slug": "homeconnect-mobile-scanner",
-    "version": "2.3.1",
+    "version": "2.4.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -15,7 +15,7 @@
       }
     },
     "android": {
-      "versionCode": 14,
+      "versionCode": 15,
       "package": "com.homeconnect.mobilescanner",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
@@ -72,7 +72,15 @@
         {
           "faceIDPermission": "Allow Home Connect to unlock your paired shop account with Face ID."
         }
-      ]
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/android-icon-monochrome.png",
+          "color": "#1A6FC9"
+        }
+      ],
+      "expo-background-task"
     ],
     "extra": {
       "eas": {
