@@ -12,7 +12,8 @@ export function protectCloudPreview() {
   return serial(async () => {
     const capture = await import('expo-screen-capture'),
       key = `cloud-data-${++nextId}`;
-    await capture.preventScreenCaptureAsync(key);
+    // TEMPORARY (2.3.0 over-the-air only, not committed): screenshots allowed for UI review.
+    void capture;
     try {
       if (Platform.OS === 'ios' && leases.size === 0)
         await capture.enableAppSwitcherProtectionAsync();
