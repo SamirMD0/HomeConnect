@@ -43,7 +43,7 @@ export const ResolveMigrationsPanel: React.FC<{ migrations: PendingMigration[] }
       const resolved = outcomes.filter((outcome) => outcome.status === 'RESOLVED');
       const rejected = outcomes.filter((outcome) => outcome.status !== 'RESOLVED');
       if (rejected.length) toast.error(rejected[0].message);
-      if (resolved.length) toast.success(`${resolved.length} update${resolved.length === 1 ? '' : 's'} recorded / تم التسجيل`);
+      if (resolved.length) toast.success(`${resolved.length} update${resolved.length === 1 ? '' : 's'} recorded`);
     } catch (error) {
       toast.error(errorMessage(error));
     }
@@ -52,8 +52,7 @@ export const ResolveMigrationsPanel: React.FC<{ migrations: PendingMigration[] }
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-4">
       <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-800">
-        <ClipboardCheck className="h-4 w-4" /> Already updated by hand? / تم التحديث يدوياً؟
-      </h3>
+        <ClipboardCheck className="h-4 w-4" /> Already updated by hand?</h3>
       <p className="mt-1 text-xs text-slate-600">
         If these updates were applied with a repair script, record them here. This writes only the
         history entry — none of the update&apos;s own SQL runs. Items the database is missing cannot be recorded.
@@ -106,8 +105,7 @@ export const ResolveMigrationsPanel: React.FC<{ migrations: PendingMigration[] }
 
       <div className="mt-3 flex flex-wrap items-end gap-3 border-t border-slate-100 pt-3">
         <label className="text-xs font-medium text-slate-600">
-          Account password / كلمة المرور
-          <input
+          Account password<input
             type="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
@@ -130,8 +128,7 @@ export const ResolveMigrationsPanel: React.FC<{ migrations: PendingMigration[] }
           className="inline-flex h-9 items-center gap-2 rounded-lg border border-brand-300 bg-white px-4 text-sm font-semibold text-brand-700 disabled:opacity-50"
         >
           {resolve.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-          Record as applied ({selected.size}) / تسجيل
-        </button>
+          Record as applied ({selected.size})</button>
       </div>
     </div>
   );

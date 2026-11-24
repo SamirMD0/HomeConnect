@@ -29,27 +29,27 @@ export function BusinessSettingsForm({ settings }: { settings: BusinessSettings 
     event.preventDefault();
     try {
       await update.mutateAsync(form);
-      toast.success('Business details saved / تم حفظ بيانات المتجر');
+      toast.success('Business details saved');
     } catch {
-      toast.error('Unable to save business details / تعذر حفظ بيانات المتجر');
+      toast.error('Unable to save business details');
     }
   };
 
   return (
     <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
       <div>
-        <h2 className="text-lg font-semibold text-slate-900">Invoice business details / بيانات المتجر على الفاتورة</h2>
+        <h2 className="text-lg font-semibold text-slate-900">Invoice business details</h2>
         <p className="mt-1 text-sm text-slate-500">Blank fields print clear placeholders until they are configured.</p>
       </div>
       <form className="mt-5 grid gap-4 sm:grid-cols-2" onSubmit={save}>
-        <FormField label="Shop name / اسم المتجر">{(field) => <Input {...field} userText value={form.shopName ?? ''} onChange={set('shopName')} placeholder="Home Connect" />}</FormField>
-        <FormField label="Phone / الهاتف">{(field) => <Input {...field} value={form.phone ?? ''} onChange={set('phone')} placeholder="01 234 567" />}</FormField>
-        <FormField label="VAT / tax number / الرقم الضريبي">{(field) => <Input {...field} value={form.taxNumber ?? ''} onChange={set('taxNumber')} placeholder="VAT-…" />}</FormField>
-        <FormField label="Email / البريد الإلكتروني">{(field) => <Input {...field} type="email" value={form.email ?? ''} onChange={set('email')} placeholder="shop@example.com" />}</FormField>
-        <FormField className="sm:col-span-2" label="Address / العنوان">{(field) => <Textarea {...field} userText value={form.address ?? ''} onChange={set('address')} />}</FormField>
-        <FormField className="sm:col-span-2" label="Logo URL or image data URL / رابط الشعار">{(field) => <Input {...field} value={form.logoUrl ?? ''} onChange={set('logoUrl')} placeholder="https://…/logo.png" />}</FormField>
-        <FormField label="Return window (days) / مهلة الإرجاع بالأيام">{(field) => <Input {...field} type="number" min={1} max={365} value={form.returnWindowDays} onChange={(event) => setForm((current) => ({ ...current, returnWindowDays: Number(event.target.value) }))} />}</FormField>
-        <div className="sm:col-span-2"><Button type="submit" isLoading={update.isPending}>Save business details / حفظ بيانات المتجر</Button></div>
+        <FormField label="Shop name">{(field) => <Input {...field} userText value={form.shopName ?? ''} onChange={set('shopName')} placeholder="Home Connect" />}</FormField>
+        <FormField label="Phone">{(field) => <Input {...field} value={form.phone ?? ''} onChange={set('phone')} placeholder="01 234 567" />}</FormField>
+        <FormField label="VAT / tax number">{(field) => <Input {...field} value={form.taxNumber ?? ''} onChange={set('taxNumber')} placeholder="VAT-…" />}</FormField>
+        <FormField label="Email">{(field) => <Input {...field} type="email" value={form.email ?? ''} onChange={set('email')} placeholder="shop@example.com" />}</FormField>
+        <FormField className="sm:col-span-2" label="Address">{(field) => <Textarea {...field} userText value={form.address ?? ''} onChange={set('address')} />}</FormField>
+        <FormField className="sm:col-span-2" label="Logo URL or image data URL">{(field) => <Input {...field} value={form.logoUrl ?? ''} onChange={set('logoUrl')} placeholder="https://…/logo.png" />}</FormField>
+        <FormField label="Return window (days)">{(field) => <Input {...field} type="number" min={1} max={365} value={form.returnWindowDays} onChange={(event) => setForm((current) => ({ ...current, returnWindowDays: Number(event.target.value) }))} />}</FormField>
+        <div className="sm:col-span-2"><Button type="submit" isLoading={update.isPending}>Save business details</Button></div>
       </form>
     </section>
   );

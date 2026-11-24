@@ -18,7 +18,7 @@ const action = { id, type: 'take_payment', branchId, payload: { amount: '19.99' 
 const store = {
   findDevice: vi.fn(), touchDevice: vi.fn(), touchWorker: vi.fn(), upkeep: vi.fn(), countUsage: vi.fn(),
   writeRecords: vi.fn(), workerState: vi.fn(), claim: vi.fn(), getBlob: vi.fn(), saveResult: vi.fn(),
-  registerDevice: vi.fn(), revokeDevice: vi.fn(), devices: vi.fn(), usage: vi.fn(), deviceStatus:vi.fn(),
+  registerDevice: vi.fn(), revokeDevice: vi.fn(), deleteDevice: vi.fn(), devices: vi.fn(), usage: vi.fn(), deviceStatus:vi.fn(),
   readRecords: vi.fn(), enqueue: vi.fn(), putBlob: vi.fn(), actionResults: vi.fn(),
   beginSnapshot: vi.fn(), snapshotPage: vi.fn(), finishSnapshot: vi.fn(),
 };
@@ -289,6 +289,10 @@ describe('isolated relay routes', () => {
     expect(store.registerDevice).toHaveBeenCalledWith({ ...registration, role: 'EMPLOYEE' });
     expect((await request(app).get('/relay/v1/worker/devices').set('Authorization', workerAuth)).body).toEqual([{ id, name: 'Phone' }]);
     expect((await request(app).post(`/relay/v1/worker/devices/${id}/revoke`).set('Authorization', workerAuth)).status).toBe(200);
+    store.deleteDevice.mockResolvedValue({ id, deleted: true, actionsRemoved: 0 });
+    expect((await request(app).post(`/relay/v1/worker/devices/${id}/delete`).set('Authorization', workerAuth)).body).toEqual({ id, deleted: true, actionsRemoved: 0 });
+    expect(store.deleteDevice).toHaveBeenCalledWith(id);
+    expect((await request(app).post(`/relay/v1/worker/devices/${id}/delete`)).status).toBe(401);
     expect((await request(app).get('/relay/v1/worker/state').set('Authorization', workerAuth)).body.lastPcSeq).toBe('55');
     expect((await request(app).get('/relay/v1/worker/usage').set('Authorization', workerAuth)).body.totals.bytesIn).toBe('9007199254740993');
     expect((await request(app).post('/relay/v1/worker/outbox/claim').set('Authorization', workerAuth).send({ limit: 50 })).body)

@@ -28,7 +28,7 @@ describe('BackupList', () => {
     expect(BACKUP_PREVIEW_LIMIT).toBe(5);
     for (const item of backups.slice(0, 5)) expect(html).toContain(item.filename);
     for (const item of backups.slice(5)) expect(html).not.toContain(item.filename);
-    expect(html).toContain('Show more (3) / عرض المزيد');
+    expect(html).toContain('Show more (3)');
   });
 
   it('returns every backup after expansion without changing their order', () => {

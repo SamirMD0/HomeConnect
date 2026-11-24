@@ -42,9 +42,9 @@ export const MaintenancePanel: React.FC = () => {
       link.download = `homeconnect-diagnostics-${new Date().toISOString().slice(0, 10)}.zip`;
       link.click();
       URL.revokeObjectURL(url);
-      toast.success('Diagnostics exported / تم التصدير');
+      toast.success('Diagnostics exported');
     } catch {
-      toast.error('Could not export diagnostics / تعذر التصدير');
+      toast.error('Could not export diagnostics');
     }
   };
 
@@ -54,9 +54,9 @@ export const MaintenancePanel: React.FC = () => {
       setPassword('');
       setConfirmation('');
       const failed = outcomes.filter((outcome) => outcome.status !== 'APPLIED');
-      if (!outcomes.length) toast.success('Nothing needed applying / لا يوجد ما يلزم تطبيقه');
+      if (!outcomes.length) toast.success('Nothing needed applying');
       else if (failed.length) toast.error(failed[0].message);
-      else toast.success(`${outcomes.length} repair${outcomes.length === 1 ? '' : 's'} applied / تم التطبيق`);
+      else toast.success(`${outcomes.length} repair${outcomes.length === 1 ? '' : 's'} applied`);
     } catch (error) {
       toast.error(errorMessage(error));
     }
@@ -68,7 +68,7 @@ export const MaintenancePanel: React.FC = () => {
         <div className="flex items-start gap-3">
           <Wrench className="mt-0.5 h-6 w-6 text-brand-600" />
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">Maintenance / الصيانة</h2>
+            <h2 className="text-lg font-semibold text-slate-900">Maintenance</h2>
             <p className="mt-1 text-sm text-slate-500">
               Database updates and repairs. A verified backup is always taken first.
             </p>
@@ -81,15 +81,14 @@ export const MaintenancePanel: React.FC = () => {
           className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
         >
           {preflight.isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Stethoscope className="h-4 w-4" />}
-          Run Preflight Check / فحص النظام
-        </button>
+          Run Preflight Check</button>
       </header>
 
       {overview.isLoading && <p className="py-6 text-center text-sm text-slate-500">Loading…</p>}
 
       {overview.isError && (
         <p role="alert" className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-          Unable to read maintenance status / تعذر قراءة حالة الصيانة.
+          Unable to read maintenance status.
         </p>
       )}
 
@@ -140,15 +139,13 @@ export const MaintenancePanel: React.FC = () => {
           {pendingWork > 0 && (
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
               <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-800">
-                <Database className="h-4 w-4" /> Apply pending updates / تطبيق التحديثات
-              </h3>
+                <Database className="h-4 w-4" /> Apply pending updates</h3>
               <p className="mt-1 text-xs text-slate-600">
                 A verified backup is taken before anything changes. Nothing is applied if the backup fails.
               </p>
               <div className="mt-3 flex flex-wrap items-end gap-3">
                 <label className="text-xs font-medium text-slate-600">
-                  Account password / كلمة المرور
-                  <input
+                  Account password<input
                     type="password"
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
@@ -171,8 +168,7 @@ export const MaintenancePanel: React.FC = () => {
                   className="inline-flex h-9 items-center gap-2 rounded-lg bg-brand-600 px-4 text-sm font-semibold text-white disabled:opacity-50"
                 >
                   {applyRepairs.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                  Apply / تطبيق
-                </button>
+                  Apply</button>
               </div>
             </div>
           )}
@@ -183,16 +179,14 @@ export const MaintenancePanel: React.FC = () => {
               onClick={downloadDiagnostics}
               className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
             >
-              <FileArchive className="h-4 w-4" /> Export Diagnostics / تصدير التشخيص
-            </button>
+              <FileArchive className="h-4 w-4" /> Export Diagnostics</button>
             <button
               type="button"
               onClick={() => window.electronAPI?.openLogsFolder?.()}
               disabled={!window.electronAPI?.openLogsFolder}
               className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
             >
-              <FolderOpen className="h-4 w-4" /> Open Logs Folder / سجل الأخطاء
-            </button>
+              <FolderOpen className="h-4 w-4" /> Open Logs Folder</button>
           </div>
 
           <RepairHistoryTable rows={data.history} />
@@ -205,15 +199,14 @@ export const MaintenancePanel: React.FC = () => {
 export const IntegrityReportsLinks: React.FC = () => (
   <section className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
     <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-800">
-      <ShieldCheck className="h-4 w-4 text-emerald-600" /> Integrity reconciliation / مطابقة السلامة
-    </h3>
+      <ShieldCheck className="h-4 w-4 text-emerald-600" /> Integrity reconciliation</h3>
     <p className="mt-1 text-xs text-slate-600">
       Read-only checks that independently prove inventory and financial balances agree with their source records.
     </p>
     <div className="mt-3 grid gap-2 sm:grid-cols-3">
-      <IntegrityReportLink to="/reports/receiving-reconciliation" label="Inventory receiving / استلام المخزون" />
-      <IntegrityReportLink to="/reports/customer-financial-integrity" label="Customer balances / حسابات الزبائن" />
-      <IntegrityReportLink to="/reports/supplier-financial-integrity" label="Supplier balances / حسابات الموردين" />
+      <IntegrityReportLink to="/reports/receiving-reconciliation" label="Inventory receiving" />
+      <IntegrityReportLink to="/reports/customer-financial-integrity" label="Customer balances" />
+      <IntegrityReportLink to="/reports/supplier-financial-integrity" label="Supplier balances" />
     </div>
   </section>
 );

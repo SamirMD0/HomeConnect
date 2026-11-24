@@ -10,7 +10,7 @@ export const PendingRepairsList: React.FC<{ repairs: PendingRepair[] }> = ({ rep
   if (!repairs.length) {
     return (
       <p className="flex items-center gap-2 rounded-lg border border-brand-200 bg-brand-50 p-3 text-sm text-brand-800">
-        <CheckCircle2 className="h-4 w-4" /> The database is up to date / قاعدة البيانات محدثة.
+        <CheckCircle2 className="h-4 w-4" /> The database is up to date.
       </p>
     );
   }
@@ -18,8 +18,7 @@ export const PendingRepairsList: React.FC<{ repairs: PendingRepair[] }> = ({ rep
   return (
     <div className="rounded-lg border border-slate-200">
       <h3 className="border-b border-slate-100 px-4 py-2 text-sm font-semibold text-slate-800">
-        Pending repairs ({repairs.length}) / إصلاحات معلقة
-      </h3>
+        Pending repairs ({repairs.length})</h3>
       <ul className="divide-y divide-slate-100">
         {repairs.map((repair) => (
           <li key={repair.repairId} className="px-4 py-3">

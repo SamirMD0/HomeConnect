@@ -5,7 +5,7 @@ import { AppError, ValidationError } from '../../../lib/errors';
 import { BranchesService } from '../../branches/branches.service';
 import { workerState, relayUrlSchema } from './worker-settings';
 import { decryptWorkerSecret } from './worker-secret';
-import { WorkerRelay } from './relay-client';
+import { RelayFailure, WorkerRelay } from './relay-client';
 
 // z.guid(): shop ids are UUID-shaped but not always RFC 4122 (see relay/inputs.ts).
 export const pairDeviceSchema = z.object({
@@ -42,3 +42,20 @@ export async function relayUsageEstimate() {
   return usage.estimate ?? null;
 }
 export async function revokeDevice(id: string) { return (await configuredRelay()).client.request(`/devices/${id}/revoke`, {}); }
+/** Removes a revoked phone from the relay. Phones with actions still waiting for the PC stay. */
+export async function deleteDevice(id: string) {
+  const { client } = await configuredRelay();
+  try {
+    return await client.request(`/devices/${id}/delete`, {});
+  } catch (error) {
+    if (!(error instanceof RelayFailure)) throw error;
+    if (error.code === 'DEVICE_NOT_FOUND') return { id, deleted: true, actionsRemoved: 0 };
+    if (error.code === 'DEVICE_NOT_REVOKED') throw new AppError('Revoke this phone before deleting it.', 409, error.code);
+    if (error.code === 'DEVICE_HAS_WAITING_ACTIONS')
+      throw new AppError('This phone still has actions waiting for the PC. Delete it after they finish syncing.', 409, error.code);
+    // An older relay does not know the route yet; its automatic deploy adds it.
+    if (error.status === 404)
+      throw new AppError('The cloud relay has not been updated yet. Try again after its deploy finishes.', 503, 'RELAY_OUTDATED');
+    throw error;
+  }
+}

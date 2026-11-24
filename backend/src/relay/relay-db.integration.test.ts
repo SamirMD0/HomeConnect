@@ -282,6 +282,33 @@ const input = (id = randomUUID()): ActionInput => ({
     ).rejects.toMatchObject({ status: 409 });
   });
 
+  it('deletes only a revoked phone with nothing waiting, together with its finished actions and photos', async () => {
+    const id = randomUUID();
+    await store.registerDevice({ ...device, id, tokenSha256: createHash('sha256').update(id).digest('hex') });
+    try {
+      await expect(store.deleteDevice(id)).rejects.toMatchObject({ status: 409, code: 'DEVICE_NOT_REVOKED' });
+      const phone = await db.relayDevice.findUniqueOrThrow({ where: { id } });
+      const done = input();
+      const waiting = input();
+      await store.enqueue(phone, done);
+      await store.putBlob(id, done.id, 'image/jpeg', Buffer.from([1, 2, 3]));
+      await store.saveResult(done.id, { status: 'refused', result: { code: 'X', message: 'No' } });
+      await store.enqueue(phone, waiting);
+      await store.revokeDevice(id);
+      await expect(store.deleteDevice(id)).rejects.toMatchObject({ status: 409, code: 'DEVICE_HAS_WAITING_ACTIONS' });
+      expect(await db.relayDevice.count({ where: { id } })).toBe(1);
+      await store.saveResult(waiting.id, { status: 'applied', result: {} });
+      expect(await store.deleteDevice(id)).toEqual({ id, deleted: true, actionsRemoved: 2 });
+      expect(await db.relayDevice.count({ where: { id } })).toBe(0);
+      expect(await db.relayOutbox.count({ where: { deviceId: id } })).toBe(0);
+      expect(await db.relayBlob.count({ where: { outboxId: done.id } })).toBe(0);
+      await expect(store.deleteDevice(id)).rejects.toMatchObject({ status: 404, code: 'DEVICE_NOT_FOUND' });
+    } finally {
+      await db.relayOutbox.deleteMany({ where: { deviceId: id } });
+      await db.relayDevice.deleteMany({ where: { id } });
+    }
+  });
+
   it('enforces the blob limit in PostgreSQL as well as HTTP', async () => {
     const paired = await db.relayDevice.findUniqueOrThrow({ where: { id: deviceId } });
     const action = input();

@@ -228,6 +228,28 @@ export class RelayStore {
     return { id, revoked: true };
   }
 
+  /**
+   * Removes a revoked phone and its finished actions. A phone whose actions still wait
+   * for the PC keeps them: deleting it would lose work the shop has not received.
+   */
+  async deleteDevice(id: string) {
+    return this.db.$transaction(async (tx) => {
+      const device = await tx.relayDevice.findUnique({ where: { id }, select: { revokedAt: true } });
+      if (!device) throw new RelayError(404, 'DEVICE_NOT_FOUND', 'Device not found.');
+      if (!device.revokedAt) throw new RelayError(409, 'DEVICE_NOT_REVOKED', 'Revoke this phone before deleting it.');
+      const waiting = await tx.relayOutbox.count({
+        where: { deviceId: id, status: { in: ['awaiting_photo', 'pending', 'claimed'] } },
+      });
+      if (waiting) {
+        throw new RelayError(409, 'DEVICE_HAS_WAITING_ACTIONS', 'This phone still has actions waiting for the PC.');
+      }
+      // Photos are removed with their actions (cascade).
+      const actions = await tx.relayOutbox.deleteMany({ where: { deviceId: id } });
+      await tx.relayDevice.delete({ where: { id } });
+      return { id, deleted: true, actionsRemoved: actions.count };
+    });
+  }
+
   devices() {
     return this.db.relayDevice.findMany({ select: devicePublic, orderBy: { createdAt: 'desc' } });
   }

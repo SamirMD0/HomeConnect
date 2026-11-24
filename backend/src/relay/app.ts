@@ -239,6 +239,14 @@ export function createRelayApp(options: RelayOptions = {}) {
       res.json(await store.revokeDevice(res.locals.params.id));
     }
   );
+  worker.post(
+    '/devices/:id/delete',
+    validate(idInput, 'params'),
+    validate(emptyInput.default({}), 'body'),
+    async (_req, res) => {
+      res.json(await store.deleteDevice(res.locals.params.id));
+    }
+  );
   worker.get('/devices', validate(emptyInput, 'query'), async (_req, res) => {
     res.json(await store.devices());
   });
