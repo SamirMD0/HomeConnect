@@ -173,6 +173,7 @@ export const globalRouteGroups = [
   "GET /api/v1/sync/worker/devices",
   "POST /api/v1/sync/worker/devices",
   "POST /api/v1/sync/worker/devices/:id/revoke",
+  "POST /api/v1/sync/worker/devices/:id/delete",
   "GET /api/v1/sync/worker/usage",
   "GET /api/v1/sync/worker",
   "PUT /api/v1/sync/worker",
