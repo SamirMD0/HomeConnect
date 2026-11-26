@@ -1,5 +1,5 @@
 import { isBranchDependentQuery } from '../../branches/scope/branch-scope-store';
-import React, { useContext, useState } from 'react';
+import React, { useContext, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle,
@@ -347,8 +347,8 @@ export function MissingFromFile({
       <p className="text-sm text-slate-700">
         These customers still owe in HomeConnect but the trial balance no longer lists them. The old
         system leaves out accounts at zero, so they most likely paid in full. Settling records a
-        payment (method Other) that brings them to zero. The old system wins, so all are ticked;
-        if one shows activity in HomeConnect, enter that payment or sale in the old system too.
+        payment (method Other) that brings them to zero. The old system wins, so all are ticked; if
+        one shows activity in HomeConnect, enter that payment or sale in the old system too.
       </p>
       <div className="max-h-72 overflow-auto rounded-lg border border-violet-200 bg-white">
         <table className="w-full min-w-[40rem] text-left text-sm">
@@ -514,7 +514,84 @@ export function totalOfBranches(lines: ImportBranchTotal[]): ImportBranchTotal {
     netDebtChangeUsd: add((line) => line.netDebtChangeUsd),
     openBeforeUsd: add((line) => line.openBeforeUsd),
     openAfterUsd: add((line) => line.openAfterUsd),
+    fileBalanceUsd: add((line) => line.fileBalanceUsd ?? '0.00'),
+    balanceAfterUsd: add((line) => line.balanceAfterUsd ?? '0.00'),
+    depositsHeldAfterUsd: add((line) => line.depositsHeldAfterUsd ?? '0.00'),
   };
+}
+
+/** HomeConnect's balance after the import equals the old system's, to the cent. */
+export const balancesAgree = (line: ImportBranchTotal) =>
+  Math.round(Number(line.fileBalanceUsd ?? 0) * 100) ===
+  Math.round(Number(line.balanceAfterUsd ?? 0) * 100);
+
+/**
+ * The one figure to check against the old system, shown before any row is resolved:
+ * its balance (debits minus credits) next to HomeConnect's after this import.
+ */
+export function BalanceSummary({ lines }: { lines: ImportBranchTotal[] }) {
+  const total = totalOfBranches(lines);
+  const difference =
+    Math.round(Number(total.balanceAfterUsd ?? 0) * 100) -
+    Math.round(Number(total.fileBalanceUsd ?? 0) * 100);
+  const agree = difference === 0;
+  const held = Number(total.depositsHeldAfterUsd ?? 0);
+  return (
+    <section
+      aria-labelledby="balance-summary-heading"
+      className={cn(
+        'rounded-xl border p-4',
+        agree ? 'border-green-200 bg-green-50/60' : 'border-amber-200 bg-amber-50/70'
+      )}
+    >
+      <h4 id="balance-summary-heading" className="sr-only">
+        Total balance
+      </h4>
+      <dl className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div>
+          <dt className="text-xs font-medium text-slate-600">Old system balance</dt>
+          <dd className="text-xl font-semibold tabular-nums text-slate-900">
+            {formatMoney(total.fileBalanceUsd ?? '0.00')}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-xs font-medium text-slate-600">HomeConnect after import</dt>
+          <dd className="text-xl font-semibold tabular-nums text-slate-900">
+            {formatMoney(total.balanceAfterUsd ?? '0.00')}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-xs font-medium text-slate-600">Difference</dt>
+          <dd
+            role="status"
+            className={cn(
+              'text-xl font-semibold tabular-nums',
+              agree ? 'text-green-700' : 'text-amber-800'
+            )}
+          >
+            {agree ? 'Matches' : formatSignedMoney((difference / 100).toFixed(2))}
+          </dd>
+        </div>
+      </dl>
+      <p className="mt-2 text-xs text-slate-600">
+        {lines.length > 1 &&
+          lines
+            .map(
+              (line) =>
+                line.branchName +
+                ' ' +
+                formatMoney(line.balanceAfterUsd ?? '0.00') +
+                (balancesAgree(line)
+                  ? ''
+                  : ' (file ' + formatMoney(line.fileBalanceUsd ?? '0.00') + ')')
+            )
+            .join(' · ') + '. '}
+        Debts minus credits, as in the old system
+        {held ? '; ' + formatMoney(total.depositsHeldAfterUsd ?? '0.00') + ' held as deposits' : ''}
+        .{!agree && ' Rows you skip or keep as they are leave this difference.'}
+      </p>
+    </section>
+  );
 }
 
 /**
@@ -551,6 +628,18 @@ export function BranchReconciliation({ lines }: { lines: ImportBranchTotal[] }) 
       <td className={cn(cell, 'font-semibold')}>{formatSignedMoney(line.netDebtChangeUsd)}</td>
       <td className={cn(cell, 'text-slate-600')}>{formatMoney(line.openBeforeUsd)}</td>
       <td className={cn(cell, 'font-semibold text-slate-900')}>{formatMoney(line.openAfterUsd)}</td>
+      <td className={cn(cell, 'border-l border-slate-200 font-semibold text-slate-900')}>
+        {formatMoney(line.fileBalanceUsd ?? '0.00')}
+      </td>
+      <td
+        className={cn(
+          cell,
+          'font-semibold',
+          balancesAgree(line) ? 'text-green-700' : 'text-amber-700'
+        )}
+      >
+        {formatMoney(line.balanceAfterUsd ?? '0.00')}
+      </td>
     </tr>
   );
   return (
@@ -559,10 +648,12 @@ export function BranchReconciliation({ lines }: { lines: ImportBranchTotal[] }) 
         <h4 id="branch-totals-heading" className="text-base font-semibold text-slate-900">
           Totals by branch
         </h4>
-        <p className="text-xs text-slate-500">USD. File columns cover every valid row; changes leave out skipped rows.</p>
+        <p className="text-xs text-slate-500">
+          USD. File columns cover every valid row; changes leave out skipped rows.
+        </p>
       </div>
       <div className="overflow-x-auto rounded-xl border border-slate-200">
-        <table className="w-full min-w-[52rem] text-[13px]">
+        <table className="w-full min-w-[62rem] text-[13px]">
           <thead className="bg-slate-50 text-xs font-semibold text-slate-600">
             <tr>
               <th scope="col" className="px-3 py-2 text-left">
@@ -595,6 +686,15 @@ export function BranchReconciliation({ lines }: { lines: ImportBranchTotal[] }) 
               <th scope="col" className="px-2.5 py-2 text-right leading-tight">
                 Owed after import
               </th>
+              <th
+                scope="col"
+                className="border-l border-slate-200 px-2.5 py-2 text-right leading-tight"
+              >
+                Old system balance
+              </th>
+              <th scope="col" className="px-2.5 py-2 text-right leading-tight">
+                Balance after import
+              </th>
             </tr>
           </thead>
           <tbody>{lines.map((line) => row(line))}</tbody>
@@ -604,8 +704,13 @@ export function BranchReconciliation({ lines }: { lines: ImportBranchTotal[] }) 
       <p className="text-xs text-slate-500">
         &quot;Owed now&quot; is what every active customer in the branch owes in HomeConnect,
         including customers not in this file. Payments include customers settled because the file no
-        longer lists them. Compare &quot;Owed after import&quot; with the old system&apos;s total
-        for that branch.
+        longer lists them. &quot;Old system balance&quot; is the file&apos;s debit minus credit
+        balances, like the old system&apos;s total. &quot;Balance after import&quot; is the same
+        figure in HomeConnect: what customers owe minus the deposits held for them
+        {Number(total.depositsHeldAfterUsd ?? 0)
+          ? ' (' + formatMoney(total.depositsHeldAfterUsd ?? '0.00') + ' held)'
+          : ''}
+        . These two should be equal.
       </p>
     </section>
   );
@@ -918,12 +1023,16 @@ export function CustomerImportWizard(props: WizardProps) {
       )}
       {(step === 3 || step === 4) && preview && (
         <>
+          {preview.planned.branchTotals?.length ? (
+            <BalanceSummary lines={preview.planned.branchTotals} />
+          ) : null}
           {preview.previousCommittedImport && (
             <p
               role="alert"
               className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900 ring-1 ring-inset ring-amber-200"
             >
-              This file was already imported into this branch. Matching rows default to Skip.
+              This file was already imported into this branch. Rows that already agree default to
+              Skip.
             </p>
           )}
           {mainFlagged > 0 && (
@@ -1344,6 +1453,45 @@ function CustomerImportSession({ onClose }: { onClose: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   useRecordBranch(preview?.branchId);
+  // Resolve-step choices stay local until Continue; save them quietly so the total
+  // balance at the top always reflects what will be committed.
+  const choices = preview
+    ? JSON.stringify([
+        preview.rows.map((row) => row.decision),
+        preview.missing?.length ? missingChoices(preview) : null,
+      ])
+    : '';
+  const latestChoices = useRef(choices);
+  useEffect(() => {
+    latestChoices.current = choices;
+  }, [choices]);
+  const savedChoices = useRef('');
+  useEffect(() => {
+    if (step !== 4 || !preview || busy) return;
+    if (!savedChoices.current) savedChoices.current = choices;
+    if (choices === savedChoices.current) return;
+    const timer = window.setTimeout(() => {
+      const sent = choices;
+      customerImportsApi
+        .update(preview.id, {
+          decisions: preview.rows.map((row) => row.decision),
+          ...(preview.missing?.length ? { missing: missingChoices(preview) } : {}),
+        })
+        .then((updated) => {
+          savedChoices.current = sent;
+          // A newer choice is already on its way; its answer will bring the totals.
+          if (latestChoices.current !== sent) return;
+          setPreview((current) =>
+            current && current.id === updated.id
+              ? { ...current, planned: updated.planned }
+              : current
+          );
+        })
+        .catch(() => undefined);
+    }, 400);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [choices, step, busy]);
   const perform = async (operation: () => Promise<void>) => {
     setBusy(true);
     setError('');

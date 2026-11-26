@@ -65,6 +65,11 @@ export interface ImportBranchTotal {
   netDebtChangeUsd: string;
   openBeforeUsd: string;
   openAfterUsd: string;
+  /** Old system balance: file debits minus file credits. */
+  fileBalanceUsd?: string;
+  /** HomeConnect after the import, on the same basis: owed minus deposits held. */
+  balanceAfterUsd?: string;
+  depositsHeldAfterUsd?: string;
 }
 /** A main-branch customer the row resembles. Shown for reading only; never changed. */
 export interface MainBranchMatch {

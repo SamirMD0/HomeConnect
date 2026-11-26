@@ -5,6 +5,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import {
+  BalanceSummary,
   BranchReconciliation,
   CustomerImportSummary,
   CustomerImportWizard,
@@ -571,6 +572,51 @@ describe('grouped preview, deposits and branch totals', () => {
     expect(html).toContain('<tfoot>');
     expect(isMainBranch({ code: 'MAIN' })).toBe(true);
     expect(isMainBranch({ code: 'B' })).toBe(false);
+  });
+  it('shows the old system balance against HomeConnect after the import, netting deposits', () => {
+    const line = {
+      branchId: 'b',
+      branchName: 'Barja',
+      rows: 1,
+      created: 0,
+      updated: 1,
+      skipped: 0,
+      invalid: 0,
+      conflicts: 0,
+      fileDebtUsd: '500.00',
+      fileDepositUsd: '0.00',
+      newDebtUsd: '0.00',
+      increaseUsd: '0.00',
+      paymentUsd: '0.00',
+      depositUsd: '0.00',
+      netDebtChangeUsd: '0.00',
+      openBeforeUsd: '500.00',
+      openAfterUsd: '500.00',
+      fileBalanceUsd: '500.00',
+      balanceAfterUsd: '500.00',
+      depositsHeldAfterUsd: '0.00',
+    };
+    const jadra = {
+      ...line,
+      branchId: 'j',
+      branchName: 'Jadra',
+      fileDepositUsd: '200.00',
+      fileBalanceUsd: '300.00',
+      balanceAfterUsd: '300.00',
+      depositsHeldAfterUsd: '200.00',
+    };
+    const matching = renderToStaticMarkup(<BalanceSummary lines={[line, jadra]} />);
+    expect(matching).toContain('Old system balance');
+    expect(matching).toContain('$800.00');
+    expect(matching).toContain('Matches');
+    expect(matching).toContain('$200.00 held as deposits');
+    const skipped = renderToStaticMarkup(
+      <BalanceSummary lines={[line, { ...jadra, balanceAfterUsd: '330.00' }]} />
+    );
+    expect(skipped).toContain('$830.00');
+    expect(skipped).toContain('Jadra $330.00 (file $300.00)');
+    expect(skipped).toContain('Rows you skip or keep as they are leave this difference.');
+    expect(skipped).not.toContain('Matches');
   });
   it('lists main-branch look-alikes for reading on the Confirm step', () => {
     const html = renderToStaticMarkup(

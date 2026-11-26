@@ -751,8 +751,7 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
               shortDate(previousFile!.committedAt) +
               '), but HomeConnect shows ' +
               balance.current
-            : 'HomeConnect activity since the last import; HomeConnect shows ' +
-              balance.current) +
+            : 'HomeConnect activity since the last import; HomeConnect shows ' + balance.current) +
           '. The old system wins: set to ' +
           balance.file +
           '. Enter any payment taken here in the old system too.',
@@ -876,6 +875,8 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
       /** Part of payment: customers no longer in the file, settled to zero. */
       settled: Prisma.Decimal;
       deposit: Prisma.Decimal;
+      /** Imported deposits this import marks as used. */
+      depositUsed: Prisma.Decimal;
     }
   >();
   for (const row of rows) {
@@ -895,6 +896,7 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
       payment: zero(),
       settled: zero(),
       deposit: zero(),
+      depositUsed: zero(),
     };
     perBranch.set(row.branchId, line);
     line.rows++;
@@ -929,9 +931,9 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
     }
     if (usesDeposit(row)) {
       totals.DEPOSIT_USED.count++;
-      totals.DEPOSIT_USED.usd = totals.DEPOSIT_USED.usd.plus(
-        await usd(row.balance.deposit.current, row.currency)
-      );
+      const used = await usd(row.balance.deposit.current, row.currency);
+      totals.DEPOSIT_USED.usd = totals.DEPOSIT_USED.usd.plus(used);
+      line.depositUsed = line.depositUsed.plus(used);
       const kept = await usd(row.balance.deposit.file, row.currency);
       if (kept.greaterThan(0)) {
         totals.DEPOSIT.count++;
@@ -965,6 +967,21 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
     tx
   );
   const openBefore = new Map<string, Prisma.Decimal>();
+  // Credit the shop holds for customers: the old system subtracts it in its balance.
+  const heldBefore = new Map<string, Prisma.Decimal>();
+  for (const customer of branchCustomers)
+    for (const item of branchBalances.get(customer.id)?.deposits ?? [])
+      heldBefore.set(
+        customer.branchId,
+        (heldBefore.get(customer.branchId) ?? zero()).plus(
+          toBaseAmount(
+            item.held,
+            item.currency,
+            await rateFor(item.currency),
+            Prisma.Decimal.ROUND_HALF_UP
+          )
+        )
+      );
   for (const customer of branchCustomers)
     for (const item of branchBalances.get(customer.id)?.obligations ?? [])
       openBefore.set(
@@ -983,6 +1000,9 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
     .map((line) => {
       const before = openBefore.get(line.branchId) ?? zero();
       const net = line.newDebt.plus(line.increase).minus(line.payment);
+      const heldAfter = (heldBefore.get(line.branchId) ?? zero())
+        .plus(line.deposit)
+        .minus(line.depositUsed);
       return {
         branchId: line.branchId,
         branchName: line.branchName,
@@ -1002,6 +1022,11 @@ export async function buildCustomerImportPreview(draft: Draft, tx: Client) {
         netDebtChangeUsd: net.toFixed(2),
         openBeforeUsd: before.toFixed(2),
         openAfterUsd: before.plus(net).toFixed(2),
+        depositsHeldAfterUsd: heldAfter.toFixed(2),
+        /** The old system's figure: debit minus credit balances in the file. */
+        fileBalanceUsd: line.fileDebt.minus(line.fileDeposit).toFixed(2),
+        /** The same figure in HomeConnect after the import: owed minus deposits held. */
+        balanceAfterUsd: before.plus(net).minus(heldAfter).toFixed(2),
       };
     });
   const planned = {
@@ -1568,10 +1593,11 @@ export class CustomerImportService {
               await PrepaidRepository.markDelivered(tx, prepaid.id, {
                 deliveredAt: businessDateToPrisma(today),
                 deliveredById: actor.userId,
-                deliveryNotes: ('Used in the previous system (import ' + draft.fileName + ')').slice(
-                  0,
-                  1000
-                ),
+                deliveryNotes: (
+                  'Used in the previous system (import ' +
+                  draft.fileName +
+                  ')'
+                ).slice(0, 1000),
                 remainderDebtId: null,
               });
               await tx.activityLog.create({

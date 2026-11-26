@@ -1129,11 +1129,40 @@ const http = (method: 'get' | 'patch' | 'post', path: string, body?: object) => 
     });
 
     it('a credit the old system no longer shows marks the held deposit used; the net balance matches', async () => {
-      const first = await create(trialBalance([['4110000500', 'Deposit Customer', -200]]));
+      const first = await create(
+        trialBalance([
+          ['4110000500', 'Deposit Customer', -200],
+          ['4110000502', 'Owes', 500],
+        ])
+      );
+      // The old system's balance nets the credit; HomeConnect's comparable figure does too.
+      expect(first.planned.branchTotals).toEqual([
+        expect.objectContaining({
+          fileDebtUsd: '500.00',
+          fileBalanceUsd: '300.00',
+          openAfterUsd: '500.00',
+          depositsHeldAfterUsd: '200.00',
+          balanceAfterUsd: '300.00',
+        }),
+      ]);
       await commit(first.id, [], password);
+      const held = await create(
+        trialBalance([
+          ['4110000500', 'Deposit Customer', -200],
+          ['4110000502', 'Owes', 500],
+        ])
+      );
+      expect(held.planned.branchTotals).toEqual([
+        expect.objectContaining({ fileBalanceUsd: '300.00', balanceAfterUsd: '300.00' }),
+      ]);
       const id = await accountCustomer('4110000500');
       // The credit was used against purchases there; the account now owes 155 net.
-      const draft = await create(trialBalance([['4110000500', 'Deposit Customer', 155]]));
+      const draft = await create(
+        trialBalance([
+          ['4110000500', 'Deposit Customer', 155],
+          ['4110000502', 'Owes', 500],
+        ])
+      );
       expect(draft.rows[0].balance).toMatchObject({
         kind: 'NEW',
         file: '155.00',
@@ -1151,7 +1180,15 @@ const http = (method: 'get' | 'patch' | 'post', path: string, body?: object) => 
       expect(await outstanding(id)).toBe('155.00');
       const deposits = await db.prepaidPurchase.findMany({ where: { debt: { customerId: id } } });
       expect(deposits.map((item) => item.status)).toEqual(['DELIVERED']);
-      const again = await create(trialBalance([['4110000500', 'Deposit Customer M', 155]]));
+      const again = await create(
+        trialBalance([
+          ['4110000500', 'Deposit Customer M', 155],
+          ['4110000502', 'Owes', 500],
+        ])
+      );
+      expect(again.planned.branchTotals).toEqual([
+        expect.objectContaining({ fileBalanceUsd: '655.00', balanceAfterUsd: '655.00' }),
+      ]);
       expect(again.rows[0].balance).toMatchObject({ kind: 'NONE', deposit: { kind: 'NONE' } });
     });
 
