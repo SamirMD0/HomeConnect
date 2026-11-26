@@ -26,7 +26,16 @@ export class DashboardOverviewService {
         { key: 'collectedToday', value: customer.today.collected, valueKind: 'money', goodDirection: 'up', route: '/ledger?view=payments&range=today', sparkline: paymentSparkline },
         { key: 'customersPaidToday', value: customer.today.distinctPayers, valueKind: 'count', goodDirection: 'up', route: '/ledger?view=payments&range=today', sparkline: paymentSparkline.map((point) => ({ ...point, value: 0 })) },
         { key: 'newDebtsToday', value: customer.today.newDebt, valueKind: 'money', goodDirection: 'neutral', route: '/receivables', sparkline: debtSparkline },
-        { key: 'outstandingDebt', value: customer.totals.outstanding, valueKind: 'money', goodDirection: 'down', route: '/receivables', sparkline: debtSparkline },
+        {
+          key: 'outstandingDebt', value: customer.totals.outstanding, valueKind: 'money', goodDirection: 'down', route: '/receivables', sparkline: debtSparkline,
+          // Deposits are money held for customers, never debt; the net is the old system's balance.
+          ...(Number(customer.totals.depositsHeld)
+            ? { breakdown: [
+                { key: 'depositsHeld' as const, value: customer.totals.depositsHeld },
+                { key: 'netBalance' as const, value: customer.totals.netBalance },
+              ] }
+            : {}),
+        },
         { key: 'owedToSuppliers', value: supplier.totals.owed, valueKind: 'money', goodDirection: 'down', route: '/supplier-ledger', sparkline: supplierSparkline },
         { key: 'openServiceJobs', value: service.totals.open, valueKind: 'count', goodDirection: 'neutral', route: '/service?view=open', sparkline: emptySparkline },
         { key: 'readyForPickup', value: service.totals.readyForPickup, valueKind: 'count', goodDirection: 'neutral', route: '/service?status=READY_FOR_PICKUP', sparkline: emptySparkline },

@@ -1,5 +1,5 @@
 import { scopeWhere, type BranchScope } from '../../branches/branch-scope';
-import { DebtKind, DebtStatus, InstallmentPlanStatus, Prisma } from '@prisma/client';
+import { DebtKind, DebtStatus, InstallmentPlanStatus, PrepaidPurchaseStatus, Prisma } from '@prisma/client';
 import { businessDateToPrisma } from '../../financial';
 import { prisma } from '../../../lib/prisma';
 import { addDays } from '../shared/dashboard-range';
@@ -26,6 +26,10 @@ const planInclude = {
 
 export type CustomerAnalyticsDebt = Prisma.DebtGetPayload<{ include: typeof debtInclude }>;
 export type CustomerAnalyticsPlan = Prisma.InstallmentPlanGetPayload<{ include: typeof planInclude }>;
+/** A deposit held for a customer: a prepaid record not yet delivered. */
+export type CustomerAnalyticsDeposit = Prisma.DebtGetPayload<{
+  select: { paymentAllocations: typeof allocationInclude };
+}>;
 export type CustomerAnalyticsPayment = Prisma.PaymentGetPayload<{
   include: { customer: { select: { id: true; name: true; phone: true } } };
 }>;
@@ -36,6 +40,8 @@ export interface CustomerAnalyticsRecords {
   debts: CustomerAnalyticsDebt[];
   plans: CustomerAnalyticsPlan[];
   payments: CustomerAnalyticsPayment[];
+  /** Money held for customers; the old system subtracts it from their balance. */
+  deposits?: CustomerAnalyticsDeposit[];
 }
 
 export class CustomerAnalyticsRepository {
@@ -61,7 +67,7 @@ export class CustomerAnalyticsRepository {
     const historyDate = businessDateToPrisma(historyFrom);
     const historyEnd = businessDateToPrisma(addDays(range.to, 1));
 
-    const [totalCustomers, openDebts, rangeDebts, openPlans, rangePlans, payments, returns] =
+    const [totalCustomers, openDebts, rangeDebts, openPlans, rangePlans, payments, returns, deposits] =
       await Promise.all([
         prisma.customer.count({ where: { ...scopeWhere(scope), ...customerWhere } }),
         prisma.debt.findMany({
@@ -108,6 +114,17 @@ export class CustomerAnalyticsRepository {
           where: { ...scopeWhere(scope),  returnDate: { gte: historyDate, lt: historyEnd }, OR: [{ customerId: null }, { customer: customerWhere }] },
           select: { branchId: true, branch: {select:{name:true}},  returnDate: true, baseReceivableReliefAmount: true, baseRefundableAmount: true, refundMethod: true },
         }),
+        prisma.debt.findMany({
+          where: { ...scopeWhere(scope),
+            customer: customerWhere,
+            kind: DebtKind.PREPAID_PURCHASE,
+            status: { not: DebtStatus.CANCELLED },
+            cancelledAt: null,
+            // A prepaid record with no companion row predates delivery and still counts as held.
+            OR: [{ prepaidPurchase: { status: PrepaidPurchaseStatus.PENDING } }, { prepaidPurchase: null }],
+          },
+          select: { paymentAllocations: allocationInclude },
+        }),
       ]);
 
     return {
@@ -116,6 +133,7 @@ export class CustomerAnalyticsRepository {
       debts: dedupeById([...openDebts, ...rangeDebts]),
       plans: dedupeById([...openPlans, ...rangePlans]),
       payments,
+      deposits,
     };
   }
 }

@@ -32,6 +32,10 @@ export interface CustomerAnalyticsData {
     distinctPayers: number;
     newDebt: string;
     outstanding: string;
+    /** Deposits held for customers (money the shop owes them). */
+    depositsHeld: string;
+    /** Outstanding minus deposits held: the old system's balance. */
+    netBalance: string;
     customersWithBalance: number;
     overdueCustomers: number;
     netMovement: string;

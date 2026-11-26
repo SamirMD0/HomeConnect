@@ -5,6 +5,7 @@ import { dashboardKpiIcons } from '../../config/module-registry';
 import type { DashboardKpi } from '../../types';
 import { BilingualLabel } from '../layout/BilingualLabel';
 import { DeltaChip, sparklineDeltaPercent } from './DeltaChip';
+import { KpiBreakdown } from './KpiBreakdown';
 
 /**
  * Semantic tone per KPI. Only the icon carries the colour, so a row of them
@@ -51,6 +52,7 @@ export function KpiCard({ kpi }: { kpi: DashboardKpi }) {
         <p className="mt-0.5 truncate text-xs text-slate-600">
           <BilingualLabel label={dashboardLabels[kpi.key]} compact />
         </p>
+        <KpiBreakdown kpi={kpi} />
       </div>
     </Link>
   );

@@ -112,6 +112,8 @@ function CustomerDebtsTable({ total, rows }: { total: CustomerAnalyticsData; row
           <tr>
             <th scope="col" className={th}>Branch / الفرع</th>
             <th scope="col" className={th + ' text-right'}>Outstanding</th>
+            <th scope="col" className={th + ' text-right'}>Deposits held</th>
+            <th scope="col" className={th + ' text-right'}>Net balance</th>
             <th scope="col" className={th + ' text-right'}>With balance</th>
             <th scope="col" className={th + ' text-right'}>Overdue customers</th>
             <th scope="col" className={th + ' text-right'}>New debt</th>
@@ -125,6 +127,8 @@ function CustomerDebtsTable({ total, rows }: { total: CustomerAnalyticsData; row
             <tr key={row.branchId}>
               <th scope="row" className="px-4 py-2.5 font-normal"><BranchName row={row} /></th>
               <td className={num}>{formatMoney(row.totals.outstanding)}</td>
+              <td className={num}>{formatMoney(row.totals.depositsHeld ?? '0.00')}</td>
+              <td className={num}>{formatMoney(row.totals.netBalance ?? row.totals.outstanding)}</td>
               <td className={num}>{row.totals.customersWithBalance}</td>
               <td className={num}>{row.totals.overdueCustomers}</td>
               <td className={num}>{formatMoney(row.totals.newDebt)}</td>
@@ -138,6 +142,8 @@ function CustomerDebtsTable({ total, rows }: { total: CustomerAnalyticsData; row
           <tr>
             <th scope="row" className="px-4 py-2.5">All branches</th>
             <td className={num}>{formatMoney(total.totals.outstanding)}</td>
+            <td className={num}>{formatMoney(total.totals.depositsHeld ?? '0.00')}</td>
+            <td className={num}>{formatMoney(total.totals.netBalance ?? total.totals.outstanding)}</td>
             <td className={num}>{total.totals.customersWithBalance}</td>
             <td className={num}>{total.totals.overdueCustomers}</td>
             <td className={num}>{formatMoney(total.totals.newDebt)}</td>

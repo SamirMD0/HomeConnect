@@ -84,6 +84,13 @@ export class CustomerAnalyticsService {
       ...rangePlans.filter(notCancelledPlan).map((plan) => plan.baseTotalAmount ?? plan.totalAmount),
     ]);
     const outstanding = sumMoney(openItems.map((item) => item.remaining));
+    const depositsHeld = sumMoney(
+      (records.deposits ?? []).flatMap((deposit) =>
+        deposit.paymentAllocations
+          .filter((allocation) => !isPaymentAllocationVoided(allocation))
+          .map((allocation) => allocationBaseAmount(allocation))
+      )
+    );
     const todayPayments = records.payments.filter(
       (payment) => prismaDateToBusinessDate(payment.paymentDate) === businessDate
     );
@@ -105,6 +112,8 @@ export class CustomerAnalyticsService {
         distinctPayers: new Set(rangePayments.flatMap((payment) => payment.customerId ? [payment.customerId] : [])).size,
         newDebt: moneyToApiString(newDebt),
         outstanding: moneyToApiString(outstanding),
+        depositsHeld: moneyToApiString(depositsHeld),
+        netBalance: moneyToApiString(subtractMoney(outstanding, depositsHeld)),
         customersWithBalance: byCustomer.size,
         overdueCustomers: overdueCustomers.size,
         netMovement: moneyToApiString(subtractMoney(newDebt, sumMoney([receivableCollected, returnCredits]))),

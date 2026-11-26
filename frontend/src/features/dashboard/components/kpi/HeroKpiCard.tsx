@@ -5,6 +5,7 @@ import type { DashboardKpi } from '../../types';
 import { BilingualLabel } from '../layout/BilingualLabel';
 import { KpiSparkline } from './KpiSparkline';
 import { DeltaChip, sparklineDeltaPercent } from './DeltaChip';
+import { KpiBreakdown } from './KpiBreakdown';
 
 /**
  * Large panel for a running balance: label, value, change, and the trend beside
@@ -34,6 +35,7 @@ export function HeroKpiCard({ kpi }: { kpi: DashboardKpi }) {
             )}
             <span className="whitespace-nowrap text-xs text-slate-500">vs previous period</span>
           </div>
+          <KpiBreakdown kpi={kpi} className="mt-1.5 truncate text-sm tabular-nums text-slate-600" />
         </div>
         {kpi.sparkline.length >= 3 && (
           <div className="hidden shrink-0 2xl:block">
