@@ -35,6 +35,7 @@ const {
     markDelivered: vi.fn(),
     revertDelivery: vi.fn(),
     findDebtForRemainder: vi.fn(),
+    moveAllocations: vi.fn(),
     buildWhere: vi.fn(() => ({})),
   },
   debtsRepositoryMock: {
@@ -145,6 +146,8 @@ function makePrepaid(overrides: MakePrepaidOptions = {}): PrepaidPurchaseWithDet
     deliveryNotes: null,
     remainderDebtId,
     remainderInstallmentPlanId,
+    receiptsMovedAt: null,
+    remainderDebt: null,
     productId: null,
     createdAt: new Date('2026-07-30T10:00:00.000Z'),
     updatedAt: new Date('2026-07-30T10:00:00.000Z'),
@@ -156,6 +159,7 @@ function makePrepaid(overrides: MakePrepaidOptions = {}): PrepaidPurchaseWithDet
       description: itemName,
       kind: DebtKind.PREPAID_PURCHASE,
       originalAmount: new Decimal(fullAmount),
+      baseOriginalAmount: new Decimal(fullAmount),
       dueDate: new Date(Date.UTC(2026, 6, 30)),
       status: debtCancelled ? DebtStatus.CANCELLED : DebtStatus.PARTIALLY_PAID,
       notes: null,
@@ -423,7 +427,7 @@ describe('PrepaidService', () => {
   });
 
   describe('deliver', () => {
-    it('creates a standard debt for the unpaid remainder', async () => {
+    it('creates a full-price invoice and moves the deposit receipts onto it', async () => {
       prepaidRepositoryMock.findById.mockResolvedValue(makePrepaid());
       debtsRepositoryMock.createDebt.mockResolvedValue({ id: 'remainder-debt-1' });
       prepaidRepositoryMock.markDelivered.mockResolvedValue(
@@ -447,11 +451,13 @@ describe('PrepaidService', () => {
         }),
         tx
       );
-      expect(debtsRepositoryMock.createDebt.mock.calls[0][0].originalAmount.toFixed(2)).toBe('200.00');
+      expect(debtsRepositoryMock.createDebt.mock.calls[0][0].originalAmount.toFixed(2)).toBe('400.00');
+      expect(debtsRepositoryMock.createDebt.mock.calls[0][0].status).toBe(DebtStatus.PARTIALLY_PAID);
+      expect(prepaidRepositoryMock.moveAllocations).toHaveBeenCalledWith(tx, 'debt-1', 'remainder-debt-1');
       expect(prepaidRepositoryMock.markDelivered).toHaveBeenCalledWith(
         tx,
         '33333333-3333-4333-8333-333333333333',
-        expect.objectContaining({ remainderDebtId: 'remainder-debt-1' })
+        expect.objectContaining({ remainderDebtId: 'remainder-debt-1', receiptsMovedAt: expect.any(Date) })
       );
       expect(view.status).toBe(PrepaidPurchaseStatus.DELIVERED);
       expect(view.adminDebt).toBe('0.00');
@@ -551,7 +557,7 @@ describe('PrepaidService', () => {
   describe('convert', () => {
     const id = '33333333-3333-4333-8333-333333333333';
 
-    it('hands the item over and makes a debt for only the unpaid remainder', async () => {
+    it('hands the item over as one full-price invoice carrying the receipts', async () => {
       prepaidRepositoryMock.findById.mockResolvedValue(makePrepaid());
       debtsRepositoryMock.createDebt.mockResolvedValue({ id: 'remainder-debt-1' });
       prepaidRepositoryMock.markDelivered.mockResolvedValue(
@@ -560,8 +566,10 @@ describe('PrepaidService', () => {
 
       const view = await PrepaidService.convert(id, { mode: 'DEBT', dueDate: '2026-08-30' }, adminUser);
 
-      expect(debtsRepositoryMock.createDebt.mock.calls[0][0].originalAmount.toFixed(2)).toBe('200.00');
+      expect(debtsRepositoryMock.createDebt.mock.calls[0][0].originalAmount.toFixed(2)).toBe('400.00');
+      expect(debtsRepositoryMock.createDebt.mock.calls[0][0].description).toBe('Air conditioner');
       expect(debtsRepositoryMock.createDebt.mock.calls[0][0].kind).toBe(DebtKind.STANDARD);
+      expect(prepaidRepositoryMock.moveAllocations).toHaveBeenCalledWith(tx, 'debt-1', 'remainder-debt-1');
       expect(plansServiceMock.createPlan).not.toHaveBeenCalled();
       expect(prepaidRepositoryMock.markDelivered).toHaveBeenCalledWith(tx, id, expect.objectContaining({
         remainderDebtId: 'remainder-debt-1',
@@ -648,7 +656,7 @@ describe('PrepaidService', () => {
       expect(prepaidRepositoryMock.markDelivered).not.toHaveBeenCalled();
     });
 
-    it('ignores a voided bill when working out the remainder', async () => {
+    it('ignores a voided bill when working out the invoice status', async () => {
       prepaidRepositoryMock.findById.mockResolvedValue(
         makePrepaid({ allocations: [makeAllocation('200.00'), makeAllocation('100.00', true)] })
       );
@@ -657,7 +665,8 @@ describe('PrepaidService', () => {
 
       await PrepaidService.convert(id, { mode: 'DEBT', dueDate: '2026-08-30' }, adminUser);
 
-      expect(debtsRepositoryMock.createDebt.mock.calls[0][0].originalAmount.toFixed(2)).toBe('200.00');
+      expect(debtsRepositoryMock.createDebt.mock.calls[0][0].originalAmount.toFixed(2)).toBe('400.00');
+      expect(debtsRepositoryMock.createDebt.mock.calls[0][0].status).toBe(DebtStatus.PARTIALLY_PAID);
     });
   });
 

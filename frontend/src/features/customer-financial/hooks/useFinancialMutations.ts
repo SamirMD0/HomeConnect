@@ -12,6 +12,7 @@ import {
   UpdateDebtRequest,
   UpdateInstallmentPlanRequest,
   VoidPaymentRequest,
+  CorrectPaymentRequest,
 } from '../types/customer-financial.types';
 import { normalizeFinancialError } from '../utils/financial-form-errors';
 import {
@@ -137,6 +138,26 @@ export const useVoidPayment = (customerId: string, paymentId: string) => {
     onSuccess: async () => {
       await invalidateCustomerSurfaces(queryClient, customerId);
       toast.success('Payment voided');
+    },
+    onError: (error) => {
+      toast.error(normalizeFinancialError(error).message);
+    },
+  });
+};
+
+export const useCorrectPayment = (customerId: string, paymentId: string) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: CorrectPaymentRequest) => financialMutationsApi.correctPayment(paymentId, data),
+    onSuccess: async () => {
+      await Promise.all([
+        invalidateCustomerSurfaces(queryClient, customerId),
+        // The receipt may sit on any invoice or plan of this customer.
+        queryClient.invalidateQueries({ queryKey: ['debts'] }),
+        queryClient.invalidateQueries({ queryKey: ['installment-plans'] }),
+      ]);
+      toast.success('Receipt updated');
     },
     onError: (error) => {
       toast.error(normalizeFinancialError(error).message);

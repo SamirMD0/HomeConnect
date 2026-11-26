@@ -59,7 +59,15 @@ export const updateDebtSchema = z.object({
   description: z.string().trim().min(1, 'Description is required'),
   dueDate: businessDateSchema,
   notes: optionalTextSchema,
-  reason: optionalReasonSchema,
+});
+
+/** Admin edit of a receipt. Saved directly: no password and no reason. */
+export const editPaymentSchema = z.object({
+  amount: moneySchema,
+  paymentDate: businessDateSchema,
+  paymentMethod: z.enum(['CASH', 'BANK_TRANSFER', 'CARD', 'CHECK', 'OTHER']),
+  reference: optionalTextSchema,
+  notes: optionalTextSchema,
 });
 
 export const cancelFinancialRecordSchema = z.object({
@@ -114,6 +122,7 @@ export type DebtPaymentFormValues = z.infer<ReturnType<typeof debtPaymentSchema>
 export type UpdateDebtFormValues = z.infer<typeof updateDebtSchema>;
 export type CancelFinancialRecordFormValues = z.infer<typeof cancelFinancialRecordSchema>;
 export type VoidPaymentFormValues = z.infer<typeof voidPaymentSchema>;
+export type EditPaymentFormValues = z.infer<typeof editPaymentSchema>;
 export type CreateInstallmentPlanFormValues = z.infer<typeof createInstallmentPlanSchema>;
 export type UpdateInstallmentPlanFormValues = z.infer<typeof updateInstallmentPlanSchema>;
 export type InstallmentPlanPaymentFormValues = z.infer<

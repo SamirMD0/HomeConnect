@@ -77,9 +77,18 @@ export const ConvertPrepaidDialog: React.FC<ConvertPrepaidDialogProps> = ({ item
       </div>
 
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-        This marks the item as handed over. {formatMoney(item.remainingToCollect)} becomes owed and appears in
-        Accounts Receivable and the customer profile as an editable invoice or payment plan.
-        It can be undone until a payment is recorded against it.
+        This marks the item as handed over.{' '}
+        {mode === 'DEBT' ? (
+          <>
+            An invoice for the full price of {formatMoney(item.fullAmount)} is created in the customer profile, with the{' '}
+            {formatMoney(item.amountPaid)} already paid listed as its receipts. {formatMoney(item.remainingToCollect)} is left to collect.
+          </>
+        ) : (
+          <>
+            {formatMoney(item.remainingToCollect)} becomes a payment plan in the customer profile.
+          </>
+        )}{' '}
+        It can be undone until a new payment is recorded against it.
       </div>
 
       <fieldset>

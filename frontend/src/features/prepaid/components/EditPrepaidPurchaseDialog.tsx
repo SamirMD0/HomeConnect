@@ -58,7 +58,6 @@ export const EditPrepaidPurchaseDialog: React.FC<EditPrepaidPurchaseDialogProps>
       description: item.itemName,
       dueDate: item.dueDate,
       notes: item.notes ?? '',
-      reason: '',
     },
   });
   const fullAmount = watch('originalAmount');
@@ -71,7 +70,6 @@ export const EditPrepaidPurchaseDialog: React.FC<EditPrepaidPurchaseDialogProps>
         description: values.description.trim(),
         dueDate: item.dueDate,
         notes: values.notes?.trim() || null,
-        reason: values.reason.trim(),
         sourceScreen: 'PREPAID',
       });
       onSuccess();
@@ -82,7 +80,6 @@ export const EditPrepaidPurchaseDialog: React.FC<EditPrepaidPurchaseDialogProps>
         'originalAmount',
         'description',
         'notes',
-        'reason',
       ] as const) {
         if (normalized.fieldErrors[field]) {
           setError(field, { message: normalized.fieldErrors[field] });
@@ -133,9 +130,6 @@ export const EditPrepaidPurchaseDialog: React.FC<EditPrepaidPurchaseDialogProps>
         <textarea {...register('notes')} dir="auto" rows={3} className={inputClass(Boolean(errors.notes))} />
       </TextField>
 
-      <TextField label="Correction Reason / سبب التعديل" error={errors.reason?.message}>
-        <textarea {...register('reason')} dir="auto" rows={3} className={inputClass(Boolean(errors.reason))} />
-      </TextField>
 
       <SubmitButton
         isPending={updateDebt.isPending}

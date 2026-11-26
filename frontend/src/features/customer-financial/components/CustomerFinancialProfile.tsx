@@ -32,6 +32,7 @@ import { RecentPaymentsList } from './RecentPaymentsList';
 import { RecordDebtPaymentDialog } from './RecordDebtPaymentDialog';
 import { RecordPlanPaymentDialog } from './RecordPlanPaymentDialog';
 import { VoidPaymentDialog } from './VoidPaymentDialog';
+import { EditPaymentDialog } from './EditPaymentDialog';
 import { CustomerPrepaidPanel } from '../../prepaid/components/CustomerPrepaidPanel';
 import { useCustomerActivity } from '../../customers/hooks/useCustomers';
 import { CustomerActivityTimeline } from '../../../pages/customers/components/CustomerActivityTimeline';
@@ -89,6 +90,7 @@ export const CustomerFinancialProfile: React.FC<CustomerFinancialProfileProps> =
     InstallmentPlanSummaryItem | InstallmentPlanDetail | null
   >(null);
   const [paymentForVoid, setPaymentForVoid] = useState<RecentFinancialPayment | null>(null);
+  const [paymentForEdit, setPaymentForEdit] = useState<RecentFinancialPayment | null>(null);
   const { data, isLoading, isError, error, refetch } = useCustomerFinancialSummary(customerId, {
     includeCancelled,
     includePayments: true,
@@ -207,6 +209,7 @@ export const CustomerFinancialProfile: React.FC<CustomerFinancialProfileProps> =
             onRecordPlanPayment={setPlanForPayment}
             onCancelPlan={setPlanForCancellation}
             onVoidPayment={setPaymentForVoid}
+            onEditPayment={setPaymentForEdit}
             customerId={customerId}
           />
         </div>
@@ -240,6 +243,7 @@ export const CustomerFinancialProfile: React.FC<CustomerFinancialProfileProps> =
           onRecordPayment={setDebtForPayment}
           onCancelDebt={setDebtForCancellation}
           onVoidPayment={setPaymentForVoid}
+          onEditPayment={setPaymentForEdit}
         />
       </Modal>
 
@@ -274,6 +278,7 @@ export const CustomerFinancialProfile: React.FC<CustomerFinancialProfileProps> =
           onRecordPayment={setPlanForPayment}
           onCancelPlan={setPlanForCancellation}
           onVoidPayment={setPaymentForVoid}
+          onEditPayment={setPaymentForEdit}
         />
       </Modal>
 
@@ -370,6 +375,25 @@ export const CustomerFinancialProfile: React.FC<CustomerFinancialProfileProps> =
           />
         )}
       </Modal>
+
+      <Modal
+        isOpen={Boolean(paymentForEdit)}
+        onClose={() => setPaymentForEdit(null)}
+        title="Edit receipt"
+        maxWidth="max-w-xl"
+      >
+        {paymentForEdit && (
+          <EditPaymentDialog
+            customerId={customerId}
+            payment={paymentForEdit}
+            sourceScreen="CUSTOMER_PROFILE"
+            onSuccess={() => {
+              setPaymentForEdit(null);
+              void refetch();
+            }}
+          />
+        )}
+      </Modal>
     </div>
   );
 };
@@ -386,6 +410,7 @@ interface FinancialTabPanelProps {
   onRecordPlanPayment: (plan: InstallmentPlanSummaryItem) => void;
   onCancelPlan: (plan: InstallmentPlanSummaryItem) => void;
   onVoidPayment: (payment: RecentFinancialPayment) => void;
+  onEditPayment: (payment: RecentFinancialPayment) => void;
   customerId: string;
 }
 
@@ -401,6 +426,7 @@ const FinancialTabPanel: React.FC<FinancialTabPanelProps> = ({
   onRecordPlanPayment,
   onCancelPlan,
   onVoidPayment,
+  onEditPayment,
   customerId,
 }) => {
   if (activeTab === 'activity') return <CustomerActivityPanel customerId={customerId} />;
@@ -440,6 +466,7 @@ const FinancialTabPanel: React.FC<FinancialTabPanelProps> = ({
         payments={data.recentPayments}
         canMutate={canMutate}
         onVoidPayment={onVoidPayment}
+        onEditPayment={onEditPayment}
       />
     );
   }
@@ -468,6 +495,7 @@ const FinancialTabPanel: React.FC<FinancialTabPanelProps> = ({
         payments={data.recentPayments}
         canMutate={canMutate}
         onVoidPayment={onVoidPayment}
+        onEditPayment={onEditPayment}
       />
     </div>
   );

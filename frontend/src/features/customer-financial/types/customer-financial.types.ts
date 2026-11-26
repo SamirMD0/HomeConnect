@@ -254,7 +254,7 @@ export interface UpdateDebtRequest {
   description: string;
   dueDate: string;
   notes?: string | null;
-  reason: string;
+  reason?: string;
   sourceScreen: FinancialCorrectionSourceScreen;
   accountPassword?: string;
 }
@@ -262,6 +262,15 @@ export interface UpdateDebtRequest {
 export interface CancelFinancialRecordRequest {
   reason: string;
   accountPassword?: string;
+}
+
+export interface CorrectPaymentRequest {
+  amount?: string;
+  paymentDate: string;
+  paymentMethod: PaymentMethod;
+  reference?: string | null;
+  notes?: string | null;
+  sourceScreen: FinancialCorrectionSourceScreen;
 }
 
 export interface VoidPaymentRequest {

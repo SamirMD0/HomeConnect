@@ -208,6 +208,7 @@ interface DebtComputation {
   dueDate: BusinessDate;
   isCancelled: boolean;
   isPrepaid: boolean;
+  receiptsMovedToInvoice: boolean;
   /** Prepaid item still held by the business, so its paid cash is a liability. */
   awaitsDelivery: boolean;
 }
@@ -358,7 +359,9 @@ export class CustomerFinancialSummaryService {
       // deposits cannot fill the limit and hide the invoice made on handover.
       debts: [
         ...debtComputations.filter((debt) => !debt.isPrepaid),
-        ...debtComputations.filter((debt) => debt.isPrepaid),
+        // A deposit whose receipts moved onto its invoice is represented by
+        // that invoice; listing it too would show the sale twice.
+        ...debtComputations.filter((debt) => debt.isPrepaid && !debt.receiptsMovedToInvoice),
       ].slice(0, query.debtLimit).map((debt) => debt.view),
       installmentPlans: planComputations.slice(0, query.planLimit).map((plan) => plan.view),
       overdueItems: this.buildOverdueItems(debtComputations, overdueInstallments, businessDate),
@@ -430,6 +433,7 @@ export class CustomerFinancialSummaryService {
       dueDate,
       isCancelled,
       isPrepaid: debt.kind === DebtKind.PREPAID_PURCHASE,
+      receiptsMovedToInvoice: Boolean(debt.prepaidPurchase?.receiptsMovedAt),
       awaitsDelivery: isPrepaidAdminDebtActive({
         kind: debt.kind,
         prepaidStatus: debt.prepaidPurchase?.status,

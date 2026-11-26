@@ -740,6 +740,11 @@ model PrepaidPurchase {
   remainderInstallmentPlanId String?          @unique @db.Uuid
   remainderInstallmentPlan   InstallmentPlan? @relation("PrepaidRemainderPlan", fields: [remainderInstallmentPlanId], references: [id], onDelete: Restrict)
 
+  /// Set when the deposit's receipts were moved onto the remainder invoice.
+  /// Allocations on that invoice created at or before this moment are the
+  /// deposit's own receipts; later ones are payments made after handover.
+  receiptsMovedAt DateTime?
+
   /// Optional catalog reference. Carries no stock effect.
   productId String?  @db.Uuid
   product   Product? @relation(fields: [productId], references: [id], onDelete: Restrict)

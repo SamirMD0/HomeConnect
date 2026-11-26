@@ -161,20 +161,20 @@ export class PrepaidService {
       });
 
       let remainderDebtId: string | null = null;
+      let receiptsMovedAt: Date | null = null;
       if (remaining.greaterThan(ZERO_MONEY)) {
         if (!input.remainderDueDate) {
           throw new ValidationError(
             'A due date is required for the remaining balance because this item is not fully paid'
           );
         }
-        remainderDebtId = await this.createRemainderDebt(
+        ({ invoiceId: remainderDebtId, receiptsMovedAt } = await this.createInvoiceWithDepositReceipts(
           prepaid,
-          remaining,
           input.remainderDueDate,
           businessDate,
           user,
           tx
-        );
+        ));
       }
 
       const delivered = await PrepaidRepository.markDelivered(tx, id, {
@@ -182,6 +182,7 @@ export class PrepaidService {
         deliveredById: user.userId,
         deliveryNotes: input.deliveryNotes ?? null,
         remainderDebtId,
+        receiptsMovedAt,
       });
 
       await writeFinancialCorrectionAudit(
@@ -249,8 +250,15 @@ export class PrepaidService {
 
       let remainderDebtId: string | null = null;
       let remainderInstallmentPlanId: string | null = null;
+      let receiptsMovedAt: Date | null = null;
       if (input.mode === 'DEBT') {
-        remainderDebtId = await this.createRemainderDebt(prepaid, remaining, input.dueDate, businessDate, user, tx);
+        ({ invoiceId: remainderDebtId, receiptsMovedAt } = await this.createInvoiceWithDepositReceipts(
+          prepaid,
+          input.dueDate,
+          businessDate,
+          user,
+          tx
+        ));
       } else {
         const plan = await InstallmentPlansService.createPlan(
           prepaid.debt.customerId,
@@ -274,6 +282,7 @@ export class PrepaidService {
         deliveryNotes: null,
         remainderDebtId,
         remainderInstallmentPlanId,
+        receiptsMovedAt,
       });
 
       await writeFinancialCorrectionAudit(
@@ -335,11 +344,19 @@ export class PrepaidService {
           tx
         );
         if (remainderDebt) {
+          const movedAt = prepaid.receiptsMovedAt;
+          const isDepositReceipt = (allocation: { createdAt: Date }) =>
+            movedAt !== null && allocation.createdAt <= movedAt;
+          // Payments made on the invoice after handover block the revert; the
+          // deposit's own receipts simply move back onto the deposit.
           const hasPayments = remainderDebt.paymentAllocations.some(
-            (allocation) => !isPaymentAllocationVoided(allocation)
+            (allocation) => !isPaymentAllocationVoided(allocation) && !isDepositReceipt(allocation)
           );
           if (hasPayments) {
             throw new PrepaidRemainderHasPaymentsError();
+          }
+          if (movedAt) {
+            await PrepaidRepository.moveAllocations(tx, remainderDebt.id, prepaid.debtId, movedAt);
           }
           if (remainderDebt.status !== DebtStatus.CANCELLED) {
             // Cancel rather than delete: the debt stays visible in history.
@@ -415,45 +432,74 @@ export class PrepaidService {
     return prepaid;
   }
 
-  private static async createRemainderDebt(
+  /**
+   * Creates the handover invoice for the FULL price and moves the deposit's
+   * receipts onto it, so the invoice reads like the old system: one sales
+   * invoice, with the receipts collected against it. The remaining balance is
+   * unchanged (full price minus what was already paid).
+   */
+  private static async createInvoiceWithDepositReceipts(
     prepaid: PrepaidPurchaseWithDetails,
-    remaining: ReturnType<typeof calculatePrepaidRemainingToCollect>,
     dueDate: string,
     businessDate: string,
     user: AuthenticatedUser,
     tx: FinancialTransactionClient
-  ): Promise<string> {
-    const remainderDueDate = parseBusinessDate(dueDate);
-    const remainderAmount = assertPositiveMoney(remaining);
-    const remainderDebt = await DebtsRepository.createDebt(
+  ): Promise<{ invoiceId: string; receiptsMovedAt: Date }> {
+    const invoiceDueDate = parseBusinessDate(dueDate);
+    const fullAmount = assertPositiveMoney(prepaid.debt.originalAmount);
+    const deposit = this.depositAllocationsOf(prepaid);
+    const invoice = await DebtsRepository.createDebt(
       {
         customerId: prepaid.debt.customerId,
-        description: `Balance for ${prepaid.debt.description}`,
+        description: prepaid.debt.description,
         kind: DebtKind.STANDARD,
-        originalAmount: remainderAmount,
-        dueDate: businessDateToPrisma(remainderDueDate),
+        originalAmount: fullAmount,
+        baseOriginalAmount: prepaid.debt.baseOriginalAmount,
+        dueDate: businessDateToPrisma(invoiceDueDate),
         status: determineDebtStatus({
           isCancelled: false,
-          dueDate: remainderDueDate,
+          dueDate: invoiceDueDate,
           businessDate,
           balance: calculateDebtBalance({
-            originalAmount: remainderAmount,
-            allocations: [],
+            originalAmount: fullAmount,
+            allocations: deposit.map((allocation) => ({
+              amount: allocation.amount,
+              isVoided: isPaymentAllocationVoided(allocation),
+            })),
           }),
           overdueEligible: true,
         }),
-        notes: null,
+        notes: prepaid.debt.notes,
         createdById: user.userId,
       },
       tx
     );
-    return remainderDebt.id;
+    await PrepaidRepository.moveAllocations(tx, prepaid.debtId, invoice.id);
+    // The newest moved receipt marks the boundary; with no receipts, the
+    // deposit's creation time does (every later invoice payment is newer).
+    const receiptsMovedAt = deposit.reduce(
+      (latest, allocation) => (allocation.createdAt > latest ? allocation.createdAt : latest),
+      prepaid.debt.createdAt
+    );
+    return { invoiceId: invoice.id, receiptsMovedAt };
+  }
+
+  /**
+   * The deposit's receipts: on the deposit while it is pending, on the invoice
+   * (up to the moment they were moved) once it has been handed over.
+   */
+  private static depositAllocationsOf(prepaid: PrepaidPurchaseWithDetails) {
+    const movedAt = prepaid.receiptsMovedAt;
+    const moved = movedAt && prepaid.remainderDebt
+      ? prepaid.remainderDebt.paymentAllocations.filter((allocation) => allocation.createdAt <= movedAt)
+      : [];
+    return [...prepaid.debt.paymentAllocations, ...moved];
   }
 
   private static balanceOf(prepaid: PrepaidPurchaseWithDetails) {
     return calculateDebtBalance({
       originalAmount: prepaid.debt.originalAmount,
-      allocations: prepaid.debt.paymentAllocations.map((allocation) => ({
+      allocations: this.depositAllocationsOf(prepaid).map((allocation) => ({
         amount: allocation.amount,
         isVoided: isPaymentAllocationVoided(allocation),
       })),
@@ -472,7 +518,7 @@ export class PrepaidService {
    * appends to this list; nothing here is ever rewritten or replaced.
    */
   private static paymentsOf(prepaid: PrepaidPurchaseWithDetails): PrepaidPaymentView[] {
-    return prepaid.debt.paymentAllocations
+    return this.depositAllocationsOf(prepaid)
       .map((allocation): PrepaidPaymentView => ({
         id: allocation.id,
         paymentId: allocation.paymentId,

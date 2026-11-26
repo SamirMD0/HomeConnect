@@ -24,7 +24,10 @@ export const customerFinancialApi = {
 
   getDebtDetail: async (debtId: string): Promise<DebtDetail> => {
     const response = await api.get<ApiEnvelope<DebtDetail>>(`/debts/${debtId}`);
-    return response.data.data;
+    const debt = response.data.data;
+    // The detail endpoint sends the computed status as `status`; the summary
+    // list calls it `calculatedStatus`. Normalise so badges and actions work.
+    return { ...debt, calculatedStatus: debt.calculatedStatus ?? debt.status };
   },
 
   getInstallmentPlanDetail: async (planId: string): Promise<InstallmentPlanDetail> => {

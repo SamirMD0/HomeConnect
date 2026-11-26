@@ -28,6 +28,7 @@ const debtInclude = {
     select: {
       id: true,
       status: true,
+      receiptsMovedAt: true,
     },
   },
   paymentAllocations: {

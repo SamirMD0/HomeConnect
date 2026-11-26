@@ -15,7 +15,7 @@ const db = new PrismaClient();
 const password = 'convert-only-synthetic-password';
 let branch: string, owner: string, employee: string, customerId: string, adminToken: string, employeeToken: string;
 
-const api = (method: 'get' | 'post' | 'patch', path: string, token = adminToken) =>
+const api = (method: 'get' | 'post', path: string, token = adminToken) =>
   request(app)[method]('/api/v1' + path).set('Authorization', 'Bearer ' + token).set('X-Branch-Scope', branch);
 
 /** A $400 item with $150 already paid, through the real create endpoint. */
@@ -108,44 +108,89 @@ const installment = { mode: 'INSTALLMENT', startDate: '2030-01-15', installmentC
     expect(after.entries.filter((entry: { type: string }) => entry.type === 'INSTALLMENT')).toHaveLength(5);
   });
 
-  it('turns the unpaid remainder into one debt on the chosen date', async () => {
-    const id = await createPrepaid();
-    const converted = await api('post', `/prepaid-purchases/${id}/convert`).send({ mode: 'DEBT', dueDate: '2030-01-15' });
-    expect(converted.status, JSON.stringify(converted.body)).toBe(200);
-    const debt = await db.debt.findUniqueOrThrow({ where: { id: converted.body.data.remainderDebtId } });
-    expect(debt.kind).toBe('STANDARD');
-    expect(debt.originalAmount.toFixed(2)).toBe('250.00');
-    expect((await statement()).closingBalance).toBe('250.00');
-  });
-
-  it('creates one editable invoice in the customer profile while preserving deposit payments', async () => {
+  it('makes one full-price invoice carrying the deposit receipts, balance unchanged', async () => {
     const id = await createPrepaid();
     const converted = await api('post', `/prepaid-purchases/${id}/convert`).send({ mode: 'DEBT', dueDate: '2030-01-15' });
     expect(converted.status, JSON.stringify(converted.body)).toBe(200);
     const invoiceId = converted.body.data.remainderDebtId;
-    const profile = await api('get', `/customers/${customerId}/financial-summary?debtLimit=1`);
+    const invoice = await db.debt.findUniqueOrThrow({ where: { id: invoiceId }, include: { paymentAllocations: true } });
+    expect(invoice.kind).toBe('STANDARD');
+    expect(invoice.description).toBe('Air conditioner');
+    expect(invoice.originalAmount.toFixed(2)).toBe('400.00');
+    expect(invoice.status).toBe('PARTIALLY_PAID');
+    expect(invoice.paymentAllocations.map((row) => row.amount.toFixed(2))).toEqual(['150.00']);
+
+    // The deposit still reads as paid 150 of 400, now delivered.
+    expect(converted.body.data).toMatchObject({ status: 'DELIVERED', fullAmount: '400.00', amountPaid: '150.00', adminDebt: '0.00' });
+    expect(converted.body.data.payments).toEqual([expect.objectContaining({ amount: '150.00', isVoided: false })]);
+
+    const after = await statement();
+    expect(after.closingBalance).toBe('250.00');
+    const types = after.entries.map((entry: { type: string }) => entry.type);
+    expect(types.filter((type: string) => type === 'DEBT')).toHaveLength(1);
+    expect(types.filter((type: string) => type === 'PAYMENT')).toHaveLength(1);
+  });
+
+  it('shows the invoice with its receipts in the profile, editable without a reason', async () => {
+    const id = await createPrepaid();
+    const converted = await api('post', `/prepaid-purchases/${id}/convert`).send({ mode: 'DEBT', dueDate: '2030-01-15' });
+    expect(converted.status, JSON.stringify(converted.body)).toBe(200);
+    const invoiceId = converted.body.data.remainderDebtId;
+    const profile = await api('get', `/customers/${customerId}/financial-summary?debtLimit=5`);
     expect(profile.status, JSON.stringify(profile.body)).toBe(200);
+    // Only the invoice: the handed-over deposit is not listed a second time.
     expect(profile.body.data.debts).toEqual([
-      expect.objectContaining({ id: invoiceId, kind: 'STANDARD', originalAmount: '250.00', totalPaid: '0.00' }),
+      expect.objectContaining({ id: invoiceId, kind: 'STANDARD', originalAmount: '400.00', totalPaid: '150.00', remainingBalance: '250.00' }),
     ]);
 
-    const edited = await api('patch', `/debts/${invoiceId}`).send({
-      originalAmount: '225.00', description: 'Corrected air conditioner balance', dueDate: '2030-02-15',
-      notes: 'Agreed discount', reason: 'Discount after handover', sourceScreen: 'CUSTOMER_PROFILE',
+    const edited = await api('post', `/debts/${invoiceId}/corrections`).send({
+      originalAmount: '375.00', description: 'Air conditioner', dueDate: '2030-02-15', notes: null, sourceScreen: 'CUSTOMER_PROFILE',
     });
     expect(edited.status, JSON.stringify(edited.body)).toBe(200);
-    const refreshed = await api('get', `/customers/${customerId}/financial-summary?debtLimit=1`);
-    expect(refreshed.body.data.debts[0]).toMatchObject({
-      id: invoiceId, description: 'Corrected air conditioner balance', originalAmount: '225.00', dueDate: '2030-02-15',
+    const detail = await api('get', `/debts/${invoiceId}`);
+    expect(detail.body.data).toMatchObject({ originalAmount: '375.00', totalPaid: '150.00', remainingBalance: '225.00' });
+    expect(detail.body.data.payments).toHaveLength(1);
+
+    const paymentId = detail.body.data.payments[0].paymentId ?? detail.body.data.payments[0].id;
+    const receiptEdit = await api('post', `/payments/${paymentId}/corrections`).send({
+      paymentDate: '2026-11-01', paymentMethod: 'CASH', reference: 'RV-815', notes: null, sourceScreen: 'CUSTOMER_PROFILE',
     });
-    expect(refreshed.body.data.summary.singleDebtOutstanding).toBe('225.00');
-    const deposit = await api('get', `/prepaid-purchases/${id}`);
-    expect(deposit.body.data).toMatchObject({ fullAmount: '400.00', amountPaid: '150.00', remainderDebtId: invoiceId });
+    expect(receiptEdit.status, JSON.stringify(receiptEdit.body)).toBe(200);
+    expect((await db.payment.findUniqueOrThrow({ where: { id: paymentId } })).reference).toBe('RV-815');
 
     const duplicate = await api('post', `/prepaid-purchases/${id}/convert`).send({ mode: 'DEBT', dueDate: '2030-01-15' });
     expect(duplicate.status).toBe(409);
     expect(await db.debt.count({ where: { customerId, kind: 'STANDARD' } })).toBe(1);
     expect((await statement()).closingBalance).toBe('225.00');
+  });
+
+  it('undoing an invoice conversion moves the receipts back onto the deposit', async () => {
+    const id = await createPrepaid();
+    const converted = await api('post', `/prepaid-purchases/${id}/convert`).send({ mode: 'DEBT', dueDate: '2030-01-15' });
+    const invoiceId = converted.body.data.remainderDebtId;
+
+    const reverted = await api('post', `/prepaid-purchases/${id}/revert-delivery`).send({ reason: 'Converted by mistake', accountPassword: password });
+    expect(reverted.status, JSON.stringify(reverted.body)).toBe(200);
+    expect(reverted.body.data).toMatchObject({ status: 'PENDING', remainderDebtId: null, amountPaid: '150.00', adminDebt: '-150.00' });
+    const prepaid = await db.prepaidPurchase.findUniqueOrThrow({ where: { id }, include: { debt: { include: { paymentAllocations: true } } } });
+    expect(prepaid.receiptsMovedAt).toBeNull();
+    expect(prepaid.debt.paymentAllocations).toHaveLength(1);
+    expect((await db.debt.findUniqueOrThrow({ where: { id: invoiceId } })).status).toBe('CANCELLED');
+    expect((await statement()).closingBalance).toBe('0.00');
+  });
+
+  it('refuses to undo once the invoice has a payment made after handover', async () => {
+    const id = await createPrepaid();
+    const converted = await api('post', `/prepaid-purchases/${id}/convert`).send({ mode: 'DEBT', dueDate: '2030-01-15' });
+    const invoiceId = converted.body.data.remainderDebtId;
+    const paid = await api('post', `/debts/${invoiceId}/payments`).send({ amount: '50.00', paymentDate: todayInBusinessTimezone(), paymentMethod: 'CASH' });
+    expect(paid.status, JSON.stringify(paid.body)).toBeLessThan(300);
+
+    const reverted = await api('post', `/prepaid-purchases/${id}/revert-delivery`).send({ reason: 'Converted by mistake', accountPassword: password });
+    expect(reverted.status).toBe(409);
+    // The later payment is not counted as part of the deposit.
+    expect((await api('get', `/prepaid-purchases/${id}`)).body.data).toMatchObject({ status: 'DELIVERED', amountPaid: '150.00' });
+    expect((await statement()).closingBalance).toBe('200.00');
   });
 
   it('is admin only, and an employee attempt changes nothing', async () => {
@@ -170,6 +215,7 @@ const installment = { mode: 'INSTALLMENT', startDate: '2030-01-15', installmentC
     const again = await api('post', `/prepaid-purchases/${id}/convert`).send({ mode: 'DEBT', dueDate: '2030-01-15' });
     expect(again.status, JSON.stringify(again.body)).toBe(200);
     expect((await statement()).closingBalance).toBe('250.00');
+    expect(again.body.data).toMatchObject({ amountPaid: '150.00' });
   });
 
   it('refuses to undo once the plan has a payment, leaving everything in place', async () => {

@@ -457,6 +457,18 @@ describe('customer financial profile components', () => {
     expect(readOnlyHtml).toContain('#/payments/payment-2/receipt');
   });
 
+  it('offers Edit on live receipts to admins only', () => {
+    const html = renderToStaticMarkup(
+      <RecentPaymentsList payments={summary.recentPayments} canMutate onEditPayment={() => undefined} />
+    );
+    const readOnlyHtml = renderToStaticMarkup(
+      <RecentPaymentsList payments={summary.recentPayments} onEditPayment={() => undefined} />
+    );
+    // One live receipt and one voided one in the fixture: only the live one is editable.
+    expect(html.match(/>Edit<\/button>/g)).toHaveLength(1);
+    expect(readOnlyHtml).not.toContain('>Edit</button>');
+  });
+
   it('renders read-only debt details and installment plan schedule details', () => {
     debtDetailHookMock.mockReturnValue({
       data: {

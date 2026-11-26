@@ -16,6 +16,7 @@ interface InstallmentPlanDetailsProps {
   onRecordPayment?: (plan: InstallmentPlanDetail) => void;
   onCancelPlan?: (plan: InstallmentPlanDetail) => void;
   onVoidPayment?: (payment: RecentFinancialPayment) => void;
+  onEditPayment?: (payment: RecentFinancialPayment) => void;
 }
 
 export const InstallmentPlanDetails: React.FC<InstallmentPlanDetailsProps> = ({
@@ -25,6 +26,7 @@ export const InstallmentPlanDetails: React.FC<InstallmentPlanDetailsProps> = ({
   onRecordPayment,
   onCancelPlan,
   onVoidPayment,
+  onEditPayment,
 }) => {
   const { data: plan, isLoading, isError, refetch } = useInstallmentPlanDetail(planId);
   const [paymentForReallocation, setPaymentForReallocation] = useState<RecentFinancialPayment | null>(null);
@@ -135,6 +137,7 @@ export const InstallmentPlanDetails: React.FC<InstallmentPlanDetailsProps> = ({
         payments={plan.payments}
         canMutate={canMutate}
         onVoidPayment={onVoidPayment}
+        onEditPayment={onEditPayment}
         onReallocatePayment={setPaymentForReallocation}
       />
 

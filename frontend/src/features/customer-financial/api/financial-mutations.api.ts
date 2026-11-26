@@ -13,6 +13,7 @@ import {
   UpdateDebtRequest,
   UpdateInstallmentPlanRequest,
   VoidPaymentRequest,
+  CorrectPaymentRequest,
 } from '../types/customer-financial.types';
 
 export const financialMutationsApi = {
@@ -62,6 +63,17 @@ export const financialMutationsApi = {
   ): Promise<{ paymentId: string; customerId: string; action: string; replacementPaymentId: string | null; voidedAt: string | null }> => {
     const response = await api.post<ApiEnvelope<{ paymentId: string; customerId: string; action: string; replacementPaymentId: string | null; voidedAt: string | null }>>(
       `/payments/${paymentId}/void`,
+      data
+    );
+    return response.data.data;
+  },
+
+  correctPayment: async (
+    paymentId: string,
+    data: CorrectPaymentRequest
+  ): Promise<{ paymentId: string; customerId: string; action: string; replacementPaymentId: string | null; voidedAt: string | null }> => {
+    const response = await api.post<ApiEnvelope<{ paymentId: string; customerId: string; action: string; replacementPaymentId: string | null; voidedAt: string | null }>>(
+      `/payments/${paymentId}/corrections`,
       data
     );
     return response.data.data;

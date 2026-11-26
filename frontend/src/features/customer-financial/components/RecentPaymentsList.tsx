@@ -10,6 +10,7 @@ interface RecentPaymentsListProps {
   payments: RecentFinancialPayment[];
   canMutate?: boolean;
   onVoidPayment?: (payment: RecentFinancialPayment) => void;
+  onEditPayment?: (payment: RecentFinancialPayment) => void;
   onReallocatePayment?: (payment: RecentFinancialPayment) => void;
 }
 
@@ -17,6 +18,7 @@ export const RecentPaymentsList: React.FC<RecentPaymentsListProps> = ({
   payments,
   canMutate = false,
   onVoidPayment,
+  onEditPayment,
   onReallocatePayment,
 }) => {
   if (payments.length === 0) {
@@ -61,6 +63,15 @@ export const RecentPaymentsList: React.FC<RecentPaymentsListProps> = ({
                 >
                   <ReceiptText className="h-4 w-4" /> Receipt</a>
                 {canMutate && !payment.sourceSalesOrderId && !payment.voidedAt && <>
+                  {onEditPayment && (
+                    <button
+                      type="button"
+                      onClick={() => onEditPayment(payment)}
+                      className="rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+                    >
+                      Edit
+                    </button>
+                  )}
                   {onReallocatePayment && isInstallmentPayment(payment) && (
                     <button
                       type="button"

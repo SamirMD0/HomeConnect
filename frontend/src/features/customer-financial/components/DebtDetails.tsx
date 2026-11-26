@@ -14,6 +14,7 @@ interface DebtDetailsProps {
   onRecordPayment?: (debt: DebtDetail) => void;
   onCancelDebt?: (debt: DebtDetail) => void;
   onVoidPayment?: (payment: RecentFinancialPayment) => void;
+  onEditPayment?: (payment: RecentFinancialPayment) => void;
 }
 
 export const DebtDetails: React.FC<DebtDetailsProps> = ({
@@ -23,6 +24,7 @@ export const DebtDetails: React.FC<DebtDetailsProps> = ({
   onRecordPayment,
   onCancelDebt,
   onVoidPayment,
+  onEditPayment,
 }) => {
   const { data: debt, isLoading, isError, refetch } = useDebtDetail(debtId);
 
@@ -121,6 +123,7 @@ export const DebtDetails: React.FC<DebtDetailsProps> = ({
         payments={debt.payments}
         canMutate={canMutate}
         onVoidPayment={onVoidPayment}
+        onEditPayment={onEditPayment}
       />
     </div>
   );

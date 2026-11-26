@@ -33,7 +33,6 @@ export const EditDebtDialog: React.FC<EditDebtDialogProps> = ({
       description: debt.description,
       dueDate: debt.dueDate,
       notes: debt.notes ?? '',
-      reason: '',
     },
   });
 
@@ -45,7 +44,6 @@ export const EditDebtDialog: React.FC<EditDebtDialogProps> = ({
         description: values.description.trim(),
         dueDate: values.dueDate,
         notes: values.notes?.trim() || null,
-        reason: values.reason.trim(),
         sourceScreen: 'CUSTOMER_PROFILE',
       });
       onSuccess();
@@ -63,10 +61,6 @@ export const EditDebtDialog: React.FC<EditDebtDialogProps> = ({
       }
       if (normalized.fieldErrors.notes) {
         setError('notes', { message: normalized.fieldErrors.notes });
-      }
-
-      if (normalized.fieldErrors.reason) {
-        setError('reason', { message: normalized.fieldErrors.reason });
       }
     }
   };
@@ -121,15 +115,6 @@ export const EditDebtDialog: React.FC<EditDebtDialogProps> = ({
         />
       </TextField>
 
-      <TextField label="Correction reason (optional)" error={errors.reason?.message}>
-        <textarea
-          {...register('reason')}
-          dir="auto"
-          rows={3}
-          className={inputClass(Boolean(errors.reason))}
-          placeholder="Optional — saved to the audit history"
-        />
-      </TextField>
 
       <SubmitButton
         isPending={updateDebt.isPending}

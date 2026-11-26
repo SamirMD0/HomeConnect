@@ -9,6 +9,28 @@ const userSelect = {
   username: true,
 } satisfies Prisma.UserSelect;
 
+const allocationInclude = {
+  include: {
+    payment: {
+      select: {
+        id: true,
+        paymentDate: true,
+        paymentMethod: true,
+        reference: true,
+        notes: true,
+        voidedAt: true,
+        createdAt: true,
+        createdBy: {
+          select: userSelect,
+        },
+      },
+    },
+  },
+  orderBy: {
+    createdAt: 'asc',
+  },
+} satisfies Prisma.Debt$paymentAllocationsArgs;
+
 const prepaidInclude = {
   debt: {
     include: {
@@ -24,27 +46,14 @@ const prepaidInclude = {
       },
       // A prepaid item is normally paid across several bills, so the payment
       // rows are loaded in full: the aggregate alone cannot show that history.
-      paymentAllocations: {
-        include: {
-          payment: {
-            select: {
-              id: true,
-              paymentDate: true,
-              paymentMethod: true,
-              reference: true,
-              notes: true,
-              voidedAt: true,
-              createdAt: true,
-              createdBy: {
-                select: userSelect,
-              },
-            },
-          },
-        },
-        orderBy: {
-          createdAt: 'asc',
-        },
-      },
+      paymentAllocations: allocationInclude,
+    },
+  },
+  // Once handed over, the deposit's receipts live on this invoice.
+  remainderDebt: {
+    select: {
+      id: true,
+      paymentAllocations: allocationInclude,
     },
   },
   deliveredBy: {
@@ -141,6 +150,7 @@ export class PrepaidRepository {
       deliveryNotes: string | null;
       remainderDebtId: string | null;
       remainderInstallmentPlanId?: string | null;
+      receiptsMovedAt?: Date | null;
     }
   ) {
     return tx.prepaidPurchase.update({
@@ -152,6 +162,7 @@ export class PrepaidRepository {
         deliveryNotes: data.deliveryNotes,
         remainderDebtId: data.remainderDebtId,
         remainderInstallmentPlanId: data.remainderInstallmentPlanId ?? null,
+        receiptsMovedAt: data.receiptsMovedAt ?? null,
       },
       include: prepaidInclude,
     });
@@ -167,8 +178,30 @@ export class PrepaidRepository {
         deliveryNotes: null,
         remainderDebtId: null,
         remainderInstallmentPlanId: null,
+        receiptsMovedAt: null,
       },
       include: prepaidInclude,
+    });
+  }
+
+  /**
+   * Moves payment allocations from one debt to another. Used when a deposit
+   * becomes an invoice: the deposit's receipts are re-pointed at the invoice
+   * so they show as its payment history, and moved back if the handover is
+   * reverted. Allocation rows keep their ids, amounts and createdAt.
+   */
+  static async moveAllocations(
+    tx: FinancialTransactionClient,
+    fromDebtId: string,
+    toDebtId: string,
+    createdUpTo?: Date
+  ) {
+    return tx.paymentAllocation.updateMany({
+      where: {
+        debtId: fromDebtId,
+        ...(createdUpTo ? { createdAt: { lte: createdUpTo } } : {}),
+      },
+      data: { debtId: toDebtId },
     });
   }
 
