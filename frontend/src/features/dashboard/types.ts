@@ -98,13 +98,13 @@ export interface DashboardKpi {
   route: string;
   sparkline: Array<{ bucket: string; value: string | number }>;
   /** Money figures shown under the main value, e.g. deposits held beside outstanding debt. */
-  breakdown?: Array<{ key: 'depositsHeld' | 'netBalance'; value: string }>;
+  breakdown?: Array<{ key: 'debts' | 'customerCredit' | 'prepaidHeld'; value: string }>;
 }
 
 export interface DashboardOverviewData { kpis: DashboardKpi[]; moduleCounts: Record<string, number> }
 
 export interface CustomerAnalyticsData {
-  totals: { totalCustomers: number; collected: string; distinctPayers: number; newDebt: string; outstanding: string; depositsHeld?: string; netBalance?: string; customersWithBalance: number; overdueCustomers: number; netMovement: string };
+  totals: { totalCustomers: number; collected: string; distinctPayers: number; newDebt: string; outstanding: string; debts?: string; customerCredit?: string; prepaidHeld?: string; customersWithBalance: number; overdueCustomers: number; netMovement: string };
   today: { collected: string; distinctPayers: number; newDebt: string };
   trend: Array<{ bucket: string; collected: string; newDebt: string }>;
   monthlyComparison: Array<{ month: string; collected: string; newDebt: string }>;

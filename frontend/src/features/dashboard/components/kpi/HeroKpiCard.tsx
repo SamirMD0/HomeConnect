@@ -35,7 +35,7 @@ export function HeroKpiCard({ kpi }: { kpi: DashboardKpi }) {
             )}
             <span className="whitespace-nowrap text-xs text-slate-500">vs previous period</span>
           </div>
-          <KpiBreakdown kpi={kpi} className="mt-1.5 truncate text-sm tabular-nums text-slate-600" />
+          <KpiBreakdown kpi={kpi} className="mt-1.5 text-sm leading-snug tabular-nums text-slate-600" />
         </div>
         {kpi.sparkline.length >= 3 && (
           <div className="hidden shrink-0 2xl:block">

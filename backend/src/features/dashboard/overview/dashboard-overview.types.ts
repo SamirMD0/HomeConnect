@@ -8,7 +8,7 @@ export interface DashboardKpi {
   route: string;
   sparkline: Array<{ bucket: string; value: string | number }>;
   /** Money figures shown under the main value, e.g. deposits held beside outstanding debt. */
-  breakdown?: Array<{ key: 'depositsHeld' | 'netBalance'; value: string }>;
+  breakdown?: Array<{ key: 'debts' | 'customerCredit' | 'prepaidHeld'; value: string }>;
 }
 
 export interface DashboardOverviewData {

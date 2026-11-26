@@ -29,7 +29,7 @@ describe('CustomerAnalyticsService', () => {
     expect(result.topDebtors?.[0]).toMatchObject({ customerId: 'c1', outstanding: '75.00' });
   });
 
-  it('keeps deposits out of outstanding debt and nets them in the balance', () => {
+  it('nets customer credit from outstanding and keeps prepaid orders apart', () => {
     const voided = { ...allocation('50'), voidedAt: new Date() };
     const result = CustomerAnalyticsService.aggregate(
       {
@@ -37,13 +37,17 @@ describe('CustomerAnalyticsService', () => {
         debts: [debt({ id: 'd1', originalAmount: new Decimal('500') })],
         plans: [],
         payments: [],
-        deposits: [{ paymentAllocations: [allocation('200'), voided] }],
+        deposits: [
+          { sourceCustomerImportId: 'import-1', paymentAllocations: [allocation('200'), voided] },
+          { sourceCustomerImportId: null, paymentAllocations: [allocation('600')] },
+        ],
       } as never,
       resolveDashboardRange({ range: 'month' }, '2026-08-01'),
       '2026-08-01',
       true
     );
-    expect(result.totals).toMatchObject({ outstanding: '500.00', depositsHeld: '200.00', netBalance: '300.00' });
+    expect(result.totals).toMatchObject({ debts: '500.00', customerCredit: '200.00', prepaidHeld: '600.00', outstanding: '300.00' });
+    expect(result.topDebtors?.[0]).toMatchObject({ outstanding: '500.00' });
   });
 
   it('omits debtor identities for non-admin users', () => {

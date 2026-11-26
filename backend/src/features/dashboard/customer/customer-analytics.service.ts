@@ -83,14 +83,21 @@ export class CustomerAnalyticsService {
       ...rangeDebts.filter(notCancelledDebt).map((debt) => debt.baseOriginalAmount ?? debt.originalAmount),
       ...rangePlans.filter(notCancelledPlan).map((plan) => plan.baseTotalAmount ?? plan.totalAmount),
     ]);
-    const outstanding = sumMoney(openItems.map((item) => item.remaining));
-    const depositsHeld = sumMoney(
-      (records.deposits ?? []).flatMap((deposit) =>
-        deposit.paymentAllocations
-          .filter((allocation) => !isPaymentAllocationVoided(allocation))
-          .map((allocation) => allocationBaseAmount(allocation))
-      )
-    );
+    const debts = sumMoney(openItems.map((item) => item.remaining));
+    const held = (fromImport: boolean) =>
+      sumMoney(
+        (records.deposits ?? [])
+          .filter((deposit) => Boolean(deposit.sourceCustomerImportId) === fromImport)
+          .flatMap((deposit) =>
+            deposit.paymentAllocations
+              .filter((allocation) => !isPaymentAllocationVoided(allocation))
+              .map((allocation) => allocationBaseAmount(allocation))
+          )
+      );
+    // A credit balance from the old system lowers what customers owe, exactly as it does there.
+    const customerCredit = held(true);
+    const prepaidHeld = held(false);
+    const outstanding = subtractMoney(debts, customerCredit);
     const todayPayments = records.payments.filter(
       (payment) => prismaDateToBusinessDate(payment.paymentDate) === businessDate
     );
@@ -112,8 +119,9 @@ export class CustomerAnalyticsService {
         distinctPayers: new Set(rangePayments.flatMap((payment) => payment.customerId ? [payment.customerId] : [])).size,
         newDebt: moneyToApiString(newDebt),
         outstanding: moneyToApiString(outstanding),
-        depositsHeld: moneyToApiString(depositsHeld),
-        netBalance: moneyToApiString(subtractMoney(outstanding, depositsHeld)),
+        debts: moneyToApiString(debts),
+        customerCredit: moneyToApiString(customerCredit),
+        prepaidHeld: moneyToApiString(prepaidHeld),
         customersWithBalance: byCustomer.size,
         overdueCustomers: overdueCustomers.size,
         netMovement: moneyToApiString(subtractMoney(newDebt, sumMoney([receivableCollected, returnCredits]))),

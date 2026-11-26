@@ -31,11 +31,14 @@ export interface CustomerAnalyticsData {
     collected: string;
     distinctPayers: number;
     newDebt: string;
+    /** What customers owe overall: debts minus their credit balances, as the old system counts. */
     outstanding: string;
-    /** Deposits held for customers (money the shop owes them). */
-    depositsHeld: string;
-    /** Outstanding minus deposits held: the old system's balance. */
-    netBalance: string;
+    /** Open debts before any credit. */
+    debts: string;
+    /** Credit balances carried over from the old system (imported deposits still held). */
+    customerCredit: string;
+    /** Money paid ahead for goods not yet delivered; not a credit against debts. */
+    prepaidHeld: string;
     customersWithBalance: number;
     overdueCustomers: number;
     netMovement: string;

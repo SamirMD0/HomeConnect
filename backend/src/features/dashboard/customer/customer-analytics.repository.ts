@@ -28,7 +28,7 @@ export type CustomerAnalyticsDebt = Prisma.DebtGetPayload<{ include: typeof debt
 export type CustomerAnalyticsPlan = Prisma.InstallmentPlanGetPayload<{ include: typeof planInclude }>;
 /** A deposit held for a customer: a prepaid record not yet delivered. */
 export type CustomerAnalyticsDeposit = Prisma.DebtGetPayload<{
-  select: { paymentAllocations: typeof allocationInclude };
+  select: { sourceCustomerImportId: true; paymentAllocations: typeof allocationInclude };
 }>;
 export type CustomerAnalyticsPayment = Prisma.PaymentGetPayload<{
   include: { customer: { select: { id: true; name: true; phone: true } } };
@@ -123,7 +123,7 @@ export class CustomerAnalyticsRepository {
             // A prepaid record with no companion row predates delivery and still counts as held.
             OR: [{ prepaidPurchase: { status: PrepaidPurchaseStatus.PENDING } }, { prepaidPurchase: null }],
           },
-          select: { paymentAllocations: allocationInclude },
+          select: { sourceCustomerImportId: true, paymentAllocations: allocationInclude },
         }),
       ]);
 

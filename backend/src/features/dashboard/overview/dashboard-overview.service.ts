@@ -28,11 +28,12 @@ export class DashboardOverviewService {
         { key: 'newDebtsToday', value: customer.today.newDebt, valueKind: 'money', goodDirection: 'neutral', route: '/receivables', sparkline: debtSparkline },
         {
           key: 'outstandingDebt', value: customer.totals.outstanding, valueKind: 'money', goodDirection: 'down', route: '/receivables', sparkline: debtSparkline,
-          // Deposits are money held for customers, never debt; the net is the old system's balance.
-          ...(Number(customer.totals.depositsHeld)
+          // Outstanding already nets customer credit; show what it is made of, and prepaid money apart.
+          ...(Number(customer.totals.customerCredit) || Number(customer.totals.prepaidHeld)
             ? { breakdown: [
-                { key: 'depositsHeld' as const, value: customer.totals.depositsHeld },
-                { key: 'netBalance' as const, value: customer.totals.netBalance },
+                { key: 'debts' as const, value: customer.totals.debts },
+                ...(Number(customer.totals.customerCredit) ? [{ key: 'customerCredit' as const, value: customer.totals.customerCredit }] : []),
+                ...(Number(customer.totals.prepaidHeld) ? [{ key: 'prepaidHeld' as const, value: customer.totals.prepaidHeld }] : []),
               ] }
             : {}),
         },

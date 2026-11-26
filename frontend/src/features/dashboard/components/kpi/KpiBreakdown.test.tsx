@@ -13,19 +13,23 @@ const kpi: DashboardKpi = {
 };
 
 describe('KpiBreakdown', () => {
-  it('shows deposits held and the net balance under outstanding debt', () => {
+  it('shows debts, customer credit and prepaid orders under outstanding debt', () => {
     const html = renderToStaticMarkup(
       <KpiBreakdown
         kpi={{
           ...kpi,
           breakdown: [
-            { key: 'depositsHeld', value: '200.00' },
-            { key: 'netBalance', value: '300.00' },
+            { key: 'debts', value: '500.00' },
+            { key: 'customerCredit', value: '200.00' },
+            { key: 'prepaidHeld', value: '600.00' },
           ],
         }}
       />
     );
-    expect(html).toContain('Deposits held $200.00 · Net $300.00');
+    expect(html.replace(/<[^>]+>/g, '')).toBe(
+      'Debts $500.00 · Customer credit −$200.00 · Prepaid orders held $600.00'
+    );
+    expect(html).toContain('<span class="whitespace-nowrap">−$200.00</span>');
   });
   it('renders nothing without deposits', () => {
     expect(renderToStaticMarkup(<KpiBreakdown kpi={kpi} />)).toBe('');
