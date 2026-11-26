@@ -259,6 +259,7 @@ export const CustomerProfilePage: React.FC = () => {
 
       {searchParams.get('tab') !== 'details' && <CustomerFinancialProfile
         customerId={customer.id}
+        initialInvoiceId={searchParams.get('invoice') ?? undefined}
         activeTab={(searchParams.get('tab') as FinancialProfileTab | null) ?? 'overview'}
         onTabChange={(tab) => setSearchParams({ tab })}
       />}

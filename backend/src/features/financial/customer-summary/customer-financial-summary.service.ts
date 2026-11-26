@@ -354,7 +354,12 @@ export class CustomerFinancialSummaryService {
           isSettled: !monthRemaining.greaterThan(ZERO_MONEY),
         } } : {}),
       },
-      debts: debtComputations.slice(0, query.debtLimit).map((debt) => debt.view),
+      // Deposits have their own profile tab. Prioritize invoices so earlier
+      // deposits cannot fill the limit and hide the invoice made on handover.
+      debts: [
+        ...debtComputations.filter((debt) => !debt.isPrepaid),
+        ...debtComputations.filter((debt) => debt.isPrepaid),
+      ].slice(0, query.debtLimit).map((debt) => debt.view),
       installmentPlans: planComputations.slice(0, query.planLimit).map((plan) => plan.view),
       overdueItems: this.buildOverdueItems(debtComputations, overdueInstallments, businessDate),
       nextDue,

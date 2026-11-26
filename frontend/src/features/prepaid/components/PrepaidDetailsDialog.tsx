@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { PrepaidPurchase } from '../types/prepaid.types';
 import { PrepaidBillHistory } from './PrepaidBillHistory';
 import { PrepaidStatusBadge } from './PrepaidStatusBadge';
@@ -12,6 +13,7 @@ interface PrepaidDetailsDialogProps {
   onEdit: () => void;
   onRecordPayment: () => void;
   onCancel: () => void;
+  onOpenInvoice?: (debtId: string) => void;
 }
 
 const Row: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
@@ -27,6 +29,7 @@ export const PrepaidDetailsDialog: React.FC<PrepaidDetailsDialogProps> = ({
   onEdit,
   onRecordPayment,
   onCancel,
+  onOpenInvoice,
 }) => (
   <div>
     <div className="mb-3 flex items-center justify-between gap-3">
@@ -98,6 +101,24 @@ export const PrepaidDetailsDialog: React.FC<PrepaidDetailsDialogProps> = ({
     <div className="mt-4">
       <PrepaidBillHistory payments={item.payments ?? []} />
     </div>
+
+    {item.remainderDebtId && onOpenInvoice && (
+      <button
+        type="button"
+        onClick={() => onOpenInvoice(item.remainderDebtId!)}
+        className="mt-4 inline-flex rounded-md border border-brand-200 px-3 py-2 text-sm font-medium text-brand-700 hover:bg-brand-50 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+      >
+        View invoice
+      </button>
+    )}
+    {item.remainderDebtId && !onOpenInvoice && (
+      <Link
+        to={`/customers/${item.customer.id}?tab=debts&invoice=${item.remainderDebtId}`}
+        className="mt-4 inline-flex rounded-md border border-brand-200 px-3 py-2 text-sm font-medium text-brand-700 hover:bg-brand-50 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+      >
+        View invoice
+      </Link>
+    )}
 
     {canMutate && item.status === 'PENDING' && (
       <div className="mt-5 flex flex-wrap gap-2 border-t border-slate-200 pt-4">

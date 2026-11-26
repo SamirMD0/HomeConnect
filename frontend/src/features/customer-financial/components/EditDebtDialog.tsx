@@ -3,14 +3,14 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { useUpdateDebt } from '../hooks/useFinancialMutations';
 import { UpdateDebtFormValues, updateDebtSchema } from '../schemas/financial-mutation.schemas';
-import { DebtDetail } from '../types/customer-financial.types';
+import { DebtDetail, DebtSummaryItem } from '../types/customer-financial.types';
 import { normalizeFinancialError } from '../utils/financial-form-errors';
 import { formatMoney } from '../utils/financial-format';
 import { inputClass, SubmitButton, TextField } from './CreateDebtForm';
 
 interface EditDebtDialogProps {
   customerId: string;
-  debt: DebtDetail;
+  debt: DebtDetail | DebtSummaryItem;
   onSuccess: () => void;
 }
 

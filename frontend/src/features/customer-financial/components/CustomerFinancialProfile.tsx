@@ -44,6 +44,7 @@ interface CustomerFinancialProfileProps {
   customerId: string;
   activeTab?: FinancialProfileTab;
   onTabChange?: (tab: FinancialProfileTab) => void;
+  initialInvoiceId?: string;
 }
 
 const tabs: Array<{ id: FinancialProfileTab; label: string }> = [
@@ -61,6 +62,7 @@ export const CustomerFinancialProfile: React.FC<CustomerFinancialProfileProps> =
   customerId,
   activeTab: controlledTab,
   onTabChange,
+  initialInvoiceId,
 }) => {
   const { user } = useAuth();
   const [internalTab, setInternalTab] = useState<FinancialProfileTab>('overview');
@@ -69,9 +71,12 @@ export const CustomerFinancialProfile: React.FC<CustomerFinancialProfileProps> =
   const [includeCancelled, setIncludeCancelled] = useState(false);
   const [month, setMonth] = useState<string>();
   const [selectedDebtId, setSelectedDebtId] = useState<string | null>(null);
+  useEffect(() => {
+    if (initialInvoiceId) setSelectedDebtId(initialInvoiceId);
+  }, [initialInvoiceId]);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [debtForEdit, setDebtForEdit] = useState<DebtDetail | null>(null);
+  const [debtForEdit, setDebtForEdit] = useState<DebtDetail | DebtSummaryItem | null>(null);
   const [debtForPayment, setDebtForPayment] = useState<DebtSummaryItem | DebtDetail | null>(null);
   const [debtForCancellation, setDebtForCancellation] = useState<DebtSummaryItem | DebtDetail | null>(
     null
@@ -195,6 +200,7 @@ export const CustomerFinancialProfile: React.FC<CustomerFinancialProfileProps> =
             data={data}
             onOpenDebt={setSelectedDebtId}
             onOpenPlan={setSelectedPlanId}
+            onEditDebt={setDebtForEdit}
             canMutate={canMutateFinancialRecords}
             onRecordDebtPayment={setDebtForPayment}
             onCancelDebt={setDebtForCancellation}
@@ -376,6 +382,7 @@ interface FinancialTabPanelProps {
   canMutate: boolean;
   onRecordDebtPayment: (debt: DebtSummaryItem) => void;
   onCancelDebt: (debt: DebtSummaryItem) => void;
+  onEditDebt: (debt: DebtSummaryItem) => void;
   onRecordPlanPayment: (plan: InstallmentPlanSummaryItem) => void;
   onCancelPlan: (plan: InstallmentPlanSummaryItem) => void;
   onVoidPayment: (payment: RecentFinancialPayment) => void;
@@ -390,6 +397,7 @@ const FinancialTabPanel: React.FC<FinancialTabPanelProps> = ({
   canMutate,
   onRecordDebtPayment,
   onCancelDebt,
+  onEditDebt,
   onRecordPlanPayment,
   onCancelPlan,
   onVoidPayment,
@@ -405,12 +413,13 @@ const FinancialTabPanel: React.FC<FinancialTabPanelProps> = ({
         canMutate={canMutate}
         onRecordPayment={onRecordDebtPayment}
         onCancelDebt={onCancelDebt}
+        onEditDebt={onEditDebt}
       />
     );
   }
 
   if (activeTab === 'prepaid') {
-    return <CustomerPrepaidPanel customer={data.customer} canMutate={canMutate} />;
+    return <CustomerPrepaidPanel customer={data.customer} canMutate={canMutate} onOpenInvoice={onOpenDebt} onOpenPlan={onOpenPlan} />;
   }
 
   if (activeTab === 'plans') {

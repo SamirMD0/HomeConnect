@@ -498,4 +498,33 @@ describe('CustomerFinancialSummaryService', () => {
     expect(result.summary.singleDebtOutstanding).toBe('1200.00');
     expect(result.summary.installmentPlanOutstanding).toBe('600.00');
   });
+
+  it('keeps the converted invoice visible when older deposits fill the debt limit', async () => {
+    const invoiceId = '33333333-3333-4333-8333-333333333334';
+    mockRecordSet({
+      debts: [
+        makeDebt({
+          kind: DebtKind.PREPAID_PURCHASE,
+          originalAmount: new Decimal('400.00'),
+          prepaidPurchase: { id: 'prepaid-1', status: 'DELIVERED' },
+          paymentAllocations: [makeDebtAllocation('deposit-1', '150.00')],
+        }),
+        makeDebt({
+          id: invoiceId,
+          kind: DebtKind.STANDARD,
+          description: 'Balance for Air conditioner',
+          originalAmount: new Decimal('250.00'),
+        }),
+      ],
+    });
+
+    const result = await CustomerFinancialSummaryService.getCustomerFinancialSummary(customerId, {
+      includeCancelled: false, includePayments: true, paymentLimit: 20, debtLimit: 1, planLimit: 1,
+    });
+
+    expect(result.debts).toHaveLength(1);
+    expect(result.debts[0]).toMatchObject({ id: invoiceId, kind: 'STANDARD', remainingBalance: '250.00' });
+    expect(result.summary.singleDebtOutstanding).toBe('250.00');
+    expect(result.summary.totalPrepaidAdminDebt).toBe('0.00');
+  });
 });

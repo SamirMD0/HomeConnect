@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { Modal } from '../../../components/ui/Modal';
 import { CustomerPrepaidHistory } from './CustomerPrepaidHistory';
+import { ConvertPrepaidDialog } from './ConvertPrepaidDialog';
 import { PrepaidDetailsDialog } from './PrepaidDetailsDialog';
 import { PrepaidErrorState, PrepaidLoadingState } from './PrepaidStates';
 import { usePrepaidPurchases } from '../hooks/usePrepaidPurchases';
@@ -15,6 +16,8 @@ import { businessLabels, englishLabel } from '../../../shared/labels/business-la
 interface CustomerPrepaidPanelProps {
   customer: FinancialSummaryCustomer;
   canMutate: boolean;
+  onOpenInvoice?: (debtId: string) => void;
+  onOpenPlan?: (planId: string) => void;
 }
 
 /**
@@ -25,10 +28,13 @@ interface CustomerPrepaidPanelProps {
 export const CustomerPrepaidPanel: React.FC<CustomerPrepaidPanelProps> = ({
   customer,
   canMutate,
+  onOpenInvoice,
+  onOpenPlan,
 }) => {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [detailsTarget, setDetailsTarget] = useState<PrepaidPurchase | null>(null);
   const [paymentTarget, setPaymentTarget] = useState<PrepaidPurchase | null>(null);
+  const [convertTarget, setConvertTarget] = useState<PrepaidPurchase | null>(null);
 
   const { data, isLoading, isError, refetch } = usePrepaidPurchases({
     customerId: customer.id,
@@ -65,8 +71,29 @@ export const CustomerPrepaidPanel: React.FC<CustomerPrepaidPanelProps> = ({
           summary={data.summary}
           onViewDetails={setDetailsTarget}
           onRecordBill={canMutate ? setPaymentTarget : undefined}
+          onConvert={canMutate ? setConvertTarget : undefined}
+          onOpenInvoice={onOpenInvoice}
+          onOpenPlan={onOpenPlan}
         />
       )}
+
+      <Modal
+        isOpen={Boolean(convertTarget)}
+        onClose={() => setConvertTarget(null)}
+        title={businessLabels.prepaid.convert}
+        maxWidth="max-w-2xl"
+      >
+        {convertTarget && (
+          <ConvertPrepaidDialog
+            item={convertTarget}
+            onSuccess={(converted) => {
+              setConvertTarget(null);
+              if (converted.remainderDebtId) onOpenInvoice?.(converted.remainderDebtId);
+              if (converted.remainderInstallmentPlanId) onOpenPlan?.(converted.remainderInstallmentPlanId);
+            }}
+          />
+        )}
+      </Modal>
 
       <Modal
         isOpen={isAddOpen}
@@ -97,6 +124,10 @@ export const CustomerPrepaidPanel: React.FC<CustomerPrepaidPanelProps> = ({
             onEdit={() => undefined}
             onRecordPayment={() => undefined}
             onCancel={() => undefined}
+            onOpenInvoice={onOpenInvoice ? (debtId) => {
+              setDetailsTarget(null);
+              onOpenInvoice(debtId);
+            } : undefined}
           />
         )}
       </Modal>

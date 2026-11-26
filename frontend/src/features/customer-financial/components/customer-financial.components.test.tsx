@@ -329,6 +329,14 @@ describe('customer financial profile components', () => {
     expect(missingHtml).toContain('Unknown');
   });
 
+  it('offers direct editing for active invoices only to users who can mutate', () => {
+    const props = { debts: summary.debts, onOpenDebt: () => undefined, onEditDebt: () => undefined };
+    const adminHtml = renderToStaticMarkup(<CustomerDebtsList {...props} canMutate />);
+    const readOnlyHtml = renderToStaticMarkup(<CustomerDebtsList {...props} canMutate={false} />);
+    expect(adminHtml.match(/>Edit<\/button>/g)).toHaveLength(1);
+    expect(readOnlyHtml).not.toContain('>Edit</button>');
+  });
+
   it('renders eligible debt mutation actions for admins only', () => {
     const prepaidDebt = {
       ...summary.debts[0],

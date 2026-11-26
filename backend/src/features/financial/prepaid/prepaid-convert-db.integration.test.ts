@@ -15,7 +15,7 @@ const db = new PrismaClient();
 const password = 'convert-only-synthetic-password';
 let branch: string, owner: string, employee: string, customerId: string, adminToken: string, employeeToken: string;
 
-const api = (method: 'get' | 'post', path: string, token = adminToken) =>
+const api = (method: 'get' | 'post' | 'patch', path: string, token = adminToken) =>
   request(app)[method]('/api/v1' + path).set('Authorization', 'Bearer ' + token).set('X-Branch-Scope', branch);
 
 /** A $400 item with $150 already paid, through the real create endpoint. */
@@ -116,6 +116,36 @@ const installment = { mode: 'INSTALLMENT', startDate: '2030-01-15', installmentC
     expect(debt.kind).toBe('STANDARD');
     expect(debt.originalAmount.toFixed(2)).toBe('250.00');
     expect((await statement()).closingBalance).toBe('250.00');
+  });
+
+  it('creates one editable invoice in the customer profile while preserving deposit payments', async () => {
+    const id = await createPrepaid();
+    const converted = await api('post', `/prepaid-purchases/${id}/convert`).send({ mode: 'DEBT', dueDate: '2030-01-15' });
+    expect(converted.status, JSON.stringify(converted.body)).toBe(200);
+    const invoiceId = converted.body.data.remainderDebtId;
+    const profile = await api('get', `/customers/${customerId}/financial-summary?debtLimit=1`);
+    expect(profile.status, JSON.stringify(profile.body)).toBe(200);
+    expect(profile.body.data.debts).toEqual([
+      expect.objectContaining({ id: invoiceId, kind: 'STANDARD', originalAmount: '250.00', totalPaid: '0.00' }),
+    ]);
+
+    const edited = await api('patch', `/debts/${invoiceId}`).send({
+      originalAmount: '225.00', description: 'Corrected air conditioner balance', dueDate: '2030-02-15',
+      notes: 'Agreed discount', reason: 'Discount after handover', sourceScreen: 'CUSTOMER_PROFILE',
+    });
+    expect(edited.status, JSON.stringify(edited.body)).toBe(200);
+    const refreshed = await api('get', `/customers/${customerId}/financial-summary?debtLimit=1`);
+    expect(refreshed.body.data.debts[0]).toMatchObject({
+      id: invoiceId, description: 'Corrected air conditioner balance', originalAmount: '225.00', dueDate: '2030-02-15',
+    });
+    expect(refreshed.body.data.summary.singleDebtOutstanding).toBe('225.00');
+    const deposit = await api('get', `/prepaid-purchases/${id}`);
+    expect(deposit.body.data).toMatchObject({ fullAmount: '400.00', amountPaid: '150.00', remainderDebtId: invoiceId });
+
+    const duplicate = await api('post', `/prepaid-purchases/${id}/convert`).send({ mode: 'DEBT', dueDate: '2030-01-15' });
+    expect(duplicate.status).toBe(409);
+    expect(await db.debt.count({ where: { customerId, kind: 'STANDARD' } })).toBe(1);
+    expect((await statement()).closingBalance).toBe('225.00');
   });
 
   it('is admin only, and an employee attempt changes nothing', async () => {

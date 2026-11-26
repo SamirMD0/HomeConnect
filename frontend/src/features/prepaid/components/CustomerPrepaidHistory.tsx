@@ -16,6 +16,9 @@ interface CustomerPrepaidHistoryProps {
   onViewDetails?: (item: PrepaidPurchase) => void;
   /** Adds another bill to an existing prepaid purchase. */
   onRecordBill?: (item: PrepaidPurchase) => void;
+  onConvert?: (item: PrepaidPurchase) => void;
+  onOpenInvoice?: (debtId: string) => void;
+  onOpenPlan?: (planId: string) => void;
 }
 
 /**
@@ -28,6 +31,9 @@ export const CustomerPrepaidHistory: React.FC<CustomerPrepaidHistoryProps> = ({
   summary,
   onViewDetails,
   onRecordBill,
+  onConvert,
+  onOpenInvoice,
+  onOpenPlan,
 }) => {
   const cards = [
     {
@@ -112,6 +118,33 @@ export const CustomerPrepaidHistory: React.FC<CustomerPrepaidHistoryProps> = ({
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <PrepaidStatusBadge status={item.status} />
+                  {onConvert && item.status === 'PENDING' && !item.isFullyPaid && (
+                    <button
+                      type="button"
+                      onClick={() => onConvert(item)}
+                      className="rounded-md border border-brand-200 px-3 py-2 text-sm font-medium text-brand-700 hover:bg-brand-50 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+                    >
+                      {businessLabels.prepaid.convert}
+                    </button>
+                  )}
+                  {item.remainderDebtId && onOpenInvoice && (
+                    <button
+                      type="button"
+                      onClick={() => onOpenInvoice(item.remainderDebtId!)}
+                      className="rounded-md border border-brand-200 px-3 py-2 text-sm font-medium text-brand-700 hover:bg-brand-50 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+                    >
+                      View invoice
+                    </button>
+                  )}
+                  {item.remainderInstallmentPlanId && onOpenPlan && (
+                    <button
+                      type="button"
+                      onClick={() => onOpenPlan(item.remainderInstallmentPlanId!)}
+                      className="rounded-md border border-brand-200 px-3 py-2 text-sm font-medium text-brand-700 hover:bg-brand-50 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+                    >
+                      View payment plan
+                    </button>
+                  )}
                   {onRecordBill && item.status === 'PENDING' && !item.isFullyPaid && (
                     <button
                       type="button"

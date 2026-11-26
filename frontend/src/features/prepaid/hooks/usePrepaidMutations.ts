@@ -14,13 +14,17 @@ import { normalizeFinancialError } from '../../customer-financial/utils/financia
  */
 const useInvalidatePrepaidCaches = () => {
   const queryClient = useQueryClient();
-  return async () => {
+  return async (item: { customer: { id: string } }) => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: prepaidQueryKeyPrefix }),
       queryClient.invalidateQueries({ queryKey: financialLedgerQueryKeyPrefix }),
       queryClient.invalidateQueries({ queryKey: receivablesQueryKeyPrefix }),
       // Covers ['customers', customerId, 'financial-summary'] by prefix.
       queryClient.invalidateQueries({ queryKey: ['customers'] }),
+      queryClient.invalidateQueries({ queryKey: ['customer', item.customer.id] }),
+      queryClient.invalidateQueries({ queryKey: ['customer-activity', item.customer.id] }),
+      queryClient.invalidateQueries({ queryKey: ['debts'] }),
+      queryClient.invalidateQueries({ queryKey: ['installment-plans'] }),
     ]);
   };
 };
@@ -30,8 +34,8 @@ export const useDeliverPrepaidPurchase = (id: string) => {
 
   return useMutation({
     mutationFn: (payload: DeliverPrepaidPayload) => prepaidApi.deliver(id, payload),
-    onSuccess: async () => {
-      await invalidate();
+    onSuccess: async (item) => {
+      await invalidate(item);
       toast.success('Marked as delivered');
     },
     onError: (error) => toast.error(normalizeFinancialError(error).message),
@@ -43,9 +47,9 @@ export const useConvertPrepaidPurchase = (id: string) => {
 
   return useMutation({
     mutationFn: (payload: ConvertPrepaidPayload) => prepaidApi.convert(id, payload),
-    onSuccess: async (_data, payload) => {
-      await invalidate();
-      toast.success(payload.mode === 'DEBT' ? 'Converted to a debt' : 'Converted to an installment plan');
+    onSuccess: async (item, payload) => {
+      await invalidate(item);
+      toast.success(payload.mode === 'DEBT' ? 'Invoice created in customer profile' : 'Payment plan created in customer profile');
     },
     onError: (error) => toast.error(normalizeFinancialError(error).message),
   });
@@ -56,8 +60,8 @@ export const useRevertPrepaidDelivery = (id: string) => {
 
   return useMutation({
     mutationFn: (payload: RevertPrepaidDeliveryPayload) => prepaidApi.revertDelivery(id, payload),
-    onSuccess: async () => {
-      await invalidate();
+    onSuccess: async (item) => {
+      await invalidate(item);
       toast.success('Delivery reverted');
     },
     onError: (error) => toast.error(normalizeFinancialError(error).message),

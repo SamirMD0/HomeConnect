@@ -162,7 +162,10 @@ export const PrepaidPurchasesPage: React.FC = () => {
         maxWidth="max-w-lg"
       >
         {convertTarget && (
-          <ConvertPrepaidDialog item={convertTarget} onSuccess={closeDialogs} />
+          <ConvertPrepaidDialog item={convertTarget} onSuccess={(converted) => {
+            closeDialogs();
+            setDetailsTarget(converted);
+          }} />
         )}
       </Modal>
 

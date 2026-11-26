@@ -1,4 +1,5 @@
 import { renderToStaticMarkup } from 'react-dom/server';
+import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it } from 'vitest';
 import { buildPrepaidMenuItems } from './PrepaidRowActions';
@@ -8,6 +9,7 @@ import { PrepaidStatusBadge } from './PrepaidStatusBadge';
 import { PrepaidEmptyState } from './PrepaidStates';
 import { PrepaidBillHistory } from './PrepaidBillHistory';
 import { CustomerPrepaidHistory } from './CustomerPrepaidHistory';
+import { PrepaidDetailsDialog } from './PrepaidDetailsDialog';
 import { EditPrepaidPurchaseDialog } from './EditPrepaidPurchaseDialog';
 import { RevertPrepaidDeliveryDialog } from './RevertPrepaidDeliveryDialog';
 import {
@@ -95,6 +97,34 @@ const summary: PrepaidSummary = {
 };
 
 const noop = () => undefined;
+
+describe('deposit to invoice workflow', () => {
+  it('offers conversion only for pending deposits with an unpaid remainder', () => {
+    const render = (item: PrepaidPurchase, canConvert = true) => renderToStaticMarkup(
+      <CustomerPrepaidHistory items={[item]} summary={summary} onConvert={canConvert ? noop : undefined} />
+    );
+    expect(render(pendingItem)).toContain('Convert to Debt or Installments');
+    expect(render({ ...pendingItem, isFullyPaid: true })).not.toContain('Convert to Debt or Installments');
+    expect(render(deliveredItem)).not.toContain('Convert to Debt or Installments');
+    expect(render({ ...pendingItem, status: 'CANCELLED' })).not.toContain('Convert to Debt or Installments');
+    expect(render(pendingItem, false)).not.toContain('Convert to Debt or Installments');
+  });
+
+  it('lets a converted deposit open its invoice from the profile and deposit details', () => {
+    const item = { ...deliveredItem, remainderDebtId: 'invoice-1' };
+    const history = renderToStaticMarkup(
+      <CustomerPrepaidHistory items={[item]} summary={summary} onOpenInvoice={noop} />
+    );
+    expect(history).toContain('View invoice');
+    const details = renderToStaticMarkup(
+      <MemoryRouter>
+        <PrepaidDetailsDialog item={item} canMutate={false} onEdit={noop} onRecordPayment={noop} onCancel={noop} />
+      </MemoryRouter>
+    );
+    expect(details).toContain('/customers/c2?tab=debts&amp;invoice=invoice-1');
+    expect(details).toContain('View invoice');
+  });
+});
 
 function renderTable(items: PrepaidPurchase[], canMutate = true) {
   return renderToStaticMarkup(

@@ -11,6 +11,7 @@ interface CustomerDebtsListProps {
   canMutate?: boolean;
   onRecordPayment?: (debt: DebtSummaryItem) => void;
   onCancelDebt?: (debt: DebtSummaryItem) => void;
+  onEditDebt?: (debt: DebtSummaryItem) => void;
 }
 
 export const CustomerDebtsList: React.FC<CustomerDebtsListProps> = ({
@@ -19,6 +20,7 @@ export const CustomerDebtsList: React.FC<CustomerDebtsListProps> = ({
   canMutate = false,
   onRecordPayment,
   onCancelDebt,
+  onEditDebt,
 }) => {
   if (debts.length === 0) {
     return (
@@ -72,6 +74,15 @@ export const CustomerDebtsList: React.FC<CustomerDebtsListProps> = ({
                 <td className="px-4 py-3 text-slate-600">{formatDateTime(debt.createdAt)}</td>
                 <td className="px-4 py-3 text-right">
                   <div className="flex flex-wrap justify-end gap-2">
+                    {canMutate && debt.calculatedStatus !== 'CANCELLED' && onEditDebt && (
+                      <button
+                        type="button"
+                        onClick={() => onEditDebt(debt)}
+                        className="rounded-md border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+                      >
+                        Edit
+                      </button>
+                    )}
                     {canMutate && canRecordDebtPayment(debt.calculatedStatus) && onRecordPayment && (
                       <button
                         type="button"

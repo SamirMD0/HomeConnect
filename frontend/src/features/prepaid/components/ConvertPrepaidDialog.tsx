@@ -15,7 +15,7 @@ const MODES: Array<{ id: Mode; title: string; hint: string }> = [
 
 interface ConvertPrepaidDialogProps {
   item: PrepaidPurchase;
-  onSuccess: () => void;
+  onSuccess: (item: PrepaidPurchase) => void;
 }
 
 /**
@@ -44,12 +44,12 @@ export const ConvertPrepaidDialog: React.FC<ConvertPrepaidDialogProps> = ({ item
     if (Object.keys(nextErrors).length > 0) return;
 
     try {
-      await convert.mutateAsync(
+      const converted = await convert.mutateAsync(
         mode === 'DEBT'
           ? { mode, dueDate: date }
           : { mode, startDate: date, installmentCount: count, frequency }
       );
-      onSuccess();
+      onSuccess(converted);
     } catch (error) {
       setServerError(normalizeFinancialError(error).message);
     }
@@ -78,7 +78,8 @@ export const ConvertPrepaidDialog: React.FC<ConvertPrepaidDialogProps> = ({ item
 
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
         This marks the item as handed over. {formatMoney(item.remainingToCollect)} becomes owed and appears in
-        Accounts Receivable. It can be undone until a payment is recorded against it.
+        Accounts Receivable and the customer profile as an editable invoice or payment plan.
+        It can be undone until a payment is recorded against it.
       </div>
 
       <fieldset>
