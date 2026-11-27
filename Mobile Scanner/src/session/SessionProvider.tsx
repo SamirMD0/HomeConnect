@@ -33,19 +33,26 @@ import { registerForegroundSession } from './foreground-session';
 import { loadCloudPairing, saveCloudPairing, clearCloudPairing } from '../offline/cloud-storage';
 import { pairedUser, type CloudPairing } from '../offline/cloud-pairing';
 import { setCloudMode, wipeCloudData } from '../offline/cloud-mode';
-import { setSelectedBranch, type MobileBranch } from '../branches/branch-selection';
+import { scopeBranchThen, setSelectedBranch, type MobileBranch } from '../branches/branch-selection';
 
 function useSessionState() {
   const [cloud, setCloud] = useState<CloudPairing | null>(null);
   const cloudRef = useRef(cloud); cloudRef.current = cloud;
   const [cloudUser, setCloudUser] = useState<AuthenticatedUser | null>(null);
   const [cloudBranches, setCloudBranches] = useState<MobileBranch[]>([]);
-  const [cloudBranchId, setCloudBranchId] = useState<string | null>(null);
+  const [cloudBranchId, setCloudBranchState] = useState<string | null>(null);
+  const cloudBranchRef = useRef(cloudBranchId); cloudBranchRef.current = cloudBranchId;
+  // Requests must carry the new branch before any screen renders with it.
+  const setCloudBranchId = (id: string | null) => {
+    cloudBranchRef.current = id;
+    scopeBranchThen(id, setCloudBranchState);
+  };
   const [connectionNotice, setConnectionNotice] = useState<string | null>(null);
   const enterCloud = (pairing: CloudPairing) => {
     setCloudMode(true); setCloud(pairing); setCloudUser(pairedUser(pairing));
     setCloudBranches(pairing.branchIds.map((id, index) => ({ id, name: `Branch ${index + 1}` })));
-    setCloudBranchId(pairing.branchIds[0]!);
+    cloudBranchRef.current = pairing.branchIds[0]!;
+    scopeBranchThen(pairing.branchIds[0]!, setCloudBranchState);
   };
   const [restoring, setRestoring] = useState(true);
   const [connection, setConnection] = useState<ConnectionSettings | null>(null);
@@ -223,7 +230,7 @@ function useSessionState() {
     selected: cloudBranches.find(item => item.id === cloudBranchId) ?? null,
     branches: cloudBranches, busy: false, error: null,
     choose: async (value: MobileBranch) => { if (!cloud?.branchIds.includes(value.id)) return; await clearQueryCache(); setCloudBranchId(value.id); },
-    switchBranch: async () => { setCloudBranchId(null); setSelectedBranch(null); await clearQueryCache(); },
+    switchBranch: async () => { setCloudBranchId(null); await clearQueryCache(); },
     retry: () => {},
   };
   const connectCloud = async (pairing: CloudPairing) => {
@@ -287,7 +294,8 @@ function useSessionState() {
     updateCloudPairing: (pairing: CloudPairing) => {
       cloudRef.current = pairing;
       setCloud(pairing); setCloudUser(pairedUser(pairing));
-      setCloudBranchId(current => current && pairing.branchIds.includes(current) ? current : pairing.branchIds[0] ?? null);
+      const current = cloudBranchRef.current;
+      setCloudBranchId(current && pairing.branchIds.includes(current) ? current : pairing.branchIds[0] ?? null);
       setCloudBranches(current => pairing.branchIds.map((id, index) => current.find(branch => branch.id === id) ?? { id, name: `Branch ${index + 1}` }));
     },
     updateCloudIdentity: (current: AuthenticatedUser | null, branches: MobileBranch[]) => {

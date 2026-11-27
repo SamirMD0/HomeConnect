@@ -10,6 +10,15 @@ export function selectAccessibleBranch(branches: MobileBranch[], savedId: string
 let selectedId: string | null = null;
 const rejectionListeners = new Set<() => void>();
 export function setSelectedBranch(id: string | null) { selectedId = id; }
+/**
+ * Point requests at a branch, then tell the screens. Screens start loading as
+ * soon as the branch state changes; if the scope moved afterwards (in an
+ * effect), those first loads would still read and save under the old branch.
+ */
+export function scopeBranchThen<T extends string | null>(id: T, commit: (id: T) => void) {
+  setSelectedBranch(id);
+  commit(id);
+}
 export function selectedBranchHeaders(): Record<string, string> {
   return selectedId ? { 'X-Branch-Scope': selectedId } : {};
 }

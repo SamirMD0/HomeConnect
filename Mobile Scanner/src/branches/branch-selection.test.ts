@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { handleBranchRejection, onBranchRejected, selectAccessibleBranch, selectedBranchHeaders, setSelectedBranch } from './branch-selection';
+import { handleBranchRejection, onBranchRejected, scopeBranchThen, selectAccessibleBranch, selectedBranchHeaders, setSelectedBranch } from './branch-selection';
 import { authedHeaders, requestJson } from '../api/hc-client';
 import { uploadAsync } from 'expo-file-system/legacy';
 import { uploadReceipt } from '../api/receipts-api';
@@ -37,6 +37,20 @@ describe('mobile branch selection', () => {
     await expect(uploadReceipt({ baseUrl: 'http://pc', token: 'jwt' }, { supplierPurchaseId: 'p', localUri: 'file:photo', mime: 'image/jpeg' })).rejects.toMatchObject({ code: 'BRANCH_ACCESS_DENIED' });
     expect(vi.mocked(uploadAsync).mock.calls[0]?.[2]?.headers?.['X-Branch-Scope']).toBe('b');
     expect(listener).toHaveBeenCalledOnce(); expect(selectedBranchHeaders()).toEqual({}); off();
+  });
+  it('moves the request scope before the screen learns of the new branch', () => {
+    // Screens start loading as soon as the branch state changes: they must
+    // already be sending the new branch, or the old branch's figures get cached
+    // (and actions get saved) under the new branch.
+    setSelectedBranch('a');
+    const seen: { id: string | null; scope: Record<string, string> }[] = [];
+    const commit = (id: string | null) => seen.push({ id, scope: selectedBranchHeaders() });
+    scopeBranchThen('b', commit);
+    scopeBranchThen(null, commit);
+    expect(seen).toEqual([
+      { id: 'b', scope: { 'X-Branch-Scope': 'b' } },
+      { id: null, scope: {} },
+    ]);
   });
   it('does not clear a new selection for a stale denial or unrelated error', () => {
     setSelectedBranch('b');
